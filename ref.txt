@@ -1,0 +1,21 @@
+php artisan make:view users --resource --extends=adminlte::page --section='title:' --section='content' --section='css' --section='js'
+
+php artisan migrate --path=/database/migrations/2021_07_14_084751_create_permission_tables.php
+php artisan db:seed --class=PermissionTableSeeder
+php artisan db:seed --class=CreateAdminUserSeeder
+php artisan permission:cache-reset
+
+php artisan adminlte:plugins install --plugin=datatablesPlugins
+
+npm install moment --save
+
+php artisan migrate --path=/database/migrations/2021_08_17_104442_create_push_subscriptions_table.php
+
+php artisan cache:clear
+php artisan route:cache
+php artisan config:cache
+php artisan view:clear
+
+ php  artisan route:list -c #all routes
+
+composer config -g -- disable-tls true

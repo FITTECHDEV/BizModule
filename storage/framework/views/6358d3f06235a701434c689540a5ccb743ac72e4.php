@@ -1,0 +1,962 @@
+<?php $__env->startSection('title', 'Dashboard'); ?>
+
+<?php $__env->startSection('content_header'); ?>
+
+<?php $__env->stopSection(); ?>
+
+<?php $__env->startSection('content'); ?>
+    <div class="row">
+        <!-- Preloader -->
+    <div class="preloader">
+        <div class="preloader-inner">
+            <div class="preloader-icon">
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+    </div>
+    <!-- End Preloader -->
+        <div class="col-md-12">
+            <div class="card card-grey mt-2">
+                
+                <div class="card-body p-0">
+                    <div class="bs-stepper linear">
+                        <div class="row justify-content-center p-0">
+                            <div class="bs-stepper-header col-md-10 col-sm p-0 mt-2 pr-3 pl-3 " style="border-radius: 10px" role="tablist">
+                                <!-- your steps here -->
+                                <div class="step" data-target="#basic-details">
+                                    <button type="button" class="step-trigger pb-0 pt-0" role="tab" aria-controls="basic-details"
+                                        id="basic-details-trigger" aria-selected="false" disabled="disabled">
+                                        <span class="bs-stepper-circle">1</span>
+                                        <span class="bs-stepper-label">Basic Details</span>
+                                    </button>
+                                </div>
+                                <div class="line"></div>
+                                <div class="step" data-target="#office-details">
+                                    <button type="button" class="step-trigger pb-0 pt-0" role="tab" aria-controls="office-details"
+                                        id="office-details-trigger" aria-selected="true">
+                                        <span class="bs-stepper-circle">2</span>
+                                        <span class="bs-stepper-label">Office Details</span>
+                                    </button>
+                                </div>
+                                <?php if(Auth::user()->can('create-client-party')): ?>
+                                <div class="line"></div>
+                                <div class="step" data-target="#admin-details">
+                                    <button type="button" class="step-trigger pb-0 pt-0" role="tab" aria-controls="office-details"
+                                        id="admin-details-trigger" aria-selected="true">
+                                        <span class="bs-stepper-circle">3</span>
+                                        <span class="bs-stepper-label">Admin Details</span>
+                                    </button>
+                                </div>
+                                <?php endif; ?>
+                                <div class="">
+                                    <a href="/client-party" class="bs-stepper-label btn btn-outline-primary">
+                                        <i class="fa fa-home"></i>   Home
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bs-stepper-content container">
+                            <form action="/client-party" method="POST" class="form-horizontal" enctype="multipart/form-data" id="clientPartyForm">
+                                <?php echo csrf_field(); ?>
+                                <!-- your steps content here -->
+                                <div id="basic-details" class="content" role="tabpanel" aria-labelledby="basic-details-trigger">
+                                    <div class="row">
+                                        <div class="col-md-12 col-sm-12">
+                                            <fieldset class="border pl-2 pr-2 card shadow-sm m-0" style="border-radius: 10px;">
+                                                <legend class="w-auto p-0 m-0">Entity Creation Options</legend>
+                                                <div class="row">
+                                                    <div class="col col-md-6 col-sm-12 ">
+                                                        <div class="form-group row mb-1" >
+                                                            <label for="partyEntityType" class="col-sm-3 col-lg-4 col-md-4 col-form-label col-form-label-sm">Operation Type<span class="text-danger">*</span></label>
+                                                            <div class="col-sm-9 col-lg-8 col-md-8">
+                                                                <select class="form-control form-control-sm" id="partyEntityType" name="partyEntityType" required>
+                                                                    <option value="" disabled selected></option>
+                                                                    <option value="Client + Shipper + Consignee" <?php if(old('partyEntityType')=='Client + Shipper + Consignee'
+                                                                        ): ?> selected <?php endif; ?>>Client + Shipper + Consignee</option>
+                                                                    
+                                                                    <option value="Shipper + Consignee" <?php if(old('partyEntityType')=='Shipper + Consignee' ): ?> selected <?php endif; ?>>
+                                                                        Shipper + Consignee</option>
+                                                                    <option value="Shipper Only" <?php if(old('partyEntityType')=='Shipper Only' ): ?> selected <?php endif; ?>>Shipper Only
+                                                                    </option>
+                                                                    <option value="Consignee Only" <?php if(old('partyEntityType')=='Consignee Only' ): ?> selected <?php endif; ?>>Consignee
+                                                                        Only</option>
+                                                                    <option value="Forwarder" <?php if(old('partyEntityType')== 'Agent / Forwarder' ): ?> selected <?php endif; ?>>Agent / Forwarder</option>
+                                                                    <option value="Airline" <?php if(old('partyEntityType')=='Airline' ): ?> selected <?php endif; ?>>Airline</option>
+                                                                    <option value="Shipping Line" <?php if(old('partyEntityType')=='Shipplingline' ): ?> selected <?php endif; ?>>
+                                                                        Shipping Line</option>
+                                                                    <option value="Trucker" <?php if(old('partyEntityType')=='Trucker' ): ?> selected <?php endif; ?>>Trucker / Transporter</option>
+                                                                    <option value="NoSCMIntergration" <?php if(old('partyEntityType')=='NoSCMIntergration' ): ?> selected <?php endif; ?>>Debtor/Vendor In D365</option>
+                                                                </select>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col col-md-6 col-sm-12 ">
+                                                        <div class="form-group row mb-1" >
+                                                            <label for="legalEntityType" class="col-sm-3 col-lg-4 col-md-4 col-form-label col-form-label-sm">Legal Type <span class="text-danger">*</span></label>
+                                                            <div class="col-sm-9 col-lg-8 col-md-8">
+                                                                <select class="form-control form-control-sm" id="legalEntityType" name="legalEntityType">
+                                                                    <option value="" disabled selected></option>
+                                                                    <option value="Debtor & Vendor" <?php if(old('legalEntityType') == 'Debtor & Vendor'): ?> selected <?php endif; ?>>Debtor & Vendor</option>
+                                                                    <option value="Debtor" <?php if(old('legalEntityType') == 'Debtor'): ?> selected <?php endif; ?>>Debtor</option>
+                                                                    <option value="Vendor" <?php if(old('legalEntityType') == 'Vendor'): ?> selected <?php endif; ?>>Vendor</option>
+                                                                    
+                                                                </select>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                            </fieldset>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-6 col-sm-12 ">
+                                            <fieldset class="border p-2 card shadow-lg mb-0 pt-0">
+                                                <legend class="w-auto p-0 m-0">Basic Information</legend>
+                                                
+                                                <div class="form-group row mb-1" >
+                                                    <label for="companyName" class="col-sm-3 col-lg-4 col-md-4 col-form-label col-form-label-sm"><i class="fa fa-building" aria-hidden="true"></i>Company Name<span class="text-danger">*</span></label>
+                                                    <div class="col-sm-9 col-lg-8 col-md-8">
+                                                        <input type="text" class="form-control form-control-sm"
+                                                        value="<?php echo e(old('companyName')); ?>"
+                                                        name="companyName" id="companyName" >
+                                                    </div>
+                                                </div>
+                                                
+                                                <div class="form-group row mb-1">
+                                                    <label for="addressLine1"
+                                                        class="col-sm-3 col-lg-4 col-form-label col-form-label-sm"><i class="fa fa-map-marker" aria-hidden="true"></i> AddressLine 1 <span class="text-danger">*</span></label>
+                                                    <div class="col-sm-9 col-lg-8">
+                                                        <textarea name="addressLine1" id="addressLine1" class="form-control form-control-sm"><?php echo e(old('addressLine1')); ?></textarea>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div class="form-group row mb-1">
+                                                    <label for="addressLine2" class="col-sm-3 col-lg-4 col-form-label col-form-label-sm"><i class="fa fa-map-marker" aria-hidden="true"></i> AddressLine 2</label>
+                                                    <div class="col-sm-9 col-lg-8">
+                                                        <textarea name="addressLine2" id="addressLine2" class="form-control form-control-sm"><?php echo e(old('addressLine2')); ?></textarea>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div class="form-group row mb-1">
+                                                    <label for="country" class="col-sm-3 col-md-3 col-lg-4 col-form-label col-form-label-sm"><i class="fa fa-globe"
+                                                            aria-hidden="true"></i> Country <span class="text-danger">*</span></label>
+                                                    <div class="col col-sm-9 col-md-9 col-lg-8">
+                                                            <select class="form-control form-control-sm" name="countryID" id="countryID">
+                                                                <option value=""></option>
+                                                                <?php $__empty_1 = true; $__currentLoopData = $countries; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $country): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
+                                                                    <option value="<?php echo e($country->CountryID); ?>" id="<?php echo e($country->CountCode); ?>" <?php if(old('countryID')==$country->CountryID): ?> selected <?php endif; ?> ><?php echo e($country->CountryName); ?></option>
+                                                                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
+                                                                <?php endif; ?>
+                                                            </select>
+                                                            <input type="hidden" name="countryName" id="countryName" value="<?php echo e(old('countryName')); ?>">
+                                                            <input type="hidden" name="countryCode" id="countryCode" value="<?php echo e(old('countryCode')); ?>">
+                                                    </div>
+                                                </div>
+                                                
+                                                <div class="form-group row ">
+                                                    <label for="province" class="col-sm-3 col-lg-4 col-form-label col-form-label-sm"><i class="fa fa-map-pin" aria-hidden="true"></i> Province / State</label>
+                                                    <div class="col col-sm-5 col-lg-4">
+                                                        <input type="text" class="form-control form-control-sm " name="provinceName" id="provinceName" value="<?php echo e(old('provinceName')); ?>" placeholder="">
+                                                        <input type="hidden" name="provinceID" id="provinceID">
+                                                        <input type="hidden" name="provinceCode" id="provinceCode">
+                                                        
+                                                    </div>
+                                                    <div class="col col-sm-4 col-lg-4">
+                                                        <input type="text" class="form-control form-control-sm number_input"
+                                                        value="<?php echo e(old('zipCode')); ?>"
+                                                        name="zipCode" id="zipCode" placeholder="Zip Code">
+                                                    </div>
+                                                </div>
+                                                
+                                                <div class="form-group row mb-1">
+                                                    <label for="cityName" class="col-sm-3 col-lg-4 col-form-label col-form-label-sm"><i class="fas fa-city"></i> City</label>
+                                                    <div class="col-sm-9 col-lg-8">
+                                                        <input type="text" class="form-control form-control-sm" value="<?php echo e(old('cityName')); ?>"
+                                                        name="cityName" id="cityName">
+                                                        
+                                                        <input type="hidden" name="cityID" id="cityID" value="<?php echo e(old('cityID')); ?>">
+                                                        <input type="hidden" name="cityCode" id="cityCode" value="<?php echo e(old('cityCode')); ?>">
+                                                    </div>
+                                                </div>
+
+                                            </fieldset>
+                                        </div>
+                                        <div class="col-md-6 col-sm-12">
+                                            <fieldset class="border p-2 card shadow-lg mb-0" >
+                                                <legend class="w-auto p-0 m-0">Contact Details</legend>
+                                                <div class="form-group row mb-1">
+                                                    <label for="person" class="col col-sm-3  col-md-3 col-lg-4 col-form-label col-form-label-sm"><i class="fa fa-user" aria-hidden="true"></i> Person <span class="text-danger">*</span></label>
+                                                    
+                                                    <div class="col col-sm-4 col-md-4 col-lg-4">
+                                                        <input type="text" class="form-control form-control-sm"
+                                                        value="<?php echo e(old('firstName')); ?>"
+                                                            name="firstName"
+                                                            id="firstName" placeholder="First Name">
+                                                    </div>
+                                                    <div class="col col-sm-5 col-md-5 col-lg-4">
+                                                        <input type="text" class="form-control form-control-sm"
+                                                        value="<?php echo e(old('lastName')); ?>"
+                                                            name="lastName"
+                                                            id="lastName" placeholder="Last Name">
+                                                    </div>
+                                                </div>
+                                                <div class="form-group row mb-1">
+                                                    <label for="department" class="col col-sm-3 col-md-3 col-lg-4 col-form-label col-form-label-sm"><i class="fa fa-sitemap" aria-hidden="true"></i> Department</label>
+                                                    <div class="col col-sm-9 col-md-9 col-lg-8">
+                                                        <input type="text" class="form-control form-control-sm"
+                                                        value="<?php echo e(old('department')); ?>"
+                                                            name="department" id="department" placeholder="Department">
+                                                    </div>
+                                                </div>
+                                                
+                                                <div class="form-group row mb-1">
+                                                    <label for="phoneNo"
+                                                        class="col col-sm-3  col-md-3 col-lg-4 col-form-label col-form-label-sm"><i class="fa fa-phone" aria-hidden="true"></i> Phone No.<span class="text-danger">*</span></label>
+                                                    <div class="col col-sm-9 col-md-9 col-lg-8">
+                                                        <input type="text" class="form-control form-control-sm number_input"
+                                                        value="<?php echo e(old('phoneNo')); ?>"
+                                                            name="phoneNo" id="phoneNo" placeholder="Phone Number">
+                                                    </div>
+                                                </div>
+                                                
+                                                <div class="form-group row mb-0 pb-0">
+                                                    <label for="contractEmail"
+                                                        class="col col-sm-3 col-lg-4 col-form-label col-form-label-sm">
+                                                        <i class="fa fa-envelope" aria-hidden="true"></i> Email</label>
+                                                    <div class="col col-sm-9 col-lg-8">
+                                                        <input type="email" name="contractEmail" id="contractEmail"
+                                                        value="<?php echo e(old('contractEmail')); ?>"
+                                                        class="form-control form-control-sm" placeholder="Enter Email">
+                                                    </div>
+                                                </div>
+                                            </fieldset>
+                                            
+                                            <fieldset class="border p-2 card shadow-lg mb-0">
+                                                <legend class="w-auto p-0 m-0">Other information</legend>
+                                                
+                                                <div class="form-group row mb-1">
+                                                    <label for="client"
+                                                        class="col-sm-3 col-lg-4 col-form-label col-form-label-sm"><i class="fa fa-user" aria-hidden="true"></i> Client <span class="text-danger" id="clientSpan">*</span></label>
+                                                    <div class="col-sm-9 col-lg-8">
+                                                        <div class="row">
+                                                            <div class="col">
+                                                                <select name="clientOption" id="clientOption" class="form-control form-control-sm" disabled>
+                                                                    <option value="fromMaster" selected>Search Client</option>
+                                                                    <option value="fromRequest">From Request</option>
+                                                                </select>
+                                                            </div>
+                                                            <div class="col">
+                                                                <input type="text" name="client" id="client" value="<?php echo e(old('client')); ?>" class="form-control form-control-sm" required disabled>
+                                                                <input type="text" name="clientOptionVal" id="clientOptionVal" value="<?php echo e(old('clientOptionVal')); ?>" class="form-control form-control-sm" disabled>
+                                                                <input type="hidden" name="requestID" value="<?php echo e(old('requestID')); ?>" id="requestID">
+                                                                <input type="hidden" name="requestCode" value="<?php echo e(old('requestCode')); ?>" id="requestCode">
+                                                            </div>
+                                                        </div>
+
+                                                    </div>
+                                                </div>
+                                                <div class="form-group row pb-0 mb-0">
+                                                    <label for="specialInstructions" class="col-sm-3 col-lg-4 col-form-label col-form-label-sm"><i class="fas fa-comments"></i> Special
+                                                        Instructions</label>
+                                                    <div class="col-sm-9 col-lg-8">
+                                                        <textarea class="form-control form-control-sm" name="specialInstruction" id="specialInstruction" placeholder="Special Instructions"><?php echo e(old('specialInstruction')); ?></textarea>
+                                                    </div>
+                                                </div>
+                                            </fieldset>
+                                        </div>
+                                    </div>
+                                    <button class="btn btn-primary m-2 btn-sm float-right" name="next" type="button" onclick="stepper.next()">Next <i class="fa fa-step-forward" aria-hidden="true"></i></button>
+                                    <button type="button" name="save-step1" id="save-step1" class="btn btn-success btn-sm float-right mt-2" data-toggle="tooltip" data-placement="top" title="Save"><i class="fa fa-plus-circle" aria-hidden="true"></i> Save for Later</button>
+                                </div>
+                                <div id="office-details" class="content active dstepper-block" role="tabpanel"
+                                    aria-labelledby="office-details-trigger">
+                                    <div class="row">
+                                        <div class="col-md-4 col-lg-4 col-sm-12">
+                                            <fieldset class="border p-2 card shadow-sm mb-0 pt-0 pb-0">
+                                                <legend class="w-auto p-0 m-0">Office Mapping</legend>
+                                                <div class="form-group row m-0">
+                                                    <label for="officeCountry" class="col-sm-6 col-lg-4 col-md-4 col-form-label col-form-label-sm">Office <span
+                                                            class="text-danger">*</span></label>
+                                                    <div class="col-sm-6 col-lg-8 col-md-8">
+                                                        <?php if(Auth::user()->can('create-client-for-any-office')): ?>
+
+                                                            <select class="form-control form-control-sm" name="officeCountry" id="officeCountry">
+                                                                <option value="" disabled selected></option>
+                                                                <?php $__empty_1 = true; $__currentLoopData = $offices; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $office): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
+                                                                    <option code="<?php echo e($office->Code); ?>" value="<?php echo e($office->Name); ?>" id="<?php echo e($office->ID); ?>" <?php if(old('officeCountry') == $office->Name): ?> selected <?php endif; ?>><?php echo e($office->Name); ?>
+
+                                                                    </option>
+                                                                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
+
+                                                                <?php endif; ?>
+                                                            </select>
+                                                            <input type="hidden" name="officeCountryID"  id="officeCountryID" >
+                                                        <?php else: ?>
+                                                            <input type="text" name="officeCountryDisp" code="<?php echo e(Auth::user()->Office->SCMOfficeCode); ?>" id="officeCountryDisp" value="<?php echo e(Auth::user()->Office->Name ?? ''); ?>" disabled>
+                                                            <input type="hidden" name="officeCountryID"  id="officeCountryID" value="<?php echo e(Auth::user()->Office->ID ?? ''); ?>">
+                                                            <input type="hidden" name="officeCode" value='<?php echo e(Auth::user()->Office->Code); ?>'>
+
+                                                            <input type="hidden" name="officeCountry"  id="officeCountry" class="form-control" value="<?php echo e(Auth::user()->Office->Name ?? ''); ?>">
+                                                            <input type="hidden" name="officeCountryName" id="officeCountryName" class="form-control" value="<?php echo e(Auth::user()->Office->Name ?? ''); ?>" disabled>
+                                                        <?php endif; ?>
+                                                    </div>
+                                                </div>
+                                            </fieldset>
+                                            <fieldset class="border p-2 card shadow-lg mb-0 pt-0 pb-0">
+                                                <legend class="w-auto pb-0 mb-0">Prefered Ports</legend>
+                                                <div class="row pt-0 mt-0 justify-content-center">
+                                                    <div class="col-md-8 col-sm-8 col-lg-8 ">
+                                                        <div class="form-check">
+                                                            <label class="form-check-label" for="includeCountryCheckBox">
+                                                                Include Country
+                                                            </label>
+                                                            <input class="form-check-input ml-3" type="checkbox" name="includeCountryCheckBox" id="includeCountryCheckBox">
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="row mb-0 pb-0">
+                                                    <div class="col-md-6 col-sm-12 col-lg-6">
+                                                        
+                                                        <div class="form-group  pt-0 mb-0">
+                                                            <div class="">
+                                                                <label for="portOfLoadingAir" class="col-form-label col-form-label-sm">Port Of Loading(Air) </label>
+                                                                <input type="text" class="form-control form-control-sm" value="<?php echo e(old('portOfLoadingAir')); ?>"
+                                                                name="portOfLoadingAir" id="portOfLoadingAir">
+                                                                <input type="hidden" name="portOfLoadingAirID" id="portOfLoadingAirID"
+                                                                value="<?php echo e(old('portOfLoadingAirID')); ?>">
+                                                                
+                                                            </div>
+                                                        </div>
+                                                        
+                                                        <div class="form-group mb-0">
+                                                            <div class="">
+                                                                <label for="portOfDischargeAir" class="col-form-label col-form-label-sm">Port Of Discharge(Air)</label>
+                                                                <input type="text" class="form-control form-control-sm"
+                                                                value="<?php echo e(old('portOfDischargeAir')); ?>"
+                                                                name="portOfDischargeAir" id="portOfDischargeAir" >
+
+                                                                <input type="hidden" class="form-control form-control-sm"
+                                                                value="<?php echo e(old('portOfDischargeAirID')); ?>"
+                                                                 name="portOfDischargeAirID" id="portOfDischargeAirID" >
+                                                                
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-6 col-sm-12 col-lg-6">
+                                                        
+                                                        <div class="form-group row mb-1">
+                                                            <div class="col-md-12 mb-0 pb-0">
+                                                                <label for="portOfLoadingSea" class="col-form-label col-form-label-sm">Port Of Loading(Sea) </label>
+                                                                <input type="text" class="form-control form-control-sm"
+                                                                value="<?php echo e(old('portOfLoadingSea')); ?>"
+                                                                name="portOfLoadingSea" id="portOfLoadingSea">
+                                                                <input type="hidden" class="form-control form-control-sm" value="<?php echo e(old('portOfLoadingSeaID')); ?>"
+                                                                name="portOfLoadingSeaID" id="portOfLoadingSeaID">
+                                                                
+                                                            </div>
+                                                        </div>
+                                                        
+                                                        <div class="form-group row pb-0 mb-0">
+                                                            <div class="col-md-12 pb-0 mb-0">
+                                                                <label for="portOfDischargeSea" class="col-form-label col-form-label-sm">Port Of Discharge(Sea)</label>
+                                                                <input type="text" class="form-control form-control-sm"
+                                                                value="<?php echo e(old('portOfDischargeSea')); ?>"
+                                                                name="portOfDischargeSea" id="portOfDischargeSea">
+                                                                <input type="hidden" class="form-control form-control-sm"
+                                                                value="<?php echo e(old('portOfDischargeSeaID')); ?>"
+                                                                 name="portOfDischargeSeaID" id="portOfDischargeSeaID">
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </fieldset>
+                                            <fieldset class="border p-2 card shadow-lg mb-0 pt-0 pb-0">
+                                                <legend>File Upload</legend>
+                                                <label for="attachmentFile">Attachment <i class="fa fa-paperclip"></i>
+                                                    <button type="button" class="btn btn-sm btn-outline-warning pull-right w-20 addAttachment" id="addFile">
+                                                        <i class="fa fa-plus"></i> File
+                                                    </button>
+                                                </label>
+                                                   <div class="input-group hdtuto control-group lst increment">
+                                                    <input type="file" name="attachmentNames[]" class="myfrm form-control mr-1 form-control-sm">
+                                                    <input type="text" name="attachmentDescription[]" class="myfrm form-control form-control-sm"
+                                                        placeholder="Description">
+                                                </div>
+                                                <div id="attachClone"></div>
+                                                <div class="clone d-none">
+                                                    <div class="hdtuto control-group lst input-group mt-1" style="">
+                                                        <input type="file" name="attachmentNames[]"
+                                                            class="myfrm form-control mr-1 form-control-sm">
+                                                        <input type="text" name="attachmentDescription[]"
+                                                            class="myfrm form-control form-control-sm" placeholder="Description">
+                                                        <div class="input-group-btn">
+                                                            <button class="btn btn-danger btn-sm" type="button" style="">
+                                                                <i class="fldemo fa fa-minus"></i> </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </fieldset>
+                                        </div>
+                                        <div class="col-md-8 col-lg-8 col-sm-12">
+                                            <fieldset class="border p-2 card shadow-lg mb-0 pt-0 pb-0">
+                                                <legend class="w-auto p-0 m-0">Client</legend>
+                                                <div class="row">
+                                                    
+                                                    <div class="col-md-6 col-sm-12 col-lg-6">
+                                                        
+                                                        <div class="form-group row mb-1">
+                                                            <label for="salesPIC" class="col-sm-3 col-lg-4 col-form-label col-form-label-sm">Sales PIC<span class="text-danger">*</span></label>
+                                                            <div class="col-sm-9 col-lg-8">
+                                                                <input type="text" class="form-control form-control-sm salesPIC" value="<?php echo e(old('salesPIC')); ?>" name="salesPIC" id="salesPIC">
+                                                                <input type="hidden" name="salesPICID" id="salesPICID" value="<?php echo e(old('salesPICID')); ?>">
+                                                                
+                                                            </div>
+                                                        </div>
+                                                        
+                                                        <div class="form-group row mb-1">
+                                                            <label for="incoTermID" class="col-sm-3 col-lg-4 col-form-label col-form-label-sm">Inco Terms</label>
+                                                            <div class="col-sm-9 col-lg-8">
+                                                                <select class="form-control form-control-sm" name="incoTermID" id="incoTermID">
+                                                                    <option value="" disabled selected></option>
+                                                                    <?php $__empty_1 = true; $__currentLoopData = $incoterms; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $incoterm): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
+                                                                        <option value="<?php echo e(old('incoTermID', $incoterm->IncoTermID)); ?>" id="<?php echo e($incoterm->IncoTermCode); ?>" <?php if(old('incoTermID') == $incoterm->IncoTermID): ?> selected <?php endif; ?>><?php echo e($incoterm->Name); ?></option>
+                                                                    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
+
+                                                                    <?php endif; ?>
+                                                                </select>
+                                                                <input type="hidden" name="incoTermName" id="incoTermName" value="<?php echo e(old('incoTermName')); ?>">
+                                                                <input type="hidden" name="incoTermCode" id="incoTermCode" value="<?php echo e(old('incoTermCode')); ?>">
+                                                            </div>
+                                                        </div>
+                                                        
+                                                        <div class="form-group row mb-1">
+                                                            <label for="notifyParty1"
+                                                                class="col-sm-3 col-lg-4 col-form-label col-form-label-sm">Notify Party 1</label>
+                                                            <div class="col-sm-9 col-lg-8">
+                                                                <input type="text" class="form-control form-control-sm" value="<?php echo e(old('notifyParty1')); ?>"
+                                                                name="notifyParty1" id="notifyParty1">
+                                                                <input type="hidden" name="notifyParty1ID" id="notifyParty1ID">
+                                                                <input type="hidden" name="notifyParty1Code" id="notifyParty1Code">
+                                                                
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <!-- /.end col 1 office details -->
+                                                    
+                                                    <div class="col-md-6 col-sm-12 col-lg-6 pt-0">
+                                                        
+                                                        <div class="form-group row mb-1">
+                                                            <label for="accountPIC" class="col-sm-3 col-lg-4 col-form-label col-form-label-sm">Account PIC</label>
+                                                            <div class="col-sm-9 col-lg-8">
+                                                                <input type="text" class="form-control form-control-sm"
+                                                                 value="<?php echo e(old('accountPIC')); ?>" name="accountPIC" id="accountPIC" placeholder="">
+                                                                 <input type="hidden" name="accountPICID" id="accountPICID"
+                                                                 value="<?php echo e(old('accountPICID')); ?>">
+                                                                
+                                                            </div>
+                                                        </div>
+                                                        
+                                                        <div class="form-group row mb-1">
+                                                            <label for="paymentTermsID"
+                                                                class="col-sm-3 col-lg-4 col-form-label col-form-label-sm pt-0 mt-0">Pay Terms</label>
+                                                            <div class="col-sm-9 col-lg-8 ">
+                                                                <select class="form-control form-control-sm" name="paymentTermsID" id="paymentTermsID">
+                                                                    <option value="" disabled selected></option>
+                                                                    <?php $__empty_1 = true; $__currentLoopData = $payTerms; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $payTerm): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
+                                                                        <option value="<?php echo e(old('paymentTermsID', $payTerm->IncoTermID)); ?>" id="<?php echo e($payTerm->IncoTermCode); ?>" <?php if(old('paymentTermsID') == $payTerm->IncoTermID): ?> selected <?php endif; ?>><?php echo e($payTerm->Name); ?></option>
+                                                                    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
+
+                                                                    <?php endif; ?>
+                                                                </select>
+                                                                <input type="hidden" name="paymentTermsName" id="paymentTermsName">
+                                                                <input type="hidden" name="paymentTermsCode" id="paymentTermsCode">
+                                                            </div>
+                                                        </div>
+                                                        
+                                                        <div class="form-group row mb-1">
+                                                            <label for="notifyParty2"
+                                                                class="col-sm-3 col-lg-4 col-form-label col-form-label-sm">Notify Party 2</label>
+                                                            <div class="col-sm-9 col-lg-8">
+                                                                <input type="text" class="form-control form-control-sm" value="<?php echo e(old('notifyParty2')); ?>"
+                                                                name="notifyParty2" id="notifyParty2" placeholder="">
+                                                                <input type="hidden" name="notifyParty2ID" id="notifyParty2ID">
+                                                                <input type="hidden" name="notifyParty2Code" id="notifyParty2Code">
+                                                                
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <!-- /.end col 2 office details -->
+                                                </div>
+                                                <!-- row 1 office details -->
+                                                <div class="">
+                                                    
+                                                    <div class="form-group row mb-0">
+                                                        <label for="forwarderName" class="col-sm-3 col-md-4 col-lg-2 col-form-label col-form-label-sm">Forwarder</label>
+                                                        <div class="col-sm-9 col-lg-10 col-md-8">
+                                                            <input type="text" class="form-control form-control-sm" name="forwarderName" id="forwarderName"
+                                                            value="<?php echo e(old('forwarderName')); ?>">
+                                                            <input type="hidden" class="form-control form-control-sm"
+                                                            name="forwarderID" id="forwarderID" value="<?php echo e(old('forwarderID')); ?>">
+                                                            
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </fieldset>
+                                            <fieldset class="border p-2 card shadow-lg mb-0 pt-0 pb-0">
+                                                <legend class="w-auto p-0 m-0">Debtor/Vendor</legend>
+                                                <div class="row">
+                                                    <div class="col-md-6 col-sm-12 col-lg-6">
+                                                        
+                                                        <div class="form-group row mb-1">
+                                                            <div class="col-md-12">
+                                                                <label for="debtorType" class="col-form-label col-form-label-sm">Debtor Type</label>
+                                                                <select class="form-control form-control-sm" name="debtorType" id="debtorType">
+                                                                    <option value="" disabled selected></option>
+                                                                    
+                                                                </select>
+                                                            </div>
+                                                        </div>
+                                                        
+                                                        <div class=" row mb-0 pb-0">
+                                                            <div class="form-group col-md-6 mb-0 pb-0">
+                                                                <label for="billingCurrency" class="col-form-label col-form-label-sm">Billing Currency <span style="color: red;">*</span> </label>
+                                                                <input type="hidden" class="form-control form-control-sm" value="<?php echo e(old('billingCurrencyCode')); ?>"
+                                                                name="billingCurrencyCode" id="billingCurrencyCode">
+                                                                
+                                                                <select class="form-control form-control-sm" name="billingCurrency" id="billingCurrency">
+                                                                    <option value="" disabled selected></option>
+                                                                </select>
+                                                            </div>
+                                                             
+                                                            <div class="form-group col-md-6 mb-0 pb-0">
+                                                                <label for="creditDays"
+                                                                    class="col-form-label col-form-label-sm">Credit Days</label>
+                                                                <input type="text" class="form-control form-control-sm number_input"
+                                                                    value="<?php echo e(old('creditDays')); ?>"
+                                                                    name="creditDays" id="creditDays">
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-6 col-sm-12 col-lg-6 mb-0 pb-0">
+                                                         
+                                                         <div class="form-group row mb-1 mb-0 pb-0 ">
+                                                            <div class="col-md-12">
+                                                                <label for="vendorType" class="col-form-label col-form-label-sm">Vendor Type</label>
+                                                                <select class="form-control form-control-sm" name="vendorType" id="vendorType">
+                                                                    <option value="" disabled selected></option>
+                                                                    
+                                                                </select>
+                                                            </div>
+                                                        </div>
+                                                        
+                                                        <div class="form-group">
+                                                            <div class="row mb-0 pb-0 ">
+                                                                <div class="col-sm-6 col-md-6 col-lg-6 mb-0 pb-0">
+                                                                    <label for="minCreditLimit"
+                                                                        class="col-form-label col-form-label-sm">Credit Limit <span style="color: red;">*</span></label>
+                                                                    <input type="text"
+                                                                        class="form-control form-control-sm number_input"
+                                                                        value="<?php echo e(old('maxCreditLimit')); ?>"
+                                                                        name="maxCreditLimit" id="maxCreditLimit"
+                                                                        placeholder="">
+                                                                </div>
+                                                                <div class="col-sm-6 col-md-6 col-lg-6 ">
+                                                                    <label for="baseCurrency"
+                                                                        class="col-form-label col-form-label-sm">Base
+                                                                        Currency</label>
+                                                                    <input type="text" class="form-control form-control-sm" name="baseCurrency" id="baseCurrency" disabled>
+                                                                    <input type="hidden" class="form-control form-control-sm" name="baseCurrencyCode" id="baseCurrencyCode" value="<?php echo e(old('baseCurrencyCode')); ?>">
+                                                                    <input type="hidden" class="form-control form-control-sm" name="baseCurrencyName" id="baseCurrencyName" value="<?php echo e(old('baseCurrencyName')); ?>">
+                                                                    <input type="hidden" class="form-control form-control-sm" name="baseCurrencyID" id="baseCurrencyID" value="<?php echo e(old('baseCurrencyID')); ?>">
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div class="form-group row mb-0 mt-0 p-0 ">
+                                                    <div class="col col-sm-6 col-lg-6 col-md-6 m-0">
+                                                        <div class="row">
+                                                            <label for="licence" class="col-md-3 col-form-label col-form-label-sm pr-0">Licence Type</label>
+                                                            <div class="col-md-9">
+                                                                <select class="form-control form-control-sm" name="licenceTypeID" id="licenceTypeID">
+                                                                    <option value="" disabled selected></option>
+                                                                    <?php $__empty_1 = true; $__currentLoopData = $licenceTypes; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $type): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
+                                                                        <option value="<?php echo e($type->LicenseID); ?>" id="<?php echo e($type->LicenseCode); ?>" <?php if(old('licenceTypeID') == $type->LicenseID): ?>  selected <?php endif; ?>>
+                                                                            <?php echo e($type->LicenseName); ?></option>
+                                                                    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
+                                                                    <?php endif; ?>
+                                                                </select>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col col-sm-6 col-lg-6 col-md-6">
+                                                        <input type="hidden" class="form-control form-control-sm"
+                                                            value="<?php echo e(old('licenceTypeCode')); ?>" name="licenceTypeCode"
+                                                            id="licenceTypeCode">
+                                                        <input type="text" class="form-control form-control-sm"
+                                                            value="<?php echo e(old('licenceTypeValue')); ?>"
+                                                            name="licenceTypeValue" id="licenceTypeValue">
+                                                    </div>
+                                                </div>
+                                            </fieldset>
+                                            <fieldset class="border p-2 card shadow-lg mb-0 pt-0 pb-0">
+                                                <legend class="w-auto p-0 m-0"> Additional Information</legend>
+                                                <div class="row mb-0">
+                                                   <div class="col-md-6 col-sm-12 col-lg-6 mb-0">
+                                                            
+                                                            <div class="form-group row mb-0">
+                                                                <div class="col-md-12">
+                                                                    <label for="tarrif"
+                                                                        class="col-form-label col-form-label-sm">Tarrif</label>
+                                                                        
+                                                                    <select class="form-control form-control-sm" name="tarrif" id="tarrif" required>
+                                                                        <option value="" selected disabled></option>
+                                                                        <?php $__empty_1 = true; $__currentLoopData = $tarrifs; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $tarrif): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
+                                                                            <option value="<?php echo e($tarrif->TARIFF); ?>" <?php if(old('tarrif') == $tarrif->TARIFF): ?> selected <?php endif; ?>><?php echo e($tarrif->TARIFF); ?></option>
+                                                                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
+                                                                        <?php endif; ?>
+                                                                    </select>
+
+                                                                </div>
+                                                            </div>
+                                                            
+                                                            <div class="form-group row mb-0">
+                                                                <div class="col-md-12">
+                                                                    <label for="phoneNo" class="col-form-label col-form-label-sm"> FSC Type & Rate</label>
+                                                                    <div class="row">
+                                                                        <div class="col col-sm-6 col-lg-6">
+                                                                            <select class="form-control form-control-sm" name="fscType" id="fscType" required>
+                                                                                <option value="" selected disabled>Select Type</option>
+                                                                                <option value="Fixed" <?php if(old('fscType') == 'Fixed'): ?> selected <?php endif; ?>>Fixed</option>
+                                                                                <option value="Variable" <?php if(old('fscType') == 'Variable'): ?> selected <?php endif; ?>>Variable</option>
+                                                                            </select>
+                                                                        </div>
+                                                                        <div class="col col-sm-6 col-lg-6">
+                                                                            <input type="text" class="form-control form-control-sm number_input"
+                                                                            value="<?php echo e(old('fscRate')); ?>"
+                                                                            name="fscRate" id="fscRate" placeholder="Rate" required>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-md-6 col-sm-12 col-lg-6 mb-0">
+                                                            
+                                                            <div class="form-group row mb-0">
+                                                                <div class="col-md-12">
+                                                                    <label for="billingType"
+                                                                        class="col-form-label col-form-label-sm">Billing Type</label>
+                                                                    <select class="form-control form-control-sm"
+                                                                        name="billingType" id="billingType" required>
+                                                                        <option value="" selected>Select Billing Type </option>
+                                                                        <option value="Periodic" <?php if(old('billingType') == 'Periodic'): ?> selected <?php endif; ?>>Periodic</option>
+                                                                        <option value="Shipment" <?php if(old('billingType') == 'Shipment'): ?> selected <?php endif; ?>>Shipment</option>
+                                                                    </select>
+                                                                </div>
+                                                            </div>
+                                                            
+                                                            <div class="form-group row mb-0">
+                                                                <div class="col-md-12">
+                                                                    <label for="discount"
+                                                                        class="col-form-label col-form-label-sm">Discount in %</label>
+                                                                    <input type="text" class="form-control form-control-sm number_input"
+                                                                    value="<?php echo e(old('discount')); ?>"
+                                                                    name="discount" id="discount" placeholder="Discount" required>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                </div>
+                                            </fieldset>
+                                        </div>
+                                    </div>
+                                    <button class="btn btn-primary m-2 btn-sm" type="button" name="previous" onclick="stepper.previous()"><i class="fa fa-step-backward" aria-hidden="true"></i> Previous</button>
+                                    <?php if(Auth::user()->can('create-client-party')): ?>
+                                        <button class="btn btn-primary m-2 btn-sm float-right" type="button" name="next" onclick="stepper.next()">Next <i class="fa fa-step-forward" aria-hidden="true"></i></button>
+                                    <?php else: ?>
+                                        <button type="submit" name="submitBtn" value="submitBtn" class="btn btn-outline-success btn-sm float-right mt-2" data-toggle="tooltip" data-placement="top" title="Will Be Submitted for Creating"><i class="fa fa-thumbs-up" aria-hidden="true"></i> Sumbit</button>
+                                    <?php endif; ?>
+                                    <button type="button" name="save-step2" id="save-step2" class="btn btn-success btn-sm float-right m-2" data-toggle="tooltip" data-placement="top" title="Save"><i class="fa fa-plus-circle" aria-hidden="true" ></i> Save for Later</button>
+                                </div>
+                                <?php if(Auth::user()->can('create-client-party')): ?>
+                                    <div id="admin-details" class="content" role="tabpanel" aria-labelledby="admin-details-trigger">
+                                        <div class="row justify-content-center">
+                                            <div class="com-md-6 col-xl-6 col-sm-12 col-lg-6">
+                                                <fieldset class="border p-2 card shadow-lg mb-0 pt-0 pb-0">
+                                                    <legend class="w-auto p-0 m-0"></legend>
+                                                    <table class="table table-sm">
+                                                        <thead>
+                                                            <th>Entity</th>
+                                                            <th>Create</th>
+                                                            <th>Select</th>
+                                                            <th>Code</th>
+                                                        </thead>
+                                                        <tr>
+                                                            <td>Client</td>
+                                                            <td><input type="checkbox" name="clientCheck" id="clientCheck" =""></td>
+                                                            <td>
+                                                                <input type="text" name="clientInput" id="clientInput" value="<?php echo e(old('clientInput')); ?>" class="form-control form-control-sm"  required>
+                                                                <input type="hidden" name="clientID" id="clientID" value="<?php echo e(old('clientID')); ?>">
+                                                                <input type="hidden" name="clientCode" id="clientCode" value="<?php echo e(old('clientCode')); ?>">
+                                                                
+                                                            </td>
+                                                            <td id="client_Input"></td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td>Shipper</td>
+                                                            <td><input type="checkbox" name="shipperCheck" id="shipperCheck" ></td>
+                                                            <td>
+                                                                <input type="text" name="shipperInput" id="shipperInput" class="form-control form-control-sm"  required>
+                                                                <input type="hidden" name="shipperID" id="shipperID">
+                                                                <input type="hidden" name="shipperCode" id="shipperCode">
+                                                                
+                                                            </td>
+                                                            <td id="shipper_Input"></td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td>Consignee</td>
+                                                            <td><input type="checkbox" name="consigneeCheck" id="consigneeCheck"></td>
+                                                            <td>
+                                                                <input type="text" name="consigneeInput" id="consigneeInput" class="form-control form-control-sm"  required>
+                                                                <input type="hidden" name="consigneeID" id="consigneeID">
+                                                                <input type="hidden" name="consigneeCode" id="consigneeCode">
+                                                                
+                                                            </td>
+                                                            <td id="consignee_Input"></td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td>Other</td>
+                                                            <td><input type="checkbox" name="otherCheck" id="otherCheck" ></td>
+                                                            <td>
+                                                                <input type="text" name="otherInput" id="otherInput" class="form-control form-control-sm"  required>
+                                                                <input type="hidden" name="otherID" id="otherID">
+                                                                <input type="hidden" name="otherCode" id="otherCode">
+                                                                
+                                                            </td>
+                                                            <td id="other_Input"></td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td>Debtor</td>
+                                                            <td><input type="checkbox" name="debtorCheck" id="debtorCheck"></td>
+                                                            <td>
+                                                                <input type="text" name="debtor" id="debtor" class="form-control form-control-sm" required>
+                                                                <input type="hidden" name="debtorID" id="debtorID">
+                                                                <input type="hidden" name="debtorCode" id="debtorCode">
+                                                                
+                                                            </td>
+                                                        <td id="debtor_code"></td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td>Vendor</td>
+                                                            <td><input type="checkbox" name="vendorCheck" id="vendorCheck"></td>
+                                                            <td>
+                                                                <input type="text" name="vendor" id="vendor" class="form-control form-control-sm" required>
+                                                                <input type="hidden" name="vendorID" id="vendorID">
+                                                                <input type="hidden" name="vendorCode" id="vendorCode">
+                                                                
+                                                            </td>
+                                                            <td id="vendor_code"></td>
+                                                        </tr>
+                                                    </table>
+                                                </fieldset>
+                                            </div>
+                                        </div>
+                                        <button class="btn btn-primary mt-2" type="button" name="previous" onclick="stepper.previous()"><i class="fa fa-step-backward" aria-hidden="true"></i> Previous</button>
+                                       <?php if(Auth::user()->can('create-client-party')): ?>
+                                            <button type="submit" name="createBtn" value="true" class="btn btn-outline-success float-right m-2 btn-sm" data-toggle="tooltip" data-placement="top" title="Save and Create On SCM"><i class="fa fa-cogs" aria-hidden="true"></i> Create</button>
+                                        <?php endif; ?>
+                                        <button type="submit" name="submitBtn" class="btn btn-success float-right mt-2 btn-sm" data-toggle="tooltip" data-placement="top" title="Save"><i class="fa fa-plus-circle" aria-hidden="true"></i> Save For Later</button>
+                                    </div>
+                                <?php endif; ?>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                <!-- /.card-body -->
+                <div class="card-footer"></div>
+                <div id="loader"></div>
+            </div>
+            <!-- /.card -->
+        </div>
+    </div>
+<?php $__env->stopSection(); ?>
+
+<?php $__env->startSection('css'); ?>
+
+    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bs-stepper/dist/css/bs-stepper.min.css">
+    <style>
+         fieldset.scheduler-border {
+            border: solid 1px #DDD !important;
+            padding: 0 10px 10px 10px;
+            border-bottom: none;
+        }
+        legend.scheduler-border {
+            width: auto !important;
+            border: none;
+            font-size: 14px;
+        }
+        legend {
+            font-size: 16px;
+            /* color: #060ac4; */
+             /* color: #0174f3; */
+            color: #E91809;
+            /* padding: 0 10px 10px 10px; */
+            /**/ font-weight: bold;
+        }
+        label {
+            font-weight:bold;
+            /* font-size: 72px; */
+        }
+        /* Preloader */
+        .preloader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 999999999;
+            width: 100%;
+            height: 100%;
+            background-color: #fff;
+            overflow: hidden;
+        }
+
+        .preloader-inner {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            -webkit-transform: translate(-50%, -50%);
+            -moz-transform: translate(-50%, -50%);
+            transform: translate(-50%, -50%);
+        }
+
+        .preloader-icon {
+            width: 100px;
+            height: 100px;
+            display: inline-block;
+            padding: 0px;
+        }
+
+        .preloader-icon span {
+            position: absolute;
+            display: inline-block;
+            width: 100px;
+            height: 100px;
+            border-radius: 100%;
+            /* background:#F7941D; */
+            background: #191857;
+            -webkit-animation: preloader-fx 1.6s linear infinite;
+            animation: preloader-fx 1.6s linear infinite;
+        }
+
+        .preloader-icon span:last-child {
+            animation-delay: -0.8s;
+            -webkit-animation-delay: -0.8s;
+        }
+
+        @keyframes  preloader-fx {
+            0% {
+                transform: scale(0, 0);
+                opacity: 0.5;
+            }
+
+            100% {
+                transform: scale(1, 1);
+                opacity: 0;
+            }
+        }
+
+        @-webkit-keyframes preloader-fx {
+            0% {
+                -webkit-transform: scale(0, 0);
+                opacity: 0.5;
+            }
+
+            100% {
+                -webkit-transform: scale(1, 1);
+                opacity: 0;
+            }
+        }
+        /* End Preloader */
+    </style>
+    <link rel="stylesheet" href="//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+    <style>
+        #loader  {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            width: 100%;
+            background: rgba(0,0,0,0.75) url('<?php echo e(asset('site_imgs/loading2.gif')); ?>') no-repeat center center;
+            z-index: 10000;
+            }
+
+    </style>
+<?php $__env->stopSection(); ?>
+
+<?php $__env->startSection('js'); ?>
+<script>
+    /*Ajax setup CSRF*/
+    $.ajaxSetup({
+        headers: {
+            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+        }
+    });
+</script>
+<script src="//code.jquery.com/jquery-1.12.4.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bs-stepper/dist/js/bs-stepper.min.js"></script>
+<script src="<?php echo e(asset('js/client-party/party-entity.js')); ?>"></script>
+<script src="<?php echo e(asset('js/client-party/validation.js')); ?>"></script>
+<script src="<?php echo e(asset('js/client-party/sub-form.js')); ?>"></script>
+<script src="<?php echo e(asset('js/client-party/jquery-number/jquery.number.min.js')); ?>"></script>
+<script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
+<script>
+    /** get user authorization status */
+    window.User = {
+        value: '<?php echo e(auth()->user()->can("edit-client-party")); ?>'
+    }
+</script>
+<script type="text/javascript">
+   let init = 1;
+    let max_fields = 3;
+    $(".addAttachment").click(function() {
+        var lsthmtl = $(".clone").html();
+        if (init < max_fields) { 
+            // check if file attachment i has content
+            var names = document.getElementsByName('attachmentNames[]');
+            var desc = document.getElementsByName('attachmentDescription[]');
+            
+                var fileInputName = names[names.length-2];
+                var fileInputDescription = desc[desc.length-2];
+                // -- validation --//
+                // Allowing file type
+                var allowedExtensions = /(\.jpg|\.jpeg|\.png|\.gif|\.pdf|\.doc|\.xls|\.docx|\.xlsx)$/i;
+                if (!allowedExtensions.exec(fileInputName.value) || fileInputDescription.value == '') {
+                    alert('Either Invalid file type / No Description');fileInputName.value = '';
+                    return false;
+                }else if(fileInputName.value != ''){
+                    alert('Kindly Enter the File Name and Description');
+                }else{
+                    $("#attachClone").before(lsthmtl); 
+                    init++; 
+                }
+
+        } else { 
+            alert('Maximum File Attachment Reached.');    
+        } 
+    });
+
+    $("body").on("click", ".btn-danger", function() {
+        $(this).parents(".hdtuto").remove();
+        init--;
+    });
+</script>
+<script src="<?php echo e(asset('js/client-party/show-create-client-party.js')); ?>"></script>
+<?php $__env->stopSection(); ?>
+
+
+
+<?php echo $__env->make('adminlte::page', \Illuminate\Support\Arr::except(get_defined_vars(), ['__data', '__path']))->render(); ?><?php /**PATH C:\inetpub\wwwroot\fit_service_desk\resources\views/client-party/create.blade.php ENDPATH**/ ?>

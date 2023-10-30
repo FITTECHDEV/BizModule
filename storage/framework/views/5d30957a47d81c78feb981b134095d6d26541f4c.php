@@ -1,0 +1,1 @@
+<?php echo e($slot); ?>: <?php echo e($url); ?><?php /**PATH C:\inetpub\wwwroot\fit_service_desk\resources\views/vendor/mail/text/button.blade.php ENDPATH**/ ?>
