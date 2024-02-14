@@ -835,8 +835,8 @@ class ClientPartyController extends Controller
 
                 $entity = $this->createLegalEntityType($entity_type, $data);
 
-                Log::info(json_encode($data));
-                Log::info(json_encode($entity));
+                // Log::info(json_encode($data));
+                // Log::info(json_encode($entity));
 
                 // entity creation failed
                 if (!(bool)$entity->status) {
