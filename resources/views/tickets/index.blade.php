@@ -61,7 +61,7 @@
                                 aria-hidden="true"></i></span>
                         <div class="info-box-content">
                             <span class="info-box-text text-center">On Hold</span>
-                            <span class="info-box-number text-center">{{ _($ticket->ticketCount('Status', '0'))
+                            <span class="info-box-number text-center">{{ __($ticket->ticketCount('Status', '0'))
                                 }}</span>
                         </div>
                         <!-- /.info-box-content -->
@@ -168,7 +168,7 @@
                     },
                     {
                         data: 'SubModuleName',
-                        name: 'SubModuleName'
+                        name: 'SubModuleName',
                     },
                     {
                         data: 'CreatedBy',
@@ -267,7 +267,6 @@
             searchTable(' ');
         });
 
-
         function searchTable(param) {
             let column = 9;
             if((typeof(param) != 'number') && (param != ' ')){
@@ -281,7 +280,7 @@
             searchTable('ShowStopper');
         });
         $('#High').on('click', function() {
-            searchTable('High');
+            searchTable('High'); ??
         });
         $('#Medium').on('click', function() {
             searchTable('Medium');

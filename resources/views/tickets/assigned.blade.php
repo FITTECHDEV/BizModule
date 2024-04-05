@@ -453,7 +453,9 @@
                 },
                 {
                     data: 'AssignedTo',
-                    name: 'AssignedTo'
+                    name: 'AssignedTo',
+                    orderable: true,
+                    searchable: true,
                 },
                 {
                     data: 'OfficeName',

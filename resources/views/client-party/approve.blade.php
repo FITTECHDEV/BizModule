@@ -10,7 +10,7 @@
 
 @section('content')
 
-<div class="p-2">    
+<div class="p-2">
     <div class="row">
         <div class="col-xl-12 col-lg-12 col-sm-12 col-md-12 ">
             <div class="card">
@@ -32,7 +32,7 @@
                                 <th>RequestedOn</th>
                                 <th>Action</th>
                             </thead>
-                            <tbody>                              
+                            <tbody>
                             </tbody>
                         </table>
                         <!-- Modal -->
@@ -213,7 +213,6 @@
         $('#allEntityRequests').on('click', function() {
             searchTable('');
         });
-
 
         function searchTable(param) {
             clientPartyTable.column(5).search(param, false, false, false).draw();

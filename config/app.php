@@ -170,7 +170,7 @@ return [
              */
         Yajra\Datatables\DatatablesServiceProvider::class,
         Sujip\Guid\GuidServiceProvider::class,
-        Clockwork\Support\Laravel\ClockworkServiceProvider::class,
+        // Clockwork\Support\Laravel\ClockworkServiceProvider::class,
         Spatie\Permission\PermissionServiceProvider::class,
             // RenatoMarinho\LaravelPageSpeed\ServiceProvider::class,
         Jimmyjs\ReportGenerator\ServiceProvider::class,

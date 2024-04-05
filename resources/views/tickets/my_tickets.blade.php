@@ -136,9 +136,6 @@
 @section('js')
 <script>
     $(function() {
-
-
-
         let page_filter = `{{ $pageFilter }}`;
         let url = '';
 
@@ -158,7 +155,7 @@
         }
 
 
-        var myTicketsTable = $('#my-tickets-table').DataTable({
+        let myTicketsTable = $('#my-tickets-table').DataTable({
                 "order": [
                     [8, "desc"]
                 ],
@@ -214,28 +211,23 @@
 
                     {
                         data: 'Action',
-                        name: 'Action',
-                        orderable: false,
-                        searchable: false
+                        name: 'Action'
                     }
                 ],
             });
 
-
-
-
-
             window.user_raise_ticket = `{{ Auth::user()->can('ticket-raise') }}`;
 
-        if (window.user_raise_ticket) {
-                $('#my-tickets-table_filter').css('margin-left', '2px').append('<a href="/tickets/create" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i>New Ticket</a>');
-            }
+        if (window.user_raise_ticket)
+        {
+            $('#my-tickets-table_filter').css('margin-left', '2px').append('<a href="/tickets/create" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i>New Ticket</a>');
+        }
 
 
         $('#refreshTable').click(function() {
             table.ajax.reload();
         });
-        
+
         searchTable(1);
 
         $('#open').on('click', function() {
@@ -258,7 +250,6 @@
             searchTable(' ');
         });
 
-
         function searchTable(param) {
             let column = 9;
             if(typeof(param) != 'number'){
@@ -266,7 +257,6 @@
             }
             myTicketsTable.column(column).search(param, false, false, false).draw();
         }
-
 
         $('#ShowStopper').on('click', function() {
             searchTable('ShowStopper');
@@ -280,7 +270,6 @@
         $('#Low').on('click', function() {
             searchTable('Low');
         });
-
     });
 </script>
 @stop

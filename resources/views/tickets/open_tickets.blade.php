@@ -91,7 +91,7 @@
                     },
                     {
                         data: 'SubModuleName',
-                        name: 'SubModuleName'
+                        name: 'SubModuleName',
                     },
                     {
                         data: 'Status',

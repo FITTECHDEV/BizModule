@@ -212,6 +212,7 @@ class Ticket extends Model
     public function ticketStatistics()
     {
         $auth_user = Auth::user();
+
         if ($auth_user->Role == 1) {
             return DB::select(DB::raw("select
                 ti.Status as StatusNo,
@@ -297,7 +298,6 @@ class Ticket extends Model
                 $ticket = Ticket::where($column, $value);
             }
             foreach ($constraints as $key => $constraint) {
-
                 $ticket = $ticket->where($constraint[0], $constraint[1]);
             }
             if ($auth_user->Role != 1) {
@@ -305,7 +305,6 @@ class Ticket extends Model
             }
             $count = $ticket->count();
         }
-
         return number_format($count, 0, '', ',');
     }
 }

@@ -203,10 +203,8 @@ class TicketController extends Controller
 
     public function updateStatus(Request $request)
     {
-
         try {
             DB::beginTransaction();
-
             //fetch the ticket
             $ticket = Ticket::where('Id', $request->ID)->first();
             $user = Auth::user();
@@ -240,7 +238,7 @@ class TicketController extends Controller
                     $details['ticket'] = $ticket;
                     TicketSolvedJob::dispatch($details);
                 } catch (Exception $e) {
-                    return response()->json(['status' => 'warning', 'message' => $e->getMessage()]);
+                    return response()->json(['status' => 'warning', 'message' => 'This Email no longer exists in the system. Please contact IT support.']);
                 }
             }
             // if open to colosed
@@ -269,6 +267,7 @@ class TicketController extends Controller
             //         'ReopenedOn' => \Carbon\Carbon::now()
             //     ]);
             // }
+
             if ($request->Status == 0) {
                 //update the ticket status on hold
                 DB::table('TIC_TicketInfo')->where('Id', $request->ID)->update([
@@ -292,9 +291,8 @@ class TicketController extends Controller
             DB::rollback();
             return response()->json(['status' => 'warning', 'message' => $th->getMessage()]);
         }
-
-
         // toast('Ticket Status updated successfully', 'success');
+
 
         return response()->json(['status' => 'success', 'message' => 'Ticket Status updated successfully']);
     }
@@ -307,7 +305,6 @@ class TicketController extends Controller
      */
     public function store(Request $request)
     {
-
         // validation
         $this->validate($request, [
             'ticket_title' => 'required',
@@ -394,7 +391,6 @@ class TicketController extends Controller
 
         // check for files
         if ($request->hasFile('attachments')) {
-
             foreach ($attachments as $key => $file) {
                 $attachment = new Attachment();
                 $attachment->ID = guid();
@@ -440,8 +436,8 @@ class TicketController extends Controller
         // queue the admins' email notification
         // dispatch(new \App\Jobs\SendEmailJob($details));
         // }
-
         // log ticket history
+
         TicketStatusHistory::create([
             'ID' => guid(),
             'TicketID' => $new_ticket->Id,
@@ -589,8 +585,6 @@ class TicketController extends Controller
                     'AssignedTo' => $request->AssignedTo,
                     'AssignedOn' => \Carbon\Carbon::now()
                 ]);
-
-
                 DB::commit();
             } catch (\Throwable $th) {
                 DB::rollback();
