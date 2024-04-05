@@ -570,7 +570,7 @@ class ClientPartyController extends Controller
             $status = 'Not Submitted';
         };
 
-        if (isset($request->debtor) && isset($request->createBtn)) {
+        if (isset($request->debtor) || isset($request->debtorCheck)) {
             $status = 'PendingManagerApproval';
         }
         //client party instatnce
@@ -582,7 +582,7 @@ class ClientPartyController extends Controller
 
         try {
             DB::beginTransaction();
-            DB::table('Cust_Entity')->updateOrInsert([
+            $data = [
                 'Id' => $client_party_id,
                 'Code' => $code,
                 //Entity type
@@ -720,7 +720,9 @@ class ClientPartyController extends Controller
                 // 'DefaultPartyLocationId' => null,
                 'Status' => $status,
 
-            ]);
+            ];
+            // dd($request, $data);
+            DB::table('Cust_Entity')->updateOrInsert($data);
             DB::commit();
             // dd('here');
         } catch (Exception $th) {
@@ -833,6 +835,8 @@ class ClientPartyController extends Controller
                     "NoSeries" => $noSeries
                 ];
 
+                if (config('app.env') != 'Local'){
+
                 $entity = $this->createLegalEntityType($entity_type, $data);
 
                 Log::info(json_encode($data));
@@ -860,7 +864,7 @@ class ClientPartyController extends Controller
                 // update entity vendor / debtor
                 DB::table('Cust_Entity')->where('Id', $client_party_id)->update([
                     ucfirst($entity_type_col) . 'Code' => $entity->responseCode,
-                ]);
+                ]);}
 
                 $client_party_status = 1;
             }
@@ -928,7 +932,6 @@ class ClientPartyController extends Controller
         if (!$entityToken['status']) {
             return ['status' => false, 'data' => []];
         }
-// dd($request_url, $post_data);
         $response = Http::withToken($entityToken['token'])
             ->post($request_url, $post_data);
 
@@ -1101,7 +1104,7 @@ class ClientPartyController extends Controller
 
         // redirect back not authorized
         // if status pendingfinanceapproval  != approve-all-entity-request
-        if (($request->status == 'PendingFinanceApproval') && $user->can('approve-all-entity-request')&& isset($createBtn)) {
+        if (($request->status == 'PendingFinanceApproval') && $user->can('approve-all-entity-request') && isset($createBtn)) {
             $status = 'Submitted';
         }
         // else {
@@ -1364,6 +1367,8 @@ class ClientPartyController extends Controller
                     "NoSeries" => $noSeries
                 ];
                 // dd($noSeries);
+                if (config('app.env') != 'Local'){
+
                 try {
                     $entity = $this->createLegalEntityType($entity_type, $data);
                 } catch (Exception $e) {
@@ -1397,7 +1402,7 @@ class ClientPartyController extends Controller
                 DB::table('Cust_Entity')->where('Id', $id)->update([
                     ucfirst($entity_type_col) . 'Code' => $entity->responseCode,
                 ]);
-
+            }
                 $client_party_status = 1;
             }
 

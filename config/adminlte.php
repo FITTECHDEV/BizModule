@@ -191,7 +191,7 @@ return [
     'dashboard_url' => 'home',
     'logout_url' => '/logout',
     // 'logout_method' => 'GET',
-    'login_url' => '/azure/login',
+    'login_url' => '/login',
     'register_url' => 'register',
     // 'password_reset_url' => 'password/reset',
     'password_reset_url' => 'forget-password',

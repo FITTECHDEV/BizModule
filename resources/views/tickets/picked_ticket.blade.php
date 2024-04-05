@@ -215,7 +215,7 @@
                                                 <form id="assignForm" name="assignForm">
                                                     <div class="modal-body">
                                                         @csrf
-                                                        <textarea rows="3" class="form-control"
+                                                        <textarea rows="3" class="form-control" id="ticket_description"
                                                             disabled>{{ $ticket->Description }}</textarea>
                                                         <input type="hidden" name="TicketID" value="{{ $ticket->Id }}">
                                                         <span id="errors"></span>
@@ -463,7 +463,6 @@
                                                                 :user="{{ Auth::user() }}" :data="{{ $ticket }}">
                                                             </chat-form>
                                                         @endif
-
                                                     </div>
                                                 </div>
                                                 <div class="tab-pane" id="track">
@@ -959,5 +958,21 @@
                 }});
             });
         });
+    </script>
+
+    <script src="https://cdn.ckeditor.com/ckeditor5/23.0.0/classic/ckeditor.js"></script>
+
+    <script>
+        ClassicEditor.create( document.querySelector( '#ticket_description' ) )
+            .catch( error => {
+                console.error( error );
+            } );
+    </script>
+
+    <script>
+        ClassicEditor.create( document.querySelector( '#btn-input' ) )
+            .catch( error => {
+                console.error( error );
+            } );
     </script>
 @stop

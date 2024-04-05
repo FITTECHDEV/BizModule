@@ -49,8 +49,11 @@ class LoginController extends Controller
 
     public function logout()
     {
-       
+
         Auth::logout();
+        if (config('app.env') == 'Local'){
+            return Redirect::to('/login');
+        }
         return Redirect::to('/logout/azure');
     }
 

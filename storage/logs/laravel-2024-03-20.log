@@ -1,0 +1,8 @@
+[2024-03-20 08:41:17] Production.WARNING: Client error: `POST https://login.microsoftonline.com/common/oauth2/token` resulted in a `400 Bad Request` response:
+{"error":"invalid_grant","error_description":"AADSTS70008: The provided authorization code or refresh token has expired  (truncated...)
+  
+[2024-03-20 08:41:34] Production.WARNING: Attempt to read property "EmployeeCode" on null  
+[2024-03-20 08:48:50] Production.WARNING: Client error: `POST https://login.microsoftonline.com/common/oauth2/token` resulted in a `400 Bad Request` response:
+{"error":"invalid_grant","error_description":"AADSTS54005: OAuth2 Authorization code was already redeemed, please retry  (truncated...)
+  
+[2024-03-20 08:52:13] Production.WARNING: Attempt to read property "EmployeeCode" on null  

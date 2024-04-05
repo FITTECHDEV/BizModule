@@ -1,0 +1,7 @@
+[2024-02-13 09:52:23] Production.WARNING: SQLSTATE[HY000]: [Microsoft][ODBC Driver 17 for SQL Server]SQL Server Network Interfaces: The logon attempt failed
+ (SQL: select top 1 * from [Cust_User] where ([LoginID] = e.were))  
+[2024-02-13 10:04:44] Production.WARNING: Client error: `POST https://login.microsoftonline.com/common/oauth2/token` resulted in a `400 Bad Request` response:
+{"error":"invalid_grant","error_description":"AADSTS54005: OAuth2 Authorization code was already redeemed, please retry  (truncated...)
+  
+[2024-02-13 12:21:55] Production.WARNING: SQLSTATE[HY000]: [Microsoft][ODBC Driver 17 for SQL Server]SQL Server Network Interfaces: The logon attempt failed
+ (SQL: select top 1 * from [Cust_User] where ([LoginID] = e.were))  

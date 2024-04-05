@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\ClientParty;
 use App\Models\KRABillingHeader;
 use App\Models\Ticket;
+use App\Models\TicketView;
 use App\Models\Office;
 use App\Models\User;
 use Carbon\Carbon;
@@ -28,7 +29,7 @@ class DataTablesController extends Controller
     }
     public function allTickets()
     {
-        $tickets = Ticket::select(
+        $tickets = TicketView::select(
             'ID',
             'TicketNo',
             'UserID',
@@ -110,9 +111,9 @@ class DataTablesController extends Controller
             ->editColumn('CreatedOn', function ($row) {
                 return $row->CreatedOn->format('Y-m-d H:i:s');
             })
-            ->addColumn('AssignedTo', function ($row) {
-                return ($row->assignedTo != null) ?  $row->assignedTo->full_name : 'Not Assigned';
-            })
+            // ->addColumn('AssignedTo', function ($row) {
+            //     return ($row->assignedTo != null) ?  $row->assignedTo->full_name : 'Not Assigned';
+            // })
             ->rawColumns(['TicketNo', 'Action', 'Status', 'Priority', 'AssignedTo'])
             ->make(true);
     }
@@ -120,7 +121,7 @@ class DataTablesController extends Controller
     {
         $all_office_id = Office::where('Code', 'ALL')->value('ID');
 
-        $tickets = Ticket::select(
+        $tickets = TicketView::select(
             'ID',
             'TicketNo',
             'UserID',
@@ -188,7 +189,7 @@ class DataTablesController extends Controller
                         return '<span class="badge badge-xs badge-primary">Solved</span>';
                         break;
                     case 3:
-                        return '<span class="badge badge-xs badge-success">Closed</span>';
+                        return '<span class="badge badge-xs badge-success">Clos                     ed</span>';
                         break;
                     case 4:
                         return '<span class="badge badge-xs badge-danger">Re-Opened</span>';
@@ -208,9 +209,9 @@ class DataTablesController extends Controller
                     ->first();
                 return $user->office->Name;
             })
-            ->addColumn('AssignedTo', function ($row) {
-                return ($row->assignedTo != null) ?  $row->assignedTo->full_name : 'Not Assigned';
-            })
+            // ->addColumn('AssignedTo', function ($row) {
+            //     return ($row->assignedTo != null) ?  $row->assignedTo : 'Not Assigned';
+            // })
             ->editColumn('Title', function ($row) {
                 return ucwords($row->Title);
             })
@@ -224,7 +225,7 @@ class DataTablesController extends Controller
     {
         $all_office_id = Office::where('Code', 'ALL')->value('ID');
 
-        $tickets = Ticket::select(
+        $tickets = TicketView::select(
             'ID',
             'TicketNo',
             'UserID',
@@ -242,7 +243,6 @@ class DataTablesController extends Controller
         // if (isset($all_office_id )) {
         //     $tickets = $tickets->Where('OfficeID', $all_office_id)->orWhere('Status', '=', 1);
         // }
-
         // if (url()->previous() === url('ticktes/my-office-tickets')) {
         //     $tickets->whereIn('UserID', function ($query) {
         //         $query->select('ID')->from('Cust_user')->where('OfficeID', Auth::user()->OfficeID);
@@ -250,7 +250,6 @@ class DataTablesController extends Controller
         // } else {
         $tickets->where('OfficeID', Auth::user()->OfficeID);
         $tickets = $tickets->whereNotIn('Status', [3]);
-
         // }
 
         return Datatables::of($tickets)
@@ -315,9 +314,9 @@ class DataTablesController extends Controller
                     ->first();
                 return $user->office->Name;
             })
-            ->addColumn('AssignedTo', function ($row) {
-                return ($row->assignedTo != null) ?  $row->assignedTo->full_name : 'Not Assigned';
-            })
+            // ->addColumn('AssignedTo', function ($row) {
+            //     return ($row->assignedTo != null) ?  $row->assignedTo->full_name : 'Not Assigned';
+            // })
             ->editColumn('Title', function ($row) {
                 return ucwords($row->Title);
             })
@@ -329,7 +328,7 @@ class DataTablesController extends Controller
     }
     public function assigned()
     {
-        $tickets = Ticket::select(
+        $tickets = TicketView::select(
             'ID',
             'TicketNo',
             'UserID',
@@ -416,16 +415,16 @@ class DataTablesController extends Controller
             ->editColumn('CreatedOn', function ($row) {
                 return $row->CreatedOn->format('Y-m-d H:i:s');
             })
-            ->editColumn('AssignedTo', function ($row) {
-                return  Auth::user()->full_name;
-            })
+            // ->editColumn('AssignedTo', function ($row) {
+            //     return  Auth::user()->full_name;
+            // })
             ->rawColumns(['TicketNo', 'Action', 'Status', 'Priority', 'Details'])
             ->make(true);
     }
 
     public function closedTickets()
     {
-        $tickets = Ticket::select(
+        $tickets = TicketView::select(
             'ID',
             'TicketNo',
             'UserID',
@@ -559,7 +558,7 @@ class DataTablesController extends Controller
     }
     public function openTickets()
     {
-        $tickets = Ticket::select(
+        $tickets = TicketView::select(
             'ID',
             'TicketNo',
             'UserID',
@@ -591,9 +590,9 @@ class DataTablesController extends Controller
 
                 return $html;
             })
-            ->addColumn('AssignedTo', function ($row) {
-                return ($row->assignedTo != null) ?  $row->assignedTo->full_name : 'Not Assigned';
-            })
+            // ->addColumn('AssignedTo', function ($row) {
+            //     return ($row->assignedTo != null) ?  $row->assignedTo->full_name : 'Not Assigned';
+            // })
             ->addColumn('OfficeName', function ($row) {
                 $user = User::select('OfficeID')
                     ->where('ID', $row->UserID)
@@ -660,7 +659,7 @@ class DataTablesController extends Controller
     }
     public function reOpenedTickets()
     {
-        $tickets = Ticket::select(
+        $tickets = TicketView::select(
             'ID',
             'TicketNo',
             'UserID',
@@ -792,7 +791,7 @@ class DataTablesController extends Controller
     }
     public function solvedTickets()
     {
-        $tickets = Ticket::select(
+        $tickets = TicketView::select(
             'ID',
             'TicketNo',
             'UserID',
@@ -922,7 +921,7 @@ class DataTablesController extends Controller
     }
     public function settledTickets()
     {
-        $tickets = Ticket::select(
+        $tickets = TicketView::select(
             'ID',
             'TicketNo',
             'UserID',

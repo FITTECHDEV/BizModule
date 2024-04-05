@@ -20,16 +20,16 @@
                                 <h5 class="text-center">Ticket Details</h5>
                                 <ul class="list-group">
                                     <li class="list-group-item">Ticket No: {{ $ticket->TicketNo }}</li>
-                                    <li class="list-group-item">Title: {{ $ticket->Title }}</li> 
-                                    <li class="list-group-item">Created By: {{ $ticket->CreatedBy }}</li> 
-                                    <li class="list-group-item">Created: {{ $ticket->CreatedOn->diffForHumans() }}</li> 
+                                    <li class="list-group-item">Title: {{ $ticket->Title }}</li>
+                                    <li class="list-group-item">Created By: {{ $ticket->CreatedBy }}</li>
+                                    <li class="list-group-item">Created: {{ $ticket->CreatedOn->diffForHumans() }}</li>
                                     <li class="list-group-item">
                                         <table class="table table-sm">
                                             <thead>
                                                 <th>Solution</th>
                                                 <th>Category</th>
                                                 <th>Sub-Category</th>
-                                                <th>Priority</th>
+                                                <th>Priority<zzz/th>
                                             </thead>
                                             <tbody>
                                                 <tr>
@@ -85,7 +85,7 @@
                                 <strong>Assign History</strong>
                                 <div class="overflow-auto" style="max-height: 100px">
                                     @forelse ($assign_histories as $history)
-                                        <div class="small"><b>{{ $history->assignedBy->full_name }}</b> Assigned To <b>{{ $history->assignedTo->full_name }}</b> : <b>{{ $history->AssignedOn->diffForHumans()}}</b> 
+                                        <div class="small"><b>{{ $history->assignedBy->full_name }}</b> Assigned To <b>{{ $history->assignedTo->full_name }}</b> : <b>{{ $history->AssignedOn->diffForHumans()}}</b>
                                         Message : <b>{{ $history->Comment ?? 'No Comment'}}</b></div>
                                     @empty
                                         <div class="text-info"> No Assign History</div>

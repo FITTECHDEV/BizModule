@@ -76,6 +76,6 @@ class AppAzure extends Azure
         $request->session()->pull('_rootinc_azure_access_token');
         $request->session()->pull('_rootinc_azure_refresh_token');
 
-        return redirect()->away($this->getLogoutUrl() . '?post_logout_redirect_uri=https://erp.freightintime.com');
+        return redirect()->away($this->getLogoutUrl() . '?post_logout_redirect_uri=https://erpuat.freightintime.com');
     }
 }

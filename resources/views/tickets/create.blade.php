@@ -238,7 +238,7 @@
 
 @section('js')
     {{-- <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery-cookie/1.4.1/jquery.cookie.min.js"></script> --}}
-<script src="{{ asset('js/jquery.remember-state.js') }}"></script>
+    <script src="{{ asset('js/jquery.remember-state.js') }}"></script>
     <script>
         $(function() {
             $('#raiseTicketBtn').attr('disabled', false);
@@ -382,4 +382,29 @@
             }
         });
     </script>
+    {{-- <script
+        type="text/javascript"
+        src='https://cdn.tiny.cloud/1/2n1fpw0jjkr47fhy75zw5ujp87d4fdpj0jbzbhgurxr9vfiz/tinymce/7/tinymce.min.js'
+        referrerpolicy="origin">
+    </script>
+
+    <script type="text/javascript">
+        tinymce.init({
+        selector: 'textarea#ticket_description',
+        width: 550,
+        height: 300,
+        toolbar: 'undo redo | styles | bold italic | alignleft aligncenter alignright alignjustify | ',
+        });
+    </script> --}}
+
+    <script src="https://cdn.ckeditor.com/ckeditor5/23.0.0/classic/ckeditor.js"></script>
+
+    <script>
+        ClassicEditor.create( document.querySelector( '#ticket_description' ) )
+            .catch( error => {
+                console.error( error );
+            } );
+    </script>
+
+
 @stop
