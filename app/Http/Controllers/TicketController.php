@@ -238,7 +238,7 @@ class TicketController extends Controller
                     $details['ticket'] = $ticket;
                     TicketSolvedJob::dispatch($details);
                 } catch (Exception $e) {
-                    return response()->json(['status' => 'warning', 'message' => 'This Email no longer exists in the system. Please contact IT support.']);
+                    return response()->json(['status' => 'warning', 'message' => 'This Email no longer exists in the system or it has been changed by Admin. Please contact IT support.']);
                 }
             }
             // if open to colosed
