@@ -46,7 +46,6 @@ class HomeController extends Controller
         $role = Auth::user()->Role;
 
         $efris_stats = DB::select('SET NOCOUNT ON; EXEC EFRIS_InvoiceStatus');
-        // dd($efris_stats);
 
         return view(
             'dashboard.ticket',
