@@ -12,4 +12,4 @@
         Swal.fire(<?php echo Session::pull('alert.config'); ?>);
     </script>
 <?php endif; ?>
-<?php /**PATH C:\inetpub\wwwroot\fit_service_desk\resources\views/vendor/sweetalert/alert.blade.php ENDPATH**/ ?>
+<?php /**PATH C:\Users\JosephSifuna\fit_service_desk\resources\views/vendor/sweetalert/alert.blade.php ENDPATH**/ ?>

@@ -33,7 +33,7 @@
         "spatie/laravel-permission": "^4.2",
         "steffjenl/laravel-azure-blob-storage": "^1.0",
         "sudiptpa/guid": "^1.0",
-        "webpatser/laravel-uuid": "^3.0",
+        "webpatser/laravel-uuid": "*",
         "yajra/laravel-datatables-oracle": "^9.18"
     },
     "require-dev": {
