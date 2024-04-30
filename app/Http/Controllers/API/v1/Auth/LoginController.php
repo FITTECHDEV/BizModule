@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\API\v1\Auth;
 
-use Adldap\Laravel\Facades\Adldap;
+// use Adldap\Laravel\Facades\Adldap;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;

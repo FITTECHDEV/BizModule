@@ -568,7 +568,7 @@
                                             @if (count($clientParty->attachments) > 0)
                                                 <ul>
                                                     @foreach ($clientParty->attachments as $attachment)
-                                                        <li>{{ $attachment->FileName }} | {{ $attachment->Title }} <a href="#" class="deleteFile" id="{{ $attachment->ID }}"><i class="fa fa-times-circle text-danger"></i></a></li>
+                                                        <li><a href="{{ route('client-party.preview',[$attachment->CustEntityID]) }}">{{ $attachment->FileName }} | {{ $attachment->Title }}</a> <a href="#" class="deleteFile" id="{{ $attachment->ID }}"><i class="fa fa-times-circle text-danger"></i></a></li>
                                                     @endforeach
                                                 </ul>
                                             @endif
