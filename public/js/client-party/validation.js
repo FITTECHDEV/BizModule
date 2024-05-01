@@ -154,7 +154,11 @@ $(document).ready(function() {
             let office_country_select = $('#officeCountry option:selected').val();
             let sales_person_of_interest = $('#salesPIC').val();
             let billingCurrency = $('#billingCurrency option:selected').val();
+            let licenceTypeID = $('#licenceTypeID option:selected').val();
             let maxCreditLimit = $('#maxCreditLimit').val();
+            let creditDays = $('#creditDays').val();
+            let licenceTypeValue = $('#licenceTypeValue').val();
+            let attachmentFileNames = $('#attachmentFileNames').val();
 
             /**legal entity debtorType and vendorType*/
             /**
@@ -196,6 +200,32 @@ $(document).ready(function() {
             } else {
                 $('#billingCurrency').removeClass('is-invalid');
             }
+
+             /* License Type */ 
+            if (licenceTypeID.length == 0) {
+                $('#licenceTypeID').addClass('is-invalid');
+                window.stepper.to(2);
+            } else {
+                $('#licenceTypeID').removeClass('is-invalid');
+            }
+
+            // Licence Type Code
+            if (licenceTypeValue.length == 0) {
+                $('#licenceTypeValue').addClass('is-invalid');
+                window.stepper.to(2);
+            } else {
+                $('#licenceTypeValue').removeClass('is-invalid');
+            }
+
+            // 
+            if (!attachmentFileNames.hasFile()) {
+                $('#attachmentFileNames').addClass('is-invalid');
+                window.stepper.to(2);
+            } else {
+                $('#attachmentFileNames').removeClass('is-invalid');
+            }
+
+
             /*Credit limit*/
             if (maxCreditLimit.length == 0) {
                 $('#maxCreditLimit').addClass('is-invalid');
@@ -203,6 +233,16 @@ $(document).ready(function() {
             } else {
                 $('#maxCreditLimit').removeClass('is-invalid');
             }
+            // Credit Days
+            if(creditDays.length == 0){
+                $('#creditDays').addClass('is-invalid');
+                window.stepper.to(2);
+            } else {
+                $('#creditDays').removeClass('is-invalid');
+            }
+
+            
+
             /**Sales PIC */
             if (sales_person_of_interest.length == 0) {
                 $('#salesPIC').addClass('is-invalid');

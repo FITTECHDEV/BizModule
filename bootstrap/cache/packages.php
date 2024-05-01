@@ -101,6 +101,17 @@
       'HTMLMin' => 'HTMLMin\\HTMLMin\\Facades\\HTMLMin',
     ),
   ),
+  'itsgoingd/clockwork' => 
+  array (
+    'providers' => 
+    array (
+      0 => 'Clockwork\\Support\\Laravel\\ClockworkServiceProvider',
+    ),
+    'aliases' => 
+    array (
+      'Clockwork' => 'Clockwork\\Support\\Laravel\\Facade',
+    ),
+  ),
   'jeroennoten/laravel-adminlte' => 
   array (
     'providers' => 
