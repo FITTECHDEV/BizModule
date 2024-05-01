@@ -1447,6 +1447,20 @@ class ClientPartyController extends Controller
         return redirect()->route('client-party.show', [$id]);
     }
 
+
+    public function preview(ClientParty $path){
+        // dd($path->attachments);
+        $attachment = $path->attachments;
+
+        // dd($attachment[0]->FilePath);
+        $filePath = $attachment[0]->FilePath;
+
+        return Storage::disk('azure')->download($filePath, basename($attachment[0]->FilePath), [
+            'Content-Type' => 'application/octet-stream',
+            'Content-Disposition' => 'inline; filename="' . basename($attachment[0]->FilePath) . '"'
+        ]);
+    }
+
     public function CreateClientPartySCM($requestID)
     {
 
