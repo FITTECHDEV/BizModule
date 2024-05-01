@@ -21,6 +21,9 @@ Route::get('/', [App\Http\Controllers\HomeController::class, 'index']);
 // Auth::routes(['register' => false]);
 
 Route::get('/login', function () {
+    if (config('app.env') == 'Local'){
+        return view('auth.login');
+    }
     return view('auth.azure.login');
     // return redirect('/login/azure');
 })->name('login');

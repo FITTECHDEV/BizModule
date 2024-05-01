@@ -54,6 +54,19 @@ class LoginController extends Controller
         return Redirect::to('/logout/azure');
     }
 
+    protected function attemptLogin(Request $request){
+        $credentials = $request->only($this->username(), 'password');
+        $user = User::where('LoginID', $request->LoginID)->first();
+        $password = $credentials['password'];
+        if ($user && Hash::check($password, $user->password)) {
+            $this->guard('web')->login($user, true);
+            return true;
+        } else {
+            Alert::alert('Error', 'Kindly Contact IT Support For Help !!', 'error')->persistent(false, true);
+            return false;
+        }
+    }
+
     /**
      * Get the loginID to be used by the controller.
      *
