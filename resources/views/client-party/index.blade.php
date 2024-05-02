@@ -82,8 +82,8 @@
                             aria-hidden="true"></i></span>
                     <div class="info-box-content">
                         <span class="info-box-text text-center">Rejected</span>
-                        <span class="info-box-number text-center">{{ _($clientParty->clientPartyCount('Status',
-                            'Rejected'))
+
+                        <span class="info-box-number text-center">{{ $clientParty->clientPartyCount('Status', 'Rejected')
                             }}</span>
                     </div>
                     <!-- /.info-box-content -->

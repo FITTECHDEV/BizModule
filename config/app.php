@@ -54,7 +54,7 @@ return [
     |
     */
 
-    'url' => env('APP_URL', 'https://eticket.freightintime.com'),
+    'url' => env('APP_URL', 'Local'),
 
     'asset_url' => env('ASSET_URL', null),
 

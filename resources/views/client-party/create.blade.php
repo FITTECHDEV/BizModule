@@ -587,7 +587,7 @@
                                                                     <input type="text"
                                                                         class="form-control form-control-sm number_input"
                                                                         value="{{ old('maxCreditLimit') }}"
-                                                                        name="maxCreditLimit" id="maxCreditLimit"
+                                                                        name="maxCreditLimit" id="maxCreditLimit" required
                                                                         placeholder="">
                                                                 </div>
                                                                 <div class="col-sm-6 col-md-6 col-lg-6 ">
