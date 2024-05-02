@@ -54,7 +54,7 @@ return [
     |
     */
 
-    'url' => env('APP_URL', 'Local'),
+    'url' => env('APP_URL', 'https://eticket.freightintime.com'),
 
     'asset_url' => env('ASSET_URL', null),
 
@@ -138,7 +138,6 @@ return [
     */
 
     'providers' => [
-
             /*
              * Laravel Framework Service Providers...
              */
@@ -170,7 +169,7 @@ return [
              */
         Yajra\Datatables\DatatablesServiceProvider::class,
         Sujip\Guid\GuidServiceProvider::class,
-        Clockwork\Support\Laravel\ClockworkServiceProvider::class,
+        // Clockwork\Support\Laravel\ClockworkServiceProvider::class,
         Spatie\Permission\PermissionServiceProvider::class,
             // RenatoMarinho\LaravelPageSpeed\ServiceProvider::class,
         Jimmyjs\ReportGenerator\ServiceProvider::class,
