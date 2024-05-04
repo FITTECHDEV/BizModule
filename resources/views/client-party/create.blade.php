@@ -104,7 +104,6 @@
                                                                     <option value="Debtor & Vendor" @if(old('legalEntityType') == 'Debtor & Vendor') selected @endif>Debtor & Vendor</option>
                                                                     <option value="Debtor" @if(old('legalEntityType') == 'Debtor') selected @endif>Debtor</option>
                                                                     <option value="Vendor" @if(old('legalEntityType') == 'Vendor') selected @endif>Vendor</option>
-                                                                    {{-- <option value="None" @if(old('legalEntityType') == 'None') selected @endif>None</option> --}}
                                                                 </select>
                                                             </div>
                                                         </div>
@@ -390,13 +389,13 @@
                                             </fieldset>
                                             <fieldset class="border p-2 card shadow-lg mb-0 pt-0 pb-0">
                                                 <legend>File Upload</legend>
-                                                <label for="attachmentFile">Attachment <i class="fa fa-paperclip"></i>
+                                                <label for="attachmentFile">Attachment <i class="fa fa-paperclip"></i><span style="color: red;">*</span>
                                                     <button type="button" class="btn btn-sm btn-outline-warning pull-right w-20 addAttachment" id="addFile">
                                                         <i class="fa fa-plus"></i> File
                                                     </button>
                                                 </label>
-                                                   <div class="input-group hdtuto control-group lst increment">
-                                                    <input type="file" name="attachmentNames[]" class="myfrm form-control mr-1 form-control-sm">
+                                                <div class="input-group hdtuto control-group lst increment">
+                                                    <input type="file" name="attachmentNames[]" class="myfrm form-control mr-1 form-control-sm" required multiple>
                                                     <input type="text" name="attachmentDescription[]" class="myfrm form-control form-control-sm"
                                                         placeholder="Description">
                                                 </div>
@@ -559,10 +558,11 @@
                                                              {{-- Credit Days --}}
                                                             <div class="form-group col-md-6 mb-0 pb-0">
                                                                 <label for="creditDays"
-                                                                    class="col-form-label col-form-label-sm">Credit Days</label>
+                                                                    class="col-form-label col-form-label-sm">Credit Days</label>  <span style="color: red;">*</span>
                                                                 <input type="text" class="form-control form-control-sm number_input"
                                                                     value="{{ old('creditDays') }}"
-                                                                    name="creditDays" id="creditDays">
+                                                                    name="creditDays" id="creditDays"
+                                                                    required>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -584,11 +584,12 @@
                                                                 <div class="col-sm-6 col-md-6 col-lg-6 mb-0 pb-0">
                                                                     <label for="minCreditLimit"
                                                                         class="col-form-label col-form-label-sm">Credit Limit <span style="color: red;">*</span></label>
-                                                                    <input type="text"
+                                                                    <input type="number"
                                                                         class="form-control form-control-sm number_input"
                                                                         value="{{ old('maxCreditLimit') }}"
                                                                         name="maxCreditLimit" id="maxCreditLimit"
-                                                                        placeholder="">
+                                                                        placeholder="0.00"
+                                                                        required>
                                                                 </div>
                                                                 <div class="col-sm-6 col-md-6 col-lg-6 ">
                                                                     <label for="baseCurrency"
@@ -607,9 +608,9 @@
                                                 <div class="form-group row mb-0 mt-0 p-0 ">
                                                     <div class="col col-sm-6 col-lg-6 col-md-6 m-0">
                                                         <div class="row">
-                                                            <label for="licence" class="col-md-3 col-form-label col-form-label-sm pr-0">Licence Type</label>
-                                                            <div class="col-md-9">
-                                                                <select class="form-control form-control-sm" name="licenceTypeID" id="licenceTypeID">
+                                                            <label for="licence" class="col-md-3 col-form-label col-form-label-sm pr-0">Licence Type</label> <span style="color: red;">*</span>
+                                                            <div class="col-md-8">
+                                                                <select class="form-control form-control-sm" name="licenceTypeID" id="licenceTypeID" required>
                                                                     <option value="" disabled selected></option>
                                                                     @forelse ($licenceTypes as $type)
                                                                         <option value="{{ $type->LicenseID }}" id="{{ $type->LicenseCode }}" @if (old('licenceTypeID') == $type->LicenseID)  selected @endif>
@@ -807,7 +808,7 @@
                                        @if (Auth::user()->can('create-client-party'))
                                             <button type="submit" name="createBtn" value="true" class="btn btn-outline-success float-right m-2 btn-sm" data-toggle="tooltip" data-placement="top" title="Save and Create On SCM"><i class="fa fa-cogs" aria-hidden="true"></i> Create</button>
                                         @endif
-                                        <button type="submit" name="submitBtn" class="btn btn-success float-right mt-2 btn-sm" data-toggle="tooltip" data-placement="top" title="Save"><i class="fa fa-plus-circle" aria-hidden="true"></i> Save For Later</button>
+                                        <button type="submit" name="submitBtn" id="submitBtn" class="btn btn-success float-right mt-2 btn-sm" data-toggle="tooltip" data-placement="top" title="Save"><i class="fa fa-plus-circle" aria-hidden="true"></i> Save For Later</button>
                                     </div>
                                 @endif
                             </form>
@@ -959,16 +960,38 @@
         value: '{{ auth()->user()->can("edit-client-party") }}'
     }
 </script>
+
+<script type="text/javascript">
+    $("#maxCreditLimit").on("input", function() {
+        let maxCreditLimit = $('#maxCreditLimit').val();
+        if ((/^0/.test(this.value)) && ($('#debtorType option:selected').val() == 'CASHCUSTOM')) {
+
+        }else {
+            this.value = this.value.replace(/^0/, "1")
+        }
+    });
+</script>
+
+<script type="text/javascript">
+    $("#creditDays").on("input", function() {
+    if ((/^0/.test(this.value)) && ($('#debtorType option:selected').val() == 'CASHCUSTOM')) {
+
+    } else {
+        this.value = this.value.replace(/^0/, "1")
+    }
+    });
+</script>
+
 <script type="text/javascript">
    let init = 1;
     let max_fields = 3;
     $(".addAttachment").click(function() {
         var lsthmtl = $(".clone").html();
-        if (init < max_fields) { 
+        if (init < max_fields) {
             // check if file attachment i has content
             var names = document.getElementsByName('attachmentNames[]');
             var desc = document.getElementsByName('attachmentDescription[]');
-            
+
                 var fileInputName = names[names.length-2];
                 var fileInputDescription = desc[desc.length-2];
                 // -- validation --//
@@ -980,13 +1003,12 @@
                 }else if(fileInputName.value != ''){
                     alert('Kindly Enter the File Name and Description');
                 }else{
-                    $("#attachClone").before(lsthmtl); 
-                    init++; 
+                    $("#attachClone").before(lsthmtl);
+                    init++;
                 }
-
-        } else { 
-            alert('Maximum File Attachment Reached.');    
-        } 
+        } else {
+            alert('Maximum File Attachment Reached.');
+        }
     });
 
     $("body").on("click", ".btn-danger", function() {
@@ -996,5 +1018,3 @@
 </script>
 <script src="{{ asset('js/client-party/show-create-client-party.js') }}"></script>
 @stop
-
-
