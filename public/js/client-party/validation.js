@@ -1,3 +1,5 @@
+const { max } = require("lodash");
+
 $(document).ready(function() {
     /*Ajax setup CSRF*/
     $.ajaxSetup({
@@ -19,7 +21,9 @@ $(document).ready(function() {
             let client = $('#client').val();
             let clientOptionVal = $('#clientOptionVal').val();
             let email = $('#contractEmail').val();
-
+            // let maxCred = $('#maxCreditLimit').val();
+            // let files = $("#fileInput")[0].files.length;
+            let file = $('#fileInput').val();
             let firstName = $('#firstName').val();
             let lastName = $('#lastName').val();
             let phoneNo = $('#phoneNo').val();
@@ -39,6 +43,31 @@ $(document).ready(function() {
                 $('#lastName').removeClass('is-invalid');
                 proceed = true;
             }
+            // (maxCred.length == 0) || (maxCred <= 2)
+
+            if (maxCred.length == 0) {
+                $('#maxCreditLimit').addClass('is-invalid');
+                window.stepper.to(0);
+            }else {
+                $('#maxCreditLimit').removeClass('is-invalid');
+                proceed = true;
+            }
+
+            // if (file.files.length == 0) {
+            //     $('#fileInput').addClass('is-invalid');
+            //     window.stepper.to(0);
+            // } else {
+            //     $('#fileInput').removeClass('is-invalid');
+            //     proceed = true;
+            // }
+
+            if (file.length == 0) {
+                $('#fileInput').addClass('is-invalid');
+                window.stepper.to(0);
+             } else {
+                $('#fileInput').removeClass('is-invalid');
+                proceed = true;
+             }
 
             if (firstName.length == 0) {
                 $('#firstName').addClass('is-invalid');
@@ -100,10 +129,10 @@ $(document).ready(function() {
            /**/
             const entities = ['Shipper + Consignee', 'Consignee Only', 'Shipper Only', 'NoSCMIntergration'];
             let criteria = entities.includes($('#partyEntityType').val());
-            
+
 
             if ($('#client').attr('required')) {
-                
+
                 if ((client.length == 0 && $('#clientOption option:selected').val() == 'fromMaster') && criteria) {
                     $('#client').addClass('is-invalid');
                     window.stepper.to(0);
@@ -155,6 +184,9 @@ $(document).ready(function() {
             let sales_person_of_interest = $('#salesPIC').val();
             let billingCurrency = $('#billingCurrency option:selected').val();
             let maxCreditLimit = $('#maxCreditLimit').val();
+            let licenceType = $('#licenceTypeID').val();
+
+            // console.log("Credit Limit:- " + maxCreditLimit);
 
             /**legal entity debtorType and vendorType*/
             /**
@@ -189,6 +221,15 @@ $(document).ready(function() {
                     dv.removeClass('is-invalid');
             }
 
+            // License Type
+            if (licenceType.length == 0) {
+                $('#licenceTypeID').addClass('is-invalid');
+                window.stepper.to(0);
+            } else {
+                $('#licenceTypeID').removeClass('is-invalid');
+                proceed = true;
+            }
+
             /*billing currency*/
             if (billingCurrency.length == 0) {
                 $('#billingCurrency').addClass('is-invalid');
@@ -203,6 +244,7 @@ $(document).ready(function() {
             } else {
                 $('#maxCreditLimit').removeClass('is-invalid');
             }
+
             /**Sales PIC */
             if (sales_person_of_interest.length == 0) {
                 $('#salesPIC').addClass('is-invalid');
@@ -623,12 +665,12 @@ $(document).ready(function() {
 
         }
 
+
         if (val == "Debtor & Vendor") {
             /** Enable both vendor and debtor legal type */
             $('#debtorType').prop('selectedIndex',0);
             $('#debtorType').removeAttr('disabled');
             $('#debtorType').prop('required', true);
-
             $('#vendorType').prop('selectedIndex',0);
             $('#vendorType').removeAttr('disabled');
             $('#vendorType').prop('required', true);
@@ -649,13 +691,11 @@ $(document).ready(function() {
 
             /*Vendor checkbox*/
             $('#vendorCheck').prop('checked', true);
-
             $('#vendorCheckVal').remove();
             $('#debtorCheckVal').remove();
             /**Append debtor and vendor checkbox to form  */
             $('form').append('<input type="hidden" value="on" name="debtorCheck" id="debtorCheckVal" checked>'+
                               '<input type="hidden" value="on" name="vendorCheck" id="vendorCheckVal" checked>');
-
         }
 
         if ($('#partyEntityType option:selected').val() == 'NoSCMIntergration') {

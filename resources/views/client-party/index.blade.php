@@ -12,7 +12,7 @@
 
     <div class="p-2">
         <div class="row pt-2 pb-0">
-            <div class="col-12 col-sm-6 col-md-3">
+            <div class="col-12 col-sm-6 col-md-2">
                 <a href="#" id="submitted">
                     <div class="info-box mb-3">
                         <span class="info-box-icon bg-warning elevation-1"><i class="fa fa-hand-paper"></i></span>
@@ -61,6 +61,21 @@
                 </a>
             </div>
             <div class="col-12 col-sm-6 col-md-2">
+                <a href="#" id="review">
+                    <div class="info-box">
+                        <span class="info-box-icon bg-secondary elevation-1"><i class="fa fa-pencil-square-o"
+                                aria-hidden="true"></i></span>
+                        <div class="info-box-content">
+                            <span class="info-box-text text-center">Review</span>
+                            <span
+                                class="info-box-number text-center">{{ $clientParty->clientPartyCount('Status', 'Review') }}</span>
+                        </div>
+                        <!-- /.info-box-content -->
+                    </div>
+                </a>
+                <!-- /.info-box -->
+            </div>
+            <div class="col-12 col-sm-6 col-md-2">
                 <a href="#" id="rejected">
                     <div class="info-box">
                         <span class="info-box-icon bg-danger elevation-1"><i class="fa fa-times-circle"
@@ -75,7 +90,7 @@
                 </a>
                 <!-- /.info-box -->
             </div>
-            <div class="col-12 col-sm-6 col-md-3">
+            <div class="col-12 col-sm-6 col-md-2">
                 <a href="#" id="allEntityRequests">
                     <div class="info-box mb-3">
                         <span class="info-box-icon bg-info elevation-1"><i class="fa fa-calculator"></i></span>
@@ -330,6 +345,10 @@
                 searchTable('Rejected');
             });
 
+            $('#review').on('click', function() {
+                searchTable('Review');
+            });
+
             $('#allEntityRequests').on('click', function() {
                 searchTable('');
             });
@@ -342,8 +361,6 @@
             $('#client-party-table').on('click', 'tbody tr td a#deny', function() {
                 rejectEntity($(this).attr('code'));
             });
-
-
 
         });
     </script>

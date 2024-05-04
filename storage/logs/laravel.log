@@ -25673,3 +25673,18 @@ DAR ES SALAAM,TANZANIA","city":"","countryCode":"TZ","emailAddress":"","phoneNo"
 [2023-10-30 09:51:29] Production.WARNING: Client error: `POST https://login.microsoftonline.com/common/oauth2/token` resulted in a `400 Bad Request` response:
 {"error":"invalid_request","error_description":"AADSTS900144: The request body must contain the following parameter: 'co (truncated...)
   
+[2024-05-04 10:06:01] Production.WARNING: SQLSTATE[08001]: [Microsoft][ODBC Driver 17 for SQL Server]Named Pipes Provider: Could not open a connection to SQL Server [53].  (SQL: select top 1 * from [Cust_User] where ([LoginID] = e.were))  
+[2024-05-04 10:06:36] Production.WARNING: Client error: `POST https://login.microsoftonline.com/common/oauth2/token` resulted in a `400 Bad Request` response:
+{"error":"invalid_grant","error_description":"AADSTS54005: OAuth2 Authorization code was already redeemed, please retry  (truncated...)
+  
+[2024-05-04 10:09:46] Production.WARNING: SQLSTATE[08001]: [Microsoft][ODBC Driver 17 for SQL Server]Named Pipes Provider: Could not open a connection to SQL Server [53].  (SQL: select top 1 * from [Cust_User] where ([LoginID] = e.were))  
+[2024-05-04 10:13:32] Production.WARNING: SQLSTATE[08001]: [Microsoft][ODBC Driver 17 for SQL Server]Named Pipes Provider: Could not open a connection to SQL Server [53].  (SQL: select top 1 * from [Cust_User] where ([LoginID] = e.were))  
+[2024-05-04 10:13:32] Production.WARNING: SQLSTATE[08001]: [Microsoft][ODBC Driver 17 for SQL Server]Named Pipes Provider: Could not open a connection to SQL Server [53].  (SQL: select top 1 * from [Cust_User] where ([LoginID] = i.kidui))  
+[2024-05-04 10:14:30] Production.WARNING: SQLSTATE[08001]: [Microsoft][ODBC Driver 17 for SQL Server]Named Pipes Provider: Could not open a connection to SQL Server [53].  (SQL: select top 1 * from [Cust_User] where ([LoginID] = i.kidui))  
+[2024-05-04 10:15:59] Production.WARNING: Client error: `POST https://login.microsoftonline.com/common/oauth2/token` resulted in a `400 Bad Request` response:
+{"error":"invalid_grant","error_description":"AADSTS54005: OAuth2 Authorization code was already redeemed, please retry  (truncated...)
+  
+[2024-05-04 10:16:15] Production.WARNING: SQLSTATE[08001]: [Microsoft][ODBC Driver 17 for SQL Server]Named Pipes Provider: Could not open a connection to SQL Server [53].  (SQL: select top 1 * from [Cust_User] where ([LoginID] = a.kothari))  
+[2024-05-04 10:20:43] Production.WARNING: Client error: `POST https://login.microsoftonline.com/common/oauth2/token` resulted in a `400 Bad Request` response:
+{"error":"invalid_grant","error_description":"AADSTS54005: OAuth2 Authorization code was already redeemed, please retry  (truncated...)
+  
