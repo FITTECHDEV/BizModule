@@ -280,7 +280,7 @@
             searchTable('ShowStopper');
         });
         $('#High').on('click', function() {
-            searchTable('High'); ??
+            searchTable('High');
         });
         $('#Medium').on('click', function() {
             searchTable('Medium');

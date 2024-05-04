@@ -23,6 +23,7 @@ use Illuminate\Support\Facades\Storage;
 use JeroenNoten\LaravelAdminLte\Components\Form\Select;
 use Ramsey\Uuid\Guid\Guid;
 use RealRashid\SweetAlert\Facades\Alert;
+use PDF;
 
 class ClientPartyController extends Controller
 {
@@ -75,7 +76,7 @@ class ClientPartyController extends Controller
     }
 
     /**
-     * Show the form for creating a new resource.
+     * Show the form for cr eating a new resource.
      *
      * @return \Illuminate\Http\Response
      */
@@ -552,7 +553,7 @@ class ClientPartyController extends Controller
      */
     public function store(StoreClientPartyRequest $request)
     {
-// dd($request);
+        // dd($request);
         $user = \request()->user();
         // authorization
         if (!$user->can('request-client-party')) {
@@ -573,6 +574,12 @@ class ClientPartyController extends Controller
         if (isset($request->debtor) || isset($request->debtorCheck)) {
             $status = 'PendingManagerApproval';
         }
+
+        if (isset($request->vendor) || isset($request->vendorCheck)) {
+            $status = 'PendingManagerApproval';
+        }
+
+        // dd($status);
         //client party instatnce
         $clientParty = new ClientParty();
         /*Logged in user*/
@@ -920,6 +927,19 @@ class ClientPartyController extends Controller
         return $numSeries[0];
     }
 
+    public function preview(ClientParty $path){
+        // dd($path->attachments);
+        $attachment = $path->attachments;
+
+        // dd($attachment[0]->FilePath);
+        $filePath = $attachment[0]->FilePath;
+
+        return Storage::disk('azure')->download($filePath, basename($attachment[0]->FilePath), [
+            'Content-Type' => 'application/octet-stream',
+            'Content-Disposition' => 'inline; filename="' . basename($attachment[0]->FilePath) . '"'
+        ]);
+    }
+
     public function createLegalEntityType(string $type, array $post_data)
     {
         $debtor_url = 'http://10.0.1.14:8990/api/customer';
@@ -958,7 +978,7 @@ class ClientPartyController extends Controller
      */
     public function show(ClientParty $clientParty)
     {
-
+        // dd($clientParty->attachments);
 
         $user = \request()->user();
 
@@ -984,8 +1004,6 @@ class ClientPartyController extends Controller
             return redirect()->back();
         }
 
-
-
         if ($clientParty->Status == 'Created') {
             $editForm = false;
         }
@@ -1000,7 +1018,7 @@ class ClientPartyController extends Controller
         }
 
         //permission for approve
-        if (url()->previous() == url('client-party/approve') || (($clientParty->Status == 'PendingFinanceApproval') || ($clientParty->Status == 'PendingManagerApproval'))) {
+        if (url()->previous() == url('client-party/approve') || ($clientParty->Status == 'PendingManagerApproval')) {
             $editForm = false;
             $approve = true;
         }
@@ -1063,23 +1081,26 @@ class ClientPartyController extends Controller
      */
     public function update(UpdateClientPartyRequest $request, $id)
     {
+        // dd($id);
 
-        // dd($request);
+        // dd($request->status);
 
         $user = Auth::user();
         $cp = ClientParty::find($id);
+
+        // dd($cp);
         //authorization
         if (!$user->can('update-client-party')) {
             alert()->warning('Warning !', 'Unauthorised.')->showConfirmButton();
             return redirect()->back();
         }
 
-
-
         // get client name
         $clientName = isset($request->client) ? $request->client : $request->clientInput;
 
         $status = '';
+
+        // dd($status);
 
         if (isset($request->submitBtn)) {
             // update status to ready
@@ -1093,8 +1114,18 @@ class ClientPartyController extends Controller
             }
         };
 
+
+        if(($status == 'Submitted') && (auth()->user()->Role == 2)){
+            $status = 'PendingManagerApproval';
+        } else {
+            $status = '';
+        };
+        // dd($status);
+
+        // dd($cp);
         // if status is pendingmangerapproval and authuser != approve-my-office-entity-request
-        if (($request->status == 'PendingManagerApproval') && $user->can('approve-my-office-entity-request') && isset($createBtn)) {
+        if (($request->status == 'PendingManagerApproval') && $user->can('approve-my-office-entity-request') && $user->can('approve-all-entity-request') && isset($createBtn)) {
+            // dd($status);
             $status = 'PendingFinanceApproval';
         }
         // else {
@@ -1104,9 +1135,9 @@ class ClientPartyController extends Controller
 
         // redirect back not authorized
         // if status pendingfinanceapproval  != approve-all-entity-request
-        if (($request->status == 'PendingFinanceApproval') && $user->can('approve-all-entity-request') && isset($createBtn)) {
-            $status = 'Submitted';
-        }
+        // if (($request->status == 'PendingFinanceApproval') && $user->can('approve-all-entity-request') && isset($createBtn)) {
+        //     $status = 'Submitted';
+        // }
         // else {
         //     alert()->warning('Warning !', 'Entity Pending for Finance Approval')->showConfirmButton();
         //     return redirect()->back();
@@ -1298,6 +1329,9 @@ class ClientPartyController extends Controller
             }
         }
 
+        // dd($status);
+        // dd('skeipper');
+
 
         // todo: create history entity
         $history = [
@@ -1448,13 +1482,15 @@ class ClientPartyController extends Controller
             alert()->success('Success !', 'Entity Updated.')->showConfirmButton();
         }
 
+        // dd($status);
+
         //redirect to the show page with the request ID
-        return redirect()->route('client-party.show', [$id]);
+        return redirect()->route('client-party.index');
+        // return redirect()->route('client-party.show', [$id]);
     }
 
     public function CreateClientPartySCM($requestID)
     {
-
         $results = json_decode(json_encode([['Status' => 'Failed', 'Remark' => 'Entity Not Created']]));
         if (!Auth::user()->can('create-client-party-SCM')) {
             $results = json_decode(json_encode([['Status' => 'Failed', 'Remark' => 'Unauthorised SCM Access.']]));
@@ -1562,7 +1598,7 @@ class ClientPartyController extends Controller
 
             Mail::to($userEmail->Email)->send(new RejectEntity($clientParty));
         } catch (Exception $th) {
-            dd($th);
+            // dd($th);
             alert()->warning('Entity Notify Email', $th);
             exit();
         }

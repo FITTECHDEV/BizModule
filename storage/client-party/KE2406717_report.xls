@@ -1,0 +1,31 @@
+﻿<meta http-equiv="Content-type" content="text/html;charset=UTF-8"/>
+<style type="text/css">
+	.report-red-neg-val {
+		color: red;
+	}
+</style>
+<table border="1">
+<thead>
+<tr>
+			<th>Company</th>
+			<th>Deals</th>
+			<th>Deals in progress</th>
+			<th>Lost</th>
+			<th>Won</th>
+			<th>Average deal</th>
+			<th>Opportunity total</th>
+			<th>Amount of won deals</th>
+	</tr>
+</thead>
+<tbody>	<tr>
+										<td><a target="_blank" href="/crm/company/details/18/">Untitled</a></td>
+											<td>1</td>
+											<td>1</td>
+											<td>0%</td>
+											<td>0%</td>
+											<td>90,000</td>
+											<td>90,000</td>
+											<td>0</td>
+						</tr>
+	</tbody>
+</table>

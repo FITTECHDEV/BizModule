@@ -567,9 +567,15 @@
                                             @endif
                                             @if (count($clientParty->attachments) > 0)
                                                 <ul>
+                                                    {{-- <a href="{{ route('client-party.preview',[$attachment->Id]) }}"></a> --}}
+                                                    {{-- {{ route('client-party.preview',[$attachment->Id]) }} --}}
                                                     @foreach ($clientParty->attachments as $attachment)
-                                                        <li>{{ $attachment->FileName }} | {{ $attachment->Title }} <a href="#" class="deleteFile" id="{{ $attachment->ID }}"><i class="fa fa-times-circle text-danger"></i></a></li>
+                                                        <li><a href="{{ route('client-party.preview',[$attachment->CustEntityID]) }}">{{ $attachment->FileName }} | {{ $attachment->Title }}</a> <a href="#" class="deleteFile" id="{{ $attachment->ID }}"><i class="fa fa-times-circle text-danger"></i></a></li>
                                                     @endforeach
+
+                                                    {{-- @foreach ($clientParty as $client)
+                                                        <li><a href="{{ route('client-party.preview', [$client->Id]) }}">{{ $client->attachments->FileName }} | {{ $client->attachments->Title }}</a> <a href="#" class="deleteFile" id="{{ $attachment->ID }}"><i class="fa fa-times-circle text-danger"></i></a></li>
+                                                    @endforeach --}}
                                                 </ul>
                                             @endif
                                         </fieldset>
@@ -1140,26 +1146,26 @@
                                             onclick="stepper.previous()"><i class="fa fa-step-backward"
                                                 aria-hidden="true"></i> Previous</button>
                                         @if ($approve)
-                                        <button type="button" name="approveBtn" id="approveBtn"
-                                            class="btn btn-outline-success float-right m-2 btn-sm" data-toggle="tooltip"
-                                            data-placement="top" title=""
-                                            data-bs-original-title="Approve For Creation"><i class="fa fa-check"
-                                                aria-hidden="true"></i> Approve</button>
-                                        <button type="button" name="rejectBtn" id="rejectBtn"
-                                            data-toggle="modal" data-target="#cancelModal"
-                                            class="btn btn-danger float-right m-2 btn-sm" data-toggle="tooltip"
-                                            data-placement="top" title="Reject For Amendment" data-bs-original-title="Update">
-                                            <i class="fa fa-edit" aria-hidden="true"></i> Reject </button>
+                                            <button type="button" name="approveBtn" id="approveBtn"
+                                                class="btn btn-outline-success float-right m-2 btn-sm" data-toggle="tooltip"
+                                                data-placement="top" title=""
+                                                data-bs-original-title="Approve For Creation"><i class="fa fa-check"
+                                                    aria-hidden="true"></i> Approve</button>
+                                            <button type="button" name="rejectBtn" id="rejectBtn"
+                                                data-toggle="modal" data-target="#cancelModal"
+                                                class="btn btn-danger float-right m-2 btn-sm" data-toggle="tooltip"
+                                                data-placement="top" title="Reject For Amendment" data-bs-original-title="Update">
+                                                <i class="fa fa-edit" aria-hidden="true"></i> Reject </button>
                                         @else
-                                        <button type="submit" name="createBtn" value="true"
-                                            class="btn btn-outline-success float-right m-2 btn-sm" data-toggle="tooltip"
-                                            data-placement="top" title=""
-                                            data-bs-original-title="Update and Create On SCM"><i class="fa fa-cogs"
-                                                aria-hidden="true"></i> Create</button>
-                                        <button type="submit" name="submitBtn" value="true"
-                                            class="btn btn-success float-right m-2 btn-sm" data-toggle="tooltip"
-                                            data-placement="top" title="" data-bs-original-title="Update">
-                                            <i class="fa fa-edit" aria-hidden="true"></i> Update for Later</button>
+                                            <button type="submit" name="createBtn" value="true"
+                                                class="btn btn-outline-success float-right m-2 btn-sm" data-toggle="tooltip"
+                                                data-placement="top" title=""
+                                                data-bs-original-title="Update and Create On SCM"><i class="fa fa-cogs"
+                                                    aria-hidden="true"></i> Create</button>
+                                            <button type="submit" name="submitBtn" value="true"
+                                                class="btn btn-success float-right m-2 btn-sm" data-toggle="tooltip"
+                                                data-placement="top" title="" data-bs-original-title="Update">
+                                                <i class="fa fa-edit" aria-hidden="true"></i> Update for Later</button>
                                         @endif
                                     </div>
                                 </div>
