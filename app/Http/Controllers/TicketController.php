@@ -193,11 +193,14 @@ class TicketController extends Controller
     public function pick($ticket_id)
     {
         $ticket = Ticket::where('ID', $ticket_id)->first();
+        // dd($ticket);
         // abort if no ticket
         if ($ticket == null) {
             abort(404);
         }
+
         $user = new User();
+        // dd($user);
         return view('tickets.picked_ticket', compact('ticket', 'user'));
     }
 

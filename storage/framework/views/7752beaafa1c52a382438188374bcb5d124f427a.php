@@ -119,7 +119,7 @@
                                                     <div class="col-sm-9 col-lg-8 col-md-8">
                                                         <input type="text" class="form-control form-control-sm"
                                                         value="<?php echo e(old('companyName')); ?>"
-                                                        name="companyName" id="companyName" >
+                                                        name="companyName" id="companyName" maxlength="50">
                                                     </div>
                                                 </div>
                                                 
@@ -127,7 +127,7 @@
                                                     <label for="addressLine1"
                                                         class="col-sm-3 col-lg-4 col-form-label col-form-label-sm"><i class="fa fa-map-marker" aria-hidden="true"></i> AddressLine 1 <span class="text-danger">*</span></label>
                                                     <div class="col-sm-9 col-lg-8">
-                                                        <textarea name="addressLine1" id="addressLine1" class="form-control form-control-sm"><?php echo e(old('addressLine1')); ?></textarea>
+                                                        <textarea name="addressLine1" id="addressLine1" maxlength="50" class="form-control form-control-sm"><?php echo e(old('addressLine1')); ?></textarea>
                                                     </div>
                                                 </div>
                                                 
@@ -379,7 +379,7 @@
                                                     </button>
                                                 </label>
                                                 <div class="input-group hdtuto control-group lst increment">
-                                                    <input type="file" name="attachmentNames[]" class="myfrm form-control mr-1 form-control-sm" required multiple>
+                                                    <input type="file" name="attachmentNames[]" class="myfrm form-control mr-1 form-control-sm" multiple required>
                                                     <input type="text" name="attachmentDescription[]" class="myfrm form-control form-control-sm"
                                                         placeholder="Description">
                                                 </div>
@@ -408,7 +408,7 @@
                                                         <div class="form-group row mb-1">
                                                             <label for="salesPIC" class="col-sm-3 col-lg-4 col-form-label col-form-label-sm">Sales PIC<span class="text-danger">*</span></label>
                                                             <div class="col-sm-9 col-lg-8">
-                                                                <input type="text" class="form-control form-control-sm salesPIC" value="<?php echo e(old('salesPIC')); ?>" name="salesPIC" id="salesPIC">
+                                                                <input type="text" required class="form-control form-control-sm salesPIC" value="<?php echo e(old('salesPIC')); ?>" name="salesPIC" id="salesPIC">
                                                                 <input type="hidden" name="salesPICID" id="salesPICID" value="<?php echo e(old('salesPICID')); ?>">
                                                                 
                                                             </div>
@@ -524,7 +524,7 @@
                                                                 <input type="hidden" class="form-control form-control-sm" value="<?php echo e(old('billingCurrencyCode')); ?>"
                                                                 name="billingCurrencyCode" id="billingCurrencyCode">
                                                                 
-                                                                <select class="form-control form-control-sm" name="billingCurrency" id="billingCurrency">
+                                                                <select class="form-control form-control-sm" name="billingCurrency" id="billingCurrency" required>
                                                                     <option value="" disabled selected></option>
                                                                 </select>
                                                             </div>
@@ -535,7 +535,7 @@
                                                                 <input type="text" class="form-control form-control-sm number_input"
                                                                     value="<?php echo e(old('creditDays')); ?>"
                                                                     name="creditDays" id="creditDays"
-                                                                    required>
+                                                                    required min="0" oninput="this.value = Math.abs(this.value)">
                                                             </div>
                                                         </div>
                                                     </div>
@@ -561,7 +561,7 @@
                                                                         value="<?php echo e(old('maxCreditLimit')); ?>"
                                                                         name="maxCreditLimit" id="maxCreditLimit"
                                                                         placeholder="0.00"
-                                                                        required>
+                                                                        required >
                                                                 </div>
                                                                 <div class="col-sm-6 col-md-6 col-lg-6 ">
                                                                     <label for="baseCurrency"
@@ -584,10 +584,10 @@
                                                             <div class="col-md-8">
                                                                 <select class="form-control form-control-sm" name="licenceTypeID" id="licenceTypeID" required>
                                                                     <option value="" disabled selected></option>
-                                                                    <?php $__empty_1 = true; $__currentLoopData = $licenceTypes; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $type): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
-                                                                        <option value="<?php echo e($type->LicenseID); ?>" id="<?php echo e($type->LicenseCode); ?>" <?php if(old('licenceTypeID') == $type->LicenseID): ?>  selected <?php endif; ?>>
-                                                                            <?php echo e($type->LicenseName); ?></option>
-                                                                    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
+                                                                        <?php $__empty_1 = true; $__currentLoopData = $licenceTypes; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $type): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
+                                                                            <option value="<?php echo e($type->LicenseID); ?>" id="<?php echo e($type->LicenseCode); ?>" <?php if(old('licenceTypeID') == $type->LicenseID): ?>  selected <?php endif; ?>>
+                                                                                <?php echo e($type->LicenseName); ?></option>
+                                                                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
                                                                     <?php endif; ?>
                                                                 </select>
                                                             </div>
@@ -599,7 +599,7 @@
                                                             id="licenceTypeCode">
                                                         <input type="text" class="form-control form-control-sm"
                                                             value="<?php echo e(old('licenceTypeValue')); ?>"
-                                                            name="licenceTypeValue" id="licenceTypeValue">
+                                                            name="licenceTypeValue" id="licenceTypeValue" required>
                                                     </div>
                                                 </div>
                                             </fieldset>
@@ -907,6 +907,14 @@
         }
     });
 </script>
+<script type="text/javascript">
+    $("#maxCreditLimit").on("input", function() {
+        let maxCreditLimit = $(this).val();
+        if (maxCreditLimit.startsWith("0")) {
+            $(this).val("1" + maxCreditLimit.slice(1));
+        }
+    });
+</script>
 <script src="//code.jquery.com/jquery-1.12.4.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bs-stepper/dist/js/bs-stepper.min.js"></script>
 <script src="<?php echo e(asset('js/client-party/party-entity.js')); ?>"></script>
@@ -919,27 +927,6 @@
     window.User = {
         value: '<?php echo e(auth()->user()->can("edit-client-party")); ?>'
     }
-</script>
-
-<script type="text/javascript">
-    $("#maxCreditLimit").on("input", function() {
-        let maxCreditLimit = $('#maxCreditLimit').val();
-        if ((/^0/.test(this.value)) && ($('#debtorType option:selected').val() == 'CASHCUSTOM')) {
-
-        }else {
-            this.value = this.value.replace(/^0/, "1")
-        }
-    });
-</script>
-
-<script type="text/javascript">
-    $("#creditDays").on("input", function() {
-    if ((/^0/.test(this.value)) && ($('#debtorType option:selected').val() == 'CASHCUSTOM')) {
-
-    } else {
-        this.value = this.value.replace(/^0/, "1")
-    }
-    });
 </script>
 
 <script type="text/javascript">

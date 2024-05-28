@@ -36,6 +36,7 @@ class DataTablesController extends Controller
             'Description',
             'SolutionName',
             'ModuleName',
+            'OfficeName',
             'SubModuleName',
             'AssignedTo',
             'Title',
@@ -53,9 +54,6 @@ class DataTablesController extends Controller
                     <p class="text-center"> <i class="fas fa-info-circle fa-lg shadow"></i></p>
                 </a>';
                 return $html;
-            })
-            ->addColumn('OfficeName', function ($row) {
-                return $row->user->office->Name;
             })
             ->editColumn('TicketNo', function ($row) {
                 return '<a href=' . URL::signedRoute('tickets.pick', [$row->ID]) . '>' . str_replace(' ', '', $row->TicketNo) . '</a>';
@@ -128,6 +126,7 @@ class DataTablesController extends Controller
             'Description',
             'SolutionName',
             'ModuleName',
+            'OfficeName',
             'SubModuleName',
             'AssignedTo',
             'Title',
@@ -202,13 +201,13 @@ class DataTablesController extends Controller
                         break;
                 }
             })
-            ->addColumn('OfficeName', function ($row) {
-                $user = User::select('OfficeID')
-                    ->where('ID', $row->UserID)
-                    ->with('office')
-                    ->first();
-                return $user->office->Name;
-            })
+            // ->addColumn('OfficeName', function ($row) {
+            //     $user = User::select('OfficeID')
+            //         ->where('ID', $row->UserID)
+            //         ->with('office')
+            //         ->first();
+            //     return $user->office->Name;
+            // })
             // ->addColumn('AssignedTo', function ($row) {
             //     return ($row->assignedTo != null) ?  $row->assignedTo : 'Not Assigned';
             // })
@@ -232,6 +231,7 @@ class DataTablesController extends Controller
             'Description',
             'SolutionName',
             'ModuleName',
+            'OfficeName',
             'SubModuleName',
             'AssignedTo',
             'Title',
@@ -307,13 +307,17 @@ class DataTablesController extends Controller
                         break;
                 }
             })
-            ->addColumn('OfficeName', function ($row) {
-                $user = User::select('OfficeID')
-                    ->where('ID', $row->UserID)
-                    ->with('office')
-                    ->first();
-                return $user->office->Name;
-            })
+            // ->addColumn('OfficeName', function ($row) {
+
+
+            //     $user = "";
+            //     return $user;
+            //     // $user = User::select('OfficeID')
+            //     //     ->where('ID', $row->UserID)
+            //     //     ->with('office')
+            //     //     ->first();
+            //     // return $user->office->Name;
+            // })
             // ->addColumn('AssignedTo', function ($row) {
             //     return ($row->assignedTo != null) ?  $row->assignedTo->full_name : 'Not Assigned';
             // })
@@ -328,13 +332,27 @@ class DataTablesController extends Controller
     }
     public function assigned()
     {
-        $tickets = Ticket::select(
+        $user = Auth::user();
+        if ($user) {
+            if ($user->FirstName && $user->LastName === null) {
+                $fullName = $user->FirstName;
+            } elseif ($user->FirstName && $user->LastName) {
+                $fullName = $user->FirstName . ' ' . $user->LastName;
+            } else {
+                $fullName = 'Not Assigned';
+            }
+        } else {
+            $fullName = 'Not Assigned';
+        }
+
+        $tickets = TicketView::select(
             'ID',
             'TicketNo',
             'UserID',
             'Description',
             'SolutionName',
             'ModuleName',
+            'OfficeName',
             'SubModuleName',
             'AssignedTo',
             'Title',
@@ -342,7 +360,8 @@ class DataTablesController extends Controller
             'Priority',
             'CreatedOn',
             'CreatedBy'
-        )->where('AssignedTo', Auth::user()->ID);
+        )->where('AssignedTo', $fullName);
+
         return Datatables::of($tickets)
             ->addColumn('Action', function ($row) {
                 $html = '
@@ -350,13 +369,6 @@ class DataTablesController extends Controller
                            <p class="text-center"> <i class="fas fa-info-circle fa-lg shadow"></i></p>
                         </a>';
                 return $html;
-            })
-            ->addColumn('OfficeName', function ($row) {
-                $user = User::select('OfficeID')
-                    ->where('ID', $row->UserID)
-                    ->with('office')
-                    ->first();
-                return $user->office->Name;
             })
             ->addColumn('Details', function ($row) {
                 return '<span calss="small">' . $row->SolutionName . '>' . $row->ModuleName . '>' . $row->SubModuleName . '</span>';
@@ -415,9 +427,6 @@ class DataTablesController extends Controller
             ->editColumn('CreatedOn', function ($row) {
                 return $row->CreatedOn->format('Y-m-d H:i:s');
             })
-            // ->editColumn('AssignedTo', function ($row) {
-            //     return  Auth::user()->full_name;
-            // })
             ->rawColumns(['TicketNo', 'Action', 'Status', 'Priority', 'Details'])
             ->make(true);
     }
@@ -1024,7 +1033,12 @@ class DataTablesController extends Controller
     /**!All Entity */
     public function allEntityRequests()
     {
-        $entities = ClientParty::select(
+
+        $user = auth()->user();
+        $user_office = $user->OfficeCode;
+
+        // Define common columns
+        $commonColumns = [
             'Id',
             'Code',
             'Name',
@@ -1034,13 +1048,22 @@ class DataTablesController extends Controller
             'OperatioEntityType',
             'LegalEntityType',
             'Status',
-        );
+            'OfficeCode',
+        ];
 
-        if (Auth::user()->Role != 1) {
-            $entities->where('CreatedBy', Auth::user()->full_name);
+        // Initial query with common columns
+        $entities = ClientParty::select($commonColumns);
+
+        // Check permissions
+        if (!$user->can('create-client-party-SCM')) {
+            $entities->where('OfficeCode', $user_office);
         }
 
+        // Retrieve entities
+        $entities = $entities->get();
 
+
+        // Return Datatable of $entities
         return Datatables::of($entities)
             ->editColumn('Code', function ($row) {
                 return '<a href=' . URL::signedRoute("client-party.show", $row->Id) . '>' . $row->Code . '</a>';
@@ -1057,7 +1080,7 @@ class DataTablesController extends Controller
             ->editColumn('Status', function ($row) {
                 switch ($row->Status) {
                     case 'Submitted':
-                        return '<span class="badge badge-xs badge-warning">Submitted</span>';
+                        return '<span class="badge badge-xs badge-warning">PendingFinanceApproval</span>';
                         break;
                     case 'Pending':
                         return '<span class="badge badge-xs badge-primary">Pending</span>';
@@ -1082,6 +1105,8 @@ class DataTablesController extends Controller
 
     public function approvalEntityRequests()
     {
+        $user_office = auth()->user()->OfficeCode;
+
         $entities = ClientParty::select(
             'Id',
             'Code',
@@ -1092,12 +1117,12 @@ class DataTablesController extends Controller
             'OperatioEntityType',
             'LegalEntityType',
             'Status',
+            'OfficeCode'
         );
 
         // todo: if auth user has can-approve-my-office-entities
-        $entities->where('Status', 'PendingManagerApproval');
-        // todo: if auth user has can-approve-my-office-entities
-        $entities->orWhere('Status', 'PendingFinanceApproval');
+        $entities->where('Status', 'PendingManagerApproval')->where('OfficeCode', $user_office);
+
 
         return Datatables::of($entities)
             // ->editColumn('Code', function ($row) {

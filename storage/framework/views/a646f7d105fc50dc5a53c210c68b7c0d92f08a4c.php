@@ -1,5 +1,3 @@
-
-
 <?php $__env->startSection('title', 'Client-Party-Dashboard'); ?>
 
 <?php $__env->startSection('content_header'); ?>
@@ -136,6 +134,9 @@
 
     $(document).ready(function() {
         window.user_raise_ticket = `<?php echo e(Auth::user()->can('request-client-party')); ?>`;
+        window.user_view_my_office = `<?php echo e(!Auth::user()->can('approve-all-entity-request')); ?>`;
+        window.office = `<?php echo e(Auth::user()->OfficeCode); ?>`;
+
 
         let clientPartyTable = $('#client-party-table').DataTable({
             "order": [[ 7, 'desc' ]],
@@ -194,6 +195,9 @@
         if (window.user_raise_ticket) {
             $('#client-party-table_filter').css('margin-left', '2px').append('<a href="/client-party/create" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i>New Request</a>');
         }
+        if (window.user_view_my_office) {
+            searchOffice(window.office);
+        }
         $('#submitted').on('click', function() {
             searchTable('Submitted');
         });
@@ -216,6 +220,9 @@
 
         function searchTable(param) {
             clientPartyTable.column(5).search(param, false, false, false).draw();
+        }
+        function searchOffice(param){
+            clientPartyTable.column(2).search(param, false, false, false).draw();
         }
 
         $('#client-party-table').on('click', 'tbody tr td a#deny', function() {

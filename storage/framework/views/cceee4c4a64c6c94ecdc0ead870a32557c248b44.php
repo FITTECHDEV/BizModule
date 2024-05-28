@@ -1,0 +1,2 @@
+ <?php $__env->startSection('title', __('Error')); ?> <?php $__env->startSection('message', __('Something Isn\'t quite right.Please try again after a few minutes.')); ?>
+<?php echo $__env->make('errors::illustrated-layout', \Illuminate\Support\Arr::except(get_defined_vars(), ['__data', '__path']))->render(); ?><?php /**PATH C:\inetpub\wwwroot\Projects\Production\erp_production\resources\views/errors/500.blade.php ENDPATH**/ ?>

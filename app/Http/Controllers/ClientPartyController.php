@@ -918,20 +918,20 @@ class ClientPartyController extends Controller
 
     public function getOfficeNumberSeries($officeCode = null, $entityType = null)
     {
-        // dd(trim($officeCode));
+
         $numSeries = DB::table('Cust_OfficeSeriesMapping')
             ->where('EntityType', $entityType)
             ->where('OfficeCode', trim($officeCode))
             ->pluck('SeriesNo');
-        // dd($officeCode, $entityType, $numSeries);
+
         return $numSeries[0];
     }
 
     public function preview(ClientParty $path){
-        // dd($path->attachments);
+
         $attachment = $path->attachments;
 
-        // dd($attachment[0]->FilePath);
+
         $filePath = $attachment[0]->FilePath;
 
         return Storage::disk('azure')->download($filePath, basename($attachment[0]->FilePath), [
@@ -978,7 +978,6 @@ class ClientPartyController extends Controller
      */
     public function show(ClientParty $clientParty)
     {
-        // dd($clientParty->attachments);
 
         $user = \request()->user();
 
@@ -999,10 +998,10 @@ class ClientPartyController extends Controller
         }
 
         // if status pendingfinanceapproval  != approve-all-entity-request
-        if (($clientParty->Status == 'PendingFinanceApproval') && !$user->can('approve-all-entity-request')) {
-            alert()->warning('Warning !', 'Entity Pending for Finance Approval')->showConfirmButton();
-            return redirect()->back();
-        }
+        // if (($clientParty->Status == 'PendingFinanceApproval') && !$user->can('approve-all-entity-request')) {
+        //     alert()->warning('Warning !', 'Entity Pending for Finance Approval')->showConfirmButton();
+        //     return redirect()->back();
+        // }
 
         if ($clientParty->Status == 'Created') {
             $editForm = false;
@@ -1081,14 +1080,10 @@ class ClientPartyController extends Controller
      */
     public function update(UpdateClientPartyRequest $request, $id)
     {
-        // dd($id);
-
-        // dd($request->status);
 
         $user = Auth::user();
         $cp = ClientParty::find($id);
 
-        // dd($cp);
         //authorization
         if (!$user->can('update-client-party')) {
             alert()->warning('Warning !', 'Unauthorised.')->showConfirmButton();
@@ -1117,12 +1112,12 @@ class ClientPartyController extends Controller
 
         if(($status == 'Submitted') && (auth()->user()->Role == 2)){
             $status = 'PendingManagerApproval';
-        } else {
-            $status = '';
-        };
-        // dd($status);
+        }
 
-        // dd($cp);
+        if(($status == '') && (auth()->user()->Role == 1)){
+            $status = 'Submitted';
+        }
+
         // if status is pendingmangerapproval and authuser != approve-my-office-entity-request
         if (($request->status == 'PendingManagerApproval') && $user->can('approve-my-office-entity-request') && $user->can('approve-all-entity-request') && isset($createBtn)) {
             // dd($status);
@@ -1329,8 +1324,7 @@ class ClientPartyController extends Controller
             }
         }
 
-        // dd($status);
-        // dd('skeipper');
+
 
 
         // todo: create history entity
@@ -1400,7 +1394,7 @@ class ClientPartyController extends Controller
                     "blocked" => false,
                     "NoSeries" => $noSeries
                 ];
-                // dd($noSeries);
+
                 if (config('app.env') != 'Local'){
 
                 try {
@@ -1558,17 +1552,17 @@ class ClientPartyController extends Controller
 
     public function reject()
     {
-
         $user = Auth::user();
 
-        //authorization #reject-entity-request
-        if (!$user->can('create-client-party-SCM')) {
+        if ((!$user->can('approve-entity-request')) && (!$user->can('create-client-party'))) {
             alert()->warning('Warning !', 'Unauthorised.')->showConfirmButton();
             return response()->json(['false', 312]);
         }
+
         $id = \request()->get('id');
         $level = \request()->get('level');
         $reason = \request()->get('reason');
+
 
         $clientParty = DB::table('Cust_Entity')->where('Id', $id)->first();
 
@@ -1592,10 +1586,12 @@ class ClientPartyController extends Controller
 
         EntityHistory::create($history);
 
+
+
         try {
             //send email
             $userEmail = User::where('LoginID', $clientParty->CreatedBy)->select('Email')->first();
-
+            // dd($userEmail->Email);
             Mail::to($userEmail->Email)->send(new RejectEntity($clientParty));
         } catch (Exception $th) {
             // dd($th);
@@ -1615,8 +1611,6 @@ class ClientPartyController extends Controller
             exit();
         }
 
-
-
         //  dd($clientParty);
         alert()->success('Entity', 'Entity Rejected.');
 
@@ -1625,7 +1619,6 @@ class ClientPartyController extends Controller
 
     public function approve()
     {
-
         $user = Auth::user();
 
         if (!$user->can('approve-entity-request')) {
@@ -1639,7 +1632,9 @@ class ClientPartyController extends Controller
         $clientParty = DB::table('Cust_Entity')->where('Id', $id)->first();
 
 
-        $status = ($status == 'PendingManagerApproval') ? 'PendingFinanceApproval' : 'Submitted';
+        // $status = ($status == 'PendingManagerApproval') ? 'PendingFinanceApproval' : 'Submitted';
+
+        $status = ($status == 'PendingManagerApproval') ? 'Submitted' : $status;
 
         try {
             DB::table('Cust_Entity')->where('Id', $id)->update([
@@ -1670,6 +1665,11 @@ class ClientPartyController extends Controller
         EntityHistory::create($history);
 
         alert()->success('Entity', 'Entity Approved.');
+
+
+        // if($status == 'Submitted'){
+        //     $this->CreateClientPartySCM($id);
+        // }
 
         return response()->json(['ok', 200]);
     }

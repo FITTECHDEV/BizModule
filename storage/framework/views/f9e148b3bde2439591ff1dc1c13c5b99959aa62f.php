@@ -1,3 +1,6 @@
+
+
+
 <?php $__env->startSection('title', 'Tickets'); ?>
 
 <?php $__env->startSection('content_header'); ?>

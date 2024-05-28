@@ -1,6 +1,4 @@
-const { max } = require("lodash");
-
-$(document).ready(function() {
+$(document).ready(function () {
     /*Ajax setup CSRF*/
     $.ajaxSetup({
         headers: {
@@ -9,7 +7,7 @@ $(document).ready(function() {
     });
 
     let stepper1Node = document.querySelector('.bs-stepper')
-    stepper1Node.addEventListener('shown.bs-stepper', function(event) {
+    stepper1Node.addEventListener('shown.bs-stepper', function (event) {
         /*Next step one*/
         if (event.detail.indexStep == 1) {
             let proceed = true;
@@ -21,9 +19,7 @@ $(document).ready(function() {
             let client = $('#client').val();
             let clientOptionVal = $('#clientOptionVal').val();
             let email = $('#contractEmail').val();
-            // let maxCred = $('#maxCreditLimit').val();
-            // let files = $("#fileInput")[0].files.length;
-            let file = $('#fileInput').val();
+
             let firstName = $('#firstName').val();
             let lastName = $('#lastName').val();
             let phoneNo = $('#phoneNo').val();
@@ -43,31 +39,6 @@ $(document).ready(function() {
                 $('#lastName').removeClass('is-invalid');
                 proceed = true;
             }
-            // (maxCred.length == 0) || (maxCred <= 2)
-
-            if (maxCred.length == 0) {
-                $('#maxCreditLimit').addClass('is-invalid');
-                window.stepper.to(0);
-            }else {
-                $('#maxCreditLimit').removeClass('is-invalid');
-                proceed = true;
-            }
-
-            // if (file.files.length == 0) {
-            //     $('#fileInput').addClass('is-invalid');
-            //     window.stepper.to(0);
-            // } else {
-            //     $('#fileInput').removeClass('is-invalid');
-            //     proceed = true;
-            // }
-
-            if (file.length == 0) {
-                $('#fileInput').addClass('is-invalid');
-                window.stepper.to(0);
-             } else {
-                $('#fileInput').removeClass('is-invalid');
-                proceed = true;
-             }
 
             if (firstName.length == 0) {
                 $('#firstName').addClass('is-invalid');
@@ -126,7 +97,7 @@ $(document).ready(function() {
                 proceed = true;
             }
 
-           /**/
+            /**/
             const entities = ['Shipper + Consignee', 'Consignee Only', 'Shipper Only', 'NoSCMIntergration'];
             let criteria = entities.includes($('#partyEntityType').val());
 
@@ -136,7 +107,7 @@ $(document).ready(function() {
                 if ((client.length == 0 && $('#clientOption option:selected').val() == 'fromMaster') && criteria) {
                     $('#client').addClass('is-invalid');
                     window.stepper.to(0);
-                }else if(($('#clientID').val() == '' || $('#clientCode').val() == '') && criteria){
+                } else if (($('#clientID').val() == '' || $('#clientCode').val() == '') && criteria) {
                     /*If the data comes form master then clientid and client name should also have values rest invalid*/
                     $('#client').addClass('is-invalid');
                     window.stepper.to(0);
@@ -151,11 +122,11 @@ $(document).ready(function() {
                 proceed = true;
             }
 
-            if($('#clientOptionVal').attr('required')){
+            if ($('#clientOptionVal').attr('required')) {
                 if ((clientOptionVal.length == 0 && $('#clientOption option:selected').val() == 'fromRequest') && criteria) {
                     $('#clientOptionVal').addClass('is-invalid');
                     window.stepper.to(0);
-                } else if(($('#requestID').val() == '' || $('#requestCode').val() == '') && criteria){
+                } else if (($('#requestID').val() == '' || $('#requestCode').val() == '') && criteria) {
                     /*If the data comes form master then clientid and client name should also have values rest invalid*/
                     $('#clientOptionVal').addClass('is-invalid');
                     window.stepper.to(0);
@@ -165,7 +136,7 @@ $(document).ready(function() {
                     $('#clientOptionVal').removeClass('is-invalid');
                     proceed = true;
                 }
-            }else {
+            } else {
                 $('#clientOptionVal').removeClass('is-invalid');
                 proceed = true;
             }
@@ -183,51 +154,43 @@ $(document).ready(function() {
             let office_country_select = $('#officeCountry option:selected').val();
             let sales_person_of_interest = $('#salesPIC').val();
             let billingCurrency = $('#billingCurrency option:selected').val();
+            let licenceTypeID = $('#licenceTypeID option:selected').val();
             let maxCreditLimit = $('#maxCreditLimit').val();
-            let licenceType = $('#licenceTypeID').val();
-
-            // console.log("Credit Limit:- " + maxCreditLimit);
+            let creditDays = $('#creditDays').val();
+            let licenceTypeValue = $('#licenceTypeValue').val();
+            let attachmentFileNames = $('#attachmentFileNames').val();
 
             /**legal entity debtorType and vendorType*/
             /**
              * #. check attr required ? validate : no validate
              */
             let dt = $('#debtorType');
-            if((typeof dt.attr('required') !== 'undefined') && dt.attr('required') !== false){
+            if ((typeof dt.attr('required') !== 'undefined') && dt.attr('required') !== false) {
                 /**Validate debtor type val */
                 if (dt.val() == null || dt.val().length == 0) {
                     /**Prevent proceed || add isinvalid class */
                     dt.addClass('is-invalid');
                     window.stepper.to(2);
 
-                }else{
+                } else {
                     dt.removeClass('is-invalid');
                 }
-            }else{
+            } else {
                 dt.removeClass('is-invalid');
             }
-            let dv= $('#vendorType');
-            if((typeof dv.attr('required') !== 'undefined') && dv.attr('required') !== false){
+            let dv = $('#vendorType');
+            if ((typeof dv.attr('required') !== 'undefined') && dv.attr('required') !== false) {
                 /**Validate debtor type val */
                 if (dv.val() == null || dv.val().length == 0) {
                     /**Prevent proceed || add isinvalid class */
                     dv.addClass('is-invalid');
                     window.stepper.to(2);
 
-                }else{
+                } else {
                     dv.removeClass('is-invalid');
                 }
-            }else{
-                    dv.removeClass('is-invalid');
-            }
-
-            // License Type
-            if (licenceType.length == 0) {
-                $('#licenceTypeID').addClass('is-invalid');
-                window.stepper.to(0);
             } else {
-                $('#licenceTypeID').removeClass('is-invalid');
-                proceed = true;
+                dv.removeClass('is-invalid');
             }
 
             /*billing currency*/
@@ -237,12 +200,36 @@ $(document).ready(function() {
             } else {
                 $('#billingCurrency').removeClass('is-invalid');
             }
+
+            /* License Type */
+            if (licenceTypeID.length == 0) {
+                $('#licenceTypeID').addClass('is-invalid');
+                window.stepper.to(2);
+            } else {
+                $('#licenceTypeID').removeClass('is-invalid');
+            }
+
+            // Licence Type Code
+            if (licenceTypeValue.length == 0) {
+                $('#licenceTypeValue').addClass('is-invalid');
+                window.stepper.to(2);
+            } else {
+                $('#licenceTypeValue').removeClass('is-invalid');
+            }
             /*Credit limit*/
             if (maxCreditLimit.length == 0) {
                 $('#maxCreditLimit').addClass('is-invalid');
                 window.stepper.to(2);
             } else {
                 $('#maxCreditLimit').removeClass('is-invalid');
+            }
+
+            /* Credit Days */
+            if (creditDays.length == 0) {
+                $('#creditDays').addClass('is-invalid');
+                window.stepper.to(2);
+            } else {
+                $('#creditDays').removeClass('is-invalid');
             }
 
             /**Sales PIC */
@@ -268,78 +255,78 @@ $(document).ready(function() {
     });
 
     function validStepThree(status = true) {
-         /**ADMIN SECTION*/
+        /**ADMIN SECTION*/
         /**Client */
-        if (($('#clientInput').val() != '') && ($('#clientID').val() == '' || $('#clientCode').val() == '')){
+        if (($('#clientInput').val() != '') && ($('#clientID').val() == '' || $('#clientCode').val() == '')) {
             $('#clientInput').addClass('is-invalid');
             status = false;
-        }else{
+        } else {
             $('#clientInput').removeClass('is-invalid');
         }
         /**Shipper */
-        if (($('#shipperInput').val() != '') && ($('#shipperID').val() == '' || $('#shipperCode').val() == '')){
+        if (($('#shipperInput').val() != '') && ($('#shipperID').val() == '' || $('#shipperCode').val() == '')) {
             $('#shipperInput').addClass('is-invalid');
             status = false;
-        }else{
+        } else {
             $('#shipperInput').removeClass('is-invalid');
         }
         /**Consignee */
-        if (($('#consigneeInput').val() != '') && ($('#consigneeID').val() == '' || $('#consigneeCode').val() == '')){
+        if (($('#consigneeInput').val() != '') && ($('#consigneeID').val() == '' || $('#consigneeCode').val() == '')) {
             $('#consigneeInput').addClass('is-invalid');
             status = false;
-        }else{
+        } else {
             $('#consigneeInput').removeClass('is-invalid');
         }
         /**Other */
-        if (($('#otherInput').val() != '') && ($('#otherID').val() == '' || $('#otherCode').val() == '')){
+        if (($('#otherInput').val() != '') && ($('#otherID').val() == '' || $('#otherCode').val() == '')) {
             $('#otherInput').addClass('is-invalid');
             status = false;
-        }else{
+        } else {
             $('#otherInput').removeClass('is-invalid');
         }
         /**Debtor */
-        if (($('#debtor').val() != '') && ($('#debtorID').val() == '')){
+        if (($('#debtor').val() != '') && ($('#debtorID').val() == '')) {
             $('#debtor').addClass('is-invalid');
             status = false;
-        }else{
+        } else {
             $('#debtor').removeClass('is-invalid');
         }
         /**Vendor */
-        if (($('#vendor').val() != '') && ($('#vendorID').val() == '' || $('#vendorCode').val() == '')){
+        if (($('#vendor').val() != '') && ($('#vendorID').val() == '' || $('#vendorCode').val() == '')) {
             $('#vendor').addClass('is-invalid');
             status = false;
-        }else{
+        } else {
             $('#vendor').removeClass('is-invalid');
         }
-    return  status;
+        return status;
     }
 
     function validStepTwo(status = true) {
-        if (($('#portOfLoadingAir').val() != '') && ($('#portOfLoadingAirID').val() == '')){
+        if (($('#portOfLoadingAir').val() != '') && ($('#portOfLoadingAirID').val() == '')) {
             $('#portOfLoadingAir').addClass('is-invalid');
             status = false;
-        }else{
+        } else {
             $('#portOfLoadingAir').removeClass('is-invalid');
         }
 
-        if (($('#portOfLoadingSea').val() != '') && ($('#portOfLoadingSeaID').val() == '')){
+        if (($('#portOfLoadingSea').val() != '') && ($('#portOfLoadingSeaID').val() == '')) {
             $('#portOfLoadingSea').addClass('is-invalid');
             status = false;
-        }else{
+        } else {
             $('#portOfLoadingSea').removeClass('is-invalid');
         }
 
-        if (($('#portOfDischargeAir').val() != '') && ($('#portOfDischargeAirID').val() == '')){
+        if (($('#portOfDischargeAir').val() != '') && ($('#portOfDischargeAirID').val() == '')) {
             $('#portOfDischargeAir').addClass('is-invalid');
             status = false;
-        }else{
+        } else {
             $('#portOfDischargeAir').removeClass('is-invalid');
         }
 
-        if (($('#portOfDischargeSea').val() != '') && ($('#portOfDischargeSeaID').val() == '')){
+        if (($('#portOfDischargeSea').val() != '') && ($('#portOfDischargeSeaID').val() == '')) {
             $('#portOfDischargeSea').addClass('is-invalid');
             status = false;
-        }else{
+        } else {
             $('#portOfDischargeSea').removeClass('is-invalid');
         }
         /*Sales PIC
@@ -350,40 +337,40 @@ $(document).ready(function() {
             $('#salesPIC').removeClass('is-invalid');
         }*/
         /*Account PIC*/
-        if (($('#accountPIC').val() != '') && ($('#accountPICID').val() == '')){
+        if (($('#accountPIC').val() != '') && ($('#accountPICID').val() == '')) {
             $('#accountPIC').addClass('is-invalid');
             status = false;
-        }else{
+        } else {
             $('#accountPIC').removeClass('is-invalid');
         }
 
         /*Notify Party 1**/
-        if (($('#notifyParty1').val() != '') && ($('#notifyParty1ID').val() == '' || $('#notifyParty1Code').val() == '')){
+        if (($('#notifyParty1').val() != '') && ($('#notifyParty1ID').val() == '' || $('#notifyParty1Code').val() == '')) {
             $('#notifyParty1').addClass('is-invalid');
             status = false;
-        }else{
+        } else {
             $('#notifyParty1').removeClass('is-invalid');
         }
 
         /**Notify party two */
-        if (($('#notifyParty2').val() != '') && ($('#notifyParty2ID').val() == '' || $('#notifyParty2Code').val() == '')){
+        if (($('#notifyParty2').val() != '') && ($('#notifyParty2ID').val() == '' || $('#notifyParty2Code').val() == '')) {
             $('#notifyParty2').addClass('is-invalid');
             status = false;
-        }else{
+        } else {
             $('#notifyParty1').removeClass('is-invalid');
         }
 
-        if (($('#forwarderName').val() != '') && ($('#forwarderID').val() == '')){
+        if (($('#forwarderName').val() != '') && ($('#forwarderID').val() == '')) {
             $('#forwarderName').addClass('is-invalid');
             status = false;
-        }else{
+        } else {
             $('#forwarderName').removeClass('is-invalid');
         }
         return status;
     }
 
     /** Click save step one */
-    $('#save-step1').on('click', function(e) {
+    $('#save-step1').on('click', function (e) {
         /**validate and submit */
         let save = true;
         let pet = $('#partyEntityType option:selected').val();
@@ -443,7 +430,7 @@ $(document).ready(function() {
                 $('#client').addClass('is-invalid');
                 e.preventDefault();
                 save = false;
-            }else if(($('#clientID').val() == '' || $('#clientCode').val() == '') && criteria){
+            } else if (($('#clientID').val() == '' || $('#clientCode').val() == '') && criteria) {
                 /*If the data comes form master then clientid and client name should also have values rest invalid*/
                 $('#client').addClass('is-invalid');
                 e.preventDefault();
@@ -457,12 +444,12 @@ $(document).ready(function() {
             $('#client').removeClass('is-invalid');
         }
 
-        if($('#clientOptionVal').attr('required')){
+        if ($('#clientOptionVal').attr('required')) {
             if ((clientOptionVal.length == 0 && $('#clientOption option:selected').val() == 'fromRequest') && criteria) {
                 $('#clientOptionVal').addClass('is-invalid');
                 e.preventDefault();
                 save = false;
-            } else if(($('#requestID').val() == '' || $('#requestCode').val() == '') && criteria){
+            } else if (($('#requestID').val() == '' || $('#requestCode').val() == '') && criteria) {
                 /*If the data comes form master then clientid and client name should also have values rest invalid*/
                 $('#clientOptionVal').addClass('is-invalid');
                 e.preventDefault();
@@ -472,7 +459,7 @@ $(document).ready(function() {
                 $('#note').remove();
                 $('#clientOptionVal').removeClass('is-invalid');
             }
-        }else {
+        } else {
             $('#clientOptionVal').removeClass('is-invalid');
         }
 
@@ -492,11 +479,11 @@ $(document).ready(function() {
     });
 
     /**save step two */
-    $('#save-step2').on('click', function(e) {
+    $('#save-step2').on('click', function (e) {
         /**validate and submit */
         let save = true;
         /* let office_country_disp = $('#officeCountryDisp').val() ;*/
-        let office_country_select = $('#officeCountry option:selected').val() ;
+        let office_country_select = $('#officeCountry option:selected').val();
         let sales_person_of_interest = $('#salesPIC').val();
 
         if (office_country_select && office_country_select.length == 0) {
@@ -507,14 +494,14 @@ $(document).ready(function() {
             $('#officeCountry').removeClass('is-invalid');
         }
 
-       /** if (sales_person_of_interest.length == 0) {
-            $('#salesPIC input[name="salesPIC"]').addClass('is-invalid');
-            console.log('here');
-            e.preventDefault();
-            save = false;
-        } else {
-            $('#salesPIC input[name="salesPIC"]').removeClass('is-invalid');
-        } */
+        /** if (sales_person_of_interest.length == 0) {
+             $('#salesPIC input[name="salesPIC"]').addClass('is-invalid');
+             console.log('here');
+             e.preventDefault();
+             save = false;
+         } else {
+             $('#salesPIC input[name="salesPIC"]').removeClass('is-invalid');
+         } */
 
         /**Validate step two inputs */
         let results = validStepTwo();
@@ -563,8 +550,8 @@ $(document).ready(function() {
     }
 
     /**LegalEntity On change function*/
-    legalEntityType.on('change', function() {
-         legaltype = $(this).val();
+    legalEntityType.on('change', function () {
+        legaltype = $(this).val();
         /**/
         LegalEntityType(legaltype);
 
@@ -574,23 +561,23 @@ $(document).ready(function() {
      */
 
 
-    $('#debtorCheck').on('change', function(){
+    $('#debtorCheck').on('change', function () {
         let isChecked = $(this).is(':checked');
         if (isChecked) {
             $('#debtor').attr('disabled', true);
-        }else{
+        } else {
             $('#debtor').attr('disabled', false);
         }
     });
 
-     /**
-     * Vendor checkbox change
-     */
-      $('#vendorCheck').on('change', function(){
+    /**
+    * Vendor checkbox change
+    */
+    $('#vendorCheck').on('change', function () {
         let isChecked = $(this).is(':checked');
         if (isChecked) {
             $('#vendor').attr('disabled', true);
-        }else{
+        } else {
             $('#vendor').attr('disabled', false);
         }
     });
@@ -604,12 +591,12 @@ $(document).ready(function() {
 
         if (val == "Debtor") {
             /* disable vendor legal type*/
-            $('#vendorType').prop('selectedIndex',0);
+            $('#vendorType').prop('selectedIndex', 0);
             $('#vendorType').attr('disabled', true);
             $('#vendorType').removeAttr('required');
 
             /*Enable debtor legal type*/
-            $('#debtorType').prop('selectedIndex',0);
+            $('#debtorType').prop('selectedIndex', 0);
             $('#debtorType').removeAttr('disabled');
             $('#debtorType').prop('required', true);
 
@@ -635,12 +622,12 @@ $(document).ready(function() {
 
         if (val == "Vendor") {
             /* disable debtor legal type*/
-            $('#debtorType').prop('selectedIndex',0);
+            $('#debtorType').prop('selectedIndex', 0);
             $('#debtorType').attr('disabled', true);
             $('#debtorType').removeAttr('required');
 
             /* enable vendor legal type*/
-            $('#vendorType').prop('selectedIndex',0);
+            $('#vendorType').prop('selectedIndex', 0);
             $('#vendorType').removeAttr('disabled');
             $('#vendorType').prop('required', true);
 
@@ -665,13 +652,13 @@ $(document).ready(function() {
 
         }
 
-
         if (val == "Debtor & Vendor") {
             /** Enable both vendor and debtor legal type */
-            $('#debtorType').prop('selectedIndex',0);
+            $('#debtorType').prop('selectedIndex', 0);
             $('#debtorType').removeAttr('disabled');
             $('#debtorType').prop('required', true);
-            $('#vendorType').prop('selectedIndex',0);
+
+            $('#vendorType').prop('selectedIndex', 0);
             $('#vendorType').removeAttr('disabled');
             $('#vendorType').prop('required', true);
 
@@ -691,26 +678,28 @@ $(document).ready(function() {
 
             /*Vendor checkbox*/
             $('#vendorCheck').prop('checked', true);
+
             $('#vendorCheckVal').remove();
             $('#debtorCheckVal').remove();
             /**Append debtor and vendor checkbox to form  */
-            $('form').append('<input type="hidden" value="on" name="debtorCheck" id="debtorCheckVal" checked>'+
-                              '<input type="hidden" value="on" name="vendorCheck" id="vendorCheckVal" checked>');
+            $('form').append('<input type="hidden" value="on" name="debtorCheck" id="debtorCheckVal" checked>' +
+                '<input type="hidden" value="on" name="vendorCheck" id="vendorCheckVal" checked>');
+
         }
 
         if ($('#partyEntityType option:selected').val() == 'NoSCMIntergration') {
             if (val == "Debtor & Vendor") {
-                    /*Vendor*/
-                    $('#vendorCheck').attr('disabled', true);
+                /*Vendor*/
+                $('#vendorCheck').attr('disabled', true);
 
-                    /*Debtor*/
-                    $('#debtorCheck').attr('disabled', true);
-            }else if(val == "Debtor"){
-                    /*Debtor*/
-                    $('#debtorCheck').attr('disabled', true);
-            }else{
-                  /*Vendor*/
-                  $('#vendorCheck').attr('disabled', true);
+                /*Debtor*/
+                $('#debtorCheck').attr('disabled', true);
+            } else if (val == "Debtor") {
+                /*Debtor*/
+                $('#debtorCheck').attr('disabled', true);
+            } else {
+                /*Vendor*/
+                $('#vendorCheck').attr('disabled', true);
             }
 
         }
@@ -729,7 +718,7 @@ $(document).ready(function() {
     }
 
     /**For on change purposes */
-    $('#partyEntityType').on('change', function() {
+    $('#partyEntityType').on('change', function () {
         param = $('#partyEntityType option:selected').val();
         clientStatus(param);
         PartyEntityType(param);
@@ -753,7 +742,7 @@ $(document).ready(function() {
             if (!$('#otherCheck').attr('disabled')) {
                 $('#otherCheck').attr('disabled', 'true');
                 $('#otherCheck').prop('checked', false);
-            }else{
+            } else {
                 $('#otherCheck').prop('checked', false);
             }
 
@@ -779,7 +768,7 @@ $(document).ready(function() {
             } else {
                 $('#consigneeCheck').prop('checked', true);
             }
-        /**for shipper + consignee: disable client and other*/
+            /**for shipper + consignee: disable client and other*/
         } else if (param == "Shipper + Consignee") {
             if (!$('#otherCheck').attr('disabled')) {
                 $('#otherCheck').attr('disabled', 'true');
@@ -803,7 +792,7 @@ $(document).ready(function() {
             } else {
                 $('#consigneeCheck').prop('checked', true);
             }
-        /**For Shipper only: check and disable client and consignee and other*/
+            /**For Shipper only: check and disable client and consignee and other*/
         } else if (param == "Shipper Only") {
             /**Other */
             if (!$('#otherCheck').attr('disabled')) {
@@ -827,8 +816,8 @@ $(document).ready(function() {
             } else {
                 $('#shipperCheck').prop('checked', true);
             }
-        /**For Consignee only: check and disable client and shipper and other*/
-        }else if (param == "Consignee Only") {
+            /**For Consignee only: check and disable client and shipper and other*/
+        } else if (param == "Consignee Only") {
             /**Other */
             if (!$('#otherCheck').attr('disabled')) {
                 $('#otherCheck').attr('disabled', 'true');
@@ -853,13 +842,13 @@ $(document).ready(function() {
                 $('#consigneeCheck').prop('checked', true);
             }
 
-        }else if(param == 'NoSCMIntergration'){
-             /**disable Other */
-             if (!$('#otherCheck').attr('disabled')) {
+        } else if (param == 'NoSCMIntergration') {
+            /**disable Other */
+            if (!$('#otherCheck').attr('disabled')) {
                 $('#otherCheck').attr('disabled', 'true');
                 $('#otherCheck').prop('checked', false);
                 console.log('other');
-            }else{
+            } else {
                 console.log('other else');
                 $('#otherCheck').prop('checked', false);
             }
@@ -923,7 +912,7 @@ $(document).ready(function() {
             $('#clientOptionVal').val('');
             $('#requestID').val('');
             $('#requestCode').val('');
-        }else if (param == "NoSCMIntergration") {
+        } else if (param == "NoSCMIntergration") {
             /**client*/
             $('#client').prop('disabled', true);
             $('#client').removeAttr('required');
@@ -935,27 +924,27 @@ $(document).ready(function() {
             $('#clientOptionVal').val('');
             $('#requestID').val('');
             $('#requestCode').val('');
-        }else if (param == "Shipper + Consignee") {
-             if($('#client').attr('disabled') && $('#clientOption').attr('disabled')){
+        } else if (param == "Shipper + Consignee") {
+            if ($('#client').attr('disabled') && $('#clientOption').attr('disabled')) {
                 $('#client').prop('disabled', false);
                 $('#client').attr('required', true);
                 $('#clientOption').prop('disabled', false);
-             }
+            }
         } else if (param == "Shipper Only") {
-            if($('#client').attr('disabled') && $('#clientOption').attr('disabled')){
+            if ($('#client').attr('disabled') && $('#clientOption').attr('disabled')) {
                 $('#client').prop('disabled', false);
                 $('#client').attr('required', true);
                 $('#clientOption').prop('disabled', false);
-             }
+            }
         } else if (param == "Consignee Only") {
-            if($('#client').attr('disabled') && $('#clientOption').attr('disabled')){
+            if ($('#client').attr('disabled') && $('#clientOption').attr('disabled')) {
                 $('#client').prop('disabled', false);
                 $('#client').attr('required', true);
                 $('#clientOption').prop('disabled', false);
-             }
-        }else{
-                $('#client').prop('disabled', true);
-                $('#clientOption').prop('disabled', true);
+            }
+        } else {
+            $('#client').prop('disabled', true);
+            $('#clientOption').prop('disabled', true);
         }
 
     }
@@ -965,7 +954,7 @@ $(document).ready(function() {
      */
 
     /**Client checkbox */
-    $('#clientCheck').on('change', function() {
+    $('#clientCheck').on('change', function () {
         /**if on do nothing if off open input */
         let cc = $('#clientCheck').is(':checked') == true ? 1 : 0;
         if (cc == 0) {
@@ -983,7 +972,7 @@ $(document).ready(function() {
     });
 
     /**shipper checkbox */
-    $('#shipperCheck').on('change', function() {
+    $('#shipperCheck').on('change', function () {
         /**if on do nothing if off open input */
         let cc = $('#shipperCheck').is(':checked') == true ? 1 : 0;
         if (cc == 0) {
@@ -999,7 +988,7 @@ $(document).ready(function() {
     });
 
     /**consignee checkbox */
-    $('#consigneeCheck').on('change', function() {
+    $('#consigneeCheck').on('change', function () {
         /**if on do nothing if off open input */
         let cc = $('#consigneeCheck').is(':checked') == true ? 1 : 0;
         if (cc == 0) {
@@ -1015,7 +1004,7 @@ $(document).ready(function() {
     });
 
     /**other checkbox */
-    $('#otherCheck').on('change', function() {
+    $('#otherCheck').on('change', function () {
         /**if on do nothing if off open input */
         let cc = $('#otherCheck').is(':checked') == true ? 1 : 0;
         if (cc == 0) {
@@ -1032,16 +1021,16 @@ $(document).ready(function() {
 
     let old_office_country_val = $('#officeCountry option:selected').val();
     let old_office_code = $('#officeCountry').find('option:selected').attr('code') ?? '';
-    $('#officeCountry').on('change', function(){
+    $('#officeCountry').on('change', function () {
         /*let choice = confirm('Changing Country will remove all data associated with it !!');*/
         const swalWithBootstrapButtons = Swal.mixin({
             customClass: {
-              confirmButton: 'btn btn-success',
-              cancelButton: 'btn btn-danger mr-1'
+                confirmButton: 'btn btn-success',
+                cancelButton: 'btn btn-danger mr-1'
             },
             buttonsStyling: false
-          })
-          if(old_office_country_val != ''){
+        })
+        if (old_office_country_val != '') {
             swalWithBootstrapButtons.fire({
                 title: 'Are you sure?',
                 text: "You will loose input data associated to it.!",
@@ -1050,7 +1039,7 @@ $(document).ready(function() {
                 confirmButtonText: 'Ok!',
                 cancelButtonText: 'Cancel!',
                 reverseButtons: true
-              }).then((result) => {
+            }).then((result) => {
                 if (result.isConfirmed) {
                     $('#salesPIC').val('');
                     $('#salesPICID').val('');
@@ -1072,53 +1061,53 @@ $(document).ready(function() {
                 } else if (result.dismiss === Swal.DismissReason.cancel) {
                     $('#officeCountry').val(old_office_country_val);
                 }
-              });
-          }else{
+            });
+        } else {
             old_office_country_val = $(this).val();
             old_office_code = $(this).find('option:selected').attr('code');
-          }
-       /* if (old_office_country_val != '') {
-            if (choice) {
-                /*$('#portOfLoadingAir').val('');
-                $('#portOfLoadingAirID').val('');
-                $('#portOfLoadingSea').val('');
-                $('#portOfLoadingSeaID').val('');
-                $('#portOfDischargeAir').val('');
-                $('#portOfDischargeAirID').val('');
-                $('#portOfDischargeSea').val('');
-                $('#portOfDischargeSeaID').val('');
+        }
+        /* if (old_office_country_val != '') {
+             if (choice) {
+                 /*$('#portOfLoadingAir').val('');
+                 $('#portOfLoadingAirID').val('');
+                 $('#portOfLoadingSea').val('');
+                 $('#portOfLoadingSeaID').val('');
+                 $('#portOfDischargeAir').val('');
+                 $('#portOfDischargeAirID').val('');
+                 $('#portOfDischargeSea').val('');
+                 $('#portOfDischargeSeaID').val('');
 
-                $('#salesPIC').val('');
-                $('#salesPICID').val('');
+                 $('#salesPIC').val('');
+                 $('#salesPICID').val('');
 
-                $('#accountPIC').val('');
-                $('#accountPICID').val('');
+                 $('#accountPIC').val('');
+                 $('#accountPICID').val('');
 
-                $('#notifyParty1').val('');
-                $('#notifyParty2').val('');
+                 $('#notifyParty1').val('');
+                 $('#notifyParty2').val('');
 
-                $('#notifyParty2ID').val('');
-                $('#notifyParty2Code').val('');
+                 $('#notifyParty2ID').val('');
+                 $('#notifyParty2Code').val('');
 
-                $('#notifyParty1ID').val('');
-                $('#notifyParty1Code').val('');
+                 $('#notifyParty1ID').val('');
+                 $('#notifyParty1Code').val('');
 
-                $('#forwarderName').val('');
-                $('#forwarderID').val('');
-            }else{
-                $('#officeCountry').val(old_office_country_val);
-            }
-        }*/
+                 $('#forwarderName').val('');
+                 $('#forwarderID').val('');
+             }else{
+                 $('#officeCountry').val(old_office_country_val);
+             }
+         }*/
     });
 
 
 
     let spinner = $('#loader');
     spinner.hide();
-   /**/
-   $('form').on('submit', function(e){
+    /**/
+    $('form').on('submit', function (e) {
         /* e.preventDefault();*/
-         spinner.show();
+        spinner.show();
     });
 
 });

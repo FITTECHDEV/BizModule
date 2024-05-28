@@ -499,7 +499,7 @@
                                        <fieldset class="border p-2 card shadow-lg mb-0 pt-0 pb-0">
                                             <legend>File Upload</legend>
                                             <?php if(count($clientParty->attachments) < 3): ?>
-                                                <label for="attachmentFile">Attachment <i class="fa fa-paperclip"></i>
+                                                <label for="attachmentFile">Attachment<span class="text-danger">*</span> <i class="fa fa-paperclip"></i>
                                                     <button type="button" class="btn btn-sm btn-outline-warning pull-right w-20 addAttachment" id="addFile">
                                                         <i class="fa fa-plus"></i> File
                                                     </button>
@@ -705,7 +705,7 @@
                                                         <div class="form-group col-md-6 mb-0 pb-0">
                                                             <label for="billingCurrency"
                                                                 class="col-form-label col-form-label-sm">Billing
-                                                                Currency</label>
+                                                                Currency <span class="text-danger">*</span></label>
                                                             <input type="hidden" class="form-control form-control-sm"
                                                                 value="<?php echo e(old('billingCurrencyCode', $clientParty->BillingCurrencyCode)); ?>"
                                                                 name="billingCurrencyCode" id="billingCurrencyCode">
@@ -728,7 +728,7 @@
                                                         <div class="form-group col-md-6 mb-0 pb-0">
                                                             <label for="creditDays"
                                                                 class="col-form-label col-form-label-sm">Credit
-                                                                Days</label>
+                                                                Days<span class="text-danger">*</span></label>
                                                             <input type="text"
                                                                 class="form-control form-control-sm number_input"
                                                                 value="<?php echo e(old('creditDays', $clientParty->CreditDays)); ?>"
@@ -758,7 +758,7 @@
                                                             <div class="col-sm-6 col-md-6 col-lg-6 ">
                                                                 <label for="minCreditLimit"
                                                                     class="col-form-label col-form-label-sm">Credit
-                                                                    Limit</label>
+                                                                    Limit<span class="text-danger">*</span></label>
                                                                 <input type="text"
                                                                     class="form-control form-control-sm number_input"
                                                                     value="<?php echo e(old('maxCreditLimit',$clientParty->CreditLimit)); ?>"
@@ -797,7 +797,7 @@
                                                     <div class="row">
                                                         <label for="licence"
                                                             class="col-md-3 col-form-label col-form-label-sm pr-0">Licence
-                                                            Type.</label>
+                                                            Type<span class="text-danger">*</span></label>
                                                         <div class="col-md-9">
                                                             <select class="form-control form-control-sm"
                                                                 name="licenceTypeID" id="licenceTypeID">
@@ -1078,8 +1078,13 @@
                                             <button type="submit" name="createBtn" value="true"
                                                 class="btn btn-outline-success float-right m-2 btn-sm" data-toggle="tooltip"
                                                 data-placement="top" title=""
-                                                data-bs-original-title="Update and Create On SCM"><i class="fa fa-cogs"
-                                                    aria-hidden="true"></i> Create</button>
+                                                data-bs-original-title="Approve Entity For Creation"><i class="fa fa-check"
+                                                aria-hidden="true"></i> Approve</button>
+                                            <button type="button" name="rejectBtn" id="rejectBtn"
+                                                    data-toggle="modal" data-target="#cancelModal"
+                                                    class="btn btn-danger float-right m-2 btn-sm" data-toggle="tooltip"
+                                                    data-placement="top" title="Reject For Amendment" data-bs-original-title="Update">
+                                                    <i class="fa fa-edit" aria-hidden="true"></i> Reject </button>
                                             <button type="submit" name="submitBtn" value="true"
                                                 class="btn btn-success float-right m-2 btn-sm" data-toggle="tooltip"
                                                 data-placement="top" title="" data-bs-original-title="Update">
@@ -1105,8 +1110,13 @@
     <div class="col-md-12 text-center">
         Request ID: <span class="font-weight-bold" onclick='copyText(this)' data-toggle="tooltip"
             title="Click to copy"><?php echo e($clientParty->Code); ?></span> </b> Requested By: <b><?php echo e($clientParty->CreatedBy); ?></b> Requested On: <b><?php echo e($clientParty->CreatedOn); ?></b> <br>
+        <?php if($clientParty->Status == 'Submitted'): ?>
+        Status: <span
+            class="badge badge-<?php echo e($clientParty->paintClientPartyStatus($clientParty->Status)); ?>">PendingFinanceApproval</span>
+        <?php else: ?>
         Status: <span
             class="badge badge-<?php echo e($clientParty->paintClientPartyStatus($clientParty->Status)); ?>"><?php echo e($clientParty->Status); ?></span>
+        <?php endif; ?>
         <?php if(($clientParty->Status == 'Rejected') || ($clientParty->Status == 'Review')): ?>Rejected By: <b><?php echo e($clientParty->RejectedBy); ?></b> RejectedOn: <b><?php echo e(date_format(date_create($clientParty->RejectedOn),'Y-m-d
             H:i:s')); ?></b> <br>Reason: <b class="text-sm"><?php echo e($clientParty->RejectedReason); ?></b><?php endif; ?>
     </div>
@@ -1119,6 +1129,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="exampleModalLabel">Reject Entity Options</h5>
+            
                 <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                     <span aria-hidden="true">&times;</span>
                 </button>
