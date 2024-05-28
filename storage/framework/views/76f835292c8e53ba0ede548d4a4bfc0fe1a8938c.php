@@ -10,14 +10,29 @@
 
     <div class="p-2">
         <div class="row pt-2 pb-0">
+            <!-- /.col -->
+            <div class="col-12 col-sm-6 col-md-2">
+                <a href="#" id="pending">
+                    <div class="info-box">
+                        <span class="info-box-icon bg-primary elevation-1">
+                            <i class="fa fa-ban"></i></span>
+                        <div class="info-box-content">
+                            <span class="info-box-text text-center">Manager Approval</span>
+                            <span class="info-box-number text-center"><?php echo e($clientParty->clientPartyCount('Status', 'PendingManagerApproval')); ?></span>
+                        </div>
+                        <!-- /.info-box-content -->
+                    </div>
+                </a>
+            </div>
+            <!-- /.col -->
             <div class="col-12 col-sm-6 col-md-2">
                 <a href="#" id="submitted">
                     <div class="info-box mb-3">
                         <span class="info-box-icon bg-warning elevation-1"><i class="fa fa-hand-paper"></i></span>
                         <div class="info-box-content">
-                            <span class="info-box-text text-center">Submitted</span>
-                            <span
-                                class="info-box-number text-center"><?php echo e($clientParty->clientPartyCount('Status', 'Submitted')); ?></span>
+                            <span class="info-box-text text-center">Finance Approval</span>
+                            <span class="info-box-number text-center"><?php echo e($clientParty->clientPartyCount('Status',
+                                'Submitted')); ?></span>
                         </div>
                         <!-- /.info-box-content -->
                     </div>
@@ -32,32 +47,16 @@
                             <i class="fas fa-check-circle"></i></span>
                         <div class="info-box-content">
                             <span class="info-box-text text-center">Created </span>
-                            <span
-                                class="info-box-number text-center"><?php echo e($clientParty->clientPartyCount('Status', 'Created')); ?></span>
+                            <span class="info-box-number text-center"><?php echo e($clientParty->clientPartyCount('Status', 'Created')); ?></span>
                         </div>
                         <!-- /.info-box-content -->
                     </div>
                 </a>
-
             </div>
             <!-- /.col -->
             <!-- fix for small devices only -->
             <div class="clearfix hidden-md-up"></div>
-            <!-- /.col -->
-            <div class="col-12 col-sm-6 col-md-2">
-                <a href="#" id="pending">
-                    <div class="info-box">
-                        <span class="info-box-icon bg-primary elevation-1">
-                            <i class="fa fa-ban"></i></span>
-                        <div class="info-box-content">
-                            <span class="info-box-text text-center">Pending</span>
-                            <span
-                                class="info-box-number text-center"><?php echo e($clientParty->clientPartyCount('Status', 'PendingManagerApproval')); ?></span>
-                        </div>
-                        <!-- /.info-box-content -->
-                    </div>
-                </a>
-            </div>
+
             <div class="col-12 col-sm-6 col-md-2">
                 <a href="#" id="review">
                     <div class="info-box">
@@ -80,8 +79,8 @@
                                 aria-hidden="true"></i></span>
                         <div class="info-box-content">
                             <span class="info-box-text text-center">Rejected</span>
-                            <span
-                                class="info-box-number text-center"><?php echo e($clientParty->clientPartyCount('Status', 'Rejected')); ?></span>
+
+                            <span class="info-box-number text-center"><?php echo e($clientParty->clientPartyCount('Status', 'Rejected')); ?></span>
                         </div>
                         <!-- /.info-box-content -->
                     </div>
@@ -94,8 +93,7 @@
                         <span class="info-box-icon bg-info elevation-1"><i class="fa fa-calculator"></i></span>
                         <div class="info-box-content">
                             <span class="info-box-text text-center">Total Requests</span>
-                            <span
-                                class="info-box-number text-center"><?php echo e($clientParty->clientPartyCount('Status', '*')); ?></span>
+                            <span class="info-box-number text-center"><?php echo e($clientParty->clientPartyCount('Status', '*')); ?></span>
                         </div>
                         <!-- /.info-box-content -->
                     </div>
@@ -228,6 +226,8 @@
 
         $(document).ready(function() {
             window.user_raise_ticket = `<?php echo e(Auth::user()->can('request-client-party')); ?>`;
+            // window.user_view_my_office = `<?php echo e(!Auth::user()->can('approve-all-entity-request')); ?>`;
+            // window.office = `<?php echo e(Auth::user()->OfficeCode); ?>`;
 
             let clientPartyTable = $('#client-party-table').DataTable({
                 "order": [
@@ -288,8 +288,11 @@
                     '<a href="/client-party/create" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i>New Request</a>'
                     );
             }
+            // if (window.user_view_my_office) {
+            //     searchOffice(window.office);
+            // }
             $('#submitted').on('click', function() {
-                searchTable('Submitted');
+                searchTable('PendingFinanceApproval');
             });
 
             $('#created').on('click', function() {
@@ -297,7 +300,7 @@
             });
 
             $('#pending').on('click', function() {
-                searchTable('Pending');
+                searchTable('PendingManagerApproval');
             });
 
             $('#rejected').on('click', function() {
@@ -312,6 +315,10 @@
                 searchTable('');
             });
 
+
+            // function searchOffice(param){
+            //     clientPartyTable.column(2).search(param, false, false, false).draw();
+            // }
 
             function searchTable(param) {
                 clientPartyTable.column(5).search(param, false, false, false).draw();
