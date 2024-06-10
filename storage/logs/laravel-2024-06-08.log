@@ -1,0 +1,29 @@
+[2024-06-08 10:49:16] Production.WARNING: SQLSTATE[08001]: [Microsoft][ODBC Driver 17 for SQL Server]Unable to complete login process due to delay in opening server connection (SQL: select top 1 * from [Cust_User] where ([LoginID] = j.sifuna))  
+[2024-06-08 10:51:03] Production.WARNING: Client error: `POST https://login.microsoftonline.com/common/oauth2/token` resulted in a `400 Bad Request` response:
+{"error":"invalid_grant","error_description":"AADSTS54005: OAuth2 Authorization code was already redeemed, please retry  (truncated...)
+  
+[2024-06-08 12:15:32] Production.WARNING: SQLSTATE[08001]: [Microsoft][ODBC Driver 17 for SQL Server]Unable to complete login process due to delay in opening server connection (SQL: select top 1 * from [Cust_User] where ([LoginID] = e.were))  
+[2024-06-08 12:22:49] Production.WARNING: Client error: `POST https://login.microsoftonline.com/common/oauth2/token` resulted in a `400 Bad Request` response:
+{"error":"invalid_grant","error_description":"AADSTS54005: OAuth2 Authorization code was already redeemed, please retry  (truncated...)
+  
+[2024-06-08 12:23:31] Production.WARNING: SQLSTATE[08001]: [Microsoft][ODBC Driver 17 for SQL Server]Unable to complete login process due to delay in opening server connection (SQL: select top 1 * from [Cust_User] where ([LoginID] = e.were))  
+[2024-06-08 12:24:20] Production.WARNING: Client error: `POST https://login.microsoftonline.com/common/oauth2/token` resulted in a `400 Bad Request` response:
+{"error":"invalid_grant","error_description":"AADSTS54005: OAuth2 Authorization code was already redeemed, please retry  (truncated...)
+  
+[2024-06-08 12:26:49] Production.WARNING: Client error: `POST https://login.microsoftonline.com/common/oauth2/token` resulted in a `400 Bad Request` response:
+{"error":"invalid_grant","error_description":"AADSTS54005: OAuth2 Authorization code was already redeemed, please retry  (truncated...)
+  
+[2024-06-08 12:27:28] Production.WARNING: SQLSTATE[IMSSP]: An extra semi-colon was encountered in the DSN string at character (byte-count) position '69' . (SQL: select top 1 * from [Cust_User] where ([LoginID] = e.were))  
+[2024-06-08 12:32:59] Production.WARNING: Client error: `POST https://login.microsoftonline.com/common/oauth2/token` resulted in a `400 Bad Request` response:
+{"error":"invalid_grant","error_description":"AADSTS54005: OAuth2 Authorization code was already redeemed, please retry  (truncated...)
+  
+[2024-06-08 12:34:29] Production.WARNING: Client error: `POST https://login.microsoftonline.com/common/oauth2/token` resulted in a `400 Bad Request` response:
+{"error":"invalid_grant","error_description":"AADSTS54005: OAuth2 Authorization code was already redeemed, please retry  (truncated...)
+  
+[2024-06-08 12:34:49] Production.WARNING: SQLSTATE[IMSSP]: An extra semi-colon was encountered in the DSN string at character (byte-count) position '72' . (SQL: select top 1 * from [Cust_User] where ([LoginID] = e.were))  
+[2024-06-08 12:36:01] Production.WARNING: Client error: `POST https://login.microsoftonline.com/common/oauth2/token` resulted in a `400 Bad Request` response:
+{"error":"invalid_grant","error_description":"AADSTS54005: OAuth2 Authorization code was already redeemed, please retry  (truncated...)
+  
+[2024-06-08 12:45:27] Production.WARNING: SQLSTATE[08001]: [Microsoft][ODBC Driver 17 for SQL Server]Unable to complete login process due to delay in opening server connection (SQL: select top 1 * from [Cust_User] where ([LoginID] = e.were))  
+[2024-06-08 12:49:56] Production.WARNING: SQLSTATE[28000]: [Microsoft][ODBC Driver 17 for SQL Server][SQL Server]Login failed for user 'FREIGHTINTIME\fiterpuser'. (SQL: select top 1 * from [Cust_User] where ([LoginID] = e.were))  
+[2024-06-08 12:51:29] Production.WARNING: SQLSTATE[08001]: [Microsoft][ODBC Driver 17 for SQL Server]Unable to complete login process due to delay in opening server connection (SQL: select top 1 * from [Cust_User] where ([LoginID] = e.were))  

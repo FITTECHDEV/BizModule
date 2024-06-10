@@ -1,1 +1,0 @@
-<?php echo e($slot); ?><?php /**PATH C:\inetpub\wwwroot\Projects\Production\erp_production\resources\views/vendor/mail/text/footer.blade.php ENDPATH**/ ?>
