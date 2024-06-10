@@ -401,6 +401,11 @@
                                 <button class="btn btn-primary m-2 btn-sm float-right" name="next" type="button"
                                     onclick="stepper.next()">Next <i class="fa fa-step-forward"
                                         aria-hidden="true"></i></button>
+                                <button type="button" name="rejectBtn" id="rejectBtn"
+                                            data-toggle="modal" data-target="#cancelModal"
+                                            class="btn btn-danger float-right m-2 btn-sm" data-toggle="tooltip"
+                                            data-placement="top" title="Reject For Amendment" data-bs-original-title="Update">
+                                            <i class="fa fa-edit" aria-hidden="true"></i> Reject </button>
                                 <button type="button" name="updateBtn" id="save-step1"
                                     class="btn btn-success btn-sm float-right m-2" data-toggle="tooltip"
                                     data-placement="top" title="" data-bs-original-title="Update"><i class="fa fa-edit"
@@ -990,191 +995,187 @@
                                     onclick="stepper.previous()"><i class="fa fa-step-backward" aria-hidden="true"></i>
                                     Previous</button>
                                 @if (Auth::user()->can('create-client-party'))
-                                <button class="btn btn-primary m-2 btn-sm float-right" type="button" name="next"
-                                    onclick="stepper.next()">Next <i class="fa fa-step-forward"
-                                        aria-hidden="true"></i></button>
-                                <button type="button" name="updateBtn" id="save-step2"
-                                    class="btn btn-success btn-sm float-right m-2" data-toggle="tooltip"
-                                    data-placement="top" title="" data-bs-original-title="Update"><i class="fa fa-edit"
-                                        aria-hidden="true"></i> Update for Later</button>
+                                    <button class="btn btn-primary m-2 btn-sm float-right" type="button" name="next"
+                                        onclick="stepper.next()">Next <i class="fa fa-step-forward"
+                                            aria-hidden="true"></i></button>
                                 @else
-                                <button type="submit" name="submitBtn" value="true"
-                                    class="btn btn-outline-success btn-sm float-right m-2" data-toggle="tooltip"
-                                    data-placement="top" title="Will be processed by admin"><i class="fa fa-thumbs-up"
-                                        aria-hidden="true"></i> Submit</button>
-                                <button type="submit" name="updateBtn" id="updateBtn"
-                                    class="btn btn-success btn-sm float-right m-2" data-toggle="tooltip"
-                                    data-placement="top" title="Update"><i class="fa fa-edit" aria-hidden="true"></i>
-                                    Update for Later</button>
+                                    <button type="submit" name="submitBtn" value="true"
+                                        class="btn btn-outline-success btn-sm float-right m-2" data-toggle="tooltip"
+                                        data-placement="top" title="Will be processed by admin"><i class="fa fa-thumbs-up"
+                                            aria-hidden="true"></i> Submit</button>
+                                    <button type="submit" name="updateBtn" id="updateBtn"
+                                        class="btn btn-success btn-sm float-right m-2" data-toggle="tooltip"
+                                        data-placement="top" title="Update"><i class="fa fa-edit" aria-hidden="true"></i>
+                                        Update for Later</button>
                                 @endif
                             </div>
                             @if (Auth::user()->can('create-client-party'))
-                            <div id="admin-details" class="content" role="tabpanel"
-                                aria-labelledby="admin-details-trigger">
-                                <div class="row justify-content-center">
-                                    <div class="com-md-6 col-xl-6 col-sm-12 col-lg-6">
-                                        <fieldset class="border p-2 card shadow-lg mb-0 pt-0">
-                                            <legend class="w-auto p-0 m-0"></legend>
-                                            <table class="table table-sm table-borderless">
-                                                <thead>
-                                                    <th>Entity</th>
-                                                    <th>Create</th>
-                                                    <th>Select</th>
-                                                    <th>Code</th>
-                                                </thead>
-                                                <tr>
-                                                    <td>Client</td>
-                                                    <td><input type="checkbox" name="clientCheck" id="clientCheck"
-                                                            @if($clientParty->ClientName == '') checked @endif></td>
-                                                    <td>
-                                                        <input type="text" name="clientInput" id="clientInput"
-                                                            value="{{ old('clientInput',$clientParty->ClientName) }}"
-                                                            class="form-control form-control-sm" required>
-                                                        <input type="hidden" name="clientID" id="clientID"
-                                                            value="{{ old('clientID',$clientParty->ClientID) }}">
-                                                        <input type="hidden" name="clientCode" id="clientCode"
-                                                            value="{{ old('clientCode',$clientParty->ClientCode) }}">
-                                                        {{-- <select name="clientID" id="clientID"
-                                                            class="form-control form-control-sm">
-                                                            <option value=""></option>
-                                                        </select> --}}
-                                                    </td>
-                                                    <td id="client_Input" onclick='copyText(this)' data-toggle="tooltip"
-                                                        title="Click to copy">{{ $clientParty->ClientCode ?? '' }}</td>
-                                                </tr>
-                                                <tr>
-                                                    <td>Shipper</td>
-                                                    <td><input type="checkbox" name="shipperCheck" id="shipperCheck"
-                                                            @if($clientParty->ShipperConsigneeName == '') checked
-                                                        @endif></td>
-                                                    <td>
-                                                        <input type="text" name="shipperInput" id="shipperInput"
-                                                            value="{{ old('shipperInput',$clientParty->ShipperConsigneeName) }}"
-                                                            class="form-control form-control-sm" required>
-                                                        <input type="hidden" name="shipperID" id="shipperID"
-                                                            value="{{ old('shipperID',$clientParty->ShipperConsigneeID) }}">
-                                                        <input type="hidden" name="shipperCode" id="shipperCode"
-                                                            value="{{ old('shipperID',$clientParty->ShipperConsigneeCode) }}">
-                                                        {{-- <select name="shipperInput" id="shipperInput"
-                                                            class="form-control form-control-sm">
-                                                            <option value=""></option>
-                                                        </select> --}}
-                                                    </td>
-                                                    <td id="shipper_Input" onclick='copyText(this)'
-                                                        data-toggle="tooltip" title="Click to copy">{{
-                                                        $clientParty->ShipperConsigneeCode ?? '' }}</td>
-                                                </tr>
-                                                <tr>
-                                                    <td>Consignee</td>
-                                                    <td><input type="checkbox" name="consigneeCheck" id="consigneeCheck"
-                                                            @if($clientParty->ShipperConsigneeName == '') checked
-                                                        @endif></td>
-                                                    <td>
-                                                        <input type="text" name="consigneeInput" id="consigneeInput"
-                                                            value="{{ old('consigneeInput',$clientParty->ShipperConsigneeName) }}"
-                                                            class="form-control form-control-sm" required>
-                                                        <input type="hidden" name="consigneeID" id="consigneeID"
-                                                            value="{{ old('consigneeID',$clientParty->ShipperConsigneeID) }}">
-                                                        <input type="hidden" name="consigneeCode" id="consigneeCode"
-                                                            value="{{ old('consigneeCode',$clientParty->ShipperConsigneeCode) }}">
+                                <div id="admin-details" class="content" role="tabpanel"
+                                    aria-labelledby="admin-details-trigger">
+                                    <div class="row justify-content-center">
+                                        <div class="com-md-6 col-xl-6 col-sm-12 col-lg-6">
+                                            <fieldset class="border p-2 card shadow-lg mb-0 pt-0">
+                                                <legend class="w-auto p-0 m-0"></legend>
+                                                <table class="table table-sm table-borderless">
+                                                    <thead>
+                                                        <th>Entity</th>
+                                                        <th>Create</th>
+                                                        <th>Select</th>
+                                                        <th>Code</th>
+                                                    </thead>
+                                                    <tr>
+                                                        <td>Client</td>
+                                                        <td><input type="checkbox" name="clientCheck" id="clientCheck"
+                                                                @if($clientParty->ClientName == '') checked @endif></td>
+                                                        <td>
+                                                            <input type="text" name="clientInput" id="clientInput"
+                                                                value="{{ old('clientInput',$clientParty->ClientName) }}"
+                                                                class="form-control form-control-sm" required>
+                                                            <input type="hidden" name="clientID" id="clientID"
+                                                                value="{{ old('clientID',$clientParty->ClientID) }}">
+                                                            <input type="hidden" name="clientCode" id="clientCode"
+                                                                value="{{ old('clientCode',$clientParty->ClientCode) }}">
+                                                            {{-- <select name="clientID" id="clientID"
+                                                                class="form-control form-control-sm">
+                                                                <option value=""></option>
+                                                            </select> --}}
+                                                        </td>
+                                                        <td id="client_Input" onclick='copyText(this)' data-toggle="tooltip"
+                                                            title="Click to copy">{{ $clientParty->ClientCode ?? '' }}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td>Shipper</td>
+                                                        <td><input type="checkbox" name="shipperCheck" id="shipperCheck"
+                                                                @if($clientParty->ShipperConsigneeName == '') checked
+                                                            @endif></td>
+                                                        <td>
+                                                            <input type="text" name="shipperInput" id="shipperInput"
+                                                                value="{{ old('shipperInput',$clientParty->ShipperConsigneeName) }}"
+                                                                class="form-control form-control-sm" required>
+                                                            <input type="hidden" name="shipperID" id="shipperID"
+                                                                value="{{ old('shipperID',$clientParty->ShipperConsigneeID) }}">
+                                                            <input type="hidden" name="shipperCode" id="shipperCode"
+                                                                value="{{ old('shipperID',$clientParty->ShipperConsigneeCode) }}">
+                                                            {{-- <select name="shipperInput" id="shipperInput"
+                                                                class="form-control form-control-sm">
+                                                                <option value=""></option>
+                                                            </select> --}}
+                                                        </td>
+                                                        <td id="shipper_Input" onclick='copyText(this)'
+                                                            data-toggle="tooltip" title="Click to copy">{{
+                                                            $clientParty->ShipperConsigneeCode ?? '' }}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td>Consignee</td>
+                                                        <td><input type="checkbox" name="consigneeCheck" id="consigneeCheck"
+                                                                @if($clientParty->ShipperConsigneeName == '') checked
+                                                            @endif></td>
+                                                        <td>
+                                                            <input type="text" name="consigneeInput" id="consigneeInput"
+                                                                value="{{ old('consigneeInput',$clientParty->ShipperConsigneeName) }}"
+                                                                class="form-control form-control-sm" required>
+                                                            <input type="hidden" name="consigneeID" id="consigneeID"
+                                                                value="{{ old('consigneeID',$clientParty->ShipperConsigneeID) }}">
+                                                            <input type="hidden" name="consigneeCode" id="consigneeCode"
+                                                                value="{{ old('consigneeCode',$clientParty->ShipperConsigneeCode) }}">
 
-                                                    </td>
-                                                    <td id="consignee_Input" onclick='copyText(this)'
-                                                        data-toggle="tooltip" title="Click to copy">{{
-                                                        $clientParty->ShipperConsigneeCode ?? '' }}</td>
-                                                </tr>
-                                                <tr>
-                                                    <td>Other</td>
-                                                    <td><input type="checkbox" name="otherCheck" id="otherCheck"
-                                                            @if($clientParty->OtherPartyName == '') checked @endif></td>
-                                                    <td>
-                                                        <input type="text" name="otherInput" id="otherInput"
-                                                            value="{{ old('otherID',$clientParty->OtherPartyName) }}"
-                                                            class="form-control form-control-sm" required>
-                                                        <input type="hidden" name="otherID" id="otherID"
-                                                            value="{{ old('otherID',$clientParty->OtherPartyID) }}">
-                                                        <input type="hidden" name="otherCode" id="otherCode"
-                                                            value="{{ old('otherCode',$clientParty->OtherPartyCode) }}">
+                                                        </td>
+                                                        <td id="consignee_Input" onclick='copyText(this)'
+                                                            data-toggle="tooltip" title="Click to copy">{{
+                                                            $clientParty->ShipperConsigneeCode ?? '' }}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td>Other</td>
+                                                        <td><input type="checkbox" name="otherCheck" id="otherCheck"
+                                                                @if($clientParty->OtherPartyName == '') checked @endif></td>
+                                                        <td>
+                                                            <input type="text" name="otherInput" id="otherInput"
+                                                                value="{{ old('otherID',$clientParty->OtherPartyName) }}"
+                                                                class="form-control form-control-sm" required>
+                                                            <input type="hidden" name="otherID" id="otherID"
+                                                                value="{{ old('otherID',$clientParty->OtherPartyID) }}">
+                                                            <input type="hidden" name="otherCode" id="otherCode"
+                                                                value="{{ old('otherCode',$clientParty->OtherPartyCode) }}">
 
-                                                    </td>
+                                                        </td>
 
-                                                    <td id="other_Input" onclick='copyText(this)' data-toggle="tooltip"
-                                                        title="Click to copy">{{ $clientParty->OtherPartyCode ?? '' }}
-                                                    </td>
-                                                </tr>
-                                                <tr>
-                                                    <td>Debtor</td>
-                                                    <td><input type="checkbox" name="debtorCheck" id="debtorCheck"
-                                                            @if($clientParty->RequestforDebtor) checked @endif></td>
-                                                    <td>
-                                                        <input type="text" name="debtor" id="debtor"
-                                                            value="{{ old('debtor', $clientParty->Debtor) }}"
-                                                            class="form-control form-control-sm" required>
-                                                        <input type="hidden" name="debtorID"
-                                                            value="{{ old('debtorID',$clientParty->DebtorID) }}"
-                                                            id="debtorID">
-                                                        <input type="hidden" name="debtorCode"
-                                                            value="{{ old('debtorCode', $clientParty->DebtorCode) }}"
-                                                            id="debtorCode">
+                                                        <td id="other_Input" onclick='copyText(this)' data-toggle="tooltip"
+                                                            title="Click to copy">{{ $clientParty->OtherPartyCode ?? '' }}
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td>Debtor</td>
+                                                        <td><input type="checkbox" name="debtorCheck" id="debtorCheck"
+                                                                @if($clientParty->RequestforDebtor) checked @endif></td>
+                                                        <td>
+                                                            <input type="text" name="debtor" id="debtor"
+                                                                value="{{ old('debtor', $clientParty->Debtor) }}"
+                                                                class="form-control form-control-sm" required>
+                                                            <input type="hidden" name="debtorID"
+                                                                value="{{ old('debtorID',$clientParty->DebtorID) }}"
+                                                                id="debtorID">
+                                                            <input type="hidden" name="debtorCode"
+                                                                value="{{ old('debtorCode', $clientParty->DebtorCode) }}"
+                                                                id="debtorCode">
 
-                                                    </td>
-                                                    <td id="debtor_code" onclick='copyText(this)' data-toggle="tooltip"
-                                                        title="Click to copy">{{ $clientParty->DebtorCode ?? '' }}</td>
-                                                </tr>
-                                                <tr>
-                                                    <td>Vendor</td>
-                                                    <td><input type="checkbox" name="vendorCheck" id="vendorCheck"
-                                                            @if($clientParty->RequestforVendor) checked @endif></td>
-                                                    <td>
-                                                        <input type="text" name="vendor" id="vendor"
-                                                            value="{{ old('vendor',$clientParty->Vendor) }}"
-                                                            class="form-control form-control-sm" required>
-                                                        <input type="hidden" name="vendorID"
-                                                            value="{{ old('vendorID',$clientParty->VendorID) }}"
-                                                            id="vendorID">
-                                                        <input type="hidden" name="vendorCode"
-                                                            value="{{ old('vendorCode',$clientParty->VendorCode) }}"
-                                                            id="vendorCode">
+                                                        </td>
+                                                        <td id="debtor_code" onclick='copyText(this)' data-toggle="tooltip"
+                                                            title="Click to copy">{{ $clientParty->DebtorCode ?? '' }}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td>Vendor</td>
+                                                        <td><input type="checkbox" name="vendorCheck" id="vendorCheck"
+                                                                @if($clientParty->RequestforVendor) checked @endif></td>
+                                                        <td>
+                                                            <input type="text" name="vendor" id="vendor"
+                                                                value="{{ old('vendor',$clientParty->Vendor) }}"
+                                                                class="form-control form-control-sm" required>
+                                                            <input type="hidden" name="vendorID"
+                                                                value="{{ old('vendorID',$clientParty->VendorID) }}"
+                                                                id="vendorID">
+                                                            <input type="hidden" name="vendorCode"
+                                                                value="{{ old('vendorCode',$clientParty->VendorCode) }}"
+                                                                id="vendorCode">
 
-                                                    </td>
-                                                    <td id="vendor_code" onclick="copyText(this)" data-toggle="tooltip"
-                                                        title="Click to Copy">{{ $clientParty->VendorCode ?? '' }}</td>
-                                                </tr>
-                                            </table>
-                                        </fieldset>
-                                        <button class="btn btn-primary m-2 btn-sm" type="button" name="previous"
-                                            onclick="stepper.previous()"><i class="fa fa-step-backward"
-                                                aria-hidden="true"></i> Previous</button>
-                                        @if ($approve)
-                                            <button type="button" name="approveBtn" id="approveBtn"
-                                                class="btn btn-outline-success float-right m-2 btn-sm" data-toggle="tooltip"
-                                                data-placement="top" title=""
-                                                data-bs-original-title="Approve For Creation"><i class="fa fa-check"
-                                                    aria-hidden="true"></i> Approve</button>
-                                            <button type="button" name="rejectBtn" id="rejectBtn"
-                                                data-toggle="modal" data-target="#cancelModal"
-                                                class="btn btn-danger float-right m-2 btn-sm" data-toggle="tooltip"
-                                                data-placement="top" title="Reject For Amendment" data-bs-original-title="Update">
-                                                <i class="fa fa-edit" aria-hidden="true"></i> Reject </button>
-                                        @else
-                                            <button type="submit" name="createBtn" value="true"
-                                                class="btn btn-outline-success float-right m-2 btn-sm" data-toggle="tooltip"
-                                                data-placement="top" title=""
-                                                data-bs-original-title="Approve Entity For Creation"><i class="fa fa-check"
-                                                aria-hidden="true"></i> Approve</button>
-                                            <button type="button" name="rejectBtn" id="rejectBtn"
+                                                        </td>
+                                                        <td id="vendor_code" onclick="copyText(this)" data-toggle="tooltip"
+                                                            title="Click to Copy">{{ $clientParty->VendorCode ?? '' }}</td>
+                                                    </tr>
+                                                </table>
+                                            </fieldset>
+                                            <button class="btn btn-primary m-2 btn-sm" type="button" name="previous"
+                                                onclick="stepper.previous()"><i class="fa fa-step-backward"
+                                                    aria-hidden="true"></i> Previous</button>
+                                            @if ($approve)
+                                                <button type="button" name="approveBtn" id="approveBtn"
+                                                    class="btn btn-outline-success float-right m-2 btn-sm" data-toggle="tooltip"
+                                                    data-placement="top" title=""
+                                                    data-bs-original-title="Approve For Creation"><i class="fa fa-check"
+                                                        aria-hidden="true"></i> Approve</button>
+                                                <button type="button" name="rejectBtn" id="rejectBtn"
                                                     data-toggle="modal" data-target="#cancelModal"
                                                     class="btn btn-danger float-right m-2 btn-sm" data-toggle="tooltip"
                                                     data-placement="top" title="Reject For Amendment" data-bs-original-title="Update">
                                                     <i class="fa fa-edit" aria-hidden="true"></i> Reject </button>
-                                            <button type="submit" name="submitBtn" value="true"
-                                                class="btn btn-success float-right m-2 btn-sm" data-toggle="tooltip"
-                                                data-placement="top" title="" data-bs-original-title="Update">
-                                                <i class="fa fa-edit" aria-hidden="true"></i> Update for Later</button>
-                                        @endif
+                                            @else
+                                                <button type="submit" name="createBtn" value="true"
+                                                    class="btn btn-outline-success float-right m-2 btn-sm" data-toggle="tooltip"
+                                                    data-placement="top" title=""
+                                                    data-bs-original-title="Approve Entity For Creation"><i class="fa fa-check"
+                                                    aria-hidden="true"></i> Approve</button>
+                                                <button type="button" name="rejectBtn" id="rejectBtn"
+                                                        data-toggle="modal" data-target="#cancelModal"
+                                                        class="btn btn-danger float-right m-2 btn-sm" data-toggle="tooltip"
+                                                        data-placement="top" title="Reject For Amendment" data-bs-original-title="Update">
+                                                        <i class="fa fa-edit" aria-hidden="true"></i> Reject </button>
+                                                <button type="submit" name="submitBtn" value="true"
+                                                    class="btn btn-success float-right m-2 btn-sm" data-toggle="tooltip"
+                                                    data-placement="top" title="" data-bs-original-title="Update">
+                                                    <i class="fa fa-edit" aria-hidden="true"></i> Update for Later</button>
+                                            @endif
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
                             @endif
 
                         </form>
@@ -1213,7 +1214,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="exampleModalLabel">Reject Entity Options</h5>
-            
+
                 <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                     <span aria-hidden="true">&times;</span>
                 </button>
