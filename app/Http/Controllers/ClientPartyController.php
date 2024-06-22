@@ -579,6 +579,10 @@ class ClientPartyController extends Controller
             $status = 'PendingManagerApproval';
         }
 
+        if($request->partyEntityType == 'Client without Debtor or Vendor'){
+            $status = 'Created';
+        }
+
         // dd($status);
         //client party instatnce
         $clientParty = new ClientParty();
@@ -728,7 +732,14 @@ class ClientPartyController extends Controller
                 'Status' => $status,
 
             ];
-            // dd($request, $data);
+
+            if ($request->partyEntityType === 'Client without Debtor or Vendor') {
+                $data['RequestforClient'] = 1;
+                $data['RequestforShipperConsignee'] = 1;
+            }
+
+            // dd($data);
+
             DB::table('Cust_Entity')->updateOrInsert($data);
             DB::commit();
             // dd('here');
@@ -878,7 +889,7 @@ class ClientPartyController extends Controller
         }
 
         // create entity on SCM
-        if (isset($request->createBtn) && ($client_party_status == 1)) {
+        if ((isset($request->createBtn) && ($client_party_status == 1))||($request->partyEntityType === 'Client without Debtor or Vendor')) {
             $results = [];
             if ($request->partyEntityType != 'NoSCMIntergration') {
                 // create debtor vendor on SCM
@@ -978,6 +989,7 @@ class ClientPartyController extends Controller
      */
     public function show(ClientParty $clientParty)
     {
+        // dd($clientParty);
 
         $user = \request()->user();
 
@@ -1014,6 +1026,10 @@ class ClientPartyController extends Controller
         // permission for admin
         if (Auth::user()->Role == 1 && ($clientParty->Status != 'Created')) {
             $editForm = true;
+        }
+
+        if($clientParty->OperatioEntityType == 'Client without Debtor or Vendor' && $status = 'Created'){
+            $editForm = false;
         }
 
         //permission for approve
@@ -1122,6 +1138,10 @@ class ClientPartyController extends Controller
         if (($request->status == 'PendingManagerApproval') && $user->can('approve-my-office-entity-request') && $user->can('approve-all-entity-request') && isset($createBtn)) {
             // dd($status);
             $status = 'PendingFinanceApproval';
+        }
+
+        if($cp->OperatioEntityType == 'Client without Debtor or Vendor' && $cp->Status == 'Created'){
+            $status = 'PendingManagerApproval';
         }
         // else {
         //     alert()->warning('Warning !', 'Entity Pending for Manager Approval')->showConfirmButton();
@@ -1485,11 +1505,14 @@ class ClientPartyController extends Controller
 
     public function CreateClientPartySCM($requestID)
     {
+        $entity = DB::table('Cust_Entity')->where('Id',$requestID)->get();
+        // dd($entity[0]->OperatioEntityType);
         $results = json_decode(json_encode([['Status' => 'Failed', 'Remark' => 'Entity Not Created']]));
-        if (!Auth::user()->can('create-client-party-SCM')) {
+        if (!Auth::user()->can('create-client-party-SCM') && $entity[0]->OperatioEntityType != 'Client without Debtor or Vendor') {
             $results = json_decode(json_encode([['Status' => 'Failed', 'Remark' => 'Unauthorised SCM Access.']]));
             return $results;
-        } //  dd($results[0]->Status); exit();
+        }
+        //  dd($results[0]->Status); exit();
         try {
             //Execute the stored procedure
             $results = DB::select("SET NOCOUNT ON;
@@ -1667,9 +1690,6 @@ class ClientPartyController extends Controller
         alert()->success('Entity', 'Entity Approved.');
 
 
-        // if($status == 'Submitted'){
-        //     $this->CreateClientPartySCM($id);
-        // }
 
         return response()->json(['ok', 200]);
     }

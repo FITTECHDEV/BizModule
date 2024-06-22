@@ -13,7 +13,7 @@
                 <div class="card-body">
                     <p>This is a UAT Test Approval Reminder</p>
                     <p><b>Hi {{ $username }},</b></p>
-                    <p>You have some entities that are pending your Approval</p>
+                    <p>You have <b>{{ $count }}</b> entities that are pending for your Approval</p>
                     <p>Please review them at your earliest convenience.</p>
                 </div>
             </div>

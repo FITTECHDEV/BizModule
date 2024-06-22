@@ -76,15 +76,14 @@
                                                             <div class="col-sm-9 col-lg-8 col-md-8">
                                                                 <select class="form-control form-control-sm" id="partyEntityType" name="partyEntityType" required>
                                                                     <option value="" disabled selected></option>
-                                                                    <option value="Client + Shipper + Consignee" @if(old('partyEntityType')=='Client + Shipper + Consignee'
-                                                                        ) selected @endif>Client + Shipper + Consignee</option>
-                                                                    {{-- <option value="Client Only">Client Only</option> --}}
+                                                                    <option value="Client with Debtor or Vendor" @if(old('partyEntityType')=='Client with Debtor or Vendor') selected @endif>Client with Debtor or Vendor</option>
+                                                                    <option value="Client without Debtor or Vendor" @if(old('partyEntityType')=='Client without Debtor or Vendor') selected @endif>Client without Debtor or Vendor</option>
                                                                     <option value="Shipper + Consignee" @if(old('partyEntityType')=='Shipper + Consignee' ) selected @endif>
                                                                         Shipper + Consignee</option>
-                                                                    <option value="Shipper Only" @if(old('partyEntityType')=='Shipper Only' ) selected @endif>Shipper Only
+                                                                    {{-- <option value="Shipper Only" @if(old('partyEntityType')=='Shipper Only' ) selected @endif>Shipper Only
                                                                     </option>
                                                                     <option value="Consignee Only" @if(old('partyEntityType')=='Consignee Only' ) selected @endif>Consignee
-                                                                        Only</option>
+                                                                        Only</option> --}}
                                                                     <option value="Forwarder" @if(old('partyEntityType')== 'Agent / Forwarder' ) selected @endif>Agent / Forwarder</option>
                                                                     <option value="Airline" @if(old('partyEntityType')=='Airline' ) selected @endif>Airline</option>
                                                                     <option value="Shipping Line" @if(old('partyEntityType')=='Shipplingline' ) selected @endif>
@@ -104,6 +103,7 @@
                                                                     <option value="Debtor & Vendor" @if(old('legalEntityType') == 'Debtor & Vendor') selected @endif>Debtor & Vendor</option>
                                                                     <option value="Debtor" @if(old('legalEntityType') == 'Debtor') selected @endif>Debtor</option>
                                                                     <option value="Vendor" @if(old('legalEntityType') == 'Vendor') selected @endif>Vendor</option>
+                                                                    <option hidden value="None" @if(old('legalEntityType') == 'None') selected @endif>None</option>
                                                                 </select>
                                                             </div>
                                                         </div>
@@ -953,6 +953,30 @@
         if (maxCreditLimit.startsWith("0")) {
             $(this).val("1" + maxCreditLimit.slice(1));
         }
+    });
+</script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var partyElement = document.getElementById('partyEntityType');
+        var legalElement = document.getElementById('legalEntityType');
+        var debtorType = document.getElementById('debtorType');
+        var vendorType = document.getElementById('vendorType');
+
+        partyElement.addEventListener('change', function() {
+            if (partyElement.value === 'Client without Debtor or Vendor') {
+                originalValue = legalElement.value; // Save the original value
+                legalElement.value = 'None';
+                legalElement.disabled = true;
+                debtorType.disabled = true;
+                vendorType.disabled = true;
+            } else {
+                legalElement.disabled = false;
+                legalElement.value = originalValue; // Restore the original value
+                debtorType.disabled = false;
+                vendorType.disabled = false;
+            }
+        });
     });
 </script>
 <script src="//code.jquery.com/jquery-1.12.4.min.js"></script>

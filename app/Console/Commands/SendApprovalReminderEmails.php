@@ -15,7 +15,7 @@ class SendApprovalReminderEmails extends Command
      *
      * @var string
      */
-    protected $signature = 'emails:send-approval-reminders';
+    protected $signature = 'emails:sendApprovalReminder';
 
     /**
      * The console command description.
@@ -37,10 +37,10 @@ class SendApprovalReminderEmails extends Command
     /**
      * Execute the console command.
      *
-     * @return int
      */
     public function handle()
     {
+        Log::notice('Email Reminders Running');
         $finance_count = $this->getFinanceCountValue();
         $manager_count = $this->getManagerCountValue();
 
@@ -48,29 +48,23 @@ class SendApprovalReminderEmails extends Command
             $finance_users = User::permission('create-client-party-SCM')->get();
 
             foreach ($finance_users as $finance_user) {
-                Mail::send('emails.entity-reminder', ['username' => $finance_user->FirstName], function ($message) use ($finance_user) {
+                Mail::send('emails.entity-reminder', ['username' => $finance_user->FirstName, 'count' => $finance_count], function ($message) use ($finance_user) {
                     $message->to($finance_user->Email)->subject('Reminder');
                 });
             }
-
         }
 
         if ($manager_count > 5) {
             $manager_users = User::permission('approve-entity-request')->get();
-
-            // foreach ($manager_users as $manager_user) {
-            //     Mail::raw('UAT Test. You have some Entities which are pending manager Approval.', function($message) use ($manager_user) {
-            //         $message->to($manager_user->Email)->subject('Reminder');
-            //     });
-            // }
             foreach ($manager_users as $manager_user) {
-                Mail::send('emails.entity-reminder', ['username' => $manager_user->FirstName], function ($message) use ($manager_user) {
+                Mail::send('emails.entity-reminder', ['username' => $manager_user->FirstName, 'count' => $manager_count], function ($message) use ($manager_user) {
                     $message->to($manager_user->Email)->subject('Reminder');
                 });
             }
         }
-
         Log::info('Scheduled test task ran successfully.');
+
+        return 0;
     }
 
     private function getFinanceCountValue()

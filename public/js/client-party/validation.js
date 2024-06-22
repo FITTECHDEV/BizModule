@@ -707,6 +707,8 @@ $(document).ready(function () {
 
     /**For show client party purposes*/
     let param = $('#partyEntityType option:selected').val();
+
+
     /** Manage client input on prty entity change : basic details section*/
     const entities = ['Shipper + Consignee', 'Consignee Only', 'Shipper Only', 'NoSCMIntergration'];
     criteria = entities.includes(param);
@@ -736,7 +738,7 @@ $(document).ready(function () {
      * @param {string} param
      */
     function PartyEntityType(param) {
-        if (param == "Client + Shipper + Consignee") {
+        if (param == "Client with Debtor or Vendor") {
             /**for client shipper consignee: disable otherCheck and otherInput*/
             /**Add class disabled to otherCheck uncheck if checked */
             if (!$('#otherCheck').attr('disabled')) {
@@ -745,7 +747,6 @@ $(document).ready(function () {
             } else {
                 $('#otherCheck').prop('checked', false);
             }
-
             /**check weather client/shipper/consignee has class disable then remove  And check*/
             /**Cleint */
             if ($('#clientCheck').attr('disabled')) {
@@ -769,7 +770,32 @@ $(document).ready(function () {
                 $('#consigneeCheck').prop('checked', true);
             }
             /**for shipper + consignee: disable client and other*/
-        } else if (param == "Shipper + Consignee") {
+        }else if(param == "Client without Debtor or Vendor"){
+            // Other check state then disable
+            if (!$('#otherCheck').attr('disabled')) {
+                $('#otherCheck').attr('disabled', 'true');
+                $('#otherCheck').prop('checked', false);
+            } else {
+                $('#otherCheck').prop('checked', false);
+            }
+            // Client check state then enable
+            if ($('#clientCheck').attr('disabled')) {
+                $('#clientCheck').removeAttr('disabled');
+                $('#clientCheck').prop('checked', true);
+            } else {
+                $('#clientCheck').prop('checked', true);
+            }
+            // Check Shipper state then enable
+            /**Shipper */
+            if ($('#shipperCheck').attr('disabled')) {
+                $('#shipperCheck').removeAttr('disabled');
+                $('#shipperCheck').prop('checked', true);
+            } else {
+                $('#shipperCheck').prop('checked', true);
+            }
+            // Check Debtor state then disable
+            // Check Vendor State then disable
+        }else if (param == "Shipper + Consignee") {
             if (!$('#otherCheck').attr('disabled')) {
                 $('#otherCheck').attr('disabled', 'true');
                 $('#otherCheck').removeAttr('checked');
@@ -900,7 +926,7 @@ $(document).ready(function () {
 
     function clientStatus(param) {
         /**if client party is the current option */
-        if (param == "Client + Shipper + Consignee") {
+        if (param == "Client with Debtor or Vendor") {
             /**client*/
             $('#client').prop('disabled', true);
             $('#client').removeAttr('required');
