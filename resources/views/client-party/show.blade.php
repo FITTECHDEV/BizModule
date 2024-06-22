@@ -82,21 +82,20 @@
                                                     <select class="form-control form-control-sm" id="partyEntityType"
                                                         name="partyEntityType" required>
                                                         <option value="" disabled selected></option>
-                                                        <option value="Client + Shipper + Consignee"
-                                                            @if(old('partyEntityType',$clientParty->OperatioEntityType)
-                                                            == 'Client + Shipper + Consignee') selected @endif>Client +
-                                                            Shipper + Consignee</option>
+                                                        <option value="Client with Debtor or Vendor" @if(old('partyEntityType',$clientParty->OperatioEntityType)== 'Client with Debtor or Vendor') selected @endif>Client with Debtor or Vendor</option>
+
+                                                        <option value="Client without Debtor or Vendor" @if(old('partyEntityType', $clientParty->OperatioEntityType)=='Client without Debtor or Vendor') selected @endif>Client without Debtor or Vendor</option>
                                                         {{-- <option value="Client Only">Client Only</option> --}}
                                                         <option value="Shipper + Consignee"
                                                             @if(old('partyEntityType',$clientParty->OperatioEntityType)
                                                             == 'Shipper + Consignee') selected @endif>Shipper +
                                                             Consignee</option>
-                                                        <option value="Shipper Only"
+                                                        {{-- <option value="Shipper Only"
                                                             @if(old('partyEntityType',$clientParty->OperatioEntityType)
                                                             == 'Shipper Only') selected @endif>Shipper Only</option>
                                                         <option value="Consignee Only"
                                                             @if(old('partyEntityType',$clientParty->OperatioEntityType)
-                                                            == 'Consignee Only') selected @endif>Consignee Only</option>
+                                                            == 'Consignee Only') selected @endif>Consignee Only</option> --}}
                                                         <option value="Forwarder"
                                                             @if(old('partyEntityType',$clientParty->OperatioEntityType)
                                                             == 'Forwarder') selected @endif>Agent / Forwarder</option>
@@ -136,9 +135,6 @@
                                                         <option value="Vendor" @if(old('legalEntityType',$clientParty->
                                                             LegalEntityType) == 'Vendor') selected @endif>Vendor
                                                         </option>
-                                                        {{-- <option value="None"
-                                                            @if(old('legalEntityType',$clientParty->LegalEntityType) ==
-                                                            'None') selected @endif>None</option> --}}
                                                     </select>
                                                 </div>
                                             </div>
@@ -401,11 +397,13 @@
                                 <button class="btn btn-primary m-2 btn-sm float-right" name="next" type="button"
                                     onclick="stepper.next()">Next <i class="fa fa-step-forward"
                                         aria-hidden="true"></i></button>
+                                @if (Auth::user()->can('create-client-party'))
                                 <button type="button" name="rejectBtn" id="rejectBtn"
                                             data-toggle="modal" data-target="#cancelModal"
                                             class="btn btn-danger float-right m-2 btn-sm" data-toggle="tooltip"
                                             data-placement="top" title="Reject For Amendment" data-bs-original-title="Update">
                                             <i class="fa fa-edit" aria-hidden="true"></i> Reject </button>
+                                @endif
                                 <button type="button" name="updateBtn" id="save-step1"
                                     class="btn btn-success btn-sm float-right m-2" data-toggle="tooltip"
                                     data-placement="top" title="" data-bs-original-title="Update"><i class="fa fa-edit"
