@@ -78,6 +78,8 @@
                                                                     <option value="" disabled selected></option>
                                                                     <option value="Client with Debtor or Vendor" @if(old('partyEntityType')=='Client with Debtor or Vendor') selected @endif>Client with Debtor or Vendor</option>
                                                                     <option value="Client without Debtor or Vendor" @if(old('partyEntityType')=='Client without Debtor or Vendor') selected @endif>Client without Debtor or Vendor</option>
+                                                                    <option value="Create Debtor/Vendor with Existing Client" @if(old('partyEntityType')=='Create Debtor/Vendor with Existing Client'
+                                                                        ) selected @endif>Create Debtor/Vendor with Existing Client</option>
                                                                     <option value="Shipper + Consignee" @if(old('partyEntityType')=='Shipper + Consignee' ) selected @endif>
                                                                         Shipper + Consignee</option>
                                                                     {{-- <option value="Shipper Only" @if(old('partyEntityType')=='Shipper Only' ) selected @endif>Shipper Only
@@ -124,6 +126,7 @@
                                                         <input type="text" class="form-control form-control-sm"
                                                         value="{{ old('companyName') }}"
                                                         name="companyName" id="companyName" maxlength="50">
+                                                        <select id="companyNameDrop" style="display:none;">Choose A Client</select>
                                                     </div>
                                                 </div>
                                                 {{-- AddressLine 1 --}}
@@ -972,7 +975,6 @@
                 vendorType.disabled = true;
             } else {
                 legalElement.disabled = false;
-                legalElement.value = originalValue; // Restore the original value
                 debtorType.disabled = false;
                 vendorType.disabled = false;
             }
@@ -991,6 +993,37 @@
     window.User = {
         value: '{{ auth()->user()->can("edit-client-party") }}'
     }
+</script>
+
+<script>
+    $('#partyEntityType').change(function() {
+        var selectedType = $(this).val();
+        // var selectedType = 'master';
+        if (selectedType === 'Create Debtor/Vendor with Existing Client') {
+            $('#companyName').hide();
+            $('#companyNameDrop').show();
+
+            $.ajax({
+                url: '{{ route("get-oet-clients") }}',
+                type: 'GET',
+                success: function(response) {
+                    var dropdown = $('#companyNameDrop');
+                    dropdown.empty();
+
+                    if (response.length > 0) {
+                        response.forEach(function(client) {
+                            dropdown.append(new Option(client.label, client.value));
+                        });
+                    } else {
+                        dropdown.append(new Option('No clients found', ''));
+                    }
+                }
+            });
+        } else {
+            $('#companyName').show();
+            $('#companyNameDrop').hide();
+        }
+    });
 </script>
 
 <script type="text/javascript">

@@ -325,6 +325,33 @@ class ClientPartyController extends Controller
         return response()->json(["Vendors" => $v, "Debtors" => $d]);
     }
 
+    public function getOETClients()
+    {
+        $clients = [];
+
+        // Get clients from the local table
+        // $results = ClientParty::select('name', 'Id', 'code')
+        // ->where('OperatioEntityType', "Client without Debtor or Vendor");
+
+        $results = DB::table('Cust_Entity')->where('OperatioEntityType', 'Client without Debtor or Vendor');
+        // dd($results);
+        $results_count = $results->count();
+        // ->where('OfficeID', Auth::user()->office->ID)
+        if ($results_count > 0) {
+            foreach ($results as $resp) {
+                if (isset($resp->Id)) {
+                    $clients[] = array(
+                        "value" => $resp->Id,
+                        "label" => $resp->name,
+                        "code" => $resp->code,
+                    );
+                }
+            }
+        }
+
+        return response()->json($clients);
+    }
+
     public function getClients($type = null)
     {
         $clients = [];
