@@ -156,7 +156,6 @@ $(document).ready(function () {
         officeCode = office_country_default_code;
         /*Currency list*/
         currencyList(officeID);
-        console.log(officeCode); /**/
         getDebtorVendorList(officeCode);
         /*tarrif list
         tarrif(officeID);*/

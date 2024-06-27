@@ -325,31 +325,30 @@ class ClientPartyController extends Controller
         return response()->json(["Vendors" => $v, "Debtors" => $d]);
     }
 
-    public function getOETClients()
+    public function autocompleteClient(Request $request)
     {
-        $clients = [];
+        // $search = $request->get('query');
+        $search = \request()->all()['query'];
+        $results = ClientParty::where('OperatioEntityType', "Client without Debtor or Vendor")
+            ->where('Name', 'LIKE', "%{$search}%")->pluck('Name');
+        return response()->json($results);
+    }
 
-        // Get clients from the local table
-        // $results = ClientParty::select('name', 'Id', 'code')
-        // ->where('OperatioEntityType', "Client without Debtor or Vendor");
+    public function fetchClientDetails($companyName)
+    {
+        $client = ClientParty::where('OperatioEntityType', "Client without Debtor or Vendor")->where('Name', $companyName)->first();
 
-        $results = DB::table('Cust_Entity')->where('OperatioEntityType', 'Client without Debtor or Vendor');
-        // dd($results);
-        $results_count = $results->count();
-        // ->where('OfficeID', Auth::user()->office->ID)
-        if ($results_count > 0) {
-            foreach ($results as $resp) {
-                if (isset($resp->Id)) {
-                    $clients[] = array(
-                        "value" => $resp->Id,
-                        "label" => $resp->name,
-                        "code" => $resp->code,
-                    );
-                }
-            }
+        if ($client) {
+            // Return only the specific attributes you want
+            $clientData = $client->only(['Name', 'Address_Line1', 'Address_CountryId', 'Address_CountryCode', 'Cont_Bch_PersonName_FirstName', 'Cont_Bch_PersonName_LastName', 'Cont_Bch_PhoneNumbers', 'Office', 'SalesMgrOfficeFunMapName', 'AccountMgrOfficeFunMapName', 'CreditLimitCurrencyCode', 'CreditDays', 'CreditLimit', 'LicenceTypeValue', 'LicenceTypeID']);
+
+            // dd($clientData);
+            return response()->json($clientData);
         }
 
-        return response()->json($clients);
+        // dd($client);
+
+        return response()->json(['message' => 'Client not found'], 404);
     }
 
     public function getClients($type = null)
@@ -610,6 +609,7 @@ class ClientPartyController extends Controller
             $status = 'Created';
         }
 
+
         // dd($status);
         //client party instatnce
         $clientParty = new ClientParty();
@@ -617,6 +617,7 @@ class ClientPartyController extends Controller
         $user = Auth::user();
         $code = $clientParty->generateUniqueCode($user->OfficeID);
         $client_party_id = guid();
+
 
         try {
             DB::beginTransaction();
@@ -714,6 +715,7 @@ class ClientPartyController extends Controller
                 'ClientName' => $clientName,
                 'ClientID' =>  $request->clientID,
                 'ClientCode' =>  $request->clientCode,
+
                 //request option
                 'RequestId' => $request->requestID ?? null,
                 'RequestName' => $request->clientOptionVal ?? null,
@@ -1127,6 +1129,7 @@ class ClientPartyController extends Controller
         $user = Auth::user();
         $cp = ClientParty::find($id);
 
+
         //authorization
         if (!$user->can('update-client-party')) {
             alert()->warning('Warning !', 'Unauthorised.')->showConfirmButton();
@@ -1135,6 +1138,8 @@ class ClientPartyController extends Controller
 
         // get client name
         $clientName = isset($request->client) ? $request->client : $request->clientInput;
+
+        // dd($request->clientID);
 
         $status = '';
 

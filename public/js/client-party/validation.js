@@ -19,7 +19,7 @@ $(document).ready(function () {
             let client = $('#client').val();
             let clientOptionVal = $('#clientOptionVal').val();
             let email = $('#contractEmail').val();
-
+            let clientName = $('#clientCompanyName').val();
             let firstName = $('#firstName').val();
             let lastName = $('#lastName').val();
             let phoneNo = $('#phoneNo').val();
@@ -73,13 +73,30 @@ $(document).ready(function () {
                 proceed = true;
             }
 
-            if (companyName.length == 0) {
-                $('#companyName').addClass('is-invalid');
-                window.stepper.to(0);
-            } else {
-                $('#companyName').removeClass('is-invalid');
-                proceed = true;
+            if ($('#companyName').is(':visible')) {
+                if (companyName.length == 0) {
+                    $('#companyName').addClass('is-invalid');
+                    proceed = false;
+                } else {
+                    $('#companyName').removeClass('is-invalid');
+                    proceed = true;
+                }
             }
+
+            if ($('#clientCompanyName').is(':visible')) {
+                if (clientName.length == 0) {
+                    $('#clientCompanyName').addClass('is-invalid');
+                    proceed = false;
+                } else {
+                    $('#clientCompanyName').removeClass('is-invalid');
+                    proceed = true;
+                }
+            }
+
+            if (proceed === false) {
+                window.stepper.to(0);
+            }
+
 
             if (adl1.length == 0) {
                 $('#addressLine1').addClass('is-invalid');
@@ -377,6 +394,7 @@ $(document).ready(function () {
         let legal_entity_val = $('#legalEntityType option:selected').val();
         let country = $('#countryID option:selected').val();
         let companyName = $('#companyName').val();
+        let clientName = $('#clientCompanyName').val();
         let adl1 = $('#addressLine1').val();
         let client = $('#client').val();
         let clientOptionVal = $('#clientOptionVal').val();
@@ -398,13 +416,29 @@ $(document).ready(function () {
             $('#legalEntityType').removeClass('is-invalid');
         }
 
-        if (companyName.length == 0) {
-            $('#companyName').addClass('is-invalid');
-            e.preventDefault();
-            save = false;
-        } else {
-            $('#companyName').removeClass('is-invalid');
+        if ($('#companyName').is(':visible')) {
+            if (companyName.length == 0) {
+                $('#companyName').addClass('is-invalid');
+                save = false;
+            } else {
+                $('#companyName').removeClass('is-invalid');
+            }
         }
+
+        if ($('#clientCompanyName').is(':visible')) {
+            if (clientName.length == 0) {
+                $('#clientCompanyName').addClass('is-invalid');
+                save = false;
+            } else {
+                $('#clientCompanyName').removeClass('is-invalid');
+            }
+        }
+
+        if (!save) {
+            e.preventDefault();
+        }
+
+
 
         if (adl1.length == 0) {
             $('#addressLine1').addClass('is-invalid');
@@ -950,7 +984,15 @@ $(document).ready(function () {
             $('#clientOptionVal').val('');
             $('#requestID').val('');
             $('#requestCode').val('');
-        } else if (param == "Shipper + Consignee") {
+        }
+        else if (param == "Create Debtor/Vendor with Existing Client") {
+            if ($('#client').attr('disabled') && $('#clientOption').attr('disabled')) {
+                $('#client').prop('disabled', false);
+                $('#client').attr('required', true);
+                $('#clientOption').prop('disabled', false);
+            }
+        }
+        else if (param == "Shipper + Consignee") {
             if ($('#client').attr('disabled') && $('#clientOption').attr('disabled')) {
                 $('#client').prop('disabled', false);
                 $('#client').attr('required', true);

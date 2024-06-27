@@ -83,8 +83,8 @@
                                                         name="partyEntityType" required>
                                                         <option value="" disabled selected></option>
                                                         <option value="Client with Debtor or Vendor" @if(old('partyEntityType',$clientParty->OperatioEntityType)== 'Client with Debtor or Vendor') selected @endif>Client with Debtor or Vendor</option>
-
                                                         <option value="Client without Debtor or Vendor" @if(old('partyEntityType', $clientParty->OperatioEntityType)=='Client without Debtor or Vendor') selected @endif>Client without Debtor or Vendor</option>
+                                                        <option value="Create Debtor/Vendor with Existing Client" @if(old('partyEntityType', $clientParty->OperatioEntityType)=='Create Debtor/Vendor with Existing Client') selected @endif>Create Debtor/Vendor with Existing Client</option>
                                                         {{-- <option value="Client Only">Client Only</option> --}}
                                                         <option value="Shipper + Consignee"
                                                             @if(old('partyEntityType',$clientParty->OperatioEntityType)

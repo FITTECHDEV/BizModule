@@ -1,29 +1,63 @@
-<!-- resources/views/emails/approval_reminder.blade.php -->
-
 <!DOCTYPE html>
-<html>
-    <head>
-        <title>Entity Approval Reminder</title>
-        <!-- Add Bootstrap CSS -->
-        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-    </head>
-    <body>
-        <div class="container mt-5">
-            <div class="card col-md-8 mx-auto">
-                <div class="card-body">
-                    <p>This is a UAT Test Approval Reminder</p>
-                    <p><b>Hi {{ $username }},</b></p>
-                    <p>You have <b>{{ $count }}</b> entities that are pending for your Approval</p>
-                    <p>Please review them at your earliest convenience.</p>
-                </div>
-            </div>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reminder</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f8f9fa;
+            color: #343a40;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            background-color: #ffffff;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        .header {
+            background-color: #007bff;
+            color: #ffffff;
+            padding: 20px;
+            text-align: center;
+            font-size: 24px;
+        }
+        .content {
+            padding: 20px;
+        }
+        .content p {
+            font-size: 16px;
+            line-height: 1.5;
+        }
+        .footer {
+            background-color: #f1f1f1;
+            color: #6c757d;
+            padding: 10px;
+            text-align: center;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            Entity Approval Reminder Notification
         </div>
-        <!-- Add Bootstrap JS and dependencies -->
-        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script>
-        <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
-    </body>
+        <div class="content">
+            <p>Dear {{ $username }}</p>
+            <p>This is a reminder that you have <strong>{{ $count }}</strong> entities pending approval.</p>
+            <p>Please review and approve them at your earliest convenience.</p>
+            <p>Thank you!</p>
+        </div>
+        <div class="footer">
+            &copy; 2024 Freight In Time. All rights reserved.
+        </div>
+    </div>
+</body>
 </html>
-
-
-

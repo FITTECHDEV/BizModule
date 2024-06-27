@@ -42,7 +42,9 @@ class SendApprovalReminderEmails extends Command
     {
         Log::notice('Email Reminders Running');
         $finance_count = $this->getFinanceCountValue();
-        $manager_count = $this->getManagerCountValue();
+        $officeCounts = $this->getManagerCountValue();
+
+        $manager_users = User::permission('approve-entity-request')->get();
 
         if ($finance_count > 5) {
             $finance_users = User::permission('create-client-party-SCM')->get();
@@ -54,14 +56,19 @@ class SendApprovalReminderEmails extends Command
             }
         }
 
-        if ($manager_count > 5) {
-            $manager_users = User::permission('approve-entity-request')->get();
-            foreach ($manager_users as $manager_user) {
-                Mail::send('emails.entity-reminder', ['username' => $manager_user->FirstName, 'count' => $manager_count], function ($message) use ($manager_user) {
-                    $message->to($manager_user->Email)->subject('Reminder');
-                });
+        foreach ($officeCounts as $officeID => $count) {
+            if ($count > 5) {
+                foreach ($manager_users as $manager) {
+                    if ($manager->OfficeID == $officeID) {
+                        // Send email to the manager
+                        Mail::send('emails.entity-reminder', ['username' => $manager->FirstName, 'count' => $count], function ($message) use ($manager) {
+                            $message->to($manager->Email)->subject('Reminder');
+                        });
+                    }
+                }
             }
         }
+
         Log::info('Scheduled test task ran successfully.');
 
         return 0;
@@ -75,11 +82,26 @@ class SendApprovalReminderEmails extends Command
         return $submitted_count; // Submitted count value
     }
 
-    private function getManagerCountValue()
-    {
-        $pending = DB::table('Cust_Entity')->where('Status', 'PendingManagerApproval');
-        $pending_count = $pending->count();
 
-        return $pending_count; // Pending Manager Approval count value
+    public function getManagerCountValue()
+    {
+        $pending = DB::table('Cust_Entity')->where('Status', 'PendingManagerApproval')->get();
+        $manager_users = User::permission('approve-entity-request')->get();
+
+        $officeCounts = [];
+        $officeIDs = [];
+
+        foreach ($manager_users as $manager) {
+            if (!in_array($manager->OfficeID, $officeIDs)) {
+                $officeID = $manager->OfficeID;
+                $officeIDs[] = $officeID;
+
+                $count = $pending->where('OfficeID', $officeID)->count();
+                $officeCounts[$officeID] = $count;
+            }
+        }
+
+        return $officeCounts;
     }
+
 }

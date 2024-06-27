@@ -123,10 +123,15 @@
                                                 <div class="form-group row mb-1" >
                                                     <label for="companyName" class="col-sm-3 col-lg-4 col-md-4 col-form-label col-form-label-sm"><i class="fa fa-building" aria-hidden="true"></i>Company Name<span class="text-danger">*</span></label>
                                                     <div class="col-sm-9 col-lg-8 col-md-8">
+
                                                         <input type="text" class="form-control form-control-sm"
-                                                        value="{{ old('companyName') }}"
-                                                        name="companyName" id="companyName" maxlength="50">
-                                                        <select id="companyNameDrop" style="display:none;">Choose A Client</select>
+                                                            value="{{ old('companyName') }}"
+                                                            name="companyName" id="companyName" maxlength="50">
+                                                        <div id="clientCompanyName" style="display: none;">
+                                                            <input type="text" id="clientCompanyNameInput" class="form-control form-control-sm" placeholder="Enter Client Company Name">
+                                                            <div id="autocomplete-list" class="autocomplete-list"></div>
+                                                        </div>
+                                                        <!-- <input type="text" name="clientCompanyName" id="clientCompanyName" class="form-control form-control-sm" placeholder="Start typing company name"> -->
                                                     </div>
                                                 </div>
                                                 {{-- AddressLine 1 --}}
@@ -996,33 +1001,78 @@
 </script>
 
 <script>
-    $('#partyEntityType').change(function() {
-        var selectedType = $(this).val();
-        // var selectedType = 'master';
-        if (selectedType === 'Create Debtor/Vendor with Existing Client') {
-            $('#companyName').hide();
-            $('#companyNameDrop').show();
+    $(document).ready(function() {
+        $('#partyEntityType').change(function() {
+            var selectedType = $(this).val();
+            if (selectedType === 'Create Debtor/Vendor with Existing Client') {
+                $('#companyName').hide();
+                $('#clientCompanyName').show();
 
-            $.ajax({
-                url: '{{ route("get-oet-clients") }}',
-                type: 'GET',
-                success: function(response) {
-                    var dropdown = $('#companyNameDrop');
-                    dropdown.empty();
-
-                    if (response.length > 0) {
-                        response.forEach(function(client) {
-                            dropdown.append(new Option(client.label, client.value));
+                $('#clientCompanyNameInput').on('input', function() {
+                    var query = $(this).val();
+                    if(query.length > 0) {
+                        $.ajax({
+                            url: "{{ route('autocomplete-client') }}",
+                            type: "GET",
+                            data: {'query': query},
+                            success: function(data) {
+                                $('#autocomplete-list').empty();
+                                data.forEach(function(item) {
+                                    $('#autocomplete-list').append('<div class="autocomplete-item" data-value="' + item + '">' + item + '</div>');
+                                });
+                            },
+                            error: function(xhr, status, error) {
+                                console.error("AJAX Error: ", status, error);
+                            }
                         });
                     } else {
-                        dropdown.append(new Option('No clients found', ''));
+                        $('#autocomplete-list').empty();
                     }
-                }
-            });
-        } else {
-            $('#companyName').show();
-            $('#companyNameDrop').hide();
-        }
+                });
+
+                $(document).on('click', '.autocomplete-item', function() {
+                    var value = $(this).data('value');
+                    $('#clientCompanyNameInput').val(value);
+                    $('#autocomplete-list').empty();
+
+                    $('#companyName').val(value);
+
+                    $.ajax({
+                        url: "{{ url('/client-details') }}/" + value,
+                        type: "GET",
+                        success: function(data) {
+                            $('#addressLine1').text(data.Address_Line1);
+                            $('#countryID').val(data.Address_CountryId);
+                            $('#countryCode').val(data.Address_CountryCode);
+                            $('#firstName').val(data.Cont_Bch_PersonName_FirstName);
+                            $('#lastName').val(data.Cont_Bch_PersonName_LastName);
+                            $('#phoneNo').val(data.Cont_Bch_PhoneNumbers);
+                            $('#officeCountryDisp').val(data.Office);
+                            $('#salesPIC').val(data.SalesMgrOfficeFunMapName);
+                            $('#accountPIC').val(data.AccountMgrOfficeFunMapName);
+                            $('#billingCurrency').val(data.CreditLimitCurrencyCode);
+                            $('#creditDays').val(data.CreditDays);
+                            $('#maxCreditLimit').val(data.CreditLimit);
+                            $('#licenceTypeValue').val(data.LicenceTypeValue);
+                            $('#licenceTypeID').val(data.LicenceTypeID);
+                        },
+                        error: function(xhr, status, error) {
+                            console.error("AJAX Error: ", status, error);
+                        }
+                    });
+                });
+
+                $(document).click(function(e) {
+                    if (!$(e.target).closest('#autocomplete-list, #clientCompanyNameInput').length) {
+                        $('#autocomplete-list').empty();
+                    }
+                });
+
+            } else {
+                $('#companyName').show();
+                $('#clientCompanyName').hide();
+            }
+        });
     });
 </script>
 
