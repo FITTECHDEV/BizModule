@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
+
 class KRABillingHeader extends Model
 {
     use HasFactory;
@@ -17,9 +18,13 @@ class KRABillingHeader extends Model
     protected $fillable = [
         'Docstatus',
         'KRAInvoiceNo',
-        "KRASerialNo",
-        "KRAQRCode",
-        "SubmissionStatus"
+        'KRASerialNo',
+        'KRAQRCode',
+        'KRAInternalData',
+        'KRASignature',
+        'KRAScuReceiptDate',
+        'KRAScuReceiptNo',
+        'SubmissionStatus'
     ];
 
     const CREATED_AT = 'CreatedOn';

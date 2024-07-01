@@ -103,5 +103,4 @@ class SendApprovalReminderEmails extends Command
 
         return $officeCounts;
     }
-
 }

@@ -7,6 +7,7 @@ use App\Models\KRABillingHeader;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
+use DateTime;
 
 class EtimsInvoices extends Command
 {
@@ -99,16 +100,26 @@ class EtimsInvoices extends Command
      */
     protected function handleSuccessfulSubmission($invoice, $responseData)
     {
+        // Convert the scuReceiptDate
+        $scuReceiptDate = $responseData['data']['scuReceiptDate'];
+        $formattedDate = DateTime::createFromFormat('YmdHis', $scuReceiptDate)->format('Y-m-d H:i:s');
+
+        // Update the database with the formatted date
         KRABillingHeader::where('ID', $invoice->ID)->update([
             'DocStatus' => 'Submitted',
             'KRAInvoiceNo' => $responseData['data']['invoiceNo'],
             'KRASerialNo' => $responseData['data']['scdcId'],
             'KRAQRCode' => $responseData['data']['invoiceVerificationUrl'],
+            'KRAInternalData' => $responseData['data']['internalData'],
+            'KRASignature' => $responseData['data']['signature'],
+            'KRAScuReceiptDate' => $formattedDate,
+            'KRAScuReceiptNo' => $responseData['data']['scuReceiptNo'],
             'SubmissionStatus' => $responseData['message'],
         ]);
 
         Log::info("Invoice ID: {$invoice->ID} submitted successfully.");
     }
+
 
     /**
      * Handle failed API submission.

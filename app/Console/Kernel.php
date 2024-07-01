@@ -42,9 +42,7 @@ class Kernel extends ConsoleKernel
         // $schedule->command('remind:assigned')->everyMinute()->between('8:00', '17:00');
         $schedule->job('App\Jobs\RemindAssignedTickets')->between('8:30', '17:00')->everyFourHours()->withoutOverlapping();
 
-        $schedule->command('emails:sendApprovalReminder')
-            ->everyTwoHours()
-            ->withoutOverlapping();
+        $schedule->command('emails:sendApprovalReminder')->between('8:30', '17:00')->withoutOverlapping();
 
         $schedule->command('generate:invoice')->everyFiveMinutes()->withoutOverlapping();
     }
