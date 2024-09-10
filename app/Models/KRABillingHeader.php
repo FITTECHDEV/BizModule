@@ -7,85 +7,81 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
+
 class KRABillingHeader extends Model
 {
     use HasFactory;
 
     protected $table = 'KRA_BillingHeader';
 
+    // protected $guarded = [];
+    protected $fillable = [
+        'Docstatus',
+        'KRAInvoiceNo',
+        'KRASerialNo',
+        'KRAQRCode',
+        'KRAInternalData',
+        'KRASignature',
+        'KRAScuReceiptDate',
+        'KRAScuReceiptNo',
+        'SubmissionStatus'
+    ];
+
     const CREATED_AT = 'CreatedOn';
     const UPDATED_AT = 'LastModifiedOn';
     const DELETED_AT = 'DeletedOn';
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array
-     */
-    
-    protected $guarded = [];
-
-    /**
-     * Get the details for the billing header.
-     */
     public function details()
     {
         return $this->hasMany(KRABillingDetail::class, 'DocumentHeaderId', 'ID');
     }
 
-    /**
-     * Count invoices based on a column and value with optional constraints.
-     *
-     * @param  string  $column
-     * @param  mixed   $value
-     * @param  array|null  $constraints
-     * @return string
-     */
     public function invCredCount(string $column = null, $value = null, array $constraints = null)
     {
-        if ($column === null || $value === null) {
-            return '0';
-        }
-
-        $query = $value === '*' ? KRABillingHeader::query() : KRABillingHeader::where($column, $value);
-
-        if ($constraints) {
-            foreach ($constraints as $constraint) {
-                $query->where($constraint[0], $constraint[1]);
-            }
-        }
-
+        $count = 0;
         $auth_user = Auth::user();
-        if ($auth_user->Role !== 1) {
-            $query->where('CreatedBy', $auth_user->full_name);
+
+        if ($column == null || $value == null) {
+            return $count;
         }
 
-        return number_format($query->count(), 0, '', ',');
+        if ($value == '*') {
+            $count = KRABillingHeader::count();
+        } else {
+            $count = KRABillingHeader::where($column, $value)->count();
+        }
+
+        if (isset($constraints) && !empty($constraints)) {
+            if ($value == '*') {
+                $kraBillingHeader = new KRABillingHeader();
+            } else {
+                $kraBillingHeader = KRABillingHeader::where($column, $value);
+            }
+            foreach ($constraints as $key => $constraint) {
+                $kraBillingHeader = $kraBillingHeader->where($constraint[0], $constraint[1]);
+            }
+            if ($auth_user->Role != 1) {
+                $kraBillingHeader = $kraBillingHeader->where('CreatedBy', $auth_user->full_name);
+            }
+            $count = $kraBillingHeader->count();
+        }
+
+        return number_format($count, 0, '', ',');
     }
 
-    /**
-     * Get TIMS stats.
-     *
-     * @return array
-     */
     public function timsStats()
     {
-        return DB::select(DB::raw("
-            SELECT DocStatus as StatusName, COUNT(DocStatus) as StatusCount
-            FROM KRA_BillingHeader
-            GROUP BY DocStatus
-            ORDER BY StatusCount DESC
-        "));
+
+        return DB::select(DB::raw("select DocStatus as StatusName,
+            COUNT(DocStatus) as StatusCount
+            from
+            KRA_BillingHeader
+            group by DocStatus
+            order by StatusCount desc"));
     }
 
-    /**
-     * Scope a query to only include pending invoices.
-     *
-     * @param  \Illuminate\Database\Eloquent\Builder  $query
-     * @return \Illuminate\Database\Eloquent\Builder
-     */
-    public function scopePending($query)
+    public function scopeNoLock($query)
     {
-        return $query->where('DocStatus', 'Pending');
+        return $query->from(DB::raw(self::getTable() . ' with (nolock)'));
     }
 }
