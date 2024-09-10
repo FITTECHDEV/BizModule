@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Category;
 use App\Models\ClientParty;
 use App\Models\KRABillingHeader;
+use App\Models\TRABillingHeader;
+use App\Models\RRABillingHeader;
 use App\Models\Ticket;
 use App\Models\Office;
 use App\Models\User;
@@ -47,9 +49,15 @@ class HomeController extends Controller
 
         $efris_stats = DB::select('SET NOCOUNT ON; EXEC EFRIS_InvoiceStatus');
 
+        $traStatsTZ = TRABillingHeader::getStatsByOfficeCode(['AR']);
+        $traStatsADL = TRABillingHeader::getStatsByOfficeCode(['TZ']);
+
+        $rra_stats = new RRABillingHeader();
+        $rra_stats =  $rra_stats->rraStats();
+
         return view(
             'dashboard.ticket',
-            compact('ticketStatistics', 'entityStatistics','tims_stats','efris_stats')
+            compact('ticketStatistics', 'entityStatistics', 'tims_stats', 'efris_stats', 'traStatsTZ', 'traStatsADL','rra_stats')
         );
     }
 

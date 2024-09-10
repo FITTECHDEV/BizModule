@@ -138,6 +138,11 @@ Route::group(['middleware' => ['auth', 'HtmlMinifier']], function () {
     Route::get('datatables/tims', [App\Http\Controllers\DataTablesController::class, 'tims'])->name('datatables.tims');
 
     Route::get('datatables/efris', [App\Http\Controllers\DataTablesController::class, 'efris'])->name('datatables.efris');
+
+    Route::get('datatables/tra', [App\Http\Controllers\DataTablesController::class, 'tra'])->name('datatables.tra');
+
+    Route::get('datatables/tra_fit_tz', [App\Http\Controllers\DataTablesController::class, 'traFITTZ'])->name('datatables.tra_tz');
+
     /**
      * OFFICE
      */
@@ -247,5 +252,28 @@ Route::group(['middleware' => ['auth', 'HtmlMinifier']], function () {
     Route::group(['prefix'=>'efris'], function(){
         Route::get('/', [App\Http\Controllers\EfrisController::class, 'index'])->name('efris.index');
         Route::get('re-trigger/{docNo}', [App\Http\Controllers\EfrisController::class, 'reTrigger'])->name('efris.reTrigger');
+    });
+
+    /**!SECTION TRA FIT*/
+    Route::group(['prefix'=>'tra'], function(){
+        Route::get('/', [App\Http\Controllers\TraController::class, 'index'])->name('tra.index');
+        Route::get('/get-stats', [App\Http\Controllers\TraController::class, 'getStats'])->name('tra.get_stats');
+        Route::get('re-trigger/{docNo}', [App\Http\Controllers\TraController::class, 'reTrigger'])->name('tra.reTrigger');
+    });
+
+    /**!SECTION TRA ADL*/
+    Route::group(['prefix'=>'traADL'], function(){
+        Route::get('/', [App\Http\Controllers\TraADLController::class, 'index'])->name('traADL.index');
+        Route::get('/get-stats', [App\Http\Controllers\TraADLController::class, 'getStats'])->name('traADL.get_stats');
+        Route::get('re-trigger/{docNo}', [App\Http\Controllers\TraADLController::class, 'reTrigger'])->name('traADL.reTrigger');
+        Route::get('json/{id}', [App\Http\Controllers\TraADLController::class, 'jsonGenerate'])->name('tims.json');
+        Route::get('invoice/download/{id}', [App\Http\Controllers\TraADLController::class, 'invoiceDownload'])->name('tims.invoiceDownload')->middleware(['signed']);
+    });
+
+     /**!SECTION RRA */
+     Route::group(['prefix'=>'rra'], function(){
+        Route::get('/', [App\Http\Controllers\RRAController::class, 'index'])->name('rra.index');
+        Route::get('/get-stats', [App\Http\Controllers\RRAController::class, 'getStats'])->name('rra.get_stats');
+        Route::get('re-trigger/{docNo}', [App\Http\Controllers\RRAController::class, 'reTrigger'])->name('rra.reTrigger');
     });
 });

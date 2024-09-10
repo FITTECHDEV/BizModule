@@ -1582,11 +1582,12 @@ class ClientPartyController extends Controller
             $results = json_decode(json_encode([['Status' => 'Failed', 'Remark' => 'Entity Creation Failed.']]));
         }
 
-        if ($results[0]->Status == 'Failed') {
-            DB::beginTransaction();
-            DB::table('Cust_Entity')->where('Id', $requestID)->update(['Status' => 'Submitted']);
-            DB::commit();
-        }
+        
+        // if ($results[0]->Status == 'Failed') {
+        //     DB::beginTransaction();
+        //     DB::table('Cust_Entity')->where('Id', $requestID)->update(['Status' => 'Submitted']);
+        //     DB::commit();
+        // }
         // Log::info($results);
         return $results;
     }

@@ -146,7 +146,7 @@
                                                 <div class="form-group row mb-1">
                                                     <label for="addressLine2" class="col-sm-3 col-lg-4 col-form-label col-form-label-sm"><i class="fa fa-map-marker" aria-hidden="true"></i> AddressLine 2</label>
                                                     <div class="col-sm-9 col-lg-8">
-                                                        <textarea name="addressLine2" id="addressLine2" class="form-control form-control-sm">{{ old('addressLine2') }}</textarea>
+                                                        <textarea name="addressLine2" id="addressLine2" maxlength="50" class="form-control form-control-sm">{{ old('addressLine2') }}</textarea>
                                                     </div>
                                                 </div>
                                                 {{-- Country Code and Country Name --}}

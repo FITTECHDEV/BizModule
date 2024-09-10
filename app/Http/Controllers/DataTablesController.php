@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\ClientParty;
 use App\Models\KRABillingHeader;
+use App\Models\TRABillingHeader;
 use App\Models\Ticket;
 use App\Models\TicketView;
 use App\Models\Office;
@@ -600,7 +601,7 @@ class DataTablesController extends Controller
                 return $html;
             })
             ->addColumn('AssignedTo', function ($row) {
-                return ($row->assignedTo != null) ?  $row->assignedTo->full_name : 'Not Assigned';
+                return ($row->assignedTo != null) ? $row->assignedTo->full_name : 'Not Assigned';
             })
             ->addColumn('OfficeName', function ($row) {
                 $user = User::select('OfficeID')
@@ -919,7 +920,7 @@ class DataTablesController extends Controller
                 return $row->CreatedOn->format('Y-m-d H:i:s');
             })
             ->addColumn('AssignedTo', function ($row) {
-                return ($row->assignedTo != null) ?  $row->assignedTo->full_name : 'Not Assigned';
+                return ($row->assignedTo != null) ? $row->assignedTo->full_name : 'Not Assigned';
             })
             // ->editColumn('CreatedBy', function ($row) {
             //     $user = User::where('ID', $row->UserID)->first();
@@ -1239,7 +1240,7 @@ class DataTablesController extends Controller
     public function efris()
     {
 
-        $invoice_creds  = DB::select('EXEC EFRIS_InvoiceRegister');
+        $invoice_creds = DB::select('EXEC EFRIS_InvoiceRegister');
 
         return Datatables::of($invoice_creds)
             ->editColumn('Status', function ($row) {
@@ -1272,6 +1273,158 @@ class DataTablesController extends Controller
                 return $rawHtml;
             })
             ->rawColumns(['Action', 'Status', 'Date', 'Type'])
+            ->make();
+    }
+
+    public function tra()
+    {
+        // $invoice_creds = TRABillingHeader::select(
+        //     'ID',
+        //     'DocNo',
+        //     'DocDate as DocDate',
+        //     'DebtorName',
+        //     'DocumentType as DocType',
+        //     'DocStatus',
+        //     'SubmissionStatus as Remarks',
+        //     'KRAQRCode',
+        //     'InvoiceType'
+        // );
+        $invoice_creds = TRABillingHeader::filterByOfficeCode(['TZ'])->select(
+            'ID',
+            'DocNo',
+            'DocDate as DocDate',
+            'DebtorName',
+            'DocumentType as DocType',
+            'DocStatus',
+            'SubmissionStatus as Remarks',
+            'TRAQRCode',
+            'InvoiceType'
+        );
+
+
+        return Datatables::of($invoice_creds)
+            ->editColumn('DocStatus', function ($row) {
+                $status = "";
+                if ($row->DocStatus == 'Submitted') {
+                    $status = '<a href="' . $row->KRAQRCode . '" target="__blank">' . $row->DocStatus . '</a>';
+                } else {
+                    $status = $row->DocStatus;
+                }
+                return $status;
+            })
+            ->editColumn('DocDate', function ($row) {
+                return Carbon::parse($row->DocDate)->format('m-d-Y');
+            })
+            ->addColumn('Action', function ($row) {
+                $rawHtml = "";
+                if ($row->DocStatus != "Submitted") {
+                    $rawHtml = '<a class="btn btn-xs btn-info mr-1 re-trigger" onclick="editInvoice(`' . $row->ID . '`,`re-trigger`,`' . $row->DocNo . '`)" title="Re-Trigger" id=' . $row->DocNo . '><i class="fa fa-refresh" aria-hidden="true"></i></a>';
+                    $rawHtml .= '<a class="btn btn-xs btn-warning mr-1 edit-invoice" onclick="editInvoice(`' . $row->ID . '`,`edit`)" title="Edit" id=' . $row->ID . '><i class="fa fa-edit" aria-hidden="true"></i></a>';
+                }
+
+                $rawHtml .= '<a class="btn btn-xs btn-primary mr-1" target="__blank" title="Invoice Data" href=' . route("tims.json", $row->ID) . '><i class="fa fa-download" aria-hidden="true"></i></a> ';
+
+                if (($row->DocStatus == "Submitted") && ($row->InvoiceType == 'Export')) {
+                    $rawHtml .= '<a class="btn btn-xs btn-primary" target="__blank" title="Invoice File" href=' . URL::signedRoute("tims.invoiceDownload", $row->ID) . '><i class="fas fa-file-invoice-dollar" aria-hidden="true"></i></a> ';
+                }
+
+                return $rawHtml;
+            })
+            ->rawColumns(['Action', 'DocStatus'])
+            ->make();
+    }
+
+
+    public function traFITTZ()
+    {
+
+        $invoice_creds = TRABillingHeader::filterByOfficeCode(['AR'])->select(
+            'ID',
+            'DocNo',
+            'DocDate as DocDate',
+            'DebtorName',
+            'DocumentType as DocType',
+            'DocStatus',
+            'SubmissionStatus as Remarks',
+            'TRAQRCode',
+            'InvoiceType'
+        );
+
+
+        return Datatables::of($invoice_creds)
+            ->editColumn('DocStatus', function ($row) {
+                $status = "";
+                if ($row->DocStatus == 'Submitted') {
+                    $status = '<a href="' . $row->KRAQRCode . '" target="__blank">' . $row->DocStatus . '</a>';
+                } else {
+                    $status = $row->DocStatus;
+                }
+                return $status;
+            })
+            ->editColumn('DocDate', function ($row) {
+                return Carbon::parse($row->DocDate)->format('m-d-Y');
+            })
+            ->addColumn('Action', function ($row) {
+                $rawHtml = "";
+                if ($row->DocStatus != "Submitted") {
+                    $rawHtml = '<a class="btn btn-xs btn-info mr-1 re-trigger" onclick="editInvoice(`' . $row->ID . '`,`re-trigger`,`' . $row->DocNo . '`)" title="Re-Trigger" id=' . $row->DocNo . '><i class="fa fa-refresh" aria-hidden="true"></i></a>';
+                    $rawHtml .= '<a class="btn btn-xs btn-warning mr-1 edit-invoice" onclick="editInvoice(`' . $row->ID . '`,`edit`)" title="Edit" id=' . $row->ID . '><i class="fa fa-edit" aria-hidden="true"></i></a>';
+                }
+
+                $rawHtml .= '<a class="btn btn-xs btn-primary mr-1" target="__blank" title="Invoice Data" href=' . route("tims.json", $row->ID) . '><i class="fa fa-download" aria-hidden="true"></i></a> ';
+
+                if (($row->DocStatus == "Submitted") && ($row->InvoiceType == 'Export')) {
+                    $rawHtml .= '<a class="btn btn-xs btn-primary" target="__blank" title="Invoice File" href=' . URL::signedRoute("tims.invoiceDownload", $row->ID) . '><i class="fas fa-file-invoice-dollar" aria-hidden="true"></i></a> ';
+                }
+
+                return $rawHtml;
+            })
+            ->rawColumns(['Action', 'DocStatus'])
+            ->make();
+    }
+
+    public function rra()
+    {
+        $invoice_creds = RRABillingHeader::select(
+            'ID',
+            'DocNo',
+            'DocDate as DocDate',
+            'DebtorName',
+            'DocumentType as DocType',
+            'DocStatus',
+            'SubmissionStatus as Remarks',
+            'RRAQRCode',
+            'InvoiceType'
+        );
+        return Datatables::of($invoice_creds)
+            ->editColumn('DocStatus', function ($row) {
+                $status = "";
+                if ($row->DocStatus == 'Submitted') {
+                    $status = '<a href="' . $row->KRAQRCode . '" target="__blank">' . $row->DocStatus . '</a>';
+                } else {
+                    $status = $row->DocStatus;
+                }
+                return $status;
+            })
+            ->editColumn('DocDate', function ($row) {
+                return Carbon::parse($row->DocDate)->format('m-d-Y');
+            })
+            ->addColumn('Action', function ($row) {
+                $rawHtml = "";
+                if ($row->DocStatus != "Submitted") {
+                    $rawHtml = '<a class="btn btn-xs btn-info mr-1 re-trigger" onclick="editInvoice(`' . $row->ID . '`,`re-trigger`,`' . $row->DocNo . '`)" title="Re-Trigger" id=' . $row->DocNo . '><i class="fa fa-refresh" aria-hidden="true"></i></a>';
+                    $rawHtml .= '<a class="btn btn-xs btn-warning mr-1 edit-invoice" onclick="editInvoice(`' . $row->ID . '`,`edit`)" title="Edit" id=' . $row->ID . '><i class="fa fa-edit" aria-hidden="true"></i></a>';
+                }
+
+                $rawHtml .= '<a class="btn btn-xs btn-primary mr-1" target="__blank" title="Invoice Data" href=' . route("tims.json", $row->ID) . '><i class="fa fa-download" aria-hidden="true"></i></a> ';
+
+                if (($row->DocStatus == "Submitted") && ($row->InvoiceType == 'Export')) {
+                    $rawHtml .= '<a class="btn btn-xs btn-primary" target="__blank" title="Invoice File" href=' . URL::signedRoute("tims.invoiceDownload", $row->ID) . '><i class="fas fa-file-invoice-dollar" aria-hidden="true"></i></a> ';
+                }
+
+                return $rawHtml;
+            })
+            ->rawColumns(['Action', 'DocStatus'])
             ->make();
     }
 }

@@ -1,9 +1,0 @@
-Kebs Ammendments
-0-49,999=Ksh 1,000
-50,000-99,999=Ksh 1,500
-100,000-299,999=Ksh 1,800
-300,000-499,999=Ksh 0.6 of C.V.
-Above 500,000=Ksh 5% of C.V.
-
-Countries where no inspection is required, with PVoC, exemption or any KEBS waiver is 0.6% of C.V.
-The countries are in the 3 paged KEBS notice shared on email.
