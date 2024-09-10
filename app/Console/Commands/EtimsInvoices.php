@@ -7,6 +7,7 @@ use App\Models\KRABillingHeader;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
+use DateTime;
 
 class EtimsInvoices extends Command
 {
@@ -44,9 +45,19 @@ class EtimsInvoices extends Command
         return 0;
     }
 
+    /**
+     * Fetch pending invoices.
+     *
+     * @param int|null $invoiceId
+     * @return \Illuminate\Database\Eloquent\Collection
+     */
     protected function fetchPendingInvoices($invoiceId = null)
     {
-        $query = KRABillingHeader::pending();
+        $query = KRABillingHeader::nolock()
+            ->where('Docstatus', 'Pending')
+            ->whereNull('KRAInvoiceNo')
+            ->whereNull('KRASerialNo')
+            ->whereNull('KRAQRCode');
 
         if ($invoiceId) {
             $query->where('ID', $invoiceId);
@@ -55,6 +66,13 @@ class EtimsInvoices extends Command
         return $query->get();
     }
 
+    /**
+     * Submit invoice data to the KRA API.
+     *
+     * @param \App\Models\KRABillingHeader $invoice
+     * @param array $jsonData
+     * @return void
+     */
     protected function submitToApi($invoice, $jsonData)
     {
         $baseUrl = rtrim(env('KRA_BASE_URL'), '/');
@@ -63,40 +81,61 @@ class EtimsInvoices extends Command
         $response = Http::withBasicAuth(env('KRA_USERNAME'), env('KRA_PASSWORD'))
             ->post($url, $jsonData);
 
-        if ($response->successful()) {
-            Log::info("Invoice ID: {$invoice->ID} submitted successfully.");
+        $responseData = $response->json();
+        Log::notice("Processing: " . $invoice->DocNo);
 
-            // Extract data from the response
-            $responseData = $response->json();
-
-            if (
-                isset($responseData['data']['invoiceNo']) &&
-                isset($responseData['data']['scdcId']) &&
-                isset($responseData['data']['invoiceVerificationUrl'])
-            ) {
-                // Begin transaction
-                DB::beginTransaction();
-                try {
-                    $invoice->update([
-                        'KRAInvoiceNo' => $responseData['data']['invoiceNo'],
-                        'KRASerialNo' => $responseData['data']['scdcId'],
-                        'KRAQRCode' => $responseData['data']['invoiceVerificationUrl'],
-                        'DocStatus' => 'Submitted'
-                    ]);
-
-                    // Commit transaction
-                    DB::commit();
-                    Log::info("Invoice ID: {$invoice->ID} updated successfully with KRA details.");
-                } catch (\Exception $e) {
-                    // Rollback transaction
-                    DB::rollBack();
-                    Log::error("Failed to update KRA details for invoice ID: {$invoice->ID}. Error: {$e->getMessage()}");
-                }
-            } else {
-                Log::error("Response data does not contain the expected keys for invoice ID: {$invoice->ID}");
-            }
+        if (!$response->ok() || $response->status() != 200) {
+            $this->handleFailedSubmission($invoice, $responseData, $response->body());
         } else {
-            Log::error("Failed to submit invoice ID: {$invoice->ID}. Response: " . $response->body());
+            $this->handleSuccessfulSubmission($invoice, $responseData);
         }
+    }
+
+    /**
+     * Handle successful API submission.
+     *
+     * @param \App\Models\KRABillingHeader $invoice
+     * @param array $responseData
+     * @return void
+     */
+    protected function handleSuccessfulSubmission($invoice, $responseData)
+    {
+        // Convert the scuReceiptDate
+        $scuReceiptDate = $responseData['data']['scuReceiptDate'];
+        $formattedDate = DateTime::createFromFormat('YmdHis', $scuReceiptDate)->format('Y-m-d H:i:s');
+
+        // Update the database with the formatted date
+        KRABillingHeader::where('ID', $invoice->ID)->update([
+            'DocStatus' => 'Submitted',
+            'KRAInvoiceNo' => $responseData['data']['invoiceNo'],
+            'KRASerialNo' => $responseData['data']['scdcId'],
+            'KRAQRCode' => $responseData['data']['invoiceVerificationUrl'],
+            'KRAInternalData' => $responseData['data']['internalData'],
+            'KRASignature' => $responseData['data']['signature'],
+            'KRAScuReceiptDate' => $formattedDate,
+            'KRAScuReceiptNo' => $responseData['data']['scuReceiptNo'],
+            'SubmissionStatus' => $responseData['message'],
+        ]);
+
+        Log::info("Invoice ID: {$invoice->ID} submitted successfully.");
+    }
+
+
+    /**
+     * Handle failed API submission.
+     *
+     * @param \App\Models\KRABillingHeader $invoice
+     * @param array $responseData
+     * @param string $responseBody
+     * @return void
+     */
+    protected function handleFailedSubmission($invoice, $responseData, $responseBody)
+    {
+        KRABillingHeader::where('ID', $invoice->ID)->update([
+            'DocStatus' => $responseData['statusCode'] ?? 'Error',
+            'SubmissionStatus' => $responseData['message'] ?? 'Unknown error',
+        ]);
+
+        Log::error("Failed to submit invoice ID: {$invoice->ID}. Response: " . $responseBody);
     }
 }
