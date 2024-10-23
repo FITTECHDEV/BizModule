@@ -38,7 +38,7 @@ Route::get('quote-logger', function () {
 
     $auth_user = Auth::user();
     //todo: permissions
-    return redirect()->away("https://quotesuat.freightintime.com/?username=".$auth_user->LoginID."&code=".$auth_user->password."&email=".$auth_user->Email, 302, ['enc_data' => ""]);
+    return redirect()->away("https://quotes.freightintime.com/?username=".$auth_user->LoginID."&code=".$auth_user->password."&email=".$auth_user->Email, 302, ['enc_data' => ""]);
 
     // return Http::post('https://quotes.freightintime.com/', [
     //     'enc_data' => $enc_user
