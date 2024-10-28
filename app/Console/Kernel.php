@@ -47,6 +47,7 @@ class Kernel extends ConsoleKernel
             ->withoutOverlapping();
 
         $schedule->command('generate:invoice')->everyMinute()->withoutOverlapping();
+        $schedule->command('tra_adl:invoices')->everyFiveMinutes()->withoutOverlapping();
     }
 
     /**

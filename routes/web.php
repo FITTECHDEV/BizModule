@@ -21,7 +21,7 @@ Route::get('/', [App\Http\Controllers\HomeController::class, 'index']);
 Auth::routes(['register' => false]);
 
 Route::get('/login', function () {
-    if (config('app.env') == 'Local'){
+    if (config('app.env') == 'Local') {
         return view('auth.login');
     }
     return view('auth.azure.login');
@@ -31,14 +31,14 @@ Route::get('/login', function () {
 Route::post('/logout', [App\Http\Controllers\Auth\LoginController::class, 'logout'])->name('logout');
 
 Route::get('/logout', function () {
-   return redirect('/login');
+    return redirect('/login');
 })->name('logout');
 
 Route::get('quote-logger', function () {
 
     $auth_user = Auth::user();
     //todo: permissions
-    return redirect()->away("https://quotes.freightintime.com/?username=".$auth_user->LoginID."&code=".$auth_user->password."&email=".$auth_user->Email, 302, ['enc_data' => ""]);
+    return redirect()->away("https://quotes.freightintime.com/?username=" . $auth_user->LoginID . "&code=" . $auth_user->password . "&email=" . $auth_user->Email, 302, ['enc_data' => ""]);
 
     // return Http::post('https://quotes.freightintime.com/', [
     //     'enc_data' => $enc_user
@@ -138,6 +138,8 @@ Route::group(['middleware' => ['auth', 'HtmlMinifier']], function () {
     Route::get('datatables/tims', [App\Http\Controllers\DataTablesController::class, 'tims'])->name('datatables.tims');
 
     Route::get('datatables/efris', [App\Http\Controllers\DataTablesController::class, 'efris'])->name('datatables.efris');
+
+    Route::get('datatables/tra', [App\Http\Controllers\DataTablesController::class, 'tra'])->name('datatables.tra');
     /**
      * OFFICE
      */
@@ -231,7 +233,7 @@ Route::group(['middleware' => ['auth', 'HtmlMinifier']], function () {
         Route::get('client-party-approval', [App\Http\Controllers\DataTablesController::class, 'approvalEntityRequests'])->name('datatables.approvalEntityRequests');
     });
     /**!SECTION TIMS */
-    Route::group(['prefix' => 'tims', 'middleware'=>['auth','web']], function () {
+    Route::group(['prefix' => 'tims', 'middleware' => ['auth', 'web']], function () {
         Route::get('/', [App\Http\Controllers\TIMSController::class, 'index'])->name('tims.index');
         Route::get('/get-stats', [App\Http\Controllers\TIMSController::class, 'getStats'])->name('tims.get_stats');
         Route::get('manual', [App\Http\Controllers\TIMSController::class, 'manual']);
@@ -243,8 +245,17 @@ Route::group(['middleware' => ['auth', 'HtmlMinifier']], function () {
     });
 
     /**!SECTION EFRIS */
-    Route::group(['prefix'=>'efris'], function(){
+    Route::group(['prefix' => 'efris'], function () {
         Route::get('/', [App\Http\Controllers\EfrisController::class, 'index'])->name('efris.index');
         Route::get('re-trigger/{docNo}', [App\Http\Controllers\EfrisController::class, 'reTrigger'])->name('efris.reTrigger');
+    });
+
+    /**!SECTION TRA ADL*/
+    Route::group(['prefix' => 'traADL'], function () {
+        Route::get('/', [App\Http\Controllers\TraADLController::class, 'index'])->name('traADL.index');
+        Route::get('/get-stats', [App\Http\Controllers\TraADLController::class, 'getStats'])->name('traADL.get_stats');
+        Route::get('re-trigger/{docNo}', [App\Http\Controllers\TraADLController::class, 'reTrigger'])->name('traADL.reTrigger');
+        Route::get('json/{id}', [App\Http\Controllers\TraADLController::class, 'jsonGenerate'])->name('tims.json');
+        Route::get('invoice/download/{id}', [App\Http\Controllers\TraADLController::class, 'invoiceDownload'])->name('tims.invoiceDownload')->middleware(['signed']);
     });
 });
