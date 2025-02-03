@@ -260,4 +260,12 @@ Route::group(['middleware' => ['auth', 'HtmlMinifier']], function () {
         Route::get('hs-codes/{id}', [App\Http\Controllers\TraADLController::class, 'hsCodes'])->name('tra_adl.hsCodes');
         Route::post('update-invoice', [App\Http\Controllers\TraADLController::class, 'updateInvoice'])->name('tims.updateInvoice');
     });
+
+    /**!SECTION TRA FIT*/
+    Route::group(['prefix' => 'tra'], function () {
+        Route::get('/', [App\Http\Controllers\TraController::class, 'index'])->name('tra.index');
+        Route::get('/get-stats', [App\Http\Controllers\TraController::class, 'getStats'])->name('tra.get_stats');
+        Route::get('re-trigger/{docNo}', [App\Http\Controllers\TraController::class, 'reTrigger'])->name('tra.reTrigger');
+    });
+    
 });
