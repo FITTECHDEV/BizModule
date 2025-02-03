@@ -189,7 +189,7 @@
                 </div>
             @endif
             {{-- TODO: ADD PERMISSIONS --}}
-            <div class="col-md-3 mb-2">
+            {{-- <div class="col-md-3 mb-2">
                 <a href="{{ URL::signedRoute('quote-logger') }}">
                     <div class="d-flex h-100 flex-column card card-widget widget-user shadow service-card">
                         <div class="widget-user-header bg-teal">
@@ -203,21 +203,12 @@
                         </div>
                         <div class="card-footer">
                             <div class="row justify-content-center">
-                                {{-- @foreach ($efris_stats as $entityStats)
-                            <div class="col-sm-4 border">
-                                <div class="description-block">
-                                    <h5 class="description-header">
-                                        <span class="badge badge-primary">{{ $entityStats->EfrisStatus }}</span>
-                                    </h5>
-                                    <span class="description-text small">{{ $entityStats->NoOfInvoice }}</span>
-                                </div>
-                            </div>
-                            @endforeach --}}
+
                             </div>
                         </div>
                     </div>
                 </a>
-            </div>
+            </div> --}}
 
             {{-- TODO: ADD PERMISSIONS --}}
             <div class="col-md-3 mb-2">

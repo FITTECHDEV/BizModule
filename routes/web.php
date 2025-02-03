@@ -255,7 +255,9 @@ Route::group(['middleware' => ['auth', 'HtmlMinifier']], function () {
         Route::get('/', [App\Http\Controllers\TraADLController::class, 'index'])->name('traADL.index');
         Route::get('/get-stats', [App\Http\Controllers\TraADLController::class, 'getStats'])->name('traADL.get_stats');
         Route::get('re-trigger/{docNo}', [App\Http\Controllers\TraADLController::class, 'reTrigger'])->name('traADL.reTrigger');
-        Route::get('json/{id}', [App\Http\Controllers\TraADLController::class, 'jsonGenerate'])->name('tims.json');
-        Route::get('invoice/download/{id}', [App\Http\Controllers\TraADLController::class, 'invoiceDownload'])->name('tims.invoiceDownload')->middleware(['signed']);
+        Route::get('json/{id}', [App\Http\Controllers\TraADLController::class, 'jsonGenerate'])->name('tra_adl.json');
+        Route::get('invoice/download/{id}', [App\Http\Controllers\TraADLController::class, 'invoiceDownload'])->name('tra_adl.invoiceDownload')->middleware(['signed']);
+        Route::get('hs-codes/{id}', [App\Http\Controllers\TraADLController::class, 'hsCodes'])->name('tra_adl.hsCodes');
+        Route::post('update-invoice', [App\Http\Controllers\TraADLController::class, 'updateInvoice'])->name('tims.updateInvoice');
     });
 });

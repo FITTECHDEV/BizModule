@@ -85,6 +85,7 @@
                             <th>DocNo</th>
                             <th>DocType</th>
                             <th>DebtorName</th>
+                            {{-- <th>LicenseNo</th> --}}
                             <th>DocDate</th>
                             <th>DocStatus</th>
                             <th>Remarks</th>
@@ -177,6 +178,10 @@
                     data: 'DebtorName',
                     name: 'DebtorName'
                 },
+                // {
+                //     data:'LicenseNo',
+                //     name: 'LicenseNo'
+                // },
                 {
                     data: 'DocDate',
                     name: 'DocDate'
@@ -233,7 +238,7 @@
             $('#editForm').css('filter', 'blur(4px)');
             $('#saveChanges').attr('disabled', 'true');
             $.ajax({
-                url: '/tra/hs-codes/' + id,
+                url: '/traADL/hs-codes/' + id,
                 type: 'GET',
                 datatype: 'json',
                 success: function(response) {
@@ -303,7 +308,7 @@
                 $('#editForm').css('filter', 'blur(4px)');
                 $('#saveChanges').attr('disabled', 'true');
                 $.ajax({
-                    url: '/tra/update-invoice',
+                    url: '/traADL/update-invoice',
                     type: 'POST',
                     data: formData,
                     datatype: 'json',

@@ -31,7 +31,7 @@ class TraADLController extends Controller
 
         // Filter the data for the TZ office
         $traADLBillingHeader = $this->header->filterByOfficeCode(['TZ'])->get();
-       
+
         // Count the status for the TZ office
         $traStatsADL = TRABillingHeader::getStatsByOfficeCode(['TZ']);
 

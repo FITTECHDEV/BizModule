@@ -1283,6 +1283,7 @@ class DataTablesController extends Controller
             'DocNo',
             'DocDate as DocDate',
             'DebtorName',
+            // 'LicenseNo',
             'DocumentType as DocType',
             'DocStatus',
             'SubmissionStatus as Remarks',
