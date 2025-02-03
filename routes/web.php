@@ -140,6 +140,8 @@ Route::group(['middleware' => ['auth', 'HtmlMinifier']], function () {
     Route::get('datatables/efris', [App\Http\Controllers\DataTablesController::class, 'efris'])->name('datatables.efris');
 
     Route::get('datatables/tra', [App\Http\Controllers\DataTablesController::class, 'tra'])->name('datatables.tra');
+
+    Route::get('datatables/tra_fit_tz', [App\Http\Controllers\DataTablesController::class, 'traFITTZ'])->name('datatables.tra_tz');
     /**
      * OFFICE
      */
@@ -258,7 +260,7 @@ Route::group(['middleware' => ['auth', 'HtmlMinifier']], function () {
         Route::get('json/{id}', [App\Http\Controllers\TraADLController::class, 'jsonGenerate'])->name('tra_adl.json');
         Route::get('invoice/download/{id}', [App\Http\Controllers\TraADLController::class, 'invoiceDownload'])->name('tra_adl.invoiceDownload')->middleware(['signed']);
         Route::get('hs-codes/{id}', [App\Http\Controllers\TraADLController::class, 'hsCodes'])->name('tra_adl.hsCodes');
-        Route::post('update-invoice', [App\Http\Controllers\TraADLController::class, 'updateInvoice'])->name('tims.updateInvoice');
+        Route::post('update-invoice', [App\Http\Controllers\TraADLController::class, 'updateInvoice'])->name('tra_adl.updateInvoice');
     });
 
     /**!SECTION TRA FIT*/
@@ -266,6 +268,10 @@ Route::group(['middleware' => ['auth', 'HtmlMinifier']], function () {
         Route::get('/', [App\Http\Controllers\TraController::class, 'index'])->name('tra.index');
         Route::get('/get-stats', [App\Http\Controllers\TraController::class, 'getStats'])->name('tra.get_stats');
         Route::get('re-trigger/{docNo}', [App\Http\Controllers\TraController::class, 'reTrigger'])->name('tra.reTrigger');
+        Route::get('json/{id}', [App\Http\Controllers\TraController::class, 'jsonGenerate'])->name('tra.json');
+        Route::get('invoice/download/{id}', [App\Http\Controllers\TraController::class, 'invoiceDownload'])->name('tra.invoiceDownload')->middleware(['signed']);
+        Route::get('hs-codes/{id}', [App\Http\Controllers\TraController::class, 'hsCodes'])->name('tra.hsCodes');
+        Route::post('update-invoice', [App\Http\Controllers\TraController::class, 'updateInvoice'])->name('tra.updateInvoice');
     });
-    
+
 });
