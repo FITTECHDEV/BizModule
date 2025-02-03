@@ -62,11 +62,11 @@
         }
 
         /* .service-card h3{
-      margin-top: 2%;
-      font-size: 44px;
-      font-weight: bold;
-      color: #464646;
-    } */
+          margin-top: 2%;
+          font-size: 44px;
+          font-weight: bold;
+          color: #464646;
+        } */
     </style>
 @stop
 @section('content')
@@ -237,6 +237,37 @@
                                 @endforeach
                             </div> --}}
                         </div>
+                    </div>
+                </a>
+            </div>
+
+            {{-- TODO: ADD PERMISSIONS --}}
+            <div class="col-md-3 mb-2">
+                <a href="/tra">
+                    <div class="d-flex h-100 flex-column card card-widget widget-user shadow service-card">
+                        <div class="widget-user-header bg-yellow">
+                            <h3 class="widget-user-username">TRA INTERGRATION</h3>
+                            <h5 class="widget-user-desc">FIT Tanzania Dashboard</h5>
+                        </div>
+                        <div class="widget-user-image">
+
+                            <img class="img-circle elevation-2"
+                                src="{{ asset('site_imgs/transparent-flag-of-tanzania-flag.png') }}" alt="Phone Avatar">
+                        </div>
+                        {{-- <div class="card-footer">
+                            <div class="row justify-content-center">
+                                @foreach ($traStatsTZ as $entityStats)
+                                    <div class="col-sm-4 border">
+                                        <div class="description-block">
+                                            <h5 class="description-header"><span
+                                                    class="badge badge-primary">{{ $entityStats->StatusCount }}</span>
+                                            </h5>
+                                            <span class="description-text small">{{ $entityStats->StatusName }}</span>
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div> --}}
                     </div>
                 </a>
             </div>
