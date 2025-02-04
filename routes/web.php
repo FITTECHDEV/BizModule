@@ -12,6 +12,14 @@ use Illuminate\Support\Facades\Route;
 
 use Illuminate\Support\Facades\Crypt;
 
+Route::get('/test-pgsql', function () {
+    try {
+        DB::connection('pgsql')->getPdo();
+        return response()->json(["message" => "✅ PostgreSQL is connected!"]);
+    } catch (\Exception $e) {
+        return response()->json(["error" => "❌ PostgreSQL Connection Failed: " . $e->getMessage()]);
+    }
+});
 
 Route::get('/', [App\Http\Controllers\HomeController::class, 'index']);
 
