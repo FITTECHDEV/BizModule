@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\ClientParty;
 use App\Models\KRABillingHeader;
 use App\Models\TRABillingHeader;
+use App\Models\RRABillingHeader;
 use App\Models\Ticket;
 use App\Models\TicketView;
 use App\Models\Office;
@@ -1393,14 +1394,14 @@ class DataTablesController extends Controller
             'DocumentType as DocType',
             'DocStatus',
             'SubmissionStatus as Remarks',
-            'RRAQRCode',
+            'RRA_SDC_Data_QRCode',
             'InvoiceType'
         );
         return Datatables::of($invoice_creds)
             ->editColumn('DocStatus', function ($row) {
                 $status = "";
                 if ($row->DocStatus == 'Submitted') {
-                    $status = '<a href="' . $row->KRAQRCode . '" target="__blank">' . $row->DocStatus . '</a>';
+                    $status = '<a href="' . $row->RRA_SDC_Data_QRCode . '" target="__blank">' . $row->DocStatus . '</a>';
                 } else {
                     $status = $row->DocStatus;
                 }
@@ -1416,10 +1417,10 @@ class DataTablesController extends Controller
                     $rawHtml .= '<a class="btn btn-xs btn-warning mr-1 edit-invoice" onclick="editInvoice(`' . $row->ID . '`,`edit`)" title="Edit" id=' . $row->ID . '><i class="fa fa-edit" aria-hidden="true"></i></a>';
                 }
 
-                $rawHtml .= '<a class="btn btn-xs btn-primary mr-1" target="__blank" title="Invoice Data" href=' . route("tims.json", $row->ID) . '><i class="fa fa-download" aria-hidden="true"></i></a> ';
+                $rawHtml .= '<a class="btn btn-xs btn-primary mr-1" target="__blank" title="Invoice Data" href=' . route("rra.json", $row->ID) . '><i class="fa fa-download" aria-hidden="true"></i></a> ';
 
                 if (($row->DocStatus == "Submitted") && ($row->InvoiceType == 'Export')) {
-                    $rawHtml .= '<a class="btn btn-xs btn-primary" target="__blank" title="Invoice File" href=' . URL::signedRoute("tims.invoiceDownload", $row->ID) . '><i class="fas fa-file-invoice-dollar" aria-hidden="true"></i></a> ';
+                    $rawHtml .= '<a class="btn btn-xs btn-primary" target="__blank" title="Invoice File" href=' . URL::signedRoute("rra.invoiceDownload", $row->ID) . '><i class="fas fa-file-invoice-dollar" aria-hidden="true"></i></a> ';
                 }
 
                 return $rawHtml;

@@ -216,7 +216,7 @@ function editInvoice(id, action, docNo = null) {
     }
     if (action === 're-trigger') {
         $.ajax({
-            url: '/tims/re-trigger/' + docNo,
+            url: '/rra/re-trigger/' + docNo,
             type: 'GET',
             datatype: 'json',
             success: function(response) {
@@ -232,7 +232,7 @@ function fetchHSCodes(id) {
     $('#editForm').css('filter', 'blur(4px)');
     $('#saveChanges').attr('disabled', 'true');
     $.ajax({
-        url: '/tims/hs-codes/' + id,
+        url: '/rra/hs-codes/' + id,
         type: 'GET',
         datatype: 'json',
         success: function(response) {

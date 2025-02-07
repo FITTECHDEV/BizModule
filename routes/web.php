@@ -150,6 +150,7 @@ Route::group(['middleware' => ['auth', 'HtmlMinifier']], function () {
     Route::get('datatables/tra', [App\Http\Controllers\DataTablesController::class, 'tra'])->name('datatables.tra');
 
     Route::get('datatables/tra_fit_tz', [App\Http\Controllers\DataTablesController::class, 'traFITTZ'])->name('datatables.tra_tz');
+    Route::get('datatables/rra', [App\Http\Controllers\DataTablesController::class, 'rra'])->name('datatables.rra');
 
     /**
      * OFFICE
