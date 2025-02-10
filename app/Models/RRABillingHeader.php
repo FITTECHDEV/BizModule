@@ -15,13 +15,13 @@ class RRABillingHeader extends Model
     // protected $guarded = [];
     protected $fillable = [
         'Docstatus',
-        'RRAInvoiceNo',
+        'RRA_SDC_Receipt_Number',
         'RRASerialNo',
-        'RRAQRCode',
-        'RRAInternalData',
-        'RRASignature',
-        'RRAScuReceiptDate',
-        'RRAScuReceiptNo',
+        'RRA_SDC_Data_QRCode',
+        'RRA_SDC_InternalData',
+        'RRA_SDC_Signature',
+        'RRA_SDC_Date',
+        'RRA_CIS_Receipt_Number',
         'SubmissionStatus'
     ];
 

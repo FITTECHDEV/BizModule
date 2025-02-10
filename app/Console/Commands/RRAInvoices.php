@@ -6,32 +6,17 @@ use App\Models\RRABillingHeader;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 use DateTime;
+use Illuminate\Support\Facades\Http;
+
 class RRAInvoices extends Command
 {
-    /**
-     * The name and signature of the console command.
-     *
-     * @var string
-     */
-    protected $signature = 'RRA:Invoice';
+    protected $signature = 'RRA:Invoice {invoiceId?}';
+    protected $description = 'This Command helps in generating invoices and pushing them to RRA';
 
-    /**
-     * The console command description.
-     *
-     * @var string
-     */
-    protected $description = 'This Commande help in generating invoice and pushing them to RRA';
-
-    /**
-     * Create a new command instance.
-     *
-     * @return void
-     */
     public function __construct()
     {
         parent::__construct();
     }
-
 
     public function handle()
     {
@@ -59,19 +44,12 @@ class RRAInvoices extends Command
         return 0;
     }
 
-    /**
-     * Fetch pending invoices.
-     *
-     * @param int|null $invoiceId
-     * @return \Illuminate\Database\Eloquent\Collection
-     */
     protected function fetchPendingInvoices($invoiceId = null)
     {
-        $query = RRABillingHeader::nolock()
-            ->where('Docstatus', 'Pending')
-            ->whereNull('RRAInvoiceNo')
-            ->whereNull('RRASerialNo')
-            ->whereNull('RRAQRCode');
+        $query = RRABillingHeader::where('Docstatus', 'Pending')
+            ->whereNull('RRA_CIS_Receipt_Number')
+            ->whereNull('RRA_SDC_ID')
+            ->whereNull('RRA_SDC_Data_QRCode');
 
         if ($invoiceId) {
             $query->where('ID', $invoiceId);
@@ -81,19 +59,23 @@ class RRAInvoices extends Command
     }
 
     /**
-     * Submit invoice data to the KRA API.
+     * Submit invoice data to the API.
      *
-     * @param \App\Models\KRABillingHeader $invoice
+     * @param \App\Models\RRABillingHeader $invoice
      * @param array $jsonData
      * @return void
      */
-    protected function submitToApi($invoice, $jsonData)
+    private function submitToApi($invoice, $jsonData)
     {
         $baseUrl = rtrim(env('RRA_BASE_URL'), '/');
-        $url = "{$baseUrl}/invoices";
+        $url = "{$baseUrl}/jsonrpc";
 
-        $response = Http::withBasicAuth(env('RRA_USERNAME'), env('RRA_PASSWORD'))
-            ->post($url, $jsonData);
+        $response = Http::post($url, $jsonData);
+
+        if (!$response->successful()) {
+            $this->handleFailedSubmission($invoice, null, $response->body());
+            return;
+        }
 
         $responseData = $response->json();
         Log::notice("Processing: " . $invoice->DocNo);
@@ -105,51 +87,96 @@ class RRAInvoices extends Command
         }
     }
 
-    /**
-     * Handle successful API submission.
-     *
-     * @param \App\Models\RRABillingHeader $invoice
-     * @param array $responseData
-     * @return void
-     */
     protected function handleSuccessfulSubmission($invoice, $responseData)
     {
-        // Convert the scuReceiptDate
-        $scuReceiptDate = $responseData['data']['scuReceiptDate'];
-        $formattedDate = DateTime::createFromFormat('YmdHis', $scuReceiptDate)->format('Y-m-d H:i:s');
+        $result = $responseData['result'] ?? [];
+        $errorMessage = trim($result['error'] ?? '');
 
-        // Update the database with the formatted date
-        RRABillingHeader::where('ID', $invoice->ID)->update([
-            'DocStatus' => 'Submitted',
-            'RRAInvoiceNo' => $responseData['data']['invoiceNo'],
-            'RRASerialNo' => $responseData['data']['scdcId'],
-            'RRAQRCode' => $responseData['data']['invoiceVerificationUrl'],
-            'RRAInternalData' => $responseData['data']['internalData'],
-            'RRASignature' => $responseData['data']['signature'],
-            'RRAScuReceiptDate' => $formattedDate,
-            'RRAScuReceiptNo' => $responseData['data']['scuReceiptNo'],
-            'SubmissionStatus' => $responseData['message'],
-        ]);
+        $sdcData = $result['sdc_data'] ?? null;
+        $cisData = $result['cis_data'] ?? null;
+        $journal = $result['journal'] ?? null;
 
-        Log::info("Invoice ID: {$invoice->ID} submitted successfully.");
+        $receiptNumber = $sdcID = $sdcDate = $sdcSignature = $sdcInternalData = null;
+        if ($sdcData) {
+            $sdcParts = explode(',', $sdcData);
+            if (count($sdcParts) >= 7) {
+                $sdcID = $sdcParts[0];
+                $receiptNumber = "{$sdcParts[1]}-{$sdcParts[2]}-{$sdcParts[3]}";
+                $sdcDate = $sdcParts[4];
+                $sdcSignature = $sdcParts[5];
+                $sdcInternalData = end($sdcParts);
+            }
+        }
+
+        $cisDate = $cisReceiptNumber = $cisMRC = null;
+        if ($cisData) {
+            $cisParts = explode(',', $cisData);
+            if (count($cisParts) >= 3) {
+                $cisDate = $cisParts[0];
+                $cisReceiptNumber = $cisParts[1];
+                $cisMRC = $cisParts[2];
+            }
+        }
+
+        $formattedCisDate = null;
+        if ($cisDate) {
+            $formattedCisDate = DateTime::createFromFormat('Y-m-d H:i:s.u', $cisDate)
+                    ?->format('Y-m-d H:i:s');
+        }
+
+        $updateData = [
+            'RRA_SDC_Receipt_Number' => $receiptNumber,
+            'RRA_SDC_Date' => $sdcDate,
+            'RRA_SDC_ID' => $sdcID,
+            'RRA_SDC_Data_QRCode' => $sdcData,
+            'RRA_SDC_InternalData' => $sdcInternalData,
+            'RRA_SDC_Signature' => $sdcSignature,
+            'RRA_CIS_Date' => $formattedCisDate,
+            'RRA_CIS_Receipt_Number' => $cisReceiptNumber,
+            'RRA_CIS_MRC' => $cisMRC,
+            'RRA_Journal' => $journal,
+            'SubmissionStatus' => $errorMessage ?: 'Success',
+        ];
+
+        if ($errorMessage === '') {
+            $updateData['DocStatus'] = 'Submitted';
+        }else {
+            $updateData['DocStatus'] = 'Failed';
+        }
+
+        RRABillingHeader::where('ID', $invoice->ID)->update($updateData);
+
+        if ($errorMessage === '') {
+            Log::info("Invoice ID: {$invoice->ID} submitted successfully with Receipt No: {$receiptNumber}.");
+        } else {
+            Log::error("Invoice ID: {$invoice->ID} encountered an issue: {$errorMessage}.");
+        }
     }
 
+    // protected function handleFailedSubmission($invoice, $responseData, $responseBody)
+    // {
+    //     $errorMessage = 'Unknown error';
+    //     $sdcData = 'N/A';
+    //     $cisData = 'N/A';
 
-    /**
-     * Handle failed API submission.
-     *
-     * @param \App\Models\RRABillingHeader $invoice
-     * @param array $responseData
-     * @param string $responseBody
-     * @return void
-     */
-    protected function handleFailedSubmission($invoice, $responseData, $responseBody)
-    {
-        RRABillingHeader::where('ID', $invoice->ID)->update([
-            'DocStatus' => $responseData['statusCode'] ?? 'Error',
-            'SubmissionStatus' => $responseData['message'] ?? 'Unknown error',
-        ]);
+    //     if ($responseData && is_array($responseData)) {
+    //         $result = $responseData['result'] ?? [];
+    //         $errorMessage = trim($result['error'] ?? 'Unknown error');
+    //         $sdcData = $result['sdc_data'] ?? 'N/A';
+    //         $cisData = $result['cis_data'] ?? 'N/A';
+    //     }
 
-        Log::error("Failed to submit invoice ID: {$invoice->ID}. Response: " . $responseBody);
-    }
+    //     if ($errorMessage !== 'Unknown error') {
+    //         RRABillingHeader::where('ID', $invoice->ID)->update([
+    //             'DocStatus' => 'Failed',
+    //             'SubmissionStatus' => $errorMessage,
+    //             'RRA_SDC_Data_QRCode' => $sdcData,
+    //             'RRA_CIS_Data' => $cisData,
+    //         ]);
+
+    //         Log::error("Invoice ID: {$invoice->ID} failed to submit. Error: {$errorMessage}");
+    //     } else {
+    //         Log::warning("Invoice ID: {$invoice->ID} submission response was unsuccessful.");
+    //     }
+    // }
 }
