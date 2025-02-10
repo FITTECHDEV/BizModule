@@ -153,30 +153,30 @@ class RRAInvoices extends Command
         }
     }
 
-    // protected function handleFailedSubmission($invoice, $responseData, $responseBody)
-    // {
-    //     $errorMessage = 'Unknown error';
-    //     $sdcData = 'N/A';
-    //     $cisData = 'N/A';
+    protected function handleFailedSubmission($invoice, $responseData, $responseBody)
+    {
+        $errorMessage = 'Unknown error';
+        $sdcData = 'N/A';
+        $cisData = 'N/A';
 
-    //     if ($responseData && is_array($responseData)) {
-    //         $result = $responseData['result'] ?? [];
-    //         $errorMessage = trim($result['error'] ?? 'Unknown error');
-    //         $sdcData = $result['sdc_data'] ?? 'N/A';
-    //         $cisData = $result['cis_data'] ?? 'N/A';
-    //     }
+        if ($responseData && is_array($responseData)) {
+            $result = $responseData['result'] ?? [];
+            $errorMessage = trim($result['error'] ?? 'Unknown error');
+            $sdcData = $result['sdc_data'] ?? 'N/A';
+            $cisData = $result['cis_data'] ?? 'N/A';
+        }
 
-    //     if ($errorMessage !== 'Unknown error') {
-    //         RRABillingHeader::where('ID', $invoice->ID)->update([
-    //             'DocStatus' => 'Failed',
-    //             'SubmissionStatus' => $errorMessage,
-    //             'RRA_SDC_Data_QRCode' => $sdcData,
-    //             'RRA_CIS_Data' => $cisData,
-    //         ]);
+        if ($errorMessage !== 'Unknown error') {
+            RRABillingHeader::where('ID', $invoice->ID)->update([
+                'DocStatus' => 'Failed',
+                'SubmissionStatus' => $errorMessage,
+                'RRA_SDC_Data_QRCode' => $sdcData,
+                'RRA_CIS_Data' => $cisData,
+            ]);
 
-    //         Log::error("Invoice ID: {$invoice->ID} failed to submit. Error: {$errorMessage}");
-    //     } else {
-    //         Log::warning("Invoice ID: {$invoice->ID} submission response was unsuccessful.");
-    //     }
-    // }
+            Log::error("Invoice ID: {$invoice->ID} failed to submit. Error: {$errorMessage}");
+        } else {
+            Log::warning("Invoice ID: {$invoice->ID} submission response was unsuccessful.");
+        }
+    }
 }
