@@ -87,6 +87,81 @@ class RRAInvoices extends Command
         }
     }
 
+    // protected function handleSuccessfulSubmission($invoice, $responseData)
+    // {
+    //     $result = $responseData['result'] ?? [];
+    //     $errorMessage = trim($result['error'] ?? '');
+
+    //     $sdcData = $result['sdc_data'] ?? null;
+    //     $cisData = $result['cis_data'] ?? null;
+    //     $journal = $result['journal'] ?? null;
+
+    //     $receiptNumber = $sdcID = $sdcDate = $sdcSignature = $sdcInternalData = null;
+    //     if ($sdcData) {
+    //         $sdcParts = explode(',', $sdcData);
+    //         if (count($sdcParts) >= 7) {
+    //             $sdcID = $sdcParts[0];
+    //             $receiptNumber = "{$sdcParts[1]}/{$sdcParts[2]} {$sdcParts[3]}";
+    //             $sdcDate = $sdcParts[4];
+    //             $sdcSignature = $sdcParts[5];
+    //             $sdcInternalData = end($sdcParts);
+    //         }
+    //     }
+
+    //     $cisDate = $cisReceiptNumber = $cisMRC = null;
+    //     if ($cisData) {
+    //         $cisParts = explode(',', $cisData);
+    //         if (count($cisParts) >= 3) {
+    //             $cisDate = $cisParts[0];
+    //             $cisReceiptNumber = $cisParts[1];
+    //             $cisMRC = $cisParts[2];
+    //         }
+    //     }
+
+    //     $formattedCisDate = null;
+    //     if ($cisDate) {
+    //         $formattedCisDate = DateTime::createFromFormat('Y-m-d H:i:s.u', $cisDate)
+    //                 ?->format('Y-m-d H:i:s');
+    //     }
+
+    //     $updateData = [
+    //         'RRA_SDC_Receipt_Number' => $receiptNumber,
+    //         'RRA_SDC_Date' => $sdcDate,
+    //         'RRA_SDC_ID' => $sdcID,
+    //         'RRA_SDC_Data_QRCode' => $sdcData,
+    //         'RRA_SDC_InternalData' => $sdcInternalData,
+    //         'RRA_SDC_Signature' => $sdcSignature,
+    //         'RRA_CIS_Date' => $formattedCisDate,
+    //         'RRA_CIS_Receipt_Number' => $cisReceiptNumber,
+    //         'RRA_CIS_MRC' => $cisMRC,
+    //         'RRA_Journal' => $journal,
+    //         'SubmissionStatus' => $errorMessage ?: 'Success',
+    //     ];
+
+    //     if ($errorMessage === '') {
+    //         $updateData['DocStatus'] = 'Submitted';
+    //     }else {
+    //         $updateData['DocStatus'] = 'Failed';
+    //     }
+
+    //     RRABillingHeader::where('ID', $invoice->ID)->update($updateData);
+
+    //     if ($errorMessage === '') {
+    //         Log::info("Invoice ID: {$invoice->ID} submitted successfully with Receipt No: {$receiptNumber}.");
+    //     } else {
+    //         Log::error("Invoice ID: {$invoice->ID} encountered an issue: {$errorMessage}.");
+    //     }
+    // }
+
+    private function formatWithDashes($data)
+    {
+        if (!$data) {
+            return null;
+        }
+
+        return implode('-',str_split($data, 4));
+    }
+
     protected function handleSuccessfulSubmission($invoice, $responseData)
     {
         $result = $responseData['result'] ?? [];
@@ -96,15 +171,20 @@ class RRAInvoices extends Command
         $cisData = $result['cis_data'] ?? null;
         $journal = $result['journal'] ?? null;
 
+        // Convert comma-separated sdcData to hash-separated format
+        if ($sdcData) {
+            $sdcData = str_replace(',', '#', $sdcData);
+        }
+
         $receiptNumber = $sdcID = $sdcDate = $sdcSignature = $sdcInternalData = null;
         if ($sdcData) {
-            $sdcParts = explode(',', $sdcData);
+            $sdcParts = explode('#', $sdcData);
             if (count($sdcParts) >= 7) {
                 $sdcID = $sdcParts[0];
-                $receiptNumber = "{$sdcParts[1]}-{$sdcParts[2]}-{$sdcParts[3]}";
+                $receiptNumber = "{$sdcParts[1]}/{$sdcParts[2]}  {$sdcParts[3]}";
                 $sdcDate = $sdcParts[4];
-                $sdcSignature = $sdcParts[5];
-                $sdcInternalData = end($sdcParts);
+                $sdcSignature = $this->formatWithDashes($sdcParts[5]) ;
+                $sdcInternalData = $this->formatWithDashes(end($sdcParts)) ;
             }
         }
 
@@ -128,7 +208,7 @@ class RRAInvoices extends Command
             'RRA_SDC_Receipt_Number' => $receiptNumber,
             'RRA_SDC_Date' => $sdcDate,
             'RRA_SDC_ID' => $sdcID,
-            'RRA_SDC_Data_QRCode' => $sdcData,
+            'RRA_SDC_Data_QRCode' => $sdcData, // Now hash-separated
             'RRA_SDC_InternalData' => $sdcInternalData,
             'RRA_SDC_Signature' => $sdcSignature,
             'RRA_CIS_Date' => $formattedCisDate,
@@ -140,7 +220,7 @@ class RRAInvoices extends Command
 
         if ($errorMessage === '') {
             $updateData['DocStatus'] = 'Submitted';
-        }else {
+        } else {
             $updateData['DocStatus'] = 'Failed';
         }
 
