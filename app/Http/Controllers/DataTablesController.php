@@ -1397,6 +1397,7 @@ class DataTablesController extends Controller
             'RRA_SDC_Data_QRCode',
             'InvoiceType'
         );
+
         return Datatables::of($invoice_creds)
             ->editColumn('DocStatus', function ($row) {
                 $status = "";

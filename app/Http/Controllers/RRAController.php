@@ -4,6 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\RRABillingHeader;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+use PDF;
+use RealRashid\SweetAlert\Facades\Alert;
 
 class RRAController extends Controller
 {
@@ -20,7 +25,7 @@ class RRAController extends Controller
          toast()->info('RRA Dashboard !!')->persistent(false, true);
 
         $rraBillingHeader = $this->header;
-
+        // dd($rraBillingHeader);
         return view('rra.index', compact('rraBillingHeader'));
     }
 
