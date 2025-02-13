@@ -224,7 +224,7 @@
                                 src="{{ asset('site_imgs/africa_direct_limited_logo.jpeg') }}" alt="Phone Avatar">
                         </div>
                         <div class="card-footer">
-                            {{-- <div class="row justify-content-center">
+                            <div class="row justify-content-center">
                                 @foreach ($traStatsADL as $entityStats)
                                     <div class="col-sm-4 border">
                                         <div class="description-block">
@@ -235,7 +235,7 @@
                                         </div>
                                     </div>
                                 @endforeach
-                            </div> --}}
+                            </div>
                         </div>
                     </div>
                 </a>
@@ -254,7 +254,7 @@
                             <img class="img-circle elevation-2"
                                 src="{{ asset('site_imgs/transparent-flag-of-tanzania-flag.png') }}" alt="Phone Avatar">
                         </div>
-                        {{-- <div class="card-footer">
+                        <div class="card-footer">
                             <div class="row justify-content-center">
                                 @foreach ($traStatsTZ as $entityStats)
                                     <div class="col-sm-4 border">
@@ -267,7 +267,7 @@
                                     </div>
                                 @endforeach
                             </div>
-                        </div> --}}
+                        </div>
                     </div>
                 </a>
             </div>
