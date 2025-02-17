@@ -14,15 +14,18 @@ class SyncScmProfitData extends Command
     public function handle()
     {
         try {
-            $currentDate = Carbon::now()->format('Y-m-d'); // Correct date format for SQL
 
-            // ✅ Fetch data from PostgreSQL
+            $currentDate = Carbon::now()->format('Y-m-d'); // Correct date format
+
+            $startDate = '2025-02-03'; // Correctly formatted start date
+
             $scmData = DB::connection('pgsql')->select("
-                SELECT * FROM vw_scmprofit_integration
-                WHERE CAST(CreatedOn AS date) = ?
-                OR CAST(UpdatedOn AS date) = ?",
-                [$currentDate, $currentDate]
+            SELECT * FROM vw_scmprofit_integration
+            WHERE CAST(CreatedOn AS date) >= ?
+            OR CAST(UpdatedOn AS date) >= ?",
+                [$startDate, $currentDate]
             );
+
 
             if (empty($scmData)) {
                 $this->info("No records found for: " . $currentDate);
@@ -71,6 +74,22 @@ class SyncScmProfitData extends Command
                     'prorated_revenue' => $record->prorated_revenue,
                     'createdon' => Carbon::parse($record->createdon)->format('Y-m-d H:i:s'),
                     'updatedon' => Carbon::parse($record->updatedon)->format('Y-m-d H:i:s'),
+                    'pri_id' => $record->id,
+                    'pri_partnermaster_name' => $record->pri_partnermaster_name,
+                    'pri_partner_stateid' => $record->pri_partner_stateid,
+                    'pri_partner_statename' => $record->pri_partner_statename,
+                    'pri_partner_countryid' => $record->pri_partner_countryid,
+                    'pri_partner_countryname' => $record->pri_partner_countryname,
+                    'pri_rrp_industryid' => $record->pri_rrp_industryid,
+                    'pri_partner_industrttype' => $record->pri_partner_industrttype,
+                    'pri_partner_function' => $record->pri_partner_function,
+                    'pri_partner_steet' => $record->pri_partner_steet,
+                    'pri_partner_steet2' => $record->pri_partner_steet2,
+                    'pri_partner_zip' => $record->pri_partner_zip,
+                    'pri_partner_city' => $record->pri_partner_city,
+                    'pri_partner_email' => $record->pri_partner_email,
+                    'pri_partner_phone' => $record->pri_partner_phone,
+                    'pri_partner_mobile' => $record->pri_partner_mobile,
                     // 'INTCreatedOn' => Carbon::now(),
                     // 'INTUpdatedOn' => Carbon::now(),
                     // 'SCMBookingID' => $record->SCMBookingID,
