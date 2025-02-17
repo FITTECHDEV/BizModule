@@ -62,11 +62,11 @@
         }
 
         /* .service-card h3{
-                  margin-top: 2%;
-                  font-size: 44px;
-                  font-weight: bold;
-                  color: #464646;
-                } */
+                          margin-top: 2%;
+                          font-size: 44px;
+                          font-weight: bold;
+                          color: #464646;
+                        } */
     </style>
 @stop
 @section('content')
@@ -189,21 +189,22 @@
                 </div>
             @endif
             {{-- TODO: ADD PERMISSIONS --}}
-            <div class="col-md-3 mb-2">
-                <a href="{{ URL::signedRoute('quote-logger') }}">
-                    <div class="d-flex h-100 flex-column card card-widget widget-user shadow service-card">
-                        <div class="widget-user-header bg-teal">
-                            <h3 class="widget-user-username">QUOTE LOGGER</h3>
-                            <h5 class="widget-user-desc">Quote-Log System</h5>
-                        </div>
-                        <div class="widget-user-image">
+            @if (Auth::user()->can('quote-access'))
+                <div class="col-md-3 mb-2">
+                    <a href="{{ URL::signedRoute('quote-logger') }}">
+                        <div class="d-flex h-100 flex-column card card-widget widget-user shadow service-card">
+                            <div class="widget-user-header bg-teal">
+                                <h3 class="widget-user-username">QUOTE LOGGER</h3>
+                                <h5 class="widget-user-desc">Quote-Log System</h5>
+                            </div>
+                            <div class="widget-user-image">
 
-                            <img class="img-circle elevation-2" src="{{ asset('site_imgs/quotation2.png') }}"
-                                alt="Phone Avatar">
-                        </div>
-                        <div class="card-footer">
-                            <div class="row justify-content-center">
-                                {{-- @foreach ($efris_stats as $entityStats)
+                                <img class="img-circle elevation-2" src="{{ asset('site_imgs/quotation2.png') }}"
+                                    alt="Phone Avatar">
+                            </div>
+                            <div class="card-footer">
+                                <div class="row justify-content-center">
+                                    {{-- @foreach ($efris_stats as $entityStats)
                             <div class="col-sm-4 border">
                                 <div class="description-block">
                                     <h5 class="description-header">
@@ -213,104 +214,112 @@
                                 </div>
                             </div>
                             @endforeach --}}
+                                </div>
                             </div>
                         </div>
-                    </div>
-                </a>
-            </div>
+                    </a>
+                </div>
+            @endif
+            {{-- TODO: ADD PERMISSIONS --}}
+            @if (Auth::user()->can('tra-tz-access'))
+                <div class="col-md-3 mb-2">
+                    <a href="/tra">
+                        <div class="d-flex h-100 flex-column card card-widget widget-user shadow service-card">
+                            <div class="widget-user-header bg-yellow">
+                                <h3 class="widget-user-username">TRA INTERGRATION</h3>
+                                <h5 class="widget-user-desc">FIT Tanzania Dashboard</h5>
+                            </div>
+                            <div class="widget-user-image">
+
+                                <img class="img-circle elevation-2"
+                                    src="{{ asset('site_imgs/transparent-flag-of-tanzania-flag.png') }}"
+                                    alt="Phone Avatar">
+                            </div>
+                            <div class="card-footer">
+                                <div class="row justify-content-center">
+                                    @foreach ($traStatsTZ as $entityStats)
+                                        <div class="col-sm-4 border">
+                                            <div class="description-block">
+                                                <h5 class="description-header"><span
+                                                        class="badge badge-primary">{{ $entityStats->StatusCount }}</span>
+                                                </h5>
+                                                <span class="description-text small">{{ $entityStats->StatusName }}</span>
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+            @endif
+            {{-- TODO: ADD PERMISSIONS --}}
+            @if (Auth::user()->can('tra-adl-access'))
+
+                <div class="col-md-3 mb-2">
+                    <a href="/traADL">
+                        <div class="d-flex h-100 flex-column card card-widget widget-user shadow service-card">
+                            <div class="widget-user-header bg-info">
+                                <h3 class="widget-user-username">TRA INTERGRATION</h3>
+                                <h5 class="widget-user-desc">ADL Dashboard</h5>
+                            </div>
+                            <div class="widget-user-image">
+
+                                <img class="img-circle elevation-2"
+                                    src="{{ asset('site_imgs/africa_direct_limited_logo.jpeg') }}" alt="Phone Avatar">
+                            </div>
+                            <div class="card-footer">
+                                <div class="row justify-content-center">
+                                    @foreach ($traStatsADL as $entityStats)
+                                        <div class="col-sm-4 border">
+                                            <div class="description-block">
+                                                <h5 class="description-header"><span
+                                                        class="badge badge-primary">{{ $entityStats->StatusCount }}</span>
+                                                </h5>
+                                                <span class="description-text small">{{ $entityStats->StatusName }}</span>
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+            @endif
 
             {{-- TODO: ADD PERMISSIONS --}}
-            <div class="col-md-3 mb-2">
-                <a href="/tra">
-                    <div class="d-flex h-100 flex-column card card-widget widget-user shadow service-card">
-                        <div class="widget-user-header bg-yellow">
-                            <h3 class="widget-user-username">TRA INTERGRATION</h3>
-                            <h5 class="widget-user-desc">FIT Tanzania Dashboard</h5>
-                        </div>
-                        <div class="widget-user-image">
+            @if (Auth::user()->can('rra-access'))
+                <div class="col-md-3 mb-2">
+                    <a href="/rra">
+                        <div class="d-flex h-100 flex-column card card-widget widget-user shadow service-card">
+                            <div class="widget-user-header bg-green">
+                                <h3 class="widget-user-username">RRA INTERGRATION</h3>
+                                <h5 class="widget-user-desc">FIT Rwanda Dashboard</h5>
+                            </div>
+                            <div class="widget-user-image">
 
-                            <img class="img-circle elevation-2"
-                                src="{{ asset('site_imgs/transparent-flag-of-tanzania-flag.png') }}" alt="Phone Avatar">
-                        </div>
-                        <div class="card-footer">
-                            <div class="row justify-content-center">
-                                @foreach ($traStatsTZ as $entityStats)
-                                    <div class="col-sm-4 border">
-                                        <div class="description-block">
-                                            <h5 class="description-header"><span
-                                                    class="badge badge-primary">{{ $entityStats->StatusCount }}</span>
-                                            </h5>
-                                            <span class="description-text small">{{ $entityStats->StatusName }}</span>
+                                <img class="img-circle elevation-2" src="{{ asset('site_imgs/rw-circle-01.png') }}"
+                                    alt="Rwanda Avatar">
+                            </div>
+                            <div class="card-footer">
+                                <div class="row justify-content-center">
+                                    @foreach ($rra_stats as $entityStats)
+                                        <div class="col-sm-4 border">
+                                            <div class="description-block">
+                                                <h5 class="description-header"><span
+                                                        class="badge badge-primary">{{ $entityStats->StatusCount }}</span>
+                                                </h5>
+                                                <span class="description-text small">{{ $entityStats->StatusName }}</span>
+                                            </div>
                                         </div>
-                                    </div>
-                                @endforeach
+                                    @endforeach
+                                </div>
                             </div>
                         </div>
-                    </div>
-                </a>
-            </div>
+                    </a>
+                </div>
+            @endif
 
-            {{-- TODO: ADD PERMISSIONS --}}
-            <div class="col-md-3 mb-2">
-                <a href="/traADL">
-                    <div class="d-flex h-100 flex-column card card-widget widget-user shadow service-card">
-                        <div class="widget-user-header bg-info">
-                            <h3 class="widget-user-username">TRA INTERGRATION</h3>
-                            <h5 class="widget-user-desc">ADL Dashboard</h5>
-                        </div>
-                        <div class="widget-user-image">
-
-                            <img class="img-circle elevation-2"
-                                src="{{ asset('site_imgs/africa_direct_limited_logo.jpeg') }}" alt="Phone Avatar">
-                        </div>
-                        <div class="card-footer">
-                            <div class="row justify-content-center">
-                                @foreach ($traStatsADL as $entityStats)
-                                    <div class="col-sm-4 border">
-                                        <div class="description-block">
-                                            <h5 class="description-header"><span
-                                                    class="badge badge-primary">{{ $entityStats->StatusCount }}</span>
-                                            </h5>
-                                            <span class="description-text small">{{ $entityStats->StatusName }}</span>
-                                        </div>
-                                    </div>
-                                @endforeach
-                            </div>
-                        </div>
-                    </div>
-                </a>
-            </div>
-
-            {{-- TODO: ADD PERMISSIONS --}}
-            <div class="col-md-3 mb-2">
-                <a href="/rra">
-                    <div class="d-flex h-100 flex-column card card-widget widget-user shadow service-card">
-                        <div class="widget-user-header bg-green">
-                            <h3 class="widget-user-username">RRA INTERGRATION</h3>
-                            <h5 class="widget-user-desc">FIT Rwanda Dashboard</h5>
-                        </div>
-                        <div class="widget-user-image">
-
-                            <img class="img-circle elevation-2"
-                                src="{{ asset('site_imgs/rw-circle-01.png') }}" alt="Rwanda Avatar">
-                        </div>
-                        <div class="card-footer">
-                            <div class="row justify-content-center">
-                                @foreach ($rra_stats as $entityStats)
-                                    <div class="col-sm-4 border">
-                                        <div class="description-block">
-                                            <h5 class="description-header"><span
-                                                    class="badge badge-primary">{{ $entityStats->StatusCount }}</span>
-                                            </h5>
-                                            <span class="description-text small">{{ $entityStats->StatusName }}</span>
-                                        </div>
-                                    </div>
-                                @endforeach
-                            </div>
-                        </div>
-                    </div>
-                </a>
-            </div>
 
         </div>
     </div>
