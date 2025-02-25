@@ -76,22 +76,23 @@
                                                             <div class="col-sm-9 col-lg-8 col-md-8">
                                                                 <select class="form-control form-control-sm" id="partyEntityType" name="partyEntityType" required>
                                                                     <option value="" disabled selected></option>
-                                                                    <option value="Client with Debtor or Vendor" @if(old('partyEntityType')=='Client with Debtor or Vendor') selected @endif>Client with Debtor or Vendor</option>
+                                                                    {{-- <option value="Client with Debtor or Vendor" @if(old('partyEntityType')=='Client with Debtor or Vendor') selected @endif>Client with Debtor or Vendor</option>
                                                                     <option value="Client without Debtor or Vendor" @if(old('partyEntityType')=='Client without Debtor or Vendor') selected @endif>Client without Debtor or Vendor</option>
                                                                     <option value="Create Debtor/Vendor with Existing Client" @if(old('partyEntityType')=='Create Debtor/Vendor with Existing Client'
                                                                         ) selected @endif>Create Debtor/Vendor with Existing Client</option>
                                                                     <option value="Shipper + Consignee" @if(old('partyEntityType')=='Shipper + Consignee' ) selected @endif>
-                                                                        Shipper + Consignee</option>
+                                                                        Shipper + Consignee</option> --}}
                                                                     {{-- <option value="Shipper Only" @if(old('partyEntityType')=='Shipper Only' ) selected @endif>Shipper Only
                                                                     </option>
                                                                     <option value="Consignee Only" @if(old('partyEntityType')=='Consignee Only' ) selected @endif>Consignee
                                                                         Only</option> --}}
+                                                                    <option value="Client" @if(old('partyEntityType')== 'Client' ) selected @endif>Client</option>
                                                                     <option value="Forwarder" @if(old('partyEntityType')== 'Agent / Forwarder' ) selected @endif>Agent / Forwarder</option>
                                                                     <option value="Airline" @if(old('partyEntityType')=='Airline' ) selected @endif>Airline</option>
                                                                     <option value="Shipping Line" @if(old('partyEntityType')=='Shipplingline' ) selected @endif>
                                                                         Shipping Line</option>
                                                                     <option value="Trucker" @if(old('partyEntityType')=='Trucker' ) selected @endif>Trucker / Transporter</option>
-                                                                    <option value="NoSCMIntergration" @if(old('partyEntityType')=='NoSCMIntergration' ) selected @endif>Debtor/Vendor In D365</option>
+                                                                    {{-- <option value="NoSCMIntergration" @if(old('partyEntityType')=='NoSCMIntergration' ) selected @endif>Debtor/Vendor In D365</option> --}}
                                                                 </select>
                                                             </div>
                                                         </div>
@@ -105,7 +106,8 @@
                                                                     <option value="Debtor & Vendor" @if(old('legalEntityType') == 'Debtor & Vendor') selected @endif>Debtor & Vendor</option>
                                                                     <option value="Debtor" @if(old('legalEntityType') == 'Debtor') selected @endif>Debtor</option>
                                                                     <option value="Vendor" @if(old('legalEntityType') == 'Vendor') selected @endif>Vendor</option>
-                                                                    <option hidden value="None" @if(old('legalEntityType') == 'None') selected @endif>None</option>
+                                                                    <option value="Only in D365 Debtor" @if(old('legalEntityType') == 'Only in D365 Debtor') selected @endif>Only in D365 Debtor</option>
+                                                                    <option value="Only in D365 Vendor" @if(old('legalEntityType') == 'Only in D365 Vendor') selected @endif>Only in D365 Vendor</option>
                                                                 </select>
                                                             </div>
                                                         </div>
@@ -201,7 +203,7 @@
                                         <div class="col-md-6 col-sm-12">
                                             <fieldset class="border p-2 card shadow-lg mb-0" >
                                                 <legend class="w-auto p-0 m-0">Contact Details</legend>
-                                                <div class="form-group row mb-1">
+                                                <div class="form-group row mb-2">
                                                     <label for="person" class="col col-sm-3  col-md-3 col-lg-4 col-form-label col-form-label-sm"><i class="fa fa-user" aria-hidden="true"></i> Person <span class="text-danger">*</span></label>
                                                     {{-- <div class="col-sm-2 col-md-3 col-lg-2">
                                                         <input type="text" class="form-control form-control-sm"
@@ -220,7 +222,7 @@
                                                             id="lastName" placeholder="Last Name">
                                                     </div>
                                                 </div>
-                                                <div class="form-group row mb-1">
+                                                <div class="form-group row mb-2">
                                                     <label for="department" class="col col-sm-3 col-md-3 col-lg-4 col-form-label col-form-label-sm"><i class="fa fa-sitemap" aria-hidden="true"></i> Department</label>
                                                     <div class="col col-sm-9 col-md-9 col-lg-8">
                                                         <input type="text" class="form-control form-control-sm"
@@ -229,7 +231,7 @@
                                                     </div>
                                                 </div>
                                                 {{-- phone no --}}
-                                                <div class="form-group row mb-1">
+                                                <div class="form-group row mb-2">
                                                     <label for="phoneNo"
                                                         class="col col-sm-3  col-md-3 col-lg-4 col-form-label col-form-label-sm"><i class="fa fa-phone" aria-hidden="true"></i> Phone No.<span class="text-danger">*</span></label>
                                                     <div class="col col-sm-9 col-md-9 col-lg-8">
@@ -251,9 +253,9 @@
                                                 </div>
                                             </fieldset>
                                             {{-- Other Information --}}
-                                            <fieldset class="border p-2 card shadow-lg mb-0">
+                                            {{-- <fieldset class="border p-2 card shadow-lg mb-0">
                                                 <legend class="w-auto p-0 m-0">Other information</legend>
-                                                {{-- Client --}}
+
                                                 <div class="form-group row mb-1">
                                                     <label for="client"
                                                         class="col-sm-3 col-lg-4 col-form-label col-form-label-sm"><i class="fa fa-user" aria-hidden="true"></i> Client <span class="text-danger" id="clientSpan">*</span></label>
@@ -282,7 +284,7 @@
                                                         <textarea class="form-control form-control-sm" name="specialInstruction" id="specialInstruction" placeholder="Special Instructions">{{ old('specialInstruction') }}</textarea>
                                                     </div>
                                                 </div>
-                                            </fieldset>
+                                            </fieldset> --}}
                                         </div>
                                     </div>
                                     <button class="btn btn-primary m-2 btn-sm float-right" name="next" type="button" onclick="stepper.next()">Next <i class="fa fa-step-forward" aria-hidden="true"></i></button>
