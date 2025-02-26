@@ -323,7 +323,7 @@
                                                     </div>
                                                 </div>
                                             </fieldset>
-                                            <fieldset class="border p-2 card shadow-lg mb-0 pt-0 pb-0">
+                                            {{-- <fieldset class="border p-2 card shadow-lg mb-0 pt-0 pb-0">
                                                 <legend class="w-auto pb-0 mb-0">Prefered Ports</legend>
                                                 <div class="row pt-0 mt-0 justify-content-center">
                                                     <div class="col-md-8 col-sm-8 col-lg-8 ">
@@ -337,7 +337,7 @@
                                                 </div>
                                                 <div class="row mb-0 pb-0">
                                                     <div class="col-md-6 col-sm-12 col-lg-6">
-                                                        {{-- port of loading Air --}}
+
                                                         <div class="form-group  pt-0 mb-0">
                                                             <div class="">
                                                                 <label for="portOfLoadingAir" class="col-form-label col-form-label-sm">Port Of Loading(Air) </label>
@@ -345,12 +345,10 @@
                                                                 name="portOfLoadingAir" id="portOfLoadingAir">
                                                                 <input type="hidden" name="portOfLoadingAirID" id="portOfLoadingAirID"
                                                                 value="{{ old('portOfLoadingAirID') }}">
-                                                                {{-- <select class="form-control form-control-sm" name="portOfLoadingAir" id="portOfLoadingAir">
-                                                                    <option value="" disabled selected></option>
-                                                                </select> --}}
+
                                                             </div>
                                                         </div>
-                                                        {{-- port of Discharge Air --}}
+
                                                         <div class="form-group mb-0">
                                                             <div class="">
                                                                 <label for="portOfDischargeAir" class="col-form-label col-form-label-sm">Port Of Discharge(Air)</label>
@@ -361,14 +359,12 @@
                                                                 <input type="hidden" class="form-control form-control-sm"
                                                                 value="{{ old('portOfDischargeAirID') }}"
                                                                  name="portOfDischargeAirID" id="portOfDischargeAirID" >
-                                                                {{-- <select class="form-control form-control-sm" name="portOfDischargeAir" id="portOfDischargeAir">
-                                                                    <option value="" disabled selected></option>
-                                                                </select> --}}
+
                                                             </div>
                                                         </div>
                                                     </div>
                                                     <div class="col-md-6 col-sm-12 col-lg-6">
-                                                        {{-- port of loading sea --}}
+
                                                         <div class="form-group row mb-1">
                                                             <div class="col-md-12 mb-0 pb-0">
                                                                 <label for="portOfLoadingSea" class="col-form-label col-form-label-sm">Port Of Loading(Sea) </label>
@@ -377,12 +373,10 @@
                                                                 name="portOfLoadingSea" id="portOfLoadingSea">
                                                                 <input type="hidden" class="form-control form-control-sm" value="{{ old('portOfLoadingSeaID') }}"
                                                                 name="portOfLoadingSeaID" id="portOfLoadingSeaID">
-                                                                {{-- <select class="form-control form-control-sm" name="portOfLoadingSea" id="portOfLoadingSea" >
-                                                                    <option value="" disabled selected></option>
-                                                                </select> --}}
+
                                                             </div>
                                                         </div>
-                                                        {{-- port of Discharge Sea --}}
+
                                                         <div class="form-group row pb-0 mb-0">
                                                             <div class="col-md-12 pb-0 mb-0">
                                                                 <label for="portOfDischargeSea" class="col-form-label col-form-label-sm">Port Of Discharge(Sea)</label>
@@ -396,7 +390,7 @@
                                                         </div>
                                                     </div>
                                                 </div>
-                                            </fieldset>
+                                            </fieldset> --}}
                                             <fieldset class="border p-2 card shadow-lg mb-0 pt-0 pb-0">
                                                 <legend>File Upload</legend>
                                                 <label for="attachmentFile">Attachment <i class="fa fa-paperclip"></i><span style="color: red;">*</span>
@@ -425,7 +419,7 @@
                                             </fieldset>
                                         </div>
                                         <div class="col-md-8 col-lg-8 col-sm-12">
-                                            <fieldset class="border p-2 card shadow-lg mb-0 pt-0 pb-0">
+                                           <!-- <fieldset class="border p-2 card shadow-lg mb-0 pt-0 pb-0">
                                                 <legend class="w-auto p-0 m-0">Client</legend>
                                                 <div class="row">
                                                     {{-- first detail client col --}}
@@ -472,7 +466,7 @@
                                                             </div>
                                                         </div>
                                                     </div>
-                                                    <!-- /.end col 1 office details -->
+
                                                     {{-- second detail client col --}}
                                                     <div class="col-md-6 col-sm-12 col-lg-6 pt-0">
                                                         {{-- Account Pic --}}
@@ -520,9 +514,9 @@
                                                             </div>
                                                         </div>
                                                     </div>
-                                                    <!-- /.end col 2 office details -->
+
                                                 </div>
-                                                <!-- row 1 office details -->
+
                                                 <div class="">
                                                     {{-- Forwarder --}}
                                                     <div class="form-group row mb-0">
@@ -538,7 +532,7 @@
                                                         </div>
                                                     </div>
                                                 </div>
-                                            </fieldset>
+                                            </fieldset> -->
                                             <fieldset class="border p-2 card shadow-lg mb-0 pt-0 pb-0">
                                                 <legend class="w-auto p-0 m-0">Debtor/Vendor</legend>
                                                 <div class="row">
@@ -641,16 +635,16 @@
                                                     </div>
                                                 </div>
                                             </fieldset>
-                                            <fieldset class="border p-2 card shadow-lg mb-0 pt-0 pb-0">
+                                            {{-- <fieldset class="border p-2 card shadow-lg mb-0 pt-0 pb-0">
                                                 <legend class="w-auto p-0 m-0"> Additional Information</legend>
                                                 <div class="row mb-0">
                                                    <div class="col-md-6 col-sm-12 col-lg-6 mb-0">
-                                                            {{-- Tarrif --}}
+
                                                             <div class="form-group row mb-0">
                                                                 <div class="col-md-12">
                                                                     <label for="tarrif"
                                                                         class="col-form-label col-form-label-sm">Tarrif</label>
-                                                                        {{-- TODO: autocomplete tarrif list --}}
+
                                                                     <select class="form-control form-control-sm" name="tarrif" id="tarrif" required>
                                                                         <option value="" selected disabled></option>
                                                                         @forelse ($tarrifs as $tarrif)
@@ -661,7 +655,7 @@
 
                                                                 </div>
                                                             </div>
-                                                            {{-- FSC Type & Rate --}}
+
                                                             <div class="form-group row mb-0">
                                                                 <div class="col-md-12">
                                                                     <label for="phoneNo" class="col-form-label col-form-label-sm"> FSC Type & Rate</label>
@@ -683,7 +677,7 @@
                                                             </div>
                                                         </div>
                                                         <div class="col-md-6 col-sm-12 col-lg-6 mb-0">
-                                                            {{-- Billing Type --}}
+
                                                             <div class="form-group row mb-0">
                                                                 <div class="col-md-12">
                                                                     <label for="billingType"
@@ -696,7 +690,7 @@
                                                                     </select>
                                                                 </div>
                                                             </div>
-                                                            {{-- discount --}}
+
                                                             <div class="form-group row mb-0">
                                                                 <div class="col-md-12">
                                                                     <label for="discount"
@@ -708,7 +702,7 @@
                                                             </div>
                                                         </div>
                                                 </div>
-                                            </fieldset>
+                                            </fieldset> --}}
                                         </div>
                                     </div>
                                     <button class="btn btn-primary m-2 btn-sm" type="button" name="previous" onclick="stepper.previous()"><i class="fa fa-step-backward" aria-hidden="true"></i> Previous</button>
