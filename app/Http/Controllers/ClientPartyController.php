@@ -656,19 +656,19 @@ class ClientPartyController extends Controller
                 'OfficeID' => $request->officeCountryID,
 
                 //preffered ports
-                'AirUsualPortOfLoadingName' => $request->portOfLoadingAir,
-                'AirUsualPortOfLoading' => $request->portOfLoadingAirID != '' ? $request->portOfLoadingAirID : null, //guid
-                'AirUsualPortofDischargeName' => $request->portOfDischargeAir,
-                'AirUsualPortofDischarge' => $request->portOfDischargeAirID != '' ? $request->portOfDischargeAirID : null, //guid
-                'SeaUsualPortOfLoadingName' => $request->portOfLoadingSea, //varchar
-                'SeaUsualPortOfLoading' => $request->portOfLoadingSeaID != '' ? $request->portOfLoadingSeaID : null, //guid
-                'SeaUsualPortofDischargeName' => $request->portOfDischargeSea, //varchar
-                'SeaUsualPortofDischarge' => $request->portOfDischargeSeaID != '' ? $request->portOfDischargeSeaID : null, //guid
+                // 'AirUsualPortOfLoadingName' => $request->portOfLoadingAir,
+                // 'AirUsualPortOfLoading' => $request->portOfLoadingAirID != '' ? $request->portOfLoadingAirID : null, //guid
+                // 'AirUsualPortofDischargeName' => $request->portOfDischargeAir,
+                // 'AirUsualPortofDischarge' => $request->portOfDischargeAirID != '' ? $request->portOfDischargeAirID : null, //guid
+                // 'SeaUsualPortOfLoadingName' => $request->portOfLoadingSea, //varchar
+                // 'SeaUsualPortOfLoading' => $request->portOfLoadingSeaID != '' ? $request->portOfLoadingSeaID : null, //guid
+                // 'SeaUsualPortofDischargeName' => $request->portOfDischargeSea, //varchar
+                // 'SeaUsualPortofDischarge' => $request->portOfDischargeSeaID != '' ? $request->portOfDischargeSeaID : null, //guid
                 // file upload
 
                 //client
-                'SalesMgrOfficeFunMapName' => $request->salesPIC,
-                'SalesMgrOfficeFunMapId' => $request->salesPICID != '' ? $request->salesPICID : null, //!id needs to be added to procedure
+                // 'SalesMgrOfficeFunMapName' => $request->salesPIC,
+                // 'SalesMgrOfficeFunMapId' => $request->salesPICID != '' ? $request->salesPICID : null, //!id needs to be added to procedure
                 // 'SalesMgrOfficeFunMapId' => null,//!remove this
                 'IncoTermID' => $request->incoTermID,
                 'IncoTermName' => $request->incoTermName,
