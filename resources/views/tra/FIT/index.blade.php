@@ -217,7 +217,7 @@
             }
             if (action === 're-trigger') {
                 $.ajax({
-                    url: '/tims/re-trigger/' + docNo,
+                    url: '/tra/re-trigger/' + docNo,
                     type: 'GET',
                     datatype: 'json',
                     success: function(response) {
@@ -233,7 +233,7 @@
             $('#editForm').css('filter', 'blur(4px)');
             $('#saveChanges').attr('disabled', 'true');
             $.ajax({
-                url: '/tims/hs-codes/' + id,
+                url: '/tra/hs-codes/' + id,
                 type: 'GET',
                 datatype: 'json',
                 success: function(response) {
@@ -303,7 +303,7 @@
                 $('#editForm').css('filter', 'blur(4px)');
                 $('#saveChanges').attr('disabled', 'true');
                 $.ajax({
-                    url: '/tims/update-invoice',
+                    url: '/tra/update-invoice',
                     type: 'POST',
                     data: formData,
                     datatype: 'json',
