@@ -207,7 +207,7 @@
         });
 
         function editInvoice(id, action, docNo = null) {
-            fetchHSCodes(id);
+            // fetchHSCodes(id);
             //append id to modal form
             $('#InvoiceId').val(id);
             if (action === 'edit') {
@@ -233,7 +233,7 @@
             $('#editForm').css('filter', 'blur(4px)');
             $('#saveChanges').attr('disabled', 'true');
             $.ajax({
-                url: '/tra/hs-codes/' + id,
+                url: '/traADL/hs-codes/' + id,
                 type: 'GET',
                 datatype: 'json',
                 success: function(response) {
@@ -303,7 +303,7 @@
                 $('#editForm').css('filter', 'blur(4px)');
                 $('#saveChanges').attr('disabled', 'true');
                 $.ajax({
-                    url: '/tra/update-invoice',
+                    url: '/traADL/update-invoice',
                     type: 'POST',
                     data: formData,
                     datatype: 'json',

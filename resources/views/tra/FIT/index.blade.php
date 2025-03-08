@@ -207,7 +207,7 @@
         });
 
         function editInvoice(id, action, docNo = null) {
-            fetchHSCodes(id);
+            // fetchHSCodes(id);
             //append id to modal form
             $('#InvoiceId').val(id);
             if (action === 'edit') {
