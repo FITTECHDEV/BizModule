@@ -1082,7 +1082,7 @@ class DataTablesController extends Controller
             ->editColumn('Status', function ($row) {
                 switch ($row->Status) {
                     case 'Submitted':
-                        return '<span class="badge badge-xs badge-warning">PendingFinanceApproval</span>';
+                        return '<span class="badge badge-xs badge-warning">Submitted</span>';
                         break;
                     case 'Pending':
                         return '<span class="badge badge-xs badge-primary">Pending</span>';

@@ -33,7 +33,7 @@ class EventServiceProvider extends ServiceProvider
 
             // todo: if auth has can approve my office
             $count = ClientParty::where('Status', 'PendingManagerApproval')
-                                ->orwhere('Status', 'PendingFinanceApproval')->get()->Count();
+                                ->orwhere('Status', 'Submitted')->get()->Count();
 
             //todo: if auth has can approve for all
             // $count = ClientParty::where('Status', 'PendingFinanceApproval')->get()->Count();

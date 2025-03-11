@@ -84,18 +84,7 @@
                                                                 <select class="form-control form-control-sm"
                                                                     id="partyEntityType" name="partyEntityType" required >
                                                                     <option value="" disabled selected></option>
-                                                                    {{-- <option value="Client with Debtor or Vendor" @if (old('partyEntityType') == 'Client with Debtor or Vendor') selected @endif>Client with Debtor or Vendor</option>
-                                                                    <option value="Client without Debtor or Vendor" @if (old('partyEntityType') == 'Client without Debtor or Vendor') selected @endif>Client without Debtor or Vendor</option>
-                                                                    <option value="Create Debtor/Vendor with Existing Client" @if (old('partyEntityType') == 'Create Debtor/Vendor with Existing Client') selected @endif>Create Debtor/Vendor with Existing Client</option>
-                                                                    <option value="Shipper + Consignee" @if (old('partyEntityType') == 'Shipper + Consignee') selected @endif>
-                                                                        Shipper + Consignee</option> --}}
-                                                                    {{-- <option value="Shipper Only" @if (old('partyEntityType') == 'Shipper Only') selected @endif>Shipper Only
-                                                                    </option>
-                                                                    <option value="Consignee Only" @if (old('partyEntityType') == 'Consignee Only') selected @endif>Consignee
-                                                                        Only</option> --}}
-                                                                    {{-- <option value="Client"
-                                                                        @if (old('partyEntityType') == 'Client') selected @endif>
-                                                                        Client</option> --}}
+                                                                    
                                                                     <option value="Forwarder"
                                                                         @if (old('partyEntityType') == 'Agent / Forwarder') selected @endif>
                                                                         Agent / Forwarder</option>

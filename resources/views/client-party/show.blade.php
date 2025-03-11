@@ -71,31 +71,18 @@
                                 <fieldset class="border pl-2 pr-2 card shadow-sm m-0" style="border-radius: 10px;">
                                     <legend class="w-auto p-0 m-0">Entity Creation Options</legend>
                                     <div class="row">
-                                        <div class="col col-md-6 col-sm-12">
+                                        <div class="col col-md-12 col-sm-12">
                                             <div class="form-group row mb-1">
                                                 <label for="partyEntityType"
                                                     class="col-sm-3 col-lg-4 col-md-4 col-form-label col-form-label-sm"
                                                     style="font-size: 17px">Operation Type<span
                                                         class="text-danger">*</span></label>
                                                 <div class="col-sm-9 col-lg-8 col-md-8">
-                                                    {{-- {{ dd($clientParty) }} --}}
                                                     <select class="form-control form-control-sm" id="partyEntityType"
                                                         name="partyEntityType" required>
-                                                        <option value="" disabled selected></option>
-                                                        <option value="Client with Debtor or Vendor" @if(old('partyEntityType',$clientParty->OperatioEntityType)== 'Client with Debtor or Vendor') selected @endif>Client with Debtor or Vendor</option>
-                                                        <option value="Client without Debtor or Vendor" @if(old('partyEntityType', $clientParty->OperatioEntityType)=='Client without Debtor or Vendor') selected @endif>Client without Debtor or Vendor</option>
-                                                        <option value="Create Debtor/Vendor with Existing Client" @if(old('partyEntityType', $clientParty->OperatioEntityType)=='Create Debtor/Vendor with Existing Client') selected @endif>Create Debtor/Vendor with Existing Client</option>
-                                                        {{-- <option value="Client Only">Client Only</option> --}}
-                                                        <option value="Shipper + Consignee"
-                                                            @if(old('partyEntityType',$clientParty->OperatioEntityType)
-                                                            == 'Shipper + Consignee') selected @endif>Shipper +
-                                                            Consignee</option>
-                                                        {{-- <option value="Shipper Only"
-                                                            @if(old('partyEntityType',$clientParty->OperatioEntityType)
-                                                            == 'Shipper Only') selected @endif>Shipper Only</option>
-                                                        <option value="Consignee Only"
-                                                            @if(old('partyEntityType',$clientParty->OperatioEntityType)
-                                                            == 'Consignee Only') selected @endif>Consignee Only</option> --}}
+                                                        <option value="Client" @if(old('partyEntityType',
+                                                        $clientParty->OperatioEntityType)=='Client' )
+                                                        selected @endif>client</option>
                                                         <option value="Forwarder"
                                                             @if(old('partyEntityType',$clientParty->OperatioEntityType)
                                                             == 'Forwarder') selected @endif>Agent / Forwarder</option>
@@ -108,15 +95,12 @@
                                                         <option value="Trucker" @if(old('partyEntityType',$clientParty->
                                                             OperatioEntityType) == 'Trucker') selected @endif>Trucker /
                                                             Transportor</option>
-                                                        <option value="NoSCMIntergration" @if(old('partyEntityType',
-                                                            $clientParty->OperatioEntityType)=='NoSCMIntergration' )
-                                                            selected @endif>Debtor/Vendor In D365</option>
 
                                                     </select>
                                                 </div>
                                             </div>
                                         </div>
-                                        <div class="col col-md-6 col-sm-12">
+                                        <div class="col col-md-6 col-sm-12" hidden>
                                             <div class="form-group row mb-1">
                                                 <label for="legalEntityType"
                                                     class="col-sm-3 col-lg-4 col-md-4 col-form-label col-form-label-sm"
@@ -339,9 +323,9 @@
                                                 </div>
                                             </div>
                                         </fieldset>
-                                        <fieldset class="border p-2 card shadow-lg mb-0">
+                                        {{-- <fieldset class="border p-2 card shadow-lg mb-0">
                                             <legend class="w-auto p-0 m-0">Other information</legend>
-                                            {{-- Client --}}
+
                                             <div class="form-group row mb-1">
                                                 <label for="client"
                                                     class="col-sm-3 col-lg-4 col-form-label col-form-label-sm"><i
@@ -391,7 +375,7 @@
                                                         placeholder="Special Instructions">{{ old('specialInstruction', $clientParty->SpecialInstructions) }}</textarea>
                                                 </div>
                                             </div>
-                                        </fieldset>
+                                        </fieldset> --}}
                                     </div>
                                 </div>
                                 <button class="btn btn-primary m-2 btn-sm float-right" name="next" type="button"
@@ -412,7 +396,7 @@
                             <div id="office-details" class="content active dstepper-block" role="tabpanel"
                                 aria-labelledby="office-details-trigger">
                                 <div class="row">
-                                    <div class="col-md-4 col-lg-4 col-sm-12">
+                                    <div class="col-md-12 col-lg-12 col-sm-12">
                                         <fieldset class="border p-2 card shadow-sm mb-0 pt-0 pb-0">
                                             <legend class="w-auto p-0 m-0">Office Mapping</legend>
                                             <div class="form-group row m-0">
@@ -450,10 +434,10 @@
                                                     <input type="hidden" name="officeCountryID" id="officeCountryID"
                                                         value="{{ old('officeCountryID', $clientParty->OfficeID) }}">
                                                 </div>
-                                                {{-- {{ dd($clientParty) }} --}}
+
                                             </div>
                                         </fieldset>
-                                        <fieldset class="border p-2 card shadow-lg mb-0 pt-0 pb-0">
+                                        {{-- <fieldset class="border p-2 card shadow-lg mb-0 pt-0 pb-0">
                                             <legend class="w-auto pb-0 mb-0">Prefered Ports</legend>
                                             <div class="row pt-0 mt-0 justify-content-center">
                                                 <div class="col-md-8 col-sm-8 col-lg-8 ">
@@ -468,7 +452,7 @@
                                             </div>
                                             <div class="row">
                                                 <div class="col-md-6 col-sm-12 col-lg-6">
-                                                    {{-- port of loading Air --}}
+
                                                     <div class="form-group  pt-0">
                                                         <div class="">
                                                             <label for="portOfLoadingAir"
@@ -480,13 +464,10 @@
                                                             <input type="hidden" name="portOfLoadingAirID"
                                                                 id="portOfLoadingAirID"
                                                                 value="{{ old('portOfLoadingAirID',$clientParty->AirUsualPortOfLoading) }}">
-                                                            {{-- <select class="form-control form-control-sm"
-                                                                name="portOfLoadingAir" id="portOfLoadingAir">
-                                                                <option value="" disabled selected></option>
-                                                            </select> --}}
+
                                                         </div>
                                                     </div>
-                                                    {{-- port of Discharge Air --}}
+
                                                     <div class="form-group ">
                                                         <div class="">
                                                             <label for="portOfDischargeAir"
@@ -498,16 +479,13 @@
                                                             <input type="hidden" class="form-control form-control-sm"
                                                                 value="{{ old('portOfDischargeAirID', $clientParty->AirUsualPortofDischarge) }}"
                                                                 name="portOfDischargeAirID" id="portOfDischargeAirID">
-                                                            {{-- <select class="form-control form-control-sm"
-                                                                name="portOfDischargeAir" id="portOfDischargeAir">
-                                                                <option value="" disabled selected></option>
-                                                            </select> --}}
+
                                                         </div>
                                                     </div>
 
                                                 </div>
                                                 <div class="col-md-6 col-sm-12 col-lg-6">
-                                                    {{-- port of loading sea --}}
+
                                                     <div class="form-group row mb-1">
                                                         <div class="col-md-12">
                                                             <label for="portOfLoadingSea"
@@ -519,13 +497,10 @@
                                                             <input type="hidden" class="form-control form-control-sm"
                                                                 value="{{ old('portOfLoadingSeaID',$clientParty->SeaUsualPortOfLoading) }}"
                                                                 name="portOfLoadingSeaID" id="portOfLoadingSeaID">
-                                                            {{-- <select class="form-control form-control-sm"
-                                                                name="portOfLoadingSea" id="portOfLoadingSea">
-                                                                <option value="" disabled selected></option>
-                                                            </select> --}}
+
                                                         </div>
                                                     </div>
-                                                    {{-- port of Discharge Sea --}}
+
                                                     <div class="form-group row mb-1">
                                                         <div class="col-md-12">
                                                             <label for="portOfDischargeSea"
@@ -541,7 +516,7 @@
                                                     </div>
                                                 </div>
                                             </div>
-                                        </fieldset>
+                                        </fieldset> --}}
                                        <fieldset class="border p-2 card shadow-lg mb-0 pt-0 pb-0">
                                             <legend>File Upload</legend>
                                             @if (count($clientParty->attachments) < 3)
@@ -584,12 +559,12 @@
                                         </fieldset>
                                     </div>
                                     <div class="col-md-8 col-lg-8 col-sm-12">
-                                        <fieldset class="border p-2 card shadow-lg mb-0 pt-0">
+                                        {{-- <fieldset class="border p-2 card shadow-lg mb-0 pt-0">
                                             <legend class="w-auto p-0 m-0">Client</legend>
                                             <div class="row">
-                                                {{-- first detail client col --}}
+
                                                 <div class="col-md-6 col-sm-12 col-lg-6">
-                                                    {{-- Sales Pic --}}
+
                                                     <div class="form-group row mb-1">
                                                         <label for="salesPIC"
                                                             class="col-sm-3 col-lg-4 col-form-label col-form-label-sm">Sales
@@ -600,13 +575,10 @@
                                                                 name="salesPIC" id="salesPIC" placeholder="">
                                                             <input type="hidden" name="salesPICID" id="salesPICID"
                                                                 value="{{ old('salesPICID', $clientParty->SalesMgrOfficeFunMapId) }}">
-                                                            {{-- <select class="form-control form-control-sm"
-                                                                name="salesPIC" id="salesPIC" required>
-                                                                <option value="" disabled selected></option>
-                                                            </select> --}}
+
                                                         </div>
                                                     </div>
-                                                    {{-- Inco Terms --}}
+
                                                     <div class="form-group row mb-1">
                                                         <label for="incoTermID"
                                                             class="col-sm-3 col-lg-4 col-form-label col-form-label-sm">Inco
@@ -632,7 +604,7 @@
                                                                 value="{{ old('incoTermCode',$clientParty->IncoTermCode) }}">
                                                         </div>
                                                     </div>
-                                                    {{-- Notify party 1 --}}
+
                                                     <div class="form-group row mb-1">
                                                         <label for="notifyParty1"
                                                             class="col-sm-3 col-lg-4 col-form-label col-form-label-sm">Notify
@@ -647,17 +619,13 @@
                                                             <input type="hidden" name="notifyParty1Code"
                                                                 value="{{ old('notifyParty1Code', $clientParty->DefaultNotifyPartyCode) }}"
                                                                 id="notifyParty1Code">
-                                                            {{-- <select class="form-control form-control-sm"
-                                                                name="notifyParty1" id="notifyParty1">
-                                                                <option value="" disabled selected></option>
-                                                            </select> --}}
+
                                                         </div>
                                                     </div>
                                                 </div>
-                                                <!-- /.end col 1 office details -->
-                                                {{-- second detail client col --}}
+
                                                 <div class="col-md-6 col-sm-12 col-lg-6 pt-0">
-                                                    {{-- Account Pic --}}
+
                                                     <div class="form-group row mb-1">
                                                         <label for="accountPIC"
                                                             class="col-sm-3 col-lg-4 col-form-label col-form-label-sm">Account
@@ -668,13 +636,10 @@
                                                                 name="accountPIC" id="accountPIC" placeholder="">
                                                             <input type="hidden" name="accountPICID" id="accountPICID"
                                                                 value="{{ old('accountPICID',$clientParty->AccountMgrOfficeFunMapId) }}">
-                                                            {{-- <select class="form-control form-control-sm"
-                                                                name="accountPIC" id="accountPIC">
-                                                                <option value="" disabled selected></option>
-                                                            </select> --}}
+
                                                         </div>
                                                     </div>
-                                                    {{-- payment Terms --}}
+
                                                     <div class="form-group row mb-1">
                                                         <label for="paymentTermsID"
                                                             class="col-sm-3 col-lg-4 col-form-label col-form-label-sm pt-0 mt-0">Pay
@@ -702,7 +667,7 @@
                                                                 value="{{ old('paymentTermsCode', $clientParty->PaymentTermsCode)  }}">
                                                         </div>
                                                     </div>
-                                                    {{-- Notify party 2 --}}
+
                                                     <div class="form-group row mb-1">
                                                         <label for="notifyParty2"
                                                             class="col-sm-3 col-lg-4 col-form-label col-form-label-sm">Notify
@@ -717,18 +682,15 @@
                                                             <input type="hidden" name="notifyParty2Code"
                                                                 value="{{ old('notifyParty2Code', $clientParty->DefaultNotifyParty1Code) }}"
                                                                 id="notifyParty2Code">
-                                                            {{-- <select class="form-control form-control-sm"
-                                                                name="notifyParty2" id="notifyParty2">
-                                                                <option value="" disabled selected></option>
-                                                            </select> --}}
+
                                                         </div>
                                                     </div>
                                                 </div>
-                                                <!-- /.end col 2 office details -->
+
                                             </div>
-                                            <!-- row 1 office details -->
+
                                             <div class="">
-                                                {{-- Forwarder --}}
+
                                                 <div class="form-group row mb-1">
                                                     <label for="forwarderName"
                                                         class="col-sm-3 col-md-4 col-lg-2 col-form-label col-form-label-sm">Forwarder</label>
@@ -739,19 +701,16 @@
                                                         <input type="hidden" class="form-control form-control-sm"
                                                             name="forwarderID" id="forwarderID"
                                                             value="{{ old('forwarderID', $clientParty->DefaultFowarderId) }}">
-                                                        {{-- <select class="form-control form-control-sm"
-                                                            name="forwarder" id="forwarder">
-                                                            <option value="" disabled selected></option>
-                                                        </select> --}}
+
                                                     </div>
                                                 </div>
                                             </div>
-                                        </fieldset>
-                                        <fieldset class="border p-2 card shadow-lg mb-0 pt-0 ">
+                                        </fieldset> --}}
+                                        {{-- <fieldset class="border p-2 card shadow-lg mb-0 pt-0 ">
                                             <legend class="w-auto p-0 m-0">Debtor/Vendor</legend>
                                             <div class="row">
                                                 <div class="col-md-6 col-sm-12 col-lg-6">
-                                                    {{-- Debtor Type --}}
+
                                                     <div class="form-group row mb-1">
                                                         <div class="col-md-12">
                                                             <label for="debtorType"
@@ -760,17 +719,11 @@
                                                             <select class="form-control form-control-sm"
                                                                 name="debtorType" id="debtorType">
                                                                 <option value="" disabled selected></option>
-                                                                {{-- <option value="Cash Customer"
-                                                                    @if(old('debtorType')=='Cash Customer' ) selected
-                                                                    @endif>Cash Customer</option>
-                                                                <option value="Approved Debtor"
-                                                                    @if(old('debtorType')=='Approved Debtor' ) selected
-                                                                    @endif>Approved Debtor</option> --}}
+
                                                             </select>
                                                         </div>
                                                     </div>
-                                                    {{-- Billing Currency --}}
-                                                    {{-- {{ dd($clientParty->BillingCurrencyId, $currencyList) }} --}}
+
                                                     <div class=" row mb-0 pb-0">
                                                         <div class="form-group col-md-6 mb-0 pb-0">
                                                             <label for="billingCurrency"
@@ -779,8 +732,7 @@
                                                             <input type="hidden" class="form-control form-control-sm"
                                                                 value="{{ old('billingCurrencyCode', $clientParty->BillingCurrencyCode) }}"
                                                                 name="billingCurrencyCode" id="billingCurrencyCode">
-                                                            {{-- {{ dd($clientParty->BillingCurrencyId,$currencyList) }}
-                                                            --}}
+
                                                             <select class="form-control form-control-sm"
                                                                 name="billingCurrency" id="billingCurrency">
                                                                 <option value="" disabled selected></option>
@@ -795,7 +747,7 @@
                                                                 @endforelse
                                                             </select>
                                                         </div>
-                                                        {{-- Credit Days --}}
+
                                                         <div class="form-group col-md-6 mb-0 pb-0">
                                                             <label for="creditDays"
                                                                 class="col-form-label col-form-label-sm">Credit
@@ -809,7 +761,7 @@
 
                                                 </div>
                                                 <div class="col-md-6 col-sm-12 col-lg-6">
-                                                    {{-- Debtor Type --}}
+
                                                     <div class="form-group row mb-1">
                                                         <div class="col-md-12">
                                                             <label for="vendorType"
@@ -818,17 +770,12 @@
                                                             <select class="form-control form-control-sm"
                                                                 name="vendorType" id="vendorType">
                                                                 <option value="" disabled selected></option>
-                                                                {{-- <option value="Cash Customer" @if(old('vendorType',
-                                                                    $clientParty->vendorType) == 'Cash Customer')
-                                                                    selected @endif>Cash Customer</option>
-                                                                <option value="Approved Debtor" @if(old('vendorType',
-                                                                    $clientParty->VendorType) == 'Approved Debtor')
-                                                                    selected @endif>Approved Debtor</option> --}}
+
                                                             </select>
                                                         </div>
                                                     </div>
 
-                                                    {{-- Credit Limit --}}
+
                                                     <div class="form-group">
                                                         <div class="row">
                                                             <div class="col-sm-6 col-md-6 col-lg-6 ">
@@ -867,7 +814,7 @@
                                                     </div>
                                                 </div>
                                             </div>
-                                            {{-- licence type --}}
+
                                             <div class="form-group row mb-0 mt-0 p-0 ">
                                                 <div class="col col-sm-6 col-lg-6 col-md-6 m-0">
                                                     <div class="row">
@@ -899,13 +846,12 @@
                                                         name="licenceTypeValue" id="licenceTypeValue">
                                                 </div>
                                             </div>
-                                        </fieldset>
-                                        <fieldset class="border p-2 card shadow-lg mb-0 pt-0">
+                                        </fieldset> --}}
+                                        {{-- <fieldset class="border p-2 card shadow-lg mb-0 pt-0">
                                             <legend class="w-auto p-0 m-0"> Additional Information</legend>
                                             <div class="row">
                                                 <div class="col-md-6 col-sm-12 col-lg-6">
-                                                    {{-- Tarrif {{ dd($tarrifs[2]->TARIFF == $clientParty->TariffValue)
-                                                    }} --}}
+
                                                     <div class="form-group row mb-1">
                                                         <div class="col-md-12">
                                                             <label for="tarrif"
@@ -922,7 +868,7 @@
                                                             </select>
                                                         </div>
                                                     </div>
-                                                    {{-- FSC Type & Rate --}}
+
                                                     <div class="form-group row mb-1">
                                                         <div class="col-md-12">
                                                             <label for="phoneNo"
@@ -954,7 +900,7 @@
                                                     </div>
                                                 </div>
                                                 <div class="col-md-6 col-sm-12 col-lg-6">
-                                                    {{-- Billing Type --}}
+
                                                     <div class="form-group row mb-1">
                                                         <div class="col-md-12">
                                                             <label for="billingType"
@@ -972,7 +918,7 @@
                                                             </select>
                                                         </div>
                                                     </div>
-                                                    {{-- discount --}}
+
                                                     <div class="form-group row mb-1">
                                                         <div class="col-md-12">
                                                             <label for="discount"
@@ -986,7 +932,7 @@
                                                     </div>
                                                 </div>
                                             </div>
-                                        </fieldset>
+                                        </fieldset> --}}
                                     </div>
                                 </div>
                                 <button class="btn btn-primary m-2 btn-sm" type="button" name="previous"
@@ -1192,13 +1138,13 @@
         Request ID: <span class="font-weight-bold" onclick='copyText(this)' data-toggle="tooltip"
             title="Click to copy">{{ $clientParty->Code }}</span> </b> Requested By: <b>{{ $clientParty->CreatedBy
             }}</b> Requested On: <b>{{ $clientParty->CreatedOn }}</b> <br>
-        @if($clientParty->Status == 'Submitted')
+        {{-- @if($clientParty->Status == 'Submitted')
         Status: <span
             class="badge badge-{{ $clientParty->paintClientPartyStatus($clientParty->Status) }}">PendingFinanceApproval</span>
         @else
         Status: <span
             class="badge badge-{{ $clientParty->paintClientPartyStatus($clientParty->Status) }}">{{$clientParty->Status}}</span>
-        @endif
+        @endif --}}
         @if (($clientParty->Status == 'Rejected') || ($clientParty->Status == 'Review'))Rejected By: <b>{{
             $clientParty->RejectedBy }}</b> RejectedOn: <b>{{ date_format(date_create($clientParty->RejectedOn),'Y-m-d
             H:i:s') }}</b> <br>Reason: <b class="text-sm">{{ $clientParty->RejectedReason }}</b>@endif

@@ -20,8 +20,8 @@
                             <i class="fa fa-ban"></i></span>
                         <div class="info-box-content">
                             <span class="info-box-text text-center">Manager Approval</span>
-                            <span class="info-box-number text-center">{{ $clientParty->clientPartyCount('Status', 'PendingManagerApproval')
-                                }}</span>
+                            <span
+                                class="info-box-number text-center">{{ $clientParty->clientPartyCount('Status', 'PendingManagerApproval') }}</span>
                         </div>
                         <!-- /.info-box-content -->
                     </div>
@@ -33,9 +33,9 @@
                     <div class="info-box mb-3">
                         <span class="info-box-icon bg-warning elevation-1"><i class="fa fa-hand-paper"></i></span>
                         <div class="info-box-content">
-                            <span class="info-box-text text-center">Finance Approval</span>
-                            <span class="info-box-number text-center">{{ $clientParty->clientPartyCount('Status',
-                                'Submitted') }}</span>
+                            <span class="info-box-text text-center">Submitted</span>
+                            <span
+                                class="info-box-number text-center">{{ $clientParty->clientPartyCount('Status', 'Submitted') }}</span>
                         </div>
                         <!-- /.info-box-content -->
                     </div>
@@ -50,8 +50,8 @@
                             <i class="fas fa-check-circle"></i></span>
                         <div class="info-box-content">
                             <span class="info-box-text text-center">Created </span>
-                            <span class="info-box-number text-center">{{ $clientParty->clientPartyCount('Status', 'Created')
-                                }}</span>
+                            <span
+                                class="info-box-number text-center">{{ $clientParty->clientPartyCount('Status', 'Created') }}</span>
                         </div>
                         <!-- /.info-box-content -->
                     </div>
@@ -84,8 +84,8 @@
                         <div class="info-box-content">
                             <span class="info-box-text text-center">Rejected</span>
 
-                            <span class="info-box-number text-center">{{ $clientParty->clientPartyCount('Status', 'Rejected')
-                                }}</span>
+                            <span
+                                class="info-box-number text-center">{{ $clientParty->clientPartyCount('Status', 'Rejected') }}</span>
                         </div>
                         <!-- /.info-box-content -->
                     </div>
@@ -98,8 +98,8 @@
                         <span class="info-box-icon bg-info elevation-1"><i class="fa fa-calculator"></i></span>
                         <div class="info-box-content">
                             <span class="info-box-text text-center">Total Requests</span>
-                            <span class="info-box-number text-center">{{ $clientParty->clientPartyCount('Status', '*')
-                                }}</span>
+                            <span
+                                class="info-box-number text-center">{{ $clientParty->clientPartyCount('Status', '*') }}</span>
                         </div>
                         <!-- /.info-box-content -->
                     </div>
@@ -118,7 +118,7 @@
                                 id="client-party-table">
                                 <thead>
                                     <th>CODE</th>
-                                    <th>Company NAME</th>
+                                    <th>Company Name</th>
                                     <th>OFFICE</th>
                                     <th title="Operation Entity Type">OET</th>
                                     <th title="Legal Entity Type">LET</th>
@@ -272,7 +272,7 @@
         $(document).ready(function() {
             window.user_raise_ticket = `{{ Auth::user()->can('request-client-party') }}`;
             // window.user_view_my_office = `{{ !Auth::user()->can('approve-all-entity-request') }}`;
-            // window.office = `{{Auth::user()->OfficeCode}}`;
+            // window.office = `{{ Auth::user()->OfficeCode }}`;
 
             let clientPartyTable = $('#client-party-table').DataTable({
                 "order": [
@@ -331,13 +331,13 @@
             if (window.user_raise_ticket) {
                 $('#client-party-table_filter').css('margin-left', '2px').append(
                     '<a href="/client-party/create" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i>New Request</a>'
-                    );
+                );
             }
             // if (window.user_view_my_office) {
             //     searchOffice(window.office);
             // }
             $('#submitted').on('click', function() {
-                searchTable('PendingFinanceApproval');
+                searchTable('Submitted');
             });
 
             $('#created').on('click', function() {

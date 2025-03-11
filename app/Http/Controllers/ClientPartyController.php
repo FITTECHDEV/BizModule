@@ -87,7 +87,7 @@ class ClientPartyController extends Controller
             abort(403, "You are not allowed to view this page.");
         }
 
-        $countries =  $this->getCountries();
+        $countries = $this->getCountries();
         $offices = $this->getOffices();
         $currencyList = $this->getCurrencyList();
         $licenceTypes = $this->getLicenceType();
@@ -107,7 +107,7 @@ class ClientPartyController extends Controller
     {
         if (\request()->ajax()) {
             $query = \request()->all();
-            $response =  DB::select(
+            $response = DB::select(
                 'SET NOCOUNT ON;
                 Declare  @OfficeID as Uniqueidentifier,
                 @PartyType as Varchar(60),
@@ -139,7 +139,7 @@ class ClientPartyController extends Controller
      */
     public function getCountries()
     {
-        $response =  DB::select(
+        $response = DB::select(
             'SET NOCOUNT ON;
             Declare  @Filter as Varchar(50)
             Exec sp_CountryList @Filter = ?',
@@ -156,7 +156,7 @@ class ClientPartyController extends Controller
         if (\request()->ajax()) {
             $request = \request()->all();
             // exec countryList database procedure
-            $response =  DB::select(
+            $response = DB::select(
                 'SET NOCOUNT ON;
                 Declare  @Country as char(2),
                 @Filter as Varchar(50)
@@ -184,7 +184,7 @@ class ClientPartyController extends Controller
     {
         $request = \request()->all();
         // exec countryList database procedure
-        $response =  DB::select(
+        $response = DB::select(
             'SET NOCOUNT ON;
             Declare  @Country as char(2)
             Declare  @Filter as Varchar(50)
@@ -217,7 +217,7 @@ class ClientPartyController extends Controller
             $query = $var;
         }
         // exec countryList database procedure
-        $response =  DB::select(
+        $response = DB::select(
             'SET NOCOUNT ON;
             Declare @office as varchar(60),
             @officeID as  Uniqueidentifier
@@ -236,7 +236,7 @@ class ClientPartyController extends Controller
     {
         $request = \request()->all();
         // dd($locationType);
-        $response =  DB::select(
+        $response = DB::select(
             'SET NOCOUNT ON;
             Declare @LocationType as Char(3),
             @IncludeCountry as Bit,
@@ -274,7 +274,7 @@ class ClientPartyController extends Controller
         } else {
             $query = $officeID;
         }
-        $response =  DB::select(
+        $response = DB::select(
             'SET NOCOUNT ON;
                 Declare @OfficeID as Uniqueidentifier
                 Exec [dbo].[sp_BaseOfficeCurrency]
@@ -305,7 +305,7 @@ class ClientPartyController extends Controller
         } else {
             $query = $officeCode;
         }
-        $response =  DB::select(
+        $response = DB::select(
             'SET NOCOUNT ON;
                 Declare @OfficeID as Uniqueidentifier
                 Exec [dbo].[sp_EntityType]
@@ -358,7 +358,7 @@ class ClientPartyController extends Controller
 
         if ($type == "master") {
             //get clients form the master table
-            $response =  DB::select(
+            $response = DB::select(
                 'SET NOCOUNT ON;
                 Declare @filter varchar(60)
                 Exec sp_ClientList
@@ -399,7 +399,7 @@ class ClientPartyController extends Controller
     }
     public function getOffices()
     {
-        $response =  DB::select(
+        $response = DB::select(
             'SET NOCOUNT ON;
                 Exec sp_OfficeList'
         );
@@ -411,7 +411,7 @@ class ClientPartyController extends Controller
 
     public function getLicenceType()
     {
-        $response =  DB::select(
+        $response = DB::select(
             'SET NOCOUNT ON;
                 Exec [dbo].[sp_LicenseType]'
         );
@@ -425,7 +425,7 @@ class ClientPartyController extends Controller
     public function getPartyEntity()
     {
         $request = \request()->all();
-        $response =  DB::select(
+        $response = DB::select(
             'SET NOCOUNT ON;
             Declare @OfficeID as Uniqueidentifier,
             @PartyType as Varchar(60),
@@ -456,7 +456,7 @@ class ClientPartyController extends Controller
 
     public function getIncoTerms()
     {
-        $response =  DB::select(
+        $response = DB::select(
             'SET NOCOUNT ON;
             Declare @Filter as Varchar(50)
             Exec [dbo].[sp_IncoTerms]
@@ -469,7 +469,7 @@ class ClientPartyController extends Controller
 
     public function getPaymentTermList()
     {
-        $response =  DB::select(
+        $response = DB::select(
             'SET NOCOUNT ON;
             Declare @Filter as Varchar(50)
             Exec [dbo].[sp_PaymentTerms]
@@ -490,7 +490,7 @@ class ClientPartyController extends Controller
         // dd($query);
         //validate empty
         if (!empty($query)) {
-            $response =  DB::select(
+            $response = DB::select(
                 'SET NOCOUNT ON;
                 Declare
                 @OfficeID as Uniqueidentifier,
@@ -507,11 +507,11 @@ class ClientPartyController extends Controller
 
         return $response;
     }
-    public function salesAccountPCI($var =  null)
+    public function salesAccountPCI($var = null)
     {
         if (\request()->ajax()) {
             $query = \request()->all();
-            $response =  DB::select(
+            $response = DB::select(
                 'SET NOCOUNT ON;
                 Declare @OfficeID as Uniqueidentifier,
                 @PICType as Char(1),
@@ -538,12 +538,12 @@ class ClientPartyController extends Controller
             return $infos;
         }
     }
-    public function getNotifyPartyList($var =  null)
+    public function getNotifyPartyList($var = null)
     {
         // dd($var);
         //  exit();
         $query = \request()->all();
-        $response =  DB::select(
+        $response = DB::select(
             'SET NOCOUNT ON;
             Declare @OfficeID as Uniqueidentifier,
             @PICType as Char(1),
@@ -595,19 +595,19 @@ class ClientPartyController extends Controller
         } else {
             // default status
             $status = 'Not Submitted';
-        };
-
-        if (isset($request->debtor) || isset($request->debtorCheck)) {
-            $status = 'PendingManagerApproval';
         }
 
-        if (isset($request->vendor) || isset($request->vendorCheck)) {
-            $status = 'PendingManagerApproval';
-        }
+        // if (isset($request->debtor) || isset($request->debtorCheck)) {
+        //     $status = 'PendingManagerApproval';
+        // }
 
-        if($request->partyEntityType == 'Client without Debtor or Vendor'){
-            $status = 'Created';
-        }
+        // if (isset($request->vendor) || isset($request->vendorCheck)) {
+        //     $status = 'PendingManagerApproval';
+        // }
+
+        // if($request->partyEntityType == 'Client without Debtor or Vendor'){
+        //     $status = 'Created';
+        // }
 
 
         // dd($status);
@@ -632,7 +632,7 @@ class ClientPartyController extends Controller
                 'Address_Line1' => $request->addressLine1,
                 'Address_Line2' => $request->addressLine2,
                 'Address_CountryId' => $request->countryID != '' ? $request->countryID : null, //guid
-                'Address_CountryName' =>  $request->countryName,
+                'Address_CountryName' => $request->countryName,
                 'Address_CountryCode' => $request->countryCode,
 
                 'Address_State' => $request->provinceName,
@@ -670,9 +670,9 @@ class ClientPartyController extends Controller
                 // 'SalesMgrOfficeFunMapName' => $request->salesPIC,
                 // 'SalesMgrOfficeFunMapId' => $request->salesPICID != '' ? $request->salesPICID : null, //!id needs to be added to procedure
                 // 'SalesMgrOfficeFunMapId' => null,//!remove this
-                'IncoTermID' => $request->incoTermID,
-                'IncoTermName' => $request->incoTermName,
-                'IncoTermCode' => $request->incoTermCode,
+                // 'IncoTermID' => $request->incoTermID,
+                // 'IncoTermName' => $request->incoTermName,
+                // 'IncoTermCode' => $request->incoTermCode,
 
                 'DefaultNotifyPartyName' => $request->notifyParty1,
                 'DefaultNotifyPartyId' => $request->notifyParty1ID != '' ? $request->notifyParty1ID : null,
@@ -681,9 +681,9 @@ class ClientPartyController extends Controller
                 'AccountMgrOfficeFunMapName' => $request->accountPIC,
                 'AccountMgrOfficeFunMapId' => $request->accountPICID != '' ? $request->accountPICID : null, //!id needs to be added to procedure
                 // 'AccountMgrOfficeFunMapId' => null, //!Remove this
-                'PaymentTermsID' => $request->paymentTermsID,
-                'PaymentTermsName' => $request->paymentTermsName,
-                'PaymentTermsCode' => $request->paymentTermsCode,
+                // 'PaymentTermsID' => $request->paymentTermsID,
+                // 'PaymentTermsName' => $request->paymentTermsName,
+                // 'PaymentTermsCode' => $request->paymentTermsCode,
 
                 'DefaultNotifyParty1Name' => $request->notifyParty2,
                 'DefaultNotifyParty1Id' => $request->notifyParty2ID != '' ? $request->notifyParty2ID : null, //!id needs to be added to procedure
@@ -713,8 +713,8 @@ class ClientPartyController extends Controller
 
                 // Admin Details
                 'ClientName' => $clientName,
-                'ClientID' =>  $request->clientID,
-                'ClientCode' =>  $request->clientCode,
+                'ClientID' => $request->clientID,
+                'ClientCode' => $request->clientCode,
 
                 //request option
                 'RequestId' => $request->requestID ?? null,
@@ -732,7 +732,7 @@ class ClientPartyController extends Controller
                 'DebtorID' => $request->debtorID,
                 'DebtorCode' => $request->debtorCode,
 
-                'Vendor'  => $request->vendor,
+                'Vendor' => $request->vendor,
                 'VendorID' => $request->vendorID,
                 'VendorCode' => $request->vendorCode,
 
@@ -740,7 +740,7 @@ class ClientPartyController extends Controller
                 'RequestforShipperConsignee' => isset($request->consigneeCheck) ? 1 : (isset($request->shipperCheck) ? 1 : 0),
                 'RequestforOtherParty' => isset($request->otherCheck) ? 1 : 0,
                 'RequestforDebtor' => isset($request->debtorCheck) ? 1 : 0,
-                'RequestforVendor'  => isset($request->vendorCheck) ? 1 : 0,
+                'RequestforVendor' => isset($request->vendorCheck) ? 1 : 0,
 
                 //System
                 'CreatedBy' => $user->full_name,
@@ -762,10 +762,10 @@ class ClientPartyController extends Controller
 
             ];
 
-            if ($request->partyEntityType === 'Client without Debtor or Vendor') {
-                $data['RequestforClient'] = 1;
-                $data['RequestforShipperConsignee'] = 1;
-            }
+            // if ($request->partyEntityType === 'Client without Debtor or Vendor') {
+            //     $data['RequestforClient'] = 1;
+            //     $data['RequestforShipperConsignee'] = 1;
+            // }
 
             // dd($data);
 
@@ -781,10 +781,10 @@ class ClientPartyController extends Controller
         if ($request->hasFile('attachmentNames')) {
 
             foreach ($request->attachmentNames as $key => $attachment) {
-                $fileName =   $attachment->getClientOriginalName();
+                $fileName = $attachment->getClientOriginalName();
 
                 $newName = $code . '_' . pathinfo($fileName, PATHINFO_FILENAME) . '.' . $attachment->getClientOriginalExtension();
-                    try {
+                try {
                     $request->attachmentNames[$key]->move(storage_path('client-party'), $newName);
                     // upload to azure
 
@@ -806,7 +806,7 @@ class ClientPartyController extends Controller
                         'CreatedBy' => $user->ID,
                         'CreatedOn' => Carbon::now(),
                         'LastModifiedBy' => $user->ID,
-                        'LastModifiedOn' =>  Carbon::now(),
+                        'LastModifiedOn' => Carbon::now(),
                     ]);
                     DB::commit();
                     //*Delete local file
@@ -841,7 +841,7 @@ class ClientPartyController extends Controller
         $client_party_status = 0;
         if (isset($request->createBtn) && (isset($request->debtorCheck) || isset($request->vendorCheck))) {
 
-            $entity_types =  (strtolower($request->legalEntityType) == 'vendor') ? ['Vendor'] : ((strtolower($request->legalEntityType) == 'debtor') ? ['Customer'] : ['Vendor', 'Customer']);
+            $entity_types = (strtolower($request->legalEntityType) == 'vendor') ? ['Vendor'] : ((strtolower($request->legalEntityType) == 'debtor') ? ['Customer'] : ['Vendor', 'Customer']);
 
             foreach ($entity_types as $key => $entity_type) {
                 if ($request->vendorCode != null) {
@@ -871,7 +871,7 @@ class ClientPartyController extends Controller
                     "phoneNo" => $request->phoneNo ?? "",
                     "phoneNo2" => "",
                     "billingCurrency" => $request->billingCurrencyCode,
-                    "paymentTermsCode" => (string)($request->creditDays) == "" ? "0" : (string)($request->creditDays),
+                    "paymentTermsCode" => (string) ($request->creditDays) == "" ? "0" : (string) ($request->creditDays),
                     "creditLimitLCY" => intval($request->maxCreditLimit) ?? 0,
                     "contactPersonName" => $request->firstName == "-" ? "" : $request->firstName . ' ' . $request->lastName ?? "",
                     "contactPersonEmailAddress" => $request->contractEmail ?? "",
@@ -882,43 +882,44 @@ class ClientPartyController extends Controller
                     "NoSeries" => $noSeries
                 ];
 
-                if (config('app.env') != 'Local'){
+                if (config('app.env') != 'Local') {
 
-                $entity = $this->createLegalEntityType($entity_type, $data);
+                    $entity = $this->createLegalEntityType($entity_type, $data);
 
-                Log::info(json_encode($data));
-                Log::info(json_encode($entity));
+                    Log::info(json_encode($data));
+                    Log::info(json_encode($entity));
 
-                // entity creation failed
-                if (!(bool)$entity->status) {
-                    $client_party_status = 0;
-                    Log::warning(json_encode($entity));
-                    Alert::warning($entity->responseCode . ' : ' . $entity->responseDescription)->persistent(true, false);
-                    return redirect()->route('client-party.show', $client_party_id);
-                    break;
+                    // entity creation failed
+                    if (!(bool) $entity->status) {
+                        $client_party_status = 0;
+                        Log::warning(json_encode($entity));
+                        Alert::warning($entity->responseCode . ' : ' . $entity->responseDescription)->persistent(true, false);
+                        return redirect()->route('client-party.show', $client_party_id);
+                        break;
+                    }
+
+                    if ((int) $entity->status == 400) {
+                        $client_party_status = 0;
+                        Log::warning(json_encode($entity));
+                        Alert::warning(json_encode($entity->errors))->persistent(true, false);
+                        return redirect()->route('client-party.show', $client_party_id);
+                        break;
+                    }
+
+                    $entity_type_col = (strtolower($entity_type) == 'vendor') ? 'Vendor' : 'Debtor';
+
+                    // update entity vendor / debtor
+                    DB::table('Cust_Entity')->where('Id', $client_party_id)->update([
+                        ucfirst($entity_type_col) . 'Code' => $entity->responseCode,
+                    ]);
                 }
-
-                if ((int)$entity->status == 400) {
-                    $client_party_status = 0;
-                    Log::warning(json_encode($entity));
-                    Alert::warning(json_encode($entity->errors))->persistent(true, false);
-                    return redirect()->route('client-party.show', $client_party_id);
-                    break;
-                }
-
-                $entity_type_col =  (strtolower($entity_type) == 'vendor') ? 'Vendor' : 'Debtor';
-
-                // update entity vendor / debtor
-                DB::table('Cust_Entity')->where('Id', $client_party_id)->update([
-                    ucfirst($entity_type_col) . 'Code' => $entity->responseCode,
-                ]);}
 
                 $client_party_status = 1;
             }
         }
 
         // create entity on SCM
-        if ((isset($request->createBtn) && ($client_party_status == 1))||($request->partyEntityType === 'Client without Debtor or Vendor')) {
+        if ((isset($request->createBtn) && ($client_party_status == 1))) {
             $results = [];
             if ($request->partyEntityType != 'NoSCMIntergration') {
                 // create debtor vendor on SCM
@@ -967,7 +968,8 @@ class ClientPartyController extends Controller
         return $numSeries[0];
     }
 
-    public function preview(ClientParty $path){
+    public function preview(ClientParty $path)
+    {
 
         $attachment = $path->attachments;
 
@@ -1057,9 +1059,9 @@ class ClientPartyController extends Controller
             $editForm = true;
         }
 
-        if($clientParty->OperatioEntityType == 'Client without Debtor or Vendor' && $status = 'Created'){
-            $editForm = false;
-        }
+        // if($clientParty->OperatioEntityType == 'Client without Debtor or Vendor' && $status = 'Created'){
+        //     $editForm = false;
+        // }
 
         //permission for approve
         if (url()->previous() == url('client-party/approve') || ($clientParty->Status == 'PendingManagerApproval')) {
@@ -1067,7 +1069,7 @@ class ClientPartyController extends Controller
             $approve = true;
         }
 
-        $countries =  $this->getCountries();
+        $countries = $this->getCountries();
         $offices = $this->getOffices();
 
         $currencyList = $this->getCurrencyList($clientParty->OfficeID) == [] ? ['does not exist'] : $this->getCurrencyList($clientParty->OfficeID);
@@ -1155,26 +1157,27 @@ class ClientPartyController extends Controller
             } else {
                 $status = $cp->Status;
             }
-        };
-
-
-        if(($status == 'Submitted') && (auth()->user()->Role == 2)){
-            $status = 'PendingManagerApproval';
         }
+        ;
 
-        if(($status == '') && (auth()->user()->Role == 1)){
+
+        // if (($status == 'Submitted') && (auth()->user()->Role == 2)) {
+        //     $status = 'PendingManagerApproval';
+        // }
+
+        // if (($status == '') && (auth()->user()->Role == 1)) {
+        //     $status = 'Submitted';
+        // }
+
+        // if status is pendingmangerapproval and authuser != approve-my-office-entity-request
+        if ($user->can('approve-my-office-entity-request') && $user->can('approve-all-entity-request') && isset($createBtn)) {
+            // dd($status);
             $status = 'Submitted';
         }
 
-        // if status is pendingmangerapproval and authuser != approve-my-office-entity-request
-        if (($request->status == 'PendingManagerApproval') && $user->can('approve-my-office-entity-request') && $user->can('approve-all-entity-request') && isset($createBtn)) {
-            // dd($status);
-            $status = 'PendingFinanceApproval';
-        }
-
-        if($cp->OperatioEntityType == 'Client without Debtor or Vendor' && $cp->Status == 'Created'){
-            $status = 'PendingManagerApproval';
-        }
+        // if ($cp->OperatioEntityType == 'Client without Debtor or Vendor' && $cp->Status == 'Created') {
+        //     $status = 'PendingManagerApproval';
+        // }
         // else {
         //     alert()->warning('Warning !', 'Entity Pending for Manager Approval')->showConfirmButton();
         //     return redirect()->back();
@@ -1196,14 +1199,14 @@ class ClientPartyController extends Controller
             DB::table('Cust_Entity')->where('ID', $id)->update([
                 //Entity type
                 'OperatioEntityType' => $request->partyEntityType,
-                'LegalEntityType' => $request->legalEntityType,
+                // 'LegalEntityType' => $request->legalEntityType,
                 //basic informaiton
                 'Name' => $request->companyName,
                 'Address_Line1' => $request->addressLine1,
                 'Address_Line2' => $request->addressLine2,
 
                 'Address_CountryId' => $request->countryID != '' ? $request->countryID : null, //guid
-                'Address_CountryName' =>  $request->countryName,
+                'Address_CountryName' => $request->countryName,
                 'Address_CountryCode' => $request->countryCode,
 
                 'Address_State' => $request->provinceName,
@@ -1227,23 +1230,23 @@ class ClientPartyController extends Controller
                 'OfficeID' => $request->officeCountryID,
 
                 //preffered ports
-                'AirUsualPortOfLoadingName' => $request->portOfLoadingAir,
-                'AirUsualPortOfLoading' => $request->portOfLoadingAirID != '' ? $request->portOfLoadingAirID : null, //guid
-                'AirUsualPortofDischargeName' => $request->portOfDischargeAir,
-                'AirUsualPortofDischarge' => $request->portOfDischargeAirID != '' ? $request->portOfDischargeAirID : null, //guid
-                'SeaUsualPortOfLoadingName' => $request->portOfLoadingSea, //varchar
-                'SeaUsualPortOfLoading' => $request->portOfLoadingSeaID != '' ? $request->portOfLoadingSeaID : null, //guid
-                'SeaUsualPortofDischargeName' => $request->portOfDischargeSea, //varchar
-                'SeaUsualPortofDischarge' => $request->portOfDischargeSeaID != '' ? $request->portOfDischargeSeaID : null, //guid
+                // 'AirUsualPortOfLoadingName' => $request->portOfLoadingAir,
+                // 'AirUsualPortOfLoading' => $request->portOfLoadingAirID != '' ? $request->portOfLoadingAirID : null, //guid
+                // 'AirUsualPortofDischargeName' => $request->portOfDischargeAir,
+                // 'AirUsualPortofDischarge' => $request->portOfDischargeAirID != '' ? $request->portOfDischargeAirID : null, //guid
+                // 'SeaUsualPortOfLoadingName' => $request->portOfLoadingSea, //varchar
+                // 'SeaUsualPortOfLoading' => $request->portOfLoadingSeaID != '' ? $request->portOfLoadingSeaID : null, //guid
+                // 'SeaUsualPortofDischargeName' => $request->portOfDischargeSea, //varchar
+                // 'SeaUsualPortofDischarge' => $request->portOfDischargeSeaID != '' ? $request->portOfDischargeSeaID : null, //guid
                 // file upload
 
                 //client
-                'SalesMgrOfficeFunMapName' => $request->salesPIC,
-                'SalesMgrOfficeFunMapId' => $request->salesPICID != '' ? $request->salesPICID : null, //!id needs to be added to procedure
-                // 'SalesMgrOfficeFunMapId' => null,//!remove this
-                'IncoTermID' => $request->incoTermID,
-                'IncoTermName' => $request->incoTermName,
-                'IncoTermCode' => $request->incoTermCode,
+                // 'SalesMgrOfficeFunMapName' => $request->salesPIC,
+                // 'SalesMgrOfficeFunMapId' => $request->salesPICID != '' ? $request->salesPICID : null, //!id needs to be added to procedure
+                // // 'SalesMgrOfficeFunMapId' => null,//!remove this
+                // 'IncoTermID' => $request->incoTermID,
+                // 'IncoTermName' => $request->incoTermName,
+                // 'IncoTermCode' => $request->incoTermCode,
 
                 'DefaultNotifyPartyName' => $request->notifyParty1,
                 'DefaultNotifyPartyId' => $request->notifyParty1ID != '' ? $request->notifyParty1ID : null,
@@ -1252,37 +1255,37 @@ class ClientPartyController extends Controller
                 'AccountMgrOfficeFunMapName' => $request->accountPIC,
                 'AccountMgrOfficeFunMapId' => $request->accountPICID != '' ? $request->accountPICID : null, //!id needs to be added to procedure
                 // 'AccountMgrOfficeFunMapId' => null, //!Remove this
-                'PaymentTermsID' => $request->paymentTermsID,
-                'PaymentTermsName' => $request->paymentTermsName,
-                'PaymentTermsCode' => $request->paymentTermsCode,
-                'DefaultNotifyParty1Name' => $request->notifyParty2,
-                'DefaultNotifyParty1Id' => $request->notifyParty2ID != '' ? $request->notifyParty2ID : null, //!id needs to be added to procedure
-                'DefaultNotifyParty1Code' => $request->notifyParty2Code,
-                'DefaultFowarderName' => $request->forwarderName,
-                'DefaultFowarderId' => $request->forwarderID != '' ? $request->forwarderID : null, //guid
+                // 'PaymentTermsID' => $request->paymentTermsID,
+                // 'PaymentTermsName' => $request->paymentTermsName,
+                // 'PaymentTermsCode' => $request->paymentTermsCode,
+                // 'DefaultNotifyParty1Name' => $request->notifyParty2,
+                // 'DefaultNotifyParty1Id' => $request->notifyParty2ID != '' ? $request->notifyParty2ID : null, //!id needs to be added to procedure
+                // 'DefaultNotifyParty1Code' => $request->notifyParty2Code,
+                // 'DefaultFowarderName' => $request->forwarderName,
+                // 'DefaultFowarderId' => $request->forwarderID != '' ? $request->forwarderID : null, //guid
                 // debtor / vendor
-                'CreditDays' => $request->creditDays,
+                // 'CreditDays' => $request->creditDays,
 
-                'CreditLimitCurrencyId' => $request->billingCurrency != '' ? $request->billingCurrency : null,
-                'CreditLimitCurrencyCode' => $request->billingCurrencyCode,
-                'BillingCurrencyCode' => $request->billingCurrencyCode,
-                'BillingCurrencyId' => $request->billingCurrency != '' ? $request->billingCurrency : null, //guid
-                'BaseCurrencyName' => $request->baseCurrencyName,
-                'BaseCurrencyCode' => $request->baseCurrencyCode,
-                'BaseCurrencyId' => $request->baseCurrencyID != '' ? $request->baseCurrencyID : null, //guid
-                'CreditLimit' => isset($request->maxCreditLimit) ? str_replace(',', '', $request->maxCreditLimit) : 0,
-                'LicenceTypeID' => $request->licenceTypeID,
-                'LicenceTypeCode' => $request->licenceTypeCode,
-                'LicenceTypeValue' => $request->licenceTypeValue,
-                'TariffValue' => $request->tarrif,
-                'FSCType' => $request->fscType,
-                'FSCRate' => isset($request->fscRate) ? $request->fscRate : 0,
-                'BillingType' => $request->billingType,
-                'Discount' => isset($request->discount) ? $request->discount : 0,
+                // 'CreditLimitCurrencyId' => $request->billingCurrency != '' ? $request->billingCurrency : null,
+                // 'CreditLimitCurrencyCode' => $request->billingCurrencyCode,
+                // 'BillingCurrencyCode' => $request->billingCurrencyCode,
+                // 'BillingCurrencyId' => $request->billingCurrency != '' ? $request->billingCurrency : null, //guid
+                // 'BaseCurrencyName' => $request->baseCurrencyName,
+                // 'BaseCurrencyCode' => $request->baseCurrencyCode,
+                // 'BaseCurrencyId' => $request->baseCurrencyID != '' ? $request->baseCurrencyID : null, //guid
+                // 'CreditLimit' => isset($request->maxCreditLimit) ? str_replace(',', '', $request->maxCreditLimit) : 0,
+                // 'LicenceTypeID' => $request->licenceTypeID,
+                // 'LicenceTypeCode' => $request->licenceTypeCode,
+                // 'LicenceTypeValue' => $request->licenceTypeValue,
+                // 'TariffValue' => $request->tarrif,
+                // 'FSCType' => $request->fscType,
+                // 'FSCRate' => isset($request->fscRate) ? $request->fscRate : 0,
+                // 'BillingType' => $request->billingType,
+                // 'Discount' => isset($request->discount) ? $request->discount : 0,
                 // Admin Details
                 'ClientName' => $clientName,
-                'ClientID' =>  $request->clientID != '' ? $request->clientID : null,
-                'ClientCode' =>  $request->clientCode,
+                'ClientID' => $request->clientID != '' ? $request->clientID : null,
+                'ClientCode' => $request->clientCode,
                 //request option
                 'RequestId' => $request->requestID != '' ? $request->requestID : null,
                 'RequestName' => $request->clientOptionVal ?? null,
@@ -1294,10 +1297,10 @@ class ClientPartyController extends Controller
                 'OtherPartyName' => $request->otherInput,
                 'OtherPartyID' => $request->otherID != '' ? $request->otherID : null,
                 'OtherPartyCode' => $request->otherCode,
-                // 'Debtor' => $request->debtor,
+                'Debtor' => $request->debtor,
                 'DebtorID' => $request->debtorID != '' ? $request->debtorID : null,
                 'DebtorCode' => $request->debtorCode,
-                // 'Vendor'  => $request->vendor,
+                'Vendor' => $request->vendor,
                 'VendorID' => $request->vendorID != '' ? $request->vendorID : null,
                 'VendorCode' => $request->vendorCode,
 
@@ -1305,12 +1308,12 @@ class ClientPartyController extends Controller
                 'RequestforShipperConsignee' => isset($request->consigneeCheck) ? 1 : (isset($request->shipperCheck) ? 1 : 0),
 
                 'RequestforOtherParty' => $request->otherID != '' ? 0 : 1,
-                // 'RequestforOtherParty' => isset($request->otherCheck) ? 1 : 0,
+                'RequestforOtherParty' => isset($request->otherCheck) ? 1 : 0,
 
                 'RequestforDebtor' => $request->debtorID != '' ? 0 : 1,
-                'RequestforVendor'  => $request->vendorID != '' ? 0 : 1,
-                // 'RequestforDebtor' => isset($request->debtorCheck) ? 1 : 0,
-                // 'RequestforVendor'  => isset($request->vendorCheck) ? 1 : 0,
+                'RequestforVendor' => $request->vendorID != '' ? 0 : 1,
+                'RequestforDebtor' => isset($request->debtorCheck) ? 1 : 0,
+                'RequestforVendor' => isset($request->vendorCheck) ? 1 : 0,
 
                 //System
                 'LastModifiedOn' => Carbon::now()->format('Y-m-d H:i:s'),
@@ -1322,8 +1325,8 @@ class ClientPartyController extends Controller
                 // 'VendorLicenceTypeID' => $request->vendorLicenceType != '' ? $request->vendorLicenceType : null, //guid
                 // 'VendorLicenceTypeCode' => $request->vendorLicenceCode,
                 // 'VendorLicenceTypeValue' => $request->vendorLicence,
-                'DebtorType' => $request->debtorType,
-                'VendorType' => $request->vendorType,
+                // 'DebtorType' => $request->debtorType,
+                // 'VendorType' => $request->vendorType,
                 // 'DefaultPartyLocationId' => null,
                 'Status' => $status
             ]);
@@ -1339,7 +1342,7 @@ class ClientPartyController extends Controller
         if ($request->hasFile('attachmentNames')) {
 
             foreach ($request->attachmentNames as $key => $attachment) {
-                $fileName =   $attachment->getClientOriginalName();
+                $fileName = $attachment->getClientOriginalName();
 
                 $newName = $cp->Code . '_' . pathinfo($fileName, PATHINFO_FILENAME) . '.' . $attachment->getClientOriginalExtension();
                 try {
@@ -1364,7 +1367,7 @@ class ClientPartyController extends Controller
                         'CreatedBy' => $user->ID,
                         'CreatedOn' => Carbon::now(),
                         'LastModifiedBy' => $user->ID,
-                        'LastModifiedOn' =>  Carbon::now(),
+                        'LastModifiedOn' => Carbon::now(),
                     ]);
                     DB::commit();
                     //*Delete local file
@@ -1401,90 +1404,90 @@ class ClientPartyController extends Controller
 
         $client_party_status = 0;
 
-        if (isset($request->createBtn) && (isset($request->debtorCheck) || isset($request->vendorCheck))) {
+        if (isset($request->createBtn)) {
             // clean entity types
-            $entity_types =  (strtolower($request->legalEntityType) == 'vendor') ? ['Vendor'] : ((strtolower($request->legalEntityType) == 'debtor') ? ['Customer'] : ['Vendor', 'Customer']);
+            // $entity_types = (strtolower($request->legalEntityType) == 'vendor') ? ['Vendor'] : ((strtolower($request->legalEntityType) == 'debtor') ? ['Customer'] : ['Vendor', 'Customer']);
 
 
             // dd($request->debtorCode);
-            foreach ($entity_types as $key => $entity_type) {
-                if ($request->vendorCode != null) {
-                    continue;
-                }
-                if ($request->debtorCode != null) {
-                    continue;
-                }
-                $g = (strtolower($entity_type) == 'vendor') ? $request->vendorType : $request->debtorType;
-                $noSeries = '';
-                $ent_typ = ($entity_type == 'Customer') ? 'Debtor' : $entity_type;
-                // dd($request->officeCode, $ent_typ);
-                $noSeries = $this->getOfficeNumberSeries($request->officeCode, $ent_typ);
-                // dd((string)($request->creditDays));
-                $data = [
-                    "office" => ($request->officeCode == 'UPS') ? 'KE' : $request->officeCode,
-                    "partyType" => (strcmp(strtolower(APP::environment()), 'production') == 0) ? $entity_type : 'TST',
-                    "no" => "",
-                    "name" => $request->companyName,
-                    "postingGroup" => $g,
-                    "vatRegistrationNo" => $request->licenceTypeValue ?? '-',
-                    "postCode" => $request->zipCode ?? "",
-                    "address" => $request->addressLine1,
-                    "address2" => $request->addressLine2 ?? "",
-                    "city" => $request->cityName ?? "",
-                    "countryCode" => $request->countryCode,
-                    "emailAddress" => $request->contractEmail ?? "",
-                    "phoneNo" => $request->phoneNo ?? "",
-                    "phoneNo2" => "",
-                    "billingCurrency" => $request->billingCurrencyCode,
-                    "paymentTermsCode" => (string)($request->creditDays) == "" ? "0" : (string)($request->creditDays),
-                    "creditLimitLCY" => intval($request->maxCreditLimit) ?? 0,
-                    "contactPersonName" => $request->firstName == "-" ? "" : $request->firstName . ' ' . $request->lastName ?? "",
-                    "contactPersonEmailAddress" => $request->contractEmail ?? "",
-                    "contactPersonPhoneNo" => $request->phoneNo ?? "",
-                    "contactPersonPhoneNo2" => "",
-                    "relatedParty" => "",
-                    "blocked" => false,
-                    "NoSeries" => $noSeries
-                ];
+            // foreach ($entity_types as $key => $entity_type) {
+            //     if ($request->vendorCode != null) {
+            //         continue;
+            //     }
+            //     if ($request->debtorCode != null) {
+            //         continue;
+            //     }
+            //     $g = (strtolower($entity_type) == 'vendor') ? $request->vendorType : $request->debtorType;
+            //     $noSeries = '';
+            //     $ent_typ = ($entity_type == 'Customer') ? 'Debtor' : $entity_type;
+            //     // dd($request->officeCode, $ent_typ);
+            //     $noSeries = $this->getOfficeNumberSeries($request->officeCode, $ent_typ);
+            //     // dd((string)($request->creditDays));
+            //     $data = [
+            //         "office" => ($request->officeCode == 'UPS') ? 'KE' : $request->officeCode,
+            //         "partyType" => (strcmp(strtolower(APP::environment()), 'production') == 0) ? $entity_type : 'TST',
+            //         "no" => "",
+            //         "name" => $request->companyName,
+            //         "postingGroup" => $g,
+            //         "vatRegistrationNo" => $request->licenceTypeValue ?? '-',
+            //         "postCode" => $request->zipCode ?? "",
+            //         "address" => $request->addressLine1,
+            //         "address2" => $request->addressLine2 ?? "",
+            //         "city" => $request->cityName ?? "",
+            //         "countryCode" => $request->countryCode,
+            //         "emailAddress" => $request->contractEmail ?? "",
+            //         "phoneNo" => $request->phoneNo ?? "",
+            //         "phoneNo2" => "",
+            //         "billingCurrency" => $request->billingCurrencyCode,
+            //         "paymentTermsCode" => (string) ($request->creditDays) == "" ? "0" : (string) ($request->creditDays),
+            //         "creditLimitLCY" => intval($request->maxCreditLimit) ?? 0,
+            //         "contactPersonName" => $request->firstName == "-" ? "" : $request->firstName . ' ' . $request->lastName ?? "",
+            //         "contactPersonEmailAddress" => $request->contractEmail ?? "",
+            //         "contactPersonPhoneNo" => $request->phoneNo ?? "",
+            //         "contactPersonPhoneNo2" => "",
+            //         "relatedParty" => "",
+            //         "blocked" => false,
+            //         "NoSeries" => $noSeries
+            //     ];
 
-                if (config('app.env') != 'Local'){
+            //     if (config('app.env') != 'Local') {
 
-                try {
-                    $entity = $this->createLegalEntityType($entity_type, $data);
-                } catch (Exception $e) {
-                    Alert::warning($e->getMessage());
-                    return redirect()->back();
-                }
+            //         try {
+            //             $entity = $this->createLegalEntityType($entity_type, $data);
+            //         } catch (Exception $e) {
+            //             Alert::warning($e->getMessage());
+            //             return redirect()->back();
+            //         }
 
-                Log::info(json_encode($data));
-                Log::info(json_encode($entity));
+            //         Log::info(json_encode($data));
+            //         Log::info(json_encode($entity));
 
-                // entity creation failed
-                if (!(bool)$entity->status) {
-                    $client_party_status = 0;
-                    Log::warning(json_encode($entity));
-                    Alert::warning($entity->responseCode . ' : ' . $entity->responseDescription)->persistent(true, false);
-                    return redirect()->route('client-party.show', $id);
-                    break;
-                }
+            //         // entity creation failed
+            //         if (!(bool) $entity->status) {
+            //             $client_party_status = 0;
+            //             Log::warning(json_encode($entity));
+            //             Alert::warning($entity->responseCode . ' : ' . $entity->responseDescription)->persistent(true, false);
+            //             return redirect()->route('client-party.show', $id);
+            //             break;
+            //         }
 
-                if ((int)$entity->status == 400) {
-                    $client_party_status = 0;
-                    Log::warning(json_encode($entity));
-                    Alert::warning(json_encode($entity->errors))->persistent(true, false);
-                    return redirect()->route('client-party.show', $id);
-                    break;
-                }
+            //         if ((int) $entity->status == 400) {
+            //             $client_party_status = 0;
+            //             Log::warning(json_encode($entity));
+            //             Alert::warning(json_encode($entity->errors))->persistent(true, false);
+            //             return redirect()->route('client-party.show', $id);
+            //             break;
+            //         }
 
-                $entity_type_col =  (strtolower($entity_type) == 'vendor') ? 'Vendor' : 'Debtor';
+            //         $entity_type_col = (strtolower($entity_type) == 'vendor') ? 'Vendor' : 'Debtor';
 
-                // update entity vendor / debtor
-                DB::table('Cust_Entity')->where('Id', $id)->update([
-                    ucfirst($entity_type_col) . 'Code' => $entity->responseCode,
-                ]);
-            }
-                $client_party_status = 1;
-            }
+            //         // update entity vendor / debtor
+            //         DB::table('Cust_Entity')->where('Id', $id)->update([
+            //             ucfirst($entity_type_col) . 'Code' => $entity->responseCode,
+            //         ]);
+            //     }
+            //     $client_party_status = 1;
+            // }
 
             // dd($request,'Stop');
 
@@ -1537,7 +1540,7 @@ class ClientPartyController extends Controller
 
     public function CreateClientPartySCM($requestID)
     {
-        $entity = DB::table('Cust_Entity')->where('Id',$requestID)->get();
+        $entity = DB::table('Cust_Entity')->where('Id', $requestID)->get();
         // dd($entity[0]->OperatioEntityType);
         $results = json_decode(json_encode([['Status' => 'Failed', 'Remark' => 'Entity Not Created']]));
         if (!Auth::user()->can('create-client-party-SCM') && $entity[0]->OperatioEntityType != 'Client without Debtor or Vendor') {
@@ -1582,7 +1585,7 @@ class ClientPartyController extends Controller
             $results = json_decode(json_encode([['Status' => 'Failed', 'Remark' => 'Entity Creation Failed.']]));
         }
 
-        
+
         // if ($results[0]->Status == 'Failed') {
         //     DB::beginTransaction();
         //     DB::table('Cust_Entity')->where('Id', $requestID)->update(['Status' => 'Submitted']);
