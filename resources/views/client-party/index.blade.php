@@ -43,6 +43,21 @@
                 <!-- /.info-box -->
             </div>
             <!-- /.col -->
+            <div class="col-12 col-sm-6 col-md-2">
+                <a href="#" id="review">
+                    <div class="info-box">
+                        <span class="info-box-icon bg-secondary elevation-1"><i class="fa fa-pencil-square-o"
+                                aria-hidden="true"></i></span>
+                        <div class="info-box-content">
+                            <span class="info-box-text text-center">Pending</span>
+                            <span
+                                class="info-box-number text-center">{{ $clientParty->clientPartyCount('Status', 'Review') }}</span>
+                        </div>
+                        <!-- /.info-box-content -->
+                    </div>
+                </a>
+                <!-- /.info-box -->
+            </div>
             <div class="col-12 col-sm-6 col-md-3">
                 <a href="#" id="created">
                     <div class="info-box mb-3">
@@ -61,21 +76,7 @@
             <!-- fix for small devices only -->
             <div class="clearfix hidden-md-up"></div>
 
-            <div class="col-12 col-sm-6 col-md-2">
-                <a href="#" id="review">
-                    <div class="info-box">
-                        <span class="info-box-icon bg-secondary elevation-1"><i class="fa fa-pencil-square-o"
-                                aria-hidden="true"></i></span>
-                        <div class="info-box-content">
-                            <span class="info-box-text text-center">Review</span>
-                            <span
-                                class="info-box-number text-center">{{ $clientParty->clientPartyCount('Status', 'Review') }}</span>
-                        </div>
-                        <!-- /.info-box-content -->
-                    </div>
-                </a>
-                <!-- /.info-box -->
-            </div>
+
             <div class="col-12 col-sm-6 col-md-2">
                 <a href="#" id="rejected">
                     <div class="info-box">
