@@ -329,10 +329,24 @@
                 }
             });
 
+            // if (window.user_raise_ticket) {
+            //     $('#client-party-table_filter').css('margin-left', '2px').append(
+            //         '<a href="/client-party/create" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i>New Request</a>'
+            //     );
+            // }
+
             if (window.user_raise_ticket) {
-                $('#client-party-table_filter').css('margin-left', '2px').append(
-                    '<a href="/client-party/create" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i>New Request</a>'
-                );
+                $('#client-party-table_filter').css('margin-left', '2px').append(`
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-primary btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-plus"></i> New Request
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item request-option" href="/client-party/create?type=operational">Operational Entity Request</a></li>
+                            <li><a class="dropdown-item request-option" href="/client-party/create?type=accounting">Accounting Entity Request</a></li>
+                        </ul>
+                    </div>
+                `);
             }
             // if (window.user_view_my_office) {
             //     searchOffice(window.office);

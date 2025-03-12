@@ -1018,90 +1018,161 @@ class ClientPartyController extends Controller
      * @param  \App\Models\ClientParty  $clientParty
      * @return \Illuminate\Http\Response
      */
+    // public function show(ClientParty $clientParty)
+    // {
+    //     // dd($clientParty);
+
+    //     $user = \request()->user();
+
+    //     // authorization
+    //     if (!$user->can('view-client-party')) {
+    //         abort(403, "You are not allowed to view this page.");
+    //     }
+    //     // approve permission
+    //     $approve = false;
+    //     // Edit form permission
+    //     $editForm = true;
+
+    //     // check status
+    //     // if status is pendingmangerapproval and authuser != approve-my-office-entity-request
+    //     if (($clientParty->Status == 'PendingManagerApproval') && !$user->can('approve-my-office-entity-request')) {
+    //         alert()->warning('Warning !', 'Entity Pending for Manager Approval')->showConfirmButton();
+    //         return redirect()->back();
+    //     }
+
+    //     // if status pendingfinanceapproval  != approve-all-entity-request
+    //     // if (($clientParty->Status == 'PendingFinanceApproval') && !$user->can('approve-all-entity-request')) {
+    //     //     alert()->warning('Warning !', 'Entity Pending for Finance Approval')->showConfirmButton();
+    //     //     return redirect()->back();
+    //     // }
+
+    //     if ($clientParty->Status == 'Created') {
+    //         $editForm = false;
+    //     }
+
+    //     // permission for users to edit form
+    //     if ((Auth::user()->Role != 1 && ($clientParty->Status == 'Submitted')) && !Auth::user()->can('create-client-party')) {
+    //         $editForm = false;
+    //     }
+    //     // permission for admin
+    //     if (Auth::user()->Role == 1 && ($clientParty->Status != 'Created')) {
+    //         $editForm = true;
+    //     }
+
+    //     // if($clientParty->OperatioEntityType == 'Client without Debtor or Vendor' && $status = 'Created'){
+    //     //     $editForm = false;
+    //     // }
+
+    //     //permission for approve
+    //     if (url()->previous() == url('client-party/approve') || ($clientParty->Status == 'PendingManagerApproval')) {
+    //         $editForm = false;
+    //         $approve = true;
+    //     }
+
+    //     $countries = $this->getCountries();
+    //     $offices = $this->getOffices();
+
+    //     $currencyList = $this->getCurrencyList($clientParty->OfficeID) == [] ? ['does not exist'] : $this->getCurrencyList($clientParty->OfficeID);
+
+    //     if ($clientParty->OfficeID != null) {
+    //         if (str_contains(json_encode($currencyList[0]), 'does not exist')) {
+    //             $scm_office_id = DB::select(DB::raw("select SCMOfficeID
+    //             from Cust_Office where ID = '$clientParty->OfficeID'"));
+    //             $currencyList = $this->getCurrencyList($scm_office_id[0]->SCMOfficeID);
+    //         }
+    //     } else {
+    //         $idX = Auth::user()->office->SCMOfficeID;
+    //         $currencyList = $this->getCurrencyList($idX);
+    //     }
+
+
+    //     $licenceTypes = $this->getLicenceType();
+    //     $tarrifs = [];
+
+    //     if ($clientParty->Office == "FIT - Kenya - UPS") {
+    //         $tarrifs = $this->getTarrif($clientParty->OfficeID);
+    //     } else {
+    //         $tarrifs = [];
+    //     }
+
+    //     $incoterms = $this->getIncoTerms();
+    //     $payTerms = $this->getPaymentTermList();
+
+    //     return view(
+    //         'client-party.show',
+    //         compact('approve', 'editForm', 'payTerms', 'incoterms', 'clientParty', 'countries', 'offices', 'currencyList', 'licenceTypes', 'tarrifs')
+    //     );
+    // }
+
     public function show(ClientParty $clientParty)
     {
-        // dd($clientParty);
+        $user = request()->user();
 
-        $user = \request()->user();
-
-        // authorization
+        // Authorization
         if (!$user->can('view-client-party')) {
             abort(403, "You are not allowed to view this page.");
         }
-        // approve permission
+
+        // Determine the type dynamically based on LegalType
+        $type = $clientParty->LegalEntityType ? 'accounting' : 'operational';
+        // dd($type);
+        // Define permissions
         $approve = false;
-        // Edit form permission
         $editForm = true;
 
-        // check status
-        // if status is pendingmangerapproval and authuser != approve-my-office-entity-request
         if (($clientParty->Status == 'PendingManagerApproval') && !$user->can('approve-my-office-entity-request')) {
             alert()->warning('Warning !', 'Entity Pending for Manager Approval')->showConfirmButton();
             return redirect()->back();
         }
 
-        // if status pendingfinanceapproval  != approve-all-entity-request
-        // if (($clientParty->Status == 'PendingFinanceApproval') && !$user->can('approve-all-entity-request')) {
-        //     alert()->warning('Warning !', 'Entity Pending for Finance Approval')->showConfirmButton();
-        //     return redirect()->back();
-        // }
-
         if ($clientParty->Status == 'Created') {
             $editForm = false;
         }
 
-        // permission for users to edit form
         if ((Auth::user()->Role != 1 && ($clientParty->Status == 'Submitted')) && !Auth::user()->can('create-client-party')) {
             $editForm = false;
         }
-        // permission for admin
+
         if (Auth::user()->Role == 1 && ($clientParty->Status != 'Created')) {
             $editForm = true;
         }
 
-        // if($clientParty->OperatioEntityType == 'Client without Debtor or Vendor' && $status = 'Created'){
-        //     $editForm = false;
-        // }
-
-        //permission for approve
         if (url()->previous() == url('client-party/approve') || ($clientParty->Status == 'PendingManagerApproval')) {
             $editForm = false;
             $approve = true;
         }
 
+        // Retrieve necessary data
         $countries = $this->getCountries();
         $offices = $this->getOffices();
+        $currencyList = $this->getCurrencyList($clientParty->OfficeID) ?: ['does not exist'];
 
-        $currencyList = $this->getCurrencyList($clientParty->OfficeID) == [] ? ['does not exist'] : $this->getCurrencyList($clientParty->OfficeID);
-
-        if ($clientParty->OfficeID != null) {
-            if (str_contains(json_encode($currencyList[0]), 'does not exist')) {
-                $scm_office_id = DB::select(DB::raw("select SCMOfficeID
-                from Cust_Office where ID = '$clientParty->OfficeID'"));
-                $currencyList = $this->getCurrencyList($scm_office_id[0]->SCMOfficeID);
-            }
+        if ($clientParty->OfficeID && str_contains(json_encode($currencyList[0]), 'does not exist')) {
+            $scm_office_id = DB::select(DB::raw("SELECT SCMOfficeID FROM Cust_Office WHERE ID = ?", [$clientParty->OfficeID]));
+            $currencyList = $this->getCurrencyList($scm_office_id[0]->SCMOfficeID ?? null);
         } else {
-            $idX = Auth::user()->office->SCMOfficeID;
+            $idX = Auth::user()->office->SCMOfficeID ?? null;
             $currencyList = $this->getCurrencyList($idX);
         }
 
-
         $licenceTypes = $this->getLicenceType();
-        $tarrifs = [];
-
-        if ($clientParty->Office == "FIT - Kenya - UPS") {
-            $tarrifs = $this->getTarrif($clientParty->OfficeID);
-        } else {
-            $tarrifs = [];
-        }
-
+        $tarrifs = ($clientParty->Office == "FIT - Kenya - UPS") ? $this->getTarrif($clientParty->OfficeID) : [];
         $incoterms = $this->getIncoTerms();
         $payTerms = $this->getPaymentTermList();
 
-        return view(
-            'client-party.show',
-            compact('approve', 'editForm', 'payTerms', 'incoterms', 'clientParty', 'countries', 'offices', 'currencyList', 'licenceTypes', 'tarrifs')
-        );
+        return view('client-party.show', compact(
+            'approve',
+            'editForm',
+            'payTerms',
+            'incoterms',
+            'clientParty',
+            'countries',
+            'offices',
+            'currencyList',
+            'licenceTypes',
+            'tarrifs',
+            'type'
+        ));
     }
 
     /**

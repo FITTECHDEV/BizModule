@@ -75,17 +75,17 @@
                                                 style="border-radius: 10px;">
                                                 <legend class="w-auto p-0 m-0">Entity Creation Options</legend>
                                                 <div class="row">
-                                                    <div class="col col-md-12 col-sm-12 ">
+                                                    <div class="col col-md-6 col-sm-12 ">
                                                         <div class="form-group row mb-1">
                                                             <label for="partyEntityType"
                                                                 class="col-sm-3 col-lg-4 col-md-4 col-form-label col-form-label-sm">Operation
                                                                 Type<span class="text-danger">*</span></label>
                                                             <div class="col-sm-9 col-lg-8 col-md-8">
                                                                 <select class="form-control form-control-sm"
-                                                                    id="partyEntityType" name="partyEntityType" required >
+                                                                    id="partyEntityType" name="partyEntityType" required>
                                                                     <option value="" disabled selected></option>
-                                                                    
-                                                                    <option value="Forwarder"
+
+                                                                    <option value="Agent / Forwarder"
                                                                         @if (old('partyEntityType') == 'Agent / Forwarder') selected @endif>
                                                                         Agent / Forwarder</option>
                                                                     <option value="Airline"
@@ -97,12 +97,12 @@
                                                                     <option value="Trucker"
                                                                         @if (old('partyEntityType') == 'Trucker') selected @endif>
                                                                         Trucker / Transporter</option>
-                                                                    {{-- <option value="NoSCMIntergration" @if (old('partyEntityType') == 'NoSCMIntergration') selected @endif>Debtor/Vendor In D365</option> --}}
+
                                                                 </select>
                                                             </div>
                                                         </div>
                                                     </div>
-                                                    <div class="col col-md-6 col-sm-12 " hidden>
+                                                    <div class="col col-md-6 col-sm-12 ">
                                                         <div class="form-group row mb-1">
                                                             <label for="legalEntityType"
                                                                 class="col-sm-3 col-lg-4 col-md-4 col-form-label col-form-label-sm">Legal
@@ -501,122 +501,122 @@
                                                 </div>
                                             </fieldset>
                                         </div>
-                                        <div class="col-md-8 col-lg-8 col-sm-12">
+                                        <div class="col-md-12 col-lg-12 col-sm-12">
                                             <!-- <fieldset class="border p-2 card shadow-lg mb-0 pt-0 pb-0">
-                                                        <legend class="w-auto p-0 m-0">Client</legend>
-                                                        <div class="row">
-                                                            {{-- first detail client col --}}
-                                                            <div class="col-md-6 col-sm-12 col-lg-6">
-                                                                {{-- Sales Pic --}}
-                                                                <div class="form-group row mb-1">
-                                                                    <label for="salesPIC" class="col-sm-3 col-lg-4 col-form-label col-form-label-sm">Sales PIC<span class="text-danger">*</span></label>
-                                                                    <div class="col-sm-9 col-lg-8">
-                                                                        <input type="text" required class="form-control form-control-sm salesPIC" value="{{ old('salesPIC') }}" name="salesPIC" id="salesPIC">
-                                                                        <input type="hidden" name="salesPICID" id="salesPICID" value="{{ old('salesPICID') }}">
-                                                                        {{-- <select class="form-control form-control-sm" name="salesPIC" id="salesPIC" required>
+                                                                <legend class="w-auto p-0 m-0">Client</legend>
+                                                                <div class="row">
+                                                                    {{-- first detail client col --}}
+                                                                    <div class="col-md-6 col-sm-12 col-lg-6">
+                                                                        {{-- Sales Pic --}}
+                                                                        <div class="form-group row mb-1">
+                                                                            <label for="salesPIC" class="col-sm-3 col-lg-4 col-form-label col-form-label-sm">Sales PIC<span class="text-danger">*</span></label>
+                                                                            <div class="col-sm-9 col-lg-8">
+                                                                                <input type="text" required class="form-control form-control-sm salesPIC" value="{{ old('salesPIC') }}" name="salesPIC" id="salesPIC">
+                                                                                <input type="hidden" name="salesPICID" id="salesPICID" value="{{ old('salesPICID') }}">
+                                                                                {{-- <select class="form-control form-control-sm" name="salesPIC" id="salesPIC" required>
                                                                     <option value="" disabled selected></option>
                                                                 </select> --}}
-                                                                    </div>
-                                                                </div>
-                                                                {{-- Inco Terms --}}
-                                                                <div class="form-group row mb-1">
-                                                                    <label for="incoTermID" class="col-sm-3 col-lg-4 col-form-label col-form-label-sm">Inco Terms</label>
-                                                                    <div class="col-sm-9 col-lg-8">
-                                                                        <select class="form-control form-control-sm" name="incoTermID" id="incoTermID">
-                                                                            <option value="" disabled selected></option>
-                                                                            @forelse ($incoterms as $incoterm)
+                                                                            </div>
+                                                                        </div>
+                                                                        {{-- Inco Terms --}}
+                                                                        <div class="form-group row mb-1">
+                                                                            <label for="incoTermID" class="col-sm-3 col-lg-4 col-form-label col-form-label-sm">Inco Terms</label>
+                                                                            <div class="col-sm-9 col-lg-8">
+                                                                                <select class="form-control form-control-sm" name="incoTermID" id="incoTermID">
+                                                                                    <option value="" disabled selected></option>
+                                                                                    @forelse ($incoterms as $incoterm)
     <option value="{{ old('incoTermID', $incoterm->IncoTermID) }}" id="{{ $incoterm->IncoTermCode }}" @if (old('incoTermID') == $incoterm->IncoTermID) selected @endif>{{ $incoterm->Name }}</option>
                                                                     @empty
     @endforelse
-                                                                        </select>
-                                                                        <input type="hidden" name="incoTermName" id="incoTermName" value="{{ old('incoTermName') }}">
-                                                                        <input type="hidden" name="incoTermCode" id="incoTermCode" value="{{ old('incoTermCode') }}">
-                                                                    </div>
-                                                                </div>
-                                                                {{-- Notify party 1 --}}
-                                                                <div class="form-group row mb-1">
-                                                                    <label for="notifyParty1"
-                                                                        class="col-sm-3 col-lg-4 col-form-label col-form-label-sm">Notify Party 1</label>
-                                                                    <div class="col-sm-9 col-lg-8">
-                                                                        <input type="text" class="form-control form-control-sm" value="{{ old('notifyParty1') }}"
-                                                                        name="notifyParty1" id="notifyParty1">
-                                                                        <input type="hidden" name="notifyParty1ID" id="notifyParty1ID">
-                                                                        <input type="hidden" name="notifyParty1Code" id="notifyParty1Code">
-                                                                        {{-- <select class="form-control form-control-sm" name="notifyParty1" id="notifyParty1">
+                                                                                </select>
+                                                                                <input type="hidden" name="incoTermName" id="incoTermName" value="{{ old('incoTermName') }}">
+                                                                                <input type="hidden" name="incoTermCode" id="incoTermCode" value="{{ old('incoTermCode') }}">
+                                                                            </div>
+                                                                        </div>
+                                                                        {{-- Notify party 1 --}}
+                                                                        <div class="form-group row mb-1">
+                                                                            <label for="notifyParty1"
+                                                                                class="col-sm-3 col-lg-4 col-form-label col-form-label-sm">Notify Party 1</label>
+                                                                            <div class="col-sm-9 col-lg-8">
+                                                                                <input type="text" class="form-control form-control-sm" value="{{ old('notifyParty1') }}"
+                                                                                name="notifyParty1" id="notifyParty1">
+                                                                                <input type="hidden" name="notifyParty1ID" id="notifyParty1ID">
+                                                                                <input type="hidden" name="notifyParty1Code" id="notifyParty1Code">
+                                                                                {{-- <select class="form-control form-control-sm" name="notifyParty1" id="notifyParty1">
                                                                     <option value="" disabled selected></option>
                                                                 </select> --}}
+                                                                            </div>
+                                                                        </div>
                                                                     </div>
-                                                                </div>
-                                                            </div>
 
-                                                            {{-- second detail client col --}}
-                                                            <div class="col-md-6 col-sm-12 col-lg-6 pt-0">
-                                                                {{-- Account Pic --}}
-                                                                <div class="form-group row mb-1">
-                                                                    <label for="accountPIC" class="col-sm-3 col-lg-4 col-form-label col-form-label-sm">Account PIC</label>
-                                                                    <div class="col-sm-9 col-lg-8">
-                                                                        <input type="text" class="form-control form-control-sm"
-                                                                         value="{{ old('accountPIC') }}" name="accountPIC" id="accountPIC" placeholder="">
-                                                                         <input type="hidden" name="accountPICID" id="accountPICID"
-                                                                         value="{{ old('accountPICID') }}">
-                                                                        {{-- <select class="form-control form-control-sm" name="accountPIC" id="accountPIC">
+                                                                    {{-- second detail client col --}}
+                                                                    <div class="col-md-6 col-sm-12 col-lg-6 pt-0">
+                                                                        {{-- Account Pic --}}
+                                                                        <div class="form-group row mb-1">
+                                                                            <label for="accountPIC" class="col-sm-3 col-lg-4 col-form-label col-form-label-sm">Account PIC</label>
+                                                                            <div class="col-sm-9 col-lg-8">
+                                                                                <input type="text" class="form-control form-control-sm"
+                                                                                 value="{{ old('accountPIC') }}" name="accountPIC" id="accountPIC" placeholder="">
+                                                                                 <input type="hidden" name="accountPICID" id="accountPICID"
+                                                                                 value="{{ old('accountPICID') }}">
+                                                                                {{-- <select class="form-control form-control-sm" name="accountPIC" id="accountPIC">
                                                                     <option value="" disabled selected></option>
                                                                 </select> --}}
-                                                                    </div>
-                                                                </div>
-                                                                {{-- payment Terms --}}
-                                                                <div class="form-group row mb-1">
-                                                                    <label for="paymentTermsID"
-                                                                        class="col-sm-3 col-lg-4 col-form-label col-form-label-sm pt-0 mt-0">Pay Terms</label>
-                                                                    <div class="col-sm-9 col-lg-8 ">
-                                                                        <select class="form-control form-control-sm" name="paymentTermsID" id="paymentTermsID">
-                                                                            <option value="" disabled selected></option>
-                                                                            @forelse ($payTerms as $payTerm)
+                                                                            </div>
+                                                                        </div>
+                                                                        {{-- payment Terms --}}
+                                                                        <div class="form-group row mb-1">
+                                                                            <label for="paymentTermsID"
+                                                                                class="col-sm-3 col-lg-4 col-form-label col-form-label-sm pt-0 mt-0">Pay Terms</label>
+                                                                            <div class="col-sm-9 col-lg-8 ">
+                                                                                <select class="form-control form-control-sm" name="paymentTermsID" id="paymentTermsID">
+                                                                                    <option value="" disabled selected></option>
+                                                                                    @forelse ($payTerms as $payTerm)
     <option value="{{ old('paymentTermsID', $payTerm->IncoTermID) }}" id="{{ $payTerm->IncoTermCode }}" @if (old('paymentTermsID') == $payTerm->IncoTermID) selected @endif>{{ $payTerm->Name }}</option>
                                                                     @empty
     @endforelse
-                                                                        </select>
-                                                                        <input type="hidden" name="paymentTermsName" id="paymentTermsName">
-                                                                        <input type="hidden" name="paymentTermsCode" id="paymentTermsCode">
-                                                                    </div>
-                                                                </div>
-                                                                {{-- Notify party 2 --}}
-                                                                <div class="form-group row mb-1">
-                                                                    <label for="notifyParty2"
-                                                                        class="col-sm-3 col-lg-4 col-form-label col-form-label-sm">Notify Party 2</label>
-                                                                    <div class="col-sm-9 col-lg-8">
-                                                                        <input type="text" class="form-control form-control-sm" value="{{ old('notifyParty2') }}"
-                                                                        name="notifyParty2" id="notifyParty2" placeholder="">
-                                                                        <input type="hidden" name="notifyParty2ID" id="notifyParty2ID">
-                                                                        <input type="hidden" name="notifyParty2Code" id="notifyParty2Code">
-                                                                        {{-- <select class="form-control form-control-sm" name="notifyParty2" id="notifyParty2">
+                                                                                </select>
+                                                                                <input type="hidden" name="paymentTermsName" id="paymentTermsName">
+                                                                                <input type="hidden" name="paymentTermsCode" id="paymentTermsCode">
+                                                                            </div>
+                                                                        </div>
+                                                                        {{-- Notify party 2 --}}
+                                                                        <div class="form-group row mb-1">
+                                                                            <label for="notifyParty2"
+                                                                                class="col-sm-3 col-lg-4 col-form-label col-form-label-sm">Notify Party 2</label>
+                                                                            <div class="col-sm-9 col-lg-8">
+                                                                                <input type="text" class="form-control form-control-sm" value="{{ old('notifyParty2') }}"
+                                                                                name="notifyParty2" id="notifyParty2" placeholder="">
+                                                                                <input type="hidden" name="notifyParty2ID" id="notifyParty2ID">
+                                                                                <input type="hidden" name="notifyParty2Code" id="notifyParty2Code">
+                                                                                {{-- <select class="form-control form-control-sm" name="notifyParty2" id="notifyParty2">
                                                                     <option value="" disabled selected></option>
                                                                 </select> --}}
+                                                                            </div>
+                                                                        </div>
                                                                     </div>
+
                                                                 </div>
-                                                            </div>
 
-                                                        </div>
-
-                                                        <div class="">
-                                                            {{-- Forwarder --}}
-                                                            <div class="form-group row mb-0">
-                                                                <label for="forwarderName" class="col-sm-3 col-md-4 col-lg-2 col-form-label col-form-label-sm">Forwarder</label>
-                                                                <div class="col-sm-9 col-lg-10 col-md-8">
-                                                                    <input type="text" class="form-control form-control-sm" name="forwarderName" id="forwarderName"
-                                                                    value="{{ old('forwarderName') }}">
-                                                                    <input type="hidden" class="form-control form-control-sm"
-                                                                    name="forwarderID" id="forwarderID" value="{{ old('forwarderID') }}">
-                                                                    {{-- <select class="form-control form-control-sm" name="forwarder" id="forwarder">
+                                                                <div class="">
+                                                                    {{-- Forwarder --}}
+                                                                    <div class="form-group row mb-0">
+                                                                        <label for="forwarderName" class="col-sm-3 col-md-4 col-lg-2 col-form-label col-form-label-sm">Forwarder</label>
+                                                                        <div class="col-sm-9 col-lg-10 col-md-8">
+                                                                            <input type="text" class="form-control form-control-sm" name="forwarderName" id="forwarderName"
+                                                                            value="{{ old('forwarderName') }}">
+                                                                            <input type="hidden" class="form-control form-control-sm"
+                                                                            name="forwarderID" id="forwarderID" value="{{ old('forwarderID') }}">
+                                                                            {{-- <select class="form-control form-control-sm" name="forwarder" id="forwarder">
                                                                 <option value="" disabled selected></option>
                                                             </select> --}}
+                                                                        </div>
+                                                                    </div>
                                                                 </div>
-                                                            </div>
-                                                        </div>
-                                                    </fieldset> -->
+                                                            </fieldset> -->
 
                                             <!-- Data Vendor -->
-                                            {{-- <fieldset class="border p-2 card shadow-lg mb-0 pt-0 pb-0">
+                                            <fieldset class="border p-2 card shadow-lg mb-0 pt-0 pb-0" id="debtor-vendor">
                                                 <legend class="w-auto p-0 m-0">Debtor/Vendor</legend>
                                                 <div class="row">
                                                     <div class="col-md-6 col-sm-12 col-lg-6">
@@ -743,7 +743,7 @@
                                                             id="licenceTypeValue" required>
                                                     </div>
                                                 </div>
-                                            </fieldset> --}}
+                                            </fieldset>
 
                                             {{-- <fieldset class="border p-2 card shadow-lg mb-0 pt-0 pb-0">
                                                 <legend class="w-auto p-0 m-0"> Additional Information</legend>
@@ -1153,6 +1153,24 @@
 
     <script>
         $(document).ready(function() {
+            // Function to get URL parameter
+            function getUrlParameter(name) {
+                let searchParams = new URLSearchParams(window.location.search);
+                return searchParams.get(name);
+            }
+
+            // Get 'type' parameter from URL
+            let requestType = getUrlParameter('type');
+
+            if (requestType === "operational") {
+                $("#partyEntityType").closest(".col-md-12").show(); // Show Operation Type
+                $("#legalEntityType").closest(".col-md-6").hide(); // Hide Legal Type
+                $("#debtor-vendor").hide(); // Hide debtor and Vendor
+            } else if (requestType === "accounting") {
+                $("#partyEntityType").closest(".col-md-6").show(); // Show Operation Type
+                $("#legalEntityType").closest(".col-md-6").show(); // Show Legal Type
+            }
+
             $('#partyEntityType').change(function() {
                 var selectedType = $(this).val();
                 if (selectedType === 'Create Debtor/Vendor with Existing Client') {
