@@ -94,7 +94,7 @@
                                                                     <option value="Shipping Line"
                                                                         @if (old('partyEntityType') == 'Shipplingline') selected @endif>
                                                                         Shipping Line</option>
-                                                                    <option value="Trucker"
+                                                                    <option value="Trucker / Transporter"
                                                                         @if (old('partyEntityType') == 'Trucker') selected @endif>
                                                                         Trucker / Transporter</option>
 
@@ -847,10 +847,10 @@
                                                             <th>Select</th>
                                                             <th>Code</th>
                                                         </thead>
-                                                        <tr>
+                                                        <tr id="client-check">
                                                             <td>Client</td>
                                                             <td><input type="checkbox" name="clientCheck"
-                                                                    id="clientCheck"=""></td>
+                                                                    id="clientCheck"></td>
                                                             <td>
                                                                 <input type="text" name="clientInput" id="clientInput"
                                                                     value="{{ old('clientInput') }}"
@@ -865,7 +865,7 @@
                                                             </td>
                                                             <td id="client_Input"></td>
                                                         </tr>
-                                                        <tr>
+                                                        <tr id="shipper-check">
                                                             <td>Shipper</td>
                                                             <td><input type="checkbox" name="shipperCheck"
                                                                     id="shipperCheck"></td>
@@ -882,7 +882,7 @@
                                                             </td>
                                                             <td id="shipper_Input"></td>
                                                         </tr>
-                                                        <tr>
+                                                        <tr id="consignee-check">
                                                             <td>Consignee</td>
                                                             <td><input type="checkbox" name="consigneeCheck"
                                                                     id="consigneeCheck"></td>
@@ -915,7 +915,7 @@
                                                             </td>
                                                             <td id="other_Input"></td>
                                                         </tr>
-                                                        <tr>
+                                                        <tr id="debtor-check">
                                                             <td>Debtor</td>
                                                             <td><input type="checkbox" name="debtorCheck"
                                                                     id="debtorCheck"></td>
@@ -930,7 +930,7 @@
                                                             </td>
                                                             <td id="debtor_code"></td>
                                                         </tr>
-                                                        <tr>
+                                                        <tr id="vendor-check">
                                                             <td>Vendor</td>
                                                             <td><input type="checkbox" name="vendorCheck"
                                                                     id="vendorCheck"></td>
@@ -1152,7 +1152,7 @@
     </script>
 
     <script>
-        $(document).ready(function() {
+        $(document).ready(function() { 
             // Function to get URL parameter
             function getUrlParameter(name) {
                 let searchParams = new URLSearchParams(window.location.search);

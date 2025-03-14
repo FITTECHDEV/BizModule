@@ -13,7 +13,7 @@
     <div class="p-2">
         <div class="row pt-2 pb-0">
             <!-- /.col -->
-            {{-- <div class="col-12 col-sm-6 col-md-2">
+            <div class="col-12 col-sm-6 col-md-2">
                 <a href="#" id="pending">
                     <div class="info-box">
                         <span class="info-box-icon bg-primary elevation-1">
@@ -26,9 +26,9 @@
                         <!-- /.info-box-content -->
                     </div>
                 </a>
-            </div> --}}
+            </div>
             <!-- /.col -->
-            <div class="col-12 col-sm-6 col-md-3">
+            <div class="col-12 col-sm-6 col-md-2">
                 <a href="#" id="submitted">
                     <div class="info-box mb-3">
                         <span class="info-box-icon bg-warning elevation-1"><i class="fa fa-hand-paper"></i></span>
@@ -43,22 +43,8 @@
                 <!-- /.info-box -->
             </div>
             <!-- /.col -->
+
             <div class="col-12 col-sm-6 col-md-2">
-                <a href="#" id="review">
-                    <div class="info-box">
-                        <span class="info-box-icon bg-secondary elevation-1"><i class="fa fa-pencil-square-o"
-                                aria-hidden="true"></i></span>
-                        <div class="info-box-content">
-                            <span class="info-box-text text-center">Pending</span>
-                            <span
-                                class="info-box-number text-center">{{ $clientParty->clientPartyCount('Status', 'Review') }}</span>
-                        </div>
-                        <!-- /.info-box-content -->
-                    </div>
-                </a>
-                <!-- /.info-box -->
-            </div>
-            <div class="col-12 col-sm-6 col-md-3">
                 <a href="#" id="created">
                     <div class="info-box mb-3">
                         <span class="info-box-icon bg-success elevation-1">
@@ -73,6 +59,21 @@
                 </a>
             </div>
             <!-- /.col -->
+            <div class="col-12 col-sm-6 col-md-2">
+                <a href="#" id="review">
+                    <div class="info-box">
+                        <span class="info-box-icon bg-secondary elevation-1"><i class="fa fa-pencil-square-o"
+                                aria-hidden="true"></i></span>
+                        <div class="info-box-content">
+                            <span class="info-box-text text-center">Review</span>
+                            <span
+                                class="info-box-number text-center">{{ $clientParty->clientPartyCount('Status', 'Review') }}</span>
+                        </div>
+                        <!-- /.info-box-content -->
+                    </div>
+                </a>
+                <!-- /.info-box -->
+            </div>
             <!-- fix for small devices only -->
             <div class="clearfix hidden-md-up"></div>
 

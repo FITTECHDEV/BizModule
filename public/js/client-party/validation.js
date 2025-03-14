@@ -31,6 +31,8 @@ $(document).ready(function () {
             let lastName = $("#lastName").val();
             let phoneNo = $("#phoneNo").val();
 
+           
+
             if (phoneNo.length == 0) {
                 $("#phoneNo").addClass("is-invalid");
                 window.stepper.to(0);
@@ -71,13 +73,17 @@ $(document).ready(function () {
                 proceed = true;
             }
 
-            if (l_e_t.length == 0) {
-                $('#legalEntityType').addClass('is-invalid');
-                window.stepper.to(0);
-            } else {
-                $('#legalEntityType').removeClass('is-invalid');
-                proceed = true;
+            if(requestType === 'accounting') {
+                if (l_e_t.length == 0) {
+                    $('#legalEntityType').addClass('is-invalid');
+                    window.stepper.to(0);
+                } else {
+                    $('#legalEntityType').removeClass('is-invalid');
+                    proceed = true;
+                }
             }
+
+           
 
             if ($("#companyName").is(":visible")) {
                 if (companyName.length == 0) {
@@ -286,6 +292,12 @@ $(document).ready(function () {
                 $('#maxCreditLimit').removeAttr('required');
                 $('#licenceTypeID').removeAttr('required');
                 $('#licenceTypeValue').removeAttr('required');
+                $('#legalEntityType').removeAttr('required');
+                $('#client-check').hide();
+                $('#vendor-check').hide();
+                $('#debtor-check').hide();
+                $('#shipper-check').hide();
+                $('#consignee-check').hide();
             }
 
 

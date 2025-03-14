@@ -588,14 +588,34 @@ class ClientPartyController extends Controller
 
         $clientName = isset($request->client) ? $request->client : $request->clientInput;
 
-        $status = '';
-        if (isset($request->submitBtn)) {
-            // update status to ready
+        $status = 'Not Submitted'; // Default status
+
+        if (isset($request->submitBtn) ) {
             $status = 'Submitted';
-        } else {
-            // default status
-            $status = 'Not Submitted';
         }
+
+        // If submit button is set and other conditions are met, override the status
+        if (
+            isset($request->submitBtn) &&
+            (isset($request->debtor) || isset($request->debtorCheck) ||
+                isset($request->vendor) || isset($request->vendorCheck))
+        ) {
+            $status = 'PendingManagerApproval';
+        } else  {
+            $status = 'Submitted';
+        }
+
+
+        // $status = '';
+        // if (isset($request->submitBtn)) {
+        //     // update status to ready
+        //     $status = 'Submitted';
+        // } else {
+        //     // default status
+        //     $status = 'Not Submitted';
+        // }
+
+
 
         // if (isset($request->debtor) || isset($request->debtorCheck)) {
         //     $status = 'PendingManagerApproval';
@@ -655,24 +675,7 @@ class ClientPartyController extends Controller
                 'OfficeCode' => $request->officeCode,
                 'OfficeID' => $request->officeCountryID,
 
-                //preffered ports
-                // 'AirUsualPortOfLoadingName' => $request->portOfLoadingAir,
-                // 'AirUsualPortOfLoading' => $request->portOfLoadingAirID != '' ? $request->portOfLoadingAirID : null, //guid
-                // 'AirUsualPortofDischargeName' => $request->portOfDischargeAir,
-                // 'AirUsualPortofDischarge' => $request->portOfDischargeAirID != '' ? $request->portOfDischargeAirID : null, //guid
-                // 'SeaUsualPortOfLoadingName' => $request->portOfLoadingSea, //varchar
-                // 'SeaUsualPortOfLoading' => $request->portOfLoadingSeaID != '' ? $request->portOfLoadingSeaID : null, //guid
-                // 'SeaUsualPortofDischargeName' => $request->portOfDischargeSea, //varchar
-                // 'SeaUsualPortofDischarge' => $request->portOfDischargeSeaID != '' ? $request->portOfDischargeSeaID : null, //guid
-                // file upload
 
-                //client
-                // 'SalesMgrOfficeFunMapName' => $request->salesPIC,
-                // 'SalesMgrOfficeFunMapId' => $request->salesPICID != '' ? $request->salesPICID : null, //!id needs to be added to procedure
-                // 'SalesMgrOfficeFunMapId' => null,//!remove this
-                // 'IncoTermID' => $request->incoTermID,
-                // 'IncoTermName' => $request->incoTermName,
-                // 'IncoTermCode' => $request->incoTermCode,
 
                 'DefaultNotifyPartyName' => $request->notifyParty1,
                 'DefaultNotifyPartyId' => $request->notifyParty1ID != '' ? $request->notifyParty1ID : null,
@@ -680,10 +683,7 @@ class ClientPartyController extends Controller
 
                 'AccountMgrOfficeFunMapName' => $request->accountPIC,
                 'AccountMgrOfficeFunMapId' => $request->accountPICID != '' ? $request->accountPICID : null, //!id needs to be added to procedure
-                // 'AccountMgrOfficeFunMapId' => null, //!Remove this
-                // 'PaymentTermsID' => $request->paymentTermsID,
-                // 'PaymentTermsName' => $request->paymentTermsName,
-                // 'PaymentTermsCode' => $request->paymentTermsCode,
+
 
                 'DefaultNotifyParty1Name' => $request->notifyParty2,
                 'DefaultNotifyParty1Id' => $request->notifyParty2ID != '' ? $request->notifyParty2ID : null, //!id needs to be added to procedure
@@ -748,26 +748,14 @@ class ClientPartyController extends Controller
                 'LastModifiedOn' => Carbon::now()->format('Y-m-d H:i:s'),
                 'LastModifiedBy' => $user->full_name,
 
-                // 'DebtorLicenceTypeID' => $request->debtorLicenceType != '' ? $request->debtorLicenceType : null, //guid
-                // 'DebtorLicenceTypeCode' => $request->debtorLicenceCode,
-                // 'DebtorLicenceTypeValue' => $request->debtorLicence,
-                // 'VendorLicenceTypeID' => $request->vendorLicenceType != '' ? $request->vendorLicenceType : null, //guid
-                // 'VendorLicenceTypeCode' => $request->vendorLicenceCode,
-                // 'VendorLicenceTypeValue' => $request->vendorLicence,
                 'DebtorType' => $request->debtorType,
                 'VendorType' => $request->vendorType,
 
-                // 'DefaultPartyLocationId' => null,
+
                 'Status' => $status,
 
             ];
 
-            // if ($request->partyEntityType === 'Client without Debtor or Vendor') {
-            //     $data['RequestforClient'] = 1;
-            //     $data['RequestforShipperConsignee'] = 1;
-            // }
-
-            // dd($data);
 
             DB::table('Cust_Entity')->updateOrInsert($data);
             DB::commit();
@@ -984,8 +972,8 @@ class ClientPartyController extends Controller
 
     public function createLegalEntityType(string $type, array $post_data)
     {
-        $debtor_url = 'http://10.0.1.14:8990/api/customer';
-        $vendor_url = 'http://10.0.1.14:8990/api/vendor';
+        $debtor_url = env('DEBTOR_URL');
+        $vendor_url = env('VENDER_URL');
 
         $request_url = (strtolower($type) == 'vendor') ? $vendor_url : $debtor_url;
 
@@ -1002,11 +990,11 @@ class ClientPartyController extends Controller
 
     public function entityToken()
     {
-        $token_url = 'http://10.0.1.14:8990/api/authenticate/token';
+        $token_url = env('D365_TOKEN_URL');
 
         $response = Http::post($token_url, [
-            "username" => "D365Integration",
-            "password" => "fitD365Integration@2019!"
+            "username" => env('D365_USERNAME'),
+            "password" => env('D365_PASSWORD')
         ]);
 
         return ["status" => $response->successful(), "token" => $response->body()];
