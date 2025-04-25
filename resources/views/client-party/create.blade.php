@@ -51,7 +51,7 @@
                                         <button type="button" class="step-trigger pb-0 pt-0" role="tab"
                                             aria-controls="office-details" id="admin-details-trigger" aria-selected="true">
                                             <span class="bs-stepper-circle">3</span>
-                                            <span class="bs-stepper-label">Admin Details</span>
+                                            <span class="bs-stepper-label"> Admin Details</span>
                                         </button>
                                     </div>
                                 @endif
@@ -159,24 +159,24 @@
                                                         <!-- <input type="text" name="clientCompanyName" id="clientCompanyName" class="form-control form-control-sm" placeholder="Start typing company name"> -->
                                                     </div>
                                                 </div>
-                                                {{-- AddressLine 1 --}}
-                                                <div class="form-group row mb-1">
-                                                    <label for="addressLine1"
-                                                        class="col-sm-3 col-lg-4 col-form-label col-form-label-sm"><i
-                                                            class="fa fa-map-marker" aria-hidden="true"></i> AddressLine 1
-                                                        <span class="text-danger">*</span></label>
-                                                    <div class="col-sm-9 col-lg-8">
-                                                        <textarea name="addressLine1" id="addressLine1" maxlength="50" class="form-control form-control-sm">{{ old('addressLine1') }}</textarea>
+                                                {{-- Address Line 1 and 2 --}}
+                                                {{-- Address Line 1 and 2 --}}
+                                                <div class="form-group row mb-1 address-row">
+                                                    <div class="col-md-6">
+                                                        <label for="addressLine1"
+                                                            class="col-form-label col-form-label-sm"><i
+                                                                class="fa fa-map-marker" aria-hidden="true"></i> Address
+                                                            Line 1 <span class="text-danger">*</span></label>
+                                                        <textarea name="addressLine1" id="addressLine1" maxlength="50" class="form-control form-control-sm auto-resize"
+                                                            rows="1" required>{{ old('addressLine1') }}</textarea>
                                                     </div>
-                                                </div>
-                                                {{-- AddressLine 2 --}}
-                                                <div class="form-group row mb-1">
-                                                    <label for="addressLine2"
-                                                        class="col-sm-3 col-lg-4 col-form-label col-form-label-sm"><i
-                                                            class="fa fa-map-marker" aria-hidden="true"></i> AddressLine
-                                                        2</label>
-                                                    <div class="col-sm-9 col-lg-8">
-                                                        <textarea name="addressLine2" id="addressLine2" maxlength="50" class="form-control form-control-sm">{{ old('addressLine2') }}</textarea>
+                                                    <div class="col-md-6">
+                                                        <label for="addressLine2"
+                                                            class="col-form-label col-form-label-sm"><i
+                                                                class="fa fa-map-marker" aria-hidden="true"></i> Address
+                                                            Line 2</label>
+                                                        <textarea name="addressLine2" id="addressLine2" maxlength="50" class="form-control form-control-sm auto-resize"
+                                                            rows="1">{{ old('addressLine2') }}</textarea>
                                                     </div>
                                                 </div>
                                                 {{-- Country Code and Country Name --}}
@@ -472,30 +472,33 @@
                                                 <label for="attachmentFile">Attachment <i
                                                         class="fa fa-paperclip"></i><span style="color: red;">*</span>
                                                     <button type="button"
-                                                        class="btn btn-sm btn-outline-warning pull-right w-20 addAttachment"
+                                                        class="btn btn-sm btn-outline-warning float-right w-20 addAttachment"
                                                         id="addFile">
                                                         <i class="fa fa-plus"></i> File
                                                     </button>
                                                 </label>
-                                                <div class="input-group hdtuto control-group lst increment">
-                                                    <input type="file" name="attachmentNames[]"
-                                                        class="myfrm form-control mr-1 form-control-sm" multiple required>
+                                                <div class="input-group hdtuto control-group lst increment"
+                                                    id="initial-attachment">
+                                                    <input id="attachments" type="file" name="attachmentNames[]"
+                                                        class="myfrm form-control mr-1 form-control-sm" required>
                                                     <input type="text" name="attachmentDescription[]"
                                                         class="myfrm form-control form-control-sm"
-                                                        placeholder="Description">
+                                                        placeholder="Description" required>
                                                 </div>
                                                 <div id="attachClone"></div>
-                                                <div class="clone d-none">
-                                                    <div class="hdtuto control-group lst input-group mt-1" style="">
+                                                <div class="clone-template d-none">
+                                                    <div
+                                                        class="hdtuto control-group lst input-group mt-1 cloned-attachment">
                                                         <input type="file" name="attachmentNames[]"
                                                             class="myfrm form-control mr-1 form-control-sm">
                                                         <input type="text" name="attachmentDescription[]"
                                                             class="myfrm form-control form-control-sm"
                                                             placeholder="Description">
                                                         <div class="input-group-btn">
-                                                            <button class="btn btn-danger btn-sm" type="button"
-                                                                style="">
-                                                                <i class="fldemo fa fa-minus"></i> </button>
+                                                            <button class="btn btn-danger btn-sm remove-attachment"
+                                                                type="button">
+                                                                <i class="fa fa-minus"></i>
+                                                            </button>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -503,117 +506,117 @@
                                         </div>
                                         <div class="col-md-12 col-lg-12 col-sm-12">
                                             <!-- <fieldset class="border p-2 card shadow-lg mb-0 pt-0 pb-0">
-                                                                <legend class="w-auto p-0 m-0">Client</legend>
-                                                                <div class="row">
-                                                                    {{-- first detail client col --}}
-                                                                    <div class="col-md-6 col-sm-12 col-lg-6">
-                                                                        {{-- Sales Pic --}}
-                                                                        <div class="form-group row mb-1">
-                                                                            <label for="salesPIC" class="col-sm-3 col-lg-4 col-form-label col-form-label-sm">Sales PIC<span class="text-danger">*</span></label>
-                                                                            <div class="col-sm-9 col-lg-8">
-                                                                                <input type="text" required class="form-control form-control-sm salesPIC" value="{{ old('salesPIC') }}" name="salesPIC" id="salesPIC">
-                                                                                <input type="hidden" name="salesPICID" id="salesPICID" value="{{ old('salesPICID') }}">
-                                                                                {{-- <select class="form-control form-control-sm" name="salesPIC" id="salesPIC" required>
+                                                                                <legend class="w-auto p-0 m-0">Client</legend>
+                                                                                <div class="row">
+                                                                                    {{-- first detail client col --}}
+                                                                                    <div class="col-md-6 col-sm-12 col-lg-6">
+                                                                                        {{-- Sales Pic --}}
+                                                                                        <div class="form-group row mb-1">
+                                                                                            <label for="salesPIC" class="col-sm-3 col-lg-4 col-form-label col-form-label-sm">Sales PIC<span class="text-danger">*</span></label>
+                                                                                            <div class="col-sm-9 col-lg-8">
+                                                                                                <input type="text" required class="form-control form-control-sm salesPIC" value="{{ old('salesPIC') }}" name="salesPIC" id="salesPIC">
+                                                                                                <input type="hidden" name="salesPICID" id="salesPICID" value="{{ old('salesPICID') }}">
+                                                                                                {{-- <select class="form-control form-control-sm" name="salesPIC" id="salesPIC" required>
                                                                     <option value="" disabled selected></option>
                                                                 </select> --}}
-                                                                            </div>
-                                                                        </div>
-                                                                        {{-- Inco Terms --}}
-                                                                        <div class="form-group row mb-1">
-                                                                            <label for="incoTermID" class="col-sm-3 col-lg-4 col-form-label col-form-label-sm">Inco Terms</label>
-                                                                            <div class="col-sm-9 col-lg-8">
-                                                                                <select class="form-control form-control-sm" name="incoTermID" id="incoTermID">
-                                                                                    <option value="" disabled selected></option>
-                                                                                    @forelse ($incoterms as $incoterm)
+                                                                                            </div>
+                                                                                        </div>
+                                                                                        {{-- Inco Terms --}}
+                                                                                        <div class="form-group row mb-1">
+                                                                                            <label for="incoTermID" class="col-sm-3 col-lg-4 col-form-label col-form-label-sm">Inco Terms</label>
+                                                                                            <div class="col-sm-9 col-lg-8">
+                                                                                                <select class="form-control form-control-sm" name="incoTermID" id="incoTermID">
+                                                                                                    <option value="" disabled selected></option>
+                                                                                                    @forelse ($incoterms as $incoterm)
     <option value="{{ old('incoTermID', $incoterm->IncoTermID) }}" id="{{ $incoterm->IncoTermCode }}" @if (old('incoTermID') == $incoterm->IncoTermID) selected @endif>{{ $incoterm->Name }}</option>
                                                                     @empty
     @endforelse
-                                                                                </select>
-                                                                                <input type="hidden" name="incoTermName" id="incoTermName" value="{{ old('incoTermName') }}">
-                                                                                <input type="hidden" name="incoTermCode" id="incoTermCode" value="{{ old('incoTermCode') }}">
-                                                                            </div>
-                                                                        </div>
-                                                                        {{-- Notify party 1 --}}
-                                                                        <div class="form-group row mb-1">
-                                                                            <label for="notifyParty1"
-                                                                                class="col-sm-3 col-lg-4 col-form-label col-form-label-sm">Notify Party 1</label>
-                                                                            <div class="col-sm-9 col-lg-8">
-                                                                                <input type="text" class="form-control form-control-sm" value="{{ old('notifyParty1') }}"
-                                                                                name="notifyParty1" id="notifyParty1">
-                                                                                <input type="hidden" name="notifyParty1ID" id="notifyParty1ID">
-                                                                                <input type="hidden" name="notifyParty1Code" id="notifyParty1Code">
-                                                                                {{-- <select class="form-control form-control-sm" name="notifyParty1" id="notifyParty1">
+                                                                                                </select>
+                                                                                                <input type="hidden" name="incoTermName" id="incoTermName" value="{{ old('incoTermName') }}">
+                                                                                                <input type="hidden" name="incoTermCode" id="incoTermCode" value="{{ old('incoTermCode') }}">
+                                                                                            </div>
+                                                                                        </div>
+                                                                                        {{-- Notify party 1 --}}
+                                                                                        <div class="form-group row mb-1">
+                                                                                            <label for="notifyParty1"
+                                                                                                class="col-sm-3 col-lg-4 col-form-label col-form-label-sm">Notify Party 1</label>
+                                                                                            <div class="col-sm-9 col-lg-8">
+                                                                                                <input type="text" class="form-control form-control-sm" value="{{ old('notifyParty1') }}"
+                                                                                                name="notifyParty1" id="notifyParty1">
+                                                                                                <input type="hidden" name="notifyParty1ID" id="notifyParty1ID">
+                                                                                                <input type="hidden" name="notifyParty1Code" id="notifyParty1Code">
+                                                                                                {{-- <select class="form-control form-control-sm" name="notifyParty1" id="notifyParty1">
                                                                     <option value="" disabled selected></option>
                                                                 </select> --}}
-                                                                            </div>
-                                                                        </div>
-                                                                    </div>
+                                                                                            </div>
+                                                                                        </div>
+                                                                                    </div>
 
-                                                                    {{-- second detail client col --}}
-                                                                    <div class="col-md-6 col-sm-12 col-lg-6 pt-0">
-                                                                        {{-- Account Pic --}}
-                                                                        <div class="form-group row mb-1">
-                                                                            <label for="accountPIC" class="col-sm-3 col-lg-4 col-form-label col-form-label-sm">Account PIC</label>
-                                                                            <div class="col-sm-9 col-lg-8">
-                                                                                <input type="text" class="form-control form-control-sm"
-                                                                                 value="{{ old('accountPIC') }}" name="accountPIC" id="accountPIC" placeholder="">
-                                                                                 <input type="hidden" name="accountPICID" id="accountPICID"
-                                                                                 value="{{ old('accountPICID') }}">
-                                                                                {{-- <select class="form-control form-control-sm" name="accountPIC" id="accountPIC">
+                                                                                    {{-- second detail client col --}}
+                                                                                    <div class="col-md-6 col-sm-12 col-lg-6 pt-0">
+                                                                                        {{-- Account Pic --}}
+                                                                                        <div class="form-group row mb-1">
+                                                                                            <label for="accountPIC" class="col-sm-3 col-lg-4 col-form-label col-form-label-sm">Account PIC</label>
+                                                                                            <div class="col-sm-9 col-lg-8">
+                                                                                                <input type="text" class="form-control form-control-sm"
+                                                                                                 value="{{ old('accountPIC') }}" name="accountPIC" id="accountPIC" placeholder="">
+                                                                                                 <input type="hidden" name="accountPICID" id="accountPICID"
+                                                                                                 value="{{ old('accountPICID') }}">
+                                                                                                {{-- <select class="form-control form-control-sm" name="accountPIC" id="accountPIC">
                                                                     <option value="" disabled selected></option>
                                                                 </select> --}}
-                                                                            </div>
-                                                                        </div>
-                                                                        {{-- payment Terms --}}
-                                                                        <div class="form-group row mb-1">
-                                                                            <label for="paymentTermsID"
-                                                                                class="col-sm-3 col-lg-4 col-form-label col-form-label-sm pt-0 mt-0">Pay Terms</label>
-                                                                            <div class="col-sm-9 col-lg-8 ">
-                                                                                <select class="form-control form-control-sm" name="paymentTermsID" id="paymentTermsID">
-                                                                                    <option value="" disabled selected></option>
-                                                                                    @forelse ($payTerms as $payTerm)
+                                                                                            </div>
+                                                                                        </div>
+                                                                                        {{-- payment Terms --}}
+                                                                                        <div class="form-group row mb-1">
+                                                                                            <label for="paymentTermsID"
+                                                                                                class="col-sm-3 col-lg-4 col-form-label col-form-label-sm pt-0 mt-0">Pay Terms</label>
+                                                                                            <div class="col-sm-9 col-lg-8 ">
+                                                                                                <select class="form-control form-control-sm" name="paymentTermsID" id="paymentTermsID">
+                                                                                                    <option value="" disabled selected></option>
+                                                                                                    @forelse ($payTerms as $payTerm)
     <option value="{{ old('paymentTermsID', $payTerm->IncoTermID) }}" id="{{ $payTerm->IncoTermCode }}" @if (old('paymentTermsID') == $payTerm->IncoTermID) selected @endif>{{ $payTerm->Name }}</option>
                                                                     @empty
     @endforelse
-                                                                                </select>
-                                                                                <input type="hidden" name="paymentTermsName" id="paymentTermsName">
-                                                                                <input type="hidden" name="paymentTermsCode" id="paymentTermsCode">
-                                                                            </div>
-                                                                        </div>
-                                                                        {{-- Notify party 2 --}}
-                                                                        <div class="form-group row mb-1">
-                                                                            <label for="notifyParty2"
-                                                                                class="col-sm-3 col-lg-4 col-form-label col-form-label-sm">Notify Party 2</label>
-                                                                            <div class="col-sm-9 col-lg-8">
-                                                                                <input type="text" class="form-control form-control-sm" value="{{ old('notifyParty2') }}"
-                                                                                name="notifyParty2" id="notifyParty2" placeholder="">
-                                                                                <input type="hidden" name="notifyParty2ID" id="notifyParty2ID">
-                                                                                <input type="hidden" name="notifyParty2Code" id="notifyParty2Code">
-                                                                                {{-- <select class="form-control form-control-sm" name="notifyParty2" id="notifyParty2">
+                                                                                                </select>
+                                                                                                <input type="hidden" name="paymentTermsName" id="paymentTermsName">
+                                                                                                <input type="hidden" name="paymentTermsCode" id="paymentTermsCode">
+                                                                                            </div>
+                                                                                        </div>
+                                                                                        {{-- Notify party 2 --}}
+                                                                                        <div class="form-group row mb-1">
+                                                                                            <label for="notifyParty2"
+                                                                                                class="col-sm-3 col-lg-4 col-form-label col-form-label-sm">Notify Party 2</label>
+                                                                                            <div class="col-sm-9 col-lg-8">
+                                                                                                <input type="text" class="form-control form-control-sm" value="{{ old('notifyParty2') }}"
+                                                                                                name="notifyParty2" id="notifyParty2" placeholder="">
+                                                                                                <input type="hidden" name="notifyParty2ID" id="notifyParty2ID">
+                                                                                                <input type="hidden" name="notifyParty2Code" id="notifyParty2Code">
+                                                                                                {{-- <select class="form-control form-control-sm" name="notifyParty2" id="notifyParty2">
                                                                     <option value="" disabled selected></option>
                                                                 </select> --}}
-                                                                            </div>
-                                                                        </div>
-                                                                    </div>
+                                                                                            </div>
+                                                                                        </div>
+                                                                                    </div>
 
-                                                                </div>
+                                                                                </div>
 
-                                                                <div class="">
-                                                                    {{-- Forwarder --}}
-                                                                    <div class="form-group row mb-0">
-                                                                        <label for="forwarderName" class="col-sm-3 col-md-4 col-lg-2 col-form-label col-form-label-sm">Forwarder</label>
-                                                                        <div class="col-sm-9 col-lg-10 col-md-8">
-                                                                            <input type="text" class="form-control form-control-sm" name="forwarderName" id="forwarderName"
-                                                                            value="{{ old('forwarderName') }}">
-                                                                            <input type="hidden" class="form-control form-control-sm"
-                                                                            name="forwarderID" id="forwarderID" value="{{ old('forwarderID') }}">
-                                                                            {{-- <select class="form-control form-control-sm" name="forwarder" id="forwarder">
+                                                                                <div class="">
+                                                                                    {{-- Forwarder --}}
+                                                                                    <div class="form-group row mb-0">
+                                                                                        <label for="forwarderName" class="col-sm-3 col-md-4 col-lg-2 col-form-label col-form-label-sm">Forwarder</label>
+                                                                                        <div class="col-sm-9 col-lg-10 col-md-8">
+                                                                                            <input type="text" class="form-control form-control-sm" name="forwarderName" id="forwarderName"
+                                                                                            value="{{ old('forwarderName') }}">
+                                                                                            <input type="hidden" class="form-control form-control-sm"
+                                                                                            name="forwarderID" id="forwarderID" value="{{ old('forwarderID') }}">
+                                                                                            {{-- <select class="form-control form-control-sm" name="forwarder" id="forwarder">
                                                                 <option value="" disabled selected></option>
                                                             </select> --}}
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            </fieldset> -->
+                                                                                        </div>
+                                                                                    </div>
+                                                                                </div>
+                                                                            </fieldset> -->
 
                                             <!-- Data Vendor -->
                                             <fieldset class="border p-2 card shadow-lg mb-0 pt-0 pb-0" id="debtor-vendor">
@@ -902,16 +905,12 @@
                                                         </tr>
                                                         <tr>
                                                             <td>Other</td>
-                                                            <td><input type="checkbox" name="otherCheck" id="otherCheck">
-                                                            </td>
+                                                            <td><input type="checkbox" name="otherCheck" id="otherCheck" value="1"></td>
                                                             <td>
-                                                                <input type="text" name="otherInput" id="otherInput"
-                                                                    class="form-control form-control-sm" required>
+                                                                <input type="text" name="otherInput" id="otherInput" class="form-control form-control-sm" autocomplete="off">
                                                                 <input type="hidden" name="otherID" id="otherID">
                                                                 <input type="hidden" name="otherCode" id="otherCode">
-                                                                {{-- <select name="other" id="other"class="form-control form-control-sm">
-                                                                    <option value=""></option>
-                                                                </select> --}}
+                                                                <div class="invalid-feedback">Please select or enter a name.</div>
                                                             </td>
                                                             <td id="other_Input"></td>
                                                         </tr>
@@ -1055,6 +1054,44 @@
             -webkit-animation-delay: -0.8s;
         }
 
+        .address-row .col-md-6 {
+            padding-right: 5px;
+            padding-left: 5px;
+        }
+
+        .address-row textarea.auto-resize {
+            width: 100%;
+            resize: vertical;
+            min-height: 30px;
+            /* Small initial height */
+            max-height: 100px;
+            /* Limit expansion */
+            height: 30px;
+            /* Explicit initial height */
+            line-height: 1.2;
+            /* Tighter line spacing for single-line look */
+            padding: 5px;
+            /* Consistent padding */
+            overflow-y: hidden;
+            /* Hide scrollbar until needed */
+        }
+
+        .address-row label {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        @media (max-width: 767px) {
+            .address-row .col-md-6 {
+                padding-right: 15px;
+                padding-left: 15px;
+            }
+
+            .address-row .col-md-6:first-child {
+                margin-bottom: 10px;
+            }
+        }
+
         @keyframes preloader-fx {
             0% {
                 transform: scale(0, 0);
@@ -1078,7 +1115,33 @@
                 opacity: 0;
             }
         }
-
+        .hdtuto.control-group.lst.input-group {
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+        .hdtuto.control-group.lst.input-group input[type="file"],
+        .hdtuto.control-group.lst.input-group input[type="text"] {
+            flex: 1;
+            margin-right: 5px;
+        }
+        .hdtuto.control-group.lst.input-group .input-group-btn {
+            flex: 0 0 auto;
+        }
+        .clone-template {
+            display: none !important;
+        }
+        .is-invalid {
+            border-color: #dc3545;
+        }
+        .invalid-feedback {
+            display: none;
+            color: #dc3545;
+            font-size: 0.875rem;
+        }
+        .is-invalid ~ .invalid-feedback {
+            display: block;
+        }
         /* End Preloader */
     </style>
     <link rel="stylesheet" href="//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
@@ -1137,6 +1200,145 @@
             // });
         });
     </script>
+    <script type="text/javascript">
+        // Existing #addFile script
+        let init = 1;
+        let max_fields = 3;
+        $(".addAttachment").click(function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            var lsthmtl = $(".clone-template").html();
+            if (init < max_fields) {
+                if (init > 1) {
+                    var $names = $('input[name="attachmentNames[]"]');
+                    var $desc = $('input[name="attachmentDescription[]"]');
+                    var $fileInputName = $names.last();
+                    var $fileInputDescription = $desc.last();
+                    var allowedExtensions = /(\.jpg|\.jpeg|\.png|\.gif|\.pdf|\.doc|\.xls|\.docx|\.xlsx)$/i;
+                    var fileValue = $fileInputName.val();
+                    var descValue = $fileInputDescription.val().trim();
+                    if (fileValue) {
+                        if (!allowedExtensions.exec(fileValue)) {
+                            $fileInputName.addClass('is-invalid');
+                            alert('Invalid file type. Allowed types: jpg, jpeg, png, gif, pdf, doc, xls, docx, xlsx');
+                            $fileInputName.val('');
+                            return false;
+                        }
+                        if (!descValue) {
+                            $fileInputDescription.addClass('is-invalid');
+                            alert('Please enter a description.');
+                            return false;
+                        }
+                        $fileInputName.removeClass('is-invalid');
+                        $fileInputDescription.removeClass('is-invalid');
+                    }
+                }
+                $("#attachClone").append(lsthmtl);
+                init++;
+                console.log('Added attachment field. Total:', init);
+            } else {
+                alert('Maximum File Attachment Reached.');
+            }
+        });
+        $("body").on("click", ".remove-attachment", function() {
+            $(this).parents(".cloned-attachment").remove();
+            init--;
+            console.log('Removed attachment field. Total:', init);
+        });
+
+        // Updated logic for Other checkbox
+        $(document).ready(function() {
+            // Autocomplete data
+            var entities = @json(DB::table('Cust_Entity')->select('id', 'Name', 'Code')->get()->map(function($entity) {
+                return { value: $entity->id, label: $entity->Name, code: $entity->Code };
+            })->toArray());
+
+            function toggleOtherInput() {
+                var isOtherChecked = $('#otherCheck').is(':checked');
+                var $otherInput = $('#otherInput');
+                var $otherID = $('#otherID');
+                var $otherCode = $('#otherCode');
+                var $otherInputDisplay = $('#other_Input');
+
+                if (isOtherChecked) {
+                    // Free-text mode
+                    $otherInput
+                        .attr('required', 'required')
+                        .val('')
+                        .autocomplete('destroy')
+                        .prop('readonly', false);
+                    $otherID.val('');
+                    $otherCode.val('');
+                    $otherInputDisplay.text('');
+                } else {
+                    // Autocomplete mode
+                    $otherInput
+                        .attr('required', 'required')
+                        .val('')
+                        .prop('readonly', false)
+                        .autocomplete({
+                            source: entities,
+                            minLength: 1,
+                            select: function(event, ui) {
+                                $otherInput.val(ui.item.label).removeClass('is-invalid');
+                                $otherID.val(ui.item.value);
+                                $otherCode.val(ui.item.code);
+                                $otherInputDisplay.text(ui.item.code);
+                                console.log('Selected:', { id: ui.item.value, name: ui.item.label, code: ui.item.code });
+                                return false;
+                            },
+                            change: function(event, ui) {
+                                if (!ui.item) {
+                                    $otherInput.val('').addClass('is-invalid');
+                                    $otherID.val('');
+                                    $otherCode.val('');
+                                    $otherInputDisplay.text('');
+                                    console.log('Invalid selection, cleared fields');
+                                }
+                            }
+                        });
+                    $otherID.val('');
+                    $otherCode.val('');
+                    $otherInputDisplay.text('');
+                }
+            }
+
+            // Initialize on page load
+            toggleOtherInput();
+
+            // Toggle on checkbox change
+            $('#otherCheck').on('change', function() {
+                toggleOtherInput();
+            });
+
+            // Validate on input change
+            $('#otherInput').on('change', function() {
+                var isOtherChecked = $('#otherCheck').is(':checked');
+                var $otherInput = $('#otherInput');
+                var $otherID = $('#otherID');
+
+                if (!isOtherChecked && !$otherID.val()) {
+                    $otherInput.addClass('is-invalid');
+                    console.log('Validation failed: No valid autocomplete selection');
+                } else if (isOtherChecked && !$otherInput.val().trim()) {
+                    $otherInput.addClass('is-invalid');
+                    console.log('Validation failed: Empty free-text input');
+                } else {
+                    $otherInput.removeClass('is-invalid');
+                }
+            });
+
+            // Debug form submission
+            $('form').on('submit', function() {
+                console.log('Form submitting:', {
+                    otherCheck: $('#otherCheck').is(':checked'),
+                    otherInput: $('#otherInput').val(),
+                    otherID: $('#otherID').val(),
+                    otherCode: $('#otherCode').val()
+                });
+            });
+        });
+    </script>
     <script src="//code.jquery.com/jquery-1.12.4.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bs-stepper/dist/js/bs-stepper.min.js"></script>
     <script src="{{ asset('js/client-party/party-entity.js') }}"></script>
@@ -1150,9 +1352,30 @@
             value: '{{ auth()->user()->can('edit-client-party') }}'
         }
     </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Select all auto-resize textareas
+            const textareas = document.querySelectorAll('textarea.auto-resize');
+
+            textareas.forEach(textarea => {
+                // Set initial height based on content
+                function adjustHeight() {
+                    textarea.style.height = '30px'; // Reset to initial height
+                    textarea.style.height =
+                        `${Math.min(textarea.scrollHeight, 100)}px`; // Expand to content height, capped at max-height
+                }
+
+                // Adjust height on input
+                textarea.addEventListener('input', adjustHeight);
+
+                // Adjust height on page load (for old() values)
+                adjustHeight();
+            });
+        });
+    </script>
 
     <script>
-        $(document).ready(function() { 
+        $(document).ready(function() {
             // Function to get URL parameter
             function getUrlParameter(name) {
                 let searchParams = new URLSearchParams(window.location.search);
@@ -1250,40 +1473,6 @@
         });
     </script>
 
-    <script type="text/javascript">
-        let init = 1;
-        let max_fields = 3;
-        $(".addAttachment").click(function() {
-            var lsthmtl = $(".clone").html();
-            if (init < max_fields) {
-                // check if file attachment i has content
-                var names = document.getElementsByName('attachmentNames[]');
-                var desc = document.getElementsByName('attachmentDescription[]');
 
-                var fileInputName = names[names.length - 2];
-                var fileInputDescription = desc[desc.length - 2];
-                // -- validation --//
-                // Allowing file type
-                var allowedExtensions = /(\.jpg|\.jpeg|\.png|\.gif|\.pdf|\.doc|\.xls|\.docx|\.xlsx)$/i;
-                if (!allowedExtensions.exec(fileInputName.value) || fileInputDescription.value == '') {
-                    alert('Either Invalid file type / No Description');
-                    fileInputName.value = '';
-                    return false;
-                } else if (fileInputName.value != '') {
-                    alert('Kindly Enter the File Name and Description');
-                } else {
-                    $("#attachClone").before(lsthmtl);
-                    init++;
-                }
-            } else {
-                alert('Maximum File Attachment Reached.');
-            }
-        });
-
-        $("body").on("click", ".btn-danger", function() {
-            $(this).parents(".hdtuto").remove();
-            init--;
-        });
-    </script>
     <script src="{{ asset('js/client-party/show-create-client-party.js') }}"></script>
 @stop

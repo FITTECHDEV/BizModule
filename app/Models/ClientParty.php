@@ -22,10 +22,10 @@ class ClientParty extends Model
 
     public function generateUniqueCode($id)
     {
-
+        // dd($id);
         // if id is empty use kenya get: KE
         if ($id == null) {
-            $office = Office::select('code')->where('Name', 'Kenya')->first();
+            $office = Office::select('Code')->where('Name', 'Kenya')->first();
         } else {
             $office = Office::select('Code')->where('ID', $id)->first();
         }
@@ -36,20 +36,63 @@ class ClientParty extends Model
             return redirect()->route('home');
         }
         // Get the maximum number
+        // $max_num = DB::table('Cust_Entity')
+        //     ->select(DB::raw('Isnull(Max(cast(right(Code,5) as numeric(18,0))),0) +1 AS max_num'))
+        //     ->whereRaw('Len(Code) = 9')
+        //     ->pluck('max_num');
         $max_num = DB::table('Cust_Entity')
-            ->select(DB::raw('Isnull(Max(cast(right(Code,5) as numeric(18,0))),0) +1 AS max_num'))
-            ->whereRaw('Len(Code) = 9')
-            ->pluck('max_num');
+            ->select(DB::raw('ISNULL(MAX(CAST(RIGHT(Code, 5) AS NUMERIC(18,0))), 0) + 1 AS max_num'))
+            ->whereRaw('LEN(Code) = 9')
+            ->value('max_num'); // Returns direct value instead of collection
+
 
         // get year : 22
         $year = date('y');
 
-        $ticket_number = str_pad($max_num[0], 5, '0', STR_PAD_LEFT);
+        //$ticket_number = str_pad($max_num[0], 5, '0', STR_PAD_LEFT);
+        $ticket_number = str_pad($max_num, 5, '0', STR_PAD_LEFT);
 
         //CODE
         $code = str_replace(' ', '', trim($office->Code . '' . $year . '' . $ticket_number, ""));
         return $code;
     }
+
+    //     public function generateUniqueCode($id)
+// {
+//     // If ID is null, use Kenya's office code
+//     if ($id == null) {
+//         $office = Office::select('Code')->where('Name', 'Kenya')->first();
+//     } else {
+//         $office = Office::select('Code')->where('ID', $id)->first();
+//     }
+
+    //     // Check if office details are missing
+//     if (empty($office)) {
+//         alert()->error('Missing Office Details');
+//         abort(404, "Missing Office Details");
+//     }
+
+    //     // Get the maximum number (ensuring no records case)
+//     $max_num = DB::table('Cust_Entity')
+//         ->select(DB::raw('ISNULL(MAX(CAST(RIGHT(Code, 5) AS NUMERIC(18,0))), 0) + 1 AS max_num'))
+//         ->whereRaw('LEN(Code) = 9')
+//         ->pluck('max_num');
+
+    //     // Check if a valid max number is returned
+//     $max_num = $max_num[0] ?? 0; // Ensure fallback to 0 if no records are found
+
+    //     // Get the current year (last two digits)
+//     $year = date('y');
+
+    //     // Pad the max number to ensure it's 5 digits
+//     $ticket_number = str_pad($max_num, 5, '0', STR_PAD_LEFT);
+
+    //     // Generate the final code by concatenating office code, year, and ticket number
+//     $code = $office->code . $year . $ticket_number;
+
+    //     return $code;
+// }
+
 
     public function getSCMOfficeID($id)
     {
@@ -63,7 +106,7 @@ class ClientParty extends Model
         }, $string);
     }
 
-    public function paintClientPartyStatus(String $var = null)
+    public function paintClientPartyStatus(string $var = null)
     {
         switch ($var) {
             case 'Created':
@@ -88,25 +131,92 @@ class ClientParty extends Model
     }
 
     protected $fillable = [
-        'Name', 'Address_Line1', 'Address_Line2', 'Address_City', 'Address_State', 'Address_StateId',
-        'StateCode', 'Address_CountryId', 'CountryCode', 'Address_Pin', 'Cont_Bch_Dept',
-        'Cont_Bch_PersonName_FirstName', 'Cont_Bch_PersonName_LastName', 'Cont_Bch_PhoneNumbers',
-        'Cont_Bch_Email', 'CreatedBy', 'CreatedOn', 'LastModifiedBy', 'LastModifiedOn', 'IsActive',
-        'IsDeleted', 'Office', 'SalesMgrOfficeFunMapName', 'SalesMgrOfficeFunMapId',
-        'AccountMgrOfficeFunMapName', 'AccountMgrOfficeFunMapId', 'PaymentTermsID', 'PaymentTermsName',
-        'IncoTermID', 'IncoTermName', 'DefaultNotifyPartyId', 'DefaultNotifyPartyName',
-        'DefaultNotifyParty1Id', 'DefaultNotifyParty1Name', 'DefaultFowarderName', 'DefaultFowarderId',
-        'AirUsualPortOfLoading', 'AirUsualPortOfLoadingName', 'AirUsualPortofDischarge',
-        'AirUsualPortofDischargeName', 'SeaUsualPortOfLoading', 'SeaUsualPortOfLoadingName',
-        'SeaUsualPortofDischarge', 'SeaUsualPortofDischargeName', 'DefaultPartyLocationId', 'CreditDays',
-        'CreditLimit', 'CreditLimitCurrencyId', 'CreditLimitCurrencyCode', 'BillingCurrencyId',
-        'BillingCurrencyCode', 'LicenceTypeID', 'LicenceTypeCode', 'LicenceTypeValue',
-        'DebtorLicenceTypeID', 'DebtorLicenceTypeCode', 'DebtorLicenceTypeValue', 'VendorLicenceTypeID',
-        'VendorLicenceTypeCode', 'VendorLicenceTypeValue', 'TariffValue', 'BillingType', 'FSCType',
-        'FSCRate', 'Discount', 'RequestforClient', 'RequestforParty', 'RequestforDebtor',
-        'RequestforVendor', 'ClientID', 'PartyID', 'DebtorID', 'DebtorCode', 'DebtorType', 'VendorID',
-        'VendorCode', 'CreationRequestBy', 'CreationRequestOn', 'RejectedBy', 'RejectedOn', 'RejectedReason',
-        'OperatioEntityType', 'LegalEntityType', 'SpecialInstructions', 'Status', 'RejectedBy',
+        'Name',
+        'Address_Line1',
+        'Address_Line2',
+        'Address_City',
+        'Address_State',
+        'Address_StateId',
+        'StateCode',
+        'Address_CountryId',
+        'CountryCode',
+        'Address_Pin',
+        'Cont_Bch_Dept',
+        'Cont_Bch_PersonName_FirstName',
+        'Cont_Bch_PersonName_LastName',
+        'Cont_Bch_PhoneNumbers',
+        'Cont_Bch_Email',
+        'CreatedBy',
+        'CreatedOn',
+        'LastModifiedBy',
+        'LastModifiedOn',
+        'IsActive',
+        'IsDeleted',
+        'Office',
+        'SalesMgrOfficeFunMapName',
+        'SalesMgrOfficeFunMapId',
+        'AccountMgrOfficeFunMapName',
+        'AccountMgrOfficeFunMapId',
+        'PaymentTermsID',
+        'PaymentTermsName',
+        'IncoTermID',
+        'IncoTermName',
+        'DefaultNotifyPartyId',
+        'DefaultNotifyPartyName',
+        'DefaultNotifyParty1Id',
+        'DefaultNotifyParty1Name',
+        'DefaultFowarderName',
+        'DefaultFowarderId',
+        'AirUsualPortOfLoading',
+        'AirUsualPortOfLoadingName',
+        'AirUsualPortofDischarge',
+        'AirUsualPortofDischargeName',
+        'SeaUsualPortOfLoading',
+        'SeaUsualPortOfLoadingName',
+        'SeaUsualPortofDischarge',
+        'SeaUsualPortofDischargeName',
+        'DefaultPartyLocationId',
+        'CreditDays',
+        'CreditLimit',
+        'CreditLimitCurrencyId',
+        'CreditLimitCurrencyCode',
+        'BillingCurrencyId',
+        'BillingCurrencyCode',
+        'LicenceTypeID',
+        'LicenceTypeCode',
+        'LicenceTypeValue',
+        'DebtorLicenceTypeID',
+        'DebtorLicenceTypeCode',
+        'DebtorLicenceTypeValue',
+        'VendorLicenceTypeID',
+        'VendorLicenceTypeCode',
+        'VendorLicenceTypeValue',
+        'TariffValue',
+        'BillingType',
+        'FSCType',
+        'FSCRate',
+        'Discount',
+        'RequestforClient',
+        'RequestforParty',
+        'RequestforDebtor',
+        'RequestforVendor',
+        'ClientID',
+        'PartyID',
+        'DebtorID',
+        'DebtorCode',
+        'DebtorType',
+        'VendorID',
+        'VendorCode',
+        'CreationRequestBy',
+        'CreationRequestOn',
+        'RejectedBy',
+        'RejectedOn',
+        'RejectedReason',
+        'OperatioEntityType',
+        'LegalEntityType',
+        'SpecialInstructions',
+        'Status',
+        'RejectedBy',
         'RejectedOn',
         'RejectedReason',
     ];
@@ -121,19 +231,19 @@ class ClientParty extends Model
             Cust_Entity
             group by Status
             order by StatusCount desc"));
-            
-        }else{
+
+        } else {
             return DB::select(DB::raw("select CE.Status as StatusName,
             COUNT(status) as StatusCount
             from
             Cust_Entity CE
-            where CE.CreatedBy ='".$auth_user->full_name."'
+            where CE.CreatedBy ='" . $auth_user->full_name . "'
             group by Status
             order by StatusCount desc"));
         }
     }
 
-    public function clientPartyCount(String $column = null, $value = null, array $constraints = null)
+    public function clientPartyCount(string $column = null, $value = null, array $constraints = null)
     {
         $count = 0;
         $auth_user = Auth::user();
@@ -151,9 +261,9 @@ class ClientParty extends Model
         } else {
             if ($auth_user->Role != 1) {
                 $count = $this->where('CreatedBy', $auth_user->full_name)
-                    ->where($column, (string)$value)->count();
+                    ->where($column, (string) $value)->count();
             } else {
-                $count = $this->where($column, (string)$value)->count();
+                $count = $this->where($column, (string) $value)->count();
             }
         }
 
@@ -161,7 +271,7 @@ class ClientParty extends Model
             if ($value == '*') {
                 $entity = new ClientParty();
             } else {
-                $entity = $this->where($column, (string)$value);
+                $entity = $this->where($column, (string) $value);
             }
             foreach ($constraints as $key => $constraint) {
 
@@ -174,11 +284,11 @@ class ClientParty extends Model
             $count = $entity->count();
         }
 
-        return number_format($count,0,'',',');
+        return number_format($count, 0, '', ',');
     }
 
     public function attachments()
     {
-        return $this->hasMany(ClientPartyAttahment::class, 'CustEntityID','Id');
+        return $this->hasMany(ClientPartyAttahment::class, 'CustEntityID', 'Id');
     }
 }

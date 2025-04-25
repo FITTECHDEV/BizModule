@@ -31,7 +31,7 @@ $(document).ready(function () {
             let lastName = $("#lastName").val();
             let phoneNo = $("#phoneNo").val();
 
-           
+
 
             if (phoneNo.length == 0) {
                 $("#phoneNo").addClass("is-invalid");
@@ -83,7 +83,7 @@ $(document).ready(function () {
                 }
             }
 
-           
+
 
             if ($("#companyName").is(":visible")) {
                 if (companyName.length == 0) {
@@ -293,11 +293,14 @@ $(document).ready(function () {
                 $('#licenceTypeID').removeAttr('required');
                 $('#licenceTypeValue').removeAttr('required');
                 $('#legalEntityType').removeAttr('required');
+                $('#attachments').removeAttr('required');
                 $('#client-check').hide();
                 $('#vendor-check').hide();
                 $('#debtor-check').hide();
                 $('#shipper-check').hide();
                 $('#consignee-check').hide();
+
+                $("#otherCheck").prop("checked", true);
             }
 
 
@@ -380,45 +383,45 @@ $(document).ready(function () {
     }
 
     function validStepTwo(status = true) {
-        if (
-            $("#portOfLoadingAir").val() != "" &&
-            $("#portOfLoadingAirID").val() == ""
-        ) {
-            $("#portOfLoadingAir").addClass("is-invalid");
-            status = false;
-        } else {
-            $("#portOfLoadingAir").removeClass("is-invalid");
-        }
+        // if (
+        //     $("#portOfLoadingAir").val() != "" &&
+        //     $("#portOfLoadingAirID").val() == ""
+        // ) {
+        //     $("#portOfLoadingAir").addClass("is-invalid");
+        //     status = false;
+        // } else {
+        //     $("#portOfLoadingAir").removeClass("is-invalid");
+        // }
 
-        if (
-            $("#portOfLoadingSea").val() != "" &&
-            $("#portOfLoadingSeaID").val() == ""
-        ) {
-            $("#portOfLoadingSea").addClass("is-invalid");
-            status = false;
-        } else {
-            $("#portOfLoadingSea").removeClass("is-invalid");
-        }
+        // if (
+        //     $("#portOfLoadingSea").val() != "" &&
+        //     $("#portOfLoadingSeaID").val() == ""
+        // ) {
+        //     $("#portOfLoadingSea").addClass("is-invalid");
+        //     status = false;
+        // } else {
+        //     $("#portOfLoadingSea").removeClass("is-invalid");
+        // }
 
-        if (
-            $("#portOfDischargeAir").val() != "" &&
-            $("#portOfDischargeAirID").val() == ""
-        ) {
-            $("#portOfDischargeAir").addClass("is-invalid");
-            status = false;
-        } else {
-            $("#portOfDischargeAir").removeClass("is-invalid");
-        }
+        // if (
+        //     $("#portOfDischargeAir").val() != "" &&
+        //     $("#portOfDischargeAirID").val() == ""
+        // ) {
+        //     $("#portOfDischargeAir").addClass("is-invalid");
+        //     status = false;
+        // } else {
+        //     $("#portOfDischargeAir").removeClass("is-invalid");
+        // }
 
-        if (
-            $("#portOfDischargeSea").val() != "" &&
-            $("#portOfDischargeSeaID").val() == ""
-        ) {
-            $("#portOfDischargeSea").addClass("is-invalid");
-            status = false;
-        } else {
-            $("#portOfDischargeSea").removeClass("is-invalid");
-        }
+        // if (
+        //     $("#portOfDischargeSea").val() != "" &&
+        //     $("#portOfDischargeSeaID").val() == ""
+        // ) {
+        //     $("#portOfDischargeSea").addClass("is-invalid");
+        //     status = false;
+        // } else {
+        //     $("#portOfDischargeSea").removeClass("is-invalid");
+        // }
         /*Sales PIC
         if (($('#salesPIC').val() != '') && ($('#salesPICID').val() == '')){
             $('#salesPIC').addClass('is-invalid');
@@ -427,43 +430,43 @@ $(document).ready(function () {
             $('#salesPIC').removeClass('is-invalid');
         }*/
         /*Account PIC*/
-        if ($("#accountPIC").val() != "" && $("#accountPICID").val() == "") {
-            $("#accountPIC").addClass("is-invalid");
-            status = false;
-        } else {
-            $("#accountPIC").removeClass("is-invalid");
-        }
+        // if ($("#accountPIC").val() != "" && $("#accountPICID").val() == "") {
+        //     $("#accountPIC").addClass("is-invalid");
+        //     status = false;
+        // } else {
+        //     $("#accountPIC").removeClass("is-invalid");
+        // }
 
         /*Notify Party 1**/
-        if (
-            $("#notifyParty1").val() != "" &&
-            ($("#notifyParty1ID").val() == "" ||
-                $("#notifyParty1Code").val() == "")
-        ) {
-            $("#notifyParty1").addClass("is-invalid");
-            status = false;
-        } else {
-            $("#notifyParty1").removeClass("is-invalid");
-        }
+        // if (
+        //     $("#notifyParty1").val() != "" &&
+        //     ($("#notifyParty1ID").val() == "" ||
+        //         $("#notifyParty1Code").val() == "")
+        // ) {
+        //     $("#notifyParty1").addClass("is-invalid");
+        //     status = false;
+        // } else {
+        //     $("#notifyParty1").removeClass("is-invalid");
+        // }
 
-        /**Notify party two */
-        if (
-            $("#notifyParty2").val() != "" &&
-            ($("#notifyParty2ID").val() == "" ||
-                $("#notifyParty2Code").val() == "")
-        ) {
-            $("#notifyParty2").addClass("is-invalid");
-            status = false;
-        } else {
-            $("#notifyParty1").removeClass("is-invalid");
-        }
+        // /**Notify party two */
+        // if (
+        //     $("#notifyParty2").val() != "" &&
+        //     ($("#notifyParty2ID").val() == "" ||
+        //         $("#notifyParty2Code").val() == "")
+        // ) {
+        //     $("#notifyParty2").addClass("is-invalid");
+        //     status = false;
+        // } else {
+        //     $("#notifyParty1").removeClass("is-invalid");
+        // }
 
-        if ($("#forwarderName").val() != "" && $("#forwarderID").val() == "") {
-            $("#forwarderName").addClass("is-invalid");
-            status = false;
-        } else {
-            $("#forwarderName").removeClass("is-invalid");
-        }
+        // if ($("#forwarderName").val() != "" && $("#forwarderID").val() == "") {
+        //     $("#forwarderName").addClass("is-invalid");
+        //     status = false;
+        // } else {
+        //     $("#forwarderName").removeClass("is-invalid");
+        // }
         return status;
     }
 
@@ -1167,21 +1170,47 @@ $(document).ready(function () {
         }
     });
 
+    // /**other checkbox */
+    // $("#otherCheck").on("change", function () {
+    //     /**if on do nothing if off open input */
+    //     let cc = $("#otherCheck").is(":checked") == true ? 1 : 0;
+    //     if (cc == 0) {
+    //         $("#otherInput").removeAttr("disabled");
+    //     } else {
+    //         $("#otherInput").attr("disabled", "true");
+    //         $("#otherInput").val("");
+    //         /**Reset other id */
+    //         $("#otherID").val("");
+    //         /**Reset other code */
+    //         $("#otherCode").val("");
+    //     }
+    // });
+
+
+
     /**other checkbox */
-    $("#otherCheck").on("change", function () {
-        /**if on do nothing if off open input */
-        let cc = $("#otherCheck").is(":checked") == true ? 1 : 0;
-        if (cc == 0) {
-            $("#otherInput").removeAttr("disabled");
-        } else {
-            $("#otherInput").attr("disabled", "true");
-            $("#otherInput").val("");
-            /**Reset other id */
-            $("#otherID").val("");
-            /**Reset other code */
-            $("#otherCode").val("");
-        }
-    });
+$("#otherCheck").on("change", function () {
+    /** Check if the checkbox is checked or not */
+    let cc = $("#otherCheck").is(":checked") == true ? 1 : 0;
+
+    if (cc == 0) {
+        /** If unchecked, remove the disabled attribute and make fields mandatory */
+        $("#otherInput").removeAttr("disabled").attr("required", "true");
+        $("#otherID").attr("required", "true");
+        $("#otherCode").attr("required", "true");
+    } else {
+        /** If checked, disable the input fields and remove the mandatory requirement */
+        $("#otherInput").attr("disabled", "true").removeAttr("required");
+        $("#otherID").removeAttr("required");
+        $("#otherCode").removeAttr("required");
+
+        /** Reset values */
+        $("#otherInput").val("");
+        $("#otherID").val("");
+        $("#otherCode").val("");
+    }
+});
+
 
     let old_office_country_val = $("#officeCountry option:selected").val();
     let old_office_code =
@@ -1233,38 +1262,7 @@ $(document).ready(function () {
             old_office_country_val = $(this).val();
             old_office_code = $(this).find("option:selected").attr("code");
         }
-        /* if (old_office_country_val != '') {
-             if (choice) {
-                 /*$('#portOfLoadingAir').val('');
-                 $('#portOfLoadingAirID').val('');
-                 $('#portOfLoadingSea').val('');
-                 $('#portOfLoadingSeaID').val('');
-                 $('#portOfDischargeAir').val('');
-                 $('#portOfDischargeAirID').val('');
-                 $('#portOfDischargeSea').val('');
-                 $('#portOfDischargeSeaID').val('');
-
-                 $('#salesPIC').val('');
-                 $('#salesPICID').val('');
-
-                 $('#accountPIC').val('');
-                 $('#accountPICID').val('');
-
-                 $('#notifyParty1').val('');
-                 $('#notifyParty2').val('');
-
-                 $('#notifyParty2ID').val('');
-                 $('#notifyParty2Code').val('');
-
-                 $('#notifyParty1ID').val('');
-                 $('#notifyParty1Code').val('');
-
-                 $('#forwarderName').val('');
-                 $('#forwarderID').val('');
-             }else{
-                 $('#officeCountry').val(old_office_country_val);
-             }
-         }*/
+        
     });
 
     let spinner = $("#loader");

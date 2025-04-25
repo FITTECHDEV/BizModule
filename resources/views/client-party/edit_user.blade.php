@@ -1002,7 +1002,9 @@
                         console.log(data);
                         response(data);
                     });
+
                 },
+                
                 select: function(event, ui) {
                     /* Set selection*/
                     $('#portOfLoadingAir').val(ui.item.label); /* display the selected text*/

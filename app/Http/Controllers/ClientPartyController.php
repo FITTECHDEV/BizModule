@@ -606,31 +606,7 @@ class ClientPartyController extends Controller
         }
 
 
-        // $status = '';
-        // if (isset($request->submitBtn)) {
-        //     // update status to ready
-        //     $status = 'Submitted';
-        // } else {
-        //     // default status
-        //     $status = 'Not Submitted';
-        // }
 
-
-
-        // if (isset($request->debtor) || isset($request->debtorCheck)) {
-        //     $status = 'PendingManagerApproval';
-        // }
-
-        // if (isset($request->vendor) || isset($request->vendorCheck)) {
-        //     $status = 'PendingManagerApproval';
-        // }
-
-        // if($request->partyEntityType == 'Client without Debtor or Vendor'){
-        //     $status = 'Created';
-        // }
-
-
-        // dd($status);
         //client party instatnce
         $clientParty = new ClientParty();
         /*Logged in user*/
@@ -1288,59 +1264,31 @@ class ClientPartyController extends Controller
                 'OfficeCode' => isset($request->officeCode) ? $request->officeCode : $request->officeCountryDisp,
                 'OfficeID' => $request->officeCountryID,
 
-                //preffered ports
-                // 'AirUsualPortOfLoadingName' => $request->portOfLoadingAir,
-                // 'AirUsualPortOfLoading' => $request->portOfLoadingAirID != '' ? $request->portOfLoadingAirID : null, //guid
-                // 'AirUsualPortofDischargeName' => $request->portOfDischargeAir,
-                // 'AirUsualPortofDischarge' => $request->portOfDischargeAirID != '' ? $request->portOfDischargeAirID : null, //guid
-                // 'SeaUsualPortOfLoadingName' => $request->portOfLoadingSea, //varchar
-                // 'SeaUsualPortOfLoading' => $request->portOfLoadingSeaID != '' ? $request->portOfLoadingSeaID : null, //guid
-                // 'SeaUsualPortofDischargeName' => $request->portOfDischargeSea, //varchar
-                // 'SeaUsualPortofDischarge' => $request->portOfDischargeSeaID != '' ? $request->portOfDischargeSeaID : null, //guid
-                // file upload
-
-                //client
-                // 'SalesMgrOfficeFunMapName' => $request->salesPIC,
-                // 'SalesMgrOfficeFunMapId' => $request->salesPICID != '' ? $request->salesPICID : null, //!id needs to be added to procedure
-                // // 'SalesMgrOfficeFunMapId' => null,//!remove this
-                // 'IncoTermID' => $request->incoTermID,
-                // 'IncoTermName' => $request->incoTermName,
-                // 'IncoTermCode' => $request->incoTermCode,
-
                 'DefaultNotifyPartyName' => $request->notifyParty1,
                 'DefaultNotifyPartyId' => $request->notifyParty1ID != '' ? $request->notifyParty1ID : null,
                 'DefaultNotifyPartyCode' => $request->notifyParty1Code,
 
                 'AccountMgrOfficeFunMapName' => $request->accountPIC,
                 'AccountMgrOfficeFunMapId' => $request->accountPICID != '' ? $request->accountPICID : null, //!id needs to be added to procedure
-                // 'AccountMgrOfficeFunMapId' => null, //!Remove this
-                // 'PaymentTermsID' => $request->paymentTermsID,
-                // 'PaymentTermsName' => $request->paymentTermsName,
-                // 'PaymentTermsCode' => $request->paymentTermsCode,
-                // 'DefaultNotifyParty1Name' => $request->notifyParty2,
-                // 'DefaultNotifyParty1Id' => $request->notifyParty2ID != '' ? $request->notifyParty2ID : null, //!id needs to be added to procedure
-                // 'DefaultNotifyParty1Code' => $request->notifyParty2Code,
-                // 'DefaultFowarderName' => $request->forwarderName,
-                // 'DefaultFowarderId' => $request->forwarderID != '' ? $request->forwarderID : null, //guid
-                // debtor / vendor
-                // 'CreditDays' => $request->creditDays,
 
-                // 'CreditLimitCurrencyId' => $request->billingCurrency != '' ? $request->billingCurrency : null,
-                // 'CreditLimitCurrencyCode' => $request->billingCurrencyCode,
-                // 'BillingCurrencyCode' => $request->billingCurrencyCode,
-                // 'BillingCurrencyId' => $request->billingCurrency != '' ? $request->billingCurrency : null, //guid
-                // 'BaseCurrencyName' => $request->baseCurrencyName,
-                // 'BaseCurrencyCode' => $request->baseCurrencyCode,
-                // 'BaseCurrencyId' => $request->baseCurrencyID != '' ? $request->baseCurrencyID : null, //guid
-                // 'CreditLimit' => isset($request->maxCreditLimit) ? str_replace(',', '', $request->maxCreditLimit) : 0,
-                // 'LicenceTypeID' => $request->licenceTypeID,
-                // 'LicenceTypeCode' => $request->licenceTypeCode,
-                // 'LicenceTypeValue' => $request->licenceTypeValue,
-                // 'TariffValue' => $request->tarrif,
-                // 'FSCType' => $request->fscType,
-                // 'FSCRate' => isset($request->fscRate) ? $request->fscRate : 0,
-                // 'BillingType' => $request->billingType,
-                // 'Discount' => isset($request->discount) ? $request->discount : 0,
+                // debtor / vendor
+                'CreditDays' => $request->creditDays,
+                'CreditLimitCurrencyId' => $request->billingCurrency != '' ? $request->billingCurrency : null,
+                'CreditLimitCurrencyCode' => $request->billingCurrencyCode,
+                'BillingCurrencyCode' => $request->billingCurrencyCode,
+                'BillingCurrencyId' => $request->billingCurrency != '' ? $request->billingCurrency : null, //guid
+                'BaseCurrencyName' => $request->baseCurrencyName,
+                'BaseCurrencyCode' => $request->baseCurrencyCode,
+                'BaseCurrencyId' => $request->baseCurrencyID != '' ? $request->baseCurrencyID : null, //guid
+                'CreditLimit' => isset($request->maxCreditLimit) ? str_replace(',', '', $request->maxCreditLimit) : 0,
+                'LicenceTypeID' => $request->licenceTypeID,
+                'LicenceTypeCode' => $request->licenceTypeCode,
+                'LicenceTypeValue' => $request->licenceTypeValue,
+                'TariffValue' => $request->tarrif,
+                'FSCType' => $request->fscType,
+                'FSCRate' => isset($request->fscRate) ? $request->fscRate : 0,
+                'BillingType' => $request->billingType,
+                'Discount' => isset($request->discount) ? $request->discount : 0,
                 // Admin Details
                 'ClientName' => $clientName,
                 'ClientID' => $request->clientID != '' ? $request->clientID : null,
@@ -1615,24 +1563,20 @@ class ClientPartyController extends Controller
                                 @Status as Varchar(30),
                                 @Remark as Varchar(1000),
                                 @ClientCode as Varchar(60),
-                                @ClientID as Uniqueidentifier,
-                                @ShipperConsigneeCode as Varchar(60),
-                                @ShipperConsigneeID as Uniqueidentifier,
+                                @ClientID as Uniqueidentifier
                                 @OtherCode as Varchar(60),
                                 @OtherID as Uniqueidentifier
-                                    Exec [dbo].[Sp_ClientandPartyCreation]
+                                    Exec [dbo].[Sp_OperationEntityCreation]
                                 @RequestID = ?,
                                 @status= @status  OUTPUT,
                                 @Remark= @Remark  OUTPUT,
                                 @ClientCode= @ClientCode  OUTPUT,
                                 @ClientID= @ClientID OUTPUT,
-                                @ShipperConsigneeCode= @ShipperConsigneeCode OUTPUT,
-                                @ShipperConsigneeID= @ShipperConsigneeID  OUTPUT,
                                 @OtherCode= @OtherCode  OUTPUT,
                                 @OtherID= @OtherID  OUTPUT
                                 Select @Status as Status, @Remark as Remark, @ClientCode as ClientCode,
-                                @ClientID as ClientID, @ShipperConsigneeCode as ShipperConsigneeCode,
-                                @ShipperConsigneeID as ShipperConsigneeID, @OtherCode as OtherCode,
+                                @ClientID as ClientID,
+                                @OtherCode as OtherCode,
                                 @OtherID as OtherID", [$requestID]);
 
             DB::beginTransaction();
