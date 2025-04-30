@@ -100,6 +100,11 @@ return [
         'emergency' => [
             'path' => storage_path('logs/laravel.log'),
         ],
+        'scm' => [
+            'driver' => 'single',
+            'path' => storage_path('logs/scm-sync.log'),
+            'level' => 'info',
+        ],
     ],
 
 ];

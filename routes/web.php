@@ -289,3 +289,20 @@ Route::group(['middleware' => ['auth', 'HtmlMinifier']], function () {
         Route::get('invoice/download/{id}', [App\Http\Controllers\RRAController::class, 'invoiceDownload'])->name('rra.invoiceDownload')->middleware(['signed']);
     });
 });
+
+Route::get('/api/entities', function() {
+    $query = request('q');
+    return DB::table('Cust_Entity')
+        ->select('id', 'Name', 'Code')
+        ->where('Name', 'like', "%$query%")
+        ->take(10) // Limit to 10 results
+        ->get()
+        ->map(function($entity) {
+            return [
+                'value' => $entity->id,
+                'name' => $entity->Name,
+                'code' => $entity->Code
+            ];
+        });
+})->middleware('auth'); // Ensure only authenticated users can access
+

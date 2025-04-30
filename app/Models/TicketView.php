@@ -17,7 +17,7 @@ class TicketView extends Model
     protected $guarded = [];
 
     // Get table
-    protected $table = 'vw_TIC_TicketInfo';
+    protected $table = 'TIC_TicketInfo';
 
     protected $primarykey = 'Id';
 

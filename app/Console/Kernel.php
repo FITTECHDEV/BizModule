@@ -47,6 +47,13 @@ class Kernel extends ConsoleKernel
         $schedule->command('generate:invoice')->everyFiveMinutes()->withoutOverlapping();
         $schedule->command('tra_adl:invoices')->everyFiveMinutes()->withoutOverlapping();
         $schedule->command('tra_tz:invoices')->everyFiveMinutes()->withoutOverlapping();
+        $schedule->command('sync:scmprofit')
+        ->everyTenMinutes()
+        ->withoutOverlapping()
+        ->appendOutputTo(storage_path('logs/scm-sync.log'));
+
+
+
     }
 
     /**
@@ -61,3 +68,5 @@ class Kernel extends ConsoleKernel
         require base_path('routes/console.php');
     }
 }
+
+
