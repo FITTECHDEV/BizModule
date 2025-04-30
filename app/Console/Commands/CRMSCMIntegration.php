@@ -60,7 +60,7 @@ class CRMSCMIntegration extends Command
         $password = env('SCM_PASSWORD');
 
         $curl = curl_init();
-        
+
         curl_setopt_array($curl, [
             CURLOPT_URL => $tokenUrl,
             CURLOPT_RETURNTRANSFER => true,
@@ -103,10 +103,10 @@ class CRMSCMIntegration extends Command
             Log::error("Failed to retrieve authentication token");
             return;
         }
-        
+
         $apiUrl = env('SCM_BOOKING_URL');
         $booking_xml = $record->SCMBookingXML;
-        
+
         // Validate XML
         libxml_use_internal_errors(true);
         $doc = simplexml_load_string($booking_xml);
@@ -160,14 +160,14 @@ class CRMSCMIntegration extends Command
                     ? implode(", ", array_column($xmlArrayResponse['Transaction']['Errors']['Error'], 'Description'))
                     : $xmlArrayResponse['Transaction']['Errors']['Error']['Description'])
                 : 'Unknown error';
-            
+
             Log::warning("XML Push Errors for Record bookingno: {$record->bookingno} - $errors");
             DB::table('CRM_SCMprofit_integration')
                 ->where('bookingno', $record->bookingno)
                 ->update(['SCMINTStatus' => 'Failed', 'UpdatedOninSCM' => now()]);
             return;
         }
-        
+
         DB::table('CRM_SCMprofit_integration')
             ->where('bookingno', $record->bookingno)
             ->update([
@@ -176,7 +176,7 @@ class CRMSCMIntegration extends Command
                 'SCMINTStatus' => 'Success',
                 'UpdatedOninSCM' => now(),
             ]);
-        
+
         Log::info("Successfully pushed XML for Record ID: {$record->bookingno}");
     }
 }
