@@ -1546,57 +1546,61 @@ class ClientPartyController extends Controller
     }
 
     public function CreateClientPartySCM($requestID)
-    {
-        $entity = DB::table('Cust_Entity')->where('Id', $requestID)->get();
-        // dd($entity[0]->OperatioEntityType);
-        $results = json_decode(json_encode([['Status' => 'Failed', 'Remark' => 'Entity Not Created']]));
-        if (!Auth::user()->can('create-client-party-SCM') && $entity[0]->OperatioEntityType != 'Client without Debtor or Vendor') {
-            $results = json_decode(json_encode([['Status' => 'Failed', 'Remark' => 'Unauthorised SCM Access.']]));
-            return $results;
-        }
-        //  dd($results[0]->Status); exit();
-        try {
-            //Execute the stored procedure
-            $results = DB::select("SET NOCOUNT ON;
-                                Declare
-                                @RequestID as Uniqueidentifier,
-                                @Status as Varchar(30),
-                                @Remark as Varchar(1000),
-                                @ClientCode as Varchar(60),
-                                @ClientID as Uniqueidentifier
-                                @OtherCode as Varchar(60),
-                                @OtherID as Uniqueidentifier
-                                    Exec [dbo].[Sp_OperationEntityCreation]
-                                @RequestID = ?,
-                                @status= @status  OUTPUT,
-                                @Remark= @Remark  OUTPUT,
-                                @ClientCode= @ClientCode  OUTPUT,
-                                @ClientID= @ClientID OUTPUT,
-                                @OtherCode= @OtherCode  OUTPUT,
-                                @OtherID= @OtherID  OUTPUT
-                                Select @Status as Status, @Remark as Remark, @ClientCode as ClientCode,
-                                @ClientID as ClientID,
-                                @OtherCode as OtherCode,
-                                @OtherID as OtherID", [$requestID]);
+{
+    $entity = DB::table('Cust_Entity')->where('Id', $requestID)->get();
+    $results = json_decode(json_encode([['Status' => 'Failed', 'Remark' => 'Entity Not Created']]));
 
-            DB::beginTransaction();
-            DB::table('Cust_Entity')->where('Id', $requestID)->update(['Status' => 'Created']);
-            DB::commit();
-        } catch (\Exception $th) {
-            Log::error($th->getMessage());
-            DB::rollBack();
-            $results = json_decode(json_encode([['Status' => 'Failed', 'Remark' => 'Entity Creation Failed.']]));
-        }
-
-
-        // if ($results[0]->Status == 'Failed') {
-        //     DB::beginTransaction();
-        //     DB::table('Cust_Entity')->where('Id', $requestID)->update(['Status' => 'Submitted']);
-        //     DB::commit();
-        // }
-        // Log::info($results);
+    // Check user permissions and entity type
+    if (!Auth::user()->can('create-client-party-SCM') && $entity[0]->OperatioEntityType != 'Client without Debtor or Vendor') {
+        $results = json_decode(json_encode([['Status' => 'Failed', 'Remark' => 'Unauthorised SCM Access.']]));
         return $results;
     }
+
+    try {
+        // Execute the stored procedure
+        $results = DB::select("
+            SET NOCOUNT ON;
+            DECLARE
+                @RequestID AS Uniqueidentifier,
+                @Status AS Varchar(30),
+                @Remark AS Varchar(1000),
+                @ClientCode AS Varchar(60),
+                @ClientID AS Uniqueidentifier,
+                @OtherCode AS Varchar(60),
+                @OtherID AS Uniqueidentifier;
+            EXEC [dbo].[Sp_OperationEntityCreation]
+                @RequestID = ?,
+                @Status = @Status OUTPUT,
+                @Remark = @Remark OUTPUT,
+                @ClientCode = @ClientCode OUTPUT,
+                @ClientID = @ClientID OUTPUT,
+                @OtherCode = @OtherCode OUTPUT,
+                @OtherID = @OtherID OUTPUT;
+            SELECT
+                @Status AS Status,
+                @Remark AS Remark,
+                @ClientCode AS ClientCode,
+                @ClientID AS ClientID,
+                @OtherCode AS OtherCode,
+                @OtherID AS OtherID;
+        ", [$requestID]);
+
+        // Update entity status within a transaction
+        DB::beginTransaction();
+        DB::table('Cust_Entity')->where('Id', $requestID)->update(['Status' => 'Created']);
+        DB::commit();
+    } catch (\Exception $e) {
+        DB::rollBack();
+        Log::error('Entity Creation Failed', [
+            'error' => $e->getMessage(),
+            'requestID' => $requestID,
+            'sql' => $e instanceof \Illuminate\Database\QueryException ? $e->getSql() : null,
+        ]);
+        $results = json_decode(json_encode([['Status' => 'Failed', 'Remark' => 'Entity Creation Failed: ' . $e->getMessage()]]));
+    }
+
+    return $results;
+}
 
     /**
      * Remove the specified resource from storage.

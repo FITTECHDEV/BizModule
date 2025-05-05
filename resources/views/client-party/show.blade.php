@@ -1375,7 +1375,7 @@
 
 @section('js')
     <script>
-        /**Function to copy text */
+        /** Function to copy text */
         function copyText(element) {
             var $temp = $("<input>");
             $("body").append($temp);
@@ -1393,14 +1393,13 @@
 
             if (type === "accounting") {
                 legalTypeDiv.style.display = "none";
-
             } else {
                 legalTypeDiv.style.display = "block";
             }
         });
     </script>
     <script>
-        /*Ajax setup CSRF*/
+        /* Ajax setup CSRF */
         $.ajaxSetup({
             headers: {
                 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
@@ -1415,14 +1414,50 @@
     <script src="{{ asset('js/client-party/jquery-number/jquery.number.min.js') }}"></script>
     <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
     <script>
-        /** get user authorization status */
+        /** Get user authorization status */
         window.User = {
             value: '{{ auth()->user()->can('edit-client-party') }}',
             edit: '{{ $editForm }}'
         }
         window.approve_client_party = `{{ $approve }}`;
-    </script>
 
+        /* Initialize debtor and vendor dropdowns */
+        let debtor_val = window.default_debtor || '';
+        let vendor_val = window.default_vendor || '';
+
+        // Handle debtorType dropdown
+        if (debtor_val === '') {
+            $('#debtorType').attr('disabled', 'disabled');
+        } else {
+            $('#debtorType').removeAttr('disabled').val(debtor_val).trigger('change');
+        }
+
+        // Handle vendorType dropdown
+        if (vendor_val === '') {
+            $('#vendorType').attr('disabled', 'disabled');
+        } else {
+            $('#vendorType').removeAttr('disabled').val(vendor_val).trigger('change');
+        }
+
+        // Optional: Handle dynamic enabling/disabling via checkboxes
+        $('input[type="checkbox"][name="debtorEnabled"]').on('change', function() {
+            if ($(this).is(':checked')) {
+                $('#debtorType').removeAttr('disabled');
+            } else {
+                $('#debtorType').attr('disabled', 'disabled').val('');
+            }
+        });
+
+        $('input[type="checkbox"][name="vendorEnabled"]').on('change', function() {
+            if ($(this).is(':checked')) {
+                $('#vendorType').removeAttr('disabled');
+            } else {
+                $('#vendorType').attr('disabled', 'disabled').val('');
+            }
+        });
+
+        window.default_bill_curr = `{{ $clientParty->BillingCurrencyId }}`;
+    </script>
     <script src="{{ asset('js/client-party/show-create-client-party.js') }}"></script>
     <script type="text/javascript">
         $('#close-modal').click(function() {
@@ -1430,9 +1465,8 @@
             $('#cancelModal').modal('hide');
         });
 
-
         $('#submit-entity').on('click', function() {
-            // validate form data
+            // Validate form data
             let form_data = {
                 id: `{{ $clientParty->Id }}`,
                 level: $('#level option:selected').val(),
@@ -1447,7 +1481,7 @@
                 $.ajax({
                     url: '/client-party/reject',
                     type: 'POST',
-                    datatype: 'json',
+                    dataType: 'json',
                     data: form_data,
                     success: function(response) {
                         console.log(response);
@@ -1463,73 +1497,37 @@
                 let form_data = {
                     id: `{{ $clientParty->Id }}`,
                     status: `{{ $clientParty->Status }}`,
+                    debtorType: $('#debtorType').is(':disabled') ? '' : $('#debtorType').val(),
+                    vendorType: $('#vendorType').is(':disabled') ? '' : $('#vendorType').val(),
                 };
                 $.ajax({
                     url: '/client-party/approve',
                     type: 'POST',
-                    datatype: 'json',
+                    dataType: 'json',
                     data: form_data,
                     success: function(response) {
                         if (response[1] == 200) {
                             alert("Entity Updated. !!");
                             window.location.href = `{{ route('client-party.approvals') }}`
                         }
-                        /*location.reload();*/
                     }
                 });
             }
         });
 
-
-        window.default_debtor = `{{ $clientParty->DebtorType }}`;
-        window.default_vendor = `{{ $clientParty->VendorType }}`;
-
-
-        /*check if select disabled ? append : select*/
-        let debtor_val = (window.default_debtor == '' ? '' : window.default_debtor);
-        if (!$('#debtorType').attr('disabled') && typeof $('#debtorType').attr('disabled') !== 'undefined') {
-            $('#debtorType option').remove();
-            $('#debtorType').append('<option selected>' + debtor_val + '</option>');
-        } else {
-            if (debtor_val == '') {
-                $('#debtorType').attr('disabled', 'disabled');
-            } else {
-                console.log('saving debtor val');
-                $('#debtorType').val(debtor_val).change();
-            }
-        }
-
-        let vendor_val = (window.default_vendor == '' ? '' : window.default_vendor);
-
-        if (!$('#vendorType').attr('disabled') && typeof $('#vendorType').attr('disabled') !== 'undefined') {
-            $('#vendorType option').remove();
-            $('#vendorType').append('<option selected>' + vendor_val + '</option>');
-        } else {
-            if (vendor_val == '') {
-                $('#vendorType').attr('disabled', 'disabled');
-            } else {
-                $('#vendorType').val(vendor_val);
-            }
-        }
-
-        window.default_bill_curr = `{{ $clientParty->BillingCurrencyId }}`;
-    </script>
-
-    <script type="text/javascript">
         let init = `{{ $clientParty->attachments->count() + 1 }}`;
         let max_fields = 3;
         $(".addAttachment").click(function() {
             var lsthmtl = $(".clone").html();
             if (init < max_fields) {
-                // check if file attachment i has content
+                // Check if file attachment has content
                 var names = document.getElementsByName('attachmentNames[]');
                 var desc = document.getElementsByName('attachmentDescription[]');
 
                 var fileInputName = names[names.length - 2];
                 var fileInputDescription = desc[desc.length - 2];
 
-                // -- validation --//
-                // Allowing file type
+                // Validation
                 var allowedExtensions = /(\.jpg|\.jpeg|\.png|\.gif)$/i;
                 if (!allowedExtensions.exec(fileInputName.value) || fileInputDescription.value == '') {
                     alert('Either Invalid file type / No Description');
@@ -1539,7 +1537,6 @@
                     $("#attachClone").before(lsthmtl);
                     init++;
                 }
-
             } else {
                 alert('Maximum File Attachment Reached.');
             }
@@ -1561,6 +1558,7 @@
                 $.ajax({
                     url: url,
                     type: 'POST',
+                    dataType: 'json',
                     success: function(response) {
                         if (response[1] == 200) {
                             alert("File Deleted !!");
