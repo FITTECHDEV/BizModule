@@ -103,8 +103,8 @@
     <!-- Explicitly include jQuery first -->
     <script src="{{ asset('vendor/adminlte/plugins/jquery/jquery.min.js') }}"></script>
     <!-- DataTables Responsive requires DataTables -->
-    <script src="{{ asset('vendor/adminlte/plugins/datatables/jquery.dataTables.min.js') }}"></script>
-    <script src="{{ asset('vendor/adminlte/plugins/datatables-responsive/dataTables.responsive.min.js') }}"></script>
+    {{-- <script src="{{ asset('vendor/adminlte/plugins/datatables/jquery.dataTables.min.js') }}"></script> --}}
+    {{-- <script src="{{ asset('vendor/adminlte/plugins/datatables-responsive/dataTables.responsive.min.js') }}"></script> --}}
     <script>
         // Debug jQuery loading
         console.log('jQuery defined:', typeof jQuery !== 'undefined');
