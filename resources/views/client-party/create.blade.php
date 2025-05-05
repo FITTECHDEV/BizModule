@@ -1459,7 +1459,9 @@
 
     <script src="{{ asset('js/client-party/show-create-client-party.js') }}"></script>
 @stop --}}
-@section('js')
+
+
+ @section('js')
     <script>
         /* Ajax setup CSRF */
         $.ajaxSetup({
