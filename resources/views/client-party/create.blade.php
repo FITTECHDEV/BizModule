@@ -3,7 +3,6 @@
 @section('title', 'Dashboard')
 
 @section('content_header')
-
 @stop
 
 @section('content')
@@ -17,12 +16,10 @@
                 </div>
             </div>
         </div>
+
         <!-- End Preloader -->
         <div class="col-md-12">
             <div class="card card-grey mt-2">
-                {{-- <div class="card-header">
-                    <h1 class="card-title text-uppercase">Create Client Party Request</h1>
-                </div> --}}
                 <div class="card-body p-0">
                     <div class="bs-stepper linear">
                         <div class="row justify-content-center p-0">
@@ -49,7 +46,7 @@
                                     <div class="line"></div>
                                     <div class="step" data-target="#admin-details">
                                         <button type="button" class="step-trigger pb-0 pt-0" role="tab"
-                                            aria-controls="office-details" id="admin-details-trigger" aria-selected="true">
+                                            aria-controls="admin-details" id="admin-details-trigger" aria-selected="true">
                                             <span class="bs-stepper-circle">3</span>
                                             <span class="bs-stepper-label"> Admin Details</span>
                                         </button>
@@ -84,7 +81,14 @@
                                                                 <select class="form-control form-control-sm"
                                                                     id="partyEntityType" name="partyEntityType" required>
                                                                     <option value="" disabled selected></option>
-
+                                                                    @if (request()->query('type') === 'accounting')
+                                                                        <option value="Client"
+                                                                            @if (old('partyEntityType') == 'Client') selected @endif>
+                                                                            Client</option>
+                                                                        <option value="Create only in D365"
+                                                                            @if (old('partyEntityType') == 'Create only in D365') selected @endif>
+                                                                            Create only in D365</option>
+                                                                    @endif
                                                                     <option value="Agent / Forwarder"
                                                                         @if (old('partyEntityType') == 'Agent / Forwarder') selected @endif>
                                                                         Agent / Forwarder</option>
@@ -92,12 +96,11 @@
                                                                         @if (old('partyEntityType') == 'Airline') selected @endif>
                                                                         Airline</option>
                                                                     <option value="Shipping Line"
-                                                                        @if (old('partyEntityType') == 'Shipplingline') selected @endif>
+                                                                        @if (old('partyEntityType') == 'Shipping Line') selected @endif>
                                                                         Shipping Line</option>
                                                                     <option value="Trucker / Transporter"
-                                                                        @if (old('partyEntityType') == 'Trucker') selected @endif>
+                                                                        @if (old('partyEntityType') == 'Trucker / Transporter') selected @endif>
                                                                         Trucker / Transporter</option>
-
                                                                 </select>
                                                             </div>
                                                         </div>
@@ -109,7 +112,7 @@
                                                                 Type <span class="text-danger">*</span></label>
                                                             <div class="col-sm-9 col-lg-8 col-md-8">
                                                                 <select class="form-control form-control-sm"
-                                                                    id="legalEntityType" name="legalEntityType">
+                                                                    id="legalEntityType" name="legalEntityType" required>
                                                                     <option value="" disabled selected></option>
                                                                     <option value="Debtor & Vendor"
                                                                         @if (old('legalEntityType') == 'Debtor & Vendor') selected @endif>
@@ -131,7 +134,6 @@
                                                         </div>
                                                     </div>
                                                 </div>
-
                                             </fieldset>
                                         </div>
                                     </div>
@@ -146,7 +148,6 @@
                                                             class="fa fa-building" aria-hidden="true"></i>Company
                                                         Name<span class="text-danger">*</span></label>
                                                     <div class="col-sm-9 col-lg-8 col-md-8">
-
                                                         <input type="text" class="form-control form-control-sm"
                                                             value="{{ old('companyName') }}" name="companyName"
                                                             id="companyName" maxlength="50">
@@ -156,25 +157,38 @@
                                                                 placeholder="Enter Client Company Name">
                                                             <div id="autocomplete-list" class="autocomplete-list"></div>
                                                         </div>
-                                                        <!-- <input type="text" name="clientCompanyName" id="clientCompanyName" class="form-control form-control-sm" placeholder="Start typing company name"> -->
+                                                        <div id="companyDropdown" style="display: none;">
+                                                            <select class="form-control form-control-sm"
+                                                                id="companySelect" name="companySelect">
+                                                                <option value="" disabled selected>Select Company
+                                                                </option>
+                                                            </select>
+                                                        </div>
                                                     </div>
                                                 </div>
                                                 {{-- Address Line 1 and 2 --}}
                                                 <div class="form-group row mb-1 address-row">
                                                     <div class="col-md-6">
-                                                        <label for="addressLine1" class="col-form-label col-form-label-sm">
-                                                            <i class="fa fa-map-marker" aria-hidden="true"></i> Address Line 1
-                                                            <span class="text-danger">*</span>
+                                                        <label for="addressLine1"
+                                                            class="col-form-label col-form-label-sm">
+                                                            <i class="fa fa-map-marker" aria-hidden="true"></i> Address
+                                                            Line 1 <span class="text-danger">*</span>
                                                         </label>
-                                                        <input type="text" class="form-control form-control-sm" value="{{ old('addressLine1') }}"
-                                                               name="addressLine1" id="addressLine1" maxlength="50" required>
+                                                        <input type="text"
+                                                            class="form-control form-control-sm basic-detail-field"
+                                                            value="{{ old('addressLine1') }}" name="addressLine1"
+                                                            id="addressLine1" maxlength="50" required>
                                                     </div>
                                                     <div class="col-md-6">
-                                                        <label for="addressLine2" class="col-form-label col-form-label-sm">
-                                                            <i class="fa fa-map-marker" aria-hidden="true"></i> Address Line 2
+                                                        <label for="addressLine2"
+                                                            class="col-form-label col-form-label-sm">
+                                                            <i class="fa fa-map-marker" aria-hidden="true"></i> Address
+                                                            Line 2
                                                         </label>
-                                                        <input type="text" class="form-control form-control-sm" value="{{ old('addressLine2') }}"
-                                                               name="addressLine2" id="addressLine2" maxlength="50">
+                                                        <input type="text"
+                                                            class="form-control form-control-sm basic-detail-field"
+                                                            value="{{ old('addressLine2') }}" name="addressLine2"
+                                                            id="addressLine2" maxlength="50">
                                                     </div>
                                                 </div>
                                                 {{-- Country Code and Country Name --}}
@@ -184,42 +198,43 @@
                                                             class="fa fa-globe" aria-hidden="true"></i> Country <span
                                                             class="text-danger">*</span></label>
                                                     <div class="col col-sm-9 col-md-9 col-lg-8">
-                                                        <select class="form-control form-control-sm" name="countryID"
-                                                            id="countryID">
+                                                        <select class="form-control form-control-sm basic-detail-field"
+                                                            name="countryID" id="countryID">
                                                             <option value=""></option>
                                                             @forelse ($countries as $country)
                                                                 <option value="{{ $country->CountryID }}"
                                                                     id="{{ $country->CountCode }}"
                                                                     @if (old('countryID') == $country->CountryID) selected @endif>
-                                                                    {{ $country->CountryName }}</option>
+                                                                    {{ $country->CountryName }}
+                                                                </option>
                                                             @empty
                                                             @endforelse
                                                         </select>
                                                         <input type="hidden" name="countryName" id="countryName"
-                                                            value="{{ old('countryName') }}">
+                                                            value="{{ old('countryName') }}" class="basic-detail-field">
                                                         <input type="hidden" name="countryCode" id="countryCode"
-                                                            value="{{ old('countryCode') }}">
+                                                            value="{{ old('countryCode') }}" class="basic-detail-field">
                                                     </div>
                                                 </div>
                                                 {{-- Province zipcode --}}
-                                                <div class="form-group row ">
+                                                <div class="form-group row">
                                                     <label for="province"
                                                         class="col-sm-3 col-lg-4 col-form-label col-form-label-sm"><i
                                                             class="fa fa-map-pin" aria-hidden="true"></i> Province /
                                                         State</label>
                                                     <div class="col col-sm-5 col-lg-4">
-                                                        <input type="text" class="form-control form-control-sm "
+                                                        <input type="text"
+                                                            class="form-control form-control-sm basic-detail-field"
                                                             name="provinceName" id="provinceName"
                                                             value="{{ old('provinceName') }}" placeholder="" />
-                                                        <input type="hidden" name="provinceID" id="provinceID" />
-                                                        <input type="hidden" name="provinceCode" id="provinceCode" />
-                                                        {{-- <select class="form-control form-control-sm" name="province" id="provinceSelect">
-                                                            <option value="" disabled>Enter Province</option>
-                                                        </select> --}}
+                                                        <input type="hidden" name="provinceID" id="provinceID"
+                                                            class="basic-detail-field" />
+                                                        <input type="hidden" name="provinceCode" id="provinceCode"
+                                                            class="basic-detail-field" />
                                                     </div>
                                                     <div class="col col-sm-4 col-lg-4">
                                                         <input type="text"
-                                                            class="form-control form-control-sm number_input"
+                                                            class="form-control form-control-sm number_input basic-detail-field"
                                                             value="{{ old('zipCode') }}" name="zipCode" id="zipCode"
                                                             placeholder="Zip Code">
                                                     </div>
@@ -230,19 +245,16 @@
                                                         class="col-sm-3 col-lg-4 col-form-label col-form-label-sm"><i
                                                             class="fas fa-city"></i> City</label>
                                                     <div class="col-sm-9 col-lg-8">
-                                                        <input type="text" class="form-control form-control-sm"
+                                                        <input type="text"
+                                                            class="form-control form-control-sm basic-detail-field"
                                                             value="{{ old('cityName') }}" name="cityName"
                                                             id="cityName">
-                                                        {{-- <select class="form-control form-control-sm" name="cityID" id="citySelect">
-                                                            <option value="" disabled selected>Select City</option>
-                                                        </select> --}}
                                                         <input type="hidden" name="cityID" id="cityID"
-                                                            value="{{ old('cityID') }}">
+                                                            value="{{ old('cityID') }}" class="basic-detail-field">
                                                         <input type="hidden" name="cityCode" id="cityCode"
-                                                            value="{{ old('cityCode') }}">
+                                                            value="{{ old('cityCode') }}" class="basic-detail-field">
                                                     </div>
                                                 </div>
-
                                             </fieldset>
                                         </div>
                                         <div class="col-md-6 col-sm-12">
@@ -250,20 +262,18 @@
                                                 <legend class="w-auto p-0 m-0">Contact Details</legend>
                                                 <div class="form-group row mb-2">
                                                     <label for="person"
-                                                        class="col col-sm-3  col-md-3 col-lg-4 col-form-label col-form-label-sm"><i
+                                                        class="col col-sm-3 col-md-3 col-lg-4 col-form-label col-form-label-sm"><i
                                                             class="fa fa-user" aria-hidden="true"></i> Person <span
                                                             class="text-danger">*</span></label>
-                                                    {{-- <div class="col-sm-2 col-md-3 col-lg-2">
-                                                        <input type="text" class="form-control form-control-sm"
-                                                            name="namePrefix" id="namePrefix" placeholder="Prefix">
-                                                    </div> --}}
                                                     <div class="col col-sm-4 col-md-4 col-lg-4">
-                                                        <input type="text" class="form-control form-control-sm"
+                                                        <input type="text"
+                                                            class="form-control form-control-sm basic-detail-field"
                                                             value="{{ old('firstName') }}" name="firstName"
                                                             id="firstName" placeholder="First Name">
                                                     </div>
                                                     <div class="col col-sm-5 col-md-5 col-lg-4">
-                                                        <input type="text" class="form-control form-control-sm"
+                                                        <input type="text"
+                                                            class="form-control form-control-sm basic-detail-field"
                                                             value="{{ old('lastName') }}" name="lastName" id="lastName"
                                                             placeholder="Last Name">
                                                     </div>
@@ -274,70 +284,39 @@
                                                             class="fa fa-sitemap" aria-hidden="true"></i>
                                                         Department</label>
                                                     <div class="col col-sm-9 col-md-9 col-lg-8">
-                                                        <input type="text" class="form-control form-control-sm"
+                                                        <input type="text"
+                                                            class="form-control form-control-sm basic-detail-field"
                                                             value="{{ old('department') }}" name="department"
                                                             id="department" placeholder="Department">
                                                     </div>
                                                 </div>
                                                 {{-- phone no --}}
                                                 <div class="form-group row mb-2">
-                                                    <label for="phoneNo"
-                                                        class="col col-sm-3  col-md-3 col-lg-4 col-form-label col-form-label-sm"><i
-                                                            class="fa fa-phone" aria-hidden="true"></i> Phone No.<span
+                                                    <div
+                                                        class="col col-sm-3 col-md-3 col-lg-4 col-form-label col-form-label-sm">
+                                                        <i class="fa fa-phone" aria-hidden="true"></i> Phone No.<span
                                                             class="text-danger">*</span></label>
-                                                    <div class="col col-sm-9 col-md-9 col-lg-8">
-                                                        <input type="text"
-                                                            class="form-control form-control-sm number_input"
-                                                            value="{{ old('phoneNo') }}" name="phoneNo" id="phoneNo"
-                                                            placeholder="Phone Number">
-                                                    </div>
-                                                </div>
-                                                {{-- email --}}
-                                                <div class="form-group row mb-0 pb-0">
-                                                    <label for="contractEmail"
-                                                        class="col col-sm-3 col-lg-4 col-form-label col-form-label-sm">
-                                                        <i class="fa fa-envelope" aria-hidden="true"></i> Email</label>
-                                                    <div class="col col-sm-9 col-lg-8">
-                                                        <input type="email" name="contractEmail" id="contractEmail"
-                                                            value="{{ old('contractEmail') }}"
-                                                            class="form-control form-control-sm"
-                                                            placeholder="Enter Email">
-                                                    </div>
-                                                </div>
-                                            </fieldset>
-                                            {{-- Other Information --}}
-                                            {{-- <fieldset class="border p-2 card shadow-lg mb-0">
-                                                <legend class="w-auto p-0 m-0">Other information</legend>
-
-                                                <div class="form-group row mb-1">
-                                                    <label for="client"
-                                                        class="col-sm-3 col-lg-4 col-form-label col-form-label-sm"><i class="fa fa-user" aria-hidden="true"></i> Client <span class="text-danger" id="clientSpan">*</span></label>
-                                                    <div class="col-sm-9 col-lg-8">
-                                                        <div class="row">
-                                                            <div class="col">
-                                                                <select name="clientOption" id="clientOption" class="form-control form-control-sm" disabled>
-                                                                    <option value="fromMaster" selected>Search Client</option>
-                                                                    <option value="fromRequest">From Request</option>
-                                                                </select>
-                                                            </div>
-                                                            <div class="col">
-                                                                <input type="text" name="client" id="client" value="{{ old('client') }}" class="form-control form-control-sm" required disabled>
-                                                                <input type="text" name="clientOptionVal" id="clientOptionVal" value="{{ old('clientOptionVal') }}" class="form-control form-control-sm" disabled>
-                                                                <input type="hidden" name="requestID" value="{{ old('requestID') }}" id="requestID">
-                                                                <input type="hidden" name="requestCode" value="{{ old('requestCode') }}" id="requestCode">
-                                                            </div>
+                                                        <div class="col col-sm-9 col-md-9 col-lg-8">
+                                                            <input type="text"
+                                                                class="form-control form-control-sm number_input basic-detail-field"
+                                                                value="{{ old('phoneNo') }}" name="phoneNo"
+                                                                id="phoneNo" placeholder="Phone Number">
                                                         </div>
-
                                                     </div>
-                                                </div>
-                                                <div class="form-group row pb-0 mb-0">
-                                                    <label for="specialInstructions" class="col-sm-3 col-lg-4 col-form-label col-form-label-sm"><i class="fas fa-comments"></i> Special
-                                                        Instructions</label>
-                                                    <div class="col-sm-9 col-lg-8">
-                                                        <textarea class="form-control form-control-sm" name="specialInstruction" id="specialInstruction" placeholder="Special Instructions">{{ old('specialInstruction') }}</textarea>
+                                                    {{-- email --}}
+                                                    <div class="form-group row mb-0 pb-0">
+                                                        <label for="contractEmail"
+                                                            class="col col-sm-3 col-lg-4 col-form-label col-form-label-sm"><i
+                                                                class="fa fa-envelope" aria-hidden="true"></i>
+                                                            Email</label>
+                                                        <div class="col col-sm-9 col-lg-8">
+                                                            <input type="email" name="contractEmail" id="contractEmail"
+                                                                value="{{ old('contractEmail') }}"
+                                                                class="form-control form-control-sm basic-detail-field"
+                                                                placeholder="Enter Email">
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            </fieldset> --}}
+                                            </fieldset>
                                         </div>
                                     </div>
                                     <button class="btn btn-primary m-2 btn-sm float-right" name="next" type="button"
@@ -348,6 +327,8 @@
                                         data-placement="top" title="Save"><i class="fa fa-plus-circle"
                                             aria-hidden="true"></i> Save for Later</button>
                                 </div>
+
+                                {{-- office details --}}
                                 <div id="office-details" class="content active dstepper-block" role="tabpanel"
                                     aria-labelledby="office-details-trigger">
                                     <div class="row">
@@ -360,7 +341,6 @@
                                                         <span class="text-danger">*</span></label>
                                                     <div class="col-sm-6 col-lg-8 col-md-8">
                                                         @if (Auth::user()->can('create-client-for-any-office'))
-
                                                             <select class="form-control form-control-sm"
                                                                 name="officeCountry" id="officeCountry">
                                                                 <option value="" disabled selected></option>
@@ -386,7 +366,6 @@
                                                                 value="{{ Auth::user()->Office->ID ?? '' }}">
                                                             <input type="hidden" name="officeCode"
                                                                 value='{{ Auth::user()->Office->Code }}'>
-
                                                             <input type="hidden" name="officeCountry" id="officeCountry"
                                                                 class="form-control"
                                                                 value="{{ Auth::user()->Office->Name ?? '' }}">
@@ -397,74 +376,6 @@
                                                     </div>
                                                 </div>
                                             </fieldset>
-                                            {{-- <fieldset class="border p-2 card shadow-lg mb-0 pt-0 pb-0">
-                                                <legend class="w-auto pb-0 mb-0">Prefered Ports</legend>
-                                                <div class="row pt-0 mt-0 justify-content-center">
-                                                    <div class="col-md-8 col-sm-8 col-lg-8 ">
-                                                        <div class="form-check">
-                                                            <label class="form-check-label" for="includeCountryCheckBox">
-                                                                Include Country
-                                                            </label>
-                                                            <input class="form-check-input ml-3" type="checkbox" name="includeCountryCheckBox" id="includeCountryCheckBox">
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div class="row mb-0 pb-0">
-                                                    <div class="col-md-6 col-sm-12 col-lg-6">
-
-                                                        <div class="form-group  pt-0 mb-0">
-                                                            <div class="">
-                                                                <label for="portOfLoadingAir" class="col-form-label col-form-label-sm">Port Of Loading(Air) </label>
-                                                                <input type="text" class="form-control form-control-sm" value="{{ old('portOfLoadingAir') }}"
-                                                                name="portOfLoadingAir" id="portOfLoadingAir">
-                                                                <input type="hidden" name="portOfLoadingAirID" id="portOfLoadingAirID"
-                                                                value="{{ old('portOfLoadingAirID') }}">
-
-                                                            </div>
-                                                        </div>
-
-                                                        <div class="form-group mb-0">
-                                                            <div class="">
-                                                                <label for="portOfDischargeAir" class="col-form-label col-form-label-sm">Port Of Discharge(Air)</label>
-                                                                <input type="text" class="form-control form-control-sm"
-                                                                value="{{ old('portOfDischargeAir') }}"
-                                                                name="portOfDischargeAir" id="portOfDischargeAir" >
-
-                                                                <input type="hidden" class="form-control form-control-sm"
-                                                                value="{{ old('portOfDischargeAirID') }}"
-                                                                 name="portOfDischargeAirID" id="portOfDischargeAirID" >
-
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    <div class="col-md-6 col-sm-12 col-lg-6">
-
-                                                        <div class="form-group row mb-1">
-                                                            <div class="col-md-12 mb-0 pb-0">
-                                                                <label for="portOfLoadingSea" class="col-form-label col-form-label-sm">Port Of Loading(Sea) </label>
-                                                                <input type="text" class="form-control form-control-sm"
-                                                                value="{{ old('portOfLoadingSea') }}"
-                                                                name="portOfLoadingSea" id="portOfLoadingSea">
-                                                                <input type="hidden" class="form-control form-control-sm" value="{{ old('portOfLoadingSeaID') }}"
-                                                                name="portOfLoadingSeaID" id="portOfLoadingSeaID">
-
-                                                            </div>
-                                                        </div>
-
-                                                        <div class="form-group row pb-0 mb-0">
-                                                            <div class="col-md-12 pb-0 mb-0">
-                                                                <label for="portOfDischargeSea" class="col-form-label col-form-label-sm">Port Of Discharge(Sea)</label>
-                                                                <input type="text" class="form-control form-control-sm"
-                                                                value="{{ old('portOfDischargeSea') }}"
-                                                                name="portOfDischargeSea" id="portOfDischargeSea">
-                                                                <input type="hidden" class="form-control form-control-sm"
-                                                                value="{{ old('portOfDischargeSeaID') }}"
-                                                                 name="portOfDischargeSeaID" id="portOfDischargeSeaID">
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </fieldset> --}}
                                             <fieldset class="border p-2 card shadow-lg mb-0 pt-0 pb-0">
                                                 <legend>File Upload</legend>
                                                 <label for="attachmentFile">Attachment <i
@@ -503,125 +414,10 @@
                                             </fieldset>
                                         </div>
                                         <div class="col-md-12 col-lg-12 col-sm-12">
-                                            <!-- <fieldset class="border p-2 card shadow-lg mb-0 pt-0 pb-0">
-                                                                                <legend class="w-auto p-0 m-0">Client</legend>
-                                                                                <div class="row">
-                                                                                    {{-- first detail client col --}}
-                                                                                    <div class="col-md-6 col-sm-12 col-lg-6">
-                                                                                        {{-- Sales Pic --}}
-                                                                                        <div class="form-group row mb-1">
-                                                                                            <label for="salesPIC" class="col-sm-3 col-lg-4 col-form-label col-form-label-sm">Sales PIC<span class="text-danger">*</span></label>
-                                                                                            <div class="col-sm-9 col-lg-8">
-                                                                                                <input type="text" required class="form-control form-control-sm salesPIC" value="{{ old('salesPIC') }}" name="salesPIC" id="salesPIC">
-                                                                                                <input type="hidden" name="salesPICID" id="salesPICID" value="{{ old('salesPICID') }}">
-                                                                                                {{-- <select class="form-control form-control-sm" name="salesPIC" id="salesPIC" required>
-                                                                    <option value="" disabled selected></option>
-                                                                </select> --}}
-                                                                                            </div>
-                                                                                        </div>
-                                                                                        {{-- Inco Terms --}}
-                                                                                        <div class="form-group row mb-1">
-                                                                                            <label for="incoTermID" class="col-sm-3 col-lg-4 col-form-label col-form-label-sm">Inco Terms</label>
-                                                                                            <div class="col-sm-9 col-lg-8">
-                                                                                                <select class="form-control form-control-sm" name="incoTermID" id="incoTermID">
-                                                                                                    <option value="" disabled selected></option>
-                                                                                                    @forelse ($incoterms as $incoterm)
-    <option value="{{ old('incoTermID', $incoterm->IncoTermID) }}" id="{{ $incoterm->IncoTermCode }}" @if (old('incoTermID') == $incoterm->IncoTermID) selected @endif>{{ $incoterm->Name }}</option>
-                                                                    @empty
-    @endforelse
-                                                                                                </select>
-                                                                                                <input type="hidden" name="incoTermName" id="incoTermName" value="{{ old('incoTermName') }}">
-                                                                                                <input type="hidden" name="incoTermCode" id="incoTermCode" value="{{ old('incoTermCode') }}">
-                                                                                            </div>
-                                                                                        </div>
-                                                                                        {{-- Notify party 1 --}}
-                                                                                        <div class="form-group row mb-1">
-                                                                                            <label for="notifyParty1"
-                                                                                                class="col-sm-3 col-lg-4 col-form-label col-form-label-sm">Notify Party 1</label>
-                                                                                            <div class="col-sm-9 col-lg-8">
-                                                                                                <input type="text" class="form-control form-control-sm" value="{{ old('notifyParty1') }}"
-                                                                                                name="notifyParty1" id="notifyParty1">
-                                                                                                <input type="hidden" name="notifyParty1ID" id="notifyParty1ID">
-                                                                                                <input type="hidden" name="notifyParty1Code" id="notifyParty1Code">
-                                                                                                {{-- <select class="form-control form-control-sm" name="notifyParty1" id="notifyParty1">
-                                                                    <option value="" disabled selected></option>
-                                                                </select> --}}
-                                                                                            </div>
-                                                                                        </div>
-                                                                                    </div>
-
-                                                                                    {{-- second detail client col --}}
-                                                                                    <div class="col-md-6 col-sm-12 col-lg-6 pt-0">
-                                                                                        {{-- Account Pic --}}
-                                                                                        <div class="form-group row mb-1">
-                                                                                            <label for="accountPIC" class="col-sm-3 col-lg-4 col-form-label col-form-label-sm">Account PIC</label>
-                                                                                            <div class="col-sm-9 col-lg-8">
-                                                                                                <input type="text" class="form-control form-control-sm"
-                                                                                                 value="{{ old('accountPIC') }}" name="accountPIC" id="accountPIC" placeholder="">
-                                                                                                 <input type="hidden" name="accountPICID" id="accountPICID"
-                                                                                                 value="{{ old('accountPICID') }}">
-                                                                                                {{-- <select class="form-control form-control-sm" name="accountPIC" id="accountPIC">
-                                                                    <option value="" disabled selected></option>
-                                                                </select> --}}
-                                                                                            </div>
-                                                                                        </div>
-                                                                                        {{-- payment Terms --}}
-                                                                                        <div class="form-group row mb-1">
-                                                                                            <label for="paymentTermsID"
-                                                                                                class="col-sm-3 col-lg-4 col-form-label col-form-label-sm pt-0 mt-0">Pay Terms</label>
-                                                                                            <div class="col-sm-9 col-lg-8 ">
-                                                                                                <select class="form-control form-control-sm" name="paymentTermsID" id="paymentTermsID">
-                                                                                                    <option value="" disabled selected></option>
-                                                                                                    @forelse ($payTerms as $payTerm)
-    <option value="{{ old('paymentTermsID', $payTerm->IncoTermID) }}" id="{{ $payTerm->IncoTermCode }}" @if (old('paymentTermsID') == $payTerm->IncoTermID) selected @endif>{{ $payTerm->Name }}</option>
-                                                                    @empty
-    @endforelse
-                                                                                                </select>
-                                                                                                <input type="hidden" name="paymentTermsName" id="paymentTermsName">
-                                                                                                <input type="hidden" name="paymentTermsCode" id="paymentTermsCode">
-                                                                                            </div>
-                                                                                        </div>
-                                                                                        {{-- Notify party 2 --}}
-                                                                                        <div class="form-group row mb-1">
-                                                                                            <label for="notifyParty2"
-                                                                                                class="col-sm-3 col-lg-4 col-form-label col-form-label-sm">Notify Party 2</label>
-                                                                                            <div class="col-sm-9 col-lg-8">
-                                                                                                <input type="text" class="form-control form-control-sm" value="{{ old('notifyParty2') }}"
-                                                                                                name="notifyParty2" id="notifyParty2" placeholder="">
-                                                                                                <input type="hidden" name="notifyParty2ID" id="notifyParty2ID">
-                                                                                                <input type="hidden" name="notifyParty2Code" id="notifyParty2Code">
-                                                                                                {{-- <select class="form-control form-control-sm" name="notifyParty2" id="notifyParty2">
-                                                                    <option value="" disabled selected></option>
-                                                                </select> --}}
-                                                                                            </div>
-                                                                                        </div>
-                                                                                    </div>
-
-                                                                                </div>
-
-                                                                                <div class="">
-                                                                                    {{-- Forwarder --}}
-                                                                                    <div class="form-group row mb-0">
-                                                                                        <label for="forwarderName" class="col-sm-3 col-md-4 col-lg-2 col-form-label col-form-label-sm">Forwarder</label>
-                                                                                        <div class="col-sm-9 col-lg-10 col-md-8">
-                                                                                            <input type="text" class="form-control form-control-sm" name="forwarderName" id="forwarderName"
-                                                                                            value="{{ old('forwarderName') }}">
-                                                                                            <input type="hidden" class="form-control form-control-sm"
-                                                                                            name="forwarderID" id="forwarderID" value="{{ old('forwarderID') }}">
-                                                                                            {{-- <select class="form-control form-control-sm" name="forwarder" id="forwarder">
-                                                                <option value="" disabled selected></option>
-                                                            </select> --}}
-                                                                                        </div>
-                                                                                    </div>
-                                                                                </div>
-                                                                            </fieldset> -->
-
-                                            <!-- Data Vendor -->
                                             <fieldset class="border p-2 card shadow-lg mb-0 pt-0 pb-0" id="debtor-vendor">
                                                 <legend class="w-auto p-0 m-0">Debtor/Vendor</legend>
                                                 <div class="row">
                                                     <div class="col-md-6 col-sm-12 col-lg-6">
-
                                                         <div class="form-group row mb-1">
                                                             <div class="col-md-12">
                                                                 <label for="debtorType"
@@ -630,11 +426,9 @@
                                                                 <select class="form-control form-control-sm"
                                                                     name="debtorType" id="debtorType">
                                                                     <option value="" disabled selected></option>
-
                                                                 </select>
                                                             </div>
                                                         </div>
-
                                                         <div class=" row mb-0 pb-0">
                                                             <div class="form-group col-md-6 mb-0 pb-0">
                                                                 <label for="billingCurrency"
@@ -643,13 +437,11 @@
                                                                 <input type="hidden" class="form-control form-control-sm"
                                                                     value="{{ old('billingCurrencyCode') }}"
                                                                     name="billingCurrencyCode" id="billingCurrencyCode">
-
                                                                 <select class="form-control form-control-sm"
                                                                     name="billingCurrency" id="billingCurrency" required>
                                                                     <option value="" disabled selected></option>
                                                                 </select>
                                                             </div>
-
                                                             <div class="form-group col-md-6 mb-0 pb-0">
                                                                 <label for="creditDays"
                                                                     class="col-form-label col-form-label-sm">Credit
@@ -663,7 +455,6 @@
                                                         </div>
                                                     </div>
                                                     <div class="col-md-6 col-sm-12 col-lg-6 mb-0 pb-0">
-
                                                         <div class="form-group row mb-1 mb-0 pb-0 ">
                                                             <div class="col-md-12">
                                                                 <label for="vendorType"
@@ -672,15 +463,13 @@
                                                                 <select class="form-control form-control-sm"
                                                                     name="vendorType" id="vendorType">
                                                                     <option value="" disabled selected></option>
-
                                                                 </select>
                                                             </div>
                                                         </div>
-
                                                         <div class="form-group">
                                                             <div class="row mb-0 pb-0 ">
                                                                 <div class="col-sm-6 col-md-6 col-lg-6 mb-0 pb-0">
-                                                                    <label for="minCreditLimit"
+                                                                    <label for="maxCreditLimit"
                                                                         class="col-form-label col-form-label-sm">Credit
                                                                         Limit <span style="color: red;">*</span></label>
                                                                     <input type="number"
@@ -713,7 +502,6 @@
                                                         </div>
                                                     </div>
                                                 </div>
-
                                                 <div class="form-group row mb-0 mt-0 p-0 ">
                                                     <div class="col col-sm-6 col-lg-6 col-md-6 m-0">
                                                         <div class="row">
@@ -745,75 +533,6 @@
                                                     </div>
                                                 </div>
                                             </fieldset>
-
-                                            {{-- <fieldset class="border p-2 card shadow-lg mb-0 pt-0 pb-0">
-                                                <legend class="w-auto p-0 m-0"> Additional Information</legend>
-                                                <div class="row mb-0">
-                                                   <div class="col-md-6 col-sm-12 col-lg-6 mb-0">
-
-                                                            <div class="form-group row mb-0">
-                                                                <div class="col-md-12">
-                                                                    <label for="tarrif"
-                                                                        class="col-form-label col-form-label-sm">Tarrif</label>
-
-                                                                    <select class="form-control form-control-sm" name="tarrif" id="tarrif" required>
-                                                                        <option value="" selected disabled></option>
-                                                                        @forelse ($tarrifs as $tarrif)
-                                                                            <option value="{{ $tarrif->TARIFF }}" @if (old('tarrif') == $tarrif->TARIFF) selected @endif>{{ $tarrif->TARIFF }}</option>
-                                                                        @empty
-                                                                        @endforelse
-                                                                    </select>
-
-                                                                </div>
-                                                            </div>
-
-                                                            <div class="form-group row mb-0">
-                                                                <div class="col-md-12">
-                                                                    <label for="phoneNo" class="col-form-label col-form-label-sm"> FSC Type & Rate</label>
-                                                                    <div class="row">
-                                                                        <div class="col col-sm-6 col-lg-6">
-                                                                            <select class="form-control form-control-sm" name="fscType" id="fscType" required>
-                                                                                <option value="" selected disabled>Select Type</option>
-                                                                                <option value="Fixed" @if (old('fscType') == 'Fixed') selected @endif>Fixed</option>
-                                                                                <option value="Variable" @if (old('fscType') == 'Variable') selected @endif>Variable</option>
-                                                                            </select>
-                                                                        </div>
-                                                                        <div class="col col-sm-6 col-lg-6">
-                                                                            <input type="text" class="form-control form-control-sm number_input"
-                                                                            value="{{ old('fscRate') }}"
-                                                                            name="fscRate" id="fscRate" placeholder="Rate" required>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                        <div class="col-md-6 col-sm-12 col-lg-6 mb-0">
-
-                                                            <div class="form-group row mb-0">
-                                                                <div class="col-md-12">
-                                                                    <label for="billingType"
-                                                                        class="col-form-label col-form-label-sm">Billing Type</label>
-                                                                    <select class="form-control form-control-sm"
-                                                                        name="billingType" id="billingType" required>
-                                                                        <option value="" selected>Select Billing Type </option>
-                                                                        <option value="Periodic" @if (old('billingType') == 'Periodic') selected @endif>Periodic</option>
-                                                                        <option value="Shipment" @if (old('billingType') == 'Shipment') selected @endif>Shipment</option>
-                                                                    </select>
-                                                                </div>
-                                                            </div>
-
-                                                            <div class="form-group row mb-0">
-                                                                <div class="col-md-12">
-                                                                    <label for="discount"
-                                                                        class="col-form-label col-form-label-sm">Discount in %</label>
-                                                                    <input type="text" class="form-control form-control-sm number_input"
-                                                                    value="{{ old('discount') }}"
-                                                                    name="discount" id="discount" placeholder="Discount" required>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                </div>
-                                            </fieldset> --}}
                                         </div>
                                     </div>
                                     <button class="btn btn-primary m-2 btn-sm" type="button" name="previous"
@@ -827,14 +546,13 @@
                                         <button type="submit" name="submitBtn" value="submitBtn"
                                             class="btn btn-outline-success btn-sm float-right mt-2" data-toggle="tooltip"
                                             data-placement="top" title="Will Be Submitted for Creating"><i
-                                                class="fa fa-thumbs-up" aria-hidden="true"></i> Sumbit</button>
+                                                class="fa fa-thumbs-up" aria-hidden="true"></i> Submit</button>
                                     @endif
                                     <button type="button" name="save-step2" id="save-step2"
                                         class="btn btn-success btn-sm float-right m-2" data-toggle="tooltip"
                                         data-placement="top" title="Save"><i class="fa fa-plus-circle"
                                             aria-hidden="true"></i> Save for Later</button>
                                 </div>
-                                {{-- Admin details --}}
                                 @if (Auth::user()->can('create-client-party'))
                                     <div id="admin-details" class="content" role="tabpanel"
                                         aria-labelledby="admin-details-trigger">
@@ -861,9 +579,6 @@
                                                                     value="{{ old('clientID') }}">
                                                                 <input type="hidden" name="clientCode" id="clientCode"
                                                                     value="{{ old('clientCode') }}">
-                                                                {{-- <select name="clientID" id="clientID"class="form-control form-control-sm">
-                                                                    <option value=""></option>
-                                                                </select> --}}
                                                             </td>
                                                             <td id="client_Input"></td>
                                                         </tr>
@@ -878,9 +593,6 @@
                                                                 <input type="hidden" name="shipperID" id="shipperID">
                                                                 <input type="hidden" name="shipperCode"
                                                                     id="shipperCode">
-                                                                {{-- <select name="shipperInput" id="shipperInput"class="form-control form-control-sm">
-                                                                    <option value=""></option>
-                                                                </select> --}}
                                                             </td>
                                                             <td id="shipper_Input"></td>
                                                         </tr>
@@ -896,20 +608,21 @@
                                                                     id="consigneeID">
                                                                 <input type="hidden" name="consigneeCode"
                                                                     id="consigneeCode">
-                                                                {{-- <select name="consigneeInput" id="consigneeInput"class="form-control form-control-sm">
-                                                                    <option value=""></option>
-                                                                </select> --}}
                                                             </td>
                                                             <td id="consignee_Input"></td>
                                                         </tr>
                                                         <tr>
                                                             <td>Other</td>
-                                                            <td><input type="checkbox" name="otherCheck" id="otherCheck" value="1"></td>
+                                                            <td><input type="checkbox" name="otherCheck" id="otherCheck"
+                                                                    value="1"></td>
                                                             <td>
-                                                                <input type="text" name="otherInput" id="otherInput" class="form-control form-control-sm" autocomplete="off">
+                                                                <input type="text" name="otherInput" id="otherInput"
+                                                                    class="form-control form-control-sm"
+                                                                    autocomplete="off">
                                                                 <input type="hidden" name="otherID" id="otherID">
                                                                 <input type="hidden" name="otherCode" id="otherCode">
-                                                                <div class="invalid-feedback">Please select or enter a name.</div>
+                                                                <div class="invalid-feedback">Please select or enter a
+                                                                    name.</div>
                                                             </td>
                                                             <td id="other_Input"></td>
                                                         </tr>
@@ -922,9 +635,6 @@
                                                                     class="form-control form-control-sm" required>
                                                                 <input type="hidden" name="debtorID" id="debtorID">
                                                                 <input type="hidden" name="debtorCode" id="debtorCode">
-                                                                {{-- <select name="debtor" id="debtor"class="form-control form-control-sm">
-                                                                    <option value=""></option>
-                                                                </select> --}}
                                                             </td>
                                                             <td id="debtor_code"></td>
                                                         </tr>
@@ -937,9 +647,6 @@
                                                                     class="form-control form-control-sm" required>
                                                                 <input type="hidden" name="vendorID" id="vendorID">
                                                                 <input type="hidden" name="vendorCode" id="vendorCode">
-                                                                {{-- <select name="vendor" id="vendor" class="form-control form-control-sm">
-                                                                    <option value=""></option>
-                                                                </select> --}}
                                                             </td>
                                                             <td id="vendor_code"></td>
                                                         </tr>
@@ -977,7 +684,6 @@
 @stop
 
 @section('css')
-
     {{-- stepper css --}}
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bs-stepper/dist/css/bs-stepper.min.css">
     <style>
@@ -995,17 +701,12 @@
 
         legend {
             font-size: 16px;
-            /* color: #060ac4; */
-            /* color: #0174f3; */
             color: #E91809;
-            /* padding: 0 10px 10px 10px; */
-            /**/
             font-weight: bold;
         }
 
         label {
             font-weight: bold;
-            /* font-size: 72px; */
         }
 
         /* Preloader */
@@ -1042,7 +743,6 @@
             width: 100px;
             height: 100px;
             border-radius: 100%;
-            /* background:#F7941D; */
             background: #191857;
             -webkit-animation: preloader-fx 1.6s linear infinite;
             animation: preloader-fx 1.6s linear infinite;
@@ -1062,17 +762,11 @@
             width: 100%;
             resize: vertical;
             min-height: 30px;
-            /* Small initial height */
             max-height: 100px;
-            /* Limit expansion */
             height: 30px;
-            /* Explicit initial height */
             line-height: 1.2;
-            /* Tighter line spacing for single-line look */
             padding: 5px;
-            /* Consistent padding */
             overflow-y: hidden;
-            /* Hide scrollbar until needed */
         }
 
         .address-row label {
@@ -1114,34 +808,47 @@
                 opacity: 0;
             }
         }
+
         .hdtuto.control-group.lst.input-group {
             display: flex;
             align-items: center;
             margin-bottom: 5px;
         }
+
         .hdtuto.control-group.lst.input-group input[type="file"],
         .hdtuto.control-group.lst.input-group input[type="text"] {
             flex: 1;
             margin-right: 5px;
         }
+
         .hdtuto.control-group.lst.input-group .input-group-btn {
             flex: 0 0 auto;
         }
+
         .clone-template {
             display: none !important;
         }
+
         .is-invalid {
             border-color: #dc3545;
         }
+
         .invalid-feedback {
             display: none;
             color: #dc3545;
             font-size: 0.875rem;
         }
-        .is-invalid ~ .invalid-feedback {
+
+        .is-invalid~.invalid-feedback {
             display: block;
         }
-        /* End Preloader */
+        /* New style for disabled fields */
+        .basic-detail-field[readonly], .basic-detail-field[disabled] {
+            background-color: #e9ecef;
+            opacity: 0.7;
+            cursor: not-allowed;
+            pointer-events: none; /* Prevents clicking or focusing */
+        }
     </style>
     <link rel="stylesheet" href="//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
     <style>
@@ -1158,310 +865,8 @@
         }
     </style>
 @stop
-{{-- @section('js')
 
-    <script>
-        /*Ajax setup CSRF*/
-        $.ajaxSetup({
-            headers: {
-                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-            }
-        });
-    </script>
-    <script type="text/javascript">
-        $("#maxCreditLimit").on("input", function() {
-            let maxCreditLimit = $(this).val();
-            if (maxCreditLimit.startsWith("0")) {
-                $(this).val("1" + maxCreditLimit.slice(1));
-            }
-        });
-    </script>
-
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            var partyElement = document.getElementById('partyEntityType');
-            var legalElement = document.getElementById('legalEntityType');
-            var debtorType = document.getElementById('debtorType');
-            var vendorType = document.getElementById('vendorType');
-
-            // partyElement.addEventListener('change', function() {
-            //     if (partyElement.value === 'Client without Debtor or Vendor') {
-            //         originalValue = legalElement.value; // Save the original value
-            //         legalElement.value = 'None';
-            //         legalElement.disabled = true;
-            //         debtorType.disabled = true;
-            //         vendorType.disabled = true;
-            //     } else {
-            //         legalElement.disabled = false;
-            //         debtorType.disabled = false;
-            //         vendorType.disabled = false;
-            //     }
-            // });
-        });
-    </script>
-    <script type="text/javascript">
-        // Existing #addFile script
-        let init = 1;
-        let max_fields = 3;
-        $(".addAttachment").click(function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            var lsthmtl = $(".clone-template").html();
-            if (init < max_fields) {
-                if (init > 1) {
-                    var $names = $('input[name="attachmentNames[]"]');
-                    var $desc = $('input[name="attachmentDescription[]"]');
-                    var $fileInputName = $names.last();
-                    var $fileInputDescription = $desc.last();
-                    var allowedExtensions = /(\.jpg|\.jpeg|\.png|\.gif|\.pdf|\.doc|\.xls|\.docx|\.xlsx)$/i;
-                    var fileValue = $fileInputName.val();
-                    var descValue = $fileInputDescription.val().trim();
-                    if (fileValue) {
-                        if (!allowedExtensions.exec(fileValue)) {
-                            $fileInputName.addClass('is-invalid');
-                            alert('Invalid file type. Allowed types: jpg, jpeg, png, gif, pdf, doc, xls, docx, xlsx');
-                            $fileInputName.val('');
-                            return false;
-                        }
-                        if (!descValue) {
-                            $fileInputDescription.addClass('is-invalid');
-                            alert('Please enter a description.');
-                            return false;
-                        }
-                        $fileInputName.removeClass('is-invalid');
-                        $fileInputDescription.removeClass('is-invalid');
-                    }
-                }
-                $("#attachClone").append(lsthmtl);
-                init++;
-                console.log('Added attachment field. Total:', init);
-            } else {
-                alert('Maximum File Attachment Reached.');
-            }
-        });
-        $("body").on("click", ".remove-attachment", function() {
-            $(this).parents(".cloned-attachment").remove();
-            init--;
-            console.log('Removed attachment field. Total:', init);
-        });
-
-        // Updated logic for Other checkbox
-        $(document).ready(function() {
-            // Autocomplete data
-            var entities = <?php echo json_encode(DB::table('Cust_Entity')->select('id', 'Name', 'Code')->take(100)->get()->map(function($entity) {
-        return [
-            'value' => $entity->id,
-            'name' => $entity->Name,
-            'code' => $entity->Code
-        ];
-    })->toArray()); ?>;
-
-            function toggleOtherInput() {
-                var isOtherChecked = $('#otherCheck').is(':checked');
-                var $otherInput = $('#otherInput');
-                var $otherID = $('#otherID');
-                var $otherCode = $('#otherCode');
-                var $otherInputDisplay = $('#other_Input');
-
-                if (isOtherChecked) {
-                    // Free-text mode
-                    $otherInput
-                        .attr('required', 'required')
-                        .val('')
-                        .autocomplete('destroy')
-                        .prop('readonly', false);
-                    $otherID.val('');
-                    $otherCode.val('');
-                    $otherInputDisplay.text('');
-                } else {
-                    // Autocomplete mode
-                    $otherInput
-                        .attr('required', 'required')
-                        .val('')
-                        .prop('readonly', false)
-                        .autocomplete({
-                            source: entities,
-                            minLength: 1,
-                            select: function(event, ui) {
-                                $otherInput.val(ui.item.label).removeClass('is-invalid');
-                                $otherID.val(ui.item.value);
-                                $otherCode.val(ui.item.code);
-                                $otherInputDisplay.text(ui.item.code);
-                                console.log('Selected:', { id: ui.item.value, name: ui.item.label, code: ui.item.code });
-                                return false;
-                            },
-                            change: function(event, ui) {
-                                if (!ui.item) {
-                                    $otherInput.val('').addClass('is-invalid');
-                                    $otherID.val('');
-                                    $otherCode.val('');
-                                    $otherInputDisplay.text('');
-                                    console.log('Invalid selection, cleared fields');
-                                }
-                            }
-                        });
-                    $otherID.val('');
-                    $otherCode.val('');
-                    $otherInputDisplay.text('');
-                }
-            }
-
-            // Initialize on page load
-            toggleOtherInput();
-
-            // Toggle on checkbox change
-            $('#otherCheck').on('change', function() {
-                toggleOtherInput();
-            });
-
-            // Validate on input change
-            $('#otherInput').on('change', function() {
-                var isOtherChecked = $('#otherCheck').is(':checked');
-                var $otherInput = $('#otherInput');
-                var $otherID = $('#otherID');
-
-                if (!isOtherChecked && !$otherID.val()) {
-                    $otherInput.addClass('is-invalid');
-                    console.log('Validation failed: No valid autocomplete selection');
-                } else if (isOtherChecked && !$otherInput.val().trim()) {
-                    $otherInput.addClass('is-invalid');
-                    console.log('Validation failed: Empty free-text input');
-                } else {
-                    $otherInput.removeClass('is-invalid');
-                }
-            });
-
-            // Debug form submission
-            $('form').on('submit', function() {
-                console.log('Form submitting:', {
-                    otherCheck: $('#otherCheck').is(':checked'),
-                    otherInput: $('#otherInput').val(),
-                    otherID: $('#otherID').val(),
-                    otherCode: $('#otherCode').val()
-                });
-            });
-        });
-    </script>
-    <script src="//code.jquery.com/jquery-1.12.4.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bs-stepper/dist/js/bs-stepper.min.js"></script>
-    <script src="{{ asset('js/client-party/party-entity.js') }}"></script>
-    <script src="{{ asset('js/client-party/validation.js') }}"></script>
-    <script src="{{ asset('js/client-party/sub-form.js') }}"></script>
-    <script src="{{ asset('js/client-party/jquery-number/jquery.number.min.js') }}"></script>
-    <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
-    <script>
-        /** get user authorization status */
-        window.User = {
-            value: '{{ auth()->user()->can('edit-client-party') }}'
-        }
-    </script>
-
-
-    <script>
-        $(document).ready(function() {
-            // Function to get URL parameter
-            function getUrlParameter(name) {
-                let searchParams = new URLSearchParams(window.location.search);
-                return searchParams.get(name);
-            }
-
-            // Get 'type' parameter from URL
-            let requestType = getUrlParameter('type');
-
-            if (requestType === "operational") {
-                $("#partyEntityType").closest(".col-md-12").show(); // Show Operation Type
-                $("#legalEntityType").closest(".col-md-6").hide(); // Hide Legal Type
-                $("#debtor-vendor").hide(); // Hide debtor and Vendor
-            } else if (requestType === "accounting") {
-                $("#partyEntityType").closest(".col-md-6").show(); // Show Operation Type
-                $("#legalEntityType").closest(".col-md-6").show(); // Show Legal Type
-            }
-
-            $('#partyEntityType').change(function() {
-                var selectedType = $(this).val();
-                if (selectedType === 'Create Debtor/Vendor with Existing Client') {
-                    $('#companyName').hide();
-                    $('#clientCompanyName').show();
-
-                    $('#clientCompanyNameInput').on('input', function() {
-                        var query = $(this).val();
-                        if (query.length > 0) {
-                            $.ajax({
-                                url: "{{ route('autocomplete-client') }}",
-                                type: "GET",
-                                data: {
-                                    'query': query
-                                },
-                                success: function(data) {
-                                    $('#autocomplete-list').empty();
-                                    data.forEach(function(item) {
-                                        $('#autocomplete-list').append(
-                                            '<div class="autocomplete-item" data-value="' +
-                                            item + '">' + item + '</div>');
-                                    });
-                                },
-                                error: function(xhr, status, error) {
-                                    console.error("AJAX Error: ", status, error);
-                                }
-                            });
-                        } else {
-                            $('#autocomplete-list').empty();
-                        }
-                    });
-
-                    $(document).on('click', '.autocomplete-item', function() {
-                        var value = $(this).data('value');
-                        $('#clientCompanyNameInput').val(value);
-                        $('#autocomplete-list').empty();
-
-                        $('#companyName').val(value);
-
-                        $.ajax({
-                            url: "{{ url('/client-details') }}/" + value,
-                            type: "GET",
-                            success: function(data) {
-                                $('#addressLine1').text(data.Address_Line1);
-                                $('#countryID').val(data.Address_CountryId);
-                                $('#countryCode').val(data.Address_CountryCode);
-                                $('#firstName').val(data.Cont_Bch_PersonName_FirstName);
-                                $('#lastName').val(data.Cont_Bch_PersonName_LastName);
-                                $('#phoneNo').val(data.Cont_Bch_PhoneNumbers);
-                                $('#officeCountryDisp').val(data.Office);
-                                $('#salesPIC').val(data.SalesMgrOfficeFunMapName);
-                                $('#accountPIC').val(data.AccountMgrOfficeFunMapName);
-                                $('#billingCurrency').val(data.CreditLimitCurrencyCode);
-                                $('#creditDays').val(data.CreditDays);
-                                $('#maxCreditLimit').val(data.CreditLimit);
-                                $('#licenceTypeValue').val(data.LicenceTypeValue);
-                                $('#licenceTypeID').val(data.LicenceTypeID);
-                            },
-                            error: function(xhr, status, error) {
-                                console.error("AJAX Error: ", status, error);
-                            }
-                        });
-                    });
-
-                    $(document).click(function(e) {
-                        if (!$(e.target).closest('#autocomplete-list, #clientCompanyNameInput')
-                            .length) {
-                            $('#autocomplete-list').empty();
-                        }
-                    });
-
-                } else {
-                    $('#companyName').show();
-                    $('#clientCompanyName').hide();
-                }
-            });
-        });
-    </script>
-
-
-    <script src="{{ asset('js/client-party/show-create-client-party.js') }}"></script>
-@stop --}}
-
-
- @section('js')
+@section('js')
     <script>
         /* Ajax setup CSRF */
         $.ajaxSetup({
@@ -1484,8 +889,6 @@
             var legalElement = document.getElementById('legalEntityType');
             var debtorType = document.getElementById('debtorType');
             var vendorType = document.getElementById('vendorType');
-            // Existing commented-out logic preserved
-            // partyElement.addEventListener('change', function() { ... });
         });
     </script>
     <script type="text/javascript">
@@ -1539,7 +942,7 @@
         });
     </script>
     <script>
-        // API-based autocomplete for all inputs
+        // API-based autocomplete for admin-details inputs
         $(document).ready(function() {
             const inputs = ['clientInput', 'shipperInput', 'consigneeInput', 'debtor', 'vendor', 'otherInput'];
 
@@ -1554,7 +957,7 @@
                     debounceTimeout = setTimeout(() => {
                         const query = $(this).val().trim();
                         const $autocompleteList = $('<div class="autocomplete-list"></div>');
-                        $input.parent().find('.autocomplete-list').remove(); // Remove existing list
+                        $input.parent().find('.autocomplete-list').remove();
                         $input.parent().append($autocompleteList);
 
                         if (!query) {
@@ -1580,10 +983,9 @@
                                 $autocompleteList.html('<div>Error loading suggestions</div>');
                             }
                         });
-                    }, 300); // 300ms debounce
+                    }, 300);
                 });
 
-                // Handle selection
                 $input.parent().on('click', '.autocomplete-item', function() {
                     const entity = $(this).data('entity');
                     $input.val(entity.name).removeClass('is-invalid');
@@ -1593,7 +995,6 @@
                     $input.parent().find('.autocomplete-list').remove();
                 });
 
-                // Close autocomplete on outside click
                 $(document).on('click', function(e) {
                     if (!$(e.target).closest(`#${id}, .autocomplete-list`).length) {
                         $input.parent().find('.autocomplete-list').remove();
@@ -1601,7 +1002,6 @@
                 });
             });
 
-            // Special handling for otherCheck
             function toggleOtherInput() {
                 var isOtherChecked = $('#otherCheck').is(':checked');
                 var $otherInput = $('#otherInput');
@@ -1610,17 +1010,15 @@
                 var $otherInputDisplay = $('#other_Input');
 
                 if (isOtherChecked) {
-                    // Free-text mode
                     $otherInput
                         .attr('required', 'required')
                         .val('')
-                        .off('input') // Remove autocomplete
+                        .off('input')
                         .prop('readonly', false);
                     $otherID.val('');
                     $otherCode.val('');
                     $otherInputDisplay.text('');
                 } else {
-                    // Autocomplete mode
                     $otherInput
                         .attr('required', 'required')
                         .val('')
@@ -1672,11 +1070,9 @@
                 }
             }
 
-            // Initialize and toggle otherCheck
             toggleOtherInput();
             $('#otherCheck').on('change', toggleOtherInput);
 
-            // Validate otherInput
             $('#otherInput').on('change', function() {
                 var isOtherChecked = $('#otherCheck').is(':checked');
                 var $otherInput = $('#otherInput');
@@ -1693,7 +1089,6 @@
                 }
             });
 
-            // Debug form submission
             $('form').on('submit', function() {
                 console.log('Form submitting:', {
                     otherCheck: $('#otherCheck').is(':checked'),
@@ -1715,8 +1110,9 @@
             // Get 'type' parameter from URL
             let requestType = getUrlParameter('type');
 
+            // Show/hide fields based on request type
             if (requestType === "operational") {
-                $("#partyEntityType").closest(".col-md-12").show();
+                $("#partyEntityType").closest(".col-md-6").show();
                 $("#legalEntityType").closest(".col-md-6").hide();
                 $("#debtor-vendor").hide();
             } else if (requestType === "accounting") {
@@ -1724,13 +1120,108 @@
                 $("#legalEntityType").closest(".col-md-6").show();
             }
 
+            // Function to toggle field readonly/disabled state
+            function toggleFieldsReadonly(disable) {
+                $('.basic-detail-field').each(function() {
+                    $(this).prop('readonly', disable).prop('disabled', disable);
+                });
+            }
+
+            // Function to clear Basic Details fields
+            function clearBasicDetails() {
+                $('.basic-detail-field').val('');
+                $('#companyName').val('');
+                $('#clientCompanyNameInput').val('');
+                $('#companySelect').val('');
+                $('#autocomplete-list').empty();
+            }
+
+            // Function to populate company dropdown
+            function populateCompanyDropdown() {
+                $.ajax({
+                    url: '/api/companies',
+                    type: 'GET',
+                    success: function(companies) {
+                        const $companySelect = $('#companySelect');
+                        $companySelect.empty();
+                        $companySelect.append('<option value="" disabled selected>Select Company</option>');
+                        companies.forEach(company => {
+                            $companySelect.append(
+                                `<option value="${company.name}" data-code="${company.code}">${company.name} (${company.code})</option>`
+                            );
+                        });
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('Error loading companies:', status, error);
+                        alert('Failed to load company list.');
+                    }
+                });
+            }
+
+            // Handle partyEntityType change
             $('#partyEntityType').change(function() {
                 var selectedType = $(this).val();
-                if (selectedType === 'Create Debtor/Vendor with Existing Client') {
-                    $('#companyName').hide();
-                    $('#clientCompanyName').show();
+                var $legalEntityType = $('#legalEntityType');
+                var $companyName = $('#companyName');
+                var $clientCompanyName = $('#clientCompanyName');
+                var $companyDropdown = $('#companyDropdown');
 
-                    $('#clientCompanyNameInput').on('input', function() {
+                // Reset legalEntityType options
+                $legalEntityType.find('option').each(function() {
+                    $(this).prop('disabled', false).show();
+                });
+
+                // Clear fields and reset UI
+                clearBasicDetails();
+                $companyName.hide();
+                $clientCompanyName.hide();
+                $companyDropdown.hide();
+                toggleFieldsReadonly(false);
+
+                // Define specific types requiring dropdown
+                const dropdownTypes = ['Agent / Forwarder', 'Airline', 'Shipping Line', 'Trucker / Transporter'];
+
+                // Handle UI and behavior based on selectedType
+                if (selectedType === 'Create only in D365') {
+                    // Manual entry for all fields
+                    $companyName.show();
+                    $legalEntityType.find('option').each(function() {
+                        var value = $(this).val();
+                        if (value && value !== 'Only in D365 Debtor' && value !== 'Only in D365 Vendor') {
+                            $(this).prop('disabled', true).hide();
+                        }
+                    });
+                } else if (selectedType === 'Client') {
+                    // Autocomplete for Client
+                    $clientCompanyName.show();
+                    $legalEntityType.find('option').each(function() {
+                        var value = $(this).val();
+                        if (value === 'Only in D365 Debtor' || value === 'Only in D365 Vendor') {
+                            $(this).prop('disabled', true).hide();
+                        }
+                    });
+                } else if (dropdownTypes.includes(selectedType)) {
+                    // Dropdown for Agent/Forwarder, Airline, Shipping Line, Trucker/Transporter
+                    $companyDropdown.show();
+                    // Disable manual entry only for accounting request type
+                    if (requestType === 'accounting') {
+                        toggleFieldsReadonly(true);
+                    }
+                    populateCompanyDropdown();
+                    $legalEntityType.find('option').each(function() {
+                        var value = $(this).val();
+                        if (value === 'Only in D365 Debtor' || value === 'Only in D365 Vendor') {
+                            $(this).prop('disabled', true).hide();
+                        }
+                    });
+                }
+
+                // Reset legalEntityType selection
+                $legalEntityType.val('');
+
+                // Autocomplete for Client
+                if (selectedType === 'Client') {
+                    $('#clientCompanyNameInput').off('input').on('input', function() {
                         var query = $(this).val().trim();
                         const $autocompleteList = $('<div class="autocomplete-list"></div>');
                         $(this).parent().find('.autocomplete-list').remove();
@@ -1750,7 +1241,7 @@
                                 matches.forEach(entity => {
                                     const $div = $('<div class="autocomplete-item"></div>')
                                         .text(`${entity.name} (${entity.code})`)
-                                        .data('value', entity.name); // Match existing behavior
+                                        .data('entity', entity);
                                     $autocompleteList.append($div);
                                 });
                             },
@@ -1761,47 +1252,69 @@
                         });
                     });
 
-                    $(document).on('click', '.autocomplete-item', function() {
-                        var value = $(this).data('value');
-                        $('#clientCompanyNameInput').val(value);
+                    $(document).off('click', '.autocomplete-item').on('click', '.autocomplete-item', function() {
+                        var entity = $(this).data('entity');
+                        $('#clientCompanyNameInput').val(entity.name);
+                        $('#companyName').val(entity.name);
                         $('#autocomplete-list').empty();
-                        $('#companyName').val(value);
-
-                        $.ajax({
-                            url: "{{ url('/client-details') }}/" + encodeURIComponent(value),
-                            type: "GET",
-                            success: function(data) {
-                                $('#addressLine1').text(data.Address_Line1);
-                                $('#countryID').val(data.Address_CountryId);
-                                $('#countryCode').val(data.Address_CountryCode);
-                                $('#firstName').val(data.Cont_Bch_PersonName_FirstName);
-                                $('#lastName').val(data.Cont_Bch_PersonName_LastName);
-                                $('#phoneNo').val(data.Cont_Bch_PhoneNumbers);
-                                $('#officeCountryDisp').val(data.Office);
-                                $('#salesPIC').val(data.SalesMgrOfficeFunMapName);
-                                $('#accountPIC').val(data.AccountMgrOfficeFunMapName);
-                                $('#billingCurrency').val(data.CreditLimitCurrencyCode);
-                                $('#creditDays').val(data.CreditDays);
-                                $('#maxCreditLimit').val(data.CreditLimit);
-                                $('#licenceTypeValue').val(data.LicenceTypeValue);
-                                $('#licenceTypeID').val(data.LicenceTypeID);
-                            },
-                            error: function(xhr, status, error) {
-                                console.error("AJAX Error: ", status, error);
-                            }
-                        });
+                        fetchCompanyDetails(entity.name);
                     });
 
-                    $(document).click(function(e) {
+                    $(document).off('click').click(function(e) {
                         if (!$(e.target).closest('#autocomplete-list, #clientCompanyNameInput').length) {
                             $('#autocomplete-list').empty();
                         }
                     });
-                } else {
-                    $('#companyName').show();
-                    $('#clientCompanyName').hide();
+                }
+
+                // Handle company dropdown selection
+                if (dropdownTypes.includes(selectedType)) {
+                    $('#companySelect').off('change').on('change', function() {
+                        var companyName = $(this).val();
+                        if (companyName) {
+                            $('#companyName').val(companyName);
+                            fetchCompanyDetails(companyName);
+                        } else {
+                            clearBasicDetails();
+                            // Re-apply readonly if accounting mode
+                            if (requestType === 'accounting') {
+                                toggleFieldsReadonly(true);
+                            }
+                        }
+                    });
                 }
             });
+
+            // Function to fetch and populate company details
+            function fetchCompanyDetails(companyName) {
+                $.ajax({
+                    url: "{{ url('/client-details') }}/" + encodeURIComponent(companyName),
+                    type: "GET",
+                    success: function(data) {
+                        $('#addressLine1').val(data.Address_Line1 || '');
+                        $('#addressLine2').val(data.Address_Line2 || '');
+                        $('#countryID').val(data.Address_CountryId || '');
+                        $('#countryCode').val(data.Address_CountryCode || '');
+                        $('#countryName').val(data.Address_CountryName || '');
+                        $('#provinceName').val(data.Address_ProvinceName || '');
+                        $('#provinceID').val(data.Address_ProvinceID || '');
+                        $('#provinceCode').val(data.Address_ProvinceCode || '');
+                        $('#cityName').val(data.Address_CityName || '');
+                        $('#cityID').val(data.Address_CityID || '');
+                        $('#cityCode').val(data.Address_CityCode || '');
+                        $('#zipCode').val(data.Address_ZipCode || '');
+                        $('#firstName').val(data.Cont_Bch_PersonName_FirstName || '');
+                        $('#lastName').val(data.Cont_Bch_PersonName_LastName || '');
+                        $('#department').val(data.Cont_Bch_Department || '');
+                        $('#phoneNo').val(data.Cont_Bch_PhoneNumbers || '');
+                        $('#contractEmail').val(data.Cont_Bch_Email || '');
+                    },
+                    error: function(xhr, status, error) {
+                        console.error("AJAX Error: ", status, error);
+                        alert('Failed to retrieve company details.');
+                    }
+                });
+            }
         });
     </script>
     <script src="//code.jquery.com/jquery-1.12.4.min.js"></script>
@@ -1818,4 +1331,4 @@
         }
     </script>
     <script src="{{ asset('js/client-party/show-create-client-party.js') }}"></script>
-@stop
+@stopgit
