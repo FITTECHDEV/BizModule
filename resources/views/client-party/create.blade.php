@@ -262,9 +262,10 @@
                                                 <legend class="w-auto p-0 m-0">Contact Details</legend>
                                                 <div class="form-group row mb-2">
                                                     <label for="person"
-                                                        class="col col-sm-3 col-md-3 col-lg-4 col-form-label col-form-label-sm"><i
-                                                            class="fa fa-user" aria-hidden="true"></i> Person <span
-                                                            class="text-danger">*</span></label>
+                                                        class="col col-sm-3 col-md-3 col-lg-4 col-form-label col-form-label-sm">
+                                                        <i class="fa fa-user" aria-hidden="true"></i> Person <span
+                                                            class="text-danger">*</span>
+                                                    </label>
                                                     <div class="col col-sm-4 col-md-4 col-lg-4">
                                                         <input type="text"
                                                             class="form-control form-control-sm basic-detail-field"
@@ -280,9 +281,9 @@
                                                 </div>
                                                 <div class="form-group row mb-2">
                                                     <label for="department"
-                                                        class="col col-sm-3 col-md-3 col-lg-4 col-form-label col-form-label-sm"><i
-                                                            class="fa fa-sitemap" aria-hidden="true"></i>
-                                                        Department</label>
+                                                        class="col col-sm-3 col-md-3 col-lg-4 col-form-label col-form-label-sm">
+                                                        <i class="fa fa-sitemap" aria-hidden="true"></i> Department
+                                                    </label>
                                                     <div class="col col-sm-9 col-md-9 col-lg-8">
                                                         <input type="text"
                                                             class="form-control form-control-sm basic-detail-field"
@@ -290,33 +291,31 @@
                                                             id="department" placeholder="Department">
                                                     </div>
                                                 </div>
-                                                {{-- phone no --}}
                                                 <div class="form-group row mb-2">
-                                                    <div
+                                                    <label for="phoneNo"
                                                         class="col col-sm-3 col-md-3 col-lg-4 col-form-label col-form-label-sm">
-                                                        <i class="fa fa-phone" aria-hidden="true"></i> Phone No.<span
-                                                            class="text-danger">*</span></label>
-                                                        <div class="col col-sm-9 col-md-9 col-lg-8">
-                                                            <input type="text"
-                                                                class="form-control form-control-sm number_input basic-detail-field"
-                                                                value="{{ old('phoneNo') }}" name="phoneNo"
-                                                                id="phoneNo" placeholder="Phone Number">
-                                                        </div>
+                                                        <i class="fa fa-phone" aria-hidden="true"></i> Phone No. <span
+                                                            class="text-danger">*</span>
+                                                    </label>
+                                                    <div class="col col-sm-4 col-md-4 col-lg-4">
+                                                        <input type="text"
+                                                            class="form-control form-control-sm number_input basic-detail-field"
+                                                            value="{{ old('phoneNo') }}" name="phoneNo" id="phoneNo"
+                                                            placeholder="Phone Number">
                                                     </div>
-                                                    {{-- email --}}
-                                                    <div class="form-group row mb-0 pb-0">
-                                                        <label for="contractEmail"
-                                                            class="col col-sm-3 col-lg-4 col-form-label col-form-label-sm"><i
-                                                                class="fa fa-envelope" aria-hidden="true"></i>
-                                                            Email</label>
-                                                        <div class="col col-sm-9 col-lg-8">
-                                                            <input type="email" name="contractEmail" id="contractEmail"
-                                                                value="{{ old('contractEmail') }}"
-                                                                class="form-control form-control-sm basic-detail-field"
-                                                                placeholder="Enter Email">
-                                                        </div>
+                                                    <label for="contractEmail"
+                                                        class="col col-sm-2 col-md-2 col-lg-1 col-form-label col-form-label-sm">
+                                                        <i class="fa fa-envelope" aria-hidden="true"></i> Email
+                                                    </label>
+                                                    <div class="col col-sm-3 col-md-3 col-lg-3">
+                                                        <input type="email" name="contractEmail" id="contractEmail"
+                                                            value="{{ old('contractEmail') }}"
+                                                            class="form-control form-control-sm basic-detail-field"
+                                                            placeholder="Enter Email">
                                                     </div>
+                                                </div>
                                             </fieldset>
+
                                         </div>
                                     </div>
                                     <button class="btn btn-primary m-2 btn-sm float-right" name="next" type="button"
@@ -842,12 +841,15 @@
         .is-invalid~.invalid-feedback {
             display: block;
         }
+
         /* New style for disabled fields */
-        .basic-detail-field[readonly], .basic-detail-field[disabled] {
+        .basic-detail-field[readonly],
+        .basic-detail-field[disabled] {
             background-color: #e9ecef;
             opacity: 0.7;
             cursor: not-allowed;
-            pointer-events: none; /* Prevents clicking or focusing */
+            pointer-events: none;
+            /* Prevents clicking or focusing */
         }
     </style>
     <link rel="stylesheet" href="//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
@@ -910,7 +912,8 @@
                     if (fileValue) {
                         if (!allowedExtensions.exec(fileValue)) {
                             $fileInputName.addClass('is-invalid');
-                            alert('Invalid file type. Allowed types: jpg, jpeg, png, gif, pdf, doc, xls, docx, xlsx');
+                            alert(
+                                'Invalid file type. Allowed types: jpg, jpeg, png, gif, pdf, doc, xls, docx, xlsx');
                             $fileInputName.val('');
                             return false;
                         }
@@ -955,7 +958,8 @@
                     clearTimeout(debounceTimeout);
                     debounceTimeout = setTimeout(() => {
                         const query = $(this).val().trim();
-                        const $autocompleteList = $('<div class="autocomplete-list"></div>');
+                        const $autocompleteList = $(
+                        '<div class="autocomplete-list"></div>');
                         $input.parent().find('.autocomplete-list').remove();
                         $input.parent().append($autocompleteList);
 
@@ -967,19 +971,27 @@
                         $.ajax({
                             url: '/api/entities',
                             type: 'GET',
-                            data: { q: query },
+                            data: {
+                                q: query
+                            },
                             success: function(matches) {
                                 $autocompleteList.empty();
                                 matches.forEach(entity => {
-                                    const $div = $('<div class="autocomplete-item"></div>')
-                                        .text(`${entity.name} (${entity.code})`)
+                                    const $div = $(
+                                            '<div class="autocomplete-item"></div>'
+                                            )
+                                        .text(
+                                            `${entity.name} (${entity.code})`
+                                            )
                                         .data('entity', entity);
                                     $autocompleteList.append($div);
                                 });
                             },
                             error: function(xhr, status, error) {
-                                console.error('Autocomplete error:', status, error);
-                                $autocompleteList.html('<div>Error loading suggestions</div>');
+                                console.error('Autocomplete error:', status,
+                                    error);
+                                $autocompleteList.html(
+                                    '<div>Error loading suggestions</div>');
                             }
                         });
                     }, 300);
@@ -1040,19 +1052,26 @@
                             $.ajax({
                                 url: '/api/entities',
                                 type: 'GET',
-                                data: { q: query },
+                                data: {
+                                    q: query
+                                },
                                 success: function(matches) {
                                     $autocompleteList.empty();
                                     matches.forEach(entity => {
-                                        const $div = $('<div class="autocomplete-item"></div>')
-                                            .text(`${entity.name} (${entity.code})`)
+                                        const $div = $(
+                                                '<div class="autocomplete-item"></div>'
+                                                )
+                                            .text(
+                                                `${entity.name} (${entity.code})`
+                                                )
                                             .data('entity', entity);
                                         $autocompleteList.append($div);
                                     });
                                 },
                                 error: function(xhr, status, error) {
                                     console.error('Autocomplete error:', status, error);
-                                    $autocompleteList.html('<div>Error loading suggestions</div>');
+                                    $autocompleteList.html(
+                                        '<div>Error loading suggestions</div>');
                                 }
                             });
                         }, 300);
@@ -1143,7 +1162,8 @@
                     success: function(companies) {
                         const $companySelect = $('#companySelect');
                         $companySelect.empty();
-                        $companySelect.append('<option value="" disabled selected>Select Company</option>');
+                        $companySelect.append(
+                            '<option value="" disabled selected>Select Company</option>');
                         companies.forEach(company => {
                             $companySelect.append(
                                 `<option value="${company.name}" data-code="${company.code}">${company.name} (${company.code})</option>`
@@ -1178,49 +1198,57 @@
                 // Ensure fields are editable by default
                 toggleFieldsReadonly(false);
 
-                // Define specific types requiring dropdown
-                const dropdownTypes = ['Agent / Forwarder', 'Airline', 'Shipping Line', 'Trucker / Transporter'];
+                // Define specific types requiring dropdown in accounting mode
+                const dropdownTypes = ['Agent / Forwarder', 'Airline', 'Shipping Line',
+                    'Trucker / Transporter'
+                ];
 
-                // Handle UI and behavior based on selectedType
-                if (selectedType === 'Create only in D365') {
-                    // Manual entry for all fields
-                    $companyName.show();
-                    $legalEntityType.find('option').each(function() {
-                        var value = $(this).val();
-                        if (value && value !== 'Only in D365 Debtor' && value !== 'Only in D365 Vendor') {
-                            $(this).prop('disabled', true).hide();
-                        }
-                    });
-                } else if (selectedType === 'Client') {
-                    // Autocomplete for Client
-                    $clientCompanyName.show();
-                    $legalEntityType.find('option').each(function() {
-                        var value = $(this).val();
-                        if (value === 'Only in D365 Debtor' || value === 'Only in D365 Vendor') {
-                            $(this).prop('disabled', true).hide();
-                        }
-                    });
-                } else if (dropdownTypes.includes(selectedType)) {
-                    // Dropdown for Agent/Forwarder, Airline, Shipping Line, Trucker/Transporter
-                    $companyDropdown.show();
-                    // Disable manual entry only for accounting request type
-                    if (requestType === 'accounting') {
+                // Handle UI and behavior based on selectedType and requestType
+                if (requestType === 'accounting') {
+                    if (selectedType === 'Create only in D365') {
+                        // Manual entry for all fields
+                        $companyName.show();
+                        $legalEntityType.find('option').each(function() {
+                            var value = $(this).val();
+                            if (value && value !== 'Only in D365 Debtor' && value !==
+                                'Only in D365 Vendor') {
+                                $(this).prop('disabled', true).hide();
+                            }
+                        });
+                    } else if (selectedType === 'Client') {
+                        // Autocomplete for Client
+                        $clientCompanyName.show();
+                        $legalEntityType.find('option').each(function() {
+                            var value = $(this).val();
+                            if (value === 'Only in D365 Debtor' || value ===
+                                'Only in D365 Vendor') {
+                                $(this).prop('disabled', true).hide();
+                            }
+                        });
+                    } else if (dropdownTypes.includes(selectedType)) {
+                        // Dropdown for Agent/Forwarder, Airline, Shipping Line, Trucker/Transporter
+                        $companyDropdown.show();
                         toggleFieldsReadonly(true);
+                        populateCompanyDropdown();
+                        $legalEntityType.find('option').each(function() {
+                            var value = $(this).val();
+                            if (value === 'Only in D365 Debtor' || value ===
+                                'Only in D365 Vendor') {
+                                $(this).prop('disabled', true).hide();
+                            }
+                        });
                     }
-                    populateCompanyDropdown();
-                    $legalEntityType.find('option').each(function() {
-                        var value = $(this).val();
-                        if (value === 'Only in D365 Debtor' || value === 'Only in D365 Vendor') {
-                            $(this).prop('disabled', true).hide();
-                        }
-                    });
+                } else {
+                    // Operational mode: always show companyName input and keep fields editable
+                    $companyName.show();
+                    // No dropdown or autocomplete in operational mode
                 }
 
                 // Reset legalEntityType selection
                 $legalEntityType.val('');
 
-                // Autocomplete for Client
-                if (selectedType === 'Client') {
+                // Autocomplete for Client (accounting mode only)
+                if (selectedType === 'Client' && requestType === 'accounting') {
                     $('#clientCompanyNameInput').off('input').on('input', function() {
                         var query = $(this).val().trim();
                         const $autocompleteList = $('<div class="autocomplete-list"></div>');
@@ -1235,11 +1263,15 @@
                         $.ajax({
                             url: '/api/entities',
                             type: 'GET',
-                            data: { q: query },
+                            data: {
+                                q: query
+                            },
                             success: function(matches) {
                                 $autocompleteList.empty();
                                 matches.forEach(entity => {
-                                    const $div = $('<div class="autocomplete-item"></div>')
+                                    const $div = $(
+                                            '<div class="autocomplete-item"></div>'
+                                            )
                                         .text(`${entity.name} (${entity.code})`)
                                         .data('entity', entity);
                                     $autocompleteList.append($div);
@@ -1247,28 +1279,31 @@
                             },
                             error: function(xhr, status, error) {
                                 console.error('Autocomplete error:', status, error);
-                                $autocompleteList.html('<div>Error loading suggestions</div>');
+                                $autocompleteList.html(
+                                    '<div>Error loading suggestions</div>');
                             }
                         });
                     });
 
-                    $(document).off('click', '.autocomplete-item').on('click', '.autocomplete-item', function() {
-                        var entity = $(this).data('entity');
-                        $('#clientCompanyNameInput').val(entity.name);
-                        $('#companyName').val(entity.name);
-                        $('#autocomplete-list').empty();
-                        fetchCompanyDetails(entity.name);
-                    });
+                    $(document).off('click', '.autocomplete-item').on('click', '.autocomplete-item',
+                        function() {
+                            var entity = $(this).data('entity');
+                            $('#clientCompanyNameInput').val(entity.name);
+                            $('#companyName').val(entity.name);
+                            $('#autocomplete-list').empty();
+                            fetchCompanyDetails(entity.name);
+                        });
 
                     $(document).off('click').click(function(e) {
-                        if (!$(e.target).closest('#autocomplete-list, #clientCompanyNameInput').length) {
+                        if (!$(e.target).closest('#autocomplete-list, #clientCompanyNameInput')
+                            .length) {
                             $('#autocomplete-list').empty();
                         }
                     });
                 }
 
-                // Handle company dropdown selection
-                if (dropdownTypes.includes(selectedType)) {
+                // Handle company dropdown selection (accounting mode only)
+                if (dropdownTypes.includes(selectedType) && requestType === 'accounting') {
                     $('#companySelect').off('change').on('change', function() {
                         var companyName = $(this).val();
                         if (companyName) {
@@ -1276,10 +1311,7 @@
                             fetchCompanyDetails(companyName);
                         } else {
                             clearBasicDetails();
-                            // Re-apply readonly only for accounting mode
-                            if (requestType === 'accounting') {
-                                toggleFieldsReadonly(true);
-                            }
+                            toggleFieldsReadonly(true);
                         }
                     });
                 }
