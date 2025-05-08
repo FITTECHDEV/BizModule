@@ -865,7 +865,6 @@
         }
     </style>
 @stop
-
 @section('js')
     <script>
         /* Ajax setup CSRF */
@@ -1176,6 +1175,7 @@
                 $companyName.hide();
                 $clientCompanyName.hide();
                 $companyDropdown.hide();
+                // Ensure fields are editable by default
                 toggleFieldsReadonly(false);
 
                 // Define specific types requiring dropdown
@@ -1276,7 +1276,7 @@
                             fetchCompanyDetails(companyName);
                         } else {
                             clearBasicDetails();
-                            // Re-apply readonly if accounting mode
+                            // Re-apply readonly only for accounting mode
                             if (requestType === 'accounting') {
                                 toggleFieldsReadonly(true);
                             }
@@ -1331,4 +1331,4 @@
         }
     </script>
     <script src="{{ asset('js/client-party/show-create-client-party.js') }}"></script>
-@stopgit
+@stop
