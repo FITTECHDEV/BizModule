@@ -428,33 +428,54 @@
                                                                 </select>
                                                             </div>
                                                         </div>
-                                                        <div class=" row mb-0 pb-0">
+                                                        <div class="row mb-0 pb-0">
                                                             <div class="form-group col-md-6 mb-0 pb-0">
                                                                 <label for="billingCurrency"
                                                                     class="col-form-label col-form-label-sm">Billing
-                                                                    Currency <span style="color: red;">*</span> </label>
+                                                                    Currency <span style="color: red;">*</span></label>
                                                                 <input type="hidden" class="form-control form-control-sm"
                                                                     value="{{ old('billingCurrencyCode') }}"
                                                                     name="billingCurrencyCode" id="billingCurrencyCode">
                                                                 <select class="form-control form-control-sm"
                                                                     name="billingCurrency" id="billingCurrency" required>
-                                                                    <option value="" disabled selected></option>
+                                                                    <option value="" disabled selected>Select
+                                                                        Currency</option>
+                                                                    @if (!empty($currencyList) && is_array($currencyList))
+                                                                        @foreach ($currencyList as $currency)
+                                                                            <option value="{{ $currency->CurrencyID }}"
+                                                                                data-code="{{ $currency->CurrencyCode }}"
+                                                                                @if (old('billingCurrency') == $currency->CurrencyID) selected @endif>
+                                                                                {{ $currency->CurrencyCode }}
+                                                                            </option>
+                                                                        @endforeach
+                                                                    @else
+                                                                        <option value="" disabled>No currencies
+                                                                            available</option>
+                                                                    @endif
                                                                 </select>
                                                             </div>
                                                             <div class="form-group col-md-6 mb-0 pb-0">
                                                                 <label for="creditDays"
-                                                                    class="col-form-label col-form-label-sm">Credit
-                                                                    Days</label> <span style="color: red;">*</span>
-                                                                <input type="text"
-                                                                    class="form-control form-control-sm number_input"
-                                                                    value="{{ old('creditDays') }}" name="creditDays"
-                                                                    id="creditDays" required min="0"
-                                                                    oninput="this.value = Math.abs(this.value)">
+                                                                    class="col-form-label col-form-label-sm">Credit Days
+                                                                    <span style="color: red;">*</span></label>
+                                                                <select class="form-control form-control-sm"
+                                                                    name="creditDays" id="creditDays" required>
+                                                                    <option value="" disabled selected>Select Credit
+                                                                        Days</option>
+                                                                    @if (!empty($payTerms) && is_array($payTerms) && !isset($payTerms['error']))
+                                                                        @foreach ($payTerms as $term)
+                                                                            <option value="{{ $term['CreditDays'] }}"
+                                                                                @if (old('creditDays') == $term['CreditDays']) selected @endif>
+                                                                                {{ $term['CreditDays'] }} Days
+                                                                            </option>
+                                                                        @endforeach
+                                                                    @endif
+                                                                </select>
                                                             </div>
                                                         </div>
                                                     </div>
                                                     <div class="col-md-6 col-sm-12 col-lg-6 mb-0 pb-0">
-                                                        <div class="form-group row mb-1 mb-0 pb-0 ">
+                                                        <div class="form-group row mb-1 mb-0 pb-0">
                                                             <div class="col-md-12">
                                                                 <label for="vendorType"
                                                                     class="col-form-label col-form-label-sm">Vendor
@@ -466,7 +487,7 @@
                                                             </div>
                                                         </div>
                                                         <div class="form-group">
-                                                            <div class="row mb-0 pb-0 ">
+                                                            <div class="row mb-0 pb-0">
                                                                 <div class="col-sm-6 col-md-6 col-lg-6 mb-0 pb-0">
                                                                     <label for="maxCreditLimit"
                                                                         class="col-form-label col-form-label-sm">Credit
@@ -477,7 +498,7 @@
                                                                         name="maxCreditLimit" id="maxCreditLimit"
                                                                         placeholder="0.00" required>
                                                                 </div>
-                                                                <div class="col-sm-6 col-md-6 col-lg-6 ">
+                                                                <div class="col-sm-6 col-md-6 col-lg-6">
                                                                     <label for="baseCurrency"
                                                                         class="col-form-label col-form-label-sm">Base
                                                                         Currency</label>
@@ -501,7 +522,9 @@
                                                         </div>
                                                     </div>
                                                 </div>
-                                                <div class="form-group row mb-0 mt-0 p-0 ">
+
+                                                {{-- Licence Type --}}
+                                                {{-- <div class="form-group row mb-0 mt-0 p-0">
                                                     <div class="col col-sm-6 col-lg-6 col-md-6 m-0">
                                                         <div class="row">
                                                             <label for="licence"
@@ -515,7 +538,8 @@
                                                                         <option value="{{ $type->LicenseID }}"
                                                                             id="{{ $type->LicenseCode }}"
                                                                             @if (old('licenceTypeID') == $type->LicenseID) selected @endif>
-                                                                            {{ $type->LicenseName }}</option>
+                                                                            {{ $type->LicenseName }}
+                                                                        </option>
                                                                     @empty
                                                                     @endforelse
                                                                 </select>
@@ -529,6 +553,36 @@
                                                         <input type="text" class="form-control form-control-sm"
                                                             value="{{ old('licenceTypeValue') }}" name="licenceTypeValue"
                                                             id="licenceTypeValue" required>
+                                                    </div>
+                                                </div> --}}
+
+                                                <div class="form-group row mb-0 mt-0 p-0">
+                                                    <div class="col col-sm-6 col-lg-6 col-md-6 m-0">
+                                                        <div class="row">
+                                                            <label for="licence" class="col-md-3 col-form-label col-form-label-sm pr-0">Licence Type</label>
+                                                            <span style="color: red;">*</span>
+                                                            <div class="col-md-8">
+                                                                <select class="form-control form-control-sm" name="licenceTypeID" id="licenceTypeID" required>
+                                                                    <option value="" disabled selected>Select License Type</option>
+                                                                    @forelse ($licenceTypes as $type)
+                                                                        <option value="{{ $type->LicenseID }}"
+                                                                                data-code="{{ $type->LicenseCode }}"
+                                                                                @if (old('licenceTypeID') == $type->LicenseID) selected @endif>
+                                                                            {{ $type->LicenseName }}
+                                                                        </option>
+                                                                    @empty
+                                                                        <option value="" disabled>No license types available</option>
+                                                                    @endforelse
+                                                                </select>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col col-sm-6 col-lg-6 col-md-6">
+                                                        <input type="hidden" class="form-control form-control-sm"
+                                                               value="{{ old('licenceTypeCode') }}" name="licenceTypeCode" id="licenceTypeCode">
+                                                        <input type="text" class="form-control form-control-sm"
+                                                               value="{{ old('licenceTypeValue') }}" name="licenceTypeValue" id="licenceTypeValue" required>
+                                                        <small id="licenseError" class="text-danger" style="display: none;"></small>
                                                     </div>
                                                 </div>
                                             </fieldset>
@@ -892,6 +946,143 @@
             var vendorType = document.getElementById('vendorType');
         });
     </script>
+       <script>
+        $(document).ready(function () {
+            // Update licenceTypeCode when licenceTypeID changes
+            $('#licenceTypeID').on('change', function () {
+                var selectedOption = $(this).find('option:selected');
+                var licenseCode = selectedOption.data('code');
+                $('#licenceTypeCode').val(licenseCode);
+            });
+
+            // Check for duplicate license number on input
+            $('#licenceTypeValue').on('input', function () {
+                var licenseNo = $(this).val().trim();
+                var countryCode = $('#countryCode').val(); // From country selection input
+                var partyType = $('#legalEntityType').val() || 'Debtor'; // From legalEntityType or default to Debtor
+
+                if (licenseNo && countryCode && partyType) {
+                    $.ajax({
+                        url: '{{ route("client-party.check-license") }}',
+                        method: 'POST',
+                        data: {
+                            countryCode: countryCode,
+                            partyType: partyType,
+                            licenseNo: licenseNo,
+                            _token: '{{ csrf_token() }}'
+                        },
+                        success: function (response) {
+                            if (response.isDuplicate === 1) {
+                                $('#licenseError').text('License number is already in use: ' + response.remark).show();
+                                $('#licenceTypeValue').addClass('is-invalid');
+                                $('#submitBtn').prop('disabled', true); // Disable submit button
+                            } else {
+                                $('#licenseError').hide();
+                                $('#licenceTypeValue').removeClass('is-invalid');
+                                $('#submitBtn').prop('disabled', false); // Enable submit button
+                            }
+                        },
+                        error: function (xhr) {
+                            $('#licenseError').text('Error checking license number.').show();
+                            $('#licenceTypeValue').addClass('is-invalid');
+                        }
+                    });
+                } else {
+                    $('#licenseError').hide();
+                    $('#licenceTypeValue').removeClass('is-invalid');
+                    $('#submitBtn').prop('disabled', false); // Enable submit button
+                }
+            });
+        });
+    </script>
+    {{-- <script>
+        function populatePaymentTerms(terms) {
+            var $creditDays = $('#creditDays');
+            $creditDays.empty().append('<option value="" disabled selected>Select Credit Days</option>');
+
+            if (terms && Array.isArray(terms) && terms.length > 0 && !terms[0].Failed) {
+                terms.forEach(term => {
+                    $creditDays.append(
+                        `<option value="${term.CreditDays}">${term.CreditDays} Days</option>`
+                    );
+                });
+                $creditDays.val(terms[0].CreditDays || '');
+            } else {
+                console.warn('No payment terms available:', terms);
+                $creditDays.append('<option value="" disabled>No credit days available</option>');
+            }
+        }
+
+        function fetchPaymentTerms(officeCode) {
+            if (!officeCode) {
+                console.error('No officeCode provided for fetchPaymentTerms');
+                $('#creditDays').empty().append('<option value="" disabled selected>Select Credit Days</option>');
+                return;
+            }
+
+            console.log('Fetching payment terms for office:', officeCode);
+            $.ajax({
+                url: '/get-payment-term-list',
+                type: 'GET',
+                data: {
+                    office_code: officeCode
+                },
+                success: function(terms) {
+                    console.log('Payment terms response:', terms);
+                    populatePaymentTerms(terms);
+                },
+                error: function(xhr, status, error) {
+                    console.error('Error fetching payment terms:', status, error, xhr.responseText);
+                    $('#creditDays').empty().append(
+                        '<option value="" disabled>Error loading credit days</option>');
+                    alert('Failed to load credit days: ' + (xhr.responseJSON?.error || error));
+                }
+            });
+        }
+
+        $(document).ready(function() {
+            // Log initial data for debugging
+            console.log('currencyList:', {!! json_encode($currencyList) !!});
+            console.log('payTerms:', {!! json_encode($payTerms) !!});
+
+            // Initialize creditDays with payTerms
+            @if (!empty($payTerms) && is_array($payTerms) && !isset($payTerms['error']))
+                populatePaymentTerms({!! json_encode($payTerms) !!});
+            @else
+                console.log('No initial payTerms available:', {!! json_encode($payTerms) !!});
+            @endif
+
+            // Handle office country selection change
+            $('#officeCountry').on('change', function() {
+                var officeCode = $(this).find(':selected').attr('code') || $('input[name="officeCode"]')
+                    .val();
+                console.log('Selected office code:', officeCode, 'from:', {
+                    selectedCode: $(this).find(':selected').attr('code'),
+                    inputCode: $('input[name="officeCode"]').val()
+                });
+                $('#officeCountryID').val($(this).find(':selected').attr('id'));
+                fetchPaymentTerms(officeCode);
+            });
+
+            // Initialize for fixed office users
+            if ($('#officeCountryDisp').length) {
+                var officeCode = $('input[name="officeCode"]').val();
+                console.log('Fixed office code:', officeCode);
+                if (officeCode) {
+                    fetchPaymentTerms(officeCode);
+                } else {
+                    console.error('No officeCode for fixed office');
+                }
+            }
+
+            // Update billingCurrencyCode when billingCurrency is selected
+            $('#billingCurrency').on('change', function() {
+                var currencyCode = $(this).find(':selected').data('code');
+                $('#billingCurrencyCode').val(currencyCode);
+                console.log('Selected billingCurrencyCode:', currencyCode);
+            });
+        });
+    </script> --}}
     <script type="text/javascript">
         // File attachment logic
         let init = 1;
@@ -913,7 +1104,8 @@
                         if (!allowedExtensions.exec(fileValue)) {
                             $fileInputName.addClass('is-invalid');
                             alert(
-                                'Invalid file type. Allowed types: jpg, jpeg, png, gif, pdf, doc, xls, docx, xlsx');
+                                'Invalid file type. Allowed types: jpg, jpeg, png, gif, pdf, doc, xls, docx, xlsx'
+                                );
                             $fileInputName.val('');
                             return false;
                         }
@@ -959,7 +1151,7 @@
                     debounceTimeout = setTimeout(() => {
                         const query = $(this).val().trim();
                         const $autocompleteList = $(
-                        '<div class="autocomplete-list"></div>');
+                            '<div class="autocomplete-list"></div>');
                         $input.parent().find('.autocomplete-list').remove();
                         $input.parent().append($autocompleteList);
 
@@ -979,10 +1171,10 @@
                                 matches.forEach(entity => {
                                     const $div = $(
                                             '<div class="autocomplete-item"></div>'
-                                            )
+                                        )
                                         .text(
                                             `${entity.name} (${entity.code})`
-                                            )
+                                        )
                                         .data('entity', entity);
                                     $autocompleteList.append($div);
                                 });
@@ -1060,10 +1252,10 @@
                                     matches.forEach(entity => {
                                         const $div = $(
                                                 '<div class="autocomplete-item"></div>'
-                                                )
+                                            )
                                             .text(
                                                 `${entity.name} (${entity.code})`
-                                                )
+                                            )
                                             .data('entity', entity);
                                         $autocompleteList.append($div);
                                     });
@@ -1271,7 +1463,7 @@
                                 matches.forEach(entity => {
                                     const $div = $(
                                             '<div class="autocomplete-item"></div>'
-                                            )
+                                        )
                                         .text(`${entity.name} (${entity.code})`)
                                         .data('entity', entity);
                                     $autocompleteList.append($div);

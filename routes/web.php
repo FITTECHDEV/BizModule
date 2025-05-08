@@ -306,3 +306,4 @@ Route::get('/api/entities', function() {
         });
 })->middleware('auth'); // Ensure only authenticated users can access
 
+Route::post('/client-party/check-license', [ClientPartyController::class, 'checkLicense'])->name('client-party.check-license');

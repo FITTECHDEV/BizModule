@@ -63,29 +63,86 @@ class ClientPartyController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
+    // public function create()
+    // {
+    //     // authorization
+    //     if (!\request()->user()->can('request-client-party')) {
+    //         abort(403, "You are not allowed to view this page.");
+    //     }
+
+    //     $countries = $this->getCountries();
+    //     $offices = $this->getOffices();
+    //     $currencyList = $this->getCurrencyList();
+    //     $licenceTypes = $this->getLicenceType();
+    //     $tarrifs = [];
+    //     $tarrifs = $this->getTarrif();
+    //     $incoterms = $this->getIncoTerms();
+    //     $payTerms = $this->getPaymentTermList();
+
+    //     $debtors = '';
+    //     $vendors = '';
+    //     return view(
+    //         'client-party.create',
+    //         compact('payTerms', 'incoterms', 'countries', 'offices', 'currencyList', 'licenceTypes', 'tarrifs', 'debtors', 'vendors')
+    //     );
+    // }
+
     public function create()
-    {
-        // authorization
-        if (!\request()->user()->can('request-client-party')) {
-            abort(403, "You are not allowed to view this page.");
-        }
-
-        $countries = $this->getCountries();
-        $offices = $this->getOffices();
-        $currencyList = $this->getCurrencyList();
-        $licenceTypes = $this->getLicenceType();
-        $tarrifs = [];
-        $tarrifs = $this->getTarrif();
-        $incoterms = $this->getIncoTerms();
-        $payTerms = $this->getPaymentTermList();
-
-        $debtors = '';
-        $vendors = '';
-        return view(
-            'client-party.create',
-            compact('payTerms', 'incoterms', 'countries', 'offices', 'currencyList', 'licenceTypes', 'tarrifs', 'debtors', 'vendors')
-        );
+{
+    if (!\request()->user()->hasPermissionTo('request-client-party')) {
+        abort(403, "You are not allowed to view this page.");
     }
+
+    $countries = $this->getCountries();
+    $offices = $this->getOffices();
+    $currencyList = $this->getCurrencyList();
+    $licenceTypes = $this->getLicenceType();
+    $tarrifs = $this->getTarrif();
+    $incoterms = $this->getIncoTerms();
+
+    $payTerms = [];
+    $user = Auth::user();
+    $officeCode = $user->OfficeCode ?? null;
+    Log::info('User OfficeCode in create:', ['userID' => $user->id, 'officeCode' => $officeCode]);
+
+    if (!empty($officeCode)) {
+        try {
+            $response = DB::select(
+                'SET NOCOUNT ON;
+                 DECLARE @OfficeCode AS VARCHAR(5);
+                 EXEC [dbo].[sp_PaymentTerms] @OfficeCode = ?',
+                [$officeCode]
+            );
+            if (empty($response) || (isset($response[0]->Failed))) {
+                Log::warning('sp_PaymentTerms returned no data or error', ['response' => $response, 'officeCode' => $officeCode]);
+            } else {
+                $payTerms = array_map(function ($term) {
+                    return [
+                        'Id' => $term->Id,
+                        'CreditDays' => $term->Code // Use Code as CreditDays
+                    ];
+                }, $response);
+            }
+            Log::info('Fetched payTerms in create:', ['payTerms' => $payTerms, 'officeCode' => $officeCode]);
+        } catch (\Illuminate\Database\QueryException $e) {
+            Log::error('sp_PaymentTerms Error in create: ' . $e->getMessage(), [
+                'officeCode' => $officeCode,
+                'sql' => $e->getSql()
+            ]);
+        }
+    } else {
+        Log::warning('No OfficeCode for user in create', ['userID' => $user->id]);
+    }
+
+    Log::info('currencyList in create:', ['currencyList' => $currencyList]);
+
+    $debtors = '';
+    $vendors = '';
+    return view(
+        'client-party.create',
+        compact('payTerms', 'incoterms', 'countries', 'offices', 'currencyList', 'licenceTypes', 'tarrifs', 'debtors', 'vendors')
+    );
+}
 
     public function getDebtorVendor($type = null)
     {
@@ -425,17 +482,93 @@ class ClientPartyController extends Controller
         return $response;
     }
 
-    public function getPaymentTermList()
-    {
+//     public function getPaymentTermList(Request $request)
+// {
+//     try {
+//         $officeCode = $request->input('office_code');
+
+//         Log::info('getPaymentTermList called:', ['officeCode' => $officeCode]);
+
+//         if (empty($officeCode)) {
+//             Log::warning('Office code not provided for sp_PaymentTerms');
+//             return response()->json(['error' => 'Office code is required'], 400);
+//         }
+
+//         $response = DB::select(
+//             'SET NOCOUNT ON;
+//              DECLARE @OfficeCode AS VARCHAR(5);
+//              EXEC [dbo].[sp_PaymentTerms] @OfficeCode = ?',
+//             [$officeCode]
+//         );
+
+//         $payTerms = empty($response) || (isset($response[0]->Failed)) ? [] : array_map(function ($term) {
+//             return [
+//                 'Id' => $term->Id,
+//                 'CreditDays' => $term->Code // Use Code as CreditDays
+//             ];
+//         }, $response);
+
+//         Log::info('sp_PaymentTerms response:', ['payTerms' => $payTerms, 'officeCode' => $officeCode]);
+//         return response()->json($payTerms);
+//     } catch (\Illuminate\Database\QueryException $e) {
+//         Log::error('sp_PaymentTerms Error in getPaymentTermList: ' . $e->getMessage(), [
+//             'officeCode' => $officeCode,
+//             'sql' => $e->getSql()
+//         ]);
+//         return response()->json(['error' => 'Failed to retrieve payment terms'], 500);
+//     }
+// }
+public function getPaymentTermList($officeCode = null, Request $request = null)
+{
+    try {
+        // If called via AJAX, get officeCode from request
+        if ($request && \request()->ajax()) {
+            $officeCode = $request->input('office_code');
+        }
+
+        Log::info('getPaymentTermList called:', ['officeCode' => $officeCode]);
+
+        if (empty($officeCode)) {
+            Log::warning('Office code not provided for sp_PaymentTerms');
+            if ($request && \request()->ajax()) {
+                return response()->json(['error' => 'Office code is required'], 400);
+            }
+            return []; // Return empty array for non-AJAX calls
+        }
+
         $response = DB::select(
             'SET NOCOUNT ON;
-            Declare @Filter as Varchar(50)
-            Exec [dbo].[sp_PaymentTerms]
-            @Filter = ?',
-            ['']
+             DECLARE @OfficeCode AS VARCHAR(5);
+             EXEC [dbo].[sp_PaymentTerms] @OfficeCode = ?',
+            [$officeCode]
         );
-        return $response;
+
+        $payTerms = empty($response) || (isset($response[0]->Failed)) ? [] : array_map(function ($term) {
+            return [
+                'Id' => $term->Id,
+                'CreditDays' => $term->Code // Use Code as CreditDays
+            ];
+        }, $response);
+
+        Log::info('sp_PaymentTerms response:', ['payTerms' => $payTerms, 'officeCode' => $officeCode]);
+
+        if ($request && \request()->ajax()) {
+            return response()->json($payTerms);
+        }
+
+        return $payTerms; // Return array for non-AJAX calls
+    } catch (\Illuminate\Database\QueryException $e) {
+        Log::error('sp_PaymentTerms Error in getPaymentTermList: ' . $e->getMessage(), [
+            'officeCode' => $officeCode,
+            'sql' => $e->getSql()
+        ]);
+        if ($request && \request()->ajax()) {
+            return response()->json(['error' => 'Failed to retrieve payment terms'], 500);
+        }
+        return []; // Return empty array for non-AJAX calls
     }
+}
+
 
     public function getCurrencyList($var = null)
     {
@@ -545,6 +678,48 @@ class ClientPartyController extends Controller
             'debtorCheck' => isset($request->debtorCheck),
             'vendorCheck' => isset($request->vendorCheck)
         ]);
+
+        // Check for duplicate license
+        $countryCode = $request->countryCode;
+        $partyType = $request->legalEntityType ?? 'Debtor'; // Adjust based on your form
+        $licenseNo = $request->licenceTypeValue;
+
+        if ($licenseNo && $countryCode && $partyType) {
+            // Map legalEntityType to PartyType if needed (e.g., 'debtor' to 'Debtor')
+            $partyTypeMap = [
+                'debtor' => 'Debtor',
+                'vendor' => 'Vendor'
+            ];
+            $partyType = $partyTypeMap[strtolower($partyType)] ?? $partyType;
+
+            $results = DB::select(
+                'SET NOCOUNT ON;
+                 DECLARE @Status AS VARCHAR(20),
+                         @Remark AS VARCHAR(100),
+                         @IsDuplicate AS INT;
+                 EXEC dbo{sp_LicenseNoCheck @CountryCode = ?, @PartyType = ?, @LicenseNo = ?,
+                      @Status = @Status OUTPUT, @Remark = @Remark OUTPUT, @IsDuplicate = @IsDuplicate OUTPUT;
+                 SELECT @Status AS Status, @Remark AS Remark, @IsDuplicate AS IsDuplicate',
+                [$countryCode, $partyType, $licenseNo]
+            );
+
+            if (!empty($results) && $results[0]->IsDuplicate === 1) {
+                Log::warning('Duplicate license detected on store:', [
+                    'countryCode' => $countryCode,
+                    'partyType' => $partyType,
+                    'licenseNo' => $licenseNo,
+                    'remark' => $results[0]->Remark
+                ]);
+                Alert::error('Error', 'License number is already in use: ' . $results[0]->Remark)->persistent(true, false);
+                return redirect()->back()->withInput();
+            }
+        } else {
+            Log::warning('Missing data for license check:', [
+                'countryCode' => $countryCode,
+                'partyType' => $partyType,
+                'licenseNo' => $licenseNo
+            ]);
+        }
 
         $clientName = isset($request->client) ? $request->client : $request->clientInput;
         $status = 'Not Submitted';
@@ -854,6 +1029,71 @@ class ClientPartyController extends Controller
      * @param  \App\Models\ClientParty  $clientParty
      * @return \Illuminate\Http\Response
      */
+    // public function show(ClientParty $clientParty)
+    // {
+    //     $user = request()->user();
+
+    //     if (!$user->can('view-client-party')) {
+    //         abort(403, "You are not allowed to view this page.");
+    //     }
+
+    //     $type = $clientParty->LegalEntityType ? 'accounting' : 'operational';
+    //     $approve = false;
+    //     $editForm = true;
+
+    //     if (($clientParty->Status == 'PendingManagerApproval') && !$user->can('approve-my-office-entity-request')) {
+    //         alert()->warning('Warning !', 'Entity Pending for Manager Approval')->showConfirmButton();
+    //         return redirect()->back();
+    //     }
+
+    //     if ($clientParty->Status == 'Created') {
+    //         $editForm = false;
+    //     }
+
+    //     if ((Auth::user()->Role != 1 && ($clientParty->Status == 'Submitted')) && !Auth::user()->can('create-client-party')) {
+    //         $editForm = false;
+    //     }
+
+    //     if (Auth::user()->Role == 1 && ($clientParty->Status != 'Created')) {
+    //         $editForm = true;
+    //     }
+
+    //     if (url()->previous() == url('client-party/approve') || ($clientParty->Status == 'PendingManagerApproval')) {
+    //         $editForm = false;
+    //         $approve = true;
+    //     }
+
+    //     $countries = $this->getCountries();
+    //     $offices = $this->getOffices();
+    //     $currencyList = $this->getCurrencyList($clientParty->OfficeID) ?: ['does not exist'];
+
+    //     if ($clientParty->OfficeID && str_contains(json_encode($currencyList[0]), 'does not exist')) {
+    //         $scm_office_id = DB::select(DB::raw("SELECT SCMOfficeID FROM Cust_Office WHERE ID = ?", [$clientParty->OfficeID]));
+    //         $currencyList = $this->getCurrencyList($scm_office_id[0]->SCMOfficeID ?? null);
+    //     } else {
+    //         $idX = Auth::user()->office->SCMOfficeID ?? null;
+    //         $currencyList = $this->getCurrencyList($idX);
+    //     }
+
+    //     $licenceTypes = $this->getLicenceType();
+    //     $tarrifs = ($clientParty->Office == "FIT - Kenya - UPS") ? $this->getTarrif($clientParty->OfficeID) : [];
+    //     $incoterms = $this->getIncoTerms();
+    //     $payTerms = $this->getPaymentTermList();
+
+    //     return view('client-party.show', compact(
+    //         'approve',
+    //         'editForm',
+    //         'payTerms',
+    //         'incoterms',
+    //         'clientParty',
+    //         'countries',
+    //         'offices',
+    //         'currencyList',
+    //         'licenceTypes',
+    //         'tarrifs',
+    //         'type'
+    //     ));
+    // }
     public function show(ClientParty $clientParty)
     {
         $user = request()->user();
@@ -903,7 +1143,8 @@ class ClientPartyController extends Controller
         $licenceTypes = $this->getLicenceType();
         $tarrifs = ($clientParty->Office == "FIT - Kenya - UPS") ? $this->getTarrif($clientParty->OfficeID) : [];
         $incoterms = $this->getIncoTerms();
-        $payTerms = $this->getPaymentTermList();
+        // Pass the officeCode from clientParty
+        $payTerms = $this->getPaymentTermList($clientParty->OfficeCode);
 
         return view('client-party.show', compact(
             'approve',
@@ -919,7 +1160,6 @@ class ClientPartyController extends Controller
             'type'
         ));
     }
-
     /**
      * Show the form for editing the specified resource.
      *
@@ -1388,4 +1628,63 @@ class ClientPartyController extends Controller
 
         return response()->json(['ok', 200]);
     }
+
+
+    public function checkLicense(Request $request)
+{
+    try {
+        $countryCode = $request->input('countryCode');
+        $partyType = $request->input('partyType');
+        $licenseNo = $request->input('licenseNo');
+
+        Log::info('Checking license for duplicate:', [
+            'countryCode' => $countryCode,
+            'partyType' => $partyType,
+            'licenseNo' => $licenseNo
+        ]);
+
+        if (empty($countryCode) || empty($partyType) || empty($licenseNo)) {
+            return response()->json(['error' => 'Missing required fields'], 400);
+        }
+
+        // Execute sp_LicenseNoCheck
+        $results = DB::select(
+            'SET NOCOUNT ON;
+             DECLARE @Status AS VARCHAR(20),
+                     @Remark AS VARCHAR(100),
+                     @IsDuplicate AS INT;
+             EXEC dbo.sp_LicenseNoCheck @CountryCode = ?, @PartyType = ?, @LicenseNo = ?,
+                  @Status = @Status OUTPUT, @Remark = @Remark OUTPUT, @IsDuplicate = @IsDuplicate OUTPUT;
+             SELECT @Status AS Status, @Remark AS Remark, @IsDuplicate AS IsDuplicate',
+            [$countryCode, $partyType, $licenseNo]
+        );
+
+        if (empty($results)) {
+            Log::warning('sp_LicenseNoCheck returned no results', [
+                'countryCode' => $countryCode,
+                'partyType' => $partyType,
+                'licenseNo' => $licenseNo
+            ]);
+            return response()->json(['error' => 'Failed to check license'], 500);
+        }
+
+        $result = $results[0];
+
+        Log::info('sp_LicenseNoCheck response:', (array)$result);
+
+        return response()->json([
+            'status' => $result->Status,
+            'remark' => $result->Remark,
+            'isDuplicate' => $result->IsDuplicate
+        ]);
+    } catch (\Illuminate\Database\QueryException $e) {
+        Log::error('sp_LicenseNoCheck Error: ' . $e->getMessage(), [
+            'countryCode' => $countryCode,
+            'partyType' => $partyType,
+            'licenseNo' => $licenseNo,
+            'sql' => $e->getSql()
+        ]);
+        return response()->json(['error' => 'Database error while checking license'], 500);
+    }
+}
 }
