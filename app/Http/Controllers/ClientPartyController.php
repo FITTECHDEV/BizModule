@@ -20,6 +20,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Database\QueryException;
 use JeroenNoten\LaravelAdminLte\Components\Form\Select;
 use Ramsey\Uuid\Guid\Guid;
 use RealRashid\SweetAlert\Facades\Alert;
@@ -1687,4 +1688,159 @@ public function getPaymentTermList($officeCode = null, Request $request = null)
         return response()->json(['error' => 'Database error while checking license'], 500);
     }
 }
+public function getCompanies()
+{
+    try {
+        // Use Request::get() to access query parameter
+        $entityType = Request::get('entityType');
+        if (!$entityType) {
+            return response()->json(['error' => 'Entity type is required'], 400);
+        }
+
+        // Execute stored procedure with SET NOCOUNT ON to suppress PRINT output
+        $results = DB::select('SET NOCOUNT ON; EXEC dbo.sp_EntitySearchList ?, ?', [$entityType, '']);
+
+        // Handle string-based error response (e.g., 'Failed - Error message is - ...')
+        if ($results && is_array($results) && count($results) > 0 && is_string($results[0])) {
+            \Log::error('sp_EntitySearchList failed for entityType: ' . $entityType . ', Error: ' . $results[0]);
+            return response()->json(['error' => $results[0]], 500);
+        }
+
+        // Handle structured error response (e.g., Name: 'Failed - ...')
+        if ($results && count($results) > 0 && isset($results[0]->Name) && strpos($results[0]->Name, 'Failed') === 0) {
+            \Log::error('sp_EntitySearchList failed for entityType: ' . $entityType . ', Error: ' . $results[0]->Name);
+            return response()->json(['error' => $results[0]->Name], 500);
+        }
+
+        // Map results to expected format
+        $companies = array_map(function ($item) {
+            return [
+                'id' => $item->Id,
+                'code' => $item->Code,
+                'name' => $item->Name
+            ];
+        }, $results);
+
+        // Handle empty result set
+        if (empty($companies)) {
+            \Log::warning('sp_EntitySearchList returned no results for entityType: ' . $entityType);
+            return response()->json([]);
+        }
+
+        return response()->json($companies);
+    } catch (QueryException $e) {
+        \Log::error('Error executing sp_EntitySearchList for entityType: ' . ($entityType ?? 'unknown') . ', SQL Error: ' . $e->getMessage());
+        return response()->json(['error' => 'Failed to fetch companies: ' . $e->getMessage()], 500);
+    }
 }
+
+public function getCompanyDetails()
+    {
+        try {
+            $entityType = Request::get('entityType');
+            $companyId = Request::get('companyId');
+
+            if (!$entityType || !$companyId) {
+                return response()->json(['error' => 'Entity type and company ID are required'], 400);
+            }
+
+            // Execute stored procedure
+            $results = DB::select('SET NOCOUNT ON; EXEC [FITSYSUAT].dbo.sp_EntityAddressDetails ?, ?', [$entityType, $companyId]);
+
+            // Handle string-based error
+            if ($results && is_array($results) && count($results) > 0 && is_string($results[0])) {
+                \Log::error('sp_EntityAddressDetails failed for entityType: ' . $entityType . ', companyId: ' . $companyId . ', Error: ' . $results[0]);
+                return response()->json(['error' => $results[0]], 500);
+            }
+
+            // Handle structured error
+            if ($results && count($results) > 0 && isset($results[0]->Name) && strpos($results[0]->Name, 'Failed') === 0) {
+                \Log::error('sp_EntityAddressDetails failed for entityType: ' . $entityType . ', companyId: ' . $companyId . ', Error: ' . $results[0]->Name);
+                return response()->json(['error' => $results[0]->Name], 500);
+            }
+
+            // Map results to form fields
+            $details = array_map(function ($item) use ($entityType) {
+                // Use Address_CountryId if available
+                $countryId = property_exists($item, 'Address_CountryId') && $item->Address_CountryId ? $item->Address_CountryId : null;
+                $countryCode = property_exists($item, 'CountryCode2') && $item->CountryCode2 ? $item->CountryCode2 : (property_exists($item, 'CountryCode') ? $item->CountryCode : null);
+                $countryName = property_exists($item, 'CountryName2') && $item->CountryName2 ? $item->CountryName2 : (property_exists($item, 'CountryName') ? $item->CountryName : null);
+
+                // Optional: Validate countryId using Cust_Country if needed
+                if ($countryCode && !$countryId) {
+                    try {
+                        $country = DB::selectOne(
+                            "SELECT CountryID FROM [FITSYSUAT].dbo.Cust_Country WHERE CountryCode = ?",
+                            [$countryCode]
+                        );
+                        $countryId = $country ? $country->CountryID : null;
+                    } catch (QueryException $e) {
+                        \Log::warning('Failed to fetch CountryID for code: ' . $countryCode . ', Error: ' . $e->getMessage());
+                        $countryId = null;
+                    }
+                }
+
+                // Base mapping
+                $mapped = [
+                    'companyId' => $item->Id,
+                    'companyCode' => $item->Code,
+                    'companyName' => $item->Name,
+                    'addressLine1' => property_exists($item, 'Address_Line1') ? $item->Address_Line1 : null,
+                    'addressLine2' => property_exists($item, 'Address_Line2') ? $item->Address_Line2 : null,
+                    'cityName' => property_exists($item, 'Address_City') ? $item->Address_City : null,
+                    'cityID' => null,
+                    'cityCode' => null,
+                    'zipCode' => property_exists($item, 'Address_Pin') ? $item->Address_Pin : null,
+                    'provinceName' => property_exists($item, 'Address_State') ? $item->Address_State : null,
+                    'provinceID' => property_exists($item, 'Address_StateId') ? $item->Address_StateId : null,
+                    'provinceCode' => null,
+                    'countryID' => $countryId,
+                    'countryCode' => $countryCode,
+                    'countryName' => $countryName,
+                    'phoneNo' => property_exists($item, 'Cont_Bch_PhoneNumbers') && $item->Cont_Bch_PhoneNumbers !== '-' ? $item->Cont_Bch_PhoneNumbers : null,
+                    'contractEmail' => property_exists($item, 'Cont_Bch_Email') && $item->Cont_Bch_Email !== '-' ? $item->Cont_Bch_Email : null,
+                    'contactId' => property_exists($item, 'ContactId') ? $item->ContactId : null,
+                    'addressType' => property_exists($item, 'Cont_Bch_PhoneNumbers') && $item->Cont_Bch_PhoneNumbers ? $item->Cont_Bch_PhoneNumbers : null,
+                    'firstName' => property_exists($item, 'Cont_Bch_PersonName_FirstName') ? $item->Cont_Bch_PersonName_FirstName : null, // Pass '-' through
+                    'lastName' => property_exists($item, 'Cont_Bch_PersonName_LastName') ? $item->Cont_Bch_PersonName_LastName : null, // Pass '-' through
+                    'department' => property_exists($item, 'Cont_Bch_Dept') && $item->Cont_Bch_Dept !== '-' ? $item->Cont_Bch_Dept : null
+                ];
+
+                return $mapped;
+            }, $results);
+
+            // Return empty if no results
+            if (empty($details)) {
+                \Log::warning('sp_EntityAddressDetails returned no results for entityType: ' . $entityType . ', companyId: ' . $companyId);
+                return response()->json([]);
+            }
+
+            // Select primary address (main:1 if available, else first)
+            $primaryDetail = array_reduce($details, function ($carry, $item) {
+                return $item['addressType'] && strpos($item['addressType'], 'main:1') !== false ? $item : $carry;
+            }, $details[0]);
+
+            return response()->json($primaryDetail);
+        } catch (QueryException $e) {
+            \Log::error('Error executing sp_EntityAddressDetails for entityType: ' . ($entityType ?? 'unknown') . ', companyId: ' . ($companyId ?? 'unknown') . ', SQL Error: ' . $e->getMessage());
+            return response()->json(['error' => 'Failed to fetch company details: ' . $e->getMessage()], 500);
+        }
+    }
+
+
+
+
+
+
+}
+
+
+
+
+
+
+
+
+
+
+

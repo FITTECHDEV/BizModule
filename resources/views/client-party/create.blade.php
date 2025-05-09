@@ -148,21 +148,18 @@
                                                             class="fa fa-building" aria-hidden="true"></i>Company
                                                         Name<span class="text-danger">*</span></label>
                                                     <div class="col-sm-9 col-lg-8 col-md-8">
+                                                        <!-- Input for Create only in D365 -->
                                                         <input type="text" class="form-control form-control-sm"
-                                                            value="{{ old('companyName') }}" name="companyName"
-                                                            id="companyName" maxlength="50">
-                                                        <div id="clientCompanyName" style="display: none;">
-                                                            <input type="text" id="clientCompanyNameInput"
-                                                                class="form-control form-control-sm"
-                                                                placeholder="Enter Client Company Name">
-                                                            <div id="autocomplete-list" class="autocomplete-list"></div>
-                                                        </div>
+                                                            value="{{ old('companyName') }}" name="companyName" id="companyName" maxlength="50">
+                                                        <!-- Dropdown for other entity types -->
                                                         <div id="companyDropdown" style="display: none;">
-                                                            <select class="form-control form-control-sm"
-                                                                id="companySelect" name="companySelect">
-                                                                <option value="" disabled selected>Select Company
-                                                                </option>
+                                                            <select class="form-control form-control-sm" id="companySelect" name="companySelect">
+                                                                <option value="" disabled selected>Select Company</option>
+                                                                <!-- Options will be populated via JavaScript -->
                                                             </select>
+                                                            <!-- Hidden inputs to store Id and Code -->
+                                                            <input type="hidden" name="companyId" id="companyId" value="{{ old('companyId') }}">
+                                                            <input type="hidden" name="companyCode" id="companyCode" value="{{ old('companyCode') }}">
                                                         </div>
                                                     </div>
                                                 </div>
@@ -291,33 +288,31 @@
                                                             id="department" placeholder="Department">
                                                     </div>
                                                 </div>
-                                                <div class="form-group row mb-2">
-                                                    <label for="phoneNo"
-                                                        class="col col-sm-3 col-md-3 col-lg-4 col-form-label col-form-label-sm">
-                                                        <i class="fa fa-phone" aria-hidden="true"></i> Phone No. <span
-                                                            class="text-danger">*</span>
+                                                <div class="form-group mb-3">
+                                                    <label for="phoneNo" class="col-form-label col-form-label-sm">
+                                                        <i class="fa fa-phone" aria-hidden="true"></i> Phone No. <span class="text-danger">*</span>
                                                     </label>
-                                                    <div class="col col-sm-4 col-md-4 col-lg-4">
-                                                        <input type="text"
-                                                            class="form-control form-control-sm number_input basic-detail-field"
-                                                            value="{{ old('phoneNo') }}" name="phoneNo" id="phoneNo"
-                                                            placeholder="Phone Number">
-                                                    </div>
-                                                    <label for="contractEmail"
-                                                        class="col col-sm-2 col-md-2 col-lg-1 col-form-label col-form-label-sm">
+                                                    <input type="text"
+                                                        class="form-control form-control-sm number_input basic-detail-field"
+                                                        value="{{ old('phoneNo') }}" name="phoneNo" id="phoneNo"
+                                                        placeholder="Phone Number">
+                                                </div>
+
+                                                <div class="form-group mb-3">
+                                                    <label for="contractEmail" class="col-form-label col-form-label-sm">
                                                         <i class="fa fa-envelope" aria-hidden="true"></i> Email
                                                     </label>
-                                                    <div class="col col-sm-3 col-md-3 col-lg-3">
-                                                        <input type="email" name="contractEmail" id="contractEmail"
-                                                            value="{{ old('contractEmail') }}"
-                                                            class="form-control form-control-sm basic-detail-field"
-                                                            placeholder="Enter Email">
-                                                    </div>
+                                                    <input type="email" name="contractEmail" id="contractEmail"
+                                                        value="{{ old('contractEmail') }}"
+                                                        class="form-control form-control-sm basic-detail-field"
+                                                        placeholder="Enter Email">
                                                 </div>
+
                                             </fieldset>
 
                                         </div>
                                     </div>
+
                                     <button class="btn btn-primary m-2 btn-sm float-right" name="next" type="button"
                                         onclick="stepper.next()">Next <i class="fa fa-step-forward"
                                             aria-hidden="true"></i></button>
@@ -921,6 +916,7 @@
         }
     </style>
 @stop
+
 @section('js')
     <script>
         /* Ajax setup CSRF */
@@ -930,36 +926,182 @@
             }
         });
     </script>
-    <script type="text/javascript">
-        $("#maxCreditLimit").on("input", function() {
-            let maxCreditLimit = $(this).val();
-            if (maxCreditLimit.startsWith("0")) {
-                $(this).val("1" + maxCreditLimit.slice(1));
-            }
-        });
-    </script>
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            var partyElement = document.getElementById('partyEntityType');
-            var legalElement = document.getElementById('legalEntityType');
-            var debtorType = document.getElementById('debtorType');
-            var vendorType = document.getElementById('vendorType');
-        });
-    </script>
-       <script>
         $(document).ready(function () {
-            // Update licenceTypeCode when licenceTypeID changes
-            $('#licenceTypeID').on('change', function () {
-                var selectedOption = $(this).find('option:selected');
-                var licenseCode = selectedOption.data('code');
-                $('#licenceTypeCode').val(licenseCode);
+            // Cache DOM elements
+            const partyEntityType = $('#partyEntityType');
+            const legalEntityType = $('#legalEntityType');
+            const companyNameInput = $('#companyName');
+            const companyDropdown = $('#companyDropdown');
+            const companySelect = $('#companySelect');
+            const companyIdInput = $('#companyId');
+            const companyCodeInput = $('#companyCode');
+            const debtorType = $('#debtorType');
+            const vendorType = $('#vendorType');
+            const requestType = new URLSearchParams(window.location.search).get('type');
+
+            // Function to toggle input/dropdown visibility
+            function toggleCompanyInput() {
+                const selectedType = partyEntityType.val();
+                legalEntityType.find('option').prop('disabled', false).show();
+                clearBasicDetails();
+                companyNameInput.hide();
+                companyDropdown.hide(); // Hide dropdown by default
+                toggleFieldsReadonly(false);
+
+                const dropdownTypes = ['Client', 'Agent/Forwarder', 'Airline', 'ShippingLine', 'Trucker'];
+
+                if (requestType === 'accounting') {
+                    if (selectedType === 'Create only in D365') {
+                        companyNameInput.show();
+                        companyDropdown.hide(); // Explicitly hide dropdown
+                        legalEntityType.find('option').each(function () {
+                            const value = $(this).val();
+                            if (value && value !== 'Only in D365 Debtor' && value !== 'Only in D365 Vendor') {
+                                $(this).prop('disabled', true).hide();
+                            }
+                        });
+                    } else if (dropdownTypes.includes(selectedType)) {
+                        companyDropdown.show();
+                        companyNameInput.hide(); // Ensure input is hidden
+                        toggleFieldsReadonly(true);
+                        loadCompanies(selectedType);
+                        legalEntityType.find('option').each(function () {
+                            const value = $(this).val();
+                            if (value === 'Only in D365 Debtor' || value === 'Only in D365 Vendor') {
+                                $(this).prop('disabled', true).hide();
+                            }
+                        });
+                    }
+                } else {
+                    companyNameInput.show();
+                    companyDropdown.hide(); // Hide dropdown for non-accounting
+                }
+
+                legalEntityType.val('');
+                console.log('toggleCompanyInput: requestType=', requestType, 'selectedType=', selectedType, 'companyNameVisible=', companyNameInput.is(':visible'), 'companyDropdownVisible=', companyDropdown.is(':visible'));
+            }
+
+            // Function to load companies via AJAX
+            function loadCompanies(entityType) {
+                $.ajax({
+                    url: '{{ route("companies") }}',
+                    method: 'GET',
+                    data: { entityType: entityType },
+                    success: function (data) {
+                        companySelect.find('option:not(:first)').remove();
+                        if (data.error) {
+                            companySelect.append('<option value="" disabled>' + data.error + '</option>');
+                            console.error('API error:', data.error);
+                        } else if (data.length === 0) {
+                            companySelect.append('<option value="" disabled>No companies found</option>');
+                        } else {
+                            $.each(data, function (index, company) {
+                                companySelect.append(
+                                    `<option value="${company.id}" data-code="${company.code}" data-name="${company.name}">${company.name} (${company.code})</option>`
+                                );
+                            });
+                        }
+                    },
+                    error: function (xhr) {
+                        console.error('Error fetching companies:', xhr.responseJSON?.error || xhr.statusText);
+                        companySelect.find('option:not(:first)').remove();
+                        companySelect.append('<option value="" disabled>Error loading companies</option>');
+                        alert('Failed to load company list. Please try again.');
+                    }
+                });
+            }
+
+            // Function to clear Basic Details fields
+            function clearBasicDetails() {
+                $('.basic-detail-field').val('');
+                companyNameInput.val('');
+                companySelect.val('');
+                companyIdInput.val('');
+                companyCodeInput.val('');
+                $('#autocomplete-list').empty();
+            }
+
+            // Function to toggle field readonly/disabled state
+            function toggleFieldsReadonly(disable) {
+                $('.basic-detail-field').each(function () {
+                    $(this).prop('readonly', disable).prop('disabled', disable);
+                });
+            }
+
+            // Function to fetch and populate company details
+            function fetchCompanyDetails(entityType, companyId) {
+                $.ajax({
+                    url: '{{ route("company.details") }}',
+                    method: 'GET',
+                    data: { entityType: entityType, companyId: companyId },
+                    success: function (data) {
+                        console.log('Company details:', data);
+                        $('#addressLine1').val(data.addressLine1 || '');
+                        $('#addressLine2').val(data.addressLine2 || '');
+                        $('#cityName').val(data.cityName || '');
+                        $('#zipCode').val(data.zipCode || '');
+                        $('#provinceName').val(data.provinceName || '');
+                        $('#provinceID').val(data.provinceID || '');
+                        $('#provinceCode').val(data.provinceCode || '');
+                        $('#cityID').val(data.cityID || '');
+                        $('#cityCode').val(data.cityCode || '');
+                        $('#countryID').val(data.countryID || '');
+                        $('#countryCode').val(data.countryCode || '');
+                        $('#countryName').val(data.countryName || '');
+                        $('#firstName').val(data.firstName || '');
+                        $('#lastName').val(data.lastName || '');
+                        $('#department').val(data.department || '');
+                        $('#phoneNo').val(data.phoneNo || '');
+                        $('#contractEmail').val(data.contractEmail || '');
+                    },
+                    error: function (xhr) {
+                        console.error('Error fetching company details:', xhr.responseJSON?.error || xhr.statusText);
+                        clearBasicDetails();
+                        toggleFieldsReadonly(true);
+                        alert('Failed to retrieve company details.');
+                    }
+                });
+            }
+
+            // Handle partyEntityType change
+            partyEntityType.on('change', function () {
+                toggleCompanyInput();
             });
 
-            // Check for duplicate license number on input
+            // Handle company dropdown selection
+            companySelect.on('change', function () {
+                const selectedOption = $(this).find('option:selected');
+                const companyName = selectedOption.data('name') || selectedOption.text().split(' (')[0];
+                companyIdInput.val(selectedOption.val());
+                companyCodeInput.val(selectedOption.data('code'));
+                companyNameInput.val(companyName);
+                if (selectedOption.val() && partyEntityType.val()) {
+                    fetchCompanyDetails(partyEntityType.val(), selectedOption.val());
+                } else {
+                    clearBasicDetails();
+                    toggleFieldsReadonly(true);
+                }
+            });
+
+            // Initialize maxCreditLimit input
+            $("#maxCreditLimit").on("input", function () {
+                let maxCreditLimit = $(this).val();
+                if (maxCreditLimit.startsWith("0")) {
+                    $(this).val("1" + maxCreditLimit.slice(1));
+                }
+            });
+
+            // Handle license type and validation
+            $('#licenceTypeID').on('change', function () {
+                const selectedOption = $(this).find('option:selected');
+                $('#licenceTypeCode').val(selectedOption.data('code'));
+            });
+
             $('#licenceTypeValue').on('input', function () {
-                var licenseNo = $(this).val().trim();
-                var countryCode = $('#countryCode').val(); // From country selection input
-                var partyType = $('#legalEntityType').val() || 'Debtor'; // From legalEntityType or default to Debtor
+                const licenseNo = $(this).val().trim();
+                const countryCode = $('#countryCode').val();
+                const partyType = legalEntityType.val() || 'Debtor';
 
                 if (licenseNo && countryCode && partyType) {
                     $.ajax({
@@ -975,11 +1117,11 @@
                             if (response.isDuplicate === 1) {
                                 $('#licenseError').text('License number is already in use: ' + response.remark).show();
                                 $('#licenceTypeValue').addClass('is-invalid');
-                                $('#submitBtn').prop('disabled', true); // Disable submit button
+                                $('#submitBtn').prop('disabled', true);
                             } else {
                                 $('#licenseError').hide();
                                 $('#licenceTypeValue').removeClass('is-invalid');
-                                $('#submitBtn').prop('disabled', false); // Enable submit button
+                                $('#submitBtn').prop('disabled', false);
                             }
                         },
                         error: function (xhr) {
@@ -990,168 +1132,73 @@
                 } else {
                     $('#licenseError').hide();
                     $('#licenceTypeValue').removeClass('is-invalid');
-                    $('#submitBtn').prop('disabled', false); // Enable submit button
+                    $('#submitBtn').prop('disabled', false);
                 }
             });
-        });
-    </script>
-    {{-- <script>
-        function populatePaymentTerms(terms) {
-            var $creditDays = $('#creditDays');
-            $creditDays.empty().append('<option value="" disabled selected>Select Credit Days</option>');
 
-            if (terms && Array.isArray(terms) && terms.length > 0 && !terms[0].Failed) {
-                terms.forEach(term => {
-                    $creditDays.append(
-                        `<option value="${term.CreditDays}">${term.CreditDays} Days</option>`
-                    );
-                });
-                $creditDays.val(terms[0].CreditDays || '');
-            } else {
-                console.warn('No payment terms available:', terms);
-                $creditDays.append('<option value="" disabled>No credit days available</option>');
-            }
-        }
-
-        function fetchPaymentTerms(officeCode) {
-            if (!officeCode) {
-                console.error('No officeCode provided for fetchPaymentTerms');
-                $('#creditDays').empty().append('<option value="" disabled selected>Select Credit Days</option>');
-                return;
-            }
-
-            console.log('Fetching payment terms for office:', officeCode);
-            $.ajax({
-                url: '/get-payment-term-list',
-                type: 'GET',
-                data: {
-                    office_code: officeCode
-                },
-                success: function(terms) {
-                    console.log('Payment terms response:', terms);
-                    populatePaymentTerms(terms);
-                },
-                error: function(xhr, status, error) {
-                    console.error('Error fetching payment terms:', status, error, xhr.responseText);
-                    $('#creditDays').empty().append(
-                        '<option value="" disabled>Error loading credit days</option>');
-                    alert('Failed to load credit days: ' + (xhr.responseJSON?.error || error));
-                }
-            });
-        }
-
-        $(document).ready(function() {
-            // Log initial data for debugging
-            console.log('currencyList:', {!! json_encode($currencyList) !!});
-            console.log('payTerms:', {!! json_encode($payTerms) !!});
-
-            // Initialize creditDays with payTerms
-            @if (!empty($payTerms) && is_array($payTerms) && !isset($payTerms['error']))
-                populatePaymentTerms({!! json_encode($payTerms) !!});
-            @else
-                console.log('No initial payTerms available:', {!! json_encode($payTerms) !!});
-            @endif
-
-            // Handle office country selection change
-            $('#officeCountry').on('change', function() {
-                var officeCode = $(this).find(':selected').attr('code') || $('input[name="officeCode"]')
-                    .val();
-                console.log('Selected office code:', officeCode, 'from:', {
-                    selectedCode: $(this).find(':selected').attr('code'),
-                    inputCode: $('input[name="officeCode"]').val()
-                });
-                $('#officeCountryID').val($(this).find(':selected').attr('id'));
-                fetchPaymentTerms(officeCode);
-            });
-
-            // Initialize for fixed office users
-            if ($('#officeCountryDisp').length) {
-                var officeCode = $('input[name="officeCode"]').val();
-                console.log('Fixed office code:', officeCode);
-                if (officeCode) {
-                    fetchPaymentTerms(officeCode);
-                } else {
-                    console.error('No officeCode for fixed office');
-                }
-            }
-
-            // Update billingCurrencyCode when billingCurrency is selected
-            $('#billingCurrency').on('change', function() {
-                var currencyCode = $(this).find(':selected').data('code');
-                $('#billingCurrencyCode').val(currencyCode);
-                console.log('Selected billingCurrencyCode:', currencyCode);
-            });
-        });
-    </script> --}}
-    <script type="text/javascript">
-        // File attachment logic
-        let init = 1;
-        let max_fields = 3;
-        $(".addAttachment").click(function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            var lsthmtl = $(".clone-template").html();
-            if (init < max_fields) {
-                if (init > 1) {
-                    var $names = $('input[name="attachmentNames[]"]');
-                    var $desc = $('input[name="attachmentDescription[]"]');
-                    var $fileInputName = $names.last();
-                    var $fileInputDescription = $desc.last();
-                    var allowedExtensions = /(\.jpg|\.jpeg|\.png|\.gif|\.pdf|\.doc|\.xls|\.docx|\.xlsx)$/i;
-                    var fileValue = $fileInputName.val();
-                    var descValue = $fileInputDescription.val().trim();
-                    if (fileValue) {
-                        if (!allowedExtensions.exec(fileValue)) {
-                            $fileInputName.addClass('is-invalid');
-                            alert(
-                                'Invalid file type. Allowed types: jpg, jpeg, png, gif, pdf, doc, xls, docx, xlsx'
-                                );
-                            $fileInputName.val('');
-                            return false;
+            // File attachment logic
+            let init = 1;
+            const max_fields = 3;
+            $(".addAttachment").click(function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                const lsthmtl = $(".clone-template").html();
+                if (init < max_fields) {
+                    if (init > 1) {
+                        const $names = $('input[name="attachmentNames[]"]');
+                        const $desc = $('input[name="attachmentDescription[]"]');
+                        const $fileInputName = $names.last();
+                        const $fileInputDescription = $desc.last();
+                        const allowedExtensions = /(\.jpg|\.jpeg|\.png|\.gif|\.pdf|\.doc|\.xls|\.docx|\.xlsx)$/i;
+                        const fileValue = $fileInputName.val();
+                        const descValue = $fileInputDescription.val().trim();
+                        if (fileValue) {
+                            if (!allowedExtensions.exec(fileValue)) {
+                                $fileInputName.addClass('is-invalid');
+                                alert('Invalid file type. Allowed types: jpg, jpeg, png, gif, pdf, doc, xls, docx, xlsx');
+                                $fileInputName.val('');
+                                return false;
+                            }
+                            if (!descValue) {
+                                $fileInputDescription.addClass('is-invalid');
+                                alert('Please enter a description.');
+                                return false;
+                            }
+                            $fileInputName.removeClass('is-invalid');
+                            $fileInputDescription.removeClass('is-invalid');
                         }
-                        if (!descValue) {
-                            $fileInputDescription.addClass('is-invalid');
-                            alert('Please enter a description.');
-                            return false;
-                        }
-                        $fileInputName.removeClass('is-invalid');
-                        $fileInputDescription.removeClass('is-invalid');
+                        $("#attachClone").append(lsthmtl);
+                        init++;
+                        console.log('Added attachment field. Total:', init);
+                    } else {
+                        $("#attachClone").append(lsthmtl);
+                        init++;
+                        console.log('Added attachment field. Total:', init);
                     }
-                    $("#attachClone").append(lsthmtl);
-                    init++;
-                    console.log('Added attachment field. Total:', init);
                 } else {
-                    $("#attachClone").append(lsthmtl);
-                    init++;
-                    console.log('Added attachment field. Total:', init);
+                    alert('Maximum File Attachment Reached.');
                 }
-            } else {
-                alert('Maximum File Attachment Reached.');
-            }
-        });
-        $("body").on("click", ".remove-attachment", function() {
-            $(this).parents(".cloned-attachment").remove();
-            init--;
-            console.log('Removed attachment field. Total:', init);
-        });
-    </script>
-    <script>
-        // API-based autocomplete for admin-details inputs
-        $(document).ready(function() {
-            const inputs = ['clientInput', 'shipperInput', 'consigneeInput', 'debtor', 'vendor', 'otherInput'];
+            });
 
+            $("body").on("click", ".remove-attachment", function () {
+                $(this).parents(".cloned-attachment").remove();
+                init--;
+                console.log('Removed attachment field. Total:', init);
+            });
+
+            // Admin details autocomplete
+            const inputs = ['clientInput', 'shipperInput', 'consigneeInput', 'debtor', 'vendor', 'otherInput'];
             inputs.forEach(id => {
                 const $input = $(`#${id}`);
-                if (!$input.length) return; // Skip if input doesn't exist
+                if (!$input.length) return;
                 const $codeCell = $(`#${id.split('Input')[0]}_Input, #${id}_code`);
                 let debounceTimeout;
 
-                $input.on('input', function() {
+                $input.on('input', function () {
                     clearTimeout(debounceTimeout);
                     debounceTimeout = setTimeout(() => {
                         const query = $(this).val().trim();
-                        const $autocompleteList = $(
-                            '<div class="autocomplete-list"></div>');
+                        const $autocompleteList = $('<div class="autocomplete-list"></div>');
                         $input.parent().find('.autocomplete-list').remove();
                         $input.parent().append($autocompleteList);
 
@@ -1163,33 +1210,25 @@
                         $.ajax({
                             url: '/api/entities',
                             type: 'GET',
-                            data: {
-                                q: query
-                            },
-                            success: function(matches) {
+                            data: { q: query },
+                            success: function (matches) {
                                 $autocompleteList.empty();
                                 matches.forEach(entity => {
-                                    const $div = $(
-                                            '<div class="autocomplete-item"></div>'
-                                        )
-                                        .text(
-                                            `${entity.name} (${entity.code})`
-                                        )
+                                    const $div = $('<div class="autocomplete-item"></div>')
+                                        .text(`${entity.name} (${entity.code})`)
                                         .data('entity', entity);
                                     $autocompleteList.append($div);
                                 });
                             },
-                            error: function(xhr, status, error) {
-                                console.error('Autocomplete error:', status,
-                                    error);
-                                $autocompleteList.html(
-                                    '<div>Error loading suggestions</div>');
+                            error: function (xhr, status, error) {
+                                console.error('Autocomplete error:', status, error);
+                                $autocompleteList.html('<div>Error loading suggestions</div>');
                             }
                         });
                     }, 300);
                 });
 
-                $input.parent().on('click', '.autocomplete-item', function() {
+                $input.parent().on('click', '.autocomplete-item', function () {
                     const entity = $(this).data('entity');
                     $input.val(entity.name).removeClass('is-invalid');
                     $(`#${id.replace('Input', 'ID')}`).val(entity.value);
@@ -1198,37 +1237,31 @@
                     $input.parent().find('.autocomplete-list').remove();
                 });
 
-                $(document).on('click', function(e) {
+                $(document).on('click', function (e) {
                     if (!$(e.target).closest(`#${id}, .autocomplete-list`).length) {
                         $input.parent().find('.autocomplete-list').remove();
                     }
                 });
             });
 
+            // Other input toggle
             function toggleOtherInput() {
-                var isOtherChecked = $('#otherCheck').is(':checked');
-                var $otherInput = $('#otherInput');
-                var $otherID = $('#otherID');
-                var $otherCode = $('#otherCode');
-                var $otherInputDisplay = $('#other_Input');
+                const isOtherChecked = $('#otherCheck').is(':checked');
+                const $otherInput = $('#otherInput');
+                const $otherID = $('#otherID');
+                const $otherCode = $('#otherCode');
+                const $otherInputDisplay = $('#other_Input');
 
                 if (isOtherChecked) {
-                    $otherInput
-                        .attr('required', 'required')
-                        .val('')
-                        .off('input')
-                        .prop('readonly', false);
+                    $otherInput.attr('required', 'required').val('').off('input').prop('readonly', false);
                     $otherID.val('');
                     $otherCode.val('');
                     $otherInputDisplay.text('');
                 } else {
-                    $otherInput
-                        .attr('required', 'required')
-                        .val('')
-                        .prop('readonly', false);
+                    $otherInput.attr('required', 'required').val('').prop('readonly', false);
 
                     let debounceTimeout;
-                    $otherInput.on('input', function() {
+                    $otherInput.on('input', function () {
                         clearTimeout(debounceTimeout);
                         debounceTimeout = setTimeout(() => {
                             const query = $(this).val().trim();
@@ -1244,32 +1277,25 @@
                             $.ajax({
                                 url: '/api/entities',
                                 type: 'GET',
-                                data: {
-                                    q: query
-                                },
-                                success: function(matches) {
+                                data: { q: query },
+                                success: function (matches) {
                                     $autocompleteList.empty();
                                     matches.forEach(entity => {
-                                        const $div = $(
-                                                '<div class="autocomplete-item"></div>'
-                                            )
-                                            .text(
-                                                `${entity.name} (${entity.code})`
-                                            )
+                                        const $div = $('<div class="autocomplete-item"></div>')
+                                            .text(`${entity.name} (${entity.code})`)
                                             .data('entity', entity);
                                         $autocompleteList.append($div);
                                     });
                                 },
-                                error: function(xhr, status, error) {
+                                error: function (xhr, status, error) {
                                     console.error('Autocomplete error:', status, error);
-                                    $autocompleteList.html(
-                                        '<div>Error loading suggestions</div>');
+                                    $autocompleteList.html('<div>Error loading suggestions</div>');
                                 }
                             });
                         }, 300);
                     });
 
-                    $otherInput.parent().on('click', '.autocomplete-item', function() {
+                    $otherInput.parent().on('click', '.autocomplete-item', function () {
                         const entity = $(this).data('entity');
                         $otherInput.val(entity.name).removeClass('is-invalid');
                         $otherID.val(entity.value);
@@ -1283,10 +1309,10 @@
             toggleOtherInput();
             $('#otherCheck').on('change', toggleOtherInput);
 
-            $('#otherInput').on('change', function() {
-                var isOtherChecked = $('#otherCheck').is(':checked');
-                var $otherInput = $('#otherInput');
-                var $otherID = $('#otherID');
+            $('#otherInput').on('change', function () {
+                const isOtherChecked = $('#otherCheck').is(':checked');
+                const $otherInput = $('#otherInput');
+                const $otherID = $('#otherID');
 
                 if (!isOtherChecked && !$otherID.val()) {
                     $otherInput.addClass('is-invalid');
@@ -1299,246 +1325,32 @@
                 }
             });
 
-            $('form').on('submit', function() {
+            // Show/hide fields based on request type
+            if (requestType === "operational") {
+                partyEntityType.closest(".col-md-6").show();
+                legalEntityType.closest(".col-md-6").hide();
+                $("#debtor-vendor").hide();
+            } else if (requestType === "accounting") {
+                partyEntityType.closest(".col-md-6").show();
+                legalEntityType.closest(".col-md-6").show();
+            }
+
+            // Form submission logging
+            $('form').on('submit', function () {
                 console.log('Form submitting:', {
+                    partyEntityType: partyEntityType.val(),
+                    companyName: companyNameInput.val(),
+                    companyId: companyIdInput.val(),
+                    companyCode: companyCodeInput.val(),
                     otherCheck: $('#otherCheck').is(':checked'),
                     otherInput: $('#otherInput').val(),
                     otherID: $('#otherID').val(),
                     otherCode: $('#otherCode').val()
                 });
             });
-        });
-    </script>
-    <script>
-        $(document).ready(function() {
-            // Function to get URL parameter
-            function getUrlParameter(name) {
-                let searchParams = new URLSearchParams(window.location.search);
-                return searchParams.get(name);
-            }
 
-            // Get 'type' parameter from URL
-            let requestType = getUrlParameter('type');
-
-            // Show/hide fields based on request type
-            if (requestType === "operational") {
-                $("#partyEntityType").closest(".col-md-6").show();
-                $("#legalEntityType").closest(".col-md-6").hide();
-                $("#debtor-vendor").hide();
-            } else if (requestType === "accounting") {
-                $("#partyEntityType").closest(".col-md-6").show();
-                $("#legalEntityType").closest(".col-md-6").show();
-            }
-
-            // Function to toggle field readonly/disabled state
-            function toggleFieldsReadonly(disable) {
-                $('.basic-detail-field').each(function() {
-                    $(this).prop('readonly', disable).prop('disabled', disable);
-                });
-            }
-
-            // Function to clear Basic Details fields
-            function clearBasicDetails() {
-                $('.basic-detail-field').val('');
-                $('#companyName').val('');
-                $('#clientCompanyNameInput').val('');
-                $('#companySelect').val('');
-                $('#autocomplete-list').empty();
-            }
-
-            // Function to populate company dropdown
-            function populateCompanyDropdown() {
-                $.ajax({
-                    url: '/api/companies',
-                    type: 'GET',
-                    success: function(companies) {
-                        const $companySelect = $('#companySelect');
-                        $companySelect.empty();
-                        $companySelect.append(
-                            '<option value="" disabled selected>Select Company</option>');
-                        companies.forEach(company => {
-                            $companySelect.append(
-                                `<option value="${company.name}" data-code="${company.code}">${company.name} (${company.code})</option>`
-                            );
-                        });
-                    },
-                    error: function(xhr, status, error) {
-                        console.error('Error loading companies:', status, error);
-                        alert('Failed to load company list.');
-                    }
-                });
-            }
-
-            // Handle partyEntityType change
-            $('#partyEntityType').change(function() {
-                var selectedType = $(this).val();
-                var $legalEntityType = $('#legalEntityType');
-                var $companyName = $('#companyName');
-                var $clientCompanyName = $('#clientCompanyName');
-                var $companyDropdown = $('#companyDropdown');
-
-                // Reset legalEntityType options
-                $legalEntityType.find('option').each(function() {
-                    $(this).prop('disabled', false).show();
-                });
-
-                // Clear fields and reset UI
-                clearBasicDetails();
-                $companyName.hide();
-                $clientCompanyName.hide();
-                $companyDropdown.hide();
-                // Ensure fields are editable by default
-                toggleFieldsReadonly(false);
-
-                // Define specific types requiring dropdown in accounting mode
-                const dropdownTypes = ['Agent / Forwarder', 'Airline', 'Shipping Line',
-                    'Trucker / Transporter'
-                ];
-
-                // Handle UI and behavior based on selectedType and requestType
-                if (requestType === 'accounting') {
-                    if (selectedType === 'Create only in D365') {
-                        // Manual entry for all fields
-                        $companyName.show();
-                        $legalEntityType.find('option').each(function() {
-                            var value = $(this).val();
-                            if (value && value !== 'Only in D365 Debtor' && value !==
-                                'Only in D365 Vendor') {
-                                $(this).prop('disabled', true).hide();
-                            }
-                        });
-                    } else if (selectedType === 'Client') {
-                        // Autocomplete for Client
-                        $clientCompanyName.show();
-                        $legalEntityType.find('option').each(function() {
-                            var value = $(this).val();
-                            if (value === 'Only in D365 Debtor' || value ===
-                                'Only in D365 Vendor') {
-                                $(this).prop('disabled', true).hide();
-                            }
-                        });
-                    } else if (dropdownTypes.includes(selectedType)) {
-                        // Dropdown for Agent/Forwarder, Airline, Shipping Line, Trucker/Transporter
-                        $companyDropdown.show();
-                        toggleFieldsReadonly(true);
-                        populateCompanyDropdown();
-                        $legalEntityType.find('option').each(function() {
-                            var value = $(this).val();
-                            if (value === 'Only in D365 Debtor' || value ===
-                                'Only in D365 Vendor') {
-                                $(this).prop('disabled', true).hide();
-                            }
-                        });
-                    }
-                } else {
-                    // Operational mode: always show companyName input and keep fields editable
-                    $companyName.show();
-                    // No dropdown or autocomplete in operational mode
-                }
-
-                // Reset legalEntityType selection
-                $legalEntityType.val('');
-
-                // Autocomplete for Client (accounting mode only)
-                if (selectedType === 'Client' && requestType === 'accounting') {
-                    $('#clientCompanyNameInput').off('input').on('input', function() {
-                        var query = $(this).val().trim();
-                        const $autocompleteList = $('<div class="autocomplete-list"></div>');
-                        $(this).parent().find('.autocomplete-list').remove();
-                        $(this).parent().append($autocompleteList);
-
-                        if (!query) {
-                            $autocompleteList.empty();
-                            return;
-                        }
-
-                        $.ajax({
-                            url: '/api/entities',
-                            type: 'GET',
-                            data: {
-                                q: query
-                            },
-                            success: function(matches) {
-                                $autocompleteList.empty();
-                                matches.forEach(entity => {
-                                    const $div = $(
-                                            '<div class="autocomplete-item"></div>'
-                                        )
-                                        .text(`${entity.name} (${entity.code})`)
-                                        .data('entity', entity);
-                                    $autocompleteList.append($div);
-                                });
-                            },
-                            error: function(xhr, status, error) {
-                                console.error('Autocomplete error:', status, error);
-                                $autocompleteList.html(
-                                    '<div>Error loading suggestions</div>');
-                            }
-                        });
-                    });
-
-                    $(document).off('click', '.autocomplete-item').on('click', '.autocomplete-item',
-                        function() {
-                            var entity = $(this).data('entity');
-                            $('#clientCompanyNameInput').val(entity.name);
-                            $('#companyName').val(entity.name);
-                            $('#autocomplete-list').empty();
-                            fetchCompanyDetails(entity.name);
-                        });
-
-                    $(document).off('click').click(function(e) {
-                        if (!$(e.target).closest('#autocomplete-list, #clientCompanyNameInput')
-                            .length) {
-                            $('#autocomplete-list').empty();
-                        }
-                    });
-                }
-
-                // Handle company dropdown selection (accounting mode only)
-                if (dropdownTypes.includes(selectedType) && requestType === 'accounting') {
-                    $('#companySelect').off('change').on('change', function() {
-                        var companyName = $(this).val();
-                        if (companyName) {
-                            $('#companyName').val(companyName);
-                            fetchCompanyDetails(companyName);
-                        } else {
-                            clearBasicDetails();
-                            toggleFieldsReadonly(true);
-                        }
-                    });
-                }
-            });
-
-            // Function to fetch and populate company details
-            function fetchCompanyDetails(companyName) {
-                $.ajax({
-                    url: "{{ url('/client-details') }}/" + encodeURIComponent(companyName),
-                    type: "GET",
-                    success: function(data) {
-                        $('#addressLine1').val(data.Address_Line1 || '');
-                        $('#addressLine2').val(data.Address_Line2 || '');
-                        $('#countryID').val(data.Address_CountryId || '');
-                        $('#countryCode').val(data.Address_CountryCode || '');
-                        $('#countryName').val(data.Address_CountryName || '');
-                        $('#provinceName').val(data.Address_ProvinceName || '');
-                        $('#provinceID').val(data.Address_ProvinceID || '');
-                        $('#provinceCode').val(data.Address_ProvinceCode || '');
-                        $('#cityName').val(data.Address_CityName || '');
-                        $('#cityID').val(data.Address_CityID || '');
-                        $('#cityCode').val(data.Address_CityCode || '');
-                        $('#zipCode').val(data.Address_ZipCode || '');
-                        $('#firstName').val(data.Cont_Bch_PersonName_FirstName || '');
-                        $('#lastName').val(data.Cont_Bch_PersonName_LastName || '');
-                        $('#department').val(data.Cont_Bch_Department || '');
-                        $('#phoneNo').val(data.Cont_Bch_PhoneNumbers || '');
-                        $('#contractEmail').val(data.Cont_Bch_Email || '');
-                    },
-                    error: function(xhr, status, error) {
-                        console.error("AJAX Error: ", status, error);
-                        alert('Failed to retrieve company details.');
-                    }
-                });
-            }
+            // Initialize on page load
+            toggleCompanyInput();
         });
     </script>
     <script src="//code.jquery.com/jquery-1.12.4.min.js"></script>
@@ -1549,7 +1361,7 @@
     <script src="{{ asset('js/client-party/jquery-number/jquery.number.min.js') }}"></script>
     <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
     <script>
-        /** get user authorization status */
+        /** Get user authorization status */
         window.User = {
             value: '{{ auth()->user()->can('edit-client-party') }}'
         }
