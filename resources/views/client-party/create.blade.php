@@ -554,7 +554,7 @@
                                                 <div class="form-group row mb-0 mt-0 p-0">
                                                     <div class="col col-sm-6 col-lg-6 col-md-6 m-0">
                                                         <div class="row">
-                                                            <label for="licence" class="col-md-3 col-form-label col-form-label-sm pr-0">Licence Type</label>
+                                                            <label for="licenceTypeID" class="col-md-3 col-form-label col-form-label-sm pr-0">Licence Type</label>
                                                             <span style="color: red;">*</span>
                                                             <div class="col-md-8">
                                                                 <select class="form-control form-control-sm" name="licenceTypeID" id="licenceTypeID" required>
@@ -578,8 +578,19 @@
                                                         <input type="text" class="form-control form-control-sm"
                                                                value="{{ old('licenceTypeValue') }}" name="licenceTypeValue" id="licenceTypeValue" required>
                                                         <small id="licenseError" class="text-danger" style="display: none;"></small>
+                                                        <small id="licenseSuccess" class="text-success" style="display: none;"></small>
                                                     </div>
                                                 </div>
+                                                <div class="form-group row mb-0 mt-2 p-0">
+                                                    <div class="col col-sm-12 col-lg-12 col-md-12">
+                                                        <div class="form-check">
+                                                            <input type="checkbox" class="form-check-input" id="overseasEntity" name="overseasEntity">
+                                                            <label class="form-check-label" for="overseasEntity">Overseas Entity</label>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <!-- Add officeCode if not present elsewhere -->
+                                                <input type="hidden" id="officeCode" name="officeCode" value="HO">
                                             </fieldset>
                                         </div>
                                     </div>
@@ -939,6 +950,8 @@
             const debtorType = $('#debtorType');
             const vendorType = $('#vendorType');
             const requestType = new URLSearchParams(window.location.search).get('type');
+            const overseasEntityCheckbox = $('#overseasEntity'); // New checkbox
+            const licenceTypeValue = $('#licenceTypeValue'); // License number input
 
             // Function to toggle input/dropdown visibility
             function toggleCompanyInput() {
@@ -1098,12 +1111,48 @@
                 $('#licenceTypeCode').val(selectedOption.data('code'));
             });
 
+            // Toggle license number input based on overseasEntity checkbox
+            function toggleLicenseInput() {
+                const isOverseas = overseasEntityCheckbox.is(':checked');
+                if (isOverseas) {
+                    licenceTypeValue
+                        .prop('disabled', true)
+                        .val('')
+                        .removeClass('is-invalid')
+                        .removeAttr('required');
+                    $('#licenseError').hide();
+                    $('#licenseSuccess').hide();
+                    $('#submitBtn').prop('disabled', false);
+                } else {
+                    licenceTypeValue
+                        .prop('disabled', false)
+                        .attr('required', 'required');
+                    $('#licenseSuccess').hide(); // Hide success message when enabling
+                }
+            }
+
+            // Initialize overseasEntity checkbox
+            overseasEntityCheckbox.on('change', toggleLicenseInput);
+            toggleLicenseInput(); // Run on page load
+
             $('#licenceTypeValue').on('input', function () {
+                const isOverseas = overseasEntityCheckbox.is(':checked');
                 const licenseNo = $(this).val().trim();
                 const countryCode = $('#countryCode').val();
-                const partyType = legalEntityType.val() || 'Debtor';
+                const partyType = $('#legalEntityType').val() || 'Debtor';
+                const officeCode = $('#officeCode').val() || '';
 
-                if (licenseNo && countryCode && partyType) {
+                $('#licenseSuccess').hide(); // Clear success message on input
+
+                if (isOverseas) {
+                    // Skip duplicate check if overseas entity
+                    $('#licenseError').hide();
+                    $('#licenceTypeValue').removeClass('is-invalid');
+                    $('#submitBtn').prop('disabled', false);
+                    return;
+                }
+
+                if (licenseNo && countryCode && partyType && officeCode) {
                     $.ajax({
                         url: '{{ route("client-party.check-license") }}',
                         method: 'POST',
@@ -1111,26 +1160,32 @@
                             countryCode: countryCode,
                             partyType: partyType,
                             licenseNo: licenseNo,
+                            officeCode: officeCode,
                             _token: '{{ csrf_token() }}'
                         },
                         success: function (response) {
                             if (response.isDuplicate === 1) {
                                 $('#licenseError').text('License number is already in use: ' + response.remark).show();
+                                $('#licenseSuccess').hide();
                                 $('#licenceTypeValue').addClass('is-invalid');
                                 $('#submitBtn').prop('disabled', true);
                             } else {
                                 $('#licenseError').hide();
+                                $('#licenseSuccess').text('License number is available').show();
                                 $('#licenceTypeValue').removeClass('is-invalid');
                                 $('#submitBtn').prop('disabled', false);
                             }
                         },
                         error: function (xhr) {
-                            $('#licenseError').text('Error checking license number.').show();
+                            $('#licenseError').text('Error checking license number: ' + (xhr.responseJSON?.error || 'Unknown error')).show();
+                            $('#licenseSuccess').hide();
                             $('#licenceTypeValue').addClass('is-invalid');
+                            $('#submitBtn').prop('disabled', true);
                         }
                     });
                 } else {
                     $('#licenseError').hide();
+                    $('#licenseSuccess').hide();
                     $('#licenceTypeValue').removeClass('is-invalid');
                     $('#submitBtn').prop('disabled', false);
                 }
@@ -1345,7 +1400,9 @@
                     otherCheck: $('#otherCheck').is(':checked'),
                     otherInput: $('#otherInput').val(),
                     otherID: $('#otherID').val(),
-                    otherCode: $('#otherCode').val()
+                    otherCode: $('#otherCode').val(),
+                    overseasEntity: overseasEntityCheckbox.is(':checked'),
+                    licenceTypeValue: licenceTypeValue.val()
                 });
             });
 

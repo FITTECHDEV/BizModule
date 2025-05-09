@@ -1631,63 +1631,71 @@ public function getPaymentTermList($officeCode = null, Request $request = null)
     }
 
 
-    public function checkLicense(Request $request)
-{
-    try {
-        $countryCode = $request->input('countryCode');
-        $partyType = $request->input('partyType');
-        $licenseNo = $request->input('licenseNo');
+    public function checkLicense()
+    {
+        try {
+            $input = Request::all();
+            $countryCode = $input['countryCode'] ?? null;
+            $partyType = $input['partyType'] ?? 'Debtor';
+            $licenseNo = $input['licenseNo'] ?? null;
+            $officeCode = $input['officeCode'] ?? null;
 
-        Log::info('Checking license for duplicate:', [
-            'countryCode' => $countryCode,
-            'partyType' => $partyType,
-            'licenseNo' => $licenseNo
-        ]);
+            // Normalize partyType if needed (e.g., handle 'Debtor & Vendor')
+            $partyType = str_contains($partyType, 'Debtor') ? 'Debtor' : $partyType;
 
-        if (empty($countryCode) || empty($partyType) || empty($licenseNo)) {
-            return response()->json(['error' => 'Missing required fields'], 400);
-        }
-
-        // Execute sp_LicenseNoCheck
-        $results = DB::select(
-            'SET NOCOUNT ON;
-             DECLARE @Status AS VARCHAR(20),
-                     @Remark AS VARCHAR(100),
-                     @IsDuplicate AS INT;
-             EXEC dbo.sp_LicenseNoCheck @CountryCode = ?, @PartyType = ?, @LicenseNo = ?,
-                  @Status = @Status OUTPUT, @Remark = @Remark OUTPUT, @IsDuplicate = @IsDuplicate OUTPUT;
-             SELECT @Status AS Status, @Remark AS Remark, @IsDuplicate AS IsDuplicate',
-            [$countryCode, $partyType, $licenseNo]
-        );
-
-        if (empty($results)) {
-            Log::warning('sp_LicenseNoCheck returned no results', [
+            Log::info('Checking license for duplicate:', [
                 'countryCode' => $countryCode,
                 'partyType' => $partyType,
-                'licenseNo' => $licenseNo
+                'licenseNo' => $licenseNo,
+                'officeCode' => $officeCode
             ]);
-            return response()->json(['error' => 'Failed to check license'], 500);
+
+            if (empty($countryCode) || empty($partyType) || empty($licenseNo) || empty($officeCode)) {
+                return response()->json(['error' => 'Missing required fields'], 400);
+            }
+
+            // Execute sp_LicenseNoCheck
+            $results = DB::select(
+                'SET NOCOUNT ON;
+                 DECLARE @Status AS VARCHAR(20),
+                         @Remark AS VARCHAR(100),
+                         @IsDuplicate AS INT;
+                 EXEC dbo.sp_LicenseNoCheck @CountryCode = ?, @PartyType = ?, @LicenseNo = ?, @officeCode = ?,
+                      @Status = @Status OUTPUT, @Remark = @Remark OUTPUT, @IsDuplicate = @IsDuplicate OUTPUT;
+                 SELECT @Status AS Status, @Remark AS Remark, @IsDuplicate AS IsDuplicate',
+                [$countryCode, $partyType, $licenseNo, $officeCode]
+            );
+
+            if (empty($results)) {
+                Log::warning('sp_LicenseNoCheck returned no results', [
+                    'countryCode' => $countryCode,
+                    'partyType' => $partyType,
+                    'licenseNo' => $licenseNo,
+                    'officeCode' => $officeCode
+                ]);
+                return response()->json(['error' => 'Failed to check license'], 500);
+            }
+
+            $result = $results[0];
+
+            Log::info('sp_LicenseNoCheck response:', (array)$result);
+
+            return response()->json([
+                'status' => $result->Status,
+                'remark' => $result->Remark,
+                'isDuplicate' => $result->IsDuplicate
+            ]);
+        } catch (\Illuminate\Database\QueryException $e) {
+            Log::error('sp_LicenseNoCheck Error: ' . $e->getMessage(), [
+                'countryCode' => $countryCode,
+                'partyType' => $partyType,
+                'licenseNo' => $licenseNo,
+                'officeCode' => $officeCode,
+                'sql' => $e->getSql()
+            ]);
+            return response()->json(['error' => 'Database error while checking license'], 500);
         }
-
-        $result = $results[0];
-
-        Log::info('sp_LicenseNoCheck response:', (array)$result);
-
-        return response()->json([
-            'status' => $result->Status,
-            'remark' => $result->Remark,
-            'isDuplicate' => $result->IsDuplicate
-        ]);
-    } catch (\Illuminate\Database\QueryException $e) {
-        Log::error('sp_LicenseNoCheck Error: ' . $e->getMessage(), [
-            'countryCode' => $countryCode,
-            'partyType' => $partyType,
-            'licenseNo' => $licenseNo,
-            'sql' => $e->getSql()
-        ]);
-        return response()->json(['error' => 'Database error while checking license'], 500);
     }
-}
 public function getCompanies()
 {
     try {
