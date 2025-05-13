@@ -150,16 +150,21 @@
                                                     <div class="col-sm-9 col-lg-8 col-md-8">
                                                         <!-- Input for Create only in D365 -->
                                                         <input type="text" class="form-control form-control-sm"
-                                                            value="{{ old('companyName') }}" name="companyName" id="companyName" maxlength="50">
+                                                            value="{{ old('companyName') }}" name="companyName"
+                                                            id="companyName" maxlength="50">
                                                         <!-- Dropdown for other entity types -->
                                                         <div id="companyDropdown" style="display: none;">
-                                                            <select class="form-control form-control-sm" id="companySelect" name="companySelect">
-                                                                <option value="" disabled selected>Select Company</option>
+                                                            <select class="form-control form-control-sm"
+                                                                id="companySelect" name="companySelect">
+                                                                <option value="" disabled selected>Select Company
+                                                                </option>
                                                                 <!-- Options will be populated via JavaScript -->
                                                             </select>
                                                             <!-- Hidden inputs to store Id and Code -->
-                                                            <input type="hidden" name="companyId" id="companyId" value="{{ old('companyId') }}">
-                                                            <input type="hidden" name="companyCode" id="companyCode" value="{{ old('companyCode') }}">
+                                                            <input type="hidden" name="companyId" id="companyId"
+                                                                value="{{ old('companyId') }}">
+                                                            <input type="hidden" name="companyCode" id="companyCode"
+                                                                value="{{ old('companyCode') }}">
                                                         </div>
                                                     </div>
                                                 </div>
@@ -290,7 +295,8 @@
                                                 </div>
                                                 <div class="form-group mb-3">
                                                     <label for="phoneNo" class="col-form-label col-form-label-sm">
-                                                        <i class="fa fa-phone" aria-hidden="true"></i> Phone No. <span class="text-danger">*</span>
+                                                        <i class="fa fa-phone" aria-hidden="true"></i> Phone No. <span
+                                                            class="text-danger">*</span>
                                                     </label>
                                                     <input type="text"
                                                         class="form-control form-control-sm number_input basic-detail-field"
@@ -554,19 +560,24 @@
                                                 <div class="form-group row mb-0 mt-0 p-0">
                                                     <div class="col col-sm-6 col-lg-6 col-md-6 m-0">
                                                         <div class="row">
-                                                            <label for="licenceTypeID" class="col-md-3 col-form-label col-form-label-sm pr-0">Licence Type</label>
+                                                            <label for="licenceTypeID"
+                                                                class="col-md-3 col-form-label col-form-label-sm pr-0">Licence
+                                                                Type</label>
                                                             <span style="color: red;">*</span>
                                                             <div class="col-md-8">
-                                                                <select class="form-control form-control-sm" name="licenceTypeID" id="licenceTypeID" required>
-                                                                    <option value="" disabled selected>Select License Type</option>
+                                                                <select class="form-control form-control-sm"
+                                                                    name="licenceTypeID" id="licenceTypeID" required>
+                                                                    <option value="" disabled selected>Select License
+                                                                        Type</option>
                                                                     @forelse ($licenceTypes as $type)
                                                                         <option value="{{ $type->LicenseID }}"
-                                                                                data-code="{{ $type->LicenseCode }}"
-                                                                                @if (old('licenceTypeID') == $type->LicenseID) selected @endif>
+                                                                            data-code="{{ $type->LicenseCode }}"
+                                                                            @if (old('licenceTypeID') == $type->LicenseID) selected @endif>
                                                                             {{ $type->LicenseName }}
                                                                         </option>
                                                                     @empty
-                                                                        <option value="" disabled>No license types available</option>
+                                                                        <option value="" disabled>No license types
+                                                                            available</option>
                                                                     @endforelse
                                                                 </select>
                                                             </div>
@@ -574,23 +585,29 @@
                                                     </div>
                                                     <div class="col col-sm-6 col-lg-6 col-md-6">
                                                         <input type="hidden" class="form-control form-control-sm"
-                                                               value="{{ old('licenceTypeCode') }}" name="licenceTypeCode" id="licenceTypeCode">
+                                                            value="{{ old('licenceTypeCode') }}" name="licenceTypeCode"
+                                                            id="licenceTypeCode">
                                                         <input type="text" class="form-control form-control-sm"
-                                                               value="{{ old('licenceTypeValue') }}" name="licenceTypeValue" id="licenceTypeValue" required>
-                                                        <small id="licenseError" class="text-danger" style="display: none;"></small>
-                                                        <small id="licenseSuccess" class="text-success" style="display: none;"></small>
+                                                            value="{{ old('licenceTypeValue') }}" name="licenceTypeValue"
+                                                            id="licenceTypeValue" required>
+                                                        <small id="licenseError" class="text-danger"
+                                                            style="display: none;"></small>
+                                                        <small id="licenseSuccess" class="text-success"
+                                                            style="display: none;"></small>
                                                     </div>
                                                 </div>
                                                 <div class="form-group row mb-0 mt-2 p-0">
                                                     <div class="col col-sm-12 col-lg-12 col-md-12">
                                                         <div class="form-check">
-                                                            <input type="checkbox" class="form-check-input" id="overseasEntity" name="overseasEntity">
-                                                            <label class="form-check-label" for="overseasEntity">Overseas Entity</label>
+                                                            <input type="checkbox" class="form-check-input"
+                                                                id="overseasEntity" name="overseasEntity">
+                                                            <label class="form-check-label" for="overseasEntity">Overseas
+                                                                Entity</label>
                                                         </div>
                                                     </div>
                                                 </div>
                                                 <!-- Add officeCode if not present elsewhere -->
-                                                <input type="hidden" id="officeCode" name="officeCode" value="HO">
+                                                <input type="hidden" id="officeCode" name="officeCode" value="KE">
                                             </fieldset>
                                         </div>
                                     </div>
@@ -615,7 +632,7 @@
 
 
 
-                                        {{-- Admin details --}}
+                                {{-- Admin details --}}
 
                                 @if (Auth::user()->can('create-client-party'))
                                     <div id="admin-details" class="content" role="tabpanel"
@@ -634,69 +651,93 @@
                                                             <th>Code</th>
                                                         </thead>
                                                         <tbody>
-                                                            <!-- Hidden rows for Client, Shipper, Consignee, and Other -->
-                                                            <tr id="client-check" class="hidden-row">
+                                                            <!-- Rows for Client, Shipper, Consignee, and Other -->
+                                                            <tr id="client-check">
                                                                 <td>Client</td>
-                                                                <td><input type="checkbox" name="clientCheck" id="clientCheck"></td>
+                                                                <td><input type="checkbox" name="clientCheck"
+                                                                        id="clientCheck"></td>
                                                                 <td>
-                                                                    <input type="text" name="clientInput" id="clientInput" value="{{ old('clientInput') }}"
+                                                                    <input type="text" name="clientInput"
+                                                                        id="clientInput" value="{{ old('clientInput') }}"
                                                                         class="form-control form-control-sm" required>
-                                                                    <input type="hidden" name="clientID" id="clientID" value="{{ old('clientID') }}">
-                                                                    <input type="hidden" name="clientCode" id="clientCode" value="{{ old('clientCode') }}">
+                                                                    <input type="hidden" name="clientID" id="clientID"
+                                                                        value="{{ old('clientID') }}">
+                                                                    <input type="hidden" name="clientCode"
+                                                                        id="clientCode" value="{{ old('clientCode') }}">
                                                                 </td>
                                                                 <td id="client_Input"></td>
                                                             </tr>
-                                                            <tr id="shipper-check" class="hidden-row">
+                                                            <tr id="shipper-check">
                                                                 <td>Shipper</td>
-                                                                <td><input type="checkbox" name="shipperCheck" id="shipperCheck"></td>
+                                                                <td><input type="checkbox" name="shipperCheck"
+                                                                        id="shipperCheck"></td>
                                                                 <td>
-                                                                    <input type="text" name="shipperInput" id="shipperInput" class="form-control form-control-sm" required>
-                                                                    <input type="hidden" name="shipperID" id="shipperID">
-                                                                    <input type="hidden" name="shipperCode" id="shipperCode">
+                                                                    <input type="text" name="shipperInput"
+                                                                        id="shipperInput"
+                                                                        class="form-control form-control-sm" required>
+                                                                    <input type="hidden" name="shipperID"
+                                                                        id="shipperID">
+                                                                    <input type="hidden" name="shipperCode"
+                                                                        id="shipperCode">
                                                                 </td>
                                                                 <td id="shipper_Input"></td>
                                                             </tr>
-                                                            <tr id="consignee-check" class="hidden-row">
+                                                            <tr id="consignee-check">
                                                                 <td>Consignee</td>
-                                                                <td><input type="checkbox" name="consigneeCheck" id="consigneeCheck"></td>
+                                                                <td><input type="checkbox" name="consigneeCheck"
+                                                                        id="consigneeCheck"></td>
                                                                 <td>
-                                                                    <input type="text" name="consigneeInput" id="consigneeInput" class="form-control form-control-sm"
-                                                                        required>
-                                                                    <input type="hidden" name="consigneeID" id="consigneeID">
-                                                                    <input type="hidden" name="consigneeCode" id="consigneeCode">
+                                                                    <input type="text" name="consigneeInput"
+                                                                        id="consigneeInput"
+                                                                        class="form-control form-control-sm" required>
+                                                                    <input type="hidden" name="consigneeID"
+                                                                        id="consigneeID">
+                                                                    <input type="hidden" name="consigneeCode"
+                                                                        id="consigneeCode">
                                                                 </td>
                                                                 <td id="consignee_Input"></td>
                                                             </tr>
-                                                            <tr id="other-check" class="hidden-row">
+                                                            <tr id="other-check">
                                                                 <td>Other</td>
-                                                                <td><input type="checkbox" name="otherCheck" id="otherCheck" value="1"></td>
+                                                                <td><input type="checkbox" name="otherCheck"
+                                                                        id="otherCheck" value="1"></td>
                                                                 <td>
-                                                                    <input type="text" name="otherInput" id="otherInput" class="form-control form-control-sm"
+                                                                    <input type="text" name="otherInput"
+                                                                        id="otherInput"
+                                                                        class="form-control form-control-sm"
                                                                         autocomplete="off">
-                                                                    <input type="hidden" name="other  <input type="hidden" name="otherID" id="otherID">
-                                                                    <input type="hidden" name="otherCode" id="otherCode">
-                                                                    <div class="invalid-feedback">Please select or enter a name.</div>
+                                                                    <input type="hidden" name="otherID" id="otherID">
+                                                                    <input type="hidden" name="otherCode"
+                                                                        id="otherCode">
+                                                                    <div class="invalid-feedback">Please select or enter a
+                                                                        name.</div>
                                                                 </td>
                                                                 <td id="other_Input"></td>
                                                             </tr>
                                                             <!-- Visible rows for Debtor and Vendor -->
                                                             <tr id="debtor-check">
                                                                 <td>Debtor</td>
-                                                                <td><input type="checkbox" name="debtorCheck" id="debtorCheck"></td>
+                                                                <td><input type="checkbox" name="debtorCheck"
+                                                                        id="debtorCheck"></td>
                                                                 <td>
-                                                                    <input type="text" name="debtor" id="debtor" class="form-control form-control-sm" required>
+                                                                    <input type="text" name="debtor" id="debtor"
+                                                                        class="form-control form-control-sm" required>
                                                                     <input type="hidden" name="debtorID" id="debtorID">
-                                                                    <input type="hidden" name="debtorCode" id="debtorCode">
+                                                                    <input type="hidden" name="debtorCode"
+                                                                        id="debtorCode">
                                                                 </td>
                                                                 <td id="debtor_code"></td>
                                                             </tr>
                                                             <tr id="vendor-check">
                                                                 <td>Vendor</td>
-                                                                <td><input type="checkbox" name="vendorCheck" id="vendorCheck"></td>
+                                                                <td><input type="checkbox" name="vendorCheck"
+                                                                        id="vendorCheck"></td>
                                                                 <td>
-                                                                    <input type="text" name="vendor" id="vendor" class="form-control form-control-sm" required>
+                                                                    <input type="text" name="vendor" id="vendor"
+                                                                        class="form-control form-control-sm" required>
                                                                     <input type="hidden" name="vendorID" id="vendorID">
-                                                                    <input type="hidden" name="vendorCode" id="vendorCode">
+                                                                    <input type="hidden" name="vendorCode"
+                                                                        id="vendorCode">
                                                                 </td>
                                                                 <td id="vendor_code"></td>
                                                             </tr>
@@ -738,7 +779,12 @@
 {{-- CSS --}}
 @section('css')
     {{-- stepper css --}}
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bs-stepper/dist/css/bs-stepper.min.css">
+    {{-- Select2 CSS --}}
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    {{-- Stepper CSS --}}
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bs-stepper@1.7.0/dist/css/bs-stepper.min.css">
+    <link rel="stylesheet" href="//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+
     <style>
         fieldset.scheduler-border {
             border: solid 1px #DDD !important;
@@ -905,11 +951,13 @@
             pointer-events: none;
             /* Prevents clicking or focusing */
         }
+
         .hidden-row {
-         display: none;
+            display: none;
         }
+
         #companyDropdown {
-            display: block ;
+            display: block;
         }
     </style>
     <link rel="stylesheet" href="//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
@@ -929,9 +977,11 @@
 @stop
 
 {{-- JS --}}
+
 @section('js')
     <script src="//code.jquery.com/jquery-1.12.4.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bs-stepper/dist/js/bs-stepper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bs-stepper@1.7.0/dist/js/bs-stepper.min.js"></script>
     <script src="{{ asset('js/client-party/party-entity.js') }}"></script>
     <script src="{{ asset('js/client-party/validation.js') }}"></script>
     <script src="{{ asset('js/client-party/sub-form.js') }}"></script>
@@ -945,7 +995,7 @@
             }
         });
 
-        $(document).ready(function () {
+        $(document).ready(function() {
             // Cache DOM elements
             const partyEntityType = $('#partyEntityType');
             const legalEntityType = $('#legalEntityType');
@@ -989,9 +1039,10 @@
                     if (selectedType === 'Create only in D365') {
                         companyNameInput.show();
                         companyDropdown.css('display', 'none'); // Explicitly hide to override CSS
-                        legalEntityType.find('option').each(function () {
+                        legalEntityType.find('option').each(function() {
                             const value = $(this).val();
-                            if (value && value !== 'Only in D365 Debtor' && value !== 'Only in D365 Vendor') {
+                            if (value && value !== 'Only in D365 Debtor' && value !==
+                                'Only in D365 Vendor') {
                                 $(this).prop('disabled', true).hide();
                             }
                         });
@@ -1000,7 +1051,7 @@
                         companyNameInput.hide();
                         toggleFieldsReadonly(true);
                         loadCompanies(apiType);
-                        legalEntityType.find('option').each(function () {
+                        legalEntityType.find('option').each(function() {
                             const value = $(this).val();
                             if (value === 'Only in D365 Debtor' || value === 'Only in D365 Vendor') {
                                 $(this).prop('disabled', true).hide();
@@ -1014,34 +1065,38 @@
 
                 legalEntityType.val('');
                 console.log('toggleCompanyInput: requestType=', requestType,
-                            'selectedType=', selectedType,
-                            'normalizedType=', normalizedType,
-                            'apiType=', apiType,
-                            'dropdownTypesIncludes=', dropdownTypes.includes(normalizedType),
-                            'companyNameVisible=', companyNameInput.is(':visible'),
-                            'companyDropdownVisible=', companyDropdown.is(':visible'),
-                            'dropdownTypes=', dropdownTypes);
+                    'selectedType=', selectedType,
+                    'normalizedType=', normalizedType,
+                    'apiType=', apiType,
+                    'dropdownTypesIncludes=', dropdownTypes.includes(normalizedType),
+                    'companyNameVisible=', companyNameInput.is(':visible'),
+                    'companyDropdownVisible=', companyDropdown.is(':visible'),
+                    'dropdownTypes=', dropdownTypes);
             }
 
             // Function to load companies via AJAX
             function loadCompanies(entityType) {
                 console.log('loadCompanies: Fetching companies for entityType=', entityType);
                 $.ajax({
-                    url: '{{ route("companies") }}',
+                    url: '{{ route('companies') }}',
                     method: 'GET',
-                    data: { entityType: entityType },
-                    success: function (data) {
+                    data: {
+                        entityType: entityType
+                    },
+                    success: function(data) {
                         console.log('loadCompanies: API response=', data);
                         companySelect.find('option:not(:first)').remove();
                         if (data.error) {
-                            companySelect.append('<option value="" disabled>' + data.error + '</option>');
+                            companySelect.append('<option value="" disabled>' + data.error +
+                                '</option>');
                             console.error('API error:', data.error);
                             companyDropdown.show();
                         } else if (data.length === 0) {
-                            companySelect.append('<option value="" disabled>No companies found</option>');
+                            companySelect.append(
+                                '<option value="" disabled>No companies found</option>');
                             companyDropdown.show();
                         } else {
-                            $.each(data, function (index, company) {
+                            $.each(data, function(index, company) {
                                 companySelect.append(
                                     `<option value="${company.id}" data-code="${company.code}" data-name="${company.name}">${company.name} (${company.code})</option>`
                                 );
@@ -1049,10 +1104,12 @@
                             companyDropdown.show();
                         }
                     },
-                    error: function (xhr) {
-                        console.error('Error fetching companies:', xhr.responseJSON?.error || xhr.statusText);
+                    error: function(xhr) {
+                        console.error('Error fetching companies:', xhr.responseJSON?.error || xhr
+                            .statusText);
                         companySelect.find('option:not(:first)').remove();
-                        companySelect.append('<option value="" disabled>Error loading companies</option>');
+                        companySelect.append(
+                            '<option value="" disabled>Error loading companies</option>');
                         companyDropdown.show();
                         alert('Failed to load company list. Please try again.');
                     }
@@ -1061,29 +1118,44 @@
 
             // Function to clear Basic Details fields
             function clearBasicDetails() {
-                $('.basic-detail-field').val('');
+                $('.basic-detail-field').not('#countryCode, #countryName, #countryID').val('');
                 companyNameInput.val('');
                 companySelect.val('');
                 companyIdInput.val('');
                 companyCodeInput.val('');
                 $('#autocomplete-list').empty();
+                console.log('clearBasicDetails: Preserved countryCode=', $('#countryCode').val());
             }
 
             // Function to toggle field readonly/disabled state
-            function toggleFieldsReadonly(disable) {
-                $('.basic-detail-field').each(function () {
-                    $(this).prop('readonly', disable).prop('disabled', disable);
-                });
-            }
+          function toggleFieldsReadonly(disable) {
+    $('.basic-detail-field').not('#countryCode, #countryName, #countryID').each(function() {
+        $(this).prop('readonly', disable).prop('disabled', disable);
+    });
+    console.log('toggleFieldsReadonly:', { disable, countryCodeDisabled: $('#countryCode').prop('disabled') });
+}
 
             // Function to fetch and populate company details
             function fetchCompanyDetails(entityType, companyId) {
+                console.log('fetchCompanyDetails: entityType=', entityType, 'companyId=', companyId);
                 $.ajax({
-                    url: '{{ route("company.details") }}',
+                    url: '{{ route('company.details') }}',
                     method: 'GET',
-                    data: { entityType: entityType, companyId: companyId },
-                    success: function (data) {
-                        console.log('Company details:', data);
+                    data: {
+                        entityType: entityType,
+                        companyId: companyId
+                    },
+                    success: function(data) {
+                        console.log('fetchCompanyDetails: Response=', data);
+                        if (!data.countryCode || !data.countryID) {
+                            console.warn('fetchCompanyDetails: Missing countryCode or countryID', {
+                                countryCode: data.countryCode,
+                                countryID: data.countryID
+                            });
+                            alert(
+                                'Warning: No country code for this company. Please select a country manually.'
+                                );
+                        }
                         $('#addressLine1').val(data.addressLine1 || '');
                         $('#addressLine2').val(data.addressLine2 || '');
                         $('#cityName').val(data.cityName || '');
@@ -1093,7 +1165,7 @@
                         $('#provinceCode').val(data.provinceCode || '');
                         $('#cityID').val(data.cityID || '');
                         $('#cityCode').val(data.cityCode || '');
-                        $('#countryID').val(data.countryID || '');
+                        $('#countryID').val(data.countryID || '').trigger('change'); // Trigger change
                         $('#countryCode').val(data.countryCode || '');
                         $('#countryName').val(data.countryName || '');
                         $('#firstName').val(data.firstName || '');
@@ -1101,15 +1173,97 @@
                         $('#department').val(data.department || '');
                         $('#phoneNo').val(data.phoneNo || '');
                         $('#contractEmail').val(data.contractEmail || '');
+                        console.log('fetchCompanyDetails: Set countryCode=', $('#countryCode').val(),
+                            'countryID=', $('#countryID').val(), 'countryName=', $('#countryName')
+                            .val());
                     },
-                    error: function (xhr) {
-                        console.error('Error fetching company details:', xhr.responseJSON?.error || xhr.statusText);
+                    error: function(xhr) {
+                        console.error('Error fetching company details:', xhr.responseJSON?.error || xhr
+                            .statusText);
                         clearBasicDetails();
                         toggleFieldsReadonly(true);
                         alert('Failed to retrieve company details.');
                     }
                 });
             }
+
+            if ($('#countryID').length) {
+                $('#countryID').on('change', function() {
+                    const selectedOption = $(this).find('option:selected');
+                    const countryCode = selectedOption.attr('id') || '';
+                    const countryName = selectedOption.text() || '';
+                    $('#countryCode').val(countryCode);
+                    $('#countryName').val(countryName);
+                    console.log('countryID changed:', {
+                        countryID: $(this).val(),
+                        countryCode: countryCode,
+                        countryName: countryName,
+                        countryIdOptionExists: $(this).find(`option[value="${$(this).val()}"]`)
+                            .length > 0
+                    });
+                    if (!countryCode) {
+                        console.warn(
+                            'countryID changed: No countryCode set. Please select a valid country.');
+                        $('#countryID').addClass('is-invalid');
+                    } else {
+                        $('#countryID').removeClass('is-invalid');
+                    }
+                });
+            } else {
+                console.error('countryID select not found');
+            }
+            // Form validation NEW ONE
+            function validateForm() {
+                const addressLine1 = $('#addressLine1').val().trim();
+                const countryCode = $('#countryCode').val().trim();
+                const partyEntityTypeVal = partyEntityType.val();
+                let errors = [];
+
+                if (!addressLine1) errors.push('Address Line 1 is required.');
+                if (!countryCode) errors.push('Country is required.');
+                if (!partyEntityTypeVal) errors.push('Operation Type is required.');
+
+                if (errors.length > 0) {
+                    alert(errors.join('\n'));
+                    if (!addressLine1) $('#addressLine1').addClass('is-invalid');
+                    if (!countryCode) $('#countryID').addClass('is-invalid');
+                    if (!partyEntityTypeVal) $('#partyEntityType').addClass('is-invalid');
+                    console.log('Form validation failed:', {
+                        addressLine1,
+                        countryCode,
+                        partyEntityType: partyEntityTypeVal
+                    });
+                    return false;
+                }
+
+                $('#addressLine1, #countryID, #partyEntityType').removeClass('is-invalid');
+                console.log('Form validated:', {
+                    countryCode,
+                    countryName: $('#countryName').val(),
+                    countryID: $('#countryID').val()
+                });
+                return $('#clientPartyForm')[0].checkValidity();
+            }
+
+            // Validate on submit
+            $('button[name="createBtn"], button[name="submitBtn"]').on('click', function(e) {
+                if (!validateForm()) {
+                    e.preventDefault();
+                }
+            });
+
+            // Log form submission
+            $('form').on('submit', function() {
+                console.log('Form submitting:', {
+                    partyEntityType: partyEntityType.val(),
+                    companyName: companyNameInput.val(),
+                    companyId: companyIdInput.val(),
+                    companyCode: companyCodeInput.val(),
+                    countryCode: $('#countryCode').val(),
+                    countryName: $('#countryName').val(),
+                    countryID: $('#countryID').val()
+                });
+            });
 
             // Function to toggle Other input behavior
             function toggleOtherInput() {
@@ -1128,7 +1282,7 @@
                     $otherInput.attr('required', 'required').val('').prop('readonly', false);
 
                     let debounceTimeout;
-                    $otherInput.on('input', function () {
+                    $otherInput.on('input', function() {
                         clearTimeout(debounceTimeout);
                         debounceTimeout = setTimeout(() => {
                             const query = $(this).val().trim();
@@ -1144,25 +1298,32 @@
                             $.ajax({
                                 url: '/api/entities',
                                 type: 'GET',
-                                data: { q: query },
-                                success: function (matches) {
+                                data: {
+                                    q: query
+                                },
+                                success: function(matches) {
                                     $autocompleteList.empty();
                                     matches.forEach(entity => {
-                                        const $div = $('<div class="autocomplete-item"></div>')
-                                            .text(`${entity.name} (${entity.code})`)
+                                        const $div = $(
+                                                '<div class="autocomplete-item"></div>'
+                                            )
+                                            .text(
+                                                `${entity.name} (${entity.code})`
+                                            )
                                             .data('entity', entity);
                                         $autocompleteList.append($div);
                                     });
                                 },
-                                error: function (xhr, status, error) {
+                                error: function(xhr, status, error) {
                                     console.error('Autocomplete error:', status, error);
-                                    $autocompleteList.html('<div>Error loading suggestions</div>');
+                                    $autocompleteList.html(
+                                        '<div>Error loading suggestions</div>');
                                 }
                             });
                         }, 300);
                     });
 
-                    $otherInput.parent().on('click', '.autocomplete-item', function () {
+                    $otherInput.parent().on('click', '.autocomplete-item', function() {
                         const entity = $(this).data('entity');
                         $otherInput.val(entity.name).removeClass('is-invalid');
                         $otherID.val(entity.value);
@@ -1174,12 +1335,12 @@
             }
 
             // Handle partyEntityType change
-            partyEntityType.on('change', function () {
+            partyEntityType.on('change', function() {
                 toggleCompanyInput();
             });
 
             // Handle company dropdown selection
-            companySelect.on('change', function () {
+            companySelect.on('change', function() {
                 const selectedOption = $(this).find('option:selected');
                 const companyName = selectedOption.data('name') || selectedOption.text().split(' (')[0];
                 companyIdInput.val(selectedOption.val());
@@ -1194,7 +1355,7 @@
             });
 
             // Initialize maxCreditLimit input
-            $("#maxCreditLimit").on("input", function () {
+            $("#maxCreditLimit").on("input", function() {
                 let maxCreditLimit = $(this).val();
                 if (maxCreditLimit.startsWith("0")) {
                     $(this).val("1" + maxCreditLimit.slice(1));
@@ -1202,7 +1363,7 @@
             });
 
             // Handle license type and validation
-            $('#licenceTypeID').on('change', function () {
+            $('#licenceTypeID').on('change', function() {
                 const selectedOption = $(this).find('option:selected');
                 $('#licenceTypeCode').val(selectedOption.data('code'));
             });
@@ -1232,7 +1393,7 @@
             toggleLicenseInput();
 
             // License number validation
-            $('#licenceTypeValue').on('input', function () {
+            $('#licenceTypeValue').on('input', function() {
                 const isOverseas = overseasEntityCheckbox.is(':checked');
                 const licenseNo = $(this).val().trim();
                 const partyType = $('#legalEntityType').val() || 'Debtor';
@@ -1249,7 +1410,7 @@
 
                 if (licenseNo && partyType && officeCode) {
                     $.ajax({
-                        url: '{{ route("client-party.check-license") }}',
+                        url: '{{ route('client-party.check-license') }}',
                         method: 'POST',
                         data: {
                             partyType: partyType,
@@ -1257,9 +1418,10 @@
                             officeCode: officeCode,
                             _token: '{{ csrf_token() }}'
                         },
-                        success: function (response) {
+                        success: function(response) {
                             if (response.isDuplicate === 1) {
-                                $('#licenseError').text('License number is already in use: ' + response.remark).show();
+                                $('#licenseError').text('License number is already in use: ' +
+                                    response.remark).show();
                                 $('#licenseSuccess').hide();
                                 $('#licenceTypeValue').addClass('is-invalid');
                                 $('#submitBtn').prop('disabled', true);
@@ -1270,8 +1432,9 @@
                                 $('#submitBtn').prop('disabled', false);
                             }
                         },
-                        error: function (xhr) {
-                            $('#licenseError').text('Error checking license number: ' + (xhr.responseJSON?.error || 'Unknown error')).show();
+                        error: function(xhr) {
+                            $('#licenseError').text('Error checking license number: ' + (xhr
+                                .responseJSON?.error || 'Unknown error')).show();
                             $('#licenseSuccess').hide();
                             $('#licenceTypeValue').addClass('is-invalid');
                             $('#submitBtn').prop('disabled', true);
@@ -1288,7 +1451,7 @@
             // File attachment logic
             let init = 1;
             const max_fields = 3;
-            $(".addAttachment").click(function (e) {
+            $(".addAttachment").click(function(e) {
                 e.preventDefault();
                 e.stopPropagation();
                 const lsthmtl = $(".clone-template").html();
@@ -1298,13 +1461,16 @@
                         const $desc = $('input[name="attachmentDescription[]"]');
                         const $fileInputName = $names.last();
                         const $fileInputDescription = $desc.last();
-                        const allowedExtensions = /(\.jpg|\.jpeg|\.png|\.gif|\.pdf|\.doc|\.xls|\.docx|\.xlsx)$/i;
+                        const allowedExtensions =
+                            /(\.jpg|\.jpeg|\.png|\.gif|\.pdf|\.doc|\.xls|\.docx|\.xlsx)$/i;
                         const fileValue = $fileInputName.val();
                         const descValue = $fileInputDescription.val().trim();
                         if (fileValue) {
                             if (!allowedExtensions.exec(fileValue)) {
                                 $fileInputName.addClass('is-invalid');
-                                alert('Invalid file type. Allowed types: jpg, jpeg, png, gif, pdf, doc, xls, docx, xlsx');
+                                alert(
+                                    'Invalid file type. Allowed types: jpg, jpeg, png, gif, pdf, doc, xls, docx, xlsx'
+                                );
                                 $fileInputName.val('');
                                 return false;
                             }
@@ -1329,7 +1495,7 @@
                 }
             });
 
-            $("body").on("click", ".remove-attachment", function () {
+            $("body").on("click", ".remove-attachment", function() {
                 $(this).parents(".cloned-attachment").remove();
                 init--;
                 console.log('Removed attachment field. Total:', init);
@@ -1343,11 +1509,12 @@
                 const $codeCell = $(`#${id.split('Input')[0]}_Input, #${id}_code`);
                 let debounceTimeout;
 
-                $input.on('input', function () {
+                $input.on('input', function() {
                     clearTimeout(debounceTimeout);
                     debounceTimeout = setTimeout(() => {
                         const query = $(this).val().trim();
-                        const $autocompleteList = $('<div class="autocomplete-list"></div>');
+                        const $autocompleteList = $(
+                            '<div class="autocomplete-list"></div>');
                         $input.parent().find('.autocomplete-list').remove();
                         $input.parent().append($autocompleteList);
 
@@ -1359,25 +1526,33 @@
                         $.ajax({
                             url: '/api/entities',
                             type: 'GET',
-                            data: { q: query },
-                            success: function (matches) {
+                            data: {
+                                q: query
+                            },
+                            success: function(matches) {
                                 $autocompleteList.empty();
                                 matches.forEach(entity => {
-                                    const $div = $('<div class="autocomplete-item"></div>')
-                                        .text(`${entity.name} (${entity.code})`)
+                                    const $div = $(
+                                            '<div class="autocomplete-item"></div>'
+                                        )
+                                        .text(
+                                            `${entity.name} (${entity.code})`
+                                        )
                                         .data('entity', entity);
                                     $autocompleteList.append($div);
                                 });
                             },
-                            error: function (xhr, status, error) {
-                                console.error('Autocomplete error:', status, error);
-                                $autocompleteList.html('<div>Error loading suggestions</div>');
+                            error: function(xhr, status, error) {
+                                console.error('Autocomplete error:', status,
+                                    error);
+                                $autocompleteList.html(
+                                    '<div>Error loading suggestions</div>');
                             }
                         });
                     }, 300);
                 });
 
-                $input.parent().on('click', '.autocomplete-item', function () {
+                $input.parent().on('click', '.autocomplete-item', function() {
                     const entity = $(this).data('entity');
                     $input.val(entity.name).removeClass('is-invalid');
                     $(`#${id.replace('Input', 'ID')}`).val(entity.value);
@@ -1386,7 +1561,7 @@
                     $input.parent().find('.autocomplete-list').remove();
                 });
 
-                $(document).on('click', function (e) {
+                $(document).on('click', function(e) {
                     if (!$(e.target).closest(`#${id}, .autocomplete-list`).length) {
                         $input.parent().find('.autocomplete-list').remove();
                     }
@@ -1398,7 +1573,7 @@
             $('#otherCheck').on('change', toggleOtherInput);
 
             // Other input validation
-            $('#otherInput').on('change', function () {
+            $('#otherInput').on('change', function() {
                 const isOtherChecked = $('#otherCheck').is(':checked');
                 const $otherInput = $('#otherInput');
                 const $otherID = $('#otherID');
@@ -1415,7 +1590,7 @@
             });
 
             // Form submission logging
-            $('form').on('submit', function () {
+            $('form').on('submit', function() {
                 console.log('Form submitting:', {
                     partyEntityType: partyEntityType.val(),
                     companyName: companyNameInput.val(),

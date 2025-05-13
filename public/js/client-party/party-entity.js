@@ -34,3 +34,26 @@ function setPartyEntity(element) {
     $("#partyEntityTypeValue").val(elementID);
     $("#partyEntityResult").empty();
 }
+
+
+
+// $(document).ready(function() {
+//     console.log('party-entity.js loaded, initializing Select2 for #partyEntityType');
+//     $('#partyEntityType').select2({
+//         placeholder: 'Select or search party entity',
+//         allowClear: true,
+//         minimumResultsForSearch: 0 // Show search for small lists
+//     });
+
+//     // Sync hidden input for form submission
+//     $('#partyEntityType').on('select2:select', function(e) {
+//         const value = e.params.data.id;
+//         $('#partyEntityTypeValue').val(value);
+//         console.log('partyEntityType selected:', { value });
+//     });
+
+//     $('#partyEntityType').on('select2:clear', function() {
+//         $('#partyEntityTypeValue').val('');
+//         console.log('partyEntityType cleared');
+//     });
+// });
