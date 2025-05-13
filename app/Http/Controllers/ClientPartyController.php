@@ -1635,7 +1635,6 @@ public function getPaymentTermList($officeCode = null, Request $request = null)
     {
         try {
             $input = Request::all();
-            $countryCode = $input['countryCode'] ?? null;
             $partyType = $input['partyType'] ?? 'Debtor';
             $licenseNo = $input['licenseNo'] ?? null;
             $officeCode = $input['officeCode'] ?? null;
@@ -1644,13 +1643,12 @@ public function getPaymentTermList($officeCode = null, Request $request = null)
             $partyType = str_contains($partyType, 'Debtor') ? 'Debtor' : $partyType;
 
             Log::info('Checking license for duplicate:', [
-                'countryCode' => $countryCode,
                 'partyType' => $partyType,
                 'licenseNo' => $licenseNo,
                 'officeCode' => $officeCode
             ]);
 
-            if (empty($countryCode) || empty($partyType) || empty($licenseNo) || empty($officeCode)) {
+            if (empty($partyType) || empty($licenseNo) || empty($officeCode)) {
                 return response()->json(['error' => 'Missing required fields'], 400);
             }
 
@@ -1659,16 +1657,15 @@ public function getPaymentTermList($officeCode = null, Request $request = null)
                 'SET NOCOUNT ON;
                  DECLARE @Status AS VARCHAR(20),
                          @Remark AS VARCHAR(100),
-                         @IsDuplicate AS INT;
-                 EXEC dbo.sp_LicenseNoCheck @CountryCode = ?, @PartyType = ?, @LicenseNo = ?, @officeCode = ?,
+                         @IsDuplicate AS BIT;
+                 EXEC dbo.sp_LicenseNoCheck @officeCode = ?, @PartyType = ?, @LicenseNo = ?,
                       @Status = @Status OUTPUT, @Remark = @Remark OUTPUT, @IsDuplicate = @IsDuplicate OUTPUT;
                  SELECT @Status AS Status, @Remark AS Remark, @IsDuplicate AS IsDuplicate',
-                [$countryCode, $partyType, $licenseNo, $officeCode]
+                [$officeCode, $partyType, $licenseNo]
             );
 
             if (empty($results)) {
                 Log::warning('sp_LicenseNoCheck returned no results', [
-                    'countryCode' => $countryCode,
                     'partyType' => $partyType,
                     'licenseNo' => $licenseNo,
                     'officeCode' => $officeCode
@@ -1687,7 +1684,6 @@ public function getPaymentTermList($officeCode = null, Request $request = null)
             ]);
         } catch (\Illuminate\Database\QueryException $e) {
             Log::error('sp_LicenseNoCheck Error: ' . $e->getMessage(), [
-                'countryCode' => $countryCode,
                 'partyType' => $partyType,
                 'licenseNo' => $licenseNo,
                 'officeCode' => $officeCode,
@@ -1696,6 +1692,8 @@ public function getPaymentTermList($officeCode = null, Request $request = null)
             return response()->json(['error' => 'Database error while checking license'], 500);
         }
     }
+
+    
 public function getCompanies()
 {
     try {

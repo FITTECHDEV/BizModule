@@ -461,7 +461,7 @@
                                                                         @foreach ($payTerms as $term)
                                                                             <option value="{{ $term['CreditDays'] }}"
                                                                                 @if (old('creditDays') == $term['CreditDays']) selected @endif>
-                                                                                {{ $term['CreditDays'] }} Days
+                                                                                {{ $term['CreditDays'] }}
                                                                             </option>
                                                                         @endforeach
                                                                     @endif
@@ -612,11 +612,18 @@
                                         data-placement="top" title="Save"><i class="fa fa-plus-circle"
                                             aria-hidden="true"></i> Save for Later</button>
                                 </div>
+
+
+
+                                        {{-- Admin details --}}
+
                                 @if (Auth::user()->can('create-client-party'))
                                     <div id="admin-details" class="content" role="tabpanel"
                                         aria-labelledby="admin-details-trigger">
                                         <div class="row justify-content-center">
                                             <div class="com-md-6 col-xl-6 col-sm-12 col-lg-6">
+
+
                                                 <fieldset class="border p-2 card shadow-lg mb-0 pt-0 pb-0">
                                                     <legend class="w-auto p-0 m-0"></legend>
                                                     <table class="table table-sm">
@@ -626,91 +633,78 @@
                                                             <th>Select</th>
                                                             <th>Code</th>
                                                         </thead>
-                                                        <tr id="client-check">
-                                                            <td>Client</td>
-                                                            <td><input type="checkbox" name="clientCheck"
-                                                                    id="clientCheck"></td>
-                                                            <td>
-                                                                <input type="text" name="clientInput" id="clientInput"
-                                                                    value="{{ old('clientInput') }}"
-                                                                    class="form-control form-control-sm" required>
-                                                                <input type="hidden" name="clientID" id="clientID"
-                                                                    value="{{ old('clientID') }}">
-                                                                <input type="hidden" name="clientCode" id="clientCode"
-                                                                    value="{{ old('clientCode') }}">
-                                                            </td>
-                                                            <td id="client_Input"></td>
-                                                        </tr>
-                                                        <tr id="shipper-check">
-                                                            <td>Shipper</td>
-                                                            <td><input type="checkbox" name="shipperCheck"
-                                                                    id="shipperCheck"></td>
-                                                            <td>
-                                                                <input type="text" name="shipperInput"
-                                                                    id="shipperInput" class="form-control form-control-sm"
-                                                                    required>
-                                                                <input type="hidden" name="shipperID" id="shipperID">
-                                                                <input type="hidden" name="shipperCode"
-                                                                    id="shipperCode">
-                                                            </td>
-                                                            <td id="shipper_Input"></td>
-                                                        </tr>
-                                                        <tr id="consignee-check">
-                                                            <td>Consignee</td>
-                                                            <td><input type="checkbox" name="consigneeCheck"
-                                                                    id="consigneeCheck"></td>
-                                                            <td>
-                                                                <input type="text" name="consigneeInput"
-                                                                    id="consigneeInput"
-                                                                    class="form-control form-control-sm" required>
-                                                                <input type="hidden" name="consigneeID"
-                                                                    id="consigneeID">
-                                                                <input type="hidden" name="consigneeCode"
-                                                                    id="consigneeCode">
-                                                            </td>
-                                                            <td id="consignee_Input"></td>
-                                                        </tr>
-                                                        <tr>
-                                                            <td>Other</td>
-                                                            <td><input type="checkbox" name="otherCheck" id="otherCheck"
-                                                                    value="1"></td>
-                                                            <td>
-                                                                <input type="text" name="otherInput" id="otherInput"
-                                                                    class="form-control form-control-sm"
-                                                                    autocomplete="off">
-                                                                <input type="hidden" name="otherID" id="otherID">
-                                                                <input type="hidden" name="otherCode" id="otherCode">
-                                                                <div class="invalid-feedback">Please select or enter a
-                                                                    name.</div>
-                                                            </td>
-                                                            <td id="other_Input"></td>
-                                                        </tr>
-                                                        <tr id="debtor-check">
-                                                            <td>Debtor</td>
-                                                            <td><input type="checkbox" name="debtorCheck"
-                                                                    id="debtorCheck"></td>
-                                                            <td>
-                                                                <input type="text" name="debtor" id="debtor"
-                                                                    class="form-control form-control-sm" required>
-                                                                <input type="hidden" name="debtorID" id="debtorID">
-                                                                <input type="hidden" name="debtorCode" id="debtorCode">
-                                                            </td>
-                                                            <td id="debtor_code"></td>
-                                                        </tr>
-                                                        <tr id="vendor-check">
-                                                            <td>Vendor</td>
-                                                            <td><input type="checkbox" name="vendorCheck"
-                                                                    id="vendorCheck"></td>
-                                                            <td>
-                                                                <input type="text" name="vendor" id="vendor"
-                                                                    class="form-control form-control-sm" required>
-                                                                <input type="hidden" name="vendorID" id="vendorID">
-                                                                <input type="hidden" name="vendorCode" id="vendorCode">
-                                                            </td>
-                                                            <td id="vendor_code"></td>
-                                                        </tr>
+                                                        <tbody>
+                                                            <!-- Hidden rows for Client, Shipper, Consignee, and Other -->
+                                                            <tr id="client-check" class="hidden-row">
+                                                                <td>Client</td>
+                                                                <td><input type="checkbox" name="clientCheck" id="clientCheck"></td>
+                                                                <td>
+                                                                    <input type="text" name="clientInput" id="clientInput" value="{{ old('clientInput') }}"
+                                                                        class="form-control form-control-sm" required>
+                                                                    <input type="hidden" name="clientID" id="clientID" value="{{ old('clientID') }}">
+                                                                    <input type="hidden" name="clientCode" id="clientCode" value="{{ old('clientCode') }}">
+                                                                </td>
+                                                                <td id="client_Input"></td>
+                                                            </tr>
+                                                            <tr id="shipper-check" class="hidden-row">
+                                                                <td>Shipper</td>
+                                                                <td><input type="checkbox" name="shipperCheck" id="shipperCheck"></td>
+                                                                <td>
+                                                                    <input type="text" name="shipperInput" id="shipperInput" class="form-control form-control-sm" required>
+                                                                    <input type="hidden" name="shipperID" id="shipperID">
+                                                                    <input type="hidden" name="shipperCode" id="shipperCode">
+                                                                </td>
+                                                                <td id="shipper_Input"></td>
+                                                            </tr>
+                                                            <tr id="consignee-check" class="hidden-row">
+                                                                <td>Consignee</td>
+                                                                <td><input type="checkbox" name="consigneeCheck" id="consigneeCheck"></td>
+                                                                <td>
+                                                                    <input type="text" name="consigneeInput" id="consigneeInput" class="form-control form-control-sm"
+                                                                        required>
+                                                                    <input type="hidden" name="consigneeID" id="consigneeID">
+                                                                    <input type="hidden" name="consigneeCode" id="consigneeCode">
+                                                                </td>
+                                                                <td id="consignee_Input"></td>
+                                                            </tr>
+                                                            <tr id="other-check" class="hidden-row">
+                                                                <td>Other</td>
+                                                                <td><input type="checkbox" name="otherCheck" id="otherCheck" value="1"></td>
+                                                                <td>
+                                                                    <input type="text" name="otherInput" id="otherInput" class="form-control form-control-sm"
+                                                                        autocomplete="off">
+                                                                    <input type="hidden" name="other  <input type="hidden" name="otherID" id="otherID">
+                                                                    <input type="hidden" name="otherCode" id="otherCode">
+                                                                    <div class="invalid-feedback">Please select or enter a name.</div>
+                                                                </td>
+                                                                <td id="other_Input"></td>
+                                                            </tr>
+                                                            <!-- Visible rows for Debtor and Vendor -->
+                                                            <tr id="debtor-check">
+                                                                <td>Debtor</td>
+                                                                <td><input type="checkbox" name="debtorCheck" id="debtorCheck"></td>
+                                                                <td>
+                                                                    <input type="text" name="debtor" id="debtor" class="form-control form-control-sm" required>
+                                                                    <input type="hidden" name="debtorID" id="debtorID">
+                                                                    <input type="hidden" name="debtorCode" id="debtorCode">
+                                                                </td>
+                                                                <td id="debtor_code"></td>
+                                                            </tr>
+                                                            <tr id="vendor-check">
+                                                                <td>Vendor</td>
+                                                                <td><input type="checkbox" name="vendorCheck" id="vendorCheck"></td>
+                                                                <td>
+                                                                    <input type="text" name="vendor" id="vendor" class="form-control form-control-sm" required>
+                                                                    <input type="hidden" name="vendorID" id="vendorID">
+                                                                    <input type="hidden" name="vendorCode" id="vendorCode">
+                                                                </td>
+                                                                <td id="vendor_code"></td>
+                                                            </tr>
+                                                        </tbody>
                                                     </table>
                                                 </fieldset>
+
+
                                             </div>
                                         </div>
                                         <button class="btn btn-primary mt-2" type="button" name="previous"
@@ -741,7 +735,7 @@
         </div>
     </div>
 @stop
-
+{{-- CSS --}}
 @section('css')
     {{-- stepper css --}}
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bs-stepper/dist/css/bs-stepper.min.css">
@@ -911,6 +905,12 @@
             pointer-events: none;
             /* Prevents clicking or focusing */
         }
+        .hidden-row {
+         display: none;
+        }
+        #companyDropdown {
+            display: block ;
+        }
     </style>
     <link rel="stylesheet" href="//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
     <style>
@@ -928,7 +928,15 @@
     </style>
 @stop
 
+{{-- JS --}}
 @section('js')
+    <script src="//code.jquery.com/jquery-1.12.4.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bs-stepper/dist/js/bs-stepper.min.js"></script>
+    <script src="{{ asset('js/client-party/party-entity.js') }}"></script>
+    <script src="{{ asset('js/client-party/validation.js') }}"></script>
+    <script src="{{ asset('js/client-party/sub-form.js') }}"></script>
+    <script src="{{ asset('js/client-party/jquery-number/jquery.number.min.js') }}"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
     <script>
         /* Ajax setup CSRF */
         $.ajaxSetup({
@@ -936,8 +944,7 @@
                 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
             }
         });
-    </script>
-    <script>
+
         $(document).ready(function () {
             // Cache DOM elements
             const partyEntityType = $('#partyEntityType');
@@ -950,35 +957,49 @@
             const debtorType = $('#debtorType');
             const vendorType = $('#vendorType');
             const requestType = new URLSearchParams(window.location.search).get('type');
-            const overseasEntityCheckbox = $('#overseasEntity'); // New checkbox
-            const licenceTypeValue = $('#licenceTypeValue'); // License number input
+            const overseasEntityCheckbox = $('#overseasEntity');
+            const licenceTypeValue = $('#licenceTypeValue');
 
             // Function to toggle input/dropdown visibility
             function toggleCompanyInput() {
-                const selectedType = partyEntityType.val();
+                let selectedType = partyEntityType.val() || '';
+                // Map selectedType to match database entity_type or stored procedure output
+                const typeMapping = {
+                    'Agent/Forwarder': 'Forwarder', // Try 'Forwarder' (stored procedure output); update to 'Agent/Forwarder' or 'AgentForwarder' if needed
+                    'ShippingLine': 'Shipping Line', // Matches stored procedure CASE
+                    'Trucker': 'Trucker / Transporter', // Matches stored procedure CASE
+                    'Airline': 'Airline', // Matches stored procedure CASE
+                    'Client': 'Client', // Matches stored procedure CASE
+                    'CreateonlyinD365': 'Create only in D365'
+                };
+                const normalizedType = selectedType.replace(/\s*\/\s*/g, '/').replace(/\s+/g, '');
+                const apiType = typeMapping[normalizedType] || selectedType;
+
+                // Reset visibility
+                companyNameInput.hide();
+                companyDropdown.hide();
                 legalEntityType.find('option').prop('disabled', false).show();
                 clearBasicDetails();
-                companyNameInput.hide();
-                companyDropdown.hide(); // Hide dropdown by default
                 toggleFieldsReadonly(false);
 
+                // Standardize entity types for dropdown
                 const dropdownTypes = ['Client', 'Agent/Forwarder', 'Airline', 'ShippingLine', 'Trucker'];
 
                 if (requestType === 'accounting') {
                     if (selectedType === 'Create only in D365') {
                         companyNameInput.show();
-                        companyDropdown.hide(); // Explicitly hide dropdown
+                        companyDropdown.css('display', 'none'); // Explicitly hide to override CSS
                         legalEntityType.find('option').each(function () {
                             const value = $(this).val();
                             if (value && value !== 'Only in D365 Debtor' && value !== 'Only in D365 Vendor') {
                                 $(this).prop('disabled', true).hide();
                             }
                         });
-                    } else if (dropdownTypes.includes(selectedType)) {
+                    } else if (dropdownTypes.includes(normalizedType)) {
                         companyDropdown.show();
-                        companyNameInput.hide(); // Ensure input is hidden
+                        companyNameInput.hide();
                         toggleFieldsReadonly(true);
-                        loadCompanies(selectedType);
+                        loadCompanies(apiType);
                         legalEntityType.find('option').each(function () {
                             const value = $(this).val();
                             if (value === 'Only in D365 Debtor' || value === 'Only in D365 Vendor') {
@@ -988,38 +1009,51 @@
                     }
                 } else {
                     companyNameInput.show();
-                    companyDropdown.hide(); // Hide dropdown for non-accounting
+                    companyDropdown.css('display', 'none'); // Explicitly hide
                 }
 
                 legalEntityType.val('');
-                console.log('toggleCompanyInput: requestType=', requestType, 'selectedType=', selectedType, 'companyNameVisible=', companyNameInput.is(':visible'), 'companyDropdownVisible=', companyDropdown.is(':visible'));
+                console.log('toggleCompanyInput: requestType=', requestType,
+                            'selectedType=', selectedType,
+                            'normalizedType=', normalizedType,
+                            'apiType=', apiType,
+                            'dropdownTypesIncludes=', dropdownTypes.includes(normalizedType),
+                            'companyNameVisible=', companyNameInput.is(':visible'),
+                            'companyDropdownVisible=', companyDropdown.is(':visible'),
+                            'dropdownTypes=', dropdownTypes);
             }
 
             // Function to load companies via AJAX
             function loadCompanies(entityType) {
+                console.log('loadCompanies: Fetching companies for entityType=', entityType);
                 $.ajax({
                     url: '{{ route("companies") }}',
                     method: 'GET',
                     data: { entityType: entityType },
                     success: function (data) {
+                        console.log('loadCompanies: API response=', data);
                         companySelect.find('option:not(:first)').remove();
                         if (data.error) {
                             companySelect.append('<option value="" disabled>' + data.error + '</option>');
                             console.error('API error:', data.error);
+                            companyDropdown.show();
                         } else if (data.length === 0) {
                             companySelect.append('<option value="" disabled>No companies found</option>');
+                            companyDropdown.show();
                         } else {
                             $.each(data, function (index, company) {
                                 companySelect.append(
                                     `<option value="${company.id}" data-code="${company.code}" data-name="${company.name}">${company.name} (${company.code})</option>`
                                 );
                             });
+                            companyDropdown.show();
                         }
                     },
                     error: function (xhr) {
                         console.error('Error fetching companies:', xhr.responseJSON?.error || xhr.statusText);
                         companySelect.find('option:not(:first)').remove();
                         companySelect.append('<option value="" disabled>Error loading companies</option>');
+                        companyDropdown.show();
                         alert('Failed to load company list. Please try again.');
                     }
                 });
@@ -1077,6 +1111,68 @@
                 });
             }
 
+            // Function to toggle Other input behavior
+            function toggleOtherInput() {
+                const isOtherChecked = $('#otherCheck').is(':checked');
+                const $otherInput = $('#otherInput');
+                const $otherID = $('#otherID');
+                const $otherCode = $('#otherCode');
+                const $otherInputDisplay = $('#other_Input');
+
+                if (isOtherChecked) {
+                    $otherInput.attr('required', 'required').val('').off('input').prop('readonly', false);
+                    $otherID.val('');
+                    $otherCode.val('');
+                    $otherInputDisplay.text('');
+                } else {
+                    $otherInput.attr('required', 'required').val('').prop('readonly', false);
+
+                    let debounceTimeout;
+                    $otherInput.on('input', function () {
+                        clearTimeout(debounceTimeout);
+                        debounceTimeout = setTimeout(() => {
+                            const query = $(this).val().trim();
+                            const $autocompleteList = $('<div class="autocomplete-list"></div>');
+                            $otherInput.parent().find('.autocomplete-list').remove();
+                            $otherInput.parent().append($autocompleteList);
+
+                            if (!query) {
+                                $autocompleteList.empty();
+                                return;
+                            }
+
+                            $.ajax({
+                                url: '/api/entities',
+                                type: 'GET',
+                                data: { q: query },
+                                success: function (matches) {
+                                    $autocompleteList.empty();
+                                    matches.forEach(entity => {
+                                        const $div = $('<div class="autocomplete-item"></div>')
+                                            .text(`${entity.name} (${entity.code})`)
+                                            .data('entity', entity);
+                                        $autocompleteList.append($div);
+                                    });
+                                },
+                                error: function (xhr, status, error) {
+                                    console.error('Autocomplete error:', status, error);
+                                    $autocompleteList.html('<div>Error loading suggestions</div>');
+                                }
+                            });
+                        }, 300);
+                    });
+
+                    $otherInput.parent().on('click', '.autocomplete-item', function () {
+                        const entity = $(this).data('entity');
+                        $otherInput.val(entity.name).removeClass('is-invalid');
+                        $otherID.val(entity.value);
+                        $otherCode.val(entity.code);
+                        $otherInputDisplay.text(entity.code);
+                        $otherInput.parent().find('.autocomplete-list').remove();
+                    });
+                }
+            }
+
             // Handle partyEntityType change
             partyEntityType.on('change', function () {
                 toggleCompanyInput();
@@ -1127,37 +1223,35 @@
                     licenceTypeValue
                         .prop('disabled', false)
                         .attr('required', 'required');
-                    $('#licenseSuccess').hide(); // Hide success message when enabling
+                    $('#licenseSuccess').hide();
                 }
             }
 
             // Initialize overseasEntity checkbox
             overseasEntityCheckbox.on('change', toggleLicenseInput);
-            toggleLicenseInput(); // Run on page load
+            toggleLicenseInput();
 
+            // License number validation
             $('#licenceTypeValue').on('input', function () {
                 const isOverseas = overseasEntityCheckbox.is(':checked');
                 const licenseNo = $(this).val().trim();
-                const countryCode = $('#countryCode').val();
                 const partyType = $('#legalEntityType').val() || 'Debtor';
                 const officeCode = $('#officeCode').val() || '';
 
-                $('#licenseSuccess').hide(); // Clear success message on input
+                $('#licenseSuccess').hide();
 
                 if (isOverseas) {
-                    // Skip duplicate check if overseas entity
                     $('#licenseError').hide();
                     $('#licenceTypeValue').removeClass('is-invalid');
                     $('#submitBtn').prop('disabled', false);
                     return;
                 }
 
-                if (licenseNo && countryCode && partyType && officeCode) {
+                if (licenseNo && partyType && officeCode) {
                     $.ajax({
                         url: '{{ route("client-party.check-license") }}',
                         method: 'POST',
                         data: {
-                            countryCode: countryCode,
                             partyType: partyType,
                             licenseNo: licenseNo,
                             officeCode: officeCode,
@@ -1242,7 +1336,7 @@
             });
 
             // Admin details autocomplete
-            const inputs = ['clientInput', 'shipperInput', 'consigneeInput', 'debtor', 'vendor', 'otherInput'];
+            const inputs = ['debtor', 'vendor', 'otherInput'];
             inputs.forEach(id => {
                 const $input = $(`#${id}`);
                 if (!$input.length) return;
@@ -1299,71 +1393,11 @@
                 });
             });
 
-            // Other input toggle
-            function toggleOtherInput() {
-                const isOtherChecked = $('#otherCheck').is(':checked');
-                const $otherInput = $('#otherInput');
-                const $otherID = $('#otherID');
-                const $otherCode = $('#otherCode');
-                const $otherInputDisplay = $('#other_Input');
-
-                if (isOtherChecked) {
-                    $otherInput.attr('required', 'required').val('').off('input').prop('readonly', false);
-                    $otherID.val('');
-                    $otherCode.val('');
-                    $otherInputDisplay.text('');
-                } else {
-                    $otherInput.attr('required', 'required').val('').prop('readonly', false);
-
-                    let debounceTimeout;
-                    $otherInput.on('input', function () {
-                        clearTimeout(debounceTimeout);
-                        debounceTimeout = setTimeout(() => {
-                            const query = $(this).val().trim();
-                            const $autocompleteList = $('<div class="autocomplete-list"></div>');
-                            $otherInput.parent().find('.autocomplete-list').remove();
-                            $otherInput.parent().append($autocompleteList);
-
-                            if (!query) {
-                                $autocompleteList.empty();
-                                return;
-                            }
-
-                            $.ajax({
-                                url: '/api/entities',
-                                type: 'GET',
-                                data: { q: query },
-                                success: function (matches) {
-                                    $autocompleteList.empty();
-                                    matches.forEach(entity => {
-                                        const $div = $('<div class="autocomplete-item"></div>')
-                                            .text(`${entity.name} (${entity.code})`)
-                                            .data('entity', entity);
-                                        $autocompleteList.append($div);
-                                    });
-                                },
-                                error: function (xhr, status, error) {
-                                    console.error('Autocomplete error:', status, error);
-                                    $autocompleteList.html('<div>Error loading suggestions</div>');
-                                }
-                            });
-                        }, 300);
-                    });
-
-                    $otherInput.parent().on('click', '.autocomplete-item', function () {
-                        const entity = $(this).data('entity');
-                        $otherInput.val(entity.name).removeClass('is-invalid');
-                        $otherID.val(entity.value);
-                        $otherCode.val(entity.code);
-                        $otherInputDisplay.text(entity.code);
-                        $otherInput.parent().find('.autocomplete-list').remove();
-                    });
-                }
-            }
-
+            // Initialize toggleOtherInput
             toggleOtherInput();
             $('#otherCheck').on('change', toggleOtherInput);
 
+            // Other input validation
             $('#otherInput').on('change', function () {
                 const isOtherChecked = $('#otherCheck').is(':checked');
                 const $otherInput = $('#otherInput');
@@ -1379,16 +1413,6 @@
                     $otherInput.removeClass('is-invalid');
                 }
             });
-
-            // Show/hide fields based on request type
-            if (requestType === "operational") {
-                partyEntityType.closest(".col-md-6").show();
-                legalEntityType.closest(".col-md-6").hide();
-                $("#debtor-vendor").hide();
-            } else if (requestType === "accounting") {
-                partyEntityType.closest(".col-md-6").show();
-                legalEntityType.closest(".col-md-6").show();
-            }
 
             // Form submission logging
             $('form').on('submit', function () {
@@ -1406,18 +1430,20 @@
                 });
             });
 
+            // Show/hide fields based on request type
+            if (requestType === "operational") {
+                partyEntityType.closest(".col-md-6").show();
+                legalEntityType.closest(".col-md-6").hide();
+                $("#debtor-vendor").hide();
+            } else if (requestType === "accounting") {
+                partyEntityType.closest(".col-md-6").show();
+                legalEntityType.closest(".col-md-6").show();
+            }
+
             // Initialize on page load
             toggleCompanyInput();
         });
-    </script>
-    <script src="//code.jquery.com/jquery-1.12.4.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bs-stepper/dist/js/bs-stepper.min.js"></script>
-    <script src="{{ asset('js/client-party/party-entity.js') }}"></script>
-    <script src="{{ asset('js/client-party/validation.js') }}"></script>
-    <script src="{{ asset('js/client-party/sub-form.js') }}"></script>
-    <script src="{{ asset('js/client-party/jquery-number/jquery.number.min.js') }}"></script>
-    <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
-    <script>
+
         /** Get user authorization status */
         window.User = {
             value: '{{ auth()->user()->can('edit-client-party') }}'
