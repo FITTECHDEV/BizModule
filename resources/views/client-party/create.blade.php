@@ -1128,12 +1128,15 @@
             }
 
             // Function to toggle field readonly/disabled state
-          function toggleFieldsReadonly(disable) {
-    $('.basic-detail-field').not('#countryCode, #countryName, #countryID').each(function() {
-        $(this).prop('readonly', disable).prop('disabled', disable);
-    });
-    console.log('toggleFieldsReadonly:', { disable, countryCodeDisabled: $('#countryCode').prop('disabled') });
-}
+            function toggleFieldsReadonly(disable) {
+                $('.basic-detail-field').not('#countryCode, #countryName, #countryID').each(function() {
+                    $(this).prop('readonly', disable).prop('disabled', disable);
+                });
+                console.log('toggleFieldsReadonly:', {
+                    disable,
+                    countryCodeDisabled: $('#countryCode').prop('disabled')
+                });
+            }
 
             // Function to fetch and populate company details
             function fetchCompanyDetails(entityType, companyId) {
@@ -1154,7 +1157,7 @@
                             });
                             alert(
                                 'Warning: No country code for this company. Please select a country manually.'
-                                );
+                            );
                         }
                         $('#addressLine1').val(data.addressLine1 || '');
                         $('#addressLine2').val(data.addressLine2 || '');
