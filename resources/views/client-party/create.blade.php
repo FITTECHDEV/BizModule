@@ -1167,10 +1167,10 @@
                         $('#countryID').val(data.countryID || '').trigger('change');
                         $('#countryCode').val(data.countryCode || '');
                         $('#countryName').val(data.countryName || '');
-                        $('#firstName').val(data.firstName || '');
-                        $('#lastName').val(data.lastName || '');
+                        $('#firstName').val(data.firstName || '-');
+                        $('#lastName').val(data.lastName || '-');
                         $('#department').val(data.department || '');
-                        $('#phoneNo').val(data.phoneNo || '');
+                        $('#phoneNo').val(data.phoneNo || '0');
                         $('#contractEmail').val(data.contractEmail || '');
                         console.log('fetchCompanyDetails: Set countryCode=', $('#countryCode').val(),
                             'countryID=', $('#countryID').val(), 'countryName=', $('#countryName').val());
