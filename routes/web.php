@@ -310,3 +310,4 @@ Route::post('/client-party/check-license', [ClientPartyController::class, 'check
 // routes/api.php or routes/web.php
 Route::get('/api/companies', [ClientPartyController::class, 'getCompanies'])->name('companies');
 Route::get('/api/company-details', [ClientPartyController::class, 'getCompanyDetails'])->name('company.details');
+Route::post('/client-party/fetch-address-details', [ClientPartyController::class, 'fetchAddressDetails'])->name('client-party.fetch-address-details');

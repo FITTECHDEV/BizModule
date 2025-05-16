@@ -776,6 +776,7 @@
         </div>
     </div>
 @stop
+
 {{-- CSS --}}
 @section('css')
     {{-- stepper css --}}
@@ -978,7 +979,7 @@
 
 {{-- JS --}}
 
-@section('js')
+ @section('js')
     <script src="//code.jquery.com/jquery-1.12.4.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bs-stepper@1.7.0/dist/js/bs-stepper.min.js"></script>
@@ -1006,6 +1007,8 @@
             const companyCodeInput = $('#companyCode');
             const debtorType = $('#debtorType');
             const vendorType = $('#vendorType');
+            const creditDays = $('#creditDays');
+            const maxCreditLimit = $('#maxCreditLimit');
             const requestType = new URLSearchParams(window.location.search).get('type');
             const overseasEntityCheckbox = $('#overseasEntity');
             const licenceTypeValue = $('#licenceTypeValue');
@@ -1015,11 +1018,11 @@
                 let selectedType = partyEntityType.val() || '';
                 // Map selectedType to match database entity_type or stored procedure output
                 const typeMapping = {
-                    'Agent/Forwarder': 'Forwarder', // Try 'Forwarder' (stored procedure output); update to 'Agent/Forwarder' or 'AgentForwarder' if needed
-                    'ShippingLine': 'Shipping Line', // Matches stored procedure CASE
-                    'Trucker': 'Trucker / Transporter', // Matches stored procedure CASE
-                    'Airline': 'Airline', // Matches stored procedure CASE
-                    'Client': 'Client', // Matches stored procedure CASE
+                    'Agent/Forwarder': 'Forwarder',
+                    'ShippingLine': 'Shipping Line',
+                    'Trucker': 'Trucker / Transporter',
+                    'Airline': 'Airline',
+                    'Client': 'Client',
                     'CreateonlyinD365': 'Create only in D365'
                 };
                 const normalizedType = selectedType.replace(/\s*\/\s*/g, '/').replace(/\s+/g, '');
@@ -1038,11 +1041,10 @@
                 if (requestType === 'accounting') {
                     if (selectedType === 'Create only in D365') {
                         companyNameInput.show();
-                        companyDropdown.css('display', 'none'); // Explicitly hide to override CSS
+                        companyDropdown.css('display', 'none');
                         legalEntityType.find('option').each(function() {
                             const value = $(this).val();
-                            if (value && value !== 'Only in D365 Debtor' && value !==
-                                'Only in D365 Vendor') {
+                            if (value && value !== 'Only in D365 Debtor' && value !== 'Only in D365 Vendor') {
                                 $(this).prop('disabled', true).hide();
                             }
                         });
@@ -1060,7 +1062,7 @@
                     }
                 } else {
                     companyNameInput.show();
-                    companyDropdown.css('display', 'none'); // Explicitly hide
+                    companyDropdown.css('display', 'none');
                 }
 
                 legalEntityType.val('');
@@ -1087,13 +1089,11 @@
                         console.log('loadCompanies: API response=', data);
                         companySelect.find('option:not(:first)').remove();
                         if (data.error) {
-                            companySelect.append('<option value="" disabled>' + data.error +
-                                '</option>');
+                            companySelect.append('<option value="" disabled>' + data.error + '</option>');
                             console.error('API error:', data.error);
                             companyDropdown.show();
                         } else if (data.length === 0) {
-                            companySelect.append(
-                                '<option value="" disabled>No companies found</option>');
+                            companySelect.append('<option value="" disabled>No companies found</option>');
                             companyDropdown.show();
                         } else {
                             $.each(data, function(index, company) {
@@ -1105,11 +1105,9 @@
                         }
                     },
                     error: function(xhr) {
-                        console.error('Error fetching companies:', xhr.responseJSON?.error || xhr
-                            .statusText);
+                        console.error('Error fetching companies:', xhr.responseJSON?.error || xhr.statusText);
                         companySelect.find('option:not(:first)').remove();
-                        companySelect.append(
-                            '<option value="" disabled>Error loading companies</option>');
+                        companySelect.append('<option value="" disabled>Error loading companies</option>');
                         companyDropdown.show();
                         alert('Failed to load company list. Please try again.');
                     }
@@ -1155,9 +1153,7 @@
                                 countryCode: data.countryCode,
                                 countryID: data.countryID
                             });
-                            alert(
-                                'Warning: No country code for this company. Please select a country manually.'
-                            );
+                            alert('Warning: No country code for this company. Please select a country manually.');
                         }
                         $('#addressLine1').val(data.addressLine1 || '');
                         $('#addressLine2').val(data.addressLine2 || '');
@@ -1168,7 +1164,7 @@
                         $('#provinceCode').val(data.provinceCode || '');
                         $('#cityID').val(data.cityID || '');
                         $('#cityCode').val(data.cityCode || '');
-                        $('#countryID').val(data.countryID || '').trigger('change'); // Trigger change
+                        $('#countryID').val(data.countryID || '').trigger('change');
                         $('#countryCode').val(data.countryCode || '');
                         $('#countryName').val(data.countryName || '');
                         $('#firstName').val(data.firstName || '');
@@ -1177,18 +1173,41 @@
                         $('#phoneNo').val(data.phoneNo || '');
                         $('#contractEmail').val(data.contractEmail || '');
                         console.log('fetchCompanyDetails: Set countryCode=', $('#countryCode').val(),
-                            'countryID=', $('#countryID').val(), 'countryName=', $('#countryName')
-                            .val());
+                            'countryID=', $('#countryID').val(), 'countryName=', $('#countryName').val());
                     },
                     error: function(xhr) {
-                        console.error('Error fetching company details:', xhr.responseJSON?.error || xhr
-                            .statusText);
+                        console.error('Error fetching company details:', xhr.responseJSON?.error || xhr.statusText);
                         clearBasicDetails();
                         toggleFieldsReadonly(true);
                         alert('Failed to retrieve company details.');
                     }
                 });
             }
+
+            // Function to handle debtorType change for Cush Custom
+            function handleDebtorTypeChange() {
+                const debtorTypeValue = debtorType.val();
+                console.log('debtorType changed:', { debtorType: debtorTypeValue });
+
+                if (debtorTypeValue === 'CASHCUSTOM') {
+                    creditDays.val('0').prop('readonly', true).prop('disabled', true);
+                    maxCreditLimit.val('0').prop('readonly', true).prop('disabled', true);
+                    console.log('Cush Custom selected: Set creditDays=0, maxCreditLimit=0, fields readonly');
+                } else {
+                    creditDays.prop('readonly', false).prop('disabled', false);
+                    maxCreditLimit.prop('readonly', false).prop('disabled', false);
+                    // Optionally reset to default values if needed
+                    // creditDays.val('');
+                    // maxCreditLimit.val('');
+                    console.log('Non-Cush Custom selected: creditDays and maxCreditLimit editable');
+                }
+            }
+
+            // Bind debtorType change handler
+            debtorType.on('change', handleDebtorTypeChange);
+
+            // Initialize debtorType behavior on page load
+            handleDebtorTypeChange();
 
             if ($('#countryID').length) {
                 $('#countryID').on('change', function() {
@@ -1201,12 +1220,10 @@
                         countryID: $(this).val(),
                         countryCode: countryCode,
                         countryName: countryName,
-                        countryIdOptionExists: $(this).find(`option[value="${$(this).val()}"]`)
-                            .length > 0
+                        countryIdOptionExists: $(this).find(`option[value="${$(this).val()}"]`).length > 0
                     });
                     if (!countryCode) {
-                        console.warn(
-                            'countryID changed: No countryCode set. Please select a valid country.');
+                        console.warn('countryID changed: No countryCode set. Please select a valid country.');
                         $('#countryID').addClass('is-invalid');
                     } else {
                         $('#countryID').removeClass('is-invalid');
@@ -1215,7 +1232,8 @@
             } else {
                 console.error('countryID select not found');
             }
-            // Form validation NEW ONE
+
+            // Form validation
             function validateForm() {
                 const addressLine1 = $('#addressLine1').val().trim();
                 const countryCode = $('#countryCode').val().trim();
@@ -1262,9 +1280,9 @@
                     companyName: companyNameInput.val(),
                     companyId: companyIdInput.val(),
                     companyCode: companyCodeInput.val(),
-                    countryCode: $('#countryCode').val(),
-                    countryName: $('#countryName').val(),
-                    countryID: $('#countryID').val()
+                    debtorType: debtorType.val(),
+                    creditDays: creditDays.val(),
+                    maxCreditLimit: maxCreditLimit.val()
                 });
             });
 
@@ -1307,20 +1325,15 @@
                                 success: function(matches) {
                                     $autocompleteList.empty();
                                     matches.forEach(entity => {
-                                        const $div = $(
-                                                '<div class="autocomplete-item"></div>'
-                                            )
-                                            .text(
-                                                `${entity.name} (${entity.code})`
-                                            )
+                                        const $div = $('<div class="autocomplete-item"></div>')
+                                            .text(`${entity.name} (${entity.code})`)
                                             .data('entity', entity);
                                         $autocompleteList.append($div);
                                     });
                                 },
                                 error: function(xhr, status, error) {
                                     console.error('Autocomplete error:', status, error);
-                                    $autocompleteList.html(
-                                        '<div>Error loading suggestions</div>');
+                                    $autocompleteList.html('<div>Error loading suggestions</div>');
                                 }
                             });
                         }, 300);
@@ -1360,7 +1373,8 @@
             // Initialize maxCreditLimit input
             $("#maxCreditLimit").on("input", function() {
                 let maxCreditLimit = $(this).val();
-                if (maxCreditLimit.startsWith("0")) {
+                // Skip leading zero check if readonly (e.g., for Cush Custom)
+                if (!$(this).prop('readonly') && maxCreditLimit.startsWith("0")) {
                     $(this).val("1" + maxCreditLimit.slice(1));
                 }
             });
@@ -1423,8 +1437,7 @@
                         },
                         success: function(response) {
                             if (response.isDuplicate === 1) {
-                                $('#licenseError').text('License number is already in use: ' +
-                                    response.remark).show();
+                                $('#licenseError').text('License number is already in use: ' + response.remark).show();
                                 $('#licenseSuccess').hide();
                                 $('#licenceTypeValue').addClass('is-invalid');
                                 $('#submitBtn').prop('disabled', true);
@@ -1436,8 +1449,7 @@
                             }
                         },
                         error: function(xhr) {
-                            $('#licenseError').text('Error checking license number: ' + (xhr
-                                .responseJSON?.error || 'Unknown error')).show();
+                            $('#licenseError').text('Error checking license number: ' + (xhr.responseJSON?.error || 'Unknown error')).show();
                             $('#licenseSuccess').hide();
                             $('#licenceTypeValue').addClass('is-invalid');
                             $('#submitBtn').prop('disabled', true);
@@ -1464,16 +1476,13 @@
                         const $desc = $('input[name="attachmentDescription[]"]');
                         const $fileInputName = $names.last();
                         const $fileInputDescription = $desc.last();
-                        const allowedExtensions =
-                            /(\.jpg|\.jpeg|\.png|\.gif|\.pdf|\.doc|\.xls|\.docx|\.xlsx)$/i;
+                        const allowedExtensions = /(\.jpg|\.jpeg|\.png|\.gif|\.pdf|\.doc|\.xls|\.docx|\.xlsx)$/i;
                         const fileValue = $fileInputName.val();
                         const descValue = $fileInputDescription.val().trim();
                         if (fileValue) {
                             if (!allowedExtensions.exec(fileValue)) {
                                 $fileInputName.addClass('is-invalid');
-                                alert(
-                                    'Invalid file type. Allowed types: jpg, jpeg, png, gif, pdf, doc, xls, docx, xlsx'
-                                );
+                                alert('Invalid file type. Allowed types: jpg, jpeg, png, gif, pdf, doc, xls, docx, xlsx');
                                 $fileInputName.val('');
                                 return false;
                             }
@@ -1516,8 +1525,7 @@
                     clearTimeout(debounceTimeout);
                     debounceTimeout = setTimeout(() => {
                         const query = $(this).val().trim();
-                        const $autocompleteList = $(
-                            '<div class="autocomplete-list"></div>');
+                        const $autocompleteList = $('<div class="autocomplete-list"></div>');
                         $input.parent().find('.autocomplete-list').remove();
                         $input.parent().append($autocompleteList);
 
@@ -1535,21 +1543,15 @@
                             success: function(matches) {
                                 $autocompleteList.empty();
                                 matches.forEach(entity => {
-                                    const $div = $(
-                                            '<div class="autocomplete-item"></div>'
-                                        )
-                                        .text(
-                                            `${entity.name} (${entity.code})`
-                                        )
+                                    const $div = $('<div class="autocomplete-item"></div>')
+                                        .text(`${entity.name} (${entity.code})`)
                                         .data('entity', entity);
                                     $autocompleteList.append($div);
                                 });
                             },
                             error: function(xhr, status, error) {
-                                console.error('Autocomplete error:', status,
-                                    error);
-                                $autocompleteList.html(
-                                    '<div>Error loading suggestions</div>');
+                                console.error('Autocomplete error:', status, error);
+                                $autocompleteList.html('<div>Error loading suggestions</div>');
                             }
                         });
                     }, 300);
@@ -1604,7 +1606,10 @@
                     otherID: $('#otherID').val(),
                     otherCode: $('#otherCode').val(),
                     overseasEntity: overseasEntityCheckbox.is(':checked'),
-                    licenceTypeValue: licenceTypeValue.val()
+                    licenceTypeValue: licenceTypeValue.val(),
+                    debtorType: debtorType.val(),
+                    creditDays: creditDays.val(),
+                    maxCreditLimit: maxCreditLimit.val()
                 });
             });
 
@@ -1629,3 +1634,5 @@
     </script>
     <script src="{{ asset('js/client-party/show-create-client-party.js') }}"></script>
 @stop
+
+
