@@ -571,30 +571,30 @@ class ClientPartyController extends Controller
     }
 
 
-    // public function getCurrencyList($var = null)
-    // {
-    //     $query = '';
-    //     if (\request()->ajax()) {
-    //         $query = \request()['query'];
-    //     } else {
-    //         $query = $var;
-    //     }
-    //     if (!empty($query)) {
-    //         $response = DB::select(
-    //             'SET NOCOUNT ON;
-    //             Declare
-    //             @OfficeID as Uniqueidentifier,
-    //             @Filter as Varchar(50)
-    //             Exec [dbo].[sp_CurrencyList]
-    //             @OfficeID = ?,
-    //             @Filter = ?',
-    //             [$query, '']
-    //         );
-    //     } else {
-    //         $response = [];
-    //     }
-    //     return $response;
-    // }
+    public function getCurrencyList($var = null)
+    {
+        $query = '';
+        if (\request()->ajax()) {
+            $query = \request()['query'];
+        } else {
+            $query = $var;
+        }
+        if (!empty($query)) {
+            $response = DB::select(
+                'SET NOCOUNT ON;
+                Declare
+                @OfficeID as Uniqueidentifier,
+                @Filter as Varchar(50)
+                Exec [dbo].[sp_CurrencyList]
+                @OfficeID = ?,
+                @Filter = ?',
+                [$query, '']
+            );
+        } else {
+            $response = [];
+        }
+        return $response;
+    }
 
     public function salesAccountPCI($var = null)
     {
