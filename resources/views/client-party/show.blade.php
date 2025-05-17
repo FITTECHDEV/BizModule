@@ -299,7 +299,7 @@
                                         </div>
                                         <div class="col-md-6 col-sm-12">
                                             <!-- Contact Details -->
-                                            <fieldset class="border p-2 card shadow-lg mb-0 pt-0">
+                                            {{-- <fieldset class="border p-2 card shadow-lg mb-0 pt-0">
                                                 <legend class="w-auto p-0 m-0">Contact Details</legend>
                                                 <div class="form-group row mb-1">
                                                     <label for="person"
@@ -339,6 +339,65 @@
                                                         <input type="text"
                                                             class="form-control form-control-sm number_input"
                                                             value="{{ old('phoneNo', $clientParty->Cont_Bch_PhoneNumbers) }}"
+                                                            name="phoneNo" id="phoneNo" placeholder="Phone Number">
+                                                    </div>
+                                                </div>
+                                                <div class="form-group row mb-1">
+                                                    <label for="contractEmail"
+                                                        class="col-sm-3 col-lg-4 col-form-label col-form-label-sm">
+                                                        <i class="fa fa-envelope" aria-hidden="true"></i> Email
+                                                    </label>
+                                                    <div class="col-sm-9 col-lg-8">
+                                                        <input type="email" name="contractEmail" id="contractEmail"
+                                                            value="{{ old('contractEmail', $clientParty->Cont_Bch_Email) }}"
+                                                            class="form-control form-control-sm"
+                                                            placeholder="Enter Email">
+                                                    </div>
+                                                </div>
+                                            </fieldset> --}}
+
+                                            {{-- NEW ONE  --}}
+
+                                            <fieldset class="border p-2 card shadow-lg mb-0 pt-0">
+                                                <legend class="w-auto p-0 m-0">Contact Details</legend>
+                                                <div class="form-group row mb-1">
+                                                    <label for="person"
+                                                        class="col-sm-3 col-md-4 col-lg-4 col-form-label col-form-label-sm">
+                                                        <i class="fa fa-user" aria-hidden="true"></i> Person <span
+                                                            style="color:red">*</span>
+                                                    </label>
+                                                    <div class="col-sm-4 col-md-4 col-lg-4">
+                                                        <input type="text" class="form-control form-control-sm"
+                                                            value="{{ old('firstName', $clientParty->Cont_Bch_PersonName_FirstName ?: '-') }}"
+                                                            name="firstName" id="firstName" placeholder="First Name">
+                                                    </div>
+                                                    <div class="col-sm-5 col-md-4 col-lg-4">
+                                                        <input type="text" class="form-control form-control-sm"
+                                                            value="{{ old('lastName', $clientParty->Cont_Bch_PersonName_LastName ?: '-') }}"
+                                                            name="lastName" id="lastName" placeholder="Last Name">
+                                                    </div>
+                                                </div>
+                                                <div class="form-group row mb-1">
+                                                    <label for="department"
+                                                        class="col-sm-3 col-lg-4 col-form-label col-form-label-sm">
+                                                        <i class="fa fa-sitemap" aria-hidden="true"></i> Department
+                                                    </label>
+                                                    <div class="col-sm-9 col-lg-8">
+                                                        <input type="text" class="form-control form-control-sm"
+                                                            value="{{ old('department', $clientParty->Cont_Bch_Dept) }}"
+                                                            name="department" id="department" placeholder="Department">
+                                                    </div>
+                                                </div>
+                                                <div class="form-group row mb-1">
+                                                    <label for="phoneNo"
+                                                        class="col col-sm-3 col-md-3 col-lg-4 col-form-label col-form-label-sm">
+                                                        <i class="fa fa-phone" aria-hidden="true"></i> Phone No. <span
+                                                            style="color:red">*</span>
+                                                    </label>
+                                                    <div class="col col-sm-9 col-md-9 col-lg-8">
+                                                        <input type="text"
+                                                            class="form-control form-control-sm number_input"
+                                                            value="{{ old('phoneNo', $clientParty->Cont_Bch_PhoneNumbers ?: '0') }}"
                                                             name="phoneNo" id="phoneNo" placeholder="Phone Number">
                                                     </div>
                                                 </div>
@@ -1207,7 +1266,7 @@
                 <b>{{ date_format(
                     date_create($clientParty->RejectedOn),
                     'Y-m-d
-                                                                                                            H:i:s',
+                                                                                                                            H:i:s',
                 ) }}</b>
                 <br>Reason: <b class="text-sm">{{ $clientParty->RejectedReason }}</b>
             @endif
