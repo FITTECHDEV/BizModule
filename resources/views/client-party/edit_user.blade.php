@@ -81,7 +81,7 @@
                                                                 {{ old('partyEntityType', $clientParty->OperatioEntityType) == 'Shipplingline' ? 'selected' : '' }}>
                                                             Shipplingline</option>
                                                         <option value="Trucker / Transportor"
-                                                                {{ old('partyEntityType', $clientParty->OperatioEntityType) == 'Trucker / Transportor' ? 'selected' : '' }}>
+                                                                {{ old('partyEntityType', $clientParty->OperatioEntityType) == 'Trucker / Transporter' ? 'selected' : '' }}>
                                                             Trucker / Transporter</option>
                                                         <option value="NoSCMIntergration"
                                                                 {{ old('partyEntityType', $clientParty->OperatioEntityType) == 'NoSCMIntergration' ? 'selected' : '' }}>

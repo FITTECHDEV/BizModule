@@ -980,7 +980,7 @@
 {{-- JS --}}
 
 
- @section('js')
+@section('js')
     <script src="//code.jquery.com/jquery-1.12.4.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bs-stepper@1.7.0/dist/js/bs-stepper.min.js"></script>
@@ -1037,7 +1037,7 @@
                 toggleFieldsReadonly(false);
 
                 // Standardize entity types for dropdown
-                const dropdownTypes = ['Client', 'Agent/Forwarder', 'Airline', 'ShippingLine', 'Trucker'];
+                const dropdownTypes = ['Client', 'Agent/Forwarder', 'Airline', 'ShippingLine', 'Trucker/Transporter'];
 
                 if (requestType === 'accounting') {
                     if (selectedType === 'Create only in D365') {
@@ -1045,7 +1045,8 @@
                         companyDropdown.css('display', 'none');
                         legalEntityType.find('option').each(function() {
                             const value = $(this).val();
-                            if (value && value !== 'Only in D365 Debtor' && value !== 'Only in D365 Vendor') {
+                            if (value && value !== 'Only in D365 Debtor' && value !==
+                                'Only in D365 Vendor') {
                                 $(this).prop('disabled', true).hide();
                             }
                         });
@@ -1090,11 +1091,13 @@
                         console.log('loadCompanies: API response=', data);
                         companySelect.find('option:not(:first)').remove();
                         if (data.error) {
-                            companySelect.append('<option value="" disabled>' + data.error + '</option>');
+                            companySelect.append('<option value="" disabled>' + data.error +
+                                '</option>');
                             console.error('API error:', data.error);
                             companyDropdown.show();
                         } else if (data.length === 0) {
-                            companySelect.append('<option value="" disabled>No companies found</option>');
+                            companySelect.append(
+                                '<option value="" disabled>No companies found</option>');
                             companyDropdown.show();
                         } else {
                             $.each(data, function(index, company) {
@@ -1106,9 +1109,11 @@
                         }
                     },
                     error: function(xhr) {
-                        console.error('Error fetching companies:', xhr.responseJSON?.error || xhr.statusText);
+                        console.error('Error fetching companies:', xhr.responseJSON?.error || xhr
+                            .statusText);
                         companySelect.find('option:not(:first)').remove();
-                        companySelect.append('<option value="" disabled>Error loading companies</option>');
+                        companySelect.append(
+                            '<option value="" disabled>Error loading companies</option>');
                         companyDropdown.show();
                         alert('Failed to load company list. Please try again.');
                     }
@@ -1154,7 +1159,8 @@
                                 countryCode: data.countryCode,
                                 countryID: data.countryID
                             });
-                            alert('Warning: No country code for this company. Please select a country manually.');
+                            alert(
+                                'Warning: No country code for this company. Please select a country manually.');
                         }
                         $('#addressLine1').val(data.addressLine1 || '');
                         $('#addressLine2').val(data.addressLine2 || '');
@@ -1174,10 +1180,12 @@
                         $('#phoneNo').val(data.phoneNo || '0');
                         $('#contractEmail').val(data.contractEmail || '');
                         console.log('fetchCompanyDetails: Set countryCode=', $('#countryCode').val(),
-                            'countryID=', $('#countryID').val(), 'countryName=', $('#countryName').val());
+                            'countryID=', $('#countryID').val(), 'countryName=', $('#countryName')
+                            .val());
                     },
                     error: function(xhr) {
-                        console.error('Error fetching company details:', xhr.responseJSON?.error || xhr.statusText);
+                        console.error('Error fetching company details:', xhr.responseJSON?.error || xhr
+                            .statusText);
                         clearBasicDetails();
                         toggleFieldsReadonly(true);
                         alert('Failed to retrieve company details.');
@@ -1188,7 +1196,9 @@
             // Function to handle debtorType change for Cush Custom
             function handleDebtorTypeChange() {
                 const debtorTypeValue = debtorType.val();
-                console.log('debtorType changed:', { debtorType: debtorTypeValue });
+                console.log('debtorType changed:', {
+                    debtorType: debtorTypeValue
+                });
 
                 if (debtorTypeValue === 'CASHCUSTOM') {
                     creditDays.val('0').prop('readonly', true).prop('disabled', true);
@@ -1221,10 +1231,12 @@
                         countryID: $(this).val(),
                         countryCode: countryCode,
                         countryName: countryName,
-                        countryIdOptionExists: $(this).find(`option[value="${$(this).val()}"]`).length > 0
+                        countryIdOptionExists: $(this).find(`option[value="${$(this).val()}"]`)
+                            .length > 0
                     });
                     if (!countryCode) {
-                        console.warn('countryID changed: No countryCode set. Please select a valid country.');
+                        console.warn(
+                            'countryID changed: No countryCode set. Please select a valid country.');
                         $('#countryID').addClass('is-invalid');
                     } else {
                         $('#countryID').removeClass('is-invalid');
@@ -1326,15 +1338,20 @@
                                 success: function(matches) {
                                     $autocompleteList.empty();
                                     matches.forEach(entity => {
-                                        const $div = $('<div class="autocomplete-item"></div>')
-                                            .text(`${entity.name} (${entity.code})`)
+                                        const $div = $(
+                                                '<div class="autocomplete-item"></div>'
+                                                )
+                                            .text(
+                                                `${entity.name} (${entity.code})`
+                                                )
                                             .data('entity', entity);
                                         $autocompleteList.append($div);
                                     });
                                 },
                                 error: function(xhr, status, error) {
                                     console.error('Autocomplete error:', status, error);
-                                    $autocompleteList.html('<div>Error loading suggestions</div>');
+                                    $autocompleteList.html(
+                                        '<div>Error loading suggestions</div>');
                                 }
                             });
                         }, 300);
@@ -1438,7 +1455,8 @@
                         },
                         success: function(response) {
                             if (response.isDuplicate === 1) {
-                                $('#licenseError').text('License number is already in use: ' + response.remark).show();
+                                $('#licenseError').text('License number is already in use: ' +
+                                    response.remark).show();
                                 $('#licenseSuccess').hide();
                                 $('#licenceTypeValue').addClass('is-invalid');
                                 $('#submitBtn').prop('disabled', true);
@@ -1450,7 +1468,8 @@
                             }
                         },
                         error: function(xhr) {
-                            $('#licenseError').text('Error checking license number: ' + (xhr.responseJSON?.error || 'Unknown error')).show();
+                            $('#licenseError').text('Error checking license number: ' + (xhr
+                                .responseJSON?.error || 'Unknown error')).show();
                             $('#licenseSuccess').hide();
                             $('#licenceTypeValue').addClass('is-invalid');
                             $('#submitBtn').prop('disabled', true);
@@ -1477,13 +1496,15 @@
                         const $desc = $('input[name="attachmentDescription[]"]');
                         const $fileInputName = $names.last();
                         const $fileInputDescription = $desc.last();
-                        const allowedExtensions = /(\.jpg|\.jpeg|\.png|\.gif|\.pdf|\.doc|\.xls|\.docx|\.xlsx)$/i;
+                        const allowedExtensions =
+                            /(\.jpg|\.jpeg|\.png|\.gif|\.pdf|\.doc|\.xls|\.docx|\.xlsx)$/i;
                         const fileValue = $fileInputName.val();
                         const descValue = $fileInputDescription.val().trim();
                         if (fileValue) {
                             if (!allowedExtensions.exec(fileValue)) {
                                 $fileInputName.addClass('is-invalid');
-                                alert('Invalid file type. Allowed types: jpg, jpeg, png, gif, pdf, doc, xls, docx, xlsx');
+                                alert(
+                                    'Invalid file type. Allowed types: jpg, jpeg, png, gif, pdf, doc, xls, docx, xlsx');
                                 $fileInputName.val('');
                                 return false;
                             }
@@ -1526,7 +1547,8 @@
                     clearTimeout(debounceTimeout);
                     debounceTimeout = setTimeout(() => {
                         const query = $(this).val().trim();
-                        const $autocompleteList = $('<div class="autocomplete-list"></div>');
+                        const $autocompleteList = $(
+                        '<div class="autocomplete-list"></div>');
                         $input.parent().find('.autocomplete-list').remove();
                         $input.parent().append($autocompleteList);
 
@@ -1544,15 +1566,21 @@
                             success: function(matches) {
                                 $autocompleteList.empty();
                                 matches.forEach(entity => {
-                                    const $div = $('<div class="autocomplete-item"></div>')
-                                        .text(`${entity.name} (${entity.code})`)
+                                    const $div = $(
+                                            '<div class="autocomplete-item"></div>'
+                                            )
+                                        .text(
+                                            `${entity.name} (${entity.code})`
+                                            )
                                         .data('entity', entity);
                                     $autocompleteList.append($div);
                                 });
                             },
                             error: function(xhr, status, error) {
-                                console.error('Autocomplete error:', status, error);
-                                $autocompleteList.html('<div>Error loading suggestions</div>');
+                                console.error('Autocomplete error:', status,
+                                    error);
+                                $autocompleteList.html(
+                                    '<div>Error loading suggestions</div>');
                             }
                         });
                     }, 300);
@@ -1634,6 +1662,4 @@
         }
     </script>
     <script src="{{ asset('js/client-party/show-create-client-party.js') }}"></script>
-@stop 
-
-
+@stop
