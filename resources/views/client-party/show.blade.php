@@ -808,7 +808,7 @@
                                         </fieldset> --}}
                                             @if ($type === 'accounting')
 
-                                                <fieldset class="border p-2 card shadow-lg mb-0 pt-0 ">
+                                                {{-- <fieldset class="border p-2 card shadow-lg mb-0 pt-0 ">
                                                     <legend class="w-auto p-0 m-0">Debtor/Vendor</legend>
                                                     <div class="row">
                                                         <div class="col-md-6 col-sm-12 col-lg-6">
@@ -950,10 +950,159 @@
                                                                 name="licenceTypeValue" id="licenceTypeValue">
                                                         </div>
                                                     </div>
+                                                </fieldset> --}}
+                                                <fieldset class="border p-2 card shadow-lg mb-0 pt-0">
+                                                    <legend class="w-auto p-0 m-0">Debtor/Vendor</legend>
+                                                    <div class="row">
+                                                        <div class="col-md-6 col-sm-12 col-lg-6">
+                                                            <div class="form-group row mb-1">
+                                                                <div class="col-md-12">
+                                                                    <label for="debtorType"
+                                                                        class="col-form-label col-form-label-sm">Debtor
+                                                                        Type</label>
+                                                                    <input type="text"
+                                                                        class="form-control form-control-sm"
+                                                                        id="debtorType"
+                                                                        value="{{ $clientParty->DebtorType ?? 'No Debtor Selected' }}"
+                                                                        readonly>
+                                                                    <input type="hidden" name="debtorType"
+                                                                        value="{{ $clientParty->DebtorType ?? '' }}">
+                                                                </div>
+                                                            </div>
+
+                                                            <div class="row mb-0 pb-0">
+                                                                <div class="form-group col-md-6 mb-0 pb-0">
+                                                                    <label for="billingCurrency"
+                                                                        class="col-form-label col-form-label-sm">Billing
+                                                                        Currency <span class="text-danger">*</span></label>
+                                                                    <input type="hidden"
+                                                                        class="form-control form-control-sm"
+                                                                        value="{{ $clientParty->BillingCurrencyCode ?? '' }}"
+                                                                        name="billingCurrencyCode"
+                                                                        id="billingCurrencyCode">
+                                                                    <select class="form-control form-control-sm"
+                                                                        name="billingCurrency" id="billingCurrency"
+                                                                        disabled>
+                                                                        <option value="" disabled>Select Currency
+                                                                        </option>
+                                                                        @forelse ($currencyList as $item)
+                                                                            <option value="{{ $item->CurrencyID }}"
+                                                                                id="{{ $item->CurrencyCode }}"
+                                                                                @if ($clientParty->BillingCurrencyId == $item->CurrencyID) selected @endif>
+                                                                                {{ $item->CurrencyCode }}
+                                                                            </option>
+                                                                        @empty
+                                                                            <option value="" disabled selected>No
+                                                                                currencies available</option>
+                                                                        @endforelse
+                                                                    </select>
+                                                                </div>
+
+                                                                <div class="form-group col-md-6 mb-0 pb-0">
+                                                                    <label for="creditDays"
+                                                                        class="col-form-label col-form-label-sm">Credit
+                                                                        Days<span class="text-danger">*</span></label>
+                                                                    <input type="text"
+                                                                        class="form-control form-control-sm number_input"
+                                                                        value="{{ $clientParty->CreditDays ?? '' }}"
+                                                                        name="creditDays" id="creditDays" readonly>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-md-6 col-sm-12 col-lg-6">
+                                                            <div class="form-group row mb-1">
+                                                                <div class="col-md-12">
+                                                                    <label for="vendorType"
+                                                                        class="col-form-label col-form-label-sm">Vendor
+                                                                        Type</label>
+                                                                    <input type="text"
+                                                                        class="form-control form-control-sm"
+                                                                        id="vendorType"
+                                                                        value="{{ $clientParty->VendorType ?? 'No Vendor Selected' }}"
+                                                                        readonly>
+                                                                    <input type="hidden" name="vendorType"
+                                                                        value="{{ $clientParty->VendorType ?? '' }}">
+                                                                </div>
+                                                            </div>
+
+                                                            <div class="form-group">
+                                                                <div class="row">
+                                                                    <div class="col-sm-6 col-md-6 col-lg-6">
+                                                                        <label for="maxCreditLimit"
+                                                                            class="col-form-label col-form-label-sm">Credit
+                                                                            Limit<span class="text-danger">*</span></label>
+                                                                        <input type="text"
+                                                                            class="form-control form-control-sm number_input"
+                                                                            value="{{ $clientParty->CreditLimit ?? '' }}"
+                                                                            name="maxCreditLimit" id="maxCreditLimit"
+                                                                            readonly>
+                                                                    </div>
+                                                                    <div class="col-sm-6 col-md-6 col-lg-6">
+                                                                        <label for="baseCurrency"
+                                                                            class="col-form-label col-form-label-sm">Base
+                                                                            Currency</label>
+                                                                        <input type="text"
+                                                                            class="form-control form-control-sm"
+                                                                            name="baseCurrency" id="baseCurrency"
+                                                                            value="{{ $clientParty->BaseCurrencyCode ?? '' }}"
+                                                                            readonly>
+                                                                        <input type="hidden"
+                                                                            class="form-control form-control-sm"
+                                                                            name="baseCurrencyCode" id="baseCurrencyCode"
+                                                                            value="{{ $clientParty->BaseCurrencyCode ?? '' }}">
+                                                                        <input type="hidden"
+                                                                            class="form-control form-control-sm"
+                                                                            name="baseCurrencyName" id="baseCurrencyName"
+                                                                            value="{{ $clientParty->BaseCurrencyName ?? '' }}">
+                                                                        <input type="hidden"
+                                                                            class="form-control form-control-sm"
+                                                                            name="baseCurrencyID" id="baseCurrencyID"
+                                                                            value="{{ $clientParty->BaseCurrencyId ?? '' }}">
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="form-group row mb-0 mt-0 p-0">
+                                                        <div class="col col-sm-6 col-lg-6 col-md-6 m-0">
+                                                            <div class="row">
+                                                                <label for="licence"
+                                                                    class="col-md-3 col-form-label col-form-label-sm pr-0">Licence
+                                                                    Type<span class="text-danger">*</span></label>
+                                                                <div class="col-md-9">
+                                                                    <select class="form-control form-control-sm"
+                                                                        name="licenceTypeID" id="licenceTypeID" disabled>
+                                                                        <option value="" disabled>Select Licence Type
+                                                                        </option>
+                                                                        @forelse ($licenceTypes as $type)
+                                                                            <option value="{{ $type->LicenseID }}"
+                                                                                id="{{ $type->LicenseCode }}"
+                                                                                @if ($clientParty->LicenceTypeID == $type->LicenseID) selected @endif>
+                                                                                {{ $type->LicenseName }}
+                                                                            </option>
+                                                                        @empty
+                                                                            <option value="" disabled>No licence
+                                                                                types available</option>
+                                                                        @endforelse
+                                                                    </select>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col col-sm-6 col-lg-6 col-md-6">
+                                                            <input type="hidden" class="form-control form-control-sm"
+                                                                value="{{ $clientParty->LicenceTypeCode ?? '' }}"
+                                                                name="licenceTypeCode" id="licenceTypeCode">
+                                                            <input type="text" class="form-control form-control-sm"
+                                                                value="{{ $clientParty->LicenceTypeValue ?? '' }}"
+                                                                name="licenceTypeValue" id="licenceTypeValue" readonly>
+                                                        </div>
+                                                    </div>
                                                 </fieldset>
+
                                             @endif
                                             {{-- <fieldset class="border p-2 card shadow-lg mb-0 pt-0">
-                                            <legend class="w-auto p-0 m-0"> Additional Information</legend>
+                                            <legend class="w-auto p-0 m-0"> Additioaln Information</legend>
                                             <div class="row">
                                                 <div class="col-md-6 col-sm-12 col-lg-6">
 
@@ -1266,7 +1415,7 @@
                 <b>{{ date_format(
                     date_create($clientParty->RejectedOn),
                     'Y-m-d
-                                                                                                                            H:i:s',
+                                                                                                                                                                            H:i:s',
                 ) }}</b>
                 <br>Reason: <b class="text-sm">{{ $clientParty->RejectedReason }}</b>
             @endif
@@ -1430,7 +1579,7 @@
     </style>
 @stop
 
-@section('js')
+{{-- @section('js')
     <script>
         /** Function to copy text */
         function copyText(element) {
@@ -1556,6 +1705,168 @@
                     status: `{{ $clientParty->Status }}`,
                     debtorType: $('#debtorType').is(':disabled') ? '' : $('#debtorType').val(),
                     vendorType: $('#vendorType').is(':disabled') ? '' : $('#vendorType').val(),
+                };
+                $.ajax({
+                    url: '/client-party/approve',
+                    type: 'POST',
+                    dataType: 'json',
+                    data: form_data,
+                    success: function(response) {
+                        if (response[1] == 200) {
+                            alert("Entity Updated. !!");
+                            window.location.href = `{{ route('client-party.approvals') }}`
+                        }
+                    }
+                });
+            }
+        });
+
+        let init = `{{ $clientParty->attachments->count() + 1 }}`;
+        let max_fields = 3;
+        $(".addAttachment").click(function() {
+            var lsthmtl = $(".clone").html();
+            if (init < max_fields) {
+                // Check if file attachment has content
+                var names = document.getElementsByName('attachmentNames[]');
+                var desc = document.getElementsByName('attachmentDescription[]');
+
+                var fileInputName = names[names.length - 2];
+                var fileInputDescription = desc[desc.length - 2];
+
+                // Validation
+                var allowedExtensions = /(\.jpg|\.jpeg|\.png|\.gif)$/i;
+                if (!allowedExtensions.exec(fileInputName.value) || fileInputDescription.value == '') {
+                    alert('Either Invalid file type / No Description');
+                    fileInputName.value = '';
+                    return false;
+                } else {
+                    $("#attachClone").before(lsthmtl);
+                    init++;
+                }
+            } else {
+                alert('Maximum File Attachment Reached.');
+            }
+        });
+
+        $("body").on("click", ".btn-danger", function() {
+            $(this).parents(".hdtuto").remove();
+            init--;
+        });
+
+        let spinner = $('#loader');
+
+        $("body").on("click", ".deleteFile", function() {
+            let id = $(this).attr('id');
+            let choice = confirm('Are you Sure You wish to delete file ?');
+            let url = "/delete-client-party-attachment/" + id;
+            if (choice) {
+                spinner.show();
+                $.ajax({
+                    url: url,
+                    type: 'POST',
+                    dataType: 'json',
+                    success: function(response) {
+                        if (response[1] == 200) {
+                            alert("File Deleted !!");
+                            location.reload();
+                        }
+                    }
+                });
+            }
+        });
+    </script>
+@stop --}}
+@section('js')
+    <script>
+        /** Function to copy text */
+        function copyText(element) {
+            var $temp = $("<input>");
+            $("body").append($temp);
+            $temp.val($(element).html()).select();
+            document.execCommand("copy");
+            $('.tooltip .tooltip-inner').text('Copied!');
+            $temp.remove();
+        }
+
+        document.addEventListener("DOMContentLoaded", function() {
+            let type = document.body.dataset.type; // Get type from the body tag
+            console.log("Type:-", type);
+
+            let legalTypeDiv = document.getElementById("legalEntityType").closest('.col');
+
+            if (type === "accounting") {
+                legalTypeDiv.style.display = "none";
+            } else {
+                legalTypeDiv.style.display = "block";
+            }
+        });
+    </script>
+    <script>
+        /* Ajax setup CSRF */
+        $.ajaxSetup({
+            headers: {
+                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+            }
+        });
+    </script>
+    <script src="//code.jquery.com/jquery-1.12.4.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bs-stepper/dist/js/bs-stepper.min.js"></script>
+    <script src="{{ asset('js/client-party/party-entity.js') }}"></script>
+    <script src="{{ asset('js/client-party/validation.js') }}"></script>
+    <script src="{{ asset('js/client-party/sub-form.js') }}"></script>
+    <script src="{{ asset('js/client-party/jquery-number/jquery.number.min.js') }}"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
+    <script>
+        /** Get user authorization status */
+        window.User = {
+            value: '{{ auth()->user()->can('edit-client-party') }}',
+            edit: '{{ $editForm }}'
+        }
+        window.approve_client_party = `{{ $approve }}`;
+
+        window.default_bill_curr = `{{ $clientParty->BillingCurrencyId }}`;
+    </script>
+    <script src="{{ asset('js/client-party/show-create-client-party.js') }}"></script>
+    <script type="text/javascript">
+        $('#close-modal').click(function() {
+            $('#cancelForm')[0].reset();
+            $('#cancelModal').modal('hide');
+        });
+
+        $('#submit-entity').on('click', function() {
+            // Validate form data
+            let form_data = {
+                id: `{{ $clientParty->Id }}`,
+                level: $('#level option:selected').val(),
+                reason: $('#reason').val(),
+            };
+
+            if (form_data.level == "") {
+                $('#level').addClass('is-invalid');
+            } else if (form_data.reason == "") {
+                $('#reason').addClass('is-invalid');
+            } else {
+                $.ajax({
+                    url: '/client-party/reject',
+                    type: 'POST',
+                    dataType: 'json',
+                    data: form_data,
+                    success: function(response) {
+                        console.log(response);
+                        location.reload();
+                    }
+                });
+            }
+        });
+
+        $('#approveBtn').click(function() {
+            let approve = confirm('Confirm Approval.');
+            if (approve) {
+                let form_data = {
+                    id: `{{ $clientParty->Id }}`,
+                    status: `{{ $clientParty->Status }}`,
+                    debtorType: $('input[name="debtorType"]').val(),
+                    vendorType: $('input[name="vendorType"]').val(),
                 };
                 $.ajax({
                     url: '/client-party/approve',

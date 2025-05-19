@@ -979,6 +979,7 @@
 
 {{-- JS --}}
 
+
  @section('js')
     <script src="//code.jquery.com/jquery-1.12.4.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
@@ -1633,6 +1634,6 @@
         }
     </script>
     <script src="{{ asset('js/client-party/show-create-client-party.js') }}"></script>
-@stop
+@stop 
 
 

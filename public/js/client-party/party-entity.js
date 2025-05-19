@@ -12,7 +12,7 @@ $(document).ready(function() {
     const firstNameInput = $('#firstName');
     const lastNameInput = $('#lastName');
 
-    // Fetch company details
+  //  Fetch company details
     function fetchCompanyDetails(entityType, companyId) {
         console.log('fetchCompanyDetails: entityType=', entityType, 'companyId=', companyId);
         $.ajax({
@@ -57,6 +57,10 @@ $(document).ready(function() {
             }
         });
     }
+
+
+
+
 
     // Initialize for edit mode
     if (companyIdInput.val() && partyEntityType.val()) {
