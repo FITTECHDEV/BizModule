@@ -170,7 +170,7 @@
                                                 </div>
                                                 {{-- Address Line 1 and 2 --}}
                                                 <div class="form-group row mb-1 address-row">
-                                                    <div class="col-md-6">
+                                                    <div class="col-md-12 mb-2">
                                                         <label for="addressLine1"
                                                             class="col-form-label col-form-label-sm">
                                                             <i class="fa fa-map-marker" aria-hidden="true"></i> Address
@@ -181,7 +181,7 @@
                                                             value="{{ old('addressLine1') }}" name="addressLine1"
                                                             id="addressLine1" maxlength="50" required>
                                                     </div>
-                                                    <div class="col-md-6">
+                                                    <div class="col-md-12">
                                                         <label for="addressLine2"
                                                             class="col-form-label col-form-label-sm">
                                                             <i class="fa fa-map-marker" aria-hidden="true"></i> Address
@@ -193,6 +193,7 @@
                                                             id="addressLine2" maxlength="50">
                                                     </div>
                                                 </div>
+
                                                 {{-- Country Code and Country Name --}}
                                                 <div class="form-group row mb-1">
                                                     <label for="country"
@@ -293,25 +294,31 @@
                                                             id="department" placeholder="Department">
                                                     </div>
                                                 </div>
-                                                <div class="form-group mb-3">
-                                                    <label for="phoneNo" class="col-form-label col-form-label-sm">
+                                                <div class="form-group row mb-2">
+                                                    <label for="phoneNo"
+                                                        class="col col-sm-3 col-md-3 col-lg-4 col-form-label col-form-label-sm">
                                                         <i class="fa fa-phone" aria-hidden="true"></i> Phone No. <span
                                                             class="text-danger">*</span>
                                                     </label>
-                                                    <input type="text"
-                                                        class="form-control form-control-sm number_input basic-detail-field"
-                                                        value="{{ old('phoneNo') }}" name="phoneNo" id="phoneNo"
-                                                        placeholder="Phone Number">
+                                                    <div class="col col-sm-9 col-md-9 col-lg-8">
+                                                        <input type="text"
+                                                            class="form-control form-control-sm number_input basic-detail-field"
+                                                            value="{{ old('phoneNo') }}" name="phoneNo" id="phoneNo"
+                                                            placeholder="Phone Number">
+                                                    </div>
                                                 </div>
 
-                                                <div class="form-group mb-3">
-                                                    <label for="contractEmail" class="col-form-label col-form-label-sm">
+                                                <div class="form-group row mb-3">
+                                                    <label for="contractEmail"
+                                                        class="col col-sm-3 col-md-3 col-lg-4 col-form-label col-form-label-sm">
                                                         <i class="fa fa-envelope" aria-hidden="true"></i> Email
                                                     </label>
-                                                    <input type="email" name="contractEmail" id="contractEmail"
-                                                        value="{{ old('contractEmail') }}"
-                                                        class="form-control form-control-sm basic-detail-field"
-                                                        placeholder="Enter Email">
+                                                    <div class="col col-sm-9 col-md-9 col-lg-8">
+                                                        <input type="email" name="contractEmail" id="contractEmail"
+                                                            value="{{ old('contractEmail') }}"
+                                                            class="form-control form-control-sm basic-detail-field"
+                                                            placeholder="Enter Email">
+                                                    </div>
                                                 </div>
 
                                             </fieldset>
@@ -741,7 +748,8 @@
                                                                 </td>
                                                                 <td id="vendor_code"></td>
                                                             </tr>
-                                                        </tbody>
+
+                                                       </tbody>
                                                     </table>
                                                 </fieldset>
 
@@ -1037,7 +1045,9 @@
                 toggleFieldsReadonly(false);
 
                 // Standardize entity types for dropdown
-                const dropdownTypes = ['Client', 'Agent/Forwarder', 'Airline', 'ShippingLine', 'Trucker/Transporter'];
+                const dropdownTypes = ['Client', 'Agent/Forwarder', 'Airline', 'ShippingLine',
+                    'Trucker/Transporter'
+                ];
 
                 if (requestType === 'accounting') {
                     if (selectedType === 'Create only in D365') {
@@ -1160,7 +1170,8 @@
                                 countryID: data.countryID
                             });
                             alert(
-                                'Warning: No country code for this company. Please select a country manually.');
+                                'Warning: No country code for this company. Please select a country manually.'
+                            );
                         }
                         $('#addressLine1').val(data.addressLine1 || '');
                         $('#addressLine2').val(data.addressLine2 || '');
@@ -1340,10 +1351,10 @@
                                     matches.forEach(entity => {
                                         const $div = $(
                                                 '<div class="autocomplete-item"></div>'
-                                                )
+                                            )
                                             .text(
                                                 `${entity.name} (${entity.code})`
-                                                )
+                                            )
                                             .data('entity', entity);
                                         $autocompleteList.append($div);
                                     });
@@ -1504,7 +1515,8 @@
                             if (!allowedExtensions.exec(fileValue)) {
                                 $fileInputName.addClass('is-invalid');
                                 alert(
-                                    'Invalid file type. Allowed types: jpg, jpeg, png, gif, pdf, doc, xls, docx, xlsx');
+                                    'Invalid file type. Allowed types: jpg, jpeg, png, gif, pdf, doc, xls, docx, xlsx'
+                                );
                                 $fileInputName.val('');
                                 return false;
                             }
@@ -1548,7 +1560,7 @@
                     debounceTimeout = setTimeout(() => {
                         const query = $(this).val().trim();
                         const $autocompleteList = $(
-                        '<div class="autocomplete-list"></div>');
+                            '<div class="autocomplete-list"></div>');
                         $input.parent().find('.autocomplete-list').remove();
                         $input.parent().append($autocompleteList);
 
@@ -1568,10 +1580,10 @@
                                 matches.forEach(entity => {
                                     const $div = $(
                                             '<div class="autocomplete-item"></div>'
-                                            )
+                                        )
                                         .text(
                                             `${entity.name} (${entity.code})`
-                                            )
+                                        )
                                         .data('entity', entity);
                                     $autocompleteList.append($div);
                                 });

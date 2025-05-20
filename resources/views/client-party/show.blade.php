@@ -477,10 +477,10 @@
                                             data-bs-original-title="Update">
                                             <i class="fa fa-edit" aria-hidden="true"></i> Reject </button>
                                     @endif
-                                    <button type="button" name="updateBtn" id="save-step1"
+                                    {{-- <button type="button" name="updateBtn" id="save-step1"
                                         class="btn btn-success btn-sm float-right m-2" data-toggle="tooltip"
                                         data-placement="top" title="" data-bs-original-title="Update"><i
-                                            class="fa fa-edit" aria-hidden="true"></i> Update for Later</button>
+                                            class="fa fa-edit" aria-hidden="true"></i> Update for later</button> --}}
                                 </div>
                                 <div id="office-details" class="content active dstepper-block" role="tabpanel"
                                     aria-labelledby="office-details-trigger">
@@ -1201,7 +1201,7 @@
                                             class="btn btn-success btn-sm float-right m-2" data-toggle="tooltip"
                                             data-placement="top" title="Update"><i class="fa fa-edit"
                                                 aria-hidden="true"></i>
-                                            Update for Later</button>
+                                            Update for gdter</button>
                                     @endif
                                 </div>
                                 @if (Auth::user()->can('create-client-party'))
@@ -1368,19 +1368,19 @@
                                                         class="btn btn-outline-success float-right m-2 btn-sm"
                                                         data-toggle="tooltip" data-placement="top" title=""
                                                         data-bs-original-title="Approve Entity For Creation"><i
-                                                            class="fa fa-check" aria-hidden="true"></i> Approve</button>
-                                                    <button type="button" name="rejectBtn" id="rejectBtn"
+                                                            class="fa fa-check" aria-hidden="true"></i> Submit</button>
+                                                    {{-- <button type="button" name="rejectBtn" id="rejectBtn"
                                                         data-toggle="modal" data-target="#cancelModal"
                                                         class="btn btn-danger float-right m-2 btn-sm"
                                                         data-toggle="tooltip" data-placement="top"
                                                         title="Reject For Amendment" data-bs-original-title="Update">
-                                                        <i class="fa fa-edit" aria-hidden="true"></i> Reject </button>
-                                                    <button type="submit" name="submitBtn" value="true"
+                                                        <i class="fa fa-edit" aria-hidden="true"></i> Reject </button> --}}
+                                                    {{-- <button type="submit" name="submitBtn" value="true"
                                                         class="btn btn-success float-right m-2 btn-sm"
                                                         data-toggle="tooltip" data-placement="top" title=""
                                                         data-bs-original-title="Update">
                                                         <i class="fa fa-edit" aria-hidden="true"></i> Update for
-                                                        Later</button>
+                                                        Later</button> --}}
                                                 @endif
                                             </div>
                                         </div>

@@ -294,6 +294,8 @@ $(document).ready(function () {
                 $('#licenceTypeValue').removeAttr('required');
                 $('#legalEntityType').removeAttr('required');
                 $('#attachments').removeAttr('required');
+                $('input[name="attachmentNames[]"]').removeAttr('required');
+                $('input[name="attachmentDescription[]"]').removeAttr('required');
                 $('#client-check').hide();
                 $('#vendor-check').hide();
                 $('#debtor-check').hide();
@@ -1262,7 +1264,7 @@ $("#otherCheck").on("change", function () {
             old_office_country_val = $(this).val();
             old_office_code = $(this).find("option:selected").attr("code");
         }
-        
+
     });
 
     let spinner = $("#loader");
