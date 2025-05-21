@@ -200,126 +200,250 @@ $(document).ready(function () {
             }
         }
         /*Next Step two*/
-        if (event.detail.indexStep == 2) {
-            let office_country_select = $(
-                "#officeCountry option:selected"
-            ).val();
-            let sales_person_of_interest = $("#salesPIC").val();
-            let billingCurrency = $("#billingCurrency option:selected").val();
-            let licenceTypeID = $("#licenceTypeID option:selected").val();
-            let maxCreditLimit = $("#maxCreditLimit").val();
-            let creditDays = $("#creditDays").val();
-            let licenceTypeValue = $("#licenceTypeValue").val();
-            let attachmentFileNames = $("#attachmentFileNames").val();
+        // if (event.detail.indexStep == 2) {
+        //     let office_country_select = $(
+        //         "#officeCountry option:selected"
+        //     ).val();
+        //     let sales_person_of_interest = $("#salesPIC").val();
+        //     let billingCurrency = $("#billingCurrency option:selected").val();
+        //     let licenceTypeID = $("#licenceTypeID option:selected").val();
+        //     let maxCreditLimit = $("#maxCreditLimit").val();
+        //     let creditDays = $("#creditDays").val();
+        //     let licenceTypeValue = $("#licenceTypeValue").val();
+        //     let attachmentFileNames = $("#attachmentFileNames").val();
 
-            // Only validate if request type is 'accounting'
-            if (requestType === "accounting") {
-                let dt = $("#debtorType");
-                if (
-                    typeof dt.attr("required") !== "undefined" &&
-                    dt.attr("required") !== false
-                ) {
-                    if (!dt.val()) {
-                        dt.addClass("is-invalid");
-                        window.stepper.to(2);
-                    } else {
-                        dt.removeClass("is-invalid");
-                    }
-                } else {
-                    dt.removeClass("is-invalid");
-                }
+        //     // Only validate if request type is 'accounting'
+        //     if (requestType === "accounting") {
+        //         let dt = $("#debtorType");
+        //         if (
+        //             typeof dt.attr("required") !== "undefined" &&
+        //             dt.attr("required") !== false
+        //         ) {
+        //             if (!dt.val()) {
+        //                 dt.addClass("is-invalid");
+        //                 window.stepper.to(2);
+        //             } else {
+        //                 dt.removeClass("is-invalid");
+        //             }
+        //         } else {
+        //             dt.removeClass("is-invalid");
+        //         }
 
-                let dv = $("#vendorType");
-                if (
-                    typeof dv.attr("required") !== "undefined" &&
-                    dv.attr("required") !== false
-                ) {
-                    if (!dv.val()) {
-                        dv.addClass("is-invalid");
-                        window.stepper.to(2);
-                    } else {
-                        dv.removeClass("is-invalid");
-                    }
-                } else {
-                    dv.removeClass("is-invalid");
-                }
+        //         let dv = $("#vendorType");
+        //         if (
+        //             typeof dv.attr("required") !== "undefined" &&
+        //             dv.attr("required") !== false
+        //         ) {
+        //             if (!dv.val()) {
+        //                 dv.addClass("is-invalid");
+        //                 window.stepper.to(2);
+        //             } else {
+        //                 dv.removeClass("is-invalid");
+        //             }
+        //         } else {
+        //             dv.removeClass("is-invalid");
+        //         }
 
-                // Validate billing currency
-                if (!billingCurrency) {
-                    $("#billingCurrency").addClass("is-invalid");
-                    window.stepper.to(2);
-                } else {
-                    $("#billingCurrency").removeClass("is-invalid");
-                }
+        //         // Validate billing currency
+        //         if (!billingCurrency) {
+        //             $("#billingCurrency").addClass("is-invalid");
+        //             window.stepper.to(2);
+        //         } else {
+        //             $("#billingCurrency").removeClass("is-invalid");
+        //         }
 
-                // Validate License Type
-                if (!licenceTypeID) {
-                    $("#licenceTypeID").addClass("is-invalid");
-                    window.stepper.to(2);
-                } else {
-                    $("#licenceTypeID").removeClass("is-invalid");
-                }
+        //         // Validate License Type
+        //         if (!licenceTypeID) {
+        //             $("#licenceTypeID").addClass("is-invalid");
+        //             window.stepper.to(2);
+        //         } else {
+        //             $("#licenceTypeID").removeClass("is-invalid");
+        //         }
 
-                // Validate License Type Code
-                if (!licenceTypeValue) {
-                    $("#licenceTypeValue").addClass("is-invalid");
-                    window.stepper.to(2);
-                } else {
-                    $("#licenceTypeValue").removeClass("is-invalid");
-                }
+        //         // Validate License Type Code
+        //         if (!licenceTypeValue) {
+        //             $("#licenceTypeValue").addClass("is-invalid");
+        //             window.stepper.to(2);
+        //         } else {
+        //             $("#licenceTypeValue").removeClass("is-invalid");
+        //         }
 
-                // Validate Credit Limit
-                if (!maxCreditLimit) {
-                    $("#maxCreditLimit").addClass("is-invalid");
-                    window.stepper.to(2);
-                } else {
-                    $("#maxCreditLimit").removeClass("is-invalid");
-                }
+        //         // Validate Credit Limit
+        //         if (!maxCreditLimit) {
+        //             $("#maxCreditLimit").addClass("is-invalid");
+        //             window.stepper.to(2);
+        //         } else {
+        //             $("#maxCreditLimit").removeClass("is-invalid");
+        //         }
 
-                // Validate Credit Days
-                if (!creditDays) {
-                    $("#creditDays").addClass("is-invalid");
-                    window.stepper.to(2);
-                } else {
-                    $("#creditDays").removeClass("is-invalid");
-                }
-            }
+        //         // Validate Credit Days
+        //         if (!creditDays) {
+        //             $("#creditDays").addClass("is-invalid");
+        //             window.stepper.to(2);
+        //         } else {
+        //             $("#creditDays").removeClass("is-invalid");
+        //         }
+        //     }
 
-             // If type is "operational", remove 'required' attribute from specific fields
-            if (requestType === "operational") {
-                $('#billingCurrency').removeAttr('required');
-                $('#creditDays').removeAttr('required');
-                $('#maxCreditLimit').removeAttr('required');
-                $('#licenceTypeID').removeAttr('required');
-                $('#licenceTypeValue').removeAttr('required');
-                $('#legalEntityType').removeAttr('required');
-                $('#attachments').removeAttr('required');
-                $('input[name="attachmentNames[]"]').removeAttr('required');
-                $('input[name="attachmentDescription[]"]').removeAttr('required');
-                $('#client-check').hide();
-                $('#vendor-check').hide();
-                $('#debtor-check').hide();
-                $('#shipper-check').hide();
-                $('#consignee-check').hide();
+        //      // If type is "operational", remove 'required' attribute from specific fields
+        //     if (requestType === "operational") {
+        //         $('#billingCurrency').removeAttr('required');
+        //         $('#creditDays').removeAttr('required');
+        //         $('#maxCreditLimit').removeAttr('required');
+        //         $('#licenceTypeID').removeAttr('required');
+        //         $('#licenceTypeValue').removeAttr('required');
+        //         $('#legalEntityType').removeAttr('required');
+        //         $('#attachments').removeAttr('required');
+        //         $('input[name="attachmentNames[]"]').removeAttr('required');
+        //         $('input[name="attachmentDescription[]"]').removeAttr('required');
+        //         $('#client-check').hide();
+        //         $('#vendor-check').hide();
+        //         $('#debtor-check').hide();
+        //         $('#shipper-check').hide();
+        //         $('#consignee-check').hide();
 
-                $("#otherCheck").prop("checked", true);
-            }
+        //         $("#otherCheck").prop("checked", true);
+        //     }
 
 
-            // Office Country should always be validated
-            if (!office_country_select) {
-                $("#officeCountry").addClass("is-invalid");
+        //     // Office Country should always be validated
+        //     if (!office_country_select) {
+        //         $("#officeCountry").addClass("is-invalid");
+        //         window.stepper.to(2);
+        //     } else {
+        //         $("#officeCountry").removeClass("is-invalid");
+        //     }
+
+        //     /** Validate step two inputs */
+        //     let results = validStepTwo();
+        //     if (!results) {
+        //         window.stepper.to(2);
+        //     }
+        // }
+       if (event.detail.indexStep == 2) {
+    let office_country_select = $("#officeCountry option:selected").val();
+    let sales_person_of_interest = $("#salesPIC").val();
+    let billingCurrency = $("#billingCurrency option:selected").val();
+    let licenceTypeID = $("#licenceTypeID option:selected").val();
+    let maxCreditLimit = $("#maxCreditLimit").val();
+    let creditDays = $("#creditDays").val();
+    let licenceTypeValue = $("#licenceTypeValue").val();
+    let attachmentFileNames = $("#attachmentFileNames").val();
+    let isOverseas = $("#overseasEntity").is(":checked"); // Check overseasEntity
+
+    // Only validate if request type is 'accounting'
+    if (requestType === "accounting") {
+        let dt = $("#debtorType");
+        if (
+            typeof dt.attr("required") !== "undefined" &&
+            dt.attr("required") !== false
+        ) {
+            if (!dt.val()) {
+                dt.addClass("is-invalid");
                 window.stepper.to(2);
             } else {
-                $("#officeCountry").removeClass("is-invalid");
+                dt.removeClass("is-invalid");
+            }
+        } else {
+            dt.removeClass("is-invalid");
+        }
+
+        let dv = $("#vendorType");
+        if (
+            typeof dv.attr("required") !== "undefined" &&
+            dv.attr("required") !== false
+        ) {
+            if (!dv.val()) {
+                dv.addClass("is-invalid");
+                window.stepper.to(2);
+            } else {
+                dv.removeClass("is-invalid");
+            }
+        } else {
+            dv.removeClass("is-invalid");
+        }
+
+        // Validate billing currency
+        if (!billingCurrency) {
+            $("#billingCurrency").addClass("is-invalid");
+            window.stepper.to(2);
+        } else {
+            $("#billingCurrency").removeClass("is-invalid");
+        }
+
+        // Validate License Type only if overseasEntity is not checked
+        if (!isOverseas) {
+            if (!licenceTypeID) {
+                $("#licenceTypeID").addClass("is-invalid");
+                window.stepper.to(2);
+            } else {
+                $("#licenceTypeID").removeClass("is-invalid");
             }
 
-            /** Validate step two inputs */
-            let results = validStepTwo();
-            if (!results) {
+            // Validate License Type Code
+            if (!licenceTypeValue) {
+                $("#licenceTypeValue").addClass("is-invalid");
                 window.stepper.to(2);
+            } else {
+                $("#licenceTypeValue").removeClass("is-invalid");
             }
+        } else {
+            // Clear validation states if overseasEntity is checked
+            $("#licenceTypeID").removeClass("is-invalid").removeAttr("required");
+            $("#licenceTypeValue").removeClass("is-invalid").removeAttr("required");
         }
+
+        // Validate Credit Limit
+        if (!maxCreditLimit) {
+            $("#maxCreditLimit").addClass("is-invalid");
+            window.stepper.to(2);
+        } else {
+            $("#maxCreditLimit").removeClass("is-invalid");
+        }
+
+        // Validate Credit Days
+        if (!creditDays) {
+            $("#creditDays").addClass("is-invalid");
+            window.stepper.to(2);
+        } else {
+            $("#creditDays").removeClass("is-invalid");
+        }
+    }
+
+    // If type is "operational", remove 'required' attribute from specific fields
+    if (requestType === "operational") {
+        $('#billingCurrency').removeAttr('required');
+        $('#creditDays').removeAttr('required');
+        $('#maxCreditLimit').removeAttr('required');
+        $('#licenceTypeID').removeAttr('required');
+        $('#licenceTypeValue').removeAttr('required');
+        $('#legalEntityType').removeAttr('required');
+        $('#attachments').removeAttr('required');
+        $('input[name="attachmentNames[]"]').removeAttr('required');
+        $('input[name="attachmentDescription[]"]').removeAttr('required');
+        $('#client-check').hide();
+        $('#vendor-check').hide();
+        $('#debtor-check').hide();
+        $('#shipper-check').hide();
+        $('#consignee-check').hide();
+
+        $("#otherCheck").prop("checked", true);
+    }
+
+    // Office Country should always be validated
+    if (!office_country_select) {
+        $("#officeCountry").addClass("is-invalid");
+        window.stepper.to(2);
+    } else {
+        $("#officeCountry").removeClass("is-invalid");
+    }
+
+    /** Validate step two inputs */
+    let results = validStepTwo();
+    if (!results) {
+        window.stepper.to(2);
+    }
+}
     });
 
     function validStepThree(status = true) {

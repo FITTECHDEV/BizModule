@@ -563,58 +563,65 @@
                                                             id="licenceTypeValue" required>
                                                     </div>
                                                 </div> --}}
+                                                <fieldset>
 
-                                                <div class="form-group row mb-0 mt-0 p-0">
-                                                    <div class="col col-sm-6 col-lg-6 col-md-6 m-0">
-                                                        <div class="row">
-                                                            <label for="licenceTypeID"
-                                                                class="col-md-3 col-form-label col-form-label-sm pr-0">Licence
-                                                                Type</label>
-                                                            <span style="color: red;">*</span>
-                                                            <div class="col-md-8">
-                                                                <select class="form-control form-control-sm"
-                                                                    name="licenceTypeID" id="licenceTypeID" required>
-                                                                    <option value="" disabled selected>Select License
-                                                                        Type</option>
-                                                                    @forelse ($licenceTypes as $type)
-                                                                        <option value="{{ $type->LicenseID }}"
-                                                                            data-code="{{ $type->LicenseCode }}"
-                                                                            @if (old('licenceTypeID') == $type->LicenseID) selected @endif>
-                                                                            {{ $type->LicenseName }}
-                                                                        </option>
-                                                                    @empty
-                                                                        <option value="" disabled>No license types
-                                                                            available</option>
-                                                                    @endforelse
-                                                                </select>
+                                                    <div class="form-group row mb-0 mt-0 p-0">
+                                                        <div class="col col-sm-6 col-lg-6 col-md-6 m-0">
+                                                            <div class="row">
+                                                                <label for="licenceTypeID"
+                                                                    class="col-md-3 col-form-label col-form-label-sm pr-0">Licence
+                                                                    Type</label>
+                                                                <span style="color: red;">*</span>
+                                                                <div class="col-md-8">
+                                                                    <select class="form-control form-control-sm"
+                                                                        name="licenceTypeID" id="licenceTypeID" required>
+                                                                        <option value="" disabled selected>Select
+                                                                            License
+                                                                            Type</option>
+                                                                        @forelse ($licenceTypes as $type)
+                                                                            <option value="{{ $type->LicenseID }}"
+                                                                                data-code="{{ $type->LicenseCode }}"
+                                                                                @if (old('licenceTypeID') == $type->LicenseID) selected @endif>
+                                                                                {{ $type->LicenseName }}
+                                                                            </option>
+                                                                        @empty
+                                                                            <option value="" disabled>No license
+                                                                                types
+                                                                                available</option>
+                                                                        @endforelse
+                                                                    </select>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col col-sm-6 col-lg-6 col-md-6">
+                                                            <input type="hidden" class="form-control form-control-sm"
+                                                                value="{{ old('licenceTypeCode') }}"
+                                                                name="licenceTypeCode" id="licenceTypeCode">
+                                                            <input type="text" class="form-control form-control-sm"
+                                                                value="{{ old('licenceTypeValue') }}"
+                                                                name="licenceTypeValue" id="licenceTypeValue" required>
+                                                            <small id="licenseError" class="text-danger"
+                                                                style="display: none;"></small>
+                                                            <small id="licenseSuccess" class="text-success"
+                                                                style="display: none;"></small>
+                                                        </div>
+                                                    </div>
+                                                    <div class="form-group row mb-0 mt-2 p-0">
+                                                        <div class="col col-sm-12 col-lg-12 col-md-12">
+                                                            <div class="form-check">
+                                                                <input type="checkbox" class="form-check-input"
+                                                                    id="overseasEntity" name="overseasEntity">
+                                                                <label class="form-check-label"
+                                                                    for="overseasEntity">Overseas
+                                                                    Entity</label>
                                                             </div>
                                                         </div>
                                                     </div>
-                                                    <div class="col col-sm-6 col-lg-6 col-md-6">
-                                                        <input type="hidden" class="form-control form-control-sm"
-                                                            value="{{ old('licenceTypeCode') }}" name="licenceTypeCode"
-                                                            id="licenceTypeCode">
-                                                        <input type="text" class="form-control form-control-sm"
-                                                            value="{{ old('licenceTypeValue') }}" name="licenceTypeValue"
-                                                            id="licenceTypeValue" required>
-                                                        <small id="licenseError" class="text-danger"
-                                                            style="display: none;"></small>
-                                                        <small id="licenseSuccess" class="text-success"
-                                                            style="display: none;"></small>
-                                                    </div>
-                                                </div>
-                                                <div class="form-group row mb-0 mt-2 p-0">
-                                                    <div class="col col-sm-12 col-lg-12 col-md-12">
-                                                        <div class="form-check">
-                                                            <input type="checkbox" class="form-check-input"
-                                                                id="overseasEntity" name="overseasEntity">
-                                                            <label class="form-check-label" for="overseasEntity">Overseas
-                                                                Entity</label>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <!-- Add officeCode if not present elsewhere -->
-                                                <input type="hidden" id="officeCode" name="officeCode" value="KE">
+                                                    <!-- Add officeCode if not present elsewhere -->
+                                                    <input type="hidden" id="officeCode" name="officeCode"
+                                                        value="KE">
+                                                </fieldset>
+
                                             </fieldset>
                                         </div>
                                     </div>
@@ -659,7 +666,7 @@
                                                         </thead>
                                                         <tbody>
                                                             <!-- Rows for Client, Shipper, Consignee, and Other -->
-                                                            <tr id="client-check">
+                                                            {{-- <tr id="client-check">
                                                                 <td>Client</td>
                                                                 <td><input type="checkbox" name="clientCheck"
                                                                         id="clientCheck"></td>
@@ -703,7 +710,9 @@
                                                                         id="consigneeCode">
                                                                 </td>
                                                                 <td id="consignee_Input"></td>
-                                                            </tr>
+                                                            </tr> --}}
+                                                            
+                                                            <!-- Other row -->
                                                             <tr id="other-check">
                                                                 <td>Other</td>
                                                                 <td><input type="checkbox" name="otherCheck"
@@ -749,7 +758,7 @@
                                                                 <td id="vendor_code"></td>
                                                             </tr>
 
-                                                       </tbody>
+                                                        </tbody>
                                                     </table>
                                                 </fieldset>
 
@@ -1021,6 +1030,14 @@
             const requestType = new URLSearchParams(window.location.search).get('type');
             const overseasEntityCheckbox = $('#overseasEntity');
             const licenceTypeValue = $('#licenceTypeValue');
+
+            if (!overseasEntityCheckbox.length || !licenceTypeValue.length || !$('#licenceTypeID').length) {
+                console.error('Critical DOM elements missing:', {
+                    overseasEntity: !!overseasEntityCheckbox.length,
+                    licenceTypeValue: !!licenceTypeValue.length,
+                    licenceTypeID: !!$('#licenceTypeID').length
+                });
+            }
 
             // Function to toggle input/dropdown visibility
             function toggleCompanyInput() {
@@ -1415,10 +1432,50 @@
             });
 
             // Toggle license number input based on overseasEntity checkbox
+            // function toggleLicenseInput() {
+            //     const isOverseas = overseasEntityCheckbox.is(':checked');
+            //     if (isOverseas) {
+            //         licenceTypeValue
+            //             .prop('disabled', true)
+            //             .val('')
+            //             .removeClass('is-invalid')
+            //             .removeAttr('required');
+            //              $('#licenceTypeID') // Add this to handle the license type dropdown
+            // .prop('disabled', true)
+            // .val('')
+            // .removeClass('is-invalid')
+            // .removeAttr('required');
+            //         $('#licenseError').hide();
+            //         $('#licenseSuccess').hide();
+            //         $('#submitBtn').prop('disabled', false);
+            //     } else {
+            //         licenceTypeValue
+            //             .prop('disabled', false)
+            //             .attr('required', 'required');
+            //             $('#licenceTypeID') // Add this to handle the license type dropdown
+            // .prop('disabled', false)
+            // .attr('required', 'required')
+            //         $('#licenseSuccess').hide();
+            //     }
+            // }
+
+            // // Initialize overseasEntity checkbox
+            // overseasEntityCheckbox.on('change', toggleLicenseInput);
+            // toggleLicenseInput();
             function toggleLicenseInput() {
                 const isOverseas = overseasEntityCheckbox.is(':checked');
+                console.log('toggleLicenseInput: isOverseas=', isOverseas,
+                    'licenceTypeValue required=', $('#licenceTypeValue').attr('required'),
+                    'licenceTypeID required=', $('#licenceTypeID').attr('required'),
+                    'timestamp=', new Date().toISOString());
+
                 if (isOverseas) {
                     licenceTypeValue
+                        .prop('disabled', true)
+                        .val('')
+                        .removeClass('is-invalid')
+                        .removeAttr('required');
+                    $('#licenceTypeID')
                         .prop('disabled', true)
                         .val('')
                         .removeClass('is-invalid')
@@ -1430,13 +1487,118 @@
                     licenceTypeValue
                         .prop('disabled', false)
                         .attr('required', 'required');
+                    $('#licenceTypeID')
+                        .prop('disabled', false)
+                        .attr('required', 'required');
                     $('#licenseSuccess').hide();
+                }
+
+                console.log('toggleLicenseInput: After update - licenceTypeValue required=',
+                    $('#licenceTypeValue').attr('required'),
+                    'licenceTypeID required=', $('#licenceTypeID').attr('required'),
+                    'timestamp=', new Date().toISOString());
+            }
+
+            // Bind event and initialize
+            overseasEntityCheckbox.on('change', toggleLicenseInput);
+            toggleLicenseInput();
+
+            // Re-run to catch late overrides
+            setTimeout(toggleLicenseInput, 1000);
+            setTimeout(toggleLicenseInput, 3000);
+
+            // Monitor required attribute changes
+            function monitorRequiredAttribute() {
+                const observer = new MutationObserver((mutations) => {
+                    mutations.forEach((mutation) => {
+                        if (mutation.type === 'attributes' && mutation.attributeName ===
+                            'required') {
+                            console.warn('Required attribute changed:', {
+                                element: mutation.target.id,
+                                required: $(mutation.target).attr('required'),
+                                isOverseas: overseasEntityCheckbox.is(':checked'),
+                                timestamp: new Date().toISOString()
+                            });
+                            if (overseasEntityCheckbox.is(':checked')) {
+                                if (mutation.target.id === 'licenceTypeValue' && $(mutation.target)
+                                    .attr('required')) {
+                                    console.warn(
+                                        'Conflict: licenceTypeValue required despite overseasEntity checked. Forcing removal.'
+                                        );
+                                    $(mutation.target).removeAttr('required').removeClass(
+                                        'is-invalid');
+                                }
+                                if (mutation.target.id === 'licenceTypeID' && $(mutation.target)
+                                    .attr('required')) {
+                                    console.warn(
+                                        'Conflict: licenceTypeID required despite overseasEntity checked. Forcing removal.'
+                                        );
+                                    $(mutation.target).removeAttr('required').removeClass(
+                                        'is-invalid');
+                                }
+                            }
+                        }
+                    });
+                });
+
+                if (document.getElementById('licenceTypeValue') && document.getElementById('licenceTypeID')) {
+                    observer.observe(document.getElementById('licenceTypeValue'), {
+                        attributes: true
+                    });
+                    observer.observe(document.getElementById('licenceTypeID'), {
+                        attributes: true
+                    });
+                } else {
+                    console.error('Cannot observe: licenceTypeValue or licenceTypeID not found in DOM');
                 }
             }
 
-            // Initialize overseasEntity checkbox
-            overseasEntityCheckbox.on('change', toggleLicenseInput);
-            toggleLicenseInput();
+            monitorRequiredAttribute();
+
+            // Override form submission to bypass HTML5 validation
+            $('#clientPartyForm').on('submit', function(e) {
+                if (overseasEntityCheckbox.is(':checked')) {
+                    $('#licenceTypeValue').removeAttr('required').removeClass('is-invalid').prop('disabled',
+                        true).val('');
+                    $('#licenceTypeID').removeAttr('required').removeClass('is-invalid').prop('disabled',
+                        true).val('');
+                    console.log(
+                        'Form submit: overseasEntity checked, ensured licenceTypeValue and licenceTypeID not required',
+                        'timestamp=', new Date().toISOString());
+                }
+                // Ensure form validation respects overseasEntity
+                if ($('#clientPartyForm')[0].checkValidity() === false && !overseasEntityCheckbox.is(
+                        ':checked')) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.warn('Form validation failed due to required fields');
+                }
+                $('#clientPartyForm').addClass('was-validated');
+            });
+
+            // Global override for overseasEntity changes
+            $(document).on('change input', '#overseasEntity', function() {
+                if ($(this).is(':checked')) {
+                    $('#licenceTypeValue').removeAttr('required').removeClass('is-invalid').prop('disabled',
+                        true).val('');
+                    $('#licenceTypeID').removeAttr('required').removeClass('is-invalid').prop('disabled',
+                        true).val('');
+                    console.log('Global override: Ensured licenceTypeValue and licenceTypeID not required',
+                        'timestamp=', new Date().toISOString());
+                }
+            });
+
+            // Re-run on stepper change
+            $(document).on('shown.bs-stepper', '.bs-stepper', function() {
+                if ($('#overseasEntity').is(':checked')) {
+                    $('#licenceTypeValue').removeAttr('required').removeClass('is-invalid').prop('disabled',
+                        true).val('');
+                    $('#licenceTypeID').removeAttr('required').removeClass('is-invalid').prop('disabled',
+                        true).val('');
+                    console.log('Stepper change: Ensured licenceTypeValue and licenceTypeID not required',
+                        'timestamp=', new Date().toISOString());
+                }
+            });
 
             // License number validation
             $('#licenceTypeValue').on('input', function() {
