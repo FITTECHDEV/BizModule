@@ -307,7 +307,7 @@ Route::group(['middleware' => ['auth', 'HtmlMinifier']], function () {
 // })->middleware('auth'); // Ensure only authenticated users can access
 
 Route::post('/client-party/check-license', [ClientPartyController::class, 'checkLicense'])->name('client-party.check-license');
-// routes/api.php or routes/web.php
 Route::get('/api/companies', [ClientPartyController::class, 'getCompanies'])->name('companies');
 Route::get('/api/company-details', [ClientPartyController::class, 'getCompanyDetails'])->name('company.details');
 Route::post('/client-party/fetch-address-details', [ClientPartyController::class, 'fetchAddressDetails'])->name('client-party.fetch-address-details');
+Route::get('/api/clients', [ClientPartyController::class, 'getClients'])->name('clients');

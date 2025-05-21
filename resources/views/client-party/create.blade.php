@@ -711,7 +711,7 @@
                                                                 </td>
                                                                 <td id="consignee_Input"></td>
                                                             </tr> --}}
-                                                            
+
                                                             <!-- Other row -->
                                                             <tr id="other-check">
                                                                 <td>Other</td>
@@ -1328,6 +1328,71 @@
             });
 
             // Function to toggle Other input behavior
+            // function toggleOtherInput() {
+            //     const isOtherChecked = $('#otherCheck').is(':checked');
+            //     const $otherInput = $('#otherInput');
+            //     const $otherID = $('#otherID');
+            //     const $otherCode = $('#otherCode');
+            //     const $otherInputDisplay = $('#other_Input');
+
+            //     if (isOtherChecked) {
+            //         $otherInput.attr('required', 'required').val('').off('input').prop('readonly', false);
+            //         $otherID.val('');
+            //         $otherCode.val('');
+            //         $otherInputDisplay.text('');
+            //     } else {
+            //         $otherInput.attr('required', 'required').val('').prop('readonly', false);
+
+            //         let debounceTimeout;
+            //         $otherInput.on('input', function() {
+            //             clearTimeout(debounceTimeout);
+            //             debounceTimeout = setTimeout(() => {
+            //                 const query = $(this).val().trim();
+            //                 const $autocompleteList = $('<div class="autocomplete-list"></div>');
+            //                 $otherInput.parent().find('.autocomplete-list').remove();
+            //                 $otherInput.parent().append($autocompleteList);
+
+            //                 if (!query) {
+            //                     $autocompleteList.empty();
+            //                     return;
+            //                 }
+
+            //                 $.ajax({
+            //                     url: '{{ route('clients') }}',
+            //                     type: 'GET',
+            //                     data: { query: query, type: 'master' },
+            //                     success: function(matches) {
+            //                         $autocompleteList.empty();
+            //                         matches.forEach(entity => {
+            //                             const $div = $(
+            //                                     '<div class="autocomplete-item"></div>'
+            //                                 )
+            //                                 .text(
+            //                                     `${entity.label} (${entity.code})`
+            //                                 )
+            //                                 .data('entity', entity);
+            //                             $autocompleteList.append($div);
+            //                         });
+            //                     },
+            //                     error: function(xhr, status, error) {
+            //                         console.error('Autocomplete error:', status, error);
+            //                         $autocompleteList.html(
+            //                             '<div>Error loading suggestions</div>');
+            //                     }
+            //                 });
+            //             }, 300);
+            //         });
+
+            //         $otherInput.parent().on('click', '.autocomplete-item', function() {
+            //             const entity = $(this).data('entity');
+            //             $otherInput.val(entity.label).removeClass('is-invalid');
+            //             $otherID.val(entity.value);
+            //             $otherCode.val(entity.code);
+            //             $otherInputDisplay.text(entity.code);
+            //             $otherInput.parent().find('.autocomplete-list').remove();
+            //         });
+            //     }
+            // }
             function toggleOtherInput() {
                 const isOtherChecked = $('#otherCheck').is(':checked');
                 const $otherInput = $('#otherInput');
@@ -1348,31 +1413,50 @@
                         clearTimeout(debounceTimeout);
                         debounceTimeout = setTimeout(() => {
                             const query = $(this).val().trim();
+                            const entityType = $('#partyEntityType').val() || '';
                             const $autocompleteList = $('<div class="autocomplete-list"></div>');
                             $otherInput.parent().find('.autocomplete-list').remove();
                             $otherInput.parent().append($autocompleteList);
 
-                            if (!query) {
+                            if (!query || !entityType) {
                                 $autocompleteList.empty();
+                                if (!entityType) {
+                                    $autocompleteList.html('<div>Please select a party type</div>');
+                                }
                                 return;
                             }
 
                             $.ajax({
-                                url: '/api/entities',
+                                url: '{{ route('companies') }}',
                                 type: 'GET',
                                 data: {
-                                    q: query
+                                    query: query,
+                                    entityType: entityType
                                 },
                                 success: function(matches) {
                                     $autocompleteList.empty();
+                                    if (matches.error) {
+                                        $autocompleteList.html(
+                                            `<div>${matches.error}</div>`);
+                                        return;
+                                    }
+                                    if (matches.length === 0) {
+                                        $autocompleteList.html(
+                                            '<div>No entities found</div>');
+                                        return;
+                                    }
                                     matches.forEach(entity => {
                                         const $div = $(
                                                 '<div class="autocomplete-item"></div>'
-                                            )
+                                                )
                                             .text(
                                                 `${entity.name} (${entity.code})`
-                                            )
-                                            .data('entity', entity);
+                                                )
+                                            .data('entity', {
+                                                value: entity.id,
+                                                label: entity.name,
+                                                code: entity.code
+                                            });
                                         $autocompleteList.append($div);
                                     });
                                 },
@@ -1387,15 +1471,25 @@
 
                     $otherInput.parent().on('click', '.autocomplete-item', function() {
                         const entity = $(this).data('entity');
-                        $otherInput.val(entity.name).removeClass('is-invalid');
+                        $otherInput.val(entity.label).removeClass('is-invalid');
                         $otherID.val(entity.value);
                         $otherCode.val(entity.code);
                         $otherInputDisplay.text(entity.code);
                         $otherInput.parent().find('.autocomplete-list').remove();
                     });
+
+                    // Close autocomplete when clicking outside
+                    $(document).on('click', function(e) {
+                        if (!$(e.target).closest('#otherInput, .autocomplete-list').length) {
+                            $otherInput.parent().find('.autocomplete-list').remove();
+                        }
+                    });
                 }
             }
 
+            // Initialize and bind event
+            toggleOtherInput();
+            $('#otherCheck').on('change', toggleOtherInput);
             // Handle partyEntityType change
             partyEntityType.on('change', function() {
                 toggleCompanyInput();
@@ -1524,7 +1618,7 @@
                                     .attr('required')) {
                                     console.warn(
                                         'Conflict: licenceTypeValue required despite overseasEntity checked. Forcing removal.'
-                                        );
+                                    );
                                     $(mutation.target).removeAttr('required').removeClass(
                                         'is-invalid');
                                 }
@@ -1532,7 +1626,7 @@
                                     .attr('required')) {
                                     console.warn(
                                         'Conflict: licenceTypeID required despite overseasEntity checked. Forcing removal.'
-                                        );
+                                    );
                                     $(mutation.target).removeAttr('required').removeClass(
                                         'is-invalid');
                                 }
@@ -1710,92 +1804,92 @@
             });
 
             // Admin details autocomplete
-            const inputs = ['debtor', 'vendor', 'otherInput'];
-            inputs.forEach(id => {
-                const $input = $(`#${id}`);
-                if (!$input.length) return;
-                const $codeCell = $(`#${id.split('Input')[0]}_Input, #${id}_code`);
-                let debounceTimeout;
+            // const inputs = ['debtor', 'vendor'];
+            // inputs.forEach(id => {
+            //     const $input = $(`#${id}`);
+            //     if (!$input.length) return;
+            //     const $codeCell = $(`#${id.split('Input')[0]}_Input, #${id}_code`);
+            //     let debounceTimeout;
 
-                $input.on('input', function() {
-                    clearTimeout(debounceTimeout);
-                    debounceTimeout = setTimeout(() => {
-                        const query = $(this).val().trim();
-                        const $autocompleteList = $(
-                            '<div class="autocomplete-list"></div>');
-                        $input.parent().find('.autocomplete-list').remove();
-                        $input.parent().append($autocompleteList);
+            //     $input.on('input', function() {
+            //         clearTimeout(debounceTimeout);
+            //         debounceTimeout = setTimeout(() => {
+            //             const query = $(this).val().trim();
+            //             const $autocompleteList = $(
+            //                 '<div class="autocomplete-list"></div>');
+            //             $input.parent().find('.autocomplete-list').remove();
+            //             $input.parent().append($autocompleteList);
 
-                        if (!query) {
-                            $autocompleteList.empty();
-                            return;
-                        }
+            //             if (!query) {
+            //                 $autocompleteList.empty();
+            //                 return;
+            //             }
 
-                        $.ajax({
-                            url: '/api/entities',
-                            type: 'GET',
-                            data: {
-                                q: query
-                            },
-                            success: function(matches) {
-                                $autocompleteList.empty();
-                                matches.forEach(entity => {
-                                    const $div = $(
-                                            '<div class="autocomplete-item"></div>'
-                                        )
-                                        .text(
-                                            `${entity.name} (${entity.code})`
-                                        )
-                                        .data('entity', entity);
-                                    $autocompleteList.append($div);
-                                });
-                            },
-                            error: function(xhr, status, error) {
-                                console.error('Autocomplete error:', status,
-                                    error);
-                                $autocompleteList.html(
-                                    '<div>Error loading suggestions</div>');
-                            }
-                        });
-                    }, 300);
-                });
+            //             $.ajax({
+            //                 url: '/api/entities',
+            //                 type: 'GET',
+            //                 data: {
+            //                     q: query
+            //                 },
+            //                 success: function(matches) {
+            //                     $autocompleteList.empty();
+            //                     matches.forEach(entity => {
+            //                         const $div = $(
+            //                                 '<div class="autocomplete-item"></div>'
+            //                             )
+            //                             .text(
+            //                                 `${entity.name} (${entity.code})`
+            //                             )
+            //                             .data('entity', entity);
+            //                         $autocompleteList.append($div);
+            //                     });
+            //                 },
+            //                 error: function(xhr, status, error) {
+            //                     console.error('Autocomplete error:', status,
+            //                         error);
+            //                     $autocompleteList.html(
+            //                         '<div>Error loading suggestions</div>');
+            //                 }
+            //             });
+            //         }, 300);
+            //     });
 
-                $input.parent().on('click', '.autocomplete-item', function() {
-                    const entity = $(this).data('entity');
-                    $input.val(entity.name).removeClass('is-invalid');
-                    $(`#${id.replace('Input', 'ID')}`).val(entity.value);
-                    $(`#${id.replace('Input', 'Code')}`).val(entity.code);
-                    if ($codeCell.length) $codeCell.text(entity.code);
-                    $input.parent().find('.autocomplete-list').remove();
-                });
+            //     $input.parent().on('click', '.autocomplete-item', function() {
+            //         const entity = $(this).data('entity');
+            //         $input.val(entity.name).removeClass('is-invalid');
+            //         $(`#${id.replace('Input', 'ID')}`).val(entity.value);
+            //         $(`#${id.replace('Input', 'Code')}`).val(entity.code);
+            //         if ($codeCell.length) $codeCell.text(entity.code);
+            //         $input.parent().find('.autocomplete-list').remove();
+            //     });
 
-                $(document).on('click', function(e) {
-                    if (!$(e.target).closest(`#${id}, .autocomplete-list`).length) {
-                        $input.parent().find('.autocomplete-list').remove();
-                    }
-                });
-            });
+            //     $(document).on('click', function(e) {
+            //         if (!$(e.target).closest(`#${id}, .autocomplete-list`).length) {
+            //             $input.parent().find('.autocomplete-list').remove();
+            //         }
+            //     });
+            // });
 
-            // Initialize toggleOtherInput
-            toggleOtherInput();
-            $('#otherCheck').on('change', toggleOtherInput);
+          //  // Initialize toggleOtherInput
+           // toggleOtherInput();
+         //   $('#otherCheck').on('change', toggleOtherInput);
 
             // Other input validation
-            $('#otherInput').on('change', function() {
-                const isOtherChecked = $('#otherCheck').is(':checked');
-                const $otherInput = $('#otherInput');
-                const $otherID = $('#otherID');
+            // $('#otherInput').on('change', function() {
+            //     const isOtherChecked = $('#otherCheck').is(':checked');
+            //     // const $otherInput = $('#otherInput');
+            //     // const $otherID = $('#otherID');
 
-                if (!isOtherChecked && !$otherID.val()) {
-                    $otherInput.addClass('is-invalid');
-                    console.log('Validation failed: No valid autocomplete selection');
-                } else if (isOtherChecked && !$otherInput.val().trim()) {
-                    $otherInput.addClass('is-invalid');
-                    console.log('Validation failed: Empty free-text input');
-                } else {
-                    $otherInput.removeClass('is-invalid');
-                }
-            });
+            //     if (!isOtherChecked && !$otherID.val()) {
+            //         $otherInput.addClass('is-invalid');
+            //         console.log('Validation failed: No valid autocomplete selection');
+            //     } else if (isOtherChecked && !$otherInput.val().trim()) {
+            //         $otherInput.addClass('is-invalid');
+            //         console.log('Validation failed: Empty free-text input');
+            //     } else {
+            //         $otherInput.removeClass('is-invalid');
+            //     }
+            // });
 
             // Form submission logging
             $('form').on('submit', function() {

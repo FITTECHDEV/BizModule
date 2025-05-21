@@ -1882,25 +1882,71 @@ class ClientPartyController extends Controller
     }
 
 
+    // public function getCompanies()
+    // {
+    //     try {
+    //         // Use Request::get() to access query parameter
+    //         $entityType = Request::get('entityType');
+    //         if (!$entityType) {
+    //             return response()->json(['error' => 'Entity type is required'], 400);
+    //         }
+
+    //         // Execute stored procedure with SET NOCOUNT ON to suppress PRINT output
+    //         $results = DB::select('SET NOCOUNT ON; EXEC dbo.sp_EntitySearchList ?, ?', [$entityType, '']);
+
+    //         // Handle string-based error response (e.g., 'Failed - Error message is - ...')
+    //         if ($results && is_array($results) && count($results) > 0 && is_string($results[0])) {
+    //             \Log::error('sp_EntitySearchList failed for entityType: ' . $entityType . ', Error: ' . $results[0]);
+    //             return response()->json(['error' => $results[0]], 500);
+    //         }
+
+    //         // Handle structured error response (e.g., Name: 'Failed - ...')
+    //         if ($results && count($results) > 0 && isset($results[0]->Name) && strpos($results[0]->Name, 'Failed') === 0) {
+    //             \Log::error('sp_EntitySearchList failed for entityType: ' . $entityType . ', Error: ' . $results[0]->Name);
+    //             return response()->json(['error' => $results[0]->Name], 500);
+    //         }
+
+    //         // Map results to expected format
+    //         $companies = array_map(function ($item) {
+    //             return [
+    //                 'id' => $item->Id,
+    //                 'code' => $item->Code,
+    //                 'name' => $item->Name
+    //             ];
+    //         }, $results);
+
+    //         // Handle empty result set
+    //         if (empty($companies)) {
+    //             \Log::warning('sp_EntitySearchList returned no results for entityType: ' . $entityType);
+    //             return response()->json([]);
+    //         }
+
+    //         return response()->json($companies);
+    //     } catch (QueryException $e) {
+    //         \Log::error('Error executing sp_EntitySearchList for entityType: ' . ($entityType ?? 'unknown') . ', SQL Error: ' . $e->getMessage());
+    //         return response()->json(['error' => 'Failed to fetch companies: ' . $e->getMessage()], 500);
+    //     }
+    // }
     public function getCompanies()
     {
         try {
-            // Use Request::get() to access query parameter
             $entityType = Request::get('entityType');
+            $query = Request::get('query', ''); // Optional query parameter for name filtering
+
             if (!$entityType) {
                 return response()->json(['error' => 'Entity type is required'], 400);
             }
 
-            // Execute stored procedure with SET NOCOUNT ON to suppress PRINT output
-            $results = DB::select('SET NOCOUNT ON; EXEC dbo.sp_EntitySearchList ?, ?', [$entityType, '']);
+            // Execute stored procedure with SET NOCOUNT ON
+            $results = DB::select('SET NOCOUNT ON; EXEC dbo.sp_EntitySearchList ?, ?', [$entityType, $query]);
 
-            // Handle string-based error response (e.g., 'Failed - Error message is - ...')
+            // Handle string-based error response
             if ($results && is_array($results) && count($results) > 0 && is_string($results[0])) {
                 \Log::error('sp_EntitySearchList failed for entityType: ' . $entityType . ', Error: ' . $results[0]);
                 return response()->json(['error' => $results[0]], 500);
             }
 
-            // Handle structured error response (e.g., Name: 'Failed - ...')
+            // Handle structured error response
             if ($results && count($results) > 0 && isset($results[0]->Name) && strpos($results[0]->Name, 'Failed') === 0) {
                 \Log::error('sp_EntitySearchList failed for entityType: ' . $entityType . ', Error: ' . $results[0]->Name);
                 return response()->json(['error' => $results[0]->Name], 500);
@@ -1927,7 +1973,6 @@ class ClientPartyController extends Controller
             return response()->json(['error' => 'Failed to fetch companies: ' . $e->getMessage()], 500);
         }
     }
-
     public function getCompanyDetails()
 
     {
