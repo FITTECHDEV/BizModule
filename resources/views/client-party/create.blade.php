@@ -169,30 +169,35 @@
                                                     </div>
                                                 </div>
                                                 {{-- Address Line 1 and 2 --}}
-                                                <div class="form-group row mb-1 address-row">
-                                                    <div class="col-md-12 mb-2">
-                                                        <label for="addressLine1"
-                                                            class="col-form-label col-form-label-sm">
-                                                            <i class="fa fa-map-marker" aria-hidden="true"></i> Address
-                                                            Line 1 <span class="text-danger">*</span>
-                                                        </label>
+                                                {{-- Address Line 1 and 2 --}}
+                                                <div class="form-group row mb-1">
+                                                    <label for="addressLine1"
+                                                        class="col-sm-3 col-lg-4 col-form-label col-form-label-sm">
+                                                        <i class="fa fa-map-marker" aria-hidden="true"></i> Address Line 1
+                                                        <span class="text-danger">*</span>
+                                                    </label>
+                                                    <div class="col-sm-9 col-lg-8">
                                                         <input type="text"
                                                             class="form-control form-control-sm basic-detail-field"
                                                             value="{{ old('addressLine1') }}" name="addressLine1"
                                                             id="addressLine1" maxlength="50" required>
                                                     </div>
-                                                    <div class="col-md-12">
-                                                        <label for="addressLine2"
-                                                            class="col-form-label col-form-label-sm">
-                                                            <i class="fa fa-map-marker" aria-hidden="true"></i> Address
-                                                            Line 2
-                                                        </label>
+                                                </div>
+
+                                                <div class="form-group row mb-1">
+                                                    <label for="addressLine2"
+                                                        class="col-sm-3 col-lg-4 col-form-label col-form-label-sm">
+                                                        <i class="fa fa-map-marker" aria-hidden="true"></i> Address Line 2
+                                                    </label>
+                                                    <div class="col-sm-9 col-lg-8">
                                                         <input type="text"
                                                             class="form-control form-control-sm basic-detail-field"
                                                             value="{{ old('addressLine2') }}" name="addressLine2"
                                                             id="addressLine2" maxlength="50">
                                                     </div>
                                                 </div>
+
+
 
                                                 {{-- Country Code and Country Name --}}
                                                 <div class="form-group row mb-1">
@@ -666,7 +671,7 @@
                                                         </thead>
                                                         <tbody>
                                                             <!-- Rows for Client, Shipper, Consignee, and Other -->
-                                                            {{-- <tr id="client-check">
+                                                             <tr id="client-check">
                                                                 <td>Client</td>
                                                                 <td><input type="checkbox" name="clientCheck"
                                                                         id="clientCheck"></td>
@@ -710,7 +715,7 @@
                                                                         id="consigneeCode">
                                                                 </td>
                                                                 <td id="consignee_Input"></td>
-                                                            </tr> --}}
+                                                            </tr>
 
                                                             <!-- Other row -->
                                                             <tr id="other-check">
@@ -793,6 +798,8 @@
         </div>
     </div>
 @stop
+
+
 
 {{-- CSS --}}
 @section('css')
@@ -976,6 +983,25 @@
 
         #companyDropdown {
             display: block;
+        }
+
+        .autocomplete-list {
+            position: absolute;
+            background: white;
+            border: 1px solid #ccc;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 1000;
+            width: 100%;
+        }
+
+        .autocomplete-item {
+            padding: 5px;
+            cursor: pointer;
+        }
+
+        .autocomplete-item:hover {
+            background: #f0f0f0;
         }
     </style>
     <link rel="stylesheet" href="//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
@@ -1448,10 +1474,10 @@
                                     matches.forEach(entity => {
                                         const $div = $(
                                                 '<div class="autocomplete-item"></div>'
-                                                )
+                                            )
                                             .text(
                                                 `${entity.name} (${entity.code})`
-                                                )
+                                            )
                                             .data('entity', {
                                                 value: entity.id,
                                                 label: entity.name,
@@ -1490,6 +1516,9 @@
             // Initialize and bind event
             toggleOtherInput();
             $('#otherCheck').on('change', toggleOtherInput);
+
+
+
             // Handle partyEntityType change
             partyEntityType.on('change', function() {
                 toggleCompanyInput();
@@ -1870,9 +1899,9 @@
             //     });
             // });
 
-          //  // Initialize toggleOtherInput
-           // toggleOtherInput();
-         //   $('#otherCheck').on('change', toggleOtherInput);
+            //  // Initialize toggleOtherInput
+            // toggleOtherInput();
+            //   $('#otherCheck').on('change', toggleOtherInput);
 
             // Other input validation
             // $('#otherInput').on('change', function() {

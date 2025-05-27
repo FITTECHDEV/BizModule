@@ -72,7 +72,7 @@
                                         <legend class="w-auto p-0 m-0">Entity Creation Options</legend>
                                         <div class="row">
                                             <div class="col col-md-6 col-sm-12">
-                                                <div class="form-group row mb-1">
+                                                {{-- <div class="form-group row mb-1">
                                                     <label for="partyEntityType"
                                                         class="col-sm-3 col-lg-4 col-md-4 col-form-label col-form-label-sm"
                                                         style="font-size: 17px">Operation Type<span
@@ -96,6 +96,32 @@
                                                                 @if (old('partyEntityType', $clientParty->OperatioEntityType) == 'Trucker') selected @endif>Trucker /
                                                                 Transportor</option>
 
+                                                        </select>
+                                                    </div>
+                                                </div> --}}
+                                                <div class="form-group row mb-1">
+                                                    <label for="partyEntityType"
+                                                        class="col-sm-3 col-lg-4 col-md-4 col-form-label col-form-label-sm"
+                                                        style="font-size: 17px">Operation Type<span
+                                                            class="text-danger">*</span></label>
+                                                    <div class="col-sm-9 col-lg-8 col-md-8">
+                                                        <select class="form-control form-control-sm" id="partyEntityType"
+                                                            name="partyEntityType" required>
+                                                            <option value="Client"
+                                                                @if (old('partyEntityType', $clientParty->OperatioEntityType) == 'Client') selected @endif>Client
+                                                            </option>
+                                                            <option value="Agent / Forwarder"
+                                                                @if (old('partyEntityType', $clientParty->OperatioEntityType) == 'Agent / Forwarder') selected @endif>Agent /
+                                                                Forwarder</option>
+                                                            <option value="Airline"
+                                                                @if (old('partyEntityType', $clientParty->OperatioEntityType) == 'Airline') selected @endif>Airline
+                                                            </option>
+                                                            <option value="Shipping Line"
+                                                                @if (old('partyEntityType', $clientParty->OperatioEntityType) == 'Shipping Line') selected @endif>Shipping
+                                                                Line</option>
+                                                            <option value="Trucker / Transporter"
+                                                                @if (old('partyEntityType', $clientParty->OperatioEntityType) == 'Trucker / Transporter') selected @endif>Trucker /
+                                                                Transporter</option>
                                                         </select>
                                                     </div>
                                                 </div>
@@ -1201,7 +1227,7 @@
                                             class="btn btn-success btn-sm float-right m-2" data-toggle="tooltip"
                                             data-placement="top" title="Update"><i class="fa fa-edit"
                                                 aria-hidden="true"></i>
-                                            Update for gdter</button>
+                                            Update for later</button>
                                     @endif
                                 </div>
                                 @if (Auth::user()->can('create-client-party'))
@@ -1218,8 +1244,8 @@
                                                             <th>Select</th>
                                                             <th>Code</th>
                                                         </thead>
-                                                        <tr>
-                                                            <td>Client</td>
+                                                        {{-- <tr> --}}
+                                                        {{-- <td>Client</td>
                                                             <td><input type="checkbox" name="clientCheck"
                                                                     id="clientCheck"
                                                                     @if ($clientParty->ClientName == '') checked @endif></td>
@@ -1231,10 +1257,10 @@
                                                                     value="{{ old('clientID', $clientParty->ClientID) }}">
                                                                 <input type="hidden" name="clientCode" id="clientCode"
                                                                     value="{{ old('clientCode', $clientParty->ClientCode) }}">
-                                                                {{-- <select name="clientID" id="clientID"
+                                                                <select name="clientID" id="clientID"
                                                                 class="form-control form-control-sm">
                                                                 <option value=""></option>
-                                                            </select> --}}
+                                                            </select>
                                                             </td>
                                                             <td id="client_Input" onclick='copyText(this)'
                                                                 data-toggle="tooltip" title="Click to copy">
@@ -1254,10 +1280,10 @@
                                                                     value="{{ old('shipperID', $clientParty->ShipperConsigneeID) }}">
                                                                 <input type="hidden" name="shipperCode" id="shipperCode"
                                                                     value="{{ old('shipperID', $clientParty->ShipperConsigneeCode) }}">
-                                                                {{-- <select name="shipperInput" id="shipperInput"
+                                                                <select name="shipperInput" id="shipperInput"
                                                                 class="form-control form-control-sm">
                                                                 <option value=""></option>
-                                                            </select> --}}
+                                                            </select>
                                                             </td>
                                                             <td id="shipper_Input" onclick='copyText(this)'
                                                                 data-toggle="tooltip" title="Click to copy">
@@ -1284,25 +1310,25 @@
                                                                 data-toggle="tooltip" title="Click to copy">
                                                                 {{ $clientParty->ShipperConsigneeCode ?? '' }}</td>
                                                         </tr>
-                                                        <tr>
-                                                            <td>Other</td>
-                                                            <td><input type="checkbox" name="otherCheck" id="otherCheck"
-                                                                    @if ($clientParty->OtherPartyName == '') checked @endif></td>
-                                                            <td>
-                                                                <input type="text" name="otherInput" id="otherInput"
-                                                                    value="{{ old('otherID', $clientParty->OtherPartyName) }}"
-                                                                    class="form-control form-control-sm" required>
-                                                                <input type="hidden" name="otherID" id="otherID"
-                                                                    value="{{ old('otherID', $clientParty->OtherPartyID) }}">
-                                                                <input type="hidden" name="otherCode" id="otherCode"
-                                                                    value="{{ old('otherCode', $clientParty->OtherPartyCode) }}">
+                                                        <tr> --}}
+                                                        <td>Other</td>
+                                                        <td><input type="checkbox" name="otherCheck" id="otherCheck"
+                                                                @if ($clientParty->OtherPartyName == '') checked @endif></td>
+                                                        <td>
+                                                            <input type="text" name="otherInput" id="otherInput"
+                                                                value="{{ old('otherID', $clientParty->OtherPartyName) }}"
+                                                                class="form-control form-control-sm" required>
+                                                            <input type="hidden" name="otherID" id="otherID"
+                                                                value="{{ old('otherID', $clientParty->OtherPartyID) }}">
+                                                            <input type="hidden" name="otherCode" id="otherCode"
+                                                                value="{{ old('otherCode', $clientParty->OtherPartyCode) }}">
 
-                                                            </td>
+                                                        </td>
 
-                                                            <td id="other_Input" onclick='copyText(this)'
-                                                                data-toggle="tooltip" title="Click to copy">
-                                                                {{ $clientParty->OtherPartyCode ?? '' }}
-                                                            </td>
+                                                        <td id="other_Input" onclick='copyText(this)'
+                                                            data-toggle="tooltip" title="Click to copy">
+                                                            {{ $clientParty->OtherPartyCode ?? '' }}
+                                                        </td>
                                                         </tr>
                                                         <tr>
                                                             <td>Debtor</td>
@@ -1368,19 +1394,28 @@
                                                         class="btn btn-outline-success float-right m-2 btn-sm"
                                                         data-toggle="tooltip" data-placement="top" title=""
                                                         data-bs-original-title="Approve Entity For Creation"><i
-                                                            class="fa fa-check" aria-hidden="true"></i> Submit</button>
-                                                    {{-- <button type="button" name="rejectBtn" id="rejectBtn"
+                                                            class="fa fa-check" aria-hidden="true"></i> Submitttt</button>
+                                                    <button type="button" name="rejectBtn" id="rejectBtn"
                                                         data-toggle="modal" data-target="#cancelModal"
                                                         class="btn btn-danger float-right m-2 btn-sm"
                                                         data-toggle="tooltip" data-placement="top"
                                                         title="Reject For Amendment" data-bs-original-title="Update">
-                                                        <i class="fa fa-edit" aria-hidden="true"></i> Reject </button> --}}
-                                                    {{-- <button type="submit" name="submitBtn" value="true"
+                                                        <i class="fa fa-edit" aria-hidden="true"></i> Reject </button>
+                                                @endif
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endif
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                {{-- <button type="submit" name="submitBtn" value="true"
                                                         class="btn btn-success float-right m-2 btn-sm"
                                                         data-toggle="tooltip" data-placement="top" title=""
                                                         data-bs-original-title="Update">
                                                         <i class="fa fa-edit" aria-hidden="true"></i> Update for
-                                                        Later</button> --}}
+                                                        Later</button>
                                                 @endif
                                             </div>
                                         </div>
@@ -1410,176 +1445,196 @@
         Status: <span
             class="badge badge-{{ $clientParty->paintClientPartyStatus($clientParty->Status) }}">{{$clientParty->Status}}</span>
         @endif --}}
-            @if ($clientParty->Status == 'Rejected' || $clientParty->Status == 'Review')
-                Rejected By: <b>{{ $clientParty->RejectedBy }}</b> RejectedOn:
-                <b>{{ date_format(
-                    date_create($clientParty->RejectedOn),
-                    'Y-m-d
-                                                                                                                                                                            H:i:s',
-                ) }}</b>
-                <br>Reason: <b class="text-sm">{{ $clientParty->RejectedReason }}</b>
-            @endif
+                @if ($clientParty->Status == 'Rejected' || $clientParty->Status == 'Review')
+                    Rejected By: <b>{{ $clientParty->RejectedBy }}</b> RejectedOn:
+                    <b>{{ date_format(
+                        date_create($clientParty->RejectedOn),
+                        'Y-m-d
+                                                                                                                                                                                                                                                                                                                                H:i:s',
+                    ) }}</b>
+                    <br>Reason: <b class="text-sm">{{ $clientParty->RejectedReason }}</b>
+                @endif
+
+            </div>
         </div>
-    </div>
 
-    <!-- Modal -->
-    <div class="modal fade" id="cancelModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
-        aria-hidden="true">
-        <div class="modal-dialog" role="document">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="exampleModalLabel">Reject Entity Options</h5>
+        <!-- Modal -->
+        <div class="modal fade" id="cancelModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
+            aria-hidden="true">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="exampleModalLabel">Reject Entity
+                            Options</h5>
 
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                </div>
-                <div class="modal-body">
-                    <form action="" id="cancelForm">
-                        <div class="form-group">
-                            <label for="level" class="control-label">Level</label>
-                            <select name="level" id="level" class="form-control">
-                                <option value="" selected disabled>Select an option</option>
-                                <option value="Review">Reject for Review</option>
-                                <option value="Rejected">Reject Permanently</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="reason" class="control-label">Reason</label>
-                            <textarea name="reason" id="reason" class="form-control"></textarea>
-                        </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal"
-                        id="close-modal">Close</button>
-                    <button type="button" class="btn btn-primary" id="submit-entity">Save
-                        changes</button>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button><select class="form-control form-control-sm" id="partyEntityType" name="partyEntityType"
+                            required>
+                            <option value="" disabled selected></option>
+                            @if (request()->query('type') === 'accounting')
+                                <option value="Client" @if (old('partyEntityType') == 'Client') selected @endif>
+                                    Client</option>
+                                <option value="Create only in D365" @if (old('partyEntityType') == 'Create only in D365') selected @endif>
+                                    Create only in D365</option>
+                            @endif
+                            <option value="Agent / Forwarder" @if (old('partyEntityType') == 'Agent / Forwarder') selected @endif>
+                                Agent / Forwarder</option>
+                            <option value="Airline" @if (old('partyEntityType') == 'Airline') selected @endif>
+                                Airline</option>
+                            <option value="Shipping Line" @if (old('partyEntityType') == 'Shipping Line') selected @endif>
+                                Shipping Line</option>
+                            <option value="Trucker / Transporter" @if (old('partyEntityType') == 'Trucker / Transporter') selected @endif>
+                                Trucker / Transporter</option>
+                        </select>
+                    </div>
+                    <div class="modal-body">
+                        <form action="" id="cancelForm">
+                            <div class="form-group">
+                                <label for="level" class="control-label">Level</label>
+                                <select name="level" id="level" class="form-control">
+                                    <option value="" selected disabled>Select an
+                                        option</option>
+                                    <option value="Review">Reject for Review</option>
+                                    <option value="Rejected">Reject Permanently</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="reason" class="control-label">Reason</label>
+                                <textarea name="reason" id="reason" class="form-control"></textarea>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal"
+                            id="close-modal">Close</button>
+                        <button type="button" class="btn btn-primary" id="submit-entity">Save
+                            changes</button>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
-@stop
+    @stop
 
-@section('css')
-    {{-- stepper css --}}
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bs-stepper/dist/css/bs-stepper.min.css">
-    <style>
-        fieldset.scheduler-border {
-            border: solid 1px #DDD !important;
-            padding: 0 10px 10px 10px;
-            border-bottom: none;
-        }
-
-        legend.scheduler-border {
-            width: auto !important;
-            border: none;
-            font-size: 14px;
-        }
-
-        legend {
-            font-size: 16px;
-            /* color: #060ac4; */
-            /* color: #0174f3; */
-            color: #E91809;
-            /* padding: 0 10px 10px 10px; */
-            /**/
-            font-weight: bold;
-        }
-
-        label {
-            font-weight: bold;
-            /* font-size: 18px; */
-        }
-
-        /* Preloader */
-        .preloader {
-            position: fixed;
-            top: 0;
-            left: 0;
-            z-index: 999999999;
-            width: 100%;
-            height: 100%;
-            background-color: #fff;
-            overflow: hidden;
-        }
-
-        .preloader-inner {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            -webkit-transform: translate(-50%, -50%);
-            -moz-transform: translate(-50%, -50%);
-            transform: translate(-50%, -50%);
-        }
-
-        .preloader-icon {
-            width: 100px;
-            height: 100px;
-            display: inline-block;
-            padding: 0px;
-        }
-
-        .preloader-icon span {
-            position: absolute;
-            display: inline-block;
-            width: 100px;
-            height: 100px;
-            border-radius: 100%;
-            /* background:#F7941D; */
-            background: #191857;
-            -webkit-animation: preloader-fx 1.6s linear infinite;
-            animation: preloader-fx 1.6s linear infinite;
-        }
-
-        .preloader-icon span:last-child {
-            animation-delay: -0.8s;
-            -webkit-animation-delay: -0.8s;
-        }
-
-        @keyframes preloader-fx {
-            0% {
-                transform: scale(0, 0);
-                opacity: 0.5;
+    @section('css')
+        {{-- stepper css --}}
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bs-stepper/dist/css/bs-stepper.min.css">
+        <style>
+            fieldset.scheduler-border {
+                border: solid 1px #DDD !important;
+                padding: 0 10px 10px 10px;
+                border-bottom: none;
             }
 
-            100% {
-                transform: scale(1, 1);
-                opacity: 0;
-            }
-        }
-
-        @-webkit-keyframes preloader-fx {
-            0% {
-                -webkit-transform: scale(0, 0);
-                opacity: 0.5;
+            legend.scheduler-border {
+                width: auto !important;
+                border: none;
+                font-size: 14px;
             }
 
-            100% {
-                -webkit-transform: scale(1, 1);
-                opacity: 0;
+            legend {
+                font-size: 16px;
+                /* color: #060ac4; */
+                /* color: #0174f3; */
+                color: #E91809;
+                /* padding: 0 10px 10px 10px; */
+                /**/
+                font-weight: bold;
             }
-        }
 
-        /* End Preloader */
-    </style>
-    <link rel="stylesheet" href="//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
-    <style>
-        #loader {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            width: 100%;
-            background: rgba(0, 0, 0, 0.75) url('{{ asset('site_imgs/loading2.gif') }}') no-repeat center center;
-            z-index: 10000;
-        }
-    </style>
-@stop
+            label {
+                font-weight: bold;
+                /* font-size: 18px; */
+            }
 
-{{-- @section('js')
+            /* Preloader */
+            .preloader {
+                position: fixed;
+                top: 0;
+                left: 0;
+                z-index: 999999999;
+                width: 100%;
+                height: 100%;
+                background-color: #fff;
+                overflow: hidden;
+            }
+
+            .preloader-inner {
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                -webkit-transform: translate(-50%, -50%);
+                -moz-transform: translate(-50%, -50%);
+                transform: translate(-50%, -50%);
+            }
+
+            .preloader-icon {
+                width: 100px;
+                height: 100px;
+                display: inline-block;
+                padding: 0px;
+            }
+
+            .preloader-icon span {
+                position: absolute;
+                display: inline-block;
+                width: 100px;
+                height: 100px;
+                border-radius: 100%;
+                /* background:#F7941D; */
+                background: #191857;
+                -webkit-animation: preloader-fx 1.6s linear infinite;
+                animation: preloader-fx 1.6s linear infinite;
+            }
+
+            .preloader-icon span:last-child {
+                animation-delay: -0.8s;
+                -webkit-animation-delay: -0.8s;
+            }
+
+            @keyframes preloader-fx {
+                0% {
+                    transform: scale(0, 0);
+                    opacity: 0.5;
+                }
+
+                100% {
+                    transform: scale(1, 1);
+                    opacity: 0;
+                }
+            }
+
+            @-webkit-keyframes preloader-fx {
+                0% {
+                    -webkit-transform: scale(0, 0);
+                    opacity: 0.5;
+                }
+
+                100% {
+                    -webkit-transform: scale(1, 1);
+                    opacity: 0;
+                }
+            }
+
+            /* End Preloader */
+        </style>
+        <link rel="stylesheet" href="//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+        <style>
+            #loader {
+                display: none;
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                width: 100%;
+                background: rgba(0, 0, 0, 0.75) url('{{ asset('site_imgs/loading2.gif') }}') no-repeat center center;
+                z-index: 10000;
+            }
+        </style>
+    @stop
+
+    {{-- @section('js')
     <script>
         /** Function to copy text */
         function copyText(element) {
@@ -1776,7 +1831,57 @@
         });
     </script>
 @stop --}}
+    {{--
 @section('js')
+    <!-- Existing scripts -->
+     <!-- Existing scripts -->
+      <script>
+        $(document).ready(function() {
+            const typeConfig = {
+                'Agent / Forwarder': { display: 'Agent / Forwarder', value: 'Agent / Forwarder' },
+                'Trucker / Transporter': { display: 'Trucker / Transporter', value: 'Trucker / Transporter' },
+                'Client': { display: 'Client', value: 'Client' },
+                'Airline': { display: 'Airline', value: 'Airline' },
+                'Shipping Line': { display: 'Shipping Line', value: 'Shipping Line' }
+            };
+
+            const serverPartyType = '{{ $clientParty->OperatioEntityType }}';
+            const config = typeConfig[serverPartyType] || { display: serverPartyType, value: serverPartyType };
+
+            $('#partyEntityType').val(config.value);
+
+            $('#partyEntityType').on('change', function() {
+                const selectedValue = $(this).val();
+                if (!(selectedValue in typeConfig)) {
+                    $(this).val(config.value);
+                    alert('Invalid party type selected. Reverting to original.');
+                }
+            });
+
+            $('#approveBtn').off('click').on('click', function(e) {
+                e.preventDefault();
+                let selectedValue = $('#partyEntityType').val();
+                let data = {
+                    partyEntityType: selectedValue,
+                    debtorType: $('input[name="debtorType"]').val() || null,
+                    vendorType: $('input[name="vendorType"]').val() || null,
+                    _token: '{{ csrf_token() }}'
+                };
+                $.ajax({
+                    url: '{{ route("client-party.approve", $clientParty->Id) }}',
+                    type: 'POST',
+                    data: data,
+                    success: function(response) {
+                        alert('Party approved successfully as ' + (typeConfig[selectedValue]?.display || selectedValue));
+                        window.location.reload();
+                    },
+                    error: function(xhr) {
+                        alert('Approval failed: ' + (xhr.responseJSON?.message || 'Unknown error'));
+                    }
+                });
+            });
+        });
+    </script>
     <script>
         /** Function to copy text */
         function copyText(element) {
@@ -1937,4 +2042,282 @@
             }
         });
     </script>
-@stop
+@stop --}}
+
+    @section('js')
+        <script>
+            /* Ajax setup CSRF */
+            $.ajaxSetup({
+                headers: {
+                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                }
+            });
+        </script>
+        <script src="//code.jquery.com/jquery-1.12.4.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/bs-stepper/dist/js/bs-stepper.min.js"></script>
+        <script src="{{ asset('js/client-party/party-entity.js') }}"></script>
+        <script src="{{ asset('js/client-party/validation.js') }}"></script>
+        <script src="{{ asset('js/client-party/sub-form.js') }}"></script>
+        <script src="{{ asset('js/client-party/jquery-number/jquery.number.min.js') }}"></script>
+        <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
+        <script>
+            /** Function to copy text */
+            function copyText(element) {
+                var $temp = $("<input>");
+                $("body").append($temp);
+                $temp.val($(element).html()).select();
+                document.execCommand("copy");
+                $('.tooltip .tooltip-inner').text('Copied!');
+                $temp.remove();
+            }
+
+            /** Get user authorization status */
+            window.User = {
+                value: '{{ auth()->user()->can('edit-client-party') }}',
+                edit: '{{ $editForm }}'
+            };
+            window.approve_client_party = `{{ $approve }}`;
+            window.default_bill_curr = `{{ $clientParty->BillingCurrencyId }}`;
+
+            $(document).ready(function() {
+                // Handle legalEntityType visibility
+                let type = document.body.dataset.type;
+                console.log("Type:-", type);
+                let legalTypeDiv = document.getElementById("legalEntityType")?.closest('.col');
+                if (legalTypeDiv) {
+                    legalTypeDiv.style.display = type === "accounting" ? "none" : "block";
+                }
+
+                // Initialize debtor and vendor dropdowns
+                let debtor_val = window.default_debtor || '';
+                let vendor_val = window.default_vendor || '';
+                if (debtor_val === '') {
+                    $('#debtorType').attr('disabled', 'disabled');
+                } else {
+                    $('#debtorType').removeAttr('disabled').val(debtor_val).trigger('change');
+                }
+                if (vendor_val === '') {
+                    $('#vendorType').attr('disabled', 'disabled');
+                } else {
+                    $('#vendorType').removeAttr('disabled').val(vendor_val).trigger('change');
+                }
+
+                // Handle dynamic enabling/disabling via checkboxes
+                $('input[type="checkbox"][name="debtorEnabled"]').on('change', function() {
+                    if ($(this).is(':checked')) {
+                        $('#debtorType').removeAttr('disabled');
+                    } else {
+                        $('#debtorType').attr('disabled', 'disabled').val('');
+                    }
+                });
+                $('input[type="checkbox"][name="vendorEnabled"]').on('change', function() {
+                    if ($(this).is(':checked')) {
+                        $('#vendorType').removeAttr('disabled');
+                    } else {
+                        $('#vendorType').attr('disabled', 'disabled').val('');
+                    }
+                });
+
+                // Handle partyEntityType validation
+                const typeConfig = {
+                    'Agent / Forwarder': {
+                        display: 'Agent / Forwarder',
+                        value: 'Agent / Forwarder'
+                    },
+                    'Trucker / Transporter': {
+                        display: 'Trucker / Transporter',
+                        value: 'Trucker / Transporter'
+                    },
+                    'Client': {
+                        display: 'Client',
+                        value: 'Client'
+                    },
+                    'Airline': {
+                        display: 'Airline',
+                        value: 'Airline'
+                    },
+                    'Shipping Line': {
+                        display: 'Shipping Line',
+                        value: 'Shipping Line'
+                    }
+                };
+                const serverPartyType = '{{ $clientParty->OperatioEntityType }}';
+                const config = typeConfig[serverPartyType] || {
+                    display: serverPartyType,
+                    value: serverPartyType
+                };
+                $('#partyEntityType').val(config.value);
+                $('#partyEntityType').on('change', function() {
+                    const selectedValue = $(this).val();
+                    if (!(selectedValue in typeConfig)) {
+                        $(this).val(config.value);
+                        alert('Invalid party type selected. Reverting to original.');
+                    }
+                });
+$('#approveBtn').off('click').on('click', function(e) {
+    e.preventDefault();
+    let approve = confirm('Confirm Approval.');
+    if (!approve) return;
+
+    // Validate OtherParty fields
+    const otherInput = $('input[name="otherInput"]').val()?.trim();
+    const otherID = $('input[name="otherID"]').val()?.trim();
+    const otherCode = $('input[name="otherCode"]').val()?.trim();
+
+    if (!otherInput || !otherID || !otherCode) {
+        alert('Please fill in all Other Party fields (Name, ID, Code) before approving.');
+        console.error('Validation failed: Missing OtherParty fields', {
+            otherInput,
+            otherID,
+            otherCode
+        });
+        return;
+    }
+
+    let currentStatus = '{{ $clientParty->Status }}';
+    let isAccounting = currentStatus === 'PendingManagerApproval' ? true :
+        '{{ request()->query('type') === 'accounting' ? 'true' : 'false' }}' === 'true';
+    let targetStatus;
+    if (currentStatus === 'Submitted') {
+        targetStatus = isAccounting ? 'PendingManagerApproval' : 'Created';
+    } else if (currentStatus === 'PendingManagerApproval') {
+        targetStatus = 'Created';
+    } else {
+        alert('Invalid action: Approval not allowed for status ' + currentStatus);
+        console.error('Invalid status transition', { currentStatus });
+        return;
+    }
+
+    let form_data = {
+        _token: '{{ csrf_token() }}',
+        id: '{{ $clientParty->Id }}',
+        status: targetStatus,
+        partyEntityType: $('#partyEntityType').val() || '{{ $clientParty->OperatioEntityType ?? '' }}',
+        debtorType: $('input[name="debtorType"]').val() || null,
+        vendorType: $('input[name="vendorType"]').val() || null,
+        type: isAccounting ? 'accounting' : 'operational',
+        otherInput: otherInput,
+        otherID: otherID,
+        otherCode: otherCode
+    };
+
+    console.log('Sending form_data:', form_data);
+
+    $.ajax({
+        url: '{{ route('client-party.approve') }}',
+        type: 'POST',
+        dataType: 'json',
+        data: form_data,
+        beforeSend: function() {
+            $('#approveBtn').prop('disabled', true).text('Approving...');
+            console.log('AJAX request initiated');
+        },
+        success: function(response) {
+            console.log('Approval success:', response);
+            alert(response.message || 'Entity ' + (isAccounting && targetStatus === 'PendingManagerApproval' ? 'pending management approval' : 'created') + ' successfully!');
+            window.location.href = '{{ route('client-party.approvals') }}';
+        },
+        error: function(xhr) {
+            $('#approveBtn').prop('disabled', false).text('Approve');
+            console.error('AJAX Error:', xhr.responseJSON || xhr.statusText);
+            let errorMessage = xhr.responseJSON?.message || 'Approval failed';
+            if (xhr.status === 422 && xhr.responseJSON?.errors) {
+                errorMessage = 'Validation failed:\n' + Object.values(xhr.responseJSON.errors).flat().join('\n');
+            }
+            alert(errorMessage);
+        }
+    });
+});
+                // Reject button handler
+                $('#close-modal').click(function() {
+                    $('#cancelForm')[0].reset();
+                    $('#cancelModal').modal('hide');
+                });
+
+                $('#submit-entity').on('click', function() {
+                    let form_data = {
+                        id: '{{ $clientParty->Id }}',
+                        level: $('#level option:selected').val(),
+                        reason: $('#reason').val(),
+                    };
+                    if (!form_data.level) {
+                        $('#level').addClass('is-invalid');
+                        return;
+                    }
+                    if (!form_data.reason) {
+                        $('#reason').addClass('is-invalid');
+                        return;
+                    }
+                    $.ajax({
+                        url: '/client-party/reject',
+                        type: 'POST',
+                        dataType: 'json',
+                        data: form_data,
+                        success: function(response) {
+                            console.log(response);
+                            location.reload();
+                        },
+                        error: function(xhr) {
+                            alert('Rejection failed: ' + (xhr.responseJSON?.message ||
+                                'Unknown error'));
+                        }
+                    });
+                });
+
+                // File attachment handling
+                let init = {{ $clientParty->attachments->count() + 1 }};
+                let max_fields = 3;
+                $('.addAttachment').click(function() {
+                    let lsthmtl = $('.clone').html();
+                    if (init < max_fields) {
+                        let names = document.getElementsByName('attachmentNames[]');
+                        let desc = document.getElementsByName('attachmentDescription[]');
+                        let fileInputName = names[names.length - 2];
+                        let fileInputDescription = desc[desc.length - 2];
+                        let allowedExtensions = /(\.jpg|\.jpeg|\.png|\.gif)$/i;
+                        if (!allowedExtensions.exec(fileInputName.value) || fileInputDescription.value === '') {
+                            alert('Either Invalid file type / No Description');
+                            fileInputName.value = '';
+                            return false;
+                        } else {
+                            $('#attachClone').before(lsthmtl);
+                            init++;
+                        }
+                    } else {
+                        alert('Maximum File Attachment Reached.');
+                    }
+                });
+
+                $('body').on('click', '.btn-danger', function() {
+                    $(this).parents('.hdtuto').remove();
+                    init--;
+                });
+
+                let spinner = $('#loader');
+                $('body').on('click', '.deleteFile', function() {
+                    let id = $(this).attr('id');
+                    let choice = confirm('Are you sure you wish to delete file?');
+                    let url = '/delete-client-party-attachment/' + id;
+                    if (choice) {
+                        spinner.show();
+                        $.ajax({
+                            url: url,
+                            type: 'POST',
+                            dataType: 'json',
+                            success: function(response) {
+                                if (response[1] == 200) {
+                                    alert('File Deleted !!');
+                                    location.reload();
+                                }
+                            },
+                            error: function(xhr) {
+                                alert('File deletion failed: ' + (xhr.responseJSON?.message ||
+                                    'Unknown error'));
+                            }
+                        });
+                    }
+                });
+            });
+        </script>
+        <script src="{{ asset('js/client-party/show-create-client-party.js') }}"></script>
+    @stop

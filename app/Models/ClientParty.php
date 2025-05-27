@@ -58,40 +58,40 @@ class ClientParty extends Model
     }
 
     //     public function generateUniqueCode($id)
-// {
-//     // If ID is null, use Kenya's office code
-//     if ($id == null) {
-//         $office = Office::select('Code')->where('Name', 'Kenya')->first();
-//     } else {
-//         $office = Office::select('Code')->where('ID', $id)->first();
-//     }
+    // {
+    //     // If ID is null, use Kenya's office code
+    //     if ($id == null) {
+    //         $office = Office::select('Code')->where('Name', 'Kenya')->first();
+    //     } else {
+    //         $office = Office::select('Code')->where('ID', $id)->first();
+    //     }
 
     //     // Check if office details are missing
-//     if (empty($office)) {
-//         alert()->error('Missing Office Details');
-//         abort(404, "Missing Office Details");
-//     }
+    //     if (empty($office)) {
+    //         alert()->error('Missing Office Details');
+    //         abort(404, "Missing Office Details");
+    //     }
 
     //     // Get the maximum number (ensuring no records case)
-//     $max_num = DB::table('Cust_Entity')
-//         ->select(DB::raw('ISNULL(MAX(CAST(RIGHT(Code, 5) AS NUMERIC(18,0))), 0) + 1 AS max_num'))
-//         ->whereRaw('LEN(Code) = 9')
-//         ->pluck('max_num');
+    //     $max_num = DB::table('Cust_Entity')
+    //         ->select(DB::raw('ISNULL(MAX(CAST(RIGHT(Code, 5) AS NUMERIC(18,0))), 0) + 1 AS max_num'))
+    //         ->whereRaw('LEN(Code) = 9')
+    //         ->pluck('max_num');
 
     //     // Check if a valid max number is returned
-//     $max_num = $max_num[0] ?? 0; // Ensure fallback to 0 if no records are found
+    //     $max_num = $max_num[0] ?? 0; // Ensure fallback to 0 if no records are found
 
     //     // Get the current year (last two digits)
-//     $year = date('y');
+    //     $year = date('y');
 
     //     // Pad the max number to ensure it's 5 digits
-//     $ticket_number = str_pad($max_num, 5, '0', STR_PAD_LEFT);
+    //     $ticket_number = str_pad($max_num, 5, '0', STR_PAD_LEFT);
 
     //     // Generate the final code by concatenating office code, year, and ticket number
-//     $code = $office->code . $year . $ticket_number;
+    //     $code = $office->code . $year . $ticket_number;
 
     //     return $code;
-// }
+    // }
 
 
     public function getSCMOfficeID($id)
@@ -219,6 +219,9 @@ class ClientParty extends Model
         'RejectedBy',
         'RejectedOn',
         'RejectedReason',
+         'OtherPartyName', // Added
+        'OtherPartyID',   // Added
+        'OtherPartyCode',
     ];
 
     public function entityStats()
@@ -231,7 +234,6 @@ class ClientParty extends Model
             Cust_Entity
             group by Status
             order by StatusCount desc"));
-
         } else {
             return DB::select(DB::raw("select CE.Status as StatusName,
             COUNT(status) as StatusCount
