@@ -7,6 +7,7 @@
 @stop
 
 @section('content')
+
     <div class="row">
         <!-- Preloader -->
         <div class="preloader">
@@ -1394,7 +1395,7 @@
                                                         class="btn btn-outline-success float-right m-2 btn-sm"
                                                         data-toggle="tooltip" data-placement="top" title=""
                                                         data-bs-original-title="Approve Entity For Creation"><i
-                                                            class="fa fa-check" aria-hidden="true"></i> Submitttt</button>
+                                                            class="fa fa-check" aria-hidden="true"></i> Create</button>
                                                     <button type="button" name="rejectBtn" id="rejectBtn"
                                                         data-toggle="modal" data-target="#cancelModal"
                                                         class="btn btn-danger float-right m-2 btn-sm"
@@ -1450,7 +1451,7 @@
                     <b>{{ date_format(
                         date_create($clientParty->RejectedOn),
                         'Y-m-d
-                                                                                                                                                                                                                                                                                                                                H:i:s',
+                                                                                                                                                                                                                                                                                                                                                    H:i:s',
                     ) }}</b>
                     <br>Reason: <b class="text-sm">{{ $clientParty->RejectedReason }}</b>
                 @endif
@@ -1546,6 +1547,11 @@
                 font-weight: bold;
                 /* font-size: 18px; */
             }
+            /*rREad only*/
+            .disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
 
             /* Preloader */
             .preloader {
@@ -1634,31 +1640,9 @@
         </style>
     @stop
 
-    {{-- @section('js')
-    <script>
-        /** Function to copy text */
-        function copyText(element) {
-            var $temp = $("<input>");
-            $("body").append($temp);
-            $temp.val($(element).html()).select();
-            document.execCommand("copy");
-            $('.tooltip .tooltip-inner').text('Copied!');
-            $temp.remove();
-        }
 
-        document.addEventListener("DOMContentLoaded", function() {
-            let type = document.body.dataset.type; // Get type from the body tag
-            console.log("Type:-", type);
 
-            let legalTypeDiv = document.getElementById("legalEntityType").closest('.col');
-
-            if (type === "accounting") {
-                legalTypeDiv.style.display = "none";
-            } else {
-                legalTypeDiv.style.display = "block";
-            }
-        });
-    </script>
+@section('js')
     <script>
         /* Ajax setup CSRF */
         $.ajaxSetup({
@@ -1675,282 +1659,192 @@
     <script src="{{ asset('js/client-party/jquery-number/jquery.number.min.js') }}"></script>
     <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
     <script>
+        /** Function to copy text */
+        function copyText(element) {
+            var $temp = $("<input>");
+            $("body").append($temp);
+            $temp.val($(element).html()).select();
+            document.execCommand("copy");
+            $('.tooltip .tooltip-inner').text('Copied!');
+            $temp.remove();
+        }
+
         /** Get user authorization status */
         window.User = {
             value: '{{ auth()->user()->can('edit-client-party') }}',
             edit: '{{ $editForm }}'
-        }
+        };
         window.approve_client_party = `{{ $approve }}`;
-
-        /* Initialize debtor and vendor dropdowns */
-        let debtor_val = window.default_debtor || '';
-        let vendor_val = window.default_vendor || '';
-
-        // Handle debtorType dropdown
-        if (debtor_val === '') {
-            $('#debtorType').attr('disabled', 'disabled');
-        } else {
-            $('#debtorType').removeAttr('disabled').val(debtor_val).trigger('change');
-        }
-
-        // Handle vendorType dropdown
-        if (vendor_val === '') {
-            $('#vendorType').attr('disabled', 'disabled');
-        } else {
-            $('#vendorType').removeAttr('disabled').val(vendor_val).trigger('change');
-        }
-
-        // Optional: Handle dynamic enabling/disabling via checkboxes
-        $('input[type="checkbox"][name="debtorEnabled"]').on('change', function() {
-            if ($(this).is(':checked')) {
-                $('#debtorType').removeAttr('disabled');
-            } else {
-                $('#debtorType').attr('disabled', 'disabled').val('');
-            }
-        });
-
-        $('input[type="checkbox"][name="vendorEnabled"]').on('change', function() {
-            if ($(this).is(':checked')) {
-                $('#vendorType').removeAttr('disabled');
-            } else {
-                $('#vendorType').attr('disabled', 'disabled').val('');
-            }
-        });
-
         window.default_bill_curr = `{{ $clientParty->BillingCurrencyId }}`;
-    </script>
-    <script src="{{ asset('js/client-party/show-create-client-party.js') }}"></script>
-    <script type="text/javascript">
-        $('#close-modal').click(function() {
-            $('#cancelForm')[0].reset();
-            $('#cancelModal').modal('hide');
-        });
 
-        $('#submit-entity').on('click', function() {
-            // Validate form data
-            let form_data = {
-                id: `{{ $clientParty->Id }}`,
-                level: $('#level option:selected').val(),
-                reason: $('#reason').val(),
-            };
-
-            if (form_data.level == "") {
-                $('#level').addClass('is-invalid');
-            } else if (form_data.reason == "") {
-                $('#reason').addClass('is-invalid');
-            } else {
-                $.ajax({
-                    url: '/client-party/reject',
-                    type: 'POST',
-                    dataType: 'json',
-                    data: form_data,
-                    success: function(response) {
-                        console.log(response);
-                        location.reload();
-                    }
-                });
-            }
-        });
-
-        $('#approveBtn').click(function() {
-            let approve = confirm('Confirm Approval.');
-            if (approve) {
-                let form_data = {
-                    id: `{{ $clientParty->Id }}`,
-                    status: `{{ $clientParty->Status }}`,
-                    debtorType: $('#debtorType').is(':disabled') ? '' : $('#debtorType').val(),
-                    vendorType: $('#vendorType').is(':disabled') ? '' : $('#vendorType').val(),
-                };
-                $.ajax({
-                    url: '/client-party/approve',
-                    type: 'POST',
-                    dataType: 'json',
-                    data: form_data,
-                    success: function(response) {
-                        if (response[1] == 200) {
-                            alert("Entity Updated. !!");
-                            window.location.href = `{{ route('client-party.approvals') }}`
-                        }
-                    }
-                });
-            }
-        });
-
-        let init = `{{ $clientParty->attachments->count() + 1 }}`;
-        let max_fields = 3;
-        $(".addAttachment").click(function() {
-            var lsthmtl = $(".clone").html();
-            if (init < max_fields) {
-                // Check if file attachment has content
-                var names = document.getElementsByName('attachmentNames[]');
-                var desc = document.getElementsByName('attachmentDescription[]');
-
-                var fileInputName = names[names.length - 2];
-                var fileInputDescription = desc[desc.length - 2];
-
-                // Validation
-                var allowedExtensions = /(\.jpg|\.jpeg|\.png|\.gif)$/i;
-                if (!allowedExtensions.exec(fileInputName.value) || fileInputDescription.value == '') {
-                    alert('Either Invalid file type / No Description');
-                    fileInputName.value = '';
-                    return false;
-                } else {
-                    $("#attachClone").before(lsthmtl);
-                    init++;
-                }
-            } else {
-                alert('Maximum File Attachment Reached.');
-            }
-        });
-
-        $("body").on("click", ".btn-danger", function() {
-            $(this).parents(".hdtuto").remove();
-            init--;
-        });
-
-        let spinner = $('#loader');
-
-        $("body").on("click", ".deleteFile", function() {
-            let id = $(this).attr('id');
-            let choice = confirm('Are you Sure You wish to delete file ?');
-            let url = "/delete-client-party-attachment/" + id;
-            if (choice) {
-                spinner.show();
-                $.ajax({
-                    url: url,
-                    type: 'POST',
-                    dataType: 'json',
-                    success: function(response) {
-                        if (response[1] == 200) {
-                            alert("File Deleted !!");
-                            location.reload();
-                        }
-                    }
-                });
-            }
-        });
-    </script>
-@stop --}}
-    {{--
-@section('js')
-    <!-- Existing scripts -->
-     <!-- Existing scripts -->
-      <script>
         $(document).ready(function() {
+            // Handle legalEntityType visibility
+            let type = document.body.dataset.type;
+            console.log("Type:-", type);
+            let legalTypeDiv = document.getElementById("legalEntityType")?.closest('.col');
+            if (legalTypeDiv) {
+                legalTypeDiv.style.display = type === "accounting" ? "none" : "block";
+            }
+
+            // Initialize debtor and vendor dropdowns
+            let debtor_val = window.default_debtor || '';
+            let vendor_val = window.default_vendor || '';
+            if (debtor_val === '') {
+                $('#debtorType').attr('disabled', 'disabled');
+            } else {
+                $('#debtorType').val(debtor_val).trigger('change');
+            }
+            if (vendor_val === '') {
+                $('#vendorType').attr('disabled', 'disabled');
+            } else {
+                $('#vendorType').val(vendor_val).trigger('change');
+            }
+
+            // Make all form fields read-only or disabled
+            // Selects
+            $('select[name="partyEntityType"], select[name="legalEntityType"], select[name="countryID"], select[name="officeCountry"], select[name="billingCurrency"], select[name="licenceTypeID"], #level').prop('disabled', true);
+            // Checkboxes
+            $('input[name="otherCheck"], input[name="debtorCheck"], input[name="vendorCheck"]').prop('disabled', true);
+            // Text inputs and textareas
+            $('input[name="companyName"], input[name="provinceName"], input[name="zipCode"], input[name="cityName"], input[name="firstName"], input[name="lastName"], input[name="department"], input[name="phoneNo"], input[name="contractEmail"], textarea[name="addressLine1"], textarea[name="addressLine2"], input[name="otherInput"], input[name="debtor"], input[name="vendor"], input[name="attachmentDescription[]"], textarea[name="reason"], input[name="creditDays"], input[name="maxCreditLimit"], input[name="baseCurrency"], input[name="licenceTypeValue"]').prop('readonly', true);
+            // File inputs
+            $('input[name="attachmentNames[]"]').prop('disabled', true);
+            // Buttons
+            $('.addAttachment, .deleteFile, #submit-entity').prop('disabled', true).addClass('disabled');
+
+            // Handle partyEntityType validation (skipped since field is disabled)
             const typeConfig = {
-                'Agent / Forwarder': { display: 'Agent / Forwarder', value: 'Agent / Forwarder' },
-                'Trucker / Transporter': { display: 'Trucker / Transporter', value: 'Trucker / Transporter' },
-                'Client': { display: 'Client', value: 'Client' },
-                'Airline': { display: 'Airline', value: 'Airline' },
-                'Shipping Line': { display: 'Shipping Line', value: 'Shipping Line' }
+                'Agent / Forwarder': {
+                    display: 'Agent / Forwarder',
+                    value: 'Agent / Forwarder'
+                },
+                'Trucker / Transporter': {
+                    display: 'Trucker / Transporter',
+                    value: 'Trucker / Transporter'
+                },
+                'Client': {
+                    display: 'Client',
+                    value: 'Client'
+                },
+                'Airline': {
+                    display: 'Airline',
+                    value: 'Airline'
+                },
+                'Shipping Line': {
+                    display: 'Shipping Line',
+                    value: 'Shipping Line'
+                }
             };
-
             const serverPartyType = '{{ $clientParty->OperatioEntityType }}';
-            const config = typeConfig[serverPartyType] || { display: serverPartyType, value: serverPartyType };
-
+            const config = typeConfig[serverPartyType] || {
+                display: serverPartyType,
+                value: serverPartyType
+            };
             $('#partyEntityType').val(config.value);
 
-            $('#partyEntityType').on('change', function() {
-                const selectedValue = $(this).val();
-                if (!(selectedValue in typeConfig)) {
-                    $(this).val(config.value);
-                    alert('Invalid party type selected. Reverting to original.');
-                }
-            });
-
+            // Approve button handler
             $('#approveBtn').off('click').on('click', function(e) {
                 e.preventDefault();
-                let selectedValue = $('#partyEntityType').val();
-                let data = {
-                    partyEntityType: selectedValue,
+                let approve = confirm('Confirm Approval.');
+                if (!approve) return;
+
+                // Validate OtherParty fields
+                const otherInput = $('input[name="otherInput"]').val()?.trim();
+                const otherID = $('input[name="otherID"]').val()?.trim();
+                const otherCode = $('input[name="otherCode"]').val()?.trim();
+
+                if (type === 'operational' &&(!otherInput || !otherID || !otherCode)) {
+                    alert('Please ensure all Other Party fields (Name, ID, Code) are filled.');
+                    console.error('Validation failed: Missing OtherParty fields', {
+                        otherInput,
+                        otherID,
+                        otherCode
+                    });
+                    return;
+                }
+
+                let currentStatus = '{{ $clientParty->Status }}';
+                let isAccounting = currentStatus === 'PendingManagerApproval' ? true :
+                    '{{ request()->query('type') === 'accounting' ? 'true' : 'false' }}' === 'true';
+                let targetStatus;
+                if (currentStatus === 'Submitted') {
+                    targetStatus = isAccounting ? 'PendingManagerApproval' : 'Created';
+                } else if (currentStatus === 'PendingManagerApproval') {
+                    targetStatus = 'Created';
+                } else {
+                    alert('Invalid action: Approval not allowed for status ' + currentStatus);
+                    console.error('Invalid status transition', {
+                        currentStatus
+                    });
+                    return;
+                }
+
+                let form_data = {
+                    _token: '{{ csrf_token() }}',
+                    id: '{{ $clientParty->Id }}',
+                    status: targetStatus,
+                    partyEntityType: $('#partyEntityType').val() ||
+                        '{{ $clientParty->OperatioEntityType ?? '' }}',
                     debtorType: $('input[name="debtorType"]').val() || null,
                     vendorType: $('input[name="vendorType"]').val() || null,
-                    _token: '{{ csrf_token() }}'
+                    type: isAccounting ? 'accounting' : 'operational',
+                    otherInput: otherInput,
+                    otherID: otherID,
+                    otherCode: otherCode
                 };
+
+                console.log('Sending form_data:', form_data);
+
                 $.ajax({
-                    url: '{{ route("client-party.approve", $clientParty->Id) }}',
+                    url: '{{ route('client-party.approve') }}',
                     type: 'POST',
-                    data: data,
+                    dataType: 'json',
+                    data: form_data,
+                    beforeSend: function() {
+                        $('#approveBtn').prop('disabled', true).text('Approving...');
+                        console.log('AJAX request initiated');
+                    },
                     success: function(response) {
-                        alert('Party approved successfully as ' + (typeConfig[selectedValue]?.display || selectedValue));
-                        window.location.reload();
+                        console.log('Approval success:', response);
+                        alert(response.message || 'Entity ' + (isAccounting && targetStatus ===
+                            'PendingManagerApproval' ? 'pending management approval' :
+                            'created') + ' successfully!');
+                        window.location.href = '{{ route('client-party.approvals') }}';
                     },
                     error: function(xhr) {
-                        alert('Approval failed: ' + (xhr.responseJSON?.message || 'Unknown error'));
+                        $('#approveBtn').prop('disabled', false).text('Approve');
+                        console.error('AJAX Error:', xhr.responseJSON || xhr.statusText);
+                        let errorMessage = xhr.responseJSON?.message || 'Approval failed';
+                        if (xhr.status === 422 && xhr.responseJSON?.errors) {
+                            errorMessage = 'Validation failed:\n' + Object.values(xhr
+                                .responseJSON.errors).flat().join('\n');
+                        }
+                        alert(errorMessage);
                     }
                 });
             });
-        });
-    </script>
-    <script>
-        /** Function to copy text */
-        function copyText(element) {
-            var $temp = $("<input>");
-            $("body").append($temp);
-            $temp.val($(element).html()).select();
-            document.execCommand("copy");
-            $('.tooltip .tooltip-inner').text('Copied!');
-            $temp.remove();
-        }
 
-        document.addEventListener("DOMContentLoaded", function() {
-            let type = document.body.dataset.type; // Get type from the body tag
-            console.log("Type:-", type);
+            // Reject button handler
+            $('#close-modal').click(function() {
+                $('#cancelForm')[0].reset();
+                $('#cancelModal').modal('hide');
+            });
 
-            let legalTypeDiv = document.getElementById("legalEntityType").closest('.col');
-
-            if (type === "accounting") {
-                legalTypeDiv.style.display = "none";
-            } else {
-                legalTypeDiv.style.display = "block";
-            }
-        });
-    </script>
-    <script>
-        /* Ajax setup CSRF */
-        $.ajaxSetup({
-            headers: {
-                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-            }
-        });
-    </script>
-    <script src="//code.jquery.com/jquery-1.12.4.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bs-stepper/dist/js/bs-stepper.min.js"></script>
-    <script src="{{ asset('js/client-party/party-entity.js') }}"></script>
-    <script src="{{ asset('js/client-party/validation.js') }}"></script>
-    <script src="{{ asset('js/client-party/sub-form.js') }}"></script>
-    <script src="{{ asset('js/client-party/jquery-number/jquery.number.min.js') }}"></script>
-    <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
-    <script>
-        /** Get user authorization status */
-        window.User = {
-            value: '{{ auth()->user()->can('edit-client-party') }}',
-            edit: '{{ $editForm }}'
-        }
-        window.approve_client_party = `{{ $approve }}`;
-
-        window.default_bill_curr = `{{ $clientParty->BillingCurrencyId }}`;
-    </script>
-    <script src="{{ asset('js/client-party/show-create-client-party.js') }}"></script>
-    <script type="text/javascript">
-        $('#close-modal').click(function() {
-            $('#cancelForm')[0].reset();
-            $('#cancelModal').modal('hide');
-        });
-
-        $('#submit-entity').on('click', function() {
-            // Validate form data
-            let form_data = {
-                id: `{{ $clientParty->Id }}`,
-                level: $('#level option:selected').val(),
-                reason: $('#reason').val(),
-            };
-
-            if (form_data.level == "") {
-                $('#level').addClass('is-invalid');
-            } else if (form_data.reason == "") {
-                $('#reason').addClass('is-invalid');
-            } else {
+            $('#submit-entity').on('click', function() {
+                // Disabled button prevents this from executing
+                let form_data = {
+                    id: '{{ $clientParty->Id }}',
+                    level: $('#level option:selected').val(),
+                    reason: $('#reason').val(),
+                };
+                if (!form_data.level) {
+                    $('#level').addClass('is-invalid');
+                    return;
+                }
+                if (!form_data.reason) {
+                    $('#reason').addClass('is-invalid');
+                    return;
+                }
                 $.ajax({
                     url: '/client-party/reject',
                     type: 'POST',
@@ -1959,365 +1853,71 @@
                     success: function(response) {
                         console.log(response);
                         location.reload();
+                    },
+                    error: function(xhr) {
+                        alert('Rejection failed: ' + (xhr.responseJSON?.message ||
+                            'Unknown error'));
                     }
                 });
-            }
-        });
+            });
 
-        $('#approveBtn').click(function() {
-            let approve = confirm('Confirm Approval.');
-            if (approve) {
-                let form_data = {
-                    id: `{{ $clientParty->Id }}`,
-                    status: `{{ $clientParty->Status }}`,
-                    debtorType: $('input[name="debtorType"]').val(),
-                    vendorType: $('input[name="vendorType"]').val(),
-                };
-                $.ajax({
-                    url: '/client-party/approve',
-                    type: 'POST',
-                    dataType: 'json',
-                    data: form_data,
-                    success: function(response) {
-                        if (response[1] == 200) {
-                            alert("Entity Updated. !!");
-                            window.location.href = `{{ route('client-party.approvals') }}`
-                        }
+            // File attachment handling
+            let init = {{ $clientParty->attachments->count() + 1 }};
+            let max_fields = 3;
+            $('.addAttachment').click(function() {
+                // Disabled button prevents this from executing
+                let lsthmtl = $('.clone').html();
+                if (init < max_fields) {
+                    let names = document.getElementsByName('attachmentNames[]');
+                    let desc = document.getElementsByName('attachmentDescription[]');
+                    let fileInputName = names[names.length - 2];
+                    let fileInputDescription = desc[desc.length - 2];
+                    let allowedExtensions = /(\.jpg|\.jpeg|\.png|\.gif)$/i;
+                    if (!allowedExtensions.exec(fileInputName.value) || fileInputDescription.value === '') {
+                        alert('Either Invalid file type / No Description');
+                        fileInputName.value = '';
+                        return false;
+                    } else {
+                        $('#attachClone').before(lsthmtl);
+                        init++;
                     }
-                });
-            }
-        });
-
-        let init = `{{ $clientParty->attachments->count() + 1 }}`;
-        let max_fields = 3;
-        $(".addAttachment").click(function() {
-            var lsthmtl = $(".clone").html();
-            if (init < max_fields) {
-                // Check if file attachment has content
-                var names = document.getElementsByName('attachmentNames[]');
-                var desc = document.getElementsByName('attachmentDescription[]');
-
-                var fileInputName = names[names.length - 2];
-                var fileInputDescription = desc[desc.length - 2];
-
-                // Validation
-                var allowedExtensions = /(\.jpg|\.jpeg|\.png|\.gif)$/i;
-                if (!allowedExtensions.exec(fileInputName.value) || fileInputDescription.value == '') {
-                    alert('Either Invalid file type / No Description');
-                    fileInputName.value = '';
-                    return false;
                 } else {
-                    $("#attachClone").before(lsthmtl);
-                    init++;
-                }
-            } else {
-                alert('Maximum File Attachment Reached.');
-            }
-        });
-
-        $("body").on("click", ".btn-danger", function() {
-            $(this).parents(".hdtuto").remove();
-            init--;
-        });
-
-        let spinner = $('#loader');
-
-        $("body").on("click", ".deleteFile", function() {
-            let id = $(this).attr('id');
-            let choice = confirm('Are you Sure You wish to delete file ?');
-            let url = "/delete-client-party-attachment/" + id;
-            if (choice) {
-                spinner.show();
-                $.ajax({
-                    url: url,
-                    type: 'POST',
-                    dataType: 'json',
-                    success: function(response) {
-                        if (response[1] == 200) {
-                            alert("File Deleted !!");
-                            location.reload();
-                        }
-                    }
-                });
-            }
-        });
-    </script>
-@stop --}}
-
-    @section('js')
-        <script>
-            /* Ajax setup CSRF */
-            $.ajaxSetup({
-                headers: {
-                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                    alert('Maximum File Attachment Reached.');
                 }
             });
-        </script>
-        <script src="//code.jquery.com/jquery-1.12.4.min.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/bs-stepper/dist/js/bs-stepper.min.js"></script>
-        <script src="{{ asset('js/client-party/party-entity.js') }}"></script>
-        <script src="{{ asset('js/client-party/validation.js') }}"></script>
-        <script src="{{ asset('js/client-party/sub-form.js') }}"></script>
-        <script src="{{ asset('js/client-party/jquery-number/jquery.number.min.js') }}"></script>
-        <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
-        <script>
-            /** Function to copy text */
-            function copyText(element) {
-                var $temp = $("<input>");
-                $("body").append($temp);
-                $temp.val($(element).html()).select();
-                document.execCommand("copy");
-                $('.tooltip .tooltip-inner').text('Copied!');
-                $temp.remove();
-            }
 
-            /** Get user authorization status */
-            window.User = {
-                value: '{{ auth()->user()->can('edit-client-party') }}',
-                edit: '{{ $editForm }}'
-            };
-            window.approve_client_party = `{{ $approve }}`;
-            window.default_bill_curr = `{{ $clientParty->BillingCurrencyId }}`;
+            $('body').on('click', '.btn-danger', function() {
+                // Disabled button prevents this from executing
+                $(this).parents('.hdtuto').remove();
+                init--;
+            });
 
-            $(document).ready(function() {
-                // Handle legalEntityType visibility
-                let type = document.body.dataset.type;
-                console.log("Type:-", type);
-                let legalTypeDiv = document.getElementById("legalEntityType")?.closest('.col');
-                if (legalTypeDiv) {
-                    legalTypeDiv.style.display = type === "accounting" ? "none" : "block";
-                }
-
-                // Initialize debtor and vendor dropdowns
-                let debtor_val = window.default_debtor || '';
-                let vendor_val = window.default_vendor || '';
-                if (debtor_val === '') {
-                    $('#debtorType').attr('disabled', 'disabled');
-                } else {
-                    $('#debtorType').removeAttr('disabled').val(debtor_val).trigger('change');
-                }
-                if (vendor_val === '') {
-                    $('#vendorType').attr('disabled', 'disabled');
-                } else {
-                    $('#vendorType').removeAttr('disabled').val(vendor_val).trigger('change');
-                }
-
-                // Handle dynamic enabling/disabling via checkboxes
-                $('input[type="checkbox"][name="debtorEnabled"]').on('change', function() {
-                    if ($(this).is(':checked')) {
-                        $('#debtorType').removeAttr('disabled');
-                    } else {
-                        $('#debtorType').attr('disabled', 'disabled').val('');
-                    }
-                });
-                $('input[type="checkbox"][name="vendorEnabled"]').on('change', function() {
-                    if ($(this).is(':checked')) {
-                        $('#vendorType').removeAttr('disabled');
-                    } else {
-                        $('#vendorType').attr('disabled', 'disabled').val('');
-                    }
-                });
-
-                // Handle partyEntityType validation
-                const typeConfig = {
-                    'Agent / Forwarder': {
-                        display: 'Agent / Forwarder',
-                        value: 'Agent / Forwarder'
-                    },
-                    'Trucker / Transporter': {
-                        display: 'Trucker / Transporter',
-                        value: 'Trucker / Transporter'
-                    },
-                    'Client': {
-                        display: 'Client',
-                        value: 'Client'
-                    },
-                    'Airline': {
-                        display: 'Airline',
-                        value: 'Airline'
-                    },
-                    'Shipping Line': {
-                        display: 'Shipping Line',
-                        value: 'Shipping Line'
-                    }
-                };
-                const serverPartyType = '{{ $clientParty->OperatioEntityType }}';
-                const config = typeConfig[serverPartyType] || {
-                    display: serverPartyType,
-                    value: serverPartyType
-                };
-                $('#partyEntityType').val(config.value);
-                $('#partyEntityType').on('change', function() {
-                    const selectedValue = $(this).val();
-                    if (!(selectedValue in typeConfig)) {
-                        $(this).val(config.value);
-                        alert('Invalid party type selected. Reverting to original.');
-                    }
-                });
-$('#approveBtn').off('click').on('click', function(e) {
-    e.preventDefault();
-    let approve = confirm('Confirm Approval.');
-    if (!approve) return;
-
-    // Validate OtherParty fields
-    const otherInput = $('input[name="otherInput"]').val()?.trim();
-    const otherID = $('input[name="otherID"]').val()?.trim();
-    const otherCode = $('input[name="otherCode"]').val()?.trim();
-
-    if (!otherInput || !otherID || !otherCode) {
-        alert('Please fill in all Other Party fields (Name, ID, Code) before approving.');
-        console.error('Validation failed: Missing OtherParty fields', {
-            otherInput,
-            otherID,
-            otherCode
-        });
-        return;
-    }
-
-    let currentStatus = '{{ $clientParty->Status }}';
-    let isAccounting = currentStatus === 'PendingManagerApproval' ? true :
-        '{{ request()->query('type') === 'accounting' ? 'true' : 'false' }}' === 'true';
-    let targetStatus;
-    if (currentStatus === 'Submitted') {
-        targetStatus = isAccounting ? 'PendingManagerApproval' : 'Created';
-    } else if (currentStatus === 'PendingManagerApproval') {
-        targetStatus = 'Created';
-    } else {
-        alert('Invalid action: Approval not allowed for status ' + currentStatus);
-        console.error('Invalid status transition', { currentStatus });
-        return;
-    }
-
-    let form_data = {
-        _token: '{{ csrf_token() }}',
-        id: '{{ $clientParty->Id }}',
-        status: targetStatus,
-        partyEntityType: $('#partyEntityType').val() || '{{ $clientParty->OperatioEntityType ?? '' }}',
-        debtorType: $('input[name="debtorType"]').val() || null,
-        vendorType: $('input[name="vendorType"]').val() || null,
-        type: isAccounting ? 'accounting' : 'operational',
-        otherInput: otherInput,
-        otherID: otherID,
-        otherCode: otherCode
-    };
-
-    console.log('Sending form_data:', form_data);
-
-    $.ajax({
-        url: '{{ route('client-party.approve') }}',
-        type: 'POST',
-        dataType: 'json',
-        data: form_data,
-        beforeSend: function() {
-            $('#approveBtn').prop('disabled', true).text('Approving...');
-            console.log('AJAX request initiated');
-        },
-        success: function(response) {
-            console.log('Approval success:', response);
-            alert(response.message || 'Entity ' + (isAccounting && targetStatus === 'PendingManagerApproval' ? 'pending management approval' : 'created') + ' successfully!');
-            window.location.href = '{{ route('client-party.approvals') }}';
-        },
-        error: function(xhr) {
-            $('#approveBtn').prop('disabled', false).text('Approve');
-            console.error('AJAX Error:', xhr.responseJSON || xhr.statusText);
-            let errorMessage = xhr.responseJSON?.message || 'Approval failed';
-            if (xhr.status === 422 && xhr.responseJSON?.errors) {
-                errorMessage = 'Validation failed:\n' + Object.values(xhr.responseJSON.errors).flat().join('\n');
-            }
-            alert(errorMessage);
-        }
-    });
-});
-                // Reject button handler
-                $('#close-modal').click(function() {
-                    $('#cancelForm')[0].reset();
-                    $('#cancelModal').modal('hide');
-                });
-
-                $('#submit-entity').on('click', function() {
-                    let form_data = {
-                        id: '{{ $clientParty->Id }}',
-                        level: $('#level option:selected').val(),
-                        reason: $('#reason').val(),
-                    };
-                    if (!form_data.level) {
-                        $('#level').addClass('is-invalid');
-                        return;
-                    }
-                    if (!form_data.reason) {
-                        $('#reason').addClass('is-invalid');
-                        return;
-                    }
+            let spinner = $('#loader');
+            $('body').on('click', '.deleteFile', function() {
+                // Disabled button prevents this from executing
+                let id = $(this).attr('id');
+                let choice = confirm('Are you sure you wish to delete file?');
+                let url = '/delete-client-party-attachment/' + id;
+                if (choice) {
+                    spinner.show();
                     $.ajax({
-                        url: '/client-party/reject',
+                        url: url,
                         type: 'POST',
                         dataType: 'json',
-                        data: form_data,
                         success: function(response) {
-                            console.log(response);
-                            location.reload();
+                            if (response[1] == 200) {
+                                alert('File Deleted !!');
+                                location.reload();
+                            }
                         },
                         error: function(xhr) {
-                            alert('Rejection failed: ' + (xhr.responseJSON?.message ||
+                            alert('File deletion failed: ' + (xhr.responseJSON?.message ||
                                 'Unknown error'));
                         }
                     });
-                });
-
-                // File attachment handling
-                let init = {{ $clientParty->attachments->count() + 1 }};
-                let max_fields = 3;
-                $('.addAttachment').click(function() {
-                    let lsthmtl = $('.clone').html();
-                    if (init < max_fields) {
-                        let names = document.getElementsByName('attachmentNames[]');
-                        let desc = document.getElementsByName('attachmentDescription[]');
-                        let fileInputName = names[names.length - 2];
-                        let fileInputDescription = desc[desc.length - 2];
-                        let allowedExtensions = /(\.jpg|\.jpeg|\.png|\.gif)$/i;
-                        if (!allowedExtensions.exec(fileInputName.value) || fileInputDescription.value === '') {
-                            alert('Either Invalid file type / No Description');
-                            fileInputName.value = '';
-                            return false;
-                        } else {
-                            $('#attachClone').before(lsthmtl);
-                            init++;
-                        }
-                    } else {
-                        alert('Maximum File Attachment Reached.');
-                    }
-                });
-
-                $('body').on('click', '.btn-danger', function() {
-                    $(this).parents('.hdtuto').remove();
-                    init--;
-                });
-
-                let spinner = $('#loader');
-                $('body').on('click', '.deleteFile', function() {
-                    let id = $(this).attr('id');
-                    let choice = confirm('Are you sure you wish to delete file?');
-                    let url = '/delete-client-party-attachment/' + id;
-                    if (choice) {
-                        spinner.show();
-                        $.ajax({
-                            url: url,
-                            type: 'POST',
-                            dataType: 'json',
-                            success: function(response) {
-                                if (response[1] == 200) {
-                                    alert('File Deleted !!');
-                                    location.reload();
-                                }
-                            },
-                            error: function(xhr) {
-                                alert('File deletion failed: ' + (xhr.responseJSON?.message ||
-                                    'Unknown error'));
-                            }
-                        });
-                    }
-                });
+                }
             });
-        </script>
-        <script src="{{ asset('js/client-party/show-create-client-party.js') }}"></script>
-    @stop
+        });
+    </script>
+    <script src="{{ asset('js/client-party/show-create-client-party.js') }}"></script>
+@stop

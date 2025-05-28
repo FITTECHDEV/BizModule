@@ -641,7 +641,7 @@
                                         <button type="submit" name="submitBtn" value="submitBtn"
                                             class="btn btn-outline-success btn-sm float-right mt-2" data-toggle="tooltip"
                                             data-placement="top" title="Will Be Submitted for Creating"><i
-                                                class="fa fa-thumbs-up" aria-hidden="true"></i> Submit</button>
+                                                class="fa fa-thumbs-up" aria-hidden="true"></i> Submmmmit</button>
                                     @endif
                                     <button type="button" name="save-step2" id="save-step2"
                                         class="btn btn-success btn-sm float-right m-2" data-toggle="tooltip"
@@ -1554,37 +1554,7 @@
                 $('#licenceTypeCode').val(selectedOption.data('code'));
             });
 
-            // Toggle license number input based on overseasEntity checkbox
-            // function toggleLicenseInput() {
-            //     const isOverseas = overseasEntityCheckbox.is(':checked');
-            //     if (isOverseas) {
-            //         licenceTypeValue
-            //             .prop('disabled', true)
-            //             .val('')
-            //             .removeClass('is-invalid')
-            //             .removeAttr('required');
-            //              $('#licenceTypeID') // Add this to handle the license type dropdown
-            // .prop('disabled', true)
-            // .val('')
-            // .removeClass('is-invalid')
-            // .removeAttr('required');
-            //         $('#licenseError').hide();
-            //         $('#licenseSuccess').hide();
-            //         $('#submitBtn').prop('disabled', false);
-            //     } else {
-            //         licenceTypeValue
-            //             .prop('disabled', false)
-            //             .attr('required', 'required');
-            //             $('#licenceTypeID') // Add this to handle the license type dropdown
-            // .prop('disabled', false)
-            // .attr('required', 'required')
-            //         $('#licenseSuccess').hide();
-            //     }
-            // }
 
-            // // Initialize overseasEntity checkbox
-            // overseasEntityCheckbox.on('change', toggleLicenseInput);
-            // toggleLicenseInput();
             function toggleLicenseInput() {
                 const isOverseas = overseasEntityCheckbox.is(':checked');
                 console.log('toggleLicenseInput: isOverseas=', isOverseas,
