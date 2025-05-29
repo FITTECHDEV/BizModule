@@ -18,7 +18,8 @@
                             <i class="fa fa-ban"></i></span>
                         <div class="info-box-content">
                             <span class="info-box-text text-center">Manager Approval</span>
-                            <span class="info-box-number text-center">{{ $clientParty->clientPartyCount('Status', 'PendingManagerApproval') }}</span>
+                            <span
+                                class="info-box-number text-center">{{ $clientParty->clientPartyCount('Status', 'PendingManagerApproval') }}</span>
                         </div>
                     </div>
                 </a>
@@ -30,18 +31,47 @@
                         <span class="info-box-icon bg-info elevation-1"><i class="fa fa-calculator"></i></span>
                         <div class="info-box-content">
                             <span class="info-box-text text-center">Total Requests</span>
-                            <span class="info-box-number text-center">{{ $clientParty->clientPartyCount('Status', '*') }}</span>
+                            <span
+                                class="info-box-number text-center">{{ $clientParty->clientPartyCount('Status', '*') }}</span>
+                        </div>
+                    </div>
+                </a>
+            </div>
+            <div class="col-12 col-sm-6 col-md-2">
+                <a href="#" id="allEntityRequests">
+                    <div class="info-box mb-3">
+                        <span class="info-box-icon bg-info elevation-1"><i class="fa fa-list"></i></span>
+                        <div class="info-box-content">
+                            <span class="info-box-text text-center">Created</span>
+                            <span
+                                class="info-box-number text-center">{{ $clientParty->clientPartyCount('Status', 'Created') }}</span>
+                        </div>
+                    </div>
+                </a>
+            </div>
+            <div class="col-12 col-sm-6 col-md-2">
+                <a href="#" id="allEntityRequests">
+                    <div class="info-box mb-3">
+                        <span class="info-box-icon bg-info elevation-1"><i class="fa fa-close"
+                                style="font-size:48px;color:red"></i></span>
+                        <div class="info-box-content">
+                            <span class="info-box-text text-center">Rejected</span>
+                            <span
+                                class="info-box-number text-center">{{ $clientParty->clientPartyCount('Status', 'Rejected') }}</span>
                         </div>
                     </div>
                 </a>
             </div>
         </div>
+
+        {{-- Request table --}}
         <div class="row">
             <div class="col-xl-12 col-lg-12 col-sm-12 col-md-12">
                 <div class="card">
                     <div class="card-body">
                         <div class="table-responsive">
-                            <table class="table table-sm table-bordered table-hover display text-sm" style="width:100%" id="client-party-table">
+                            <table class="table table-sm table-bordered table-hover display text-sm" style="width:100%"
+                                id="client-party-table">
                                 <thead>
                                     <th>CODE</th>
                                     <th>Company Name</th>
@@ -55,7 +85,8 @@
                                 </thead>
                                 <tbody></tbody>
                             </table>
-                            <div class="modal fade" id="cancelModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+                            <div class="modal fade" id="cancelModal" tabindex="-1" role="dialog"
+                                aria-labelledby="exampleModalLabel" aria-hidden="true">
                                 <div class="modal-dialog" role="document">
                                     <div class="modal-content">
                                         <div class="modal-header">
@@ -83,7 +114,8 @@
                                         </div>
                                         <div class="modal-footer">
                                             <button type="button" class="btn btn-secondary" id="close-modal">Close</button>
-                                            <button type="button" class="btn btn-primary" id="submit-entity">Save changes</button>
+                                            <button type="button" class="btn btn-primary" id="submit-entity">Save
+                                                changes</button>
                                         </div>
                                     </div>
                                 </div>
@@ -174,22 +206,52 @@
 
             let clientPartyTable = $('#client-party-table').DataTable({
                 responsive: true, // Enable Responsive extension
-                order: [[7, 'desc']],
+                order: [
+                    [7, 'desc']
+                ],
                 processing: true,
                 serverSide: true,
                 searching: true,
                 stateSave: true,
                 ajax: '{!! route('datatables.allEntityRequests') !!}',
-                columns: [
-                    { data: 'Code', name: 'Code' },
-                    { data: 'Name', name: 'Name' },
-                    { data: 'Office', name: 'Office' },
-                    { data: 'OperatioEntityType', name: 'OperatioEntityType' },
-                    { data: 'LegalEntityType', name: 'LegalEntityType' },
-                    { data: 'Status', name: 'Status' },
-                    { data: 'CreatedBy', name: 'CreatedBy' },
-                    { data: 'CreatedOn', name: 'CreatedOn' },
-                    { data: 'Action', name: 'Action', orderable: false, searchable: false }
+                columns: [{
+                        data: 'Code',
+                        name: 'Code'
+                    },
+                    {
+                        data: 'Name',
+                        name: 'Name'
+                    },
+                    {
+                        data: 'Office',
+                        name: 'Office'
+                    },
+                    {
+                        data: 'OperatioEntityType',
+                        name: 'OperatioEntityType'
+                    },
+                    {
+                        data: 'LegalEntityType',
+                        name: 'LegalEntityType'
+                    },
+                    {
+                        data: 'Status',
+                        name: 'Status'
+                    },
+                    {
+                        data: 'CreatedBy',
+                        name: 'CreatedBy'
+                    },
+                    {
+                        data: 'CreatedOn',
+                        name: 'CreatedOn'
+                    },
+                    {
+                        data: 'Action',
+                        name: 'Action',
+                        orderable: false,
+                        searchable: false
+                    }
                 ],
                 columnDefs: [],
                 initComplete: function() {}

@@ -688,7 +688,8 @@
                                             </fieldset>
                                         </div>
                                         <div class="col-md-8 col-lg-12 col-sm-12">
-                                            {{-- <fieldset class="border p-2 card shadow-lg mb-0 pt-0">
+                                 {{-- <fieldset class="border p-2 card shadow-lg mb-0 pt-0">
+                                
                                             <legend class="w-auto p-0 m-0">Client</legend>
                                             <div class="row">
 

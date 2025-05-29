@@ -169,7 +169,7 @@
                                                     </div>
                                                 </div>
                                                 {{-- Address Line 1 and 2 --}}
-                                                {{-- Address Line 1 and 2 --}}
+
                                                 <div class="form-group row mb-1">
                                                     <label for="addressLine1"
                                                         class="col-sm-3 col-lg-4 col-form-label col-form-label-sm">
@@ -247,7 +247,9 @@
                                                             placeholder="Zip Code">
                                                     </div>
                                                 </div>
+
                                                 {{-- City --}}
+
                                                 <div class="form-group row mb-1">
                                                     <label for="cityName"
                                                         class="col-sm-3 col-lg-4 col-form-label col-form-label-sm"><i
@@ -341,6 +343,7 @@
                                 </div>
 
                                 {{-- office details --}}
+
                                 <div id="office-details" class="content active dstepper-block" role="tabpanel"
                                     aria-labelledby="office-details-trigger">
                                     <div class="row">
@@ -641,7 +644,7 @@
                                         <button type="submit" name="submitBtn" value="submitBtn"
                                             class="btn btn-outline-success btn-sm float-right mt-2" data-toggle="tooltip"
                                             data-placement="top" title="Will Be Submitted for Creating"><i
-                                                class="fa fa-thumbs-up" aria-hidden="true"></i> Submmmmit</button>
+                                                class="fa fa-thumbs-up" aria-hidden="true"></i> Submit</button>
                                     @endif
                                     <button type="button" name="save-step2" id="save-step2"
                                         class="btn btn-success btn-sm float-right m-2" data-toggle="tooltip"
@@ -671,7 +674,7 @@
                                                         </thead>
                                                         <tbody>
                                                             <!-- Rows for Client, Shipper, Consignee, and Other -->
-                                                             <tr id="client-check">
+                                                            <tr id="client-check">
                                                                 <td>Client</td>
                                                                 <td><input type="checkbox" name="clientCheck"
                                                                         id="clientCheck"></td>
@@ -1023,7 +1026,7 @@
 {{-- JS --}}
 
 
-@section('js')
+ @section('js')
     <script src="//code.jquery.com/jquery-1.12.4.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bs-stepper@1.7.0/dist/js/bs-stepper.min.js"></script>
@@ -1353,72 +1356,6 @@
                 });
             });
 
-            // Function to toggle Other input behavior
-            // function toggleOtherInput() {
-            //     const isOtherChecked = $('#otherCheck').is(':checked');
-            //     const $otherInput = $('#otherInput');
-            //     const $otherID = $('#otherID');
-            //     const $otherCode = $('#otherCode');
-            //     const $otherInputDisplay = $('#other_Input');
-
-            //     if (isOtherChecked) {
-            //         $otherInput.attr('required', 'required').val('').off('input').prop('readonly', false);
-            //         $otherID.val('');
-            //         $otherCode.val('');
-            //         $otherInputDisplay.text('');
-            //     } else {
-            //         $otherInput.attr('required', 'required').val('').prop('readonly', false);
-
-            //         let debounceTimeout;
-            //         $otherInput.on('input', function() {
-            //             clearTimeout(debounceTimeout);
-            //             debounceTimeout = setTimeout(() => {
-            //                 const query = $(this).val().trim();
-            //                 const $autocompleteList = $('<div class="autocomplete-list"></div>');
-            //                 $otherInput.parent().find('.autocomplete-list').remove();
-            //                 $otherInput.parent().append($autocompleteList);
-
-            //                 if (!query) {
-            //                     $autocompleteList.empty();
-            //                     return;
-            //                 }
-
-            //                 $.ajax({
-            //                     url: '{{ route('clients') }}',
-            //                     type: 'GET',
-            //                     data: { query: query, type: 'master' },
-            //                     success: function(matches) {
-            //                         $autocompleteList.empty();
-            //                         matches.forEach(entity => {
-            //                             const $div = $(
-            //                                     '<div class="autocomplete-item"></div>'
-            //                                 )
-            //                                 .text(
-            //                                     `${entity.label} (${entity.code})`
-            //                                 )
-            //                                 .data('entity', entity);
-            //                             $autocompleteList.append($div);
-            //                         });
-            //                     },
-            //                     error: function(xhr, status, error) {
-            //                         console.error('Autocomplete error:', status, error);
-            //                         $autocompleteList.html(
-            //                             '<div>Error loading suggestions</div>');
-            //                     }
-            //                 });
-            //             }, 300);
-            //         });
-
-            //         $otherInput.parent().on('click', '.autocomplete-item', function() {
-            //             const entity = $(this).data('entity');
-            //             $otherInput.val(entity.label).removeClass('is-invalid');
-            //             $otherID.val(entity.value);
-            //             $otherCode.val(entity.code);
-            //             $otherInputDisplay.text(entity.code);
-            //             $otherInput.parent().find('.autocomplete-list').remove();
-            //         });
-            //     }
-            // }
             function toggleOtherInput() {
                 const isOtherChecked = $('#otherCheck').is(':checked');
                 const $otherInput = $('#otherInput');
@@ -1428,8 +1365,6 @@
 
                 if (isOtherChecked) {
                     $otherInput.attr('required', 'required').val('').off('input').prop('readonly', false);
-                    $otherID.val('');
-                    $otherCode.val('');
                     $otherInputDisplay.text('');
                 } else {
                     $otherInput.attr('required', 'required').val('').prop('readonly', false);
@@ -1517,8 +1452,6 @@
             toggleOtherInput();
             $('#otherCheck').on('change', toggleOtherInput);
 
-
-
             // Handle partyEntityType change
             partyEntityType.on('change', function() {
                 toggleCompanyInput();
@@ -1554,7 +1487,6 @@
                 $('#licenceTypeCode').val(selectedOption.data('code'));
             });
 
-
             function toggleLicenseInput() {
                 const isOverseas = overseasEntityCheckbox.is(':checked');
                 console.log('toggleLicenseInput: isOverseas=', isOverseas,
@@ -1564,13 +1496,13 @@
 
                 if (isOverseas) {
                     licenceTypeValue
-                        .prop('disabled', true)
-                        .val('')
+                        .prop('readonly', true)
+                        .prop('disabled', false)
+                        .val('nil')
                         .removeClass('is-invalid')
                         .removeAttr('required');
                     $('#licenceTypeID')
-                        .prop('disabled', true)
-                        .val('')
+                        .prop('disabled', false)
                         .removeClass('is-invalid')
                         .removeAttr('required');
                     $('#licenseError').hide();
@@ -1578,7 +1510,9 @@
                     $('#submitBtn').prop('disabled', false);
                 } else {
                     licenceTypeValue
+                        .prop('readonly', false)
                         .prop('disabled', false)
+                        .val('')
                         .attr('required', 'required');
                     $('#licenceTypeID')
                         .prop('disabled', false)
@@ -1589,6 +1523,7 @@
                 console.log('toggleLicenseInput: After update - licenceTypeValue required=',
                     $('#licenceTypeValue').attr('required'),
                     'licenceTypeID required=', $('#licenceTypeID').attr('required'),
+                    'licenceTypeValue value=', $('#licenceTypeValue').val(),
                     'timestamp=', new Date().toISOString());
             }
 
@@ -1604,8 +1539,7 @@
             function monitorRequiredAttribute() {
                 const observer = new MutationObserver((mutations) => {
                     mutations.forEach((mutation) => {
-                        if (mutation.type === 'attributes' && mutation.attributeName ===
-                            'required') {
+                        if (mutation.type === 'attributes' && mutation.attributeName === 'required') {
                             console.warn('Required attribute changed:', {
                                 element: mutation.target.id,
                                 required: $(mutation.target).attr('required'),
@@ -1613,21 +1547,17 @@
                                 timestamp: new Date().toISOString()
                             });
                             if (overseasEntityCheckbox.is(':checked')) {
-                                if (mutation.target.id === 'licenceTypeValue' && $(mutation.target)
-                                    .attr('required')) {
+                                if (mutation.target.id === 'licenceTypeValue' && $(mutation.target).attr('required')) {
                                     console.warn(
                                         'Conflict: licenceTypeValue required despite overseasEntity checked. Forcing removal.'
                                     );
-                                    $(mutation.target).removeAttr('required').removeClass(
-                                        'is-invalid');
+                                    $(mutation.target).removeAttr('required').removeClass('is-invalid').val('nil').prop('readonly', true);
                                 }
-                                if (mutation.target.id === 'licenceTypeID' && $(mutation.target)
-                                    .attr('required')) {
+                                if (mutation.target.id === 'licenceTypeID' && $(mutation.target).attr('required')) {
                                     console.warn(
                                         'Conflict: licenceTypeID required despite overseasEntity checked. Forcing removal.'
                                     );
-                                    $(mutation.target).removeAttr('required').removeClass(
-                                        'is-invalid');
+                                    $(mutation.target).removeAttr('required').removeClass('is-invalid');
                                 }
                             }
                         }
@@ -1651,17 +1581,14 @@
             // Override form submission to bypass HTML5 validation
             $('#clientPartyForm').on('submit', function(e) {
                 if (overseasEntityCheckbox.is(':checked')) {
-                    $('#licenceTypeValue').removeAttr('required').removeClass('is-invalid').prop('disabled',
-                        true).val('');
-                    $('#licenceTypeID').removeAttr('required').removeClass('is-invalid').prop('disabled',
-                        true).val('');
+                    $('#licenceTypeValue').removeAttr('required').removeClass('is-invalid').prop('readonly', true).val('nil');
+                    $('#licenceTypeID').removeAttr('required').removeClass('is-invalid').prop('disabled', false);
                     console.log(
-                        'Form submit: overseasEntity checked, ensured licenceTypeValue and licenceTypeID not required',
+                        'Form submit: overseasEntity checked, ensured licenceTypeValue is nil and readonly, licenceTypeID not required',
                         'timestamp=', new Date().toISOString());
                 }
                 // Ensure form validation respects overseasEntity
-                if ($('#clientPartyForm')[0].checkValidity() === false && !overseasEntityCheckbox.is(
-                        ':checked')) {
+                if ($('#clientPartyForm')[0].checkValidity() === false && !overseasEntityCheckbox.is(':checked')) {
                     e.preventDefault();
                     e.stopPropagation();
                     console.warn('Form validation failed due to required fields');
@@ -1672,11 +1599,9 @@
             // Global override for overseasEntity changes
             $(document).on('change input', '#overseasEntity', function() {
                 if ($(this).is(':checked')) {
-                    $('#licenceTypeValue').removeAttr('required').removeClass('is-invalid').prop('disabled',
-                        true).val('');
-                    $('#licenceTypeID').removeAttr('required').removeClass('is-invalid').prop('disabled',
-                        true).val('');
-                    console.log('Global override: Ensured licenceTypeValue and licenceTypeID not required',
+                    $('#licenceTypeValue').removeAttr('required').removeClass('is-invalid').prop('readonly', true).val('nil');
+                    $('#licenceTypeID').removeAttr('required').removeClass('is-invalid').prop('disabled', false);
+                    console.log('Global override: Ensured licenceTypeValue is nil and readonly, licenceTypeID not required',
                         'timestamp=', new Date().toISOString());
                 }
             });
@@ -1684,11 +1609,9 @@
             // Re-run on stepper change
             $(document).on('shown.bs-stepper', '.bs-stepper', function() {
                 if ($('#overseasEntity').is(':checked')) {
-                    $('#licenceTypeValue').removeAttr('required').removeClass('is-invalid').prop('disabled',
-                        true).val('');
-                    $('#licenceTypeID').removeAttr('required').removeClass('is-invalid').prop('disabled',
-                        true).val('');
-                    console.log('Stepper change: Ensured licenceTypeValue and licenceTypeID not required',
+                    $('#licenceTypeValue').removeAttr('required').removeClass('is-invalid').prop('readonly', true).val('nil');
+                    $('#licenceTypeID').removeAttr('required').removeClass('is-invalid').prop('disabled', false);
+                    console.log('Stepper change: Ensured licenceTypeValue is nil and readonly, licenceTypeID not required',
                         'timestamp=', new Date().toISOString());
                 }
             });
@@ -1704,7 +1627,7 @@
 
                 if (isOverseas) {
                     $('#licenseError').hide();
-                    $('#licenceTypeValue').removeClass('is-invalid');
+                    $('#licenceTypeValue').removeClass('is-invalid').val('nil').prop('readonly', true);
                     $('#submitBtn').prop('disabled', false);
                     return;
                 }
@@ -1802,94 +1725,6 @@
                 console.log('Removed attachment field. Total:', init);
             });
 
-            // Admin details autocomplete
-            // const inputs = ['debtor', 'vendor'];
-            // inputs.forEach(id => {
-            //     const $input = $(`#${id}`);
-            //     if (!$input.length) return;
-            //     const $codeCell = $(`#${id.split('Input')[0]}_Input, #${id}_code`);
-            //     let debounceTimeout;
-
-            //     $input.on('input', function() {
-            //         clearTimeout(debounceTimeout);
-            //         debounceTimeout = setTimeout(() => {
-            //             const query = $(this).val().trim();
-            //             const $autocompleteList = $(
-            //                 '<div class="autocomplete-list"></div>');
-            //             $input.parent().find('.autocomplete-list').remove();
-            //             $input.parent().append($autocompleteList);
-
-            //             if (!query) {
-            //                 $autocompleteList.empty();
-            //                 return;
-            //             }
-
-            //             $.ajax({
-            //                 url: '/api/entities',
-            //                 type: 'GET',
-            //                 data: {
-            //                     q: query
-            //                 },
-            //                 success: function(matches) {
-            //                     $autocompleteList.empty();
-            //                     matches.forEach(entity => {
-            //                         const $div = $(
-            //                                 '<div class="autocomplete-item"></div>'
-            //                             )
-            //                             .text(
-            //                                 `${entity.name} (${entity.code})`
-            //                             )
-            //                             .data('entity', entity);
-            //                         $autocompleteList.append($div);
-            //                     });
-            //                 },
-            //                 error: function(xhr, status, error) {
-            //                     console.error('Autocomplete error:', status,
-            //                         error);
-            //                     $autocompleteList.html(
-            //                         '<div>Error loading suggestions</div>');
-            //                 }
-            //             });
-            //         }, 300);
-            //     });
-
-            //     $input.parent().on('click', '.autocomplete-item', function() {
-            //         const entity = $(this).data('entity');
-            //         $input.val(entity.name).removeClass('is-invalid');
-            //         $(`#${id.replace('Input', 'ID')}`).val(entity.value);
-            //         $(`#${id.replace('Input', 'Code')}`).val(entity.code);
-            //         if ($codeCell.length) $codeCell.text(entity.code);
-            //         $input.parent().find('.autocomplete-list').remove();
-            //     });
-
-            //     $(document).on('click', function(e) {
-            //         if (!$(e.target).closest(`#${id}, .autocomplete-list`).length) {
-            //             $input.parent().find('.autocomplete-list').remove();
-            //         }
-            //     });
-            // });
-
-            //  // Initialize toggleOtherInput
-            // toggleOtherInput();
-            //   $('#otherCheck').on('change', toggleOtherInput);
-
-            // Other input validation
-            // $('#otherInput').on('change', function() {
-            //     const isOtherChecked = $('#otherCheck').is(':checked');
-            //     // const $otherInput = $('#otherInput');
-            //     // const $otherID = $('#otherID');
-
-            //     if (!isOtherChecked && !$otherID.val()) {
-            //         $otherInput.addClass('is-invalid');
-            //         console.log('Validation failed: No valid autocomplete selection');
-            //     } else if (isOtherChecked && !$otherInput.val().trim()) {
-            //         $otherInput.addClass('is-invalid');
-            //         console.log('Validation failed: Empty free-text input');
-            //     } else {
-            //         $otherInput.removeClass('is-invalid');
-            //     }
-            // });
-
             // Form submission logging
             $('form').on('submit', function() {
                 console.log('Form submitting:', {
@@ -1930,3 +1765,4 @@
     </script>
     <script src="{{ asset('js/client-party/show-create-client-party.js') }}"></script>
 @stop
+
