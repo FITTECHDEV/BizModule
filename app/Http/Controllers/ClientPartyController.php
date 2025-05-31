@@ -1003,6 +1003,8 @@ class ClientPartyController extends Controller
                         "address" => $addressLine1,
                         "address2" => $addressLine2 ?? "",
                         "city" => $request->cityName ?? "",
+                        'ClientID' => $request->clientID,
+                        'ClientCode' => $request->clientCode,
                         "countryCode" => $countryCode,
                         "emailAddress" => $contractEmail ?? "",
                         "phoneNo" => $phoneNo ?? "",

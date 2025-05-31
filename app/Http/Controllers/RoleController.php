@@ -31,7 +31,7 @@ class RoleController extends Controller
     public function index(Request $request)
     {
         $roles = Role::orderBy('ID','DESC')->paginate(100);
-        
+
         return view('roles.index',compact('roles'))
             ->with('i', ($request->input('page', 1) - 1) * 5);
     }
@@ -50,8 +50,8 @@ class RoleController extends Controller
     /**
      * Store a newly created resource in storage.
      *
-     * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\Response
+     * @param  \Illuminate\Http\Request  $request
      */
     public function store(Request $request)
     {
