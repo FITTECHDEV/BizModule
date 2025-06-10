@@ -1544,11 +1544,10 @@
                     </div>
                 </div>
             </div>
-        </div>
-    @stop
+        </div> --}}
+            @stop
 
-    @section('css')
-        {{-- stepper css --}}
+            @section('css')
                 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bs-stepper/dist/css/bs-stepper.min.css">
                 <style>
                     /* Card Styling */
@@ -1806,11 +1805,11 @@
                         // Selects
                         $('select[name="partyEntityType"], select[name="legalEntityType"], select[name="countryID"], select[name="officeCountry"], select[name="billingCurrency"], select[name="licenceTypeID"], #level')
                             .prop('disabled', true);
-                        // Checkboxes
+                        // Check
                         $('input[name="otherCheck"], input[name="debtorCheck"], input[name="vendorCheck"]').prop('disabled',
                             true);
                         // Text inputs and textareas
-                        $('input[name="companyName"], input[name="provinceName"], input[name="zipCode"], input[name="cityName"], input[name="firstName"], input[name="lastName"], input[name="department"], input[name="phoneNo"], input[name="contractEmail"], textarea[name="addressLine1"], textarea[name="addressLine2"], input[name="otherInput"], input[name="debtor"], input[name="vendor"], input[name="attachmentDescription[]"], textarea[name="reason"], input[name="creditDays"], input[name="maxCreditLimit"], input[name="baseCurrency"], input[name="licenceTypeValue"]')
+                        $('input[name="companyName"], input[name="provinceName"], input[name="zipCode"], input[name="cityName"], input[name="firstName"], input[name="lastName"], input[name="department"], input[name="phoneNo"], input[name="contractEmail"], textarea[name="addressLine1"], textarea[name="addressLine2"], input[name="attachmentDescription[]"], textarea[name="reason"], input[name="creditDays"], input[name="maxCreditLimit"], input[name="baseCurrency"], input[name="licenceTypeValue"]')
                             .prop('readonly', true);
                         // File inputs
                         $('input[name="attachmentNames[]"]').prop('disabled', true);
@@ -1867,21 +1866,39 @@
                                 });
                                 return;
                             }
-
                             let currentStatus = '{{ $clientParty->Status }}';
-                            let isAccounting = currentStatus === 'PendingManagerApproval' ? true :
+                            let isAccounting =
+                                '{{ $clientParty->DebtorType || $clientParty->VendorType ? 'true' : 'false' }}' ===
+                                'true' ||
                                 '{{ request()->query('type') === 'accounting' ? 'true' : 'false' }}' === 'true';
                             let targetStatus;
-                            if (currentStatus === 'Submitted') {
-                                targetStatus = isAccounting ? 'PendingManagerApproval' : 'Created';
-                            } else if (currentStatus === 'PendingManagerApproval') {
-                                targetStatus = 'Created';
+
+                            if (isAccounting) {
+                                if (currentStatus === 'Not Submitted') {
+                                    targetStatus = 'PendingCountryLevelApproval';
+                                } else if (currentStatus === 'PendingCountryLevelApproval') {
+                                    targetStatus = 'PendingGroupLevelApproval';
+                                } else if (currentStatus === 'PendingGroupLevelApproval') {
+                                    targetStatus = 'Created';
+                                } else {
+                                    alert('Invalid action: Approval not allowed for status ' + currentStatus);
+                                    console.error('Invalid status transition', {
+                                        currentStatus
+                                    });
+                                    return;
+                                }
                             } else {
-                                alert('Invalid action: Approval not allowed for status ' + currentStatus);
-                                console.error('Invalid status transition', {
-                                    currentStatus
-                                });
-                                return;
+                                if (currentStatus === 'Not Submitted') {
+                                    targetStatus = 'Submitted';
+                                } else if (currentStatus === 'Submitted') {
+                                    targetStatus = 'Created';
+                                } else {
+                                    alert('Invalid action: Approval not allowed for status ' + currentStatus);
+                                    console.error('Invalid status transition', {
+                                        currentStatus
+                                    });
+                                    return;
+                                }
                             }
 
                             let form_data = {
@@ -1895,7 +1912,13 @@
                                 type: isAccounting ? 'accounting' : 'operational',
                                 otherInput: otherInput,
                                 otherID: otherID,
-                                otherCode: otherCode
+                                otherCode: otherCode,
+                                debtor: $('input[name="debtor"]').val() || '',
+                                debtorID: $('input[name="debtorID"]').val() || '',
+                                debtorCode: $('input[name="debtorCode"]').val() || '',
+                                vendor: $('input[name="vendor"]').val() || '',
+                                vendorID: $('input[name="vendorID"]').val() || '',
+                                vendorCode: $('input[name="vendorCode"]').val() || ''
                             };
 
                             console.log('Sending form_data:', form_data);

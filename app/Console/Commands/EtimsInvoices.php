@@ -21,7 +21,7 @@ class EtimsInvoices extends Command
 
     public function handle()
     {
-        Log::notice("KRA push running");
+        Log::notice("KRA push running my G");
 
         $invoiceId = $this->argument('invoiceId');
         $pendingInvoices = $this->fetchPendingInvoices($invoiceId);

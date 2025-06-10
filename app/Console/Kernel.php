@@ -44,7 +44,7 @@ class Kernel extends ConsoleKernel
 
         $schedule->command('emails:sendApprovalReminder')->between('8:30', '17:00')->withoutOverlapping();
 
-        $schedule->command('generate:invoice')->everyFiveMinutes()->withoutOverlapping();
+        // $schedule->command('generate:invoice')->everyFiveMinutes()->withoutOverlapping();
         $schedule->command('tra_adl:invoices')->everyFiveMinutes()->withoutOverlapping();
         $schedule->command('tra_tz:invoices')->everyFiveMinutes()->withoutOverlapping();
         $schedule->command('sync:scmprofit')
