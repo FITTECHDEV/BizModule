@@ -1027,7 +1027,7 @@ $(document).ready(function () {
 });
 
 
-//     /* Ajax setup CSRF */
+
 //     $.ajaxSetup({
 //         headers: {
 //             'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')

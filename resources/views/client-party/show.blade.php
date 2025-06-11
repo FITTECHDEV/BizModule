@@ -1232,6 +1232,8 @@
                                             Update for later</button>
                                     @endif
                                 </div>
+
+                                {{-- Admin Details --}}
                                 @if (Auth::user()->can('create-client-party'))
                                     <div id="admin-details" class="content" role="tabpanel"
                                         aria-labelledby="admin-details-trigger">
@@ -1755,7 +1757,7 @@
                 <script src="//code.jquery.com/jquery-1.12.4.min.js"></script>
                 <script src="https://cdn.jsdelivr.net/npm/bs-stepper/dist/js/bs-stepper.min.js"></script>
                 <script src="{{ asset('js/client-party/party-entity.js') }}"></script>
-                <script src="{{ asset('js/client-party/validation.js') }}"></script>
+                {{-- <script src="{{ asset('js/client-party/validation.js') }}"></script> --}}
                 <script src="{{ asset('js/client-party/sub-form.js') }}"></script>
                 <script src="{{ asset('js/client-party/jquery-number/jquery.number.min.js') }}"></script>
                 <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
@@ -1777,7 +1779,6 @@
                     };
                     window.approve_client_party = `{{ $approve }}`;
                     window.default_bill_curr = `{{ $clientParty->BillingCurrencyId }}`;
-
                     $(document).ready(function() {
                         // Handle legalEntityType visibility
                         let type = document.body.dataset.type;
@@ -1801,20 +1802,29 @@
                             $('#vendorType').val(vendor_val).trigger('change');
                         }
 
-                        // Make all form fields read-only or disabled
-                        // Selects
+                        // Make all form fields read-only or disabled, EXCLUDING the <fieldset> inputs
+                        // Selects (excluding those in the <fieldset>)
                         $('select[name="partyEntityType"], select[name="legalEntityType"], select[name="countryID"], select[name="officeCountry"], select[name="billingCurrency"], select[name="licenceTypeID"], #level')
                             .prop('disabled', true);
-                        // Check
-                        $('input[name="otherCheck"], input[name="debtorCheck"], input[name="vendorCheck"]').prop('disabled',
-                            true);
-                        // Text inputs and textareas
+
+                        // Checkboxes (excluding those in the <fieldset>)
+                        $('input[name="otherCheck"]:not(.border.p-2 input), input[name="debtorCheck"]:not(.border.p-2 input), input[name="vendorCheck"]:not(.border.p-2 input)')
+                            .prop('disabled', true);
+
+                        // Text inputs and textareas (excluding those in the <fieldset>)
                         $('input[name="companyName"], input[name="provinceName"], input[name="zipCode"], input[name="cityName"], input[name="firstName"], input[name="lastName"], input[name="department"], input[name="phoneNo"], input[name="contractEmail"], textarea[name="addressLine1"], textarea[name="addressLine2"], input[name="attachmentDescription[]"], textarea[name="reason"], input[name="creditDays"], input[name="maxCreditLimit"], input[name="baseCurrency"], input[name="licenceTypeValue"]')
                             .prop('readonly', true);
+
                         // File inputs
                         $('input[name="attachmentNames[]"]').prop('disabled', true);
+
                         // Buttons
                         $('.addAttachment, .deleteFile, #submit-entity').prop('disabled', true).addClass('disabled');
+
+                        // Enable the specific inputs in the <fieldset> explicitly (optional, for clarity)
+                        $('fieldset.border.p-2 input[type="text"], fieldset.border.p-2 input[type="checkbox"], fieldset.border.p-2 input[type="hidden"]')
+                            .prop('readonly', false)
+                            .prop('disabled', false);
 
                         // Handle partyEntityType validation (skipped since field is disabled)
                         const typeConfig = {
@@ -1846,7 +1856,7 @@
                         };
                         $('#partyEntityType').val(config.value);
 
-                        // Approve button handler
+                        // Approve button handler (unchanged)
                         $('#approveBtn').off('click').on('click', function(e) {
                             e.preventDefault();
                             let approve = confirm('Confirm Approval.');
@@ -1952,7 +1962,7 @@
                             });
                         });
 
-                        // Reject button handler
+                        // Reject button handler (unchanged)
                         $('#close-modal').click(function() {
                             $('#cancelForm')[0].reset();
                             $('#cancelModal').modal('hide');
@@ -1989,7 +1999,7 @@
                             });
                         });
 
-                        // File attachment handling
+                        // File attachment handling (unchanged)
                         let init = {{ $clientParty->attachments->count() + 1 }};
                         let max_fields = 3;
                         $('.addAttachment').click(function() {

@@ -329,7 +329,7 @@
                                                 </div>
 
                                             </fieldset>
-
+                                          
                                         </div>
                                     </div>
 
@@ -393,8 +393,7 @@
                                             </fieldset>
                                             <fieldset class="border p-2 card shadow-lg mb-0 pt-0 pb-0">
                                                 <legend>File Upload</legend>
-                                                <label for="attachmentFile">Attachment <i
-                                                        class="fa fa-paperclip"></i><span style="color: red;">*</span>
+                                                <label for="attachmentFile">Attachment <i class="fa fa-paperclip"></i>
                                                     <button type="button"
                                                         class="btn btn-sm btn-outline-warning float-right w-20 addAttachment"
                                                         id="addFile">
@@ -404,10 +403,10 @@
                                                 <div class="input-group hdtuto control-group lst increment"
                                                     id="initial-attachment">
                                                     <input id="attachments" type="file" name="attachmentNames[]"
-                                                        class="myfrm form-control mr-1 form-control-sm" required>
+                                                        class="myfrm form-control mr-1 form-control-sm">
                                                     <input type="text" name="attachmentDescription[]"
                                                         class="myfrm form-control form-control-sm"
-                                                        placeholder="Description" required>
+                                                        placeholder="Description">
                                                 </div>
                                                 <div id="attachClone"></div>
                                                 <div class="clone-template d-none">
@@ -990,12 +989,17 @@
 
         .autocomplete-list {
             position: absolute;
-            background: white;
+            background: rgb(220, 18, 18);
             border: 1px solid #ccc;
             max-height: 200px;
             overflow-y: auto;
             z-index: 1000;
             width: 100%;
+        }
+
+        /* Hide all .autocomplete-list elements except the first one in the parent */
+        .autocomplete-list:not(:first-child) {
+            display: none;
         }
 
         .autocomplete-item {
@@ -1121,7 +1125,8 @@
                 toggleFieldsReadonly(false);
 
                 const dropdownTypes = ['Client', 'Agent/Forwarder', 'Airline', 'ShippingLine',
-                    'Trucker/Transporter'];
+                    'Trucker/Transporter'
+                ];
 
                 if (requestType === 'accounting') {
                     if (selectedType === 'Create only in D365') {
@@ -1248,7 +1253,8 @@
                                 countryID: data.countryID
                             });
                             alert(
-                                'Warning: No country code for this company. Please select a country manually.');
+                                'Warning: No country code for this company. Please select a country manually.'
+                            );
                         }
                         $('#addressLine1').val(data.addressLine1 || '');
                         $('#addressLine2').val(data.addressLine2 || '');
@@ -1549,10 +1555,10 @@
                                     matches.forEach(entity => {
                                         const $div = $(
                                                 '<div class="autocomplete-item"></div>'
-                                                )
+                                            )
                                             .text(
                                                 `${entity.name} (${entity.code})`
-                                                )
+                                            )
                                             .data('entity', {
                                                 value: entity.id,
                                                 label: entity.name,
@@ -1581,7 +1587,7 @@
 
                     $(document).on('click', function(e) {
                         if (!$(e.target).closest('#otherInput, .autocomplete-list').length) {
-                            $otherInput.parent().find('.autocomplete-list').remove();
+                            $otherInput.parent().find('.').remove();
                         }
                     });
                 }
@@ -1710,7 +1716,7 @@
                                         'required')) {
                                     console.warn(
                                         `Conflict: ${mutation.target.id} required despite operational mode or overseasEntity checked. Forcing removal.`
-                                        );
+                                    );
                                     $(mutation.target).removeAttr('required').removeClass(
                                         'is-invalid');
                                     if (mutation.target.id === 'licenceTypeValue') {
@@ -1821,7 +1827,8 @@
                             if (!allowedExtensions.exec(fileValue)) {
                                 $fileInputName.addClass('is-invalid');
                                 alert(
-                                    'Invalid file type. Allowed types: jpg, jpeg, png, gif, pdf, doc, xls, docx, xlsx');
+                                    'Invalid file type. Allowed types: jpg, jpeg, png, gif, pdf, doc, xls, docx, xlsx'
+                                );
                                 $fileInputName.val('');
                                 return false;
                             }
