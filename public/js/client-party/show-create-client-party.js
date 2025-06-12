@@ -472,25 +472,32 @@ $(document).ready(function () {
                             "otherInput autocomplete response:",
                             JSON.stringify(data, null, 2)
                         );
+
                         if (data.error) {
                             response([{ label: data.error, value: "" }]);
                             return;
                         }
-                        if (data.length === 0) {
+
+                        if (!Array.isArray(data) || data.length === 0) {
                             response([
                                 { label: "No entities found", value: "" },
                             ]);
                             return;
                         }
-                        // Map response to jQuery UI Autocomplete format
-                        const mappedData = data.slice(0, 15).map((entity) => ({
+
+                        // ✅ Limit to 15 suggestions before mapping
+                        const limited = data.slice(0, 15);
+
+                        const mappedData = limited.map((entity) => ({
                             label: `${entity.name} (${entity.code})`,
                             value: entity.id,
                             code: entity.code,
                             name: entity.name,
                         }));
+
                         response(mappedData);
                     },
+
                     error: function (xhr, status, error) {
                         console.error(
                             "otherInput autocomplete error:",
