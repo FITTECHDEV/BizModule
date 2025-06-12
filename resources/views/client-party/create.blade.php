@@ -89,15 +89,15 @@
                                                                             @if (old('partyEntityType') == 'Create only in D365') selected @endif>
                                                                             Create only in D365</option>
                                                                     @endif
-                                                                    <option value="Agent / Forwarder"
-                                                                        @if (old('partyEntityType') == 'Agent / Forwarder') selected @endif>
-                                                                        Agent / Forwarder</option>
                                                                     <option value="Airline"
                                                                         @if (old('partyEntityType') == 'Airline') selected @endif>
                                                                         Airline</option>
                                                                     <option value="Shipping Line"
                                                                         @if (old('partyEntityType') == 'Shipping Line') selected @endif>
                                                                         Shipping Line</option>
+                                                                    <option value="Agent / Forwarder"
+                                                                        @if (old('partyEntityType') == 'Agent / Forwarder') selected @endif>
+                                                                        Agent / Forwarder</option>
                                                                     <option value="Trucker / Transporter"
                                                                         @if (old('partyEntityType') == 'Trucker / Transporter') selected @endif>
                                                                         Trucker / Transporter</option>
@@ -329,7 +329,7 @@
                                                 </div>
 
                                             </fieldset>
-                                          
+
                                         </div>
                                     </div>
 
@@ -1066,6 +1066,7 @@
             const licenceTypeID = $('#licenceTypeID');
             const clientIdInput = $('#clientID');
             const clientCodeInput = $('#clientCode');
+             const MAX_SUGGESTIONS = 15;
 
             if (!overseasEntityCheckbox.length || !licenceTypeValue.length || !licenceTypeID.length) {
                 console.error('Critical DOM elements missing:', {
@@ -1519,28 +1520,39 @@
                     $otherInput.on('input', function() {
                         clearTimeout(debounceTimeout);
                         debounceTimeout = setTimeout(() => {
-                            const query = $(this).val().trim();
-                            const entityType = $('#partyEntityType').val() || '';
+                            const query = $(this).val().trim().toLowerCase();
+                            let entityType = $('#partyEntityType').val() || '';
+                            const typeMapping = {
+                                'Agent / Forwarder': 'Forwarder',
+                                'ShippingLine': 'Shipping Line',
+                                'Trucker': 'Trucker / Transporter',
+                                'Airline': 'Airline',
+                                'Client': 'Client',
+                                'CreateonlyinD365': 'Create only in D365'
+                            };
+                            const normalizedType = entityType.replace(/\s*\/\s*/g, '/').replace(
+                                /\s+/g, '');
+                            entityType = typeMapping[normalizedType] || entityType;
                             const $autocompleteList = $('<div class="autocomplete-list"></div>');
                             $otherInput.parent().find('.autocomplete-list').remove();
                             $otherInput.parent().append($autocompleteList);
 
-                            if (!query || !entityType) {
-                                $autocompleteList.empty();
-                                if (!entityType) {
-                                    $autocompleteList.html('<div>Please select a party type</div>');
-                                }
+                            if (!entityType) {
+                                $autocompleteList.html('<div>Please select a party type</div>');
                                 return;
                             }
 
+                            console.log('otherInput AJAX:', {
+                                entityType
+                            });
                             $.ajax({
                                 url: '{{ route('companies') }}',
                                 type: 'GET',
                                 data: {
-                                    query: query,
                                     entityType: entityType
-                                },
+                                }, // No query parameter
                                 success: function(matches) {
+                                    console.log('otherInput response:', matches);
                                     $autocompleteList.empty();
                                     if (matches.error) {
                                         $autocompleteList.html(
@@ -1552,13 +1564,23 @@
                                             '<div>No entities found</div>');
                                         return;
                                     }
-                                    matches.forEach(entity => {
+                                    // Filter client-side
+                                    const filteredMatches = query ?
+                                        matches.filter(entity => entity.name
+                                            .toLowerCase().startsWith(query)) :
+                                        matches;
+                                    if (filteredMatches.length === 0) {
+                                        $autocompleteList.html(
+                                            '<div>No entities found</div>');
+                                        return;
+                                    }
+                                    filteredMatches.forEach(entity => {
                                         const $div = $(
                                                 '<div class="autocomplete-item"></div>'
-                                            )
+                                                )
                                             .text(
                                                 `${entity.name} (${entity.code})`
-                                            )
+                                                )
                                             .data('entity', {
                                                 value: entity.id,
                                                 label: entity.name,
@@ -1568,13 +1590,15 @@
                                     });
                                 },
                                 error: function(xhr, status, error) {
-                                    console.error('Autocomplete error:', status, error);
+                                    console.error('Error:', status, error);
                                     $autocompleteList.html(
                                         '<div>Error loading suggestions</div>');
                                 }
                             });
                         }, 300);
                     });
+
+
 
                     $otherInput.parent().on('click', '.autocomplete-item', function() {
                         const entity = $(this).data('entity');

@@ -1830,207 +1830,424 @@ public function store(StoreClientPartyRequest $request)
     }
     //AA
 
+    // public function approve(HttpRequest $request)
+    // {
+    //     Log::debug('Approve method called', ['request' => $request->all()]);
+
+    //     $user = Auth::user();
+
+    //     if (!$user || !$user->can('approve-entity-request')) {
+    //         Log::warning('Unauthorized approval attempt', ['userId' => $user?->Id]);
+    //         Alert::warning('Warning!', 'You are not authorised to view this page. Contact Admin')->showConfirmButton();
+    //         return redirect()->route('home');
+    //     }
+
+    //     $validator = Validator::make($request->all(), [
+    //         'id' => 'required|exists:Cust_entity,Id',
+    //         'status' => 'required|in:Submitted,PendingCountryLevelApproval,PendingGroupLevelApproval,Created',
+    //         'type' => 'required|in:accounting,operational',
+    //         'otherInput' => 'nullable|string|max:255',
+    //         'otherID' => 'nullable|string|max:36',
+    //         'otherCode' => 'nullable|string|max:50',
+    //         'partyEntityType' => 'nullable|string|max:50',
+    //         'debtorType' => 'nullable|string|max:50',
+    //         'vendorType' => 'nullable|string|max:50',
+    //     ]);
+
+    //     if ($validator->fails()) {
+    //         return response()->json(['message' => 'Validation failed', 'errors' => $validator->errors()], 422);
+    //     }
+
+    //     $validated = $validator->validated();
+    //     $id = $validated['id'];
+
+    //     try {
+    //         $clientParty = ClientParty::where('Id', $id)->firstOrFail();
+    //         Log::info('Current ClientParty status and OtherParty fields', [
+    //             'id' => $id,
+    //             'status' => $clientParty->Status,
+    //             'OtherPartyName' => $clientParty->OtherPartyName,
+    //             'OtherPartyID' => $clientParty->OtherPartyID,
+    //             'OtherPartyCode' => $clientParty->OtherPartyCode,
+    //         ]);
+
+    //         DB::beginTransaction();
+
+    //         $isAccounting = $validated['type'] === 'accounting';
+    //         $previousStatus = $clientParty->Status;
+
+    //         $updateData = [
+    //             'LastModifiedBy' => $user->full_name ?? 'System',
+    //             'LastModifiedOn' => Carbon::now()->format('Y-m-d H:i:s'),
+    //             'OtherPartyName' => $validated['otherInput'] ?? $clientParty->OtherPartyName,
+    //             'OtherPartyID' => $validated['otherID'] ?? $clientParty->OtherPartyID,
+    //             'OtherPartyCode' => $validated['otherCode'] ?? $clientParty->OtherPartyCode,
+    //             'OperatioEntityType' => $validated['partyEntityType'] ?? $clientParty->OperatioEntityType,
+    //             'DebtorType' => $validated['debtorType'] ?? $clientParty->DebtorType,
+    //             'VendorType' => $validated['vendorType'] ?? $clientParty->VendorType,
+    //         ];
+
+    //         Log::debug('Update query data', ['id' => $id, 'updateData' => $updateData]);
+
+    //         // Status transition logic
+    //         if ($isAccounting && $clientParty->Status === 'Not Submitted' && $validated['status'] === 'PendingCountryLevelApproval') {
+    //             $updateData['Status'] = 'PendingCountryLevelApproval';
+    //             $updatedRows = DB::table('Cust_entity')->where('Id', $id)->update($updateData);
+    //             Log::info('Updated to PendingCountryLevelApproval', ['id' => $id, 'updateData' => $updateData, 'updatedRows' => $updatedRows]);
+
+    //             $dbStatus = DB::table('Cust_entity')->where('Id', $id)->value('Status');
+    //             Log::debug('Post-update status check', ['id' => $id, 'dbStatus' => $dbStatus]);
+    //             if ($dbStatus !== 'PendingCountryLevelApproval') {
+    //                 Log::error('Status update to PendingCountryLevelApproval failed', ['id' => $id, 'expected' => 'PendingCountryLevelApproval', 'actual' => $dbStatus]);
+    //                 DB::rollBack();
+    //                 return response()->json(['message' => 'Failed to update status to PendingCountryLevelApproval'], 500);
+    //             }
+    //         } elseif ($isAccounting && $clientParty->Status === 'PendingCountryLevelApproval' && $validated['status'] === 'PendingGroupLevelApproval') {
+    //             $updateData['Status'] = 'PendingGroupLevelApproval';
+    //             $updatedRows = DB::table('Cust_entity')->where('Id', $id)->update($updateData);
+    //             Log::info('Updated to PendingGroupLevelApproval', ['id' => $id, 'updateData' => $updateData, 'updatedRows' => $updatedRows]);
+
+    //             $dbStatus = DB::table('Cust_entity')->where('Id', $id)->value('Status');
+    //             Log::debug('Post-update status check', ['id' => $id, 'dbStatus' => $dbStatus]);
+    //             if ($dbStatus !== 'PendingGroupLevelApproval') {
+    //                 Log::error('Status update to PendingGroupLevelApproval failed', ['id' => $id, 'expected' => 'PendingGroupLevelApproval', 'actual' => $dbStatus]);
+    //                 DB::rollBack();
+    //                 return response()->json(['message' => 'Failed to update status to PendingGroupLevelApproval'], 500);
+    //             }
+    //         } elseif ($isAccounting && $clientParty->Status === 'PendingGroupLevelApproval' && $validated['status'] === 'Created') {
+    //             $scmRequest = new HttpRequest(['requestID' => $id]);
+    //             $results = $this->CreateClientPartySCM($scmRequest);
+    //             Log::info('SCM Creation results during Approve:', (array)$results);
+
+    //             if ($results['success'] && $results['data']['Status'] === 'Success') {
+    //                 // Update OtherParty fields with SP output
+    //                 $updateData['OtherPartyCode'] = $results['data']['OtherCode'] ?? $updateData['OtherPartyCode'];
+    //                 $updateData['OtherPartyID'] = $results['data']['OtherID'] ?? $updateData['OtherPartyID'];
+    //                 $updateData['Status'] = 'Created';
+    //                 $updatedRows = DB::table('Cust_entity')->where('Id', $id)->update($updateData);
+    //                 Log::info('Updated to Created', ['id' => $id, 'updateData' => $updateData, 'updatedRows' => $updatedRows]);
+
+    //                 $dbStatus = DB::table('Cust_entity')->where('Id', $id)->value('Status');
+    //                 Log::debug('Post-update status check', ['id' => $id, 'dbStatus' => $dbStatus]);
+    //                 if ($dbStatus !== 'Created') {
+    //                     Log::error('Status update to Created failed', ['id' => $id, 'expected' => 'Created', 'actual' => $dbStatus]);
+    //                     DB::rollBack();
+    //                     return response()->json(['message' => 'Failed to update status to Created'], 500);
+    //                 }
+    //             } else {
+    //                 Log::error('SCM Creation Failed', ['id' => $id, 'remark' => $results['data']['Remark'] ?? $results['error'] ?? 'Unknown error']);
+    //                 DB::rollBack();
+    //                 return response()->json(['message' => 'SCM Creation Failed: ' . ($results['data']['Remark'] ?? $results['error'] ?? 'Unknown error')], 500);
+    //             }
+    //         } elseif (!$isAccounting && $clientParty->Status === 'Not Submitted' && $validated['status'] === 'Submitted') {
+    //             $updateData['Status'] = 'Submitted';
+    //             $updatedRows = DB::table('Cust_entity')->where('Id', $id)->update($updateData);
+    //             Log::info('Updated to Submitted', ['id' => $id, 'updateData' => $updateData, 'updatedRows' => $updatedRows]);
+
+    //             $dbStatus = DB::table('Cust_entity')->where('Id', $id)->value('Status');
+    //             Log::debug('Post-update status check', ['id' => $id, 'dbStatus' => $dbStatus]);
+    //             if ($dbStatus !== 'Submitted') {
+    //                 Log::error('Status update to Submitted failed', ['id' => $id, 'expected' => 'Submitted', 'actual' => $dbStatus]);
+    //                 DB::rollBack();
+    //                 return response()->json(['message' => 'Failed to update status to Submitted'], 500);
+    //             }
+    //         } elseif (!$isAccounting && $clientParty->Status === 'Submitted' && $validated['status'] === 'Created') {
+    //             $scmRequest = new HttpRequest(['requestID' => $id]);
+    //             $results = $this->CreateClientPartySCM($scmRequest);
+    //             Log::info('SCM Creation results during Approve:', (array)$results);
+
+    //             if ($results['success'] && $results['data']['Status'] === 'Success') {
+    //                 // Update OtherParty fields with SP output
+    //                 $updateData['OtherPartyCode'] = $results['data']['OtherCode'] ?? $updateData['OtherPartyCode'];
+    //                 $updateData['OtherPartyID'] = $results['data']['OtherID'] ?? $updateData['OtherPartyID'];
+    //                 $updateData['Status'] = 'Created';
+    //                 $updatedRows = DB::table('Cust_entity')->where('Id', $id)->update($updateData);
+    //                 Log::info('Updated to Created', ['id' => $id, 'updateData' => $updateData, 'updatedRows' => $updatedRows]);
+
+    //                 $dbStatus = DB::table('Cust_entity')->where('Id', $id)->value('Status');
+    //                 Log::debug('Post-update status check', ['id' => $id, 'dbStatus' => $dbStatus]);
+    //                 if ($dbStatus !== 'Created') {
+    //                     Log::error('Status update to Created failed', ['id' => $id, 'expected' => 'Created', 'actual' => $dbStatus]);
+    //                     DB::rollBack();
+    //                     return response()->json(['message' => 'Failed to update status to Created'], 500);
+    //                 }
+    //             } else {
+    //                 Log::error('SCM Creation Failed', ['id' => $id, 'remark' => $results['data']['Remark'] ?? $results['error'] ?? 'Unknown error']);
+    //                 DB::rollBack();
+    //                 return response()->json(['message' => 'SCM Creation Failed: ' . ($results['data']['Remark'] ?? $results['error'] ?? 'Unknown error')], 500);
+    //             }
+    //         } else {
+    //             Log::warning('Invalid status transition', ['id' => $id, 'currentStatus' => $clientParty->Status, 'requestedStatus' => $validated['status']]);
+    //             return response()->json(['message' => 'Invalid status transition'], 400);
+    //         }
+
+    //         Log::info('OtherParty fields saved to database', [
+    //             'id' => $id,
+    //             'OtherPartyName' => $updateData['OtherPartyName'],
+    //             'OtherPartyID' => $updateData['OtherPartyID'],
+    //             'OtherPartyCode' => $updateData['OtherPartyCode'],
+    //         ]);
+
+    //         DB::commit();
+
+    //         $history = [
+    //             'ID' => Str::uuid()->toString(),
+    //             'CustEntityID' => $id,
+    //             'RequestNo' => $clientParty->Code ?? 'N/A',
+    //             'Role' => $user->Role ?? 'Unknown',
+    //             'ReasonID' => 'e6b21257-a530-45ff-bf56-939e53a536b5',
+    //             'Comment' => $isAccounting
+    //                 ? ($validated['status'] === 'PendingCountryLevelApproval' ? 'Entity Pending Country Level Approval'
+    //                     : ($validated['status'] === 'PendingGroupLevelApproval' ? 'Entity Pending Group Level Approval'
+    //                         : 'Entity Approved and Created in SCM'))
+    //                 : ($validated['status'] === 'Submitted' ? 'Entity Submitted' : 'Entity Approved and Created in SCM'),
+    //             'Type' => 'Entity',
+    //             'PreviousValue' => $previousStatus,
+    //             'NewValue' => $validated['status'],
+    //             'CreatedBy' => $user->Id ?? 'Unknown',
+    //             'CreatedOn' => Carbon::now(),
+    //             'LastModifiedBy' => $user->Id ?? 'Unknown',
+    //             'LastModifiedOn' => Carbon::now(),
+    //         ];
+
+    //         try {
+    //             EntityHistory::create($history);
+    //             Log::info('EntityHistory logged', ['id' => $id, 'history' => $history]);
+    //         } catch (\Exception $e) {
+    //             Log::error('Failed to log EntityHistory', ['id' => $id, 'error' => $e->getMessage()]);
+    //         }
+
+    //         return response()->json([
+    //             'status' => 200,
+    //             'message' => $isAccounting
+    //                 ? ($validated['status'] === 'PendingCountryLevelApproval' ? 'Entity pending country level approval'
+    //                     : ($validated['status'] === 'PendingGroupLevelApproval' ? 'Entity pending group level approval'
+    //                         : 'Entity created successfully'))
+    //                 : ($validated['status'] === 'Submitted' ? 'Entity submitted successfully' : 'Entity created successfully'),
+    //         ]);
+    //     } catch (\Exception $e) {
+    //         DB::rollBack();
+    //         Log::error('Approval Exception', ['id' => $id, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+    //         return response()->json(['message' => 'Approval failed: ' . $e->getMessage()], 500);
+    //     }
+    // }
     public function approve(HttpRequest $request)
-    {
-        Log::debug('Approve method called', ['request' => $request->all()]);
+{
+    Log::debug('Approve method called', ['request' => $request->all()]);
 
-        $user = Auth::user();
+    $user = Auth::user();
 
-        if (!$user || !$user->can('approve-entity-request')) {
-            Log::warning('Unauthorized approval attempt', ['userId' => $user?->Id]);
-            Alert::warning('Warning!', 'You are not authorised to view this page. Contact Admin')->showConfirmButton();
-            return redirect()->route('home');
-        }
+    if (!$user || !$user->can('approve-entity-request')) {
+        Log::warning('Unauthorized approval attempt', ['userId' => $user?->Id]);
+        Alert::warning('Warning!', 'You are not authorised to view this page. Contact Admin')->showConfirmButton();
+        return redirect()->route('home');
+    }
 
-        $validator = Validator::make($request->all(), [
-            'id' => 'required|exists:Cust_entity,Id',
-            'status' => 'required|in:Submitted,PendingCountryLevelApproval,PendingGroupLevelApproval,Created',
-            'type' => 'required|in:accounting,operational',
-            'otherInput' => 'nullable|string|max:255',
-            'otherID' => 'nullable|string|max:36',
-            'otherCode' => 'nullable|string|max:50',
-            'partyEntityType' => 'nullable|string|max:50',
-            'debtorType' => 'nullable|string|max:50',
-            'vendorType' => 'nullable|string|max:50',
+    $validator = Validator::make($request->all(), [
+        'id' => 'required|exists:Cust_entity,Id',
+        'status' => 'required|in:Submitted,PendingCountryLevelApproval,PendingGroupLevelApproval,Created',
+        'type' => 'required|in:accounting,operational',
+        'otherInput' => 'nullable|string|max:255',
+        'otherID' => 'nullable|string|max:36',
+        'otherCode' => 'nullable|string|max:50',
+        'partyEntityType' => 'nullable|string|max:50',
+        'debtorType' => 'nullable|string|max:50',
+        'vendorType' => 'nullable|string|max:50',
+    ]);
+
+    if ($validator->fails()) {
+        return response()->json(['message' => 'Validation failed', 'errors' => $validator->errors()], 422);
+    }
+
+    $validated = $validator->validated();
+    $id = $validated['id'];
+
+    try {
+        $clientParty = ClientParty::where('Id', $id)->firstOrFail();
+        Log::info('Current ClientParty status and OtherParty fields', [
+            'id' => $id,
+            'status' => $clientParty->Status,
+            'OtherPartyName' => $clientParty->OtherPartyName,
+            'OtherPartyID' => $clientParty->OtherPartyID,
+            'OtherPartyCode' => $clientParty->OtherPartyCode,
         ]);
 
-        if ($validator->fails()) {
-            return response()->json(['message' => 'Validation failed', 'errors' => $validator->errors()], 422);
-        }
+        DB::beginTransaction();
 
-        $validated = $validator->validated();
-        $id = $validated['id'];
+        $isAccounting = $validated['type'] === 'accounting';
+        $previousStatus = $clientParty->Status;
 
-        try {
-            $clientParty = ClientParty::where('Id', $id)->firstOrFail();
-            Log::info('Current ClientParty status and OtherParty fields', [
-                'id' => $id,
-                'status' => $clientParty->Status,
-                'OtherPartyName' => $clientParty->OtherPartyName,
-                'OtherPartyID' => $clientParty->OtherPartyID,
-                'OtherPartyCode' => $clientParty->OtherPartyCode,
-            ]);
+        $updateData = [
+            'LastModifiedBy' => $user->full_name ?? 'System',
+            'LastModifiedOn' => Carbon::now()->format('Y-m-d H:i:s'),
+            'OtherPartyName' => $validated['otherInput'] ?? $clientParty->OtherPartyName,
+            'OtherPartyID' => $validated['otherID'] ?? $clientParty->OtherPartyID,
+            'OtherPartyCode' => $validated['otherCode'] ?? $clientParty->OtherPartyCode,
+            'OperatioEntityType' => $validated['partyEntityType'] ?? $clientParty->OperatioEntityType,
+            'DebtorType' => $validated['debtorType'] ?? $clientParty->DebtorType,
+            'VendorType' => $validated['vendorType'] ?? $clientParty->VendorType,
+        ];
 
-            DB::beginTransaction();
+        Log::debug('Update query data', ['id' => $id, 'updateData' => $updateData]);
 
-            $isAccounting = $validated['type'] === 'accounting';
-            $previousStatus = $clientParty->Status;
+        // Status transition logic
+        if ($isAccounting && $clientParty->Status === 'Not Submitted' && $validated['status'] === 'PendingCountryLevelApproval') {
+            $updateData['Status'] = 'PendingCountryLevelApproval';
+            $updatedRows = DB::table('Cust_entity')->where('Id', $id)->update($updateData);
+            Log::info('Updated to PendingCountryLevelApproval', ['id' => $id, 'updateData' => $updateData, 'updatedRows' => $updatedRows]);
 
-            $updateData = [
-                'LastModifiedBy' => $user->full_name ?? 'System',
-                'LastModifiedOn' => Carbon::now()->format('Y-m-d H:i:s'),
-                'OtherPartyName' => $validated['otherInput'] ?? $clientParty->OtherPartyName,
-                'OtherPartyID' => $validated['otherID'] ?? $clientParty->OtherPartyID,
-                'OtherPartyCode' => $validated['otherCode'] ?? $clientParty->OtherPartyCode,
-                'OperatioEntityType' => $validated['partyEntityType'] ?? $clientParty->OperatioEntityType,
-                'DebtorType' => $validated['debtorType'] ?? $clientParty->DebtorType,
-                'VendorType' => $validated['vendorType'] ?? $clientParty->VendorType,
-            ];
+            $dbStatus = DB::table('Cust_entity')->where('Id', $id)->value('Status');
+            Log::debug('Post-update status check', ['id' => $id, 'dbStatus' => $dbStatus]);
+            if ($dbStatus !== 'PendingCountryLevelApproval') {
+                Log::error('Status update to PendingCountryLevelApproval failed', ['id' => $id, 'expected' => 'PendingCountryLevelApproval', 'actual' => $dbStatus]);
+                DB::rollBack();
+                return response()->json(['message' => 'Failed to update status to PendingCountryLevelApproval'], 500);
+            }
+        } elseif ($isAccounting && $clientParty->Status === 'PendingCountryLevelApproval' && $validated['status'] === 'PendingGroupLevelApproval') {
+            $updateData['Status'] = 'PendingGroupLevelApproval';
+            $updatedRows = DB::table('Cust_entity')->where('Id', $id)->update($updateData);
+            Log::info('Updated to PendingGroupLevelApproval', ['id' => $id, 'updateData' => $updateData, 'updatedRows' => $updatedRows]);
 
-            Log::debug('Update query data', ['id' => $id, 'updateData' => $updateData]);
+            $dbStatus = DB::table('Cust_entity')->where('Id', $id)->value('Status');
+            Log::debug('Post-update status check', ['id' => $id, 'dbStatus' => $dbStatus]);
+            if ($dbStatus !== 'PendingGroupLevelApproval') {
+                Log::error('Status update to PendingGroupLevelApproval failed', ['id' => $id, 'expected' => 'PendingGroupLevelApproval', 'actual' => $dbStatus]);
+                DB::rollBack();
+                return response()->json(['message' => 'Failed to update status to PendingGroupLevelApproval'], 500);
+            }
+        } elseif ($isAccounting && $clientParty->Status === 'PendingGroupLevelApproval' && $validated['status'] === 'Created') {
+            $scmRequest = new HttpRequest(['requestID' => $id]);
+            $results = $this->CreateClientPartySCM($scmRequest);
+            Log::info('SCM Creation results during Approve:', (array)$results);
 
-            // Status transition logic
-            if ($isAccounting && $clientParty->Status === 'Not Submitted' && $validated['status'] === 'PendingCountryLevelApproval') {
-                $updateData['Status'] = 'PendingCountryLevelApproval';
+            if ($results['success'] && $results['data']['Status'] === 'Success') {
+                // Update OtherParty fields with SP output
+                $updateData['OtherPartyCode'] = $results['data']['OtherCode'] ?? $updateData['OtherPartyCode'];
+                $updateData['OtherPartyID'] = $results['data']['OtherID'] ?? $updateData['OtherPartyID'];
+                $updateData['Status'] = 'Created';
                 $updatedRows = DB::table('Cust_entity')->where('Id', $id)->update($updateData);
-                Log::info('Updated to PendingCountryLevelApproval', ['id' => $id, 'updateData' => $updateData, 'updatedRows' => $updatedRows]);
+                Log::info('Updated to Created', ['id' => $id, 'updateData' => $updateData, 'updatedRows' => $updatedRows]);
 
                 $dbStatus = DB::table('Cust_entity')->where('Id', $id)->value('Status');
                 Log::debug('Post-update status check', ['id' => $id, 'dbStatus' => $dbStatus]);
-                if ($dbStatus !== 'PendingCountryLevelApproval') {
-                    Log::error('Status update to PendingCountryLevelApproval failed', ['id' => $id, 'expected' => 'PendingCountryLevelApproval', 'actual' => $dbStatus]);
+                if ($dbStatus !== 'Created') {
+                    Log::error('Status update to Created failed', ['id' => $id, 'expected' => 'Created', 'actual' => $dbStatus]);
                     DB::rollBack();
-                    return response()->json(['message' => 'Failed to update status to PendingCountryLevelApproval'], 500);
-                }
-            } elseif ($isAccounting && $clientParty->Status === 'PendingCountryLevelApproval' && $validated['status'] === 'PendingGroupLevelApproval') {
-                $updateData['Status'] = 'PendingGroupLevelApproval';
-                $updatedRows = DB::table('Cust_entity')->where('Id', $id)->update($updateData);
-                Log::info('Updated to PendingGroupLevelApproval', ['id' => $id, 'updateData' => $updateData, 'updatedRows' => $updatedRows]);
-
-                $dbStatus = DB::table('Cust_entity')->where('Id', $id)->value('Status');
-                Log::debug('Post-update status check', ['id' => $id, 'dbStatus' => $dbStatus]);
-                if ($dbStatus !== 'PendingGroupLevelApproval') {
-                    Log::error('Status update to PendingGroupLevelApproval failed', ['id' => $id, 'expected' => 'PendingGroupLevelApproval', 'actual' => $dbStatus]);
-                    DB::rollBack();
-                    return response()->json(['message' => 'Failed to update status to PendingGroupLevelApproval'], 500);
-                }
-            } elseif ($isAccounting && $clientParty->Status === 'PendingGroupLevelApproval' && $validated['status'] === 'Created') {
-                $scmRequest = new HttpRequest(['requestID' => $id]);
-                $results = $this->CreateClientPartySCM($scmRequest);
-                Log::info('SCM Creation results during Approve:', (array)$results);
-
-                if ($results['success'] && $results['data']['Status'] === 'Success') {
-                    // Update OtherParty fields with SP output
-                    $updateData['OtherPartyCode'] = $results['data']['OtherCode'] ?? $updateData['OtherPartyCode'];
-                    $updateData['OtherPartyID'] = $results['data']['OtherID'] ?? $updateData['OtherPartyID'];
-                    $updateData['Status'] = 'Created';
-                    $updatedRows = DB::table('Cust_entity')->where('Id', $id)->update($updateData);
-                    Log::info('Updated to Created', ['id' => $id, 'updateData' => $updateData, 'updatedRows' => $updatedRows]);
-
-                    $dbStatus = DB::table('Cust_entity')->where('Id', $id)->value('Status');
-                    Log::debug('Post-update status check', ['id' => $id, 'dbStatus' => $dbStatus]);
-                    if ($dbStatus !== 'Created') {
-                        Log::error('Status update to Created failed', ['id' => $id, 'expected' => 'Created', 'actual' => $dbStatus]);
-                        DB::rollBack();
-                        return response()->json(['message' => 'Failed to update status to Created'], 500);
-                    }
-                } else {
-                    Log::error('SCM Creation Failed', ['id' => $id, 'remark' => $results['data']['Remark'] ?? $results['error'] ?? 'Unknown error']);
-                    DB::rollBack();
-                    return response()->json(['message' => 'SCM Creation Failed: ' . ($results['data']['Remark'] ?? $results['error'] ?? 'Unknown error')], 500);
-                }
-            } elseif (!$isAccounting && $clientParty->Status === 'Not Submitted' && $validated['status'] === 'Submitted') {
-                $updateData['Status'] = 'Submitted';
-                $updatedRows = DB::table('Cust_entity')->where('Id', $id)->update($updateData);
-                Log::info('Updated to Submitted', ['id' => $id, 'updateData' => $updateData, 'updatedRows' => $updatedRows]);
-
-                $dbStatus = DB::table('Cust_entity')->where('Id', $id)->value('Status');
-                Log::debug('Post-update status check', ['id' => $id, 'dbStatus' => $dbStatus]);
-                if ($dbStatus !== 'Submitted') {
-                    Log::error('Status update to Submitted failed', ['id' => $id, 'expected' => 'Submitted', 'actual' => $dbStatus]);
-                    DB::rollBack();
-                    return response()->json(['message' => 'Failed to update status to Submitted'], 500);
-                }
-            } elseif (!$isAccounting && $clientParty->Status === 'Submitted' && $validated['status'] === 'Created') {
-                $scmRequest = new HttpRequest(['requestID' => $id]);
-                $results = $this->CreateClientPartySCM($scmRequest);
-                Log::info('SCM Creation results during Approve:', (array)$results);
-
-                if ($results['success'] && $results['data']['Status'] === 'Success') {
-                    // Update OtherParty fields with SP output
-                    $updateData['OtherPartyCode'] = $results['data']['OtherCode'] ?? $updateData['OtherPartyCode'];
-                    $updateData['OtherPartyID'] = $results['data']['OtherID'] ?? $updateData['OtherPartyID'];
-                    $updateData['Status'] = 'Created';
-                    $updatedRows = DB::table('Cust_entity')->where('Id', $id)->update($updateData);
-                    Log::info('Updated to Created', ['id' => $id, 'updateData' => $updateData, 'updatedRows' => $updatedRows]);
-
-                    $dbStatus = DB::table('Cust_entity')->where('Id', $id)->value('Status');
-                    Log::debug('Post-update status check', ['id' => $id, 'dbStatus' => $dbStatus]);
-                    if ($dbStatus !== 'Created') {
-                        Log::error('Status update to Created failed', ['id' => $id, 'expected' => 'Created', 'actual' => $dbStatus]);
-                        DB::rollBack();
-                        return response()->json(['message' => 'Failed to update status to Created'], 500);
-                    }
-                } else {
-                    Log::error('SCM Creation Failed', ['id' => $id, 'remark' => $results['data']['Remark'] ?? $results['error'] ?? 'Unknown error']);
-                    DB::rollBack();
-                    return response()->json(['message' => 'SCM Creation Failed: ' . ($results['data']['Remark'] ?? $results['error'] ?? 'Unknown error')], 500);
+                    return response()->json(['message' => 'Failed to update status to Created'], 500);
                 }
             } else {
-                Log::warning('Invalid status transition', ['id' => $id, 'currentStatus' => $clientParty->Status, 'requestedStatus' => $validated['status']]);
-                return response()->json(['message' => 'Invalid status transition'], 400);
+                Log::error('SCM Creation Failed', ['id' => $id, 'remark' => $results['data']['Remark'] ?? $results['error'] ?? 'Unknown error']);
+                DB::rollBack();
+                return response()->json(['message' => 'SCM Creation Failed: ' . ($results['data']['Remark'] ?? $results['error'] ?? 'Unknown error')], 500);
             }
+        } elseif (!$isAccounting && $clientParty->Status === 'Not Submitted' && $validated['status'] === 'Submitted') {
+            $updateData['Status'] = 'Submitted';
+            $updatedRows = DB::table('Cust_entity')->where('Id', $id)->update($updateData);
+            Log::info('Updated to Submitted', ['id' => $id, 'updateData' => $updateData, 'updatedRows' => $updatedRows]);
 
-            Log::info('OtherParty fields saved to database', [
+            $dbStatus = DB::table('Cust_entity')->where('Id', $id)->value('Status');
+            Log::debug('Post-update status check', ['id' => $id, 'dbStatus' => $dbStatus]);
+            if ($dbStatus !== 'Submitted') {
+                Log::error('Status update to Submitted failed', ['id' => $id, 'expected' => 'Submitted', 'actual' => $dbStatus]);
+                DB::rollBack();
+                return response()->json(['message' => 'Failed to update status to Submitted'], 500);
+            }
+        } elseif (!$isAccounting && $clientParty->Status === 'Submitted' && $validated['status'] === 'Created') {
+            // Prepare OtherParty fields
+            $updateData['OtherPartyCode'] = $validated['otherCode'] ?? $updateData['OtherPartyCode'] ?? 'OTHER-' . Str::random(6);
+            $updateData['OtherPartyID'] = $validated['otherID'] ?? $updateData['OtherPartyID'] ?? Str::uuid()->toString();
+            $updateData['RequestforOtherParty'] = 1; // Force other party creation to trigger code generation
+
+            // Update Cust_entity before SCM call
+            $updatedRows = DB::table('Cust_entity')->where('Id', $id)->update($updateData);
+            Log::info('Pre-SCM Update', [
                 'id' => $id,
-                'OtherPartyName' => $updateData['OtherPartyName'],
-                'OtherPartyID' => $updateData['OtherPartyID'],
-                'OtherPartyCode' => $updateData['OtherPartyCode'],
+                'updateData' => $updateData,
+                'updatedRows' => $updatedRows
             ]);
 
-            DB::commit();
+            // Call SCM
+            $scmRequest = new HttpRequest(['requestID' => $id]);
+            $results = $this->CreateClientPartySCM($scmRequest);
+            Log::info('SCM Creation results during Approve:', (array)$results);
 
-            $history = [
-                'ID' => Str::uuid()->toString(),
-                'CustEntityID' => $id,
-                'RequestNo' => $clientParty->Code ?? 'N/A',
-                'Role' => $user->Role ?? 'Unknown',
-                'ReasonID' => 'e6b21257-a530-45ff-bf56-939e53a536b5',
-                'Comment' => $isAccounting
-                    ? ($validated['status'] === 'PendingCountryLevelApproval' ? 'Entity Pending Country Level Approval'
-                        : ($validated['status'] === 'PendingGroupLevelApproval' ? 'Entity Pending Group Level Approval'
-                            : 'Entity Approved and Created in SCM'))
-                    : ($validated['status'] === 'Submitted' ? 'Entity Submitted' : 'Entity Approved and Created in SCM'),
-                'Type' => 'Entity',
-                'PreviousValue' => $previousStatus,
-                'NewValue' => $validated['status'],
-                'CreatedBy' => $user->Id ?? 'Unknown',
-                'CreatedOn' => Carbon::now(),
-                'LastModifiedBy' => $user->Id ?? 'Unknown',
-                'LastModifiedOn' => Carbon::now(),
-            ];
+            if ($results['success'] && $results['data']['Status'] === 'Success') {
+                // Update with SCM-generated OtherCode, skip 'Not Required'
+                $updateData['OtherPartyCode'] = ($results['data']['OtherCode'] !== 'Not Required')
+                    ? $results['data']['OtherCode']
+                    : $updateData['OtherPartyCode'];
+                $updateData['OtherPartyID'] = $results['data']['OtherID'] ?? $updateData['OtherPartyID'];
+                $updateData['Status'] = 'Created';
+                $updatedRows = DB::table('Cust_entity')->where('Id', $id)->update($updateData);
+                Log::info('Updated to Created', ['id' => $id, 'updateData' => $updateData, 'updatedRows' => $updatedRows]);
 
-            try {
-                EntityHistory::create($history);
-                Log::info('EntityHistory logged', ['id' => $id, 'history' => $history]);
-            } catch (\Exception $e) {
-                Log::error('Failed to log EntityHistory', ['id' => $id, 'error' => $e->getMessage()]);
+                $dbStatus = DB::table('Cust_entity')->where('Id', $id)->value('Status');
+                Log::debug('Post-update status check', ['id' => $id, 'dbStatus' => $dbStatus]);
+                if ($dbStatus !== 'Created') {
+                    Log::error('Status update to Created failed', ['id' => $id, 'expected' => 'Created', 'actual' => $dbStatus]);
+                    DB::rollBack();
+                    return response()->json(['message' => 'Failed to update status to Created'], 500);
+                }
+            } else {
+                Log::error('SCM Creation Failed', ['id' => $id, 'remark' => $results['data']['Remark'] ?? $results['error'] ?? 'Unknown error']);
+                DB::rollBack();
+                return response()->json(['message' => 'SCM Creation Failed: ' . ($results['data']['Remark'] ?? $results['error'] ?? 'Unknown error')], 500);
             }
-
-            return response()->json([
-                'status' => 200,
-                'message' => $isAccounting
-                    ? ($validated['status'] === 'PendingCountryLevelApproval' ? 'Entity pending country level approval'
-                        : ($validated['status'] === 'PendingGroupLevelApproval' ? 'Entity pending group level approval'
-                            : 'Entity created successfully'))
-                    : ($validated['status'] === 'Submitted' ? 'Entity submitted successfully' : 'Entity created successfully'),
-            ]);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Approval Exception', ['id' => $id, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
-            return response()->json(['message' => 'Approval failed: ' . $e->getMessage()], 500);
+        } else {
+            Log::warning('Invalid status transition', ['id' => $id, 'currentStatus' => $clientParty->Status, 'requestedStatus' => $validated['status']]);
+            return response()->json(['message' => 'Invalid status transition'], 400);
         }
+
+        Log::info('OtherParty fields saved to database', [
+            'id' => $id,
+            'OtherPartyName' => $updateData['OtherPartyName'],
+            'OtherPartyID' => $updateData['OtherPartyID'],
+            'OtherPartyCode' => $updateData['OtherPartyCode'],
+        ]);
+
+        DB::commit();
+
+        $history = [
+            'ID' => Str::uuid()->toString(),
+            'CustEntityID' => $id,
+            'RequestNo' => $clientParty->Code ?? 'N/A',
+            'Role' => $user->Role ?? 'Unknown',
+            'ReasonID' => 'e6b21257-a530-45ff-bf56-939e53a536b5',
+            'Comment' => $isAccounting
+                ? ($validated['status'] === 'PendingCountryLevelApproval' ? 'Entity Pending Country Level Approval'
+                    : ($validated['status'] === 'PendingGroupLevelApproval' ? 'Entity Pending Group Level Approval'
+                        : 'Entity Approved and Created in SCM'))
+                : ($validated['status'] === 'Submitted' ? 'Entity Submitted' : 'Entity Approved and Created in SCM'),
+            'Type' => 'Entity',
+            'PreviousValue' => $previousStatus,
+            'NewValue' => $validated['status'],
+            'CreatedBy' => $user->Id ?? 'Unknown',
+            'CreatedOn' => Carbon::now(),
+            'LastModifiedBy' => $user->Id ?? 'Unknown',
+            'LastModifiedOn' => Carbon::now(),
+        ];
+
+        try {
+            EntityHistory::create($history);
+            Log::info('EntityHistory logged', ['id' => $id, 'history' => $history]);
+        } catch (\Exception $e) {
+            Log::error('Failed to log EntityHistory', ['id' => $id, 'error' => $e->getMessage()]);
+        }
+
+        return response()->json([
+            'status' => 200,
+            'message' => $isAccounting
+                ? ($validated['status'] === 'PendingCountryLevelApproval' ? 'Entity pending country level approval'
+                    : ($validated['status'] === 'PendingGroupLevelApproval' ? 'Entity pending group level approval'
+                        : 'Entity created successfully'))
+                : ($validated['status'] === 'Submitted' ? 'Entity submitted successfully' : 'Entity created successfully'),
+        ]);
+    } catch (\Exception $e) {
+        DB::rollBack();
+        Log::error('Approval Exception', ['id' => $id, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+        return response()->json(['message' => 'Approval failed: ' . $e->getMessage()], 500);
     }
+}
 
 
     public function approvals(Request $request)
@@ -2200,6 +2417,8 @@ public function store(StoreClientPartyRequest $request)
             return response()->json(['error' => 'Failed to fetch companies: ' . $e->getMessage()], 500);
         }
     }
+
+
     public function getCompanyDetails()
 
     {

@@ -4,9 +4,8 @@ $(document).ready(function () {
         return searchParams.get(name);
     }
 
-    let requestType = getUrlParameter("type"); // Get type from URL
+    let requestType = getUrlParameter("type");
 
-    /*Ajax setup CSRF*/
     $.ajaxSetup({
         headers: {
             "X-CSRF-TOKEN": $('meta[name="csrf-token"]').attr("content"),
@@ -15,7 +14,6 @@ $(document).ready(function () {
 
     let stepper1Node = document.querySelector(".bs-stepper");
     stepper1Node.addEventListener("shown.bs-stepper", function (event) {
-        /*Next step one*/
         if (event.detail.indexStep == 1) {
             let proceed = true;
             let pet = $("#partyEntityType option:selected").val();
@@ -30,8 +28,6 @@ $(document).ready(function () {
             let firstName = $("#firstName").val();
             let lastName = $("#lastName").val();
             let phoneNo = $("#phoneNo").val();
-
-
 
             if (phoneNo.length == 0) {
                 $("#phoneNo").addClass("is-invalid");
@@ -65,14 +61,6 @@ $(document).ready(function () {
                 proceed = true;
             }
 
-            if (pet.length == 0) {
-                $("#partyEntityType").addClass("is-invalid");
-                window.stepper.to(0);
-            } else {
-                $("#partyEntityType").removeClass("is-invalid");
-                proceed = true;
-            }
-
             if(requestType === 'accounting') {
                 if (l_e_t.length == 0) {
                     $('#legalEntityType').addClass('is-invalid');
@@ -82,8 +70,6 @@ $(document).ready(function () {
                     proceed = true;
                 }
             }
-
-
 
             if ($("#companyName").is(":visible")) {
                 if (companyName.length == 0) {
@@ -125,7 +111,6 @@ $(document).ready(function () {
                 proceed = true;
             }
 
-            /**/
             const entities = [
                 "Shipper + Consignee",
                 "Consignee Only",
@@ -147,7 +132,6 @@ $(document).ready(function () {
                         $("#clientCode").val() == "") &&
                     criteria
                 ) {
-                    /*If the data comes form master then clientid and client name should also have values rest invalid*/
                     $("#client").addClass("is-invalid");
                     window.stepper.to(0);
                     $("#client").after(
@@ -163,22 +147,21 @@ $(document).ready(function () {
                 proceed = true;
             }
 
-            if ($("#clientOptionVal").attr("required")) {
+            if ($("#clientOptionVal").attr("change")) {
                 if (
                     clientOptionVal.length == 0 &&
-                    $("#clientOption option:selected").val() == "fromRequest" &&
+                    $("#clientOption option:selected").val() == "" &&
                     criteria
                 ) {
-                    $("#clientOptionVal").addClass("is-invalid");
-                    window.stepper.to(0);
+                    $("#clientOptionVal").appendClass('is-invalid');
+                    window.stepper.to(1);
                 } else if (
                     ($("#requestID").val() == "" ||
                         $("#requestCode").val() == "") &&
                     criteria
                 ) {
-                    /*If the data comes form master then clientid and client name should also have values rest invalid*/
-                    $("#clientOptionVal").addClass("is-invalid");
-                    window.stepper.to(0);
+                    $("#clientOptionVal").appendClass("is-invalid");
+                    window.stepper.to(1);
                     $("#clientOptionVal").after(
                         '<span class="text-danger" id="note">* Invalid Input</span>'
                     );
@@ -199,256 +182,124 @@ $(document).ready(function () {
                 $("#contractEmail").removeClass("is-invalid");
             }
         }
-        /*Next Step two*/
-        // if (event.detail.indexStep == 2) {
-        //     let office_country_select = $(
-        //         "#officeCountry option:selected"
-        //     ).val();
-        //     let sales_person_of_interest = $("#salesPIC").val();
-        //     let billingCurrency = $("#billingCurrency option:selected").val();
-        //     let licenceTypeID = $("#licenceTypeID option:selected").val();
-        //     let maxCreditLimit = $("#maxCreditLimit").val();
-        //     let creditDays = $("#creditDays").val();
-        //     let licenceTypeValue = $("#licenceTypeValue").val();
-        //     let attachmentFileNames = $("#attachmentFileNames").val();
 
-        //     // Only validate if request type is 'accounting'
-        //     if (requestType === "accounting") {
-        //         let dt = $("#debtorType");
-        //         if (
-        //             typeof dt.attr("required") !== "undefined" &&
-        //             dt.attr("required") !== false
-        //         ) {
-        //             if (!dt.val()) {
-        //                 dt.addClass("is-invalid");
-        //                 window.stepper.to(2);
-        //             } else {
-        //                 dt.removeClass("is-invalid");
-        //             }
-        //         } else {
-        //             dt.removeClass("is-invalid");
-        //         }
+        if (event.detail.indexStep == 2) {
+            let office_country_select = $("#officeCountry option:selected").val();
+            let sales_person_of_interest = $("#salesPIC").val();
+            let billingCurrency = $("#billingCurrency option:selected").val();
+            let licenceTypeID = $("#licenceTypeID option:selected").val();
+            let maxCreditLimit = $("#maxCreditLimit").val();
+            let creditDays = $("#creditDays").val();
+            let licenceTypeValue = $("#licenceTypeValue").val();
+            let attachmentFileNames = $("#attachmentFileNames").val();
+            let isOverseas = $("#overseasEntity").is(":checked");
 
-        //         let dv = $("#vendorType");
-        //         if (
-        //             typeof dv.attr("required") !== "undefined" &&
-        //             dv.attr("required") !== false
-        //         ) {
-        //             if (!dv.val()) {
-        //                 dv.addClass("is-invalid");
-        //                 window.stepper.to(2);
-        //             } else {
-        //                 dv.removeClass("is-invalid");
-        //             }
-        //         } else {
-        //             dv.removeClass("is-invalid");
-        //         }
+            if (requestType === "accounting") {
+                let dt = $("#debtorType");
+                if (
+                    typeof dt.attr("required") !== "undefined" &&
+                    dt.attr("required") !== false
+                ) {
+                    if (!dt.val()) {
+                        dt.addClass("is-invalid");
+                        window.stepper.to(2);
+                    } else {
+                        dt.removeClass("is-invalid");
+                    }
+                } else {
+                    dt.removeClass("is-invalid");
+                }
 
-        //         // Validate billing currency
-        //         if (!billingCurrency) {
-        //             $("#billingCurrency").addClass("is-invalid");
-        //             window.stepper.to(2);
-        //         } else {
-        //             $("#billingCurrency").removeClass("is-invalid");
-        //         }
+                let dv = $("#vendorType");
+                if (
+                    typeof dv.attr("required") !== "undefined" &&
+                    dv.attr("required") !== false
+                ) {
+                    if (!dv.val()) {
+                        dv.addClass("is-invalid");
+                        window.stepper.to(2);
+                    } else {
+                        dv.removeClass("is-invalid");
+                    }
+                } else {
+                    dv.removeClass("is-invalid");
+                }
 
-        //         // Validate License Type
-        //         if (!licenceTypeID) {
-        //             $("#licenceTypeID").addClass("is-invalid");
-        //             window.stepper.to(2);
-        //         } else {
-        //             $("#licenceTypeID").removeClass("is-invalid");
-        //         }
+                if (!billingCurrency) {
+                    $("#billingCurrency").addClass("is-invalid");
+                    window.stepper.to(2);
+                } else {
+                    $("#billingCurrency").removeClass("is-invalid");
+                }
 
-        //         // Validate License Type Code
-        //         if (!licenceTypeValue) {
-        //             $("#licenceTypeValue").addClass("is-invalid");
-        //             window.stepper.to(2);
-        //         } else {
-        //             $("#licenceTypeValue").removeClass("is-invalid");
-        //         }
+                if (!isOverseas) {
+                    if (!licenceTypeID) {
+                        $("#licenceTypeID").addClass("is-invalid");
+                        window.stepper.to(2);
+                    } else {
+                        $("#licenceTypeID").removeClass("is-invalid");
+                    }
 
-        //         // Validate Credit Limit
-        //         if (!maxCreditLimit) {
-        //             $("#maxCreditLimit").addClass("is-invalid");
-        //             window.stepper.to(2);
-        //         } else {
-        //             $("#maxCreditLimit").removeClass("is-invalid");
-        //         }
+                    if (!licenceTypeValue) {
+                        $("#licenceTypeValue").addClass("is-invalid");
+                        window.stepper.to(2);
+                    } else {
+                        $("#licenceTypeValue").removeClass("is-invalid");
+                    }
+                } else {
+                    $("#licenceTypeID").removeClass("is-invalid").removeAttr("required");
+                    $("#licenceTypeValue").removeClass("is-invalid").removeAttr("required");
+                }
 
-        //         // Validate Credit Days
-        //         if (!creditDays) {
-        //             $("#creditDays").addClass("is-invalid");
-        //             window.stepper.to(2);
-        //         } else {
-        //             $("#creditDays").removeClass("is-invalid");
-        //         }
-        //     }
+                if (!maxCreditLimit) {
+                    $("#maxCreditLimit").addClass("is-invalid");
+                    window.stepper.to(2);
+                } else {
+                    $("#maxCreditLimit").removeClass("is-invalid");
+                }
 
-        //      // If type is "operational", remove 'required' attribute from specific fields
-        //     if (requestType === "operational") {
-        //         $('#billingCurrency').removeAttr('required');
-        //         $('#creditDays').removeAttr('required');
-        //         $('#maxCreditLimit').removeAttr('required');
-        //         $('#licenceTypeID').removeAttr('required');
-        //         $('#licenceTypeValue').removeAttr('required');
-        //         $('#legalEntityType').removeAttr('required');
-        //         $('#attachments').removeAttr('required');
-        //         $('input[name="attachmentNames[]"]').removeAttr('required');
-        //         $('input[name="attachmentDescription[]"]').removeAttr('required');
-        //         $('#client-check').hide();
-        //         $('#vendor-check').hide();
-        //         $('#debtor-check').hide();
-        //         $('#shipper-check').hide();
-        //         $('#consignee-check').hide();
-
-        //         $("#otherCheck").prop("checked", true);
-        //     }
-
-
-        //     // Office Country should always be validated
-        //     if (!office_country_select) {
-        //         $("#officeCountry").addClass("is-invalid");
-        //         window.stepper.to(2);
-        //     } else {
-        //         $("#officeCountry").removeClass("is-invalid");
-        //     }
-
-        //     /** Validate step two inputs */
-        //     let results = validStepTwo();
-        //     if (!results) {
-        //         window.stepper.to(2);
-        //     }
-        // }
-       if (event.detail.indexStep == 2) {
-    let office_country_select = $("#officeCountry option:selected").val();
-    let sales_person_of_interest = $("#salesPIC").val();
-    let billingCurrency = $("#billingCurrency option:selected").val();
-    let licenceTypeID = $("#licenceTypeID option:selected").val();
-    let maxCreditLimit = $("#maxCreditLimit").val();
-    let creditDays = $("#creditDays").val();
-    let licenceTypeValue = $("#licenceTypeValue").val();
-    let attachmentFileNames = $("#attachmentFileNames").val();
-    let isOverseas = $("#overseasEntity").is(":checked"); // Check overseasEntity
-
-    // Only validate if request type is 'accounting'
-    if (requestType === "accounting") {
-        let dt = $("#debtorType");
-        if (
-            typeof dt.attr("required") !== "undefined" &&
-            dt.attr("required") !== false
-        ) {
-            if (!dt.val()) {
-                dt.addClass("is-invalid");
-                window.stepper.to(2);
-            } else {
-                dt.removeClass("is-invalid");
-            }
-        } else {
-            dt.removeClass("is-invalid");
-        }
-
-        let dv = $("#vendorType");
-        if (
-            typeof dv.attr("required") !== "undefined" &&
-            dv.attr("required") !== false
-        ) {
-            if (!dv.val()) {
-                dv.addClass("is-invalid");
-                window.stepper.to(2);
-            } else {
-                dv.removeClass("is-invalid");
-            }
-        } else {
-            dv.removeClass("is-invalid");
-        }
-
-        // Validate billing currency
-        if (!billingCurrency) {
-            $("#billingCurrency").addClass("is-invalid");
-            window.stepper.to(2);
-        } else {
-            $("#billingCurrency").removeClass("is-invalid");
-        }
-
-        // Validate License Type only if overseasEntity is not checked
-        if (!isOverseas) {
-            if (!licenceTypeID) {
-                $("#licenceTypeID").addClass("is-invalid");
-                window.stepper.to(2);
-            } else {
-                $("#licenceTypeID").removeClass("is-invalid");
+                if (!creditDays) {
+                    $("#creditDays").addClass("is-invalid");
+                    window.stepper.to(2);
+                } else {
+                    $("#creditDays").removeClass("is-invalid");
+                }
             }
 
-            // Validate License Type Code
-            if (!licenceTypeValue) {
-                $("#licenceTypeValue").addClass("is-invalid");
+            if (requestType === "operational") {
+                $('#billingCurrency').removeAttr('required');
+                $('#creditDays').removeAttr('required');
+                $('#maxCreditLimit').removeAttr('required');
+                $('#licenceTypeID').removeAttr('required');
+                $('#licenceTypeValue').removeAttr('required');
+                $('#legalEntityType').removeAttr('required');
+                $('#attachments').removeAttr('required');
+                $('input[name="attachmentNames[]"]').removeAttr('required');
+                $('input[name="attachmentDescription[]"]').removeAttr('required');
+                $('#client-check').hide();
+                $('#vendor-check').hide();
+                $('#debtor-check').hide();
+                $('#shipper-check').hide();
+                $('#consignee-check').hide();
+
+                $("#otherCheck").prop("checked", true);
+            }
+
+            if (!office_country_select) {
+                $("#officeCountry").addClass("is-invalid");
                 window.stepper.to(2);
             } else {
-                $("#licenceTypeValue").removeClass("is-invalid");
+                $("#officeCountry").removeClass("is-invalid");
             }
-        } else {
-            // Clear validation states if overseasEntity is checked
-            $("#licenceTypeID").removeClass("is-invalid").removeAttr("required");
-            $("#licenceTypeValue").removeClass("is-invalid").removeAttr("required");
+
+            let results = validStepTwo();
+            if (!results) {
+                window.stepper.to(2);
+            }
         }
-
-        // Validate Credit Limit
-        if (!maxCreditLimit) {
-            $("#maxCreditLimit").addClass("is-invalid");
-            window.stepper.to(2);
-        } else {
-            $("#maxCreditLimit").removeClass("is-invalid");
-        }
-
-        // Validate Credit Days
-        if (!creditDays) {
-            $("#creditDays").addClass("is-invalid");
-            window.stepper.to(2);
-        } else {
-            $("#creditDays").removeClass("is-invalid");
-        }
-    }
-
-    // If type is "operational", remove 'required' attribute from specific fields
-    if (requestType === "operational") {
-        $('#billingCurrency').removeAttr('required');
-        $('#creditDays').removeAttr('required');
-        $('#maxCreditLimit').removeAttr('required');
-        $('#licenceTypeID').removeAttr('required');
-        $('#licenceTypeValue').removeAttr('required');
-        $('#legalEntityType').removeAttr('required');
-        $('#attachments').removeAttr('required');
-        $('input[name="attachmentNames[]"]').removeAttr('required');
-        $('input[name="attachmentDescription[]"]').removeAttr('required');
-        $('#client-check').hide();
-        $('#vendor-check').hide();
-        $('#debtor-check').hide();
-        $('#shipper-check').hide();
-        $('#consignee-check').hide();
-
-        $("#otherCheck").prop("checked", true);
-    }
-
-    // Office Country should always be validated
-    if (!office_country_select) {
-        $("#officeCountry").addClass("is-invalid");
-        window.stepper.to(2);
-    } else {
-        $("#officeCountry").removeClass("is-invalid");
-    }
-
-    /** Validate step two inputs */
-    let results = validStepTwo();
-    if (!results) {
-        window.stepper.to(2);
-    }
-}
     });
 
     function validStepThree(status = true) {
-        /**ADMIN SECTION*/
-        /**Client */
         if (
             $("#clientInput").val() != "" &&
             ($("#clientID").val() == "" || $("#clientCode").val() == "")
@@ -458,7 +309,7 @@ $(document).ready(function () {
         } else {
             $("#clientInput").removeClass("is-invalid");
         }
-        /**Shipper */
+
         if (
             $("#shipperInput").val() != "" &&
             ($("#shipperID").val() == "" || $("#shipperCode").val() == "")
@@ -468,7 +319,7 @@ $(document).ready(function () {
         } else {
             $("#shipperInput").removeClass("is-invalid");
         }
-        /**Consignee */
+
         if (
             $("#consigneeInput").val() != "" &&
             ($("#consigneeID").val() == "" || $("#consigneeCode").val() == "")
@@ -478,7 +329,7 @@ $(document).ready(function () {
         } else {
             $("#consigneeInput").removeClass("is-invalid");
         }
-        /**Other */
+
         if (
             $("#otherInput").val() != "" &&
             ($("#otherID").val() == "" || $("#otherCode").val() == "")
@@ -488,14 +339,14 @@ $(document).ready(function () {
         } else {
             $("#otherInput").removeClass("is-invalid");
         }
-        /**Debtor */
+
         if ($("#debtor").val() != "" && $("#debtorID").val() == "") {
             $("#debtor").addClass("is-invalid");
             status = false;
         } else {
             $("#debtor").removeClass("is-invalid");
         }
-        /**Vendor */
+
         if (
             $("#vendor").val() != "" &&
             ($("#vendorID").val() == "" || $("#vendorCode").val() == "")
@@ -509,96 +360,10 @@ $(document).ready(function () {
     }
 
     function validStepTwo(status = true) {
-        // if (
-        //     $("#portOfLoadingAir").val() != "" &&
-        //     $("#portOfLoadingAirID").val() == ""
-        // ) {
-        //     $("#portOfLoadingAir").addClass("is-invalid");
-        //     status = false;
-        // } else {
-        //     $("#portOfLoadingAir").removeClass("is-invalid");
-        // }
-
-        // if (
-        //     $("#portOfLoadingSea").val() != "" &&
-        //     $("#portOfLoadingSeaID").val() == ""
-        // ) {
-        //     $("#portOfLoadingSea").addClass("is-invalid");
-        //     status = false;
-        // } else {
-        //     $("#portOfLoadingSea").removeClass("is-invalid");
-        // }
-
-        // if (
-        //     $("#portOfDischargeAir").val() != "" &&
-        //     $("#portOfDischargeAirID").val() == ""
-        // ) {
-        //     $("#portOfDischargeAir").addClass("is-invalid");
-        //     status = false;
-        // } else {
-        //     $("#portOfDischargeAir").removeClass("is-invalid");
-        // }
-
-        // if (
-        //     $("#portOfDischargeSea").val() != "" &&
-        //     $("#portOfDischargeSeaID").val() == ""
-        // ) {
-        //     $("#portOfDischargeSea").addClass("is-invalid");
-        //     status = false;
-        // } else {
-        //     $("#portOfDischargeSea").removeClass("is-invalid");
-        // }
-        /*Sales PIC
-        if (($('#salesPIC').val() != '') && ($('#salesPICID').val() == '')){
-            $('#salesPIC').addClass('is-invalid');
-            status = false;
-        }else{
-            $('#salesPIC').removeClass('is-invalid');
-        }*/
-        /*Account PIC*/
-        // if ($("#accountPIC").val() != "" && $("#accountPICID").val() == "") {
-        //     $("#accountPIC").addClass("is-invalid");
-        //     status = false;
-        // } else {
-        //     $("#accountPIC").removeClass("is-invalid");
-        // }
-
-        /*Notify Party 1**/
-        // if (
-        //     $("#notifyParty1").val() != "" &&
-        //     ($("#notifyParty1ID").val() == "" ||
-        //         $("#notifyParty1Code").val() == "")
-        // ) {
-        //     $("#notifyParty1").addClass("is-invalid");
-        //     status = false;
-        // } else {
-        //     $("#notifyParty1").removeClass("is-invalid");
-        // }
-
-        // /**Notify party two */
-        // if (
-        //     $("#notifyParty2").val() != "" &&
-        //     ($("#notifyParty2ID").val() == "" ||
-        //         $("#notifyParty2Code").val() == "")
-        // ) {
-        //     $("#notifyParty2").addClass("is-invalid");
-        //     status = false;
-        // } else {
-        //     $("#notifyParty1").removeClass("is-invalid");
-        // }
-
-        // if ($("#forwarderName").val() != "" && $("#forwarderID").val() == "") {
-        //     $("#forwarderName").addClass("is-invalid");
-        //     status = false;
-        // } else {
-        //     $("#forwarderName").removeClass("is-invalid");
-        // }
         return status;
     }
 
-    /** Click save step one */
     $("#save-step1").on("click", function (e) {
-        /**validate and submit */
         let save = true;
         let pet = $("#partyEntityType option:selected").val();
         let legal_entity_val = $("#legalEntityType option:selected").val();
@@ -685,7 +450,6 @@ $(document).ready(function () {
                 ($("#clientID").val() == "" || $("#clientCode").val() == "") &&
                 criteria
             ) {
-                /*If the data comes form master then clientid and client name should also have values rest invalid*/
                 $("#client").addClass("is-invalid");
                 e.preventDefault();
                 save = false;
@@ -714,7 +478,6 @@ $(document).ready(function () {
                     $("#requestCode").val() == "") &&
                 criteria
             ) {
-                /*If the data comes form master then clientid and client name should also have values rest invalid*/
                 $("#clientOptionVal").addClass("is-invalid");
                 e.preventDefault();
                 save = false;
@@ -742,11 +505,8 @@ $(document).ready(function () {
         }
     });
 
-    /**save step two */
     $("#save-step2").on("click", function (e) {
-        /**validate and submit */
         let save = true;
-        /* let office_country_disp = $('#officeCountryDisp').val() ;*/
         let office_country_select = $("#officeCountry option:selected").val();
         let sales_person_of_interest = $("#salesPIC").val();
 
@@ -758,16 +518,6 @@ $(document).ready(function () {
             $("#officeCountry").removeClass("is-invalid");
         }
 
-        /** if (sales_person_of_interest.length == 0) {
-             $('#salesPIC input[name="salesPIC"]').addClass('is-invalid');
-             console.log('here');
-             e.preventDefault();
-             save = false;
-         } else {
-             $('#salesPIC input[name="salesPIC"]').removeClass('is-invalid');
-         } */
-
-        /**Validate step two inputs */
         let results = validStepTwo();
         if (!results) {
             e.preventDefault();
@@ -784,618 +534,348 @@ $(document).ready(function () {
             const emailRegexp = new RegExp(
                 /^[a-zA-Z0-9][\-_\.\+\!\#\$\%\&\'\*\/\=\?\^\`\{\|]{0,1}([a-zA-Z0-9][\-_\.\+\!\#\$\%\&\'\*\/\=\?\^\`\{\|]{0,1})*[a-zA-Z0-9]@[a-zA-Z0-9][-\.]{0,1}([a-zA-Z][-\.]{0,1})*[a-zA-Z0-9]\.[a-zA-Z0-9]{1,}([\.\-]{0,1}[a-zA-Z]){0,}[a-zA-Z0-9]{0,}$/i
             );
-
             return emailRegexp.test(inputEmail);
         }
         return true;
     }
-    /** step three scenario */
-    /**
-     * LEGAL TYPE
-     */
-    let legalEntityType = $("#legalEntityType");
 
-    /**Check if the value is set */
-    let legalEntityTypeValue = legalEntityType.val();
+    if (!window.isShowView) {
+        $("#otherInput").attr("disabled", "true");
+        $("#consigneeInput").attr("disabled", "true");
+        $("#shipperInput").attr("disabled", "true");
+        $("#clientInput").attr("disabled", "true");
+        $("#debtor").attr("disabled", "true");
+        $("#vendor").attr("disabled", "true");
+    }
 
-    /** Make debtor and vendor readonly
-    $('#debtorCheck').attr('disabled', true);
-    $('#vendorChec').attr('disabled ', true);*/
-    $("#debtor").attr("disabled", "true");
-    $("#vendor").attr("disabled", "true");
-
-    /**For legal entiry show client party purpose*/
-    let legaltype = $("#legalEntityType option:selected").val();
-    /**Chceck if it is not empty and populate*/
-    // if (legaltype.length !== 0) {
-    //     LegalEntityType(legaltype);
-    // }
-
-    /**LegalEntity On change function*/
-    legalEntityType.on("change", function () {
-        legaltype = $(this).val();
-        /**/
-        LegalEntityType(legaltype);
+    $("#otherCheck").on("change", function () {
+        let cc = $("#otherCheck").is(":checked") == true ? 1 : 0;
+        if (!window.isShowView) {
+            if (cc == 0) {
+                $("#otherInput").removeAttr("disabled").attr("required", "true");
+                $("#otherID").attr("required", "true");
+                $("#otherCode").attr("required", "true");
+            } else {
+                $("#otherInput").attr("disabled", "true").removeAttr("required");
+                $("#otherID").removeAttr("required");
+                $("#otherCode").removeAttr("required");
+                $("#otherInput").val("");
+                $("#otherID").val("");
+                $("#otherCode").val("");
+            }
+        }
     });
-    /**
-     * Debtor checkbox change
-     */
 
     $("#debtorCheck").on("change", function () {
         let isChecked = $(this).is(":checked");
-        if (isChecked) {
-            $("#debtor").attr("disabled", true);
-        } else {
-            $("#debtor").attr("disabled", false);
+        if (!window.isShowView) {
+            if (isChecked) {
+                $("#debtor").attr("disabled", true);
+            } else {
+                $("#debtor").attr("disabled", false);
+            }
         }
     });
 
-    /**
-     * Vendor checkbox change
-     */
     $("#vendorCheck").on("change", function () {
         let isChecked = $(this).is(":checked");
-        if (isChecked) {
-            $("#vendor").attr("disabled", true);
-        } else {
-            $("#vendor").attr("disabled", false);
+        if (!window.isShowView) {
+            if (isChecked) {
+                $("#vendor").attr("disabled", true);
+            } else {
+                $("#vendor").attr("disabled", false);
+            }
         }
     });
-    /**
-     * Manages admin details for debtor and vendor
-     * @param {string} val
-     */
-    function LegalEntityType(val) {
-        $('#debtorType').removeClass('is-invalid');
-        $('#vendorType').removeClass('is-invalid');
 
-        if (val == "Debtor") {
-            /* disable vendor legal type*/
-            $('#vendorType').prop('selectedIndex', 0);
-            $('#vendorType').attr('disabled', true);
-            $('#vendorType').removeAttr('required');
-
-            /*Enable debtor legal type*/
-            $('#debtorType').prop('selectedIndex', 0);
-            $('#debtorType').removeAttr('disabled');
-            $('#debtorType').prop('required', true);
-
-            /**Enable Debtor (admin) */
-            $('#debtorCheck').attr('disabled', false);
-
-            /**Disable vendor  input and checkbox*/
-            $('#vendorCheck').prop('checked', false);
-            $('#vendorCheck').attr('disabled', true);
-            $('#vendorID').val('');
-            $('#vendorCode').val('');
-            $('#vendor').val('');
-
-            /*Debtor checkbox*/
-            $('#debtorCheck').prop('checked', true);
-
-            $('#debtorCheckVal').remove();
-            $('#vendorCheckVal').remove();
-            $('form').append('<input type="hidden" value=on" name="debtorCheck" id="debtorCheckVal" checked>');
-
-        }
-
-        if (val == "Vendor") {
-            /* disable debtor legal type*/
-            $('#debtorType').prop('selectedIndex', 0);
-            $('#debtorType').attr('disabled', true);
-            $('#debtorType').removeAttr('required');
-
-            /* enable vendor legal type*/
-            $('#vendorType').prop('selectedIndex', 0);
-            $('#vendorType').removeAttr('disabled');
-            $('#vendorType').prop('required', true);
-
-            /*Enable Vendor*/
-            $('#vendorCheck').attr('disabled', false);
-
-            /**Disable debtor*/
-            $('#debtorCheck').prop('checked', false);
-            $('#debtorCheck').attr('disabled', true);
-            $('#debtorID').val('');
-            $('#debtorCode').val('');
-            $('#debtor').val('');
-
-            /*Vendor checkbox*/
-            $('#vendorCheck').prop('checked', true);
-
-            $('#debtorCheckVal').remove();
-            $('#vendorCheckVal').remove();
-
-            $('form').append('<input type="hidden" value="on" name="vendorCheck" id="vendorCheckVal" checked>');
-
-        }
-
-        if (val == "Debtor & Vendor") {
-            /** Enable both vendor and debtor legal type */
-            $('#debtorType').prop('selectedIndex', 0);
-            $('#debtorType').removeAttr('disabled');
-            $('#debtorType').prop('required', true);
-
-            $('#vendorType').prop('selectedIndex', 0);
-            $('#vendorType').removeAttr('disabled');
-            $('#vendorType').prop('required', true);
-
-            /*Vendor*/
-            $('#vendorCheck').prop('checked', true);
-            $('#vendorCheck').attr('disabled', false);
-            $('#vendorID').val('');
-            $('#vendorCode').val('');
-            $('#vendor').val('');
-
-            /*Debtor*/
-            $('#debtorCheck').prop('checked', true);
-            $('#debtorCheck').attr('disabled', false);
-            $('#debtorID').val('');
-            $('#debtorCode').val('');
-            $('#debtor').val('');
-
-            /*Vendor checkbox*/
-            $('#vendorCheck').prop('checked', true);
-
-            $('#vendorCheckVal').remove();
-            $('#debtorCheckVal').remove();
-            /**Append debtor and vendor checkbox to form  */
-            $('form').append('<input type="hidden" value="on" name="debtorCheck" id="debtorCheckVal" checked>' +
-                '<input type="hidden" value="on" name="vendorCheck" id="vendorCheckVal" checked>');
-
-        }
-
-        if ($('#partyEntityType option:selected').val() == 'NoSCMIntergration') {
-            if (val == "Debtor & Vendor") {
-                /*Vendor*/
-                $('#vendorCheck').attr('disabled', true);
-
-                /*Debtor*/
-                $('#debtorCheck').attr('disabled', true);
-            } else if (val == "Debtor") {
-                /*Debtor*/
-                $('#debtorCheck').attr('disabled', true);
-            } else {
-                /*Vendor*/
-                $('#vendorCheck').attr('disabled', true);
-            }
-
-        }
-    }
-
-    /**For show client party purposes*/
-    let param = $("#partyEntityType option:selected").val();
-
-    /** Manage client input on prty entity change : basic details section*/
-    const entities = [
-        "Shipper + Consignee",
-        "Consignee Only",
-        "Shipper Only",
-        "NoSCMIntergration",
-    ];
-    criteria = entities.includes(param);
-
-    /*Check if not null and populate*/
-    // if (param.length !== 0) {
-    //     clientStatus(param);
-    //     PartyEntityType(param);
-    // }
-
-    /**For on change purposes */
-    // $('#partyEntityType').on('change', function () {
-    //     param = $('#partyEntityType option:selected').val();
-    //     clientStatus(param);
-    //     PartyEntityType(param);
-
-    // });
-
-    /**Initialize the inputs*/
-    $("#otherInput").attr("disabled", "true");
-    $("#consigneeInput").attr("disabled", "true");
-    $("#shipperInput").attr("disabled", "true");
-    $("#clientInput").attr("disabled", "true");
-
-    /**
-     *  Manages client shipper and consignee admin details
-     * @param {string} param
-     */
-    function PartyEntityType(param) {
-        if (param == "Client with Debtor or Vendor") {
-            /**for client shipper consignee: disable otherCheck and otherInput*/
-            /**Add class disabled to otherCheck uncheck if checked */
-            if (!$("#otherCheck").attr("disabled")) {
-                $("#otherCheck").attr("disabled", "true");
-                $("#otherCheck").prop("checked", false);
-            } else {
-                $("#otherCheck").prop("checked", false);
-            }
-            /**check weather client/shipper/consignee has class disable then remove  And check*/
-            /**Cleint */
-            if ($("#clientCheck").attr("disabled")) {
-                $("#clientCheck").removeAttr("disabled");
-                $("#clientCheck").prop("checked", true);
-            } else {
-                $("#clientCheck").prop("checked", true);
-            }
-            /**Shipper */
-            if ($("#shipperCheck").attr("disabled")) {
-                $("#shipperCheck").removeAttr("disabled");
-                $("#shipperCheck").prop("checked", true);
-            } else {
-                $("#shipperCheck").prop("checked", true);
-            }
-            /**Consignee */
-            if ($("#consigneeCheck").attr("disabled")) {
-                $("#consigneeCheck").removeAttr("disabled");
-                $("#consigneeCheck").prop("checked", true);
-            } else {
-                $("#consigneeCheck").prop("checked", true);
-            }
-            /**for shipper + consignee: disable client and other*/
-        } else if (param == "Client without Debtor or Vendor") {
-            // Other check state then disable
-            if (!$("#otherCheck").attr("disabled")) {
-                $("#otherCheck").attr("disabled", "true");
-                $("#otherCheck").prop("checked", false);
-            } else {
-                $("#otherCheck").prop("checked", false);
-            }
-            // Client check state then enable
-            if ($("#clientCheck").attr("disabled")) {
-                $("#clientCheck").removeAttr("disabled");
-                $("#clientCheck").prop("checked", true);
-            } else {
-                $("#clientCheck").prop("checked", true);
-            }
-            // Check Shipper state then enable
-            /**Shipper */
-            if ($("#shipperCheck").attr("disabled")) {
-                $("#shipperCheck").removeAttr("disabled");
-                $("#shipperCheck").prop("checked", true);
-            } else {
-                $("#shipperCheck").prop("checked", true);
-            }
-            // Check Debtor state then disable
-            // Check Vendor State then disable
-        } else if (param == "Shipper + Consignee") {
-            if (!$("#otherCheck").attr("disabled")) {
-                $("#otherCheck").attr("disabled", "true");
-                $("#otherCheck").removeAttr("checked");
-            }
-            if (!$("#clientCheck").attr("disabled")) {
-                $("#clientCheck").attr("disabled", "true");
-                $("#clientCheck").removeAttr("checked");
-            }
-            /**Enable shipper */
-            if ($("#shipperCheck").attr("disabled")) {
-                $("#shipperCheck").removeAttr("disabled");
-                $("#shipperCheck").prop("checked", true);
-            } else {
-                $("#shipperCheck").prop("checked", true);
-            }
-            /**Enable consignee */
-            if ($("#consigneeCheck").attr("disabled")) {
-                $("#consigneeCheck").removeAttr("disabled");
-                $("#consigneeCheck").prop("checked", true);
-            } else {
-                $("#consigneeCheck").prop("checked", true);
-            }
-            /**For Shipper only: check and disable client and consignee and other*/
-        } else if (param == "Shipper Only") {
-            /**Other */
-            if (!$("#otherCheck").attr("disabled")) {
-                $("#otherCheck").attr("disabled", "true");
-                $("#otherCheck").removeAttr("checked");
-            }
-            /**Consignee */
-            if (!$("#consigneeCheck").attr("disabled")) {
-                $("#consigneeCheck").attr("disabled", "true");
-                $("#consigneeCheck").removeAttr("checked");
-            }
-            /**Client */
-            if (!$("#clientCheck").attr("disabled")) {
-                $("#clientCheck").attr("disabled", "true");
-                $("#clientCheck").removeAttr("checked");
-            }
-            /**Enable shipper */
-            if ($("#shipperCheck").attr("disabled")) {
-                $("#shipperCheck").removeAttr("disabled");
-                $("#shipperCheck").prop("checked", true);
-            } else {
-                $("#shipperCheck").prop("checked", true);
-            }
-            /**For Consignee only: check and disable client and shipper and other*/
-        } else if (param == "Consignee Only") {
-            /**Other */
-            if (!$("#otherCheck").attr("disabled")) {
-                $("#otherCheck").attr("disabled", "true");
-                $("#otherCheck").removeAttr("checked");
-            }
-            /**shipper */
-            if (!$("#shipperCheck").attr("disabled")) {
-                $("#shipperCheck").attr("disabled", "true");
-                $("#shipperCheck").removeAttr("checked");
-            }
-            /**Client */
-            if (!$("#clientCheck").attr("disabled")) {
-                $("#clientCheck").removeAttr("checked");
-                $("#clientCheck").attr("disabled", "true");
-            }
-            /**Enable consignee */
-            if (!$("#consigneeCheck").attr("disabled")) {
-                $("#consigneeCheck").removeAttr("disabled");
-                $("#consigneeCheck").prop("checked", true);
-            } else {
-                $("#consigneeCheck").removeAttr("disabled");
-                $("#consigneeCheck").prop("checked", true);
-            }
-        } else if (param == "NoSCMIntergration") {
-            /**disable Other */
-            if (!$("#otherCheck").attr("disabled")) {
-                $("#otherCheck").attr("disabled", "true");
-                $("#otherCheck").prop("checked", false);
-                console.log("other");
-            } else {
-                console.log("other else");
-                $("#otherCheck").prop("checked", false);
-            }
-            /**shipper */
-            if (!$("#shipperCheck").attr("disabled")) {
-                $("#shipperCheck").attr("disabled", "true");
-                $("#shipperCheck").removeAttr("checked");
-            }
-            /**Client */
-            if (!$("#clientCheck").attr("disabled")) {
-                $("#clientCheck").removeAttr("checked");
-                $("#clientCheck").attr("disabled", "true");
-            }
-            /**consignee */
-            if ($("#consigneeCheck").attr("disabled")) {
-                $("#consigneeCheck").removeAttr("checked");
-            } else {
-                $("#consigneeCheck").attr("disabled", "true");
-                $("#consigneeCheck").removeAttr("checked");
-            }
-        } else {
-            /**Enable Other */
-            if ($("#otherCheck").attr("disabled")) {
-                $("#otherCheck").prop("disabled", false);
-                $("#otherCheck").prop("checked", true);
-            } else {
-                $("#otherCheck").prop("checked", true);
-            }
-            /**shipper */
-            if (!$("#shipperCheck").attr("disabled")) {
-                $("#shipperCheck").attr("disabled", "true");
-                $("#shipperCheck").removeAttr("checked");
-            }
-            /**Client */
-            if (!$("#clientCheck").attr("disabled")) {
-                $("#clientCheck").removeAttr("checked");
-                $("#clientCheck").attr("disabled", "true");
-            }
-            /**consignee */
-            if ($("#consigneeCheck").attr("disabled")) {
-                $("#consigneeCheck").removeAttr("checked");
-            } else {
-                $("#consigneeCheck").attr("disabled", "true");
-                $("#consigneeCheck").removeAttr("checked");
-            }
-        }
-    }
-
-    // function clientStatus(param) {
-    //     /**if client party is the current option */
-    //     if (param == "Client with Debtor or Vendor") {
-    //         /**client*/
-    //         $('#client').prop('disabled', true);
-    //         $('#client').removeAttr('required');
-    //         $('#clientID').val('');
-    //         $('#clientCode').val('');
-
-    //         $('#clientOption').prop('disabled', true);
-    //         /**clientOptionVal, requestid and requestcode */
-    //         $('#clientOptionVal').val('');
-    //         $('#requestID').val('');
-    //         $('#requestCode').val('');
-    //     } else if (param == "NoSCMIntergration") {
-    //         /**client*/
-    //         $('#client').prop('disabled', true);
-    //         $('#client').removeAttr('required');
-    //         $('#clientID').val('');
-    //         $('#clientCode').val('');
-
-    //         $('#clientOption').prop('disabled', true);
-    //         /**clientOptionVal, requestid and requestcode */
-    //         $('#clientOptionVal').val('');
-    //         $('#requestID').val('');
-    //         $('#requestCode').val('');
-    //     }
-    //     else if (param == "Create Debtor/Vendor with Existing Client") {
-    //         if ($('#client').attr('disabled') && $('#clientOption').attr('disabled')) {
-    //             $('#client').prop('disabled', false);
-    //             $('#client').attr('required', true);
-    //             $('#clientOption').prop('disabled', false);
-    //         }
-    //     }
-    //     else if (param == "Shipper + Consignee") {
-    //         if ($('#client').attr('disabled') && $('#clientOption').attr('disabled')) {
-    //             $('#client').prop('disabled', false);
-    //             $('#client').attr('required', true);
-    //             $('#clientOption').prop('disabled', false);
-    //         }
-    //     } else if (param == "Shipper Only") {
-    //         if ($('#client').attr('disabled') && $('#clientOption').attr('disabled')) {
-    //             $('#client').prop('disabled', false);
-    //             $('#client').attr('required', true);
-    //             $('#clientOption').prop('disabled', false);
-    //         }
-    //     } else if (param == "Consignee Only") {
-    //         if ($('#client').attr('disabled') && $('#clientOption').attr('disabled')) {
-    //             $('#client').prop('disabled', false);
-    //             $('#client').attr('required', true);
-    //             $('#clientOption').prop('disabled', false);
-    //         }
-    //     } else {
-    //         $('#client').prop('disabled', true);
-    //         $('#clientOption').prop('disabled', true);
-    //     }
-
-    // }
-
-    /**
-     * the admin details checkboxes.
-     */
-
-    /**Client checkbox */
     $("#clientCheck").on("change", function () {
-        /**if on do nothing if off open input */
         let cc = $("#clientCheck").is(":checked") == true ? 1 : 0;
-        if (cc == 0) {
-            $("#clientInput").removeAttr("disabled");
-        } else {
-            /**Reset client input */
-            $("#clientInput").attr("disabled", "true");
-            $("#clientInput").val("");
-            /**Reset client id */
-            $("#clientID").val("");
-            /**Reset client code */
-            $("#clientCode").val("");
+        if (!window.isShowView) {
+            if (cc == 0) {
+                $("#clientInput").removeAttr("disabled");
+            } else {
+                $("#clientInput").attr("disabled", "true");
+                $("#clientInput").val("");
+                $("#clientID").val("");
+                $("#clientCode").val("");
+            }
         }
     });
 
-    /**shipper checkbox */
     $("#shipperCheck").on("change", function () {
-        /**if on do nothing if off open input */
         let cc = $("#shipperCheck").is(":checked") == true ? 1 : 0;
-        if (cc == 0) {
-            $("#shipperInput").removeAttr("disabled");
-        } else {
-            $("#shipperInput").attr("disabled", "true");
-            $("#shipperInput").val("");
-            /**Reset shipper id */
-            $("#shipperID").val("");
-            /**Reset shipper code */
-            $("#shipperCode").val("");
+        if (!window.isShowView) {
+            if (cc == 0) {
+                $("#shipperInput").removeAttr("disabled");
+            } else {
+                $("#shipperInput").attr("disabled", "true");
+                $("#shipperInput").val("");
+                $("#shipperID").val("");
+                $("#shipperCode").val("");
+            }
         }
     });
 
-    /**consignee checkbox */
     $("#consigneeCheck").on("change", function () {
-        /**if on do nothing if off open input */
         let cc = $("#consigneeCheck").is(":checked") == true ? 1 : 0;
-        if (cc == 0) {
-            $("#consigneeInput").removeAttr("disabled");
-        } else {
-            $("#consigneeInput").attr("disabled", "true");
-            $("#consigneeInput").val("");
-            /**Reset consignee id */
-            $("#consigneeID").val("");
-            /**Reset consignee code */
-            $("#consigneeCode").val("");
+        if (!window.isShowView) {
+            if (cc == 0) {
+                $("#consigneeInput").removeAttr("disabled");
+            } else {
+                $("#consigneeInput").attr("disabled", "true");
+                $("#consigneeInput").val("");
+                $("#consigneeID").val("");
+                $("#consigneeCode").val("");
+            }
         }
     });
 
-    // /**other checkbox */
-    // $("#otherCheck").on("change", function () {
-    //     /**if on do nothing if off open input */
-    //     let cc = $("#otherCheck").is(":checked") == true ? 1 : 0;
-    //     if (cc == 0) {
-    //         $("#otherInput").removeAttr("disabled");
-    //     } else {
-    //         $("#otherInput").attr("disabled", "true");
-    //         $("#otherInput").val("");
-    //         /**Reset other id */
-    //         $("#otherID").val("");
-    //         /**Reset other code */
-    //         $("#otherCode").val("");
-    //     }
-    // });
-
-
-
-    /**other checkbox */
-$("#otherCheck").on("change", function () {
-    /** Check if the checkbox is checked or not */
-    let cc = $("#otherCheck").is(":checked") == true ? 1 : 0;
-
-    if (cc == 0) {
-        /** If unchecked, remove the disabled attribute and make fields mandatory */
-        $("#otherInput").removeAttr("disabled").attr("required", "true");
-        $("#otherID").attr("required", "true");
-        $("#otherCode").attr("required", "true");
-    } else {
-        /** If checked, disable the input fields and remove the mandatory requirement */
-        $("#otherInput").attr("disabled", "true").removeAttr("required");
-        $("#otherID").removeAttr("required");
-        $("#otherCode").removeAttr("required");
-
-        /** Reset values */
-        $("#otherInput").val("");
-        $("#otherID").val("");
-        $("#otherCode").val("");
+    function PartyEntityType(param) {
+        if (!window.isShowView) {
+            if (param == "Client with Debtor or Vendor") {
+                if (!$("#otherCheck").attr("disabled")) {
+                    $("#otherCheck").attr("disabled", "true");
+                    $("#otherCheck").prop("checked", false);
+                } else {
+                    $("#otherCheck").prop("checked", false);
+                }
+                if ($("#clientCheck").attr("disabled")) {
+                    $("#clientCheck").removeAttr("disabled");
+                    $("#clientCheck").prop("checked", true);
+                } else {
+                    $("#clientCheck").prop("checked", true);
+                }
+                if ($("#shipperCheck").attr("disabled")) {
+                    $("#shipperCheck").removeAttr("disabled");
+                    $("#shipperCheck").prop("checked", true);
+                } else {
+                    $("#shipperCheck").prop("checked", true);
+                }
+                if ($("#consigneeCheck").attr("disabled")) {
+                    $("#consigneeCheck").removeAttr("disabled");
+                    $("#consigneeCheck").prop("checked", true);
+                } else {
+                    $("#consigneeCheck").prop("checked", true);
+                }
+            } else if (param == "Client without Debtor or Vendor") {
+                if (!$("#otherCheck").attr("disabled")) {
+                    $("#otherCheck").attr("disabled", "true");
+                    $("#otherCheck").prop("checked", false);
+                } else {
+                    $("#otherCheck").prop("checked", false);
+                }
+                if ($("#clientCheck").attr("disabled")) {
+                    $("#clientCheck").removeAttr("disabled");
+                    $("#clientCheck").prop("checked", true);
+                } else {
+                    $("#clientCheck").prop("checked", true);
+                }
+                if ($("#shipperCheck").attr("disabled")) {
+                    $("#shipperCheck").removeAttr("disabled");
+                    $("#shipperCheck").prop("checked", true);
+                } else {
+                    $("#shipperCheck").prop("checked", true);
+                }
+                if ($("#consigneeCheck").attr("disabled")) {
+                    $("#consigneeCheck").removeAttr("disabled");
+                    $("#consigneeCheck").prop("checked", true);
+                } else {
+                    $("#consigneeCheck").prop("checked", true);
+                }
+            } else if (param == "Shipper + Consignee") {
+                if (!$("#otherCheck").attr("disabled")) {
+                    $("#otherCheck").attr("disabled", "true");
+                    $("#otherCheck").prop("checked", false);
+                } else {
+                    $("#otherCheck").prop("checked", false);
+                }
+                if (!$("#clientCheck").attr("disabled")) {
+                    $("#clientCheck").attr("disabled", "true");
+                    $("#clientCheck").prop("checked", false);
+                } else {
+                    $("#clientCheck").prop("checked", false);
+                }
+                if ($("#shipperCheck").attr("disabled")) {
+                    $("#shipperCheck").removeAttr("disabled");
+                    $("#shipperCheck").prop("checked", true);
+                } else {
+                    $("#shipperCheck").prop("checked", true);
+                }
+                if ($("#consigneeCheck").attr("disabled")) {
+                    $("#consigneeCheck").removeAttr("disabled");
+                    $("#consigneeCheck").prop("checked", true);
+                } else {
+                    $("#consigneeCheck").prop("checked", true);
+                }
+            } else if (param == "Shipper Only") {
+                if (!$("#otherCheck").attr("disabled")) {
+                    $("#otherCheck").attr("disabled", "true");
+                    $("#otherCheck").prop("checked", false);
+                } else {
+                    $("#otherCheck").prop("checked", false);
+                }
+                if (!$("#clientCheck").attr("disabled")) {
+                    $("#clientCheck").attr("disabled", "true");
+                    $("#clientCheck").prop("checked", false);
+                } else {
+                    $("#clientCheck").prop("checked", false);
+                }
+                if ($("#shipperCheck").attr("disabled")) {
+                    $("#shipperCheck").removeAttr("disabled");
+                    $("#shipperCheck").prop("checked", true);
+                } else {
+                    $("#shipperCheck").prop("checked", true);
+                }
+                if (!$("#consigneeCheck").attr("disabled")) {
+                    $("#consigneeCheck").attr("disabled", "true");
+                    $("#consigneeCheck").prop("checked", false);
+                } else {
+                    $("#consigneeCheck").prop("checked", false);
+                }
+            } else if (param == "Consignee Only") {
+                if (!$("#otherCheck").attr("disabled")) {
+                    $("#otherCheck").attr("disabled", "true");
+                    $("#otherCheck").prop("checked", false);
+                } else {
+                    $("#otherCheck").prop("checked", false);
+                }
+                if (!$("#clientCheck").attr("disabled")) {
+                    $("#clientCheck").attr("disabled", "true");
+                    $("#clientCheck").prop("checked", false);
+                } else {
+                    $("#clientCheck").prop("checked", false);
+                }
+                if (!$("#shipperCheck").attr("disabled")) {
+                    $("#shipperCheck").attr("disabled", "true");
+                    $("#shipperCheck").prop("checked", false);
+                } else {
+                    $("#shipperCheck").prop("checked", false);
+                }
+                if ($("#consigneeCheck").attr("disabled")) {
+                    $("#consigneeCheck").removeAttr("disabled");
+                    $("#consigneeCheck").prop("checked", true);
+                } else {
+                    $("#consigneeCheck").prop("checked", true);
+                }
+            } else if (param == "NoSCMIntergration") {
+                if (!$("#otherCheck").attr("disabled")) {
+                    $("#otherCheck").attr("disabled", "true");
+                    $("#otherCheck").prop("checked", false);
+                } else {
+                    $("#otherCheck").prop("checked", false);
+                }
+                if (!$("#shipperCheck").attr("disabled")) {
+                    $("#shipperCheck").attr("disabled", "true");
+                    $("#shipperCheck").removeAttr("checked");
+                }
+                if (!$("#clientCheck").attr("disabled")) {
+                    $("#clientCheck").removeAttr("checked");
+                    $("#clientCheck").attr("disabled", "true");
+                }
+                if ($("#consigneeCheck").attr("disabled")) {
+                    $("#consigneeCheck").removeAttr("checked");
+                } else {
+                    $("#consigneeCheck").attr("disabled", "true");
+                    $("#consigneeCheck").removeAttr("checked");
+                }
+            } else {
+                if ($("#otherCheck").attr("disabled")) {
+                    $("#otherCheck").prop("disabled", false);
+                    $("#otherCheck").prop("checked", true);
+                } else {
+                    $("#otherCheck").prop("checked", true);
+                }
+                if (!$("#shipperCheck").attr("disabled")) {
+                    $("#shipperCheck").attr("disabled", "true");
+                    $("#shipperCheck").removeAttr("checked");
+                }
+                if (!$("#clientCheck").attr("disabled")) {
+                    $("#clientCheck").removeAttr("checked");
+                    $("#clientCheck").attr("disabled", "true");
+                }
+                if ($("#consigneeCheck").attr("disabled")) {
+                    $("#consigneeCheck").removeAttr("checked");
+                } else {
+                    $("#consigneeCheck").attr("disabled", "true");
+                    $("#consigneeCheck").removeAttr("checked");
+                }
+            }
+        }
     }
-});
 
+    let legalEntityType = $("#legalEntityType");
+    let legalEntityTypeValue = legalEntityType.val();
 
-    let old_office_country_val = $("#officeCountry option:selected").val();
-    let old_office_code =
-        $("#officeCountry").find("option:selected").attr("code") ?? "";
-    $("#officeCountry").on("change", function () {
-        /*let choice = confirm('Changing Country will remove all data associated with it !!');*/
-        const swalWithBootstrapButtons = Swal.mixin({
-            customClass: {
-                confirmButton: "btn btn-success",
-                cancelButton: "btn btn-danger mr-1",
-            },
-            buttonsStyling: false,
-        });
-        if (old_office_country_val != "") {
-            swalWithBootstrapButtons
-                .fire({
-                    title: "Are you sure?",
-                    text: "You will loose input data associated to it.!",
-                    icon: "warning",
-                    showCancelButton: true,
-                    confirmButtonText: "Ok!",
-                    cancelButtonText: "Cancel!",
-                    reverseButtons: true,
-                })
-                .then((result) => {
-                    if (result.isConfirmed) {
-                        $("#salesPIC").val("");
-                        $("#salesPICID").val("");
-
-                        $("#accountPIC").val("");
-                        $("#accountPICID").val("");
-
-                        $("#notifyParty1").val("");
-                        $("#notifyParty2").val("");
-
-                        $("#notifyParty2ID").val("");
-                        $("#notifyParty2Code").val("");
-
-                        $("#notifyParty1ID").val("");
-                        $("#notifyParty1Code").val("");
-
-                        $("#forwarderName").val("");
-                        $("#forwarderID").val("");
-                    } else if (result.dismiss === Swal.DismissReason.cancel) {
-                        $("#officeCountry").val(old_office_country_val);
-                    }
-                });
-        } else {
-            old_office_country_val = $(this).val();
-            old_office_code = $(this).find("option:selected").attr("code");
+    legalEntityType.on("change", function () {
+        legaltype = $(this).val();
+        if (!window.isShowView) {
+            LegalEntityType(legaltype);
         }
-
     });
 
-    let spinner = $("#loader");
-    spinner.hide();
-    /**/
-    $("form").on("submit", function (e) {
-        /* e.preventDefault();*/
-        spinner.show();
-    });
+    function LegalEntityType(val) {
+        if (!window.isShowView) {
+            $('#debtorType').removeClass('is-invalid');
+            $('#vendorType').removeClass('is-invalid');
+
+            if (val == "Debtor") {
+                $('#vendorType').prop('selectedIndex', 0).attr('disabled', true).removeAttr('required');
+                $('#debtorType').prop('selectedIndex', 0).removeAttr('disabled').prop('required', true);
+                $('#debtorCheck').attr('disabled', false);
+                $('#vendorCheck').prop('checked', false).attr('disabled', true);
+                $('#vendorID').val('');
+                $('#vendorCode').val('');
+                $('#vendor').val('');
+                $('#debtorCheck').prop('checked', true);
+                $('#debtorCheckVal').remove();
+                $('#vendorCheckVal').remove();
+                $('form').append('<input type="hidden" value="on" name="debtorCheck" id="debtorCheckVal" checked>');
+            }
+
+            if (val == "Vendor") {
+                $('#debtorType').prop('selectedIndex', 0).attr('disabled', true).removeAttr('required');
+                $('#vendorType').prop('selectedIndex', 0).removeAttr('disabled').prop('required', true);
+                $('#vendorCheck').attr('disabled', false);
+                $('#debtorCheck').prop('checked', false).attr('disabled', true);
+                $('#debtorID').val('');
+                $('#debtorCode').val('');
+                $('#debtor').val('');
+                $('#vendorCheck').prop('checked', true);
+                $('#debtorCheckVal').remove();
+                $('#vendorCheckVal').remove();
+                $('form').append('<input type="hidden" value="on" name="vendorCheck" id="vendorCheckVal" checked>');
+            }
+
+            if (val == "Debtor & Vendor") {
+                $('#debtorType').prop('selectedIndex', 0).removeAttr('disabled').prop('required', true);
+                $('#vendorType').prop('selectedIndex', 0).removeAttr('disabled').prop('required', true);
+                $('#vendorCheck').prop('checked', true).attr('disabled', false);
+                $('#debtorCheck').prop('checked', true).attr('disabled', false);
+                $('#vendorID').val('');
+                $('#vendorCode').val('');
+                $('#vendor').val('');
+                $('#debtorID').val('');
+                $('#debtorCode').val('');
+                $('#debtor').val('');
+                $('#debtorCheckVal').remove();
+                $('#vendorCheckVal').remove();
+                $('form').append('<input type="hidden" value="on" name="debtorCheck" id="debtorCheckVal" checked>');
+                $('form').append('<input type="hidden" value="on" name="vendorCheck" id="vendorCheckVal" checked>');
+            }
+        }
+    }
+
+    if (window.isShowView) {
+        $('#admin-details :input').prop('disabled', false).prop('readonly', false);
+    }
+
+    if (window.isShowView) {
+        console.log('Show view: Admin details enabled', $('#otherInput').prop('disabled'));
+    } else {
+        console.log('Create view: Initial admin details state', {
+            otherInput: $('#otherInput').prop('disabled'),
+            debtor: $('#debtor').prop('disabled'),
+            vendor: $('#vendor').prop('disabled')
+        });
+    }
 });

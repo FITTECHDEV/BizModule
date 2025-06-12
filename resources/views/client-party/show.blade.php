@@ -1747,6 +1747,7 @@
 
             @section('js')
                 <script>
+                      window.isShowView = true;
                     /* Ajax setup CSRF */
                     $.ajaxSetup({
                         headers: {
@@ -1756,9 +1757,9 @@
                 </script>
                 <script src="//code.jquery.com/jquery-1.12.4.min.js"></script>
                 <script src="https://cdn.jsdelivr.net/npm/bs-stepper/dist/js/bs-stepper.min.js"></script>
-                <script src="{{ asset('js/client-party/party-entity.js') }}"></script>
-                {{-- <script src="{{ asset('js/client-party/validation.js') }}"></script> --}}
-                <script src="{{ asset('js/client-party/sub-form.js') }}"></script>
+                {{-- <script src="{{ asset('js/client-party/party-entity.js') }}"></script>
+                <script src="{{ asset('js/client-party/validation.js') }}"></script>
+                <script src="{{ asset('js/client-party/sub-form.js') }}"></script> --}}
                 <script src="{{ asset('js/client-party/jquery-number/jquery.number.min.js') }}"></script>
                 <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
                 <script>
