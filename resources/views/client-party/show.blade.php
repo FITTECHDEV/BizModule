@@ -1826,6 +1826,83 @@
                                 console.log('Admin Details forcefully disabled due to Created status');
                             }, 100); // Small delay to ensure it runs after other scripts
                         }
+
+                        function toggleEntityInput(checkboxId, inputId) {
+                            const checkbox = $(checkboxId);
+                            const input = $(inputId);
+
+                            if (checkbox.is(':checked')) {
+                                // If checkbox is checked, disable the input
+                                input.prop('disabled', true)
+                                    .prop('readonly', true)
+                                    .addClass('disabled')
+                                    .css({
+                                        'background-color': '#d4d2d2',
+                                        'cursor': 'not-allowed',
+                                        'opacity': '0.65'
+                                    });
+                                console.log(`${inputId} disabled - ${checkboxId} is checked`);
+                            } else {
+                                // If checkbox is unchecked, enable the input (unless status is Created)
+                                let currentStatus = '{{ $clientParty->Status }}';
+                                if (currentStatus !== 'Created') {
+                                    input.prop('disabled', false)
+                                        .prop('readonly', false)
+                                        .removeClass('disabled')
+                                        .css({
+                                            'background-color': '',
+                                            'cursor': '',
+                                            'opacity': ''
+                                        });
+                                    console.log(`${inputId} enabled - ${checkboxId} is unchecked`);
+                                } else {
+                                    console.log(`${inputId} remains disabled - status is Created`);
+                                }
+                            }
+                        }
+
+                        // Function to initialize all entity toggles
+                        function initializeEntityToggles() {
+                            // Toggle for Other entity
+                            toggleEntityInput('#otherCheck', '#otherInput');
+
+                            // Toggle for Debtor entity (if it exists)
+                            if ($('#debtorCheck').length && $('#debtor').length) {
+                                toggleEntityInput('#debtorCheck', '#debtor');
+                            }
+
+                            // Toggle for Vendor entity (if it exists)
+                            if ($('#vendorCheck').length && $('#vendor').length) {
+                                toggleEntityInput('#vendorCheck', '#vendor');
+                            }
+                        }
+
+                        // Initialize all toggles on page load
+                        initializeEntityToggles();
+
+                        // Add event listeners for all checkboxes
+                        $('#otherCheck, #debtorCheck, #vendorCheck').on('change click', function() {
+                            const checkboxId = '#' + $(this).attr('id');
+                            let inputId;
+
+                            // Map checkbox to corresponding input
+                            switch (checkboxId) {
+                                case '#otherCheck':
+                                    inputId = '#otherInput';
+                                    break;
+                                case '#debtorCheck':
+                                    inputId = '#debtor';
+                                    break;
+                                case '#vendorCheck':
+                                    inputId = '#vendor';
+                                    break;
+                            }
+
+                            if (inputId) {
+                                // Small delay to ensure the checked state is updated
+                                setTimeout(() => toggleEntityInput(checkboxId, inputId), 10);
+                            }
+                        });
                         // ===== END UPDATED CODE =====
 
                         // Handle partyEntityType validation (skipped since field is disabled)
