@@ -823,15 +823,49 @@ public function store(StoreClientPartyRequest $request)
     }
 
     $clientName = $request->client ?? $request->clientInput;
-    // Status logic
+
+    // ENHANCED STATUS LOGIC WITH PERMISSION CHECKS
+    $canCreateClientParty = $user->can('create-client-party');
+    $hasAccountingEntities = isset($request->debtorCheck) || isset($request->vendorCheck) ||
+                            isset($request->debtor) || isset($request->vendor) ||
+                            $request->legalEntityType;
+
     $status = 'Not Submitted'; // Default for draft saves
-    if (isset($request->submitBtn) || isset($request->createBtn)) {
-        if (isset($request->debtor) || isset($request->debtorCheck) || isset($request->vendor) || isset($request->vendorCheck)) {
-            $status = 'PendingCountryLevelApproval'; // Accounting entities
+
+    if (isset($request->createBtn) && $canCreateClientParty) {
+        // User clicked Create button and has permission
+        if ($hasAccountingEntities) {
+            // Accounting entities need approval workflow even with create permission
+            $status = 'PendingCountryLevelApproval';
         } else {
-            $status = 'Submitted'; // Operational entities
+            // Operational entities can be created directly
+            $status = 'Created';
+        }
+    } elseif (isset($request->submitBtn)) {
+        // User clicked Submit button (save for approval)
+        if ($hasAccountingEntities) {
+            // Accounting entities
+            $status = 'PendingCountryLevelApproval';
+        } else {
+            // Operational entities
+            $status = 'Submitted';
+        }
+    } elseif (isset($request->createBtn) && !$canCreateClientParty) {
+        // User clicked Create but doesn't have permission - treat as submit
+        if ($hasAccountingEntities) {
+            $status = 'PendingCountryLevelApproval';
+        } else {
+            $status = 'Submitted';
         }
     }
+
+    Log::info('Status Logic Applied:', [
+        'createBtn' => isset($request->createBtn),
+        'submitBtn' => isset($request->submitBtn),
+        'canCreateClientParty' => $canCreateClientParty,
+        'hasAccountingEntities' => $hasAccountingEntities,
+        'finalStatus' => $status
+    ]);
 
     $clientParty = new ClientParty();
     $code = $clientParty->generateUniqueCode($user->OfficeID);
@@ -983,107 +1017,135 @@ public function store(StoreClientPartyRequest $request)
     EntityHistory::create($history);
 
     $client_party_status = 0;
+    $results = [];
 
-    if ($status === 'Submitted' && isset($request->createBtn)) {
-        if (isset($request->debtorCheck) || isset($request->vendorCheck)) {
-            $entity_types = (strtolower($request->legalEntityType) == 'vendor') ? ['Vendor'] : ((strtolower($request->legalEntityType) == 'debtor') ? ['Customer'] : ['Vendor', 'Customer']);
-            foreach ($entity_types as $entity_type) {
-                if ($request->vendorCode != null || $request->debtorCode != null) {
-                    continue;
-                }
-                $noSeries = $this->getOfficeNumberSeries($request->officeCode, ($entity_type == 'Customer') ? 'Debtor' : $entity_type);
-                $data = [
-                    "office" => ($request->officeCode == 'UPS') ? 'KE' : $request->officeCode,
-                    "partyType" => (strcmp(strtolower(App::environment()), 'production') == 0) ? $entity_type : 'TST',
-                    "no" => "",
-                    "name" => $request->companyName,
-                    "postingGroup" => $entity_type == 'Vendor' ? $request->vendorType : $request->debtorType,
-                    "vatRegistrationNo" => $request->licenceTypeValue ?? '-',
-                    "postCode" => $request->zipCode ?? "",
-                    "address" => $addressLine1,
-                    "address2" => $addressLine2 ?? "",
-                    "city" => $request->cityName ?? "",
-                    'ClientID' => $request->clientID,
-                    'ClientCode' => $request->clientCode,
-                    "countryCode" => $countryCode,
-                    "emailAddress" => $contractEmail ?? "",
-                    "phoneNo" => $phoneNo ?? "",
-                    "phoneNo2" => "",
-                    "billingCurrency" => $request->billingCurrencyCode,
-                    "paymentTermsCode" => (string)($request->creditDays) == "" ? "0" : (string)($request->creditDays),
-                    "creditLimitLCY" => intval($request->maxCreditLimit ?? 0),
-                    "contactPersonName" => ($firstName && $lastName) ? "$firstName $lastName" : "",
-                    "contactPersonEmailAddress" => $contractEmail ?? "",
-                    "contactPersonPhoneNo" => $phoneNo ?? "",
-                    "contactPersonPhoneNo2" => "",
-                    "relatedParty" => "",
-                    "blocked" => false,
-                    "NoSeries" => $noSeries
-                ];
+    // ENHANCED INTEGRATION LOGIC BASED ON STATUS
+    if (isset($request->createBtn)) {
+        if ($status === 'PendingCountryLevelApproval') {
+            // Accounting entities with create button - create D365 entities but don't call SCM yet
+            if (isset($request->debtorCheck) || isset($request->vendorCheck)) {
+                $entity_types = (strtolower($request->legalEntityType) == 'vendor') ? ['Vendor'] :
+                               ((strtolower($request->legalEntityType) == 'debtor') ? ['Customer'] : ['Vendor', 'Customer']);
 
-                if (config('app.env') != 'Local') {
-                    $entity = $this->createLegalEntityType($entity_type, $data);
-                    Log::info('Legal Entity Data:', $data);
-                    Log::info('Legal Entity Response:', (array)$entity);
-                    $statusCode = $entity->status ?? ($entity->Status ?? null);
-                    $errors = $entity->errors ?? ($entity->Remark ?? null);
-
-                    if ($statusCode !== true) {
-                        $client_party_status = 0;
-                        Log::warning('Legal Entity Creation Failed:', ['response' => (array)$entity, 'errors' => $errors]);
-                        $errorMessage = $errors ? json_encode($errors) : 'Failed to create legal entity.';
-                        Alert::warning('Error', $errorMessage)->persistent(true, false);
-                        return redirect()->route('client-party.index');
+                foreach ($entity_types as $entity_type) {
+                    if ($request->vendorCode != null || $request->debtorCode != null) {
+                        continue;
                     }
 
-                    $entity_type_col = (strtolower($entity_type) == 'vendor') ? 'Vendor' : 'Debtor';
-                    DB::table('Cust_Entity')->where('Id', $client_party_id)->update([
-                        ucfirst($entity_type_col) . 'Code' => $entity->responseCode ?? $entity->Code ?? null,
-                    ]);
-                    $client_party_status = 1;
-                } else {
-                    $client_party_status = 1;
+                    $noSeries = $this->getOfficeNumberSeries($request->officeCode,
+                               ($entity_type == 'Customer') ? 'Debtor' : $entity_type);
+
+                    $data = [
+                        "office" => ($request->officeCode == 'UPS') ? 'KE' : $request->officeCode,
+                        "partyType" => (strcmp(strtolower(App::environment()), 'production') == 0) ? $entity_type : 'TST',
+                        "no" => "",
+                        "name" => $request->companyName,
+                        "postingGroup" => $entity_type == 'Vendor' ? $request->vendorType : $request->debtorType,
+                        "vatRegistrationNo" => $request->licenceTypeValue ?? '-',
+                        "postCode" => $request->zipCode ?? "",
+                        "address" => $addressLine1,
+                        "address2" => $addressLine2 ?? "",
+                        "city" => $request->cityName ?? "",
+                        'ClientID' => $request->clientID,
+                        'ClientCode' => $request->clientCode,
+                        "countryCode" => $countryCode,
+                        "emailAddress" => $contractEmail ?? "",
+                        "phoneNo" => $phoneNo ?? "",
+                        "phoneNo2" => "",
+                        "billingCurrency" => $request->billingCurrencyCode,
+                        "paymentTermsCode" => (string)($request->creditDays) == "" ? "0" : (string)($request->creditDays),
+                        "creditLimitLCY" => intval($request->maxCreditLimit ?? 0),
+                        "contactPersonName" => ($firstName && $lastName) ? "$firstName $lastName" : "",
+                        "contactPersonEmailAddress" => $contractEmail ?? "",
+                        "contactPersonPhoneNo" => $phoneNo ?? "",
+                        "contactPersonPhoneNo2" => "",
+                        "relatedParty" => "",
+                        "blocked" => false,
+                        "NoSeries" => $noSeries
+                    ];
+
+                    if (config('app.env') != 'Local') {
+                        $entity = $this->createLegalEntityType($entity_type, $data);
+                        Log::info('Legal Entity Data:', $data);
+                        Log::info('Legal Entity Response:', (array)$entity);
+                        $statusCode = $entity->status ?? ($entity->Status ?? null);
+                        $errors = $entity->errors ?? ($entity->Remark ?? null);
+
+                        if ($statusCode !== true) {
+                            $client_party_status = 0;
+                            Log::warning('Legal Entity Creation Failed:', ['response' => (array)$entity, 'errors' => $errors]);
+                            $errorMessage = $errors ? json_encode($errors) : 'Failed to create legal entity.';
+                            Alert::warning('Error', $errorMessage)->persistent(true, false);
+                            return redirect()->route('client-party.index');
+                        }
+
+                        $entity_type_col = (strtolower($entity_type) == 'vendor') ? 'Vendor' : 'Debtor';
+                        DB::table('Cust_Entity')->where('Id', $client_party_id)->update([
+                            ucfirst($entity_type_col) . 'Code' => $entity->responseCode ?? $entity->Code ?? null,
+                        ]);
+                        $client_party_status = 1;
+                    } else {
+                        $client_party_status = 1;
+                    }
                 }
             }
-        }
 
-        if (
-            isset($request->clientCheck) || isset($request->shipperCheck) ||
-            isset($request->consigneeCheck) || isset($request->otherCheck)
-        ) {
+            // Don't call SCM for accounting entities - they need approval first
+            $results = ['data' => ['Status' => 'Success', 'Remark' => 'Entity created and pending approval']];
+
+        } elseif ($status === 'Created') {
+            // Operational entities with create permission - create directly in SCM
             $client_party_status = 1;
-        }
 
-        if ($client_party_status == 1) {
-            $results = [];
             if ($request->partyEntityType != 'NoSCMIntegration' && $request->partyEntityType != 'Create only in D365') {
                 $scmRequest = new \Illuminate\Http\Request(['requestID' => $client_party_id]);
                 $results = $this->CreateClientPartySCM($scmRequest);
-            } else {
-                DB::table('Cust_Entity')->where('Id', $client_party_id)->update(['Status' => 'Created']);
-                $results = ['data' => ['Status' => 'Success', 'Remark' => 'Debtor / Vendor Created In D365']];
-            }
 
-            Log::info('SCM Creation Results:', (array)$results);
-            if (isset($results['data']) && is_array($results['data']) && isset($results['data']['Status']) && $results['data']['Status'] !== 'Failed') {
-                Log::info('Triggering success alert', ['status' => $results['data']['Status'], 'remark' => $results['data']['Remark']]);
-                Alert::success($results['data']['Status'], $results['data']['Remark'])->persistent(true, false)->showConfirmButton();
+                if (!isset($results['success']) || !$results['success']) {
+                    // Handle old format response
+                    if (isset($results['data']) && $results['data']['Status'] === 'Success') {
+                        $results = ['data' => $results['data']];
+                    } else {
+                        $results = ['data' => ['Status' => 'Failed', 'Remark' => 'SCM Creation failed']];
+                    }
+                } else {
+                    $results = ['data' => $results['data']];
+                }
             } else {
-                $errorStatus = $results['data']['Status'] ?? 'Failed';
-                $errorRemark = $results['data']['Remark'] ?? 'SCM Creation failed with unknown error';
-                Log::error('Triggering error alert', ['status' => $errorStatus, 'remark' => $errorRemark]);
-                Alert::error($errorStatus, $errorRemark)->persistent(true, false)->showConfirmButton();
+                $results = ['data' => ['Status' => 'Success', 'Remark' => 'Entity Created Successfully']];
             }
         }
+    } elseif (isset($request->submitBtn)) {
+        // Submit button logic - just save for approval
+        $results = ['data' => ['Status' => 'Success', 'Remark' => 'Entity Saved for Approval']];
     } else {
-        Log::info('Triggering default success alert', ['message' => 'Entity Saved.']);
-        Alert::success('Success', 'Entity Saved.')->persistent(true, false)->showConfirmButton();
+        // Save for later
+        $results = ['data' => ['Status' => 'Success', 'Remark' => 'Entity Saved']];
+    }
+
+    Log::info('Final Results:', (array)$results);
+
+    // Display appropriate alert based on results
+    if (isset($results['data']) && is_array($results['data']) &&
+        isset($results['data']['Status']) && $results['data']['Status'] !== 'Failed') {
+        Log::info('Triggering success alert', [
+            'status' => $results['data']['Status'],
+            'remark' => $results['data']['Remark']
+        ]);
+        Alert::success($results['data']['Status'], $results['data']['Remark'])
+             ->persistent(true, false)->showConfirmButton();
+    } else {
+        $errorStatus = $results['data']['Status'] ?? 'Failed';
+        $errorRemark = $results['data']['Remark'] ?? 'Unknown error occurred';
+        Log::error('Triggering error alert', ['status' => $errorStatus, 'remark' => $errorRemark]);
+        Alert::error($errorStatus, $errorRemark)->persistent(true, false)->showConfirmButton();
     }
 
     Log::info('Final alert state before redirect', ['session' => session()->all()]);
-    return redirect()->route('client-party.index')->with('success', $results['data']['Status'] ?? 'Success')->with('success_message', $results['data']['Remark'] ?? 'Entity Saved.');
+    return redirect()->route('client-party.index')
+        ->with('success', $results['data']['Status'] ?? 'Success')
+        ->with('success_message', $results['data']['Remark'] ?? 'Entity processed successfully');
 }
-
     // Get Office Number
 
     public function getOfficeNumberSeries($officeCode = null, $entityType = null)
