@@ -1262,7 +1262,6 @@ public function store(StoreClientPartyRequest $request)
         $incoterms = $this->getIncoTerms();
         // Pass the officeCode from clientParty
         $payTerms = $this->getPaymentTermList($clientParty->OfficeCode);
-
         return view('client-party.show', compact(
             'approve',
             'editForm',

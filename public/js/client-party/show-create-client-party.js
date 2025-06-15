@@ -5,6 +5,105 @@ $(document).ready(function () {
             "X-CSRF-TOKEN": $('meta[name="csrf-token"]').attr("content"),
         },
     });
+
+    // Function to toggle file upload fieldset based on request type
+    function toggleFileUploadFieldset() {
+        // Smart type detection for both create and show blades
+        let requestType;
+
+        // For show blade: Check if backend type is available
+        if (typeof window.getRequestType === "function") {
+            requestType = window.getRequestType();
+        } else {
+            // For create blade: Use URL params or other sources
+            requestType =
+                new URLSearchParams(window.location.search).get("type") ||
+                window.requestType ||
+                (typeof type !== "undefined" ? type : null) ||
+                document.body.dataset.type ||
+                "operational"; // Default fallback
+        }
+
+        // Find the file upload fieldset using multiple selectors
+        let fileUploadFieldset = $("fieldset").filter(function () {
+            return $(this).find("legend").text().trim() === "File Upload";
+        });
+
+        // Fallback selector if the above doesn't work
+        if (fileUploadFieldset.length === 0) {
+            fileUploadFieldset = $(
+                'fieldset:has(legend:contains("File Upload"))'
+            );
+        }
+
+        console.log("Type detected:", requestType);
+        console.log("File upload fieldset found:", fileUploadFieldset.length);
+        console.log(
+            "Context:",
+            window.isShowView ? "Show Blade" : "Create Blade"
+        );
+
+        if (requestType === "operational") {
+            // Hide the entire file upload section
+            fileUploadFieldset.hide();
+
+            // Disable all file-related inputs to prevent validation issues
+            fileUploadFieldset
+                .find('input[type="file"]')
+                .prop("disabled", true);
+            fileUploadFieldset
+                .find('input[name="attachmentNames[]"]')
+                .prop("disabled", true);
+            fileUploadFieldset
+                .find('input[name="attachmentDescription[]"]')
+                .prop("disabled", true);
+            fileUploadFieldset
+                .find(".addAttachment")
+                .prop("disabled", true)
+                .addClass("disabled");
+            fileUploadFieldset
+                .find(".deleteFile")
+                .prop("disabled", true)
+                .addClass("disabled");
+            fileUploadFieldset
+                .find("button")
+                .prop("disabled", true)
+                .addClass("disabled");
+
+            console.log("File upload fieldset hidden for operational type");
+        } else {
+            // Show the file upload section for non-operational types
+            fileUploadFieldset.show();
+
+            // Re-enable file inputs (but respect other disabled states)
+            if (!window.isShowView || (window.User && window.User.edit)) {
+                fileUploadFieldset
+                    .find('input[type="file"]')
+                    .prop("disabled", false);
+                fileUploadFieldset
+                    .find('input[name="attachmentNames[]"]')
+                    .prop("disabled", false);
+                fileUploadFieldset
+                    .find('input[name="attachmentDescription[]"]')
+                    .prop("disabled", false);
+                fileUploadFieldset
+                    .find(".addAttachment")
+                    .prop("disabled", false)
+                    .removeClass("disabled");
+                fileUploadFieldset
+                    .find(".deleteFile")
+                    .prop("disabled", false)
+                    .removeClass("disabled");
+            }
+
+            console.log("File upload fieldset shown for accounting type");
+        }
+
+        // Store globally for other functions
+        window.detectedRequestType = requestType;
+        return requestType;
+    }
+
     /* Global Variable declaration and initialization*/
     let office = "";
     let officeID = "";
@@ -57,6 +156,19 @@ $(document).ready(function () {
         $("#approveBtn").prop("disabled", false);
         $("#rejectBtn").prop("disabled", false);
     }
+
+    // Initialize file upload toggle
+    toggleFileUploadFieldset();
+
+    // Re-run on stepper change or other events
+    $(document).on("shown.bs-stepper", ".bs-stepper", function () {
+        toggleFileUploadFieldset();
+    });
+
+    // Also call when partyEntityType changes (for create blade)
+    $("#partyEntityType").on("change", function () {
+        setTimeout(toggleFileUploadFieldset, 100); // Small delay to ensure other handlers run first
+    });
 
     /** Number input requied field validator*/
     let regExp = new RegExp("[a-zA-Z]"),

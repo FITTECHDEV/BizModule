@@ -1069,26 +1069,6 @@
             const MAX_SUGGESTIONS = 15;
 
 
-            function toggleFileUploadFieldset() {
-                const requestType = new URLSearchParams(window.location.search).get('type');
-                const fileUploadFieldset = $('fieldset').filter(function() {
-                    return $(this).find('legend').text().trim() === 'File Upload';
-                });
-
-                if (requestType === 'operational') {
-                    fileUploadFieldset.hide();
-                    // Disable file inputs to prevent validation issues
-                    fileUploadFieldset.find('input[type="file"]').prop('disabled', true);
-                    fileUploadFieldset.find('input[name="attachmentDescription[]"]').prop('disabled', true);
-                    console.log('File upload fieldset hidden for operational type');
-                } else {
-                    fileUploadFieldset.show();
-                    // Re-enable file inputs
-                    fileUploadFieldset.find('input[type="file"]').prop('disabled', false);
-                    fileUploadFieldset.find('input[name="attachmentDescription[]"]').prop('disabled', false);
-                    console.log('File upload fieldset shown for non-operational type');
-                }
-            }
 
             if (!overseasEntityCheckbox.length || !licenceTypeValue.length || !licenceTypeID.length) {
                 console.error('Critical DOM elements missing:', {
@@ -1646,7 +1626,7 @@
             // Handle partyEntityType change
             partyEntityType.on('change', function() {
                 toggleCompanyInput();
-                toggleFileUploadFieldset();
+
             });
 
             // Handle company dropdown selection
@@ -1941,7 +1921,6 @@
             toggleCompanyInput();
             syncClientFields();
              // Add this line to initialize file upload visibility
-    toggleFileUploadFieldset();
         });
 
         window.User = {
