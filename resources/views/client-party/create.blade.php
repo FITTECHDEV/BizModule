@@ -1066,7 +1066,29 @@
             const licenceTypeID = $('#licenceTypeID');
             const clientIdInput = $('#clientID');
             const clientCodeInput = $('#clientCode');
-             const MAX_SUGGESTIONS = 15;
+            const MAX_SUGGESTIONS = 15;
+
+
+            function toggleFileUploadFieldset() {
+                const requestType = new URLSearchParams(window.location.search).get('type');
+                const fileUploadFieldset = $('fieldset').filter(function() {
+                    return $(this).find('legend').text().trim() === 'File Upload';
+                });
+
+                if (requestType === 'operational') {
+                    fileUploadFieldset.hide();
+                    // Disable file inputs to prevent validation issues
+                    fileUploadFieldset.find('input[type="file"]').prop('disabled', true);
+                    fileUploadFieldset.find('input[name="attachmentDescription[]"]').prop('disabled', true);
+                    console.log('File upload fieldset hidden for operational type');
+                } else {
+                    fileUploadFieldset.show();
+                    // Re-enable file inputs
+                    fileUploadFieldset.find('input[type="file"]').prop('disabled', false);
+                    fileUploadFieldset.find('input[name="attachmentDescription[]"]').prop('disabled', false);
+                    console.log('File upload fieldset shown for non-operational type');
+                }
+            }
 
             if (!overseasEntityCheckbox.length || !licenceTypeValue.length || !licenceTypeID.length) {
                 console.error('Critical DOM elements missing:', {
@@ -1577,10 +1599,10 @@
                                     filteredMatches.forEach(entity => {
                                         const $div = $(
                                                 '<div class="autocomplete-item"></div>'
-                                                )
+                                            )
                                             .text(
                                                 `${entity.name} (${entity.code})`
-                                                )
+                                            )
                                             .data('entity', {
                                                 value: entity.id,
                                                 label: entity.name,
@@ -1624,6 +1646,7 @@
             // Handle partyEntityType change
             partyEntityType.on('change', function() {
                 toggleCompanyInput();
+                toggleFileUploadFieldset();
             });
 
             // Handle company dropdown selection
@@ -1917,6 +1940,8 @@
             // Initialize on page load
             toggleCompanyInput();
             syncClientFields();
+             // Add this line to initialize file upload visibility
+    toggleFileUploadFieldset();
         });
 
         window.User = {
