@@ -137,7 +137,7 @@ $(document).ready(function () {
         $("#clientPartyForm :input")
             .not("[name=next], [name=previous]")
             .not(
-                "#admin-details :input, #otherInput, #debtor, #vendor, #otherCheck, #debtorCheck, #vendorCheck, #otherID, #otherCode, #debtorID, #debtorCode, #vendorID, #vendorCode"
+                "#admin-details :input, #otherInput, #debtor, #vendor, #otherCheck2, #debtorCheck, #vendorCheck, #otherID, #otherCode, #debtorID, #debtorCode, #vendorID, #vendorCode"
             )
             .prop("disabled", true);
     }
@@ -145,7 +145,7 @@ $(document).ready(function () {
     /* Ensure #admin-details fields are enabled in show view */
     if (window.isShowView) {
         $(
-            "#admin-details :input, #otherInput, #debtor, #vendor, #otherCheck, #debtorCheck, #vendorCheck, #otherID, #otherCode, #debtorID, #debtorCode, #vendorID, #vendorCode"
+            "#admin-details :input, #otherInput, #debtor, #vendor, #otherCheck2, #debtorCheck, #vendorCheck, #otherID, #otherCode, #debtorID, #debtorCode, #vendorID, #vendorCode"
         )
             .prop("disabled", false)
             .prop("readonly", false);

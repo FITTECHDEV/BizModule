@@ -958,6 +958,7 @@ public function store(StoreClientPartyRequest $request)
             'Status' => $status,
         ];
 
+        // dd($data); // Debugging line to inspect data before insert
         DB::table('Cust_Entity')->updateOrInsert($data);
         DB::commit();
     } catch (Exception $e) {
@@ -1483,6 +1484,7 @@ public function store(StoreClientPartyRequest $request)
                 'LastModifiedBy' => $user->full_name ?? $user->Id ?? 'System',
                 'Status' => $status,
             ];
+            dd($updateData);
 
             // Handle OtherParty fields
             $updateData['OtherPartyName'] = !empty($request->otherInput) ? $request->otherInput : ($cp->OtherPartyName ?? null);
@@ -2108,6 +2110,7 @@ public function store(StoreClientPartyRequest $request)
         'id' => 'required|exists:Cust_entity,Id',
         'status' => 'required|in:Submitted,PendingCountryLevelApproval,PendingGroupLevelApproval,Created',
         'type' => 'required|in:accounting,operational',
+        'otherCheck' => 'nullable|boolean',
         'otherInput' => 'nullable|string|max:255',
         'otherID' => 'nullable|string|max:36',
         'otherCode' => 'nullable|string|max:50',
@@ -2141,6 +2144,7 @@ public function store(StoreClientPartyRequest $request)
         $updateData = [
             'LastModifiedBy' => $user->full_name ?? 'System',
             'LastModifiedOn' => Carbon::now()->format('Y-m-d H:i:s'),
+            'RequestforOtherParty' => $validated['otherCheck'] ?? false,
             'OtherPartyName' => $validated['otherInput'] ?? $clientParty->OtherPartyName,
             'OtherPartyID' => $validated['otherID'] ?? $clientParty->OtherPartyID,
             'OtherPartyCode' => $validated['otherCode'] ?? $clientParty->OtherPartyCode,
@@ -2148,6 +2152,8 @@ public function store(StoreClientPartyRequest $request)
             'DebtorType' => $validated['debtorType'] ?? $clientParty->DebtorType,
             'VendorType' => $validated['vendorType'] ?? $clientParty->VendorType,
         ];
+
+        // dd('Update query data', ['id' => $id, 'updateData' => $updateData]);
 
         Log::debug('Update query data', ['id' => $id, 'updateData' => $updateData]);
 
@@ -2217,7 +2223,7 @@ public function store(StoreClientPartyRequest $request)
             // Prepare OtherParty fields
             $updateData['OtherPartyCode'] = $validated['otherCode'] ?? $updateData['OtherPartyCode'] ?? 'OTHER-' . Str::random(6);
             $updateData['OtherPartyID'] = $validated['otherID'] ?? $updateData['OtherPartyID'] ?? Str::uuid()->toString();
-            $updateData['RequestforOtherParty'] = 1; // Force other party creation to trigger code generation
+            $updateData['RequestforOtherParty'] = $validated['otherCheck'] ?? $updateData['RequestforOtherParty']; // Force other party creation to trigger code generation
 
             // Update Cust_entity before SCM call
             $updatedRows = DB::table('Cust_entity')->where('Id', $id)->update($updateData);

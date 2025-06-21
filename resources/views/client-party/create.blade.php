@@ -1920,7 +1920,7 @@
             // Initialize on page load
             toggleCompanyInput();
             syncClientFields();
-             // Add this line to initialize file upload visibility
+            // Add this line to initialize file upload visibility
         });
 
         window.User = {
