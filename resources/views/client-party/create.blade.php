@@ -66,6 +66,12 @@
                                 <!-- your steps content here -->
                                 <div id="basic-details" class="content" role="tabpanel"
                                     aria-labelledby="basic-details-trigger">
+                                    <!-- Step validation error message -->
+                                    <div id="step-validation-error" class="step-validation-error" style="display: none;">
+                                        <i class="fa fa-exclamation-triangle"></i>
+                                        <span id="step-error-message">Please complete all required fields before proceeding
+                                            to the next step.</span>
+                                    </div>
                                     <div class="row">
                                         <div class="col-md-12 col-sm-12">
                                             <fieldset class="border pl-2 pr-2 card shadow-sm m-0"
@@ -152,19 +158,26 @@
                                                         <input type="text" class="form-control form-control-sm"
                                                             value="{{ old('companyName') }}" name="companyName"
                                                             id="companyName" maxlength="50">
-                                                        <!-- Dropdown for other entity types -->
+
+                                                        <!-- Company Autocomplete Dropdown (for other entity types) -->
                                                         <div id="companyDropdown" style="display: none;">
-                                                            <select class="form-control form-control-sm"
-                                                                id="companySelect" name="companySelect">
-                                                                <option value="" disabled selected>Select Company
-                                                                </option>
-                                                                <!-- Options will be populated via JavaScript -->
-                                                            </select>
+                                                            <div class="company-autocomplete-container">
+                                                                <input type="text" class="form-control form-control-sm"
+                                                                    id="companyAutocomplete" name="companyAutocomplete"
+                                                                    placeholder="Type to search companies..."
+                                                                    autocomplete="off"
+                                                                    value="{{ old('companyAutocomplete') }}">
+                                                                <div id="companyAutocompleteList"
+                                                                    class="autocomplete-list"></div>
+                                                            </div>
+
                                                             <!-- Hidden inputs to store Id and Code -->
                                                             <input type="hidden" name="companyId" id="companyId"
                                                                 value="{{ old('companyId') }}">
                                                             <input type="hidden" name="companyCode" id="companyCode"
                                                                 value="{{ old('companyCode') }}">
+                                                            <input type="hidden" name="companySelect" id="companySelect"
+                                                                value="{{ old('companySelect') }}">
                                                         </div>
                                                     </div>
                                                 </div>
@@ -196,8 +209,6 @@
                                                             id="addressLine2" maxlength="50">
                                                     </div>
                                                 </div>
-
-
 
                                                 {{-- Country Code and Country Name --}}
                                                 <div class="form-group row mb-1">
@@ -249,7 +260,6 @@
                                                 </div>
 
                                                 {{-- City --}}
-
                                                 <div class="form-group row mb-1">
                                                     <label for="cityName"
                                                         class="col-sm-3 col-lg-4 col-form-label col-form-label-sm"><i
@@ -334,7 +344,7 @@
                                     </div>
 
                                     <button class="btn btn-primary m-2 btn-sm float-right" name="next" type="button"
-                                        onclick="stepper.next()">Next <i class="fa fa-step-forward"
+                                        id="nextBtn">Next <i class="fa fa-step-forward"
                                             aria-hidden="true"></i></button>
                                     <button type="button" name="save-step1" id="save-step1"
                                         class="btn btn-success btn-sm float-right mt-2" data-toggle="tooltip"
@@ -346,6 +356,13 @@
 
                                 <div id="office-details" class="content active dstepper-block" role="tabpanel"
                                     aria-labelledby="office-details-trigger">
+                                    <!-- Step validation error message -->
+                                    <div id="step2-validation-error" class="step-validation-error"
+                                        style="display: none;">
+                                        <i class="fa fa-exclamation-triangle"></i>
+                                        <span id="step2-error-message">Please complete all required fields before
+                                            proceeding to the next step.</span>
+                                    </div>
                                     <div class="row">
                                         <div class="col-md-12 col-lg-12 col-sm-12">
                                             <fieldset class="border p-2 card shadow-sm mb-0 pt-0 pb-0">
@@ -392,28 +409,55 @@
                                                 </div>
                                             </fieldset>
                                             <fieldset class="border p-2 card shadow-lg mb-0 pt-0 pb-0">
-                                                <legend>File Upload</legend>
-                                                <label for="attachmentFile">Attachment <i class="fa fa-paperclip"></i>
-                                                    <button type="button"
-                                                        class="btn btn-sm btn-outline-warning float-right w-20 addAttachment"
-                                                        id="addFile">
-                                                        <i class="fa fa-plus"></i> File
-                                                    </button>
-                                                </label>
-                                                <div class="input-group hdtuto control-group lst increment"
-                                                    id="initial-attachment">
-                                                    <input id="attachments" type="file" name="attachmentNames[]"
-                                                        class="myfrm form-control mr-1 form-control-sm">
-                                                    <input type="text" name="attachmentDescription[]"
-                                                        class="myfrm form-control form-control-sm"
-                                                        placeholder="Description">
+                                                <legend>File Upload (PDF Only)
+                                                    @if (request()->query('type') === 'accounting')
+                                                        <span class="text-danger">*</span>
+                                                    @endif
+                                                </legend>
+                                                <div class="file-upload-container">
+                                                    <label for="attachmentFile">Attachment (PDF files only) <i
+                                                            class="fa fa-paperclip"></i>
+                                                        @if (request()->query('type') === 'accounting')
+                                                            <span class="text-danger">Required for accounting mode</span>
+                                                        @endif
+                                                        {{-- <button type="button"
+                                                            class="btn btn-sm btn-outline-warning float-right w-20 addAttachment"
+                                                            id="addFile">
+                                                            <i class="fa fa-plus"></i> File
+                                                        </button> --}}
+                                                    </label>
+                                                    <div class="input-group hdtuto control-group lst increment"
+                                                        id="initial-attachment">
+                                                        <input id="attachments" type="file" name="attachmentNames[]"
+                                                            class="myfrm form-control mr-1 form-control-sm"
+                                                            accept="application/pdf,.pdf"
+                                                            title="Only PDF files are accepted"
+                                                            @if (request()->query('type') === 'accounting') required @endif>
+                                                        <input type="text" name="attachmentDescription[]"
+                                                            class="myfrm form-control form-control-sm"
+                                                            placeholder="Description"
+                                                            @if (request()->query('type') === 'accounting') required @endif>
+                                                    </div>
+                                                    <small class="text-muted">📄 Only PDF files are accepted (Max 10MB)
+                                                        @if (request()->query('type') === 'accounting')
+                                                            <span class="text-danger font-weight-bold">- File upload is
+                                                                mandatory for accounting mode</span>
+                                                        @endif
+                                                    </small>
+                                                    <div id="file-upload-error" class="text-danger mt-2"
+                                                        style="display: none;">
+                                                        <i class="fa fa-exclamation-triangle"></i> At least one file is
+                                                        required for accounting mode.
+                                                    </div>
+                                                    <div id="attachClone"></div>
                                                 </div>
-                                                <div id="attachClone"></div>
                                                 <div class="clone-template d-none">
                                                     <div
                                                         class="hdtuto control-group lst input-group mt-1 cloned-attachment">
                                                         <input type="file" name="attachmentNames[]"
-                                                            class="myfrm form-control mr-1 form-control-sm">
+                                                            class="myfrm form-control mr-1 form-control-sm"
+                                                            accept="application/pdf,.pdf"
+                                                            title="Only PDF files are accepted">
                                                         <input type="text" name="attachmentDescription[]"
                                                             class="myfrm form-control form-control-sm"
                                                             placeholder="Description">
@@ -538,40 +582,7 @@
                                                     </div>
                                                 </div>
 
-                                                {{-- Licence Type --}}
-                                                {{-- <div class="form-group row mb-0 mt-0 p-0">
-                                                    <div class="col col-sm-6 col-lg-6 col-md-6 m-0">
-                                                        <div class="row">
-                                                            <label for="licence"
-                                                                class="col-md-3 col-form-label col-form-label-sm pr-0">Licence
-                                                                Type</label> <span style="color: red;">*</span>
-                                                            <div class="col-md-8">
-                                                                <select class="form-control form-control-sm"
-                                                                    name="licenceTypeID" id="licenceTypeID" required>
-                                                                    <option value="" disabled selected></option>
-                                                                    @forelse ($licenceTypes as $type)
-                                                                        <option value="{{ $type->LicenseID }}"
-                                                                            id="{{ $type->LicenseCode }}"
-                                                                            @if (old('licenceTypeID') == $type->LicenseID) selected @endif>
-                                                                            {{ $type->LicenseName }}
-                                                                        </option>
-                                                                    @empty
-                                                                    @endforelse
-                                                                </select>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    <div class="col col-sm-6 col-lg-6 col-md-6">
-                                                        <input type="hidden" class="form-control form-control-sm"
-                                                            value="{{ old('licenceTypeCode') }}" name="licenceTypeCode"
-                                                            id="licenceTypeCode">
-                                                        <input type="text" class="form-control form-control-sm"
-                                                            value="{{ old('licenceTypeValue') }}" name="licenceTypeValue"
-                                                            id="licenceTypeValue" required>
-                                                    </div>
-                                                </div> --}}
                                                 <fieldset>
-
                                                     <div class="form-group row mb-0 mt-0 p-0">
                                                         <div class="col col-sm-6 col-lg-6 col-md-6 m-0">
                                                             <div class="row">
@@ -637,7 +648,7 @@
                                             aria-hidden="true"></i> Previous</button>
                                     @if (Auth::user()->can('create-client-party'))
                                         <button class="btn btn-primary m-2 btn-sm float-right" type="button"
-                                            name="next" onclick="stepper.next()">Next <i class="fa fa-step-forward"
+                                            name="next" id="nextBtn2">Next <i class="fa fa-step-forward"
                                                 aria-hidden="true"></i></button>
                                     @else
                                         <button type="submit" name="submitBtn" value="submitBtn"
@@ -651,8 +662,6 @@
                                             aria-hidden="true"></i> Save for Later</button>
                                 </div>
 
-
-
                                 {{-- Admin details --}}
 
                                 @if (Auth::user()->can('create-client-party'))
@@ -660,7 +669,6 @@
                                         aria-labelledby="admin-details-trigger">
                                         <div class="row justify-content-center">
                                             <div class="com-md-6 col-xl-6 col-sm-12 col-lg-6">
-
 
                                                 <fieldset class="border p-2 card shadow-lg mb-0 pt-0 pb-0">
                                                     <legend class="w-auto p-0 m-0"></legend>
@@ -769,7 +777,6 @@
                                                     </table>
                                                 </fieldset>
 
-
                                             </div>
                                         </div>
                                         <button class="btn btn-primary mt-2" type="button" name="previous"
@@ -801,11 +808,8 @@
     </div>
 @stop
 
-
-
 {{-- CSS --}}
 @section('css')
-    {{-- stepper css --}}
     {{-- Select2 CSS --}}
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
     {{-- Stepper CSS --}}
@@ -833,6 +837,283 @@
 
         label {
             font-weight: bold;
+        }
+
+        /* Company Autocomplete Styles */
+        .company-autocomplete-container {
+            position: relative;
+            z-index: 1050;
+        }
+
+        .autocomplete-list {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #ced4da;
+            border-top: none;
+            max-height: 250px;
+            overflow-y: auto;
+            z-index: 1051;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
+            border-radius: 0 0 4px 4px;
+            display: none;
+        }
+
+        .autocomplete-list.show {
+            display: block;
+        }
+
+        .autocomplete-item {
+            padding: 10px 12px;
+            cursor: pointer;
+            border-bottom: 1px solid #f1f1f1;
+            font-size: 14px;
+            transition: background-color 0.2s ease;
+            line-height: 1.4;
+        }
+
+        .autocomplete-item:hover,
+        .autocomplete-item.highlighted {
+            background-color: #e9ecef;
+        }
+
+        .autocomplete-item:last-child {
+            border-bottom: none;
+        }
+
+        .autocomplete-no-results {
+            padding: 12px;
+            color: #6c757d;
+            font-style: italic;
+            font-size: 14px;
+            text-align: center;
+        }
+
+        .company-name {
+            font-weight: 500;
+            color: #495057;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .company-code {
+            color: #6c757d;
+            font-size: 12px;
+            margin-top: 2px;
+            font-family: monospace;
+        }
+
+        /* Ensure autocomplete container has proper positioning */
+        .form-group {
+            position: relative;
+        }
+
+        .form-group .company-autocomplete-container {
+            z-index: 1050;
+        }
+
+        /* Focus styles for autocomplete input */
+        .company-autocomplete-container .form-control:focus {
+            border-color: #80bdff;
+            box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+        }
+
+        /* Prevent autocomplete from being clipped */
+        .company-autocomplete-container .autocomplete-list {
+            min-width: 100%;
+            white-space: nowrap;
+        }
+
+        /* File upload styles */
+        .file-upload-container {
+            position: relative;
+        }
+
+        .file-upload-hint {
+            font-size: 12px;
+            color: #6c757d;
+            margin-top: 4px;
+            font-style: italic;
+        }
+
+        input[type="file"] {
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            padding: 4px 8px;
+        }
+
+        input[type="file"]:focus {
+            border-color: #80bdff;
+            box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+        }
+
+        .file-upload-error {
+            color: #dc3545;
+            font-size: 12px;
+            margin-top: 4px;
+        }
+
+        /* Required file upload styling for accounting mode */
+        .file-upload-required {
+            border-left: 4px solid #dc3545;
+            padding-left: 8px;
+        }
+
+        .file-upload-required legend {
+            color: #dc3545;
+        }
+
+        #file-upload-error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            border-radius: 4px;
+            padding: 8px 12px;
+            margin-top: 8px;
+        }
+
+        /* Success state for file uploads */
+        .file-upload-success {
+            color: #28a745;
+            font-size: 12px;
+            margin-top: 4px;
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            border-radius: 4px;
+            padding: 4px 8px;
+        }
+
+        /* PDF file icon indicator */
+        input[type="file"][accept*="pdf"]::file-selector-button {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 3px;
+            margin-right: 8px;
+            font-size: 12px;
+        }
+
+        input[type="file"][accept*="pdf"]::file-selector-button::before {
+            content: "📄 ";
+        }
+
+        /* Accounting mode specific styling */
+        .accounting-mode .file-upload-container {
+            border: 2px dashed #dc3545;
+            border-radius: 8px;
+            padding: 12px;
+            background-color: #fff5f5;
+        }
+
+        .accounting-mode .file-upload-container.has-files {
+            border-color: #28a745;
+            background-color: #f8fff9;
+        }
+
+        /* Shake animation for validation errors */
+        .shake-animation {
+            animation: shake 0.5s ease-in-out;
+        }
+
+        @keyframes shake {
+
+            0%,
+            100% {
+                transform: translateX(0);
+            }
+
+            10%,
+            30%,
+            50%,
+            70%,
+            90% {
+                transform: translateX(-5px);
+            }
+
+            20%,
+            40%,
+            60%,
+            80% {
+                transform: translateX(5px);
+            }
+        }
+
+        /* Enhanced error styling for missing files */
+        .file-upload-container.validation-error {
+            border-color: #dc3545 !important;
+            background-color: #f8d7da !important;
+            box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25);
+        }
+
+        /* Next button disabled state */
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        /* Step validation indicator */
+        .step-validation-error {
+            border: 2px solid #dc3545;
+            border-radius: 8px;
+            padding: 8px;
+            margin: 8px 0;
+            background-color: #f8d7da;
+        }
+
+        .step-validation-error .fa-exclamation-triangle {
+            color: #dc3545;
+            margin-right: 8px;
+        }
+
+        /* Style for readonly country field in accounting mode */
+        .readonly-country {
+            background-color: #e9ecef !important;
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+
+        /* Style for readonly select elements */
+        .readonly-select {
+            background-color: #e9ecef !important;
+            opacity: 0.7;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+
+        .readonly-select:focus {
+            background-color: #e9ecef !important;
+            border-color: #ced4da;
+            box-shadow: none;
+        }
+
+        /* Loading indicator for autocomplete */
+        .autocomplete-loading {
+            padding: 12px;
+            color: #6c757d;
+            font-style: italic;
+            text-align: center;
+            font-size: 14px;
+        }
+
+        .autocomplete-loading::after {
+            content: "";
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            margin-left: 8px;
+            border: 2px solid #6c757d;
+            border-radius: 50%;
+            border-top-color: transparent;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
         }
 
         /* Preloader */
@@ -909,6 +1190,14 @@
             .address-row .col-md-6:first-child {
                 margin-bottom: 10px;
             }
+
+            .autocomplete-list {
+                max-height: 150px;
+            }
+
+            .autocomplete-item {
+                padding: 10px;
+            }
         }
 
         @keyframes preloader-fx {
@@ -976,7 +1265,6 @@
             opacity: 0.7;
             cursor: not-allowed;
             pointer-events: none;
-            /* Prevents clicking or focusing */
         }
 
         .hidden-row {
@@ -987,32 +1275,6 @@
             display: block;
         }
 
-        .autocomplete-list {
-            position: absolute;
-            background: rgb(220, 18, 18);
-            border: 1px solid #ccc;
-            max-height: 200px;
-            overflow-y: auto;
-            z-index: 1000;
-            width: 100%;
-        }
-
-        /* Hide all .autocomplete-list elements except the first one in the parent */
-        .autocomplete-list:not(:first-child) {
-            display: none;
-        }
-
-        .autocomplete-item {
-            padding: 5px;
-            cursor: pointer;
-        }
-
-        .autocomplete-item:hover {
-            background: #f0f0f0;
-        }
-    </style>
-    <link rel="stylesheet" href="//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
-    <style>
         #loader {
             display: none;
             position: fixed;
@@ -1028,7 +1290,6 @@
 @stop
 
 {{-- JS --}}
-
 @section('js')
     <script src="//code.jquery.com/jquery-1.12.4.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
@@ -1052,9 +1313,12 @@
             const legalEntityType = $('#legalEntityType');
             const companyNameInput = $('#companyName');
             const companyDropdown = $('#companyDropdown');
-            const companySelect = $('#companySelect');
+            const companyAutocomplete = $('#companyAutocomplete');
+            const companyAutocompleteList = $('#companyAutocompleteList');
             const companyIdInput = $('#companyId');
             const companyCodeInput = $('#companyCode');
+            const companySelectHidden = $('#companySelect');
+            const countrySelect = $('#countryID');
             const debtorType = $('#debtorType');
             const vendorType = $('#vendorType');
             const creditDays = $('#creditDays');
@@ -1066,9 +1330,11 @@
             const licenceTypeID = $('#licenceTypeID');
             const clientIdInput = $('#clientID');
             const clientCodeInput = $('#clientCode');
-            const MAX_SUGGESTIONS = 15;
 
-
+            // Company autocomplete variables
+            let companiesData = [];
+            let selectedIndex = -1;
+            let searchTimeout;
 
             if (!overseasEntityCheckbox.length || !licenceTypeValue.length || !licenceTypeID.length) {
                 console.error('Critical DOM elements missing:', {
@@ -1083,6 +1349,281 @@
                     clientCodeInput: !!clientCodeInput.length
                 });
             }
+
+            // Function to make country readonly for accounting mode (except for "Create only in D365")
+            function toggleCountryReadonly() {
+                const partyEntityTypeValue = partyEntityType.val();
+
+                if (requestType === 'accounting' && partyEntityTypeValue !== 'Create only in D365') {
+                    countrySelect.prop('readonly', true).prop('disabled', true).addClass('readonly-country');
+                    console.log('Country field set to readonly for accounting mode (except Create only in D365)');
+                } else {
+                    countrySelect.prop('readonly', false).prop('disabled', false).removeClass('readonly-country');
+                    console.log('Country field enabled - operational mode or Create only in D365');
+                }
+            }
+
+            // Function to show/hide autocomplete dropdown
+            function toggleAutocompleteDropdown(show = true) {
+                if (show && companyAutocomplete.is(':visible') && companiesData.length > 0) {
+                    companyAutocompleteList.addClass('show');
+                } else {
+                    companyAutocompleteList.removeClass('show').empty();
+                    selectedIndex = -1;
+                }
+            }
+
+            // Function to render autocomplete items
+            function renderAutocompleteItems(companies) {
+                companyAutocompleteList.empty();
+
+                if (!companies || companies.length === 0) {
+                    companyAutocompleteList.html('<div class="autocomplete-no-results">No companies found</div>');
+                    companyAutocompleteList.addClass('show');
+                    return;
+                }
+
+                companies.forEach((company, index) => {
+                    const item = $(`
+                        <div class="autocomplete-item" data-index="${index}">
+                            <div class="company-name">${escapeHtml(company.name)}</div>
+                            <div class="company-code">Code: ${escapeHtml(company.code)}</div>
+                        </div>
+                    `);
+
+                    item.data('company', company);
+                    companyAutocompleteList.append(item);
+                });
+
+                companyAutocompleteList.addClass('show');
+            }
+
+            // Helper function to escape HTML
+            function escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+
+            // Function to filter companies based on search term
+            function filterCompanies(searchTerm) {
+                if (!searchTerm || searchTerm.length < 2) {
+                    return companiesData.slice(0, 20); // Show first 20 companies if no search term
+                }
+
+                const filtered = companiesData.filter(company =>
+                    company.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    company.code.toLowerCase().includes(searchTerm.toLowerCase())
+                );
+
+                return filtered.slice(0, 20); // Limit to 20 results for performance
+            }
+
+            // Function to select a company
+            function selectCompany(company) {
+                if (!company) return;
+
+                companyAutocomplete.val(company.name);
+                companyNameInput.val(company.name); // Set the original companyName field that controller expects
+                companyIdInput.val(company.id);
+                companyCodeInput.val(company.code);
+                companySelectHidden.val(company.id);
+
+                toggleAutocompleteDropdown(false);
+
+                // Trigger the existing company selection logic
+                if (partyEntityType.val()) {
+                    fetchCompanyDetails(partyEntityType.val(), company.id);
+                }
+
+                // Sync client fields
+                syncClientFields();
+
+                console.log('Company selected:', {
+                    name: company.name,
+                    id: company.id,
+                    code: company.code
+                });
+            }
+
+            // Function to highlight item by index
+            function highlightItem(index) {
+                companyAutocompleteList.find('.autocomplete-item').removeClass('highlighted');
+                if (index >= 0 && index < companyAutocompleteList.find('.autocomplete-item').length) {
+                    companyAutocompleteList.find('.autocomplete-item').eq(index).addClass('highlighted');
+                    selectedIndex = index;
+                }
+            }
+
+            // Function to load companies for autocomplete
+            function loadCompaniesForAutocomplete(entityType) {
+                console.log('Loading companies for autocomplete, entityType:', entityType);
+
+                // Show loading state
+                if (companyAutocomplete.is(':visible')) {
+                    companyAutocompleteList.html('<div class="autocomplete-loading">Loading companies...</div>')
+                        .addClass('show');
+                }
+
+                $.ajax({
+                    url: '{{ route('companies') }}',
+                    method: 'GET',
+                    data: {
+                        entityType: entityType
+                    },
+                    success: function(data) {
+                        console.log('Companies loaded:', data.length || 0);
+
+                        // Hide loading state
+                        companyAutocompleteList.removeClass('show').empty();
+
+                        if (data.error) {
+                            companiesData = [];
+                            companyAutocomplete.attr('placeholder', 'Error loading companies...');
+                            if (companyAutocomplete.is(':focus')) {
+                                companyAutocompleteList.html(
+                                        `<div class="autocomplete-no-results">${data.error}</div>`)
+                                    .addClass('show');
+                            }
+                        } else {
+                            companiesData = data || [];
+                            companyAutocomplete.attr('placeholder',
+                                `Type to search ${companiesData.length} companies...`);
+
+                            // If input is focused and has value, show filtered results
+                            if (companyAutocomplete.is(':focus')) {
+                                const searchTerm = companyAutocomplete.val().trim();
+                                if (searchTerm) {
+                                    const filteredCompanies = filterCompanies(searchTerm);
+                                    renderAutocompleteItems(filteredCompanies);
+                                }
+                            }
+                        }
+                    },
+                    error: function(xhr) {
+                        console.error('Error loading companies:', xhr.responseJSON?.error || xhr
+                            .statusText);
+                        companiesData = [];
+                        companyAutocompleteList.removeClass('show').empty();
+                        companyAutocomplete.attr('placeholder', 'Error loading companies...');
+
+                        if (companyAutocomplete.is(':focus')) {
+                            companyAutocompleteList.html(
+                                '<div class="autocomplete-no-results">Error loading companies. Please try again.</div>'
+                                ).addClass('show');
+                        }
+
+                        alert('Failed to load company list. Please try again.');
+                    }
+                });
+            }
+
+            // Event handlers for autocomplete
+            companyAutocomplete.on('input', function() {
+                clearTimeout(searchTimeout);
+                const searchTerm = $(this).val().trim();
+
+                // Clear selections if input is cleared
+                if (!searchTerm) {
+                    companyNameInput.val(''); // Clear the original companyName field
+                    companyIdInput.val('');
+                    companyCodeInput.val('');
+                    companySelectHidden.val('');
+                    toggleAutocompleteDropdown(false);
+                    return;
+                }
+
+                searchTimeout = setTimeout(() => {
+                    if (companiesData.length > 0) {
+                        const filteredCompanies = filterCompanies(searchTerm);
+                        renderAutocompleteItems(filteredCompanies);
+                        selectedIndex = -1;
+                    }
+                }, 300);
+            });
+
+            companyAutocomplete.on('focus', function() {
+                const searchTerm = $(this).val().trim();
+                if (companiesData.length > 0) {
+                    const filteredCompanies = filterCompanies(searchTerm);
+                    renderAutocompleteItems(filteredCompanies);
+                } else if (searchTerm) {
+                    // Show loading if we have a search term but no data yet
+                    companyAutocompleteList.html(
+                        '<div class="autocomplete-loading">Loading companies...</div>').addClass('show');
+                }
+            });
+
+            companyAutocomplete.on('blur', function(e) {
+                // Delay hiding to allow click events on items
+                setTimeout(() => {
+                    if (!companyAutocompleteList.is(':hover')) {
+                        toggleAutocompleteDropdown(false);
+                    }
+                }, 150);
+            });
+
+            // Keyboard navigation for autocomplete
+            companyAutocomplete.on('keydown', function(e) {
+                const items = companyAutocompleteList.find('.autocomplete-item');
+
+                if (!companyAutocompleteList.hasClass('show') || items.length === 0) {
+                    return;
+                }
+
+                switch (e.key) {
+                    case 'ArrowDown':
+                        e.preventDefault();
+                        selectedIndex = Math.min(selectedIndex + 1, items.length - 1);
+                        highlightItem(selectedIndex);
+                        break;
+
+                    case 'ArrowUp':
+                        e.preventDefault();
+                        selectedIndex = Math.max(selectedIndex - 1, 0);
+                        highlightItem(selectedIndex);
+                        break;
+
+                    case 'Enter':
+                        e.preventDefault();
+                        if (selectedIndex >= 0) {
+                            const selectedItem = items.eq(selectedIndex);
+                            const company = selectedItem.data('company');
+                            if (company) {
+                                selectCompany(company);
+                            }
+                        }
+                        break;
+
+                    case 'Escape':
+                        e.preventDefault();
+                        toggleAutocompleteDropdown(false);
+                        $(this).blur();
+                        break;
+                }
+            });
+
+            // Click handler for autocomplete items
+            companyAutocompleteList.on('click', '.autocomplete-item', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                const company = $(this).data('company');
+                if (company) {
+                    selectCompany(company);
+                }
+            });
+
+            // Prevent autocomplete list from losing focus
+            companyAutocompleteList.on('mousedown', function(e) {
+                e.preventDefault();
+            });
+
+            // Click outside to close autocomplete
+            $(document).on('click', function(e) {
+                if (!$(e.target).closest('.company-autocomplete-container').length) {
+                    toggleAutocompleteDropdown(false);
+                }
+            });
 
             // Function to sync clientID and clientCode with companyId and companyCode
             function syncClientFields() {
@@ -1146,7 +1687,10 @@
                         companyDropdown.show();
                         companyNameInput.hide();
                         toggleFieldsReadonly(true);
-                        loadCompanies(apiType);
+
+                        // Load companies for autocomplete
+                        loadCompaniesForAutocomplete(apiType);
+
                         legalEntityType.find('option').each(function() {
                             const value = $(this).val();
                             if (value === 'Only in D365 Debtor' || value === 'Only in D365 Vendor') {
@@ -1172,58 +1716,17 @@
                 syncClientFields();
             }
 
-            // Function to load companies via AJAX
-            function loadCompanies(entityType) {
-                console.log('loadCompanies: Fetching companies for entityType=', entityType);
-                $.ajax({
-                    url: '{{ route('companies') }}',
-                    method: 'GET',
-                    data: {
-                        entityType: entityType
-                    },
-                    success: function(data) {
-                        console.log('loadCompanies: API response=', data);
-                        companySelect.find('option:not(:first)').remove();
-                        if (data.error) {
-                            companySelect.append('<option value="" disabled>' + data.error +
-                                '</option>');
-                            console.error('API error:', data.error);
-                            companyDropdown.show();
-                        } else if (data.length === 0) {
-                            companySelect.append(
-                                '<option value="" disabled>No companies found</option>');
-                            companyDropdown.show();
-                        } else {
-                            $.each(data, function(index, company) {
-                                companySelect.append(
-                                    `<option value="${company.id}" data-code="${company.code}" data-name="${company.name}">${company.name} (${company.code})</option>`
-                                );
-                            });
-                            companyDropdown.show();
-                        }
-                    },
-                    error: function(xhr) {
-                        console.error('Error fetching companies:', xhr.responseJSON?.error || xhr
-                            .statusText);
-                        companySelect.find('option:not(:first)').remove();
-                        companySelect.append(
-                            '<option value="" disabled>Error loading companies</option>');
-                        companyDropdown.show();
-                        alert('Failed to load company list. Please try again.');
-                    }
-                });
-            }
-
             // Function to clear Basic Details fields
             function clearBasicDetails() {
                 $('.basic-detail-field').not('#countryCode, #countryName, #countryID').val('');
-                companyNameInput.val('');
-                companySelect.val('');
+                companyNameInput.val(''); // Clear the original companyName field
+                companyAutocomplete.val(''); // Clear the autocomplete field
                 companyIdInput.val('');
                 companyCodeInput.val('');
+                companySelectHidden.val('');
                 clientIdInput.val('');
                 clientCodeInput.val('');
-                $('#autocomplete-list').empty();
+                toggleAutocompleteDropdown(false);
                 console.log('clearBasicDetails: Preserved countryCode=', $('#countryCode').val());
             }
 
@@ -1378,12 +1881,13 @@
                         .prop('disabled', true)
                         .removeAttr('required')
                         .removeClass('is-invalid')
-                        .val('nil');
+                        .val('NILL');
                     licenceTypeID
-                        .prop('disabled', true)
+                        .prop('disabled', false)
+                        .addClass('readonly-select')
+                        .attr('readonly', true)
                         .removeAttr('required')
-                        .removeClass('is-invalid')
-                        .val('');
+                        .removeClass('is-invalid');
                     console.log('toggleAccountingFields: Disabled accounting fields for operational mode', {
                         legalEntityTypeRequired: legalEntityType.attr('required'),
                         billingCurrencyRequired: billingCurrency.attr('required'),
@@ -1417,19 +1921,421 @@
                 }
             }
 
+            // Company autocomplete validation
+            function validateCompanySelection() {
+                if (requestType === 'accounting' && companyAutocomplete.is(':visible')) {
+                    if (companyAutocomplete.val() && !companyIdInput.val()) {
+                        companyAutocomplete.addClass('is-invalid');
+                        alert('Please select a company from the dropdown list.');
+                        return false;
+                    }
+                    companyAutocomplete.removeClass('is-invalid');
+                }
+                return true;
+            }
+
+            // File upload validation for accounting mode
+            function validateFileUpload() {
+                if (requestType === 'accounting') {
+                    const fileInputs = $('input[name="attachmentNames[]"]');
+                    let hasFile = false;
+                    let hasValidFile = false;
+
+                    fileInputs.each(function() {
+                        if (this.files && this.files.length > 0) {
+                            hasFile = true;
+                            // Check if file is valid (PDF and size)
+                            const file = this.files[0];
+                            const allowedTypes = ['application/pdf'];
+                            const allowedExtensions = /(\.pdf)$/i;
+                            const maxSize = 10 * 1024 * 1024; // 10MB
+
+                            if ((allowedTypes.includes(file.type) || allowedExtensions.exec(file.name)) &&
+                                file.size <= maxSize) {
+                                hasValidFile = true;
+                            }
+                        }
+                    });
+
+                    // Check if descriptions are provided for uploaded files
+                    let hasValidDescription = false;
+                    if (hasValidFile) {
+                        const descInputs = $('input[name="attachmentDescription[]"]');
+                        descInputs.each(function(index) {
+                            const correspondingFileInput = fileInputs.eq(index);
+                            if (correspondingFileInput[0].files && correspondingFileInput[0].files.length >
+                                0) {
+                                if ($(this).val().trim()) {
+                                    hasValidDescription = true;
+                                }
+                            }
+                        });
+                    }
+
+                    const errorElement = $('#file-upload-error');
+                    const container = $('.file-upload-container');
+
+                    if (!hasValidFile) {
+                        errorElement.show();
+                        fileInputs.first().addClass('is-invalid');
+                        container.addClass('validation-error');
+
+                        if (!hasFile) {
+                            errorElement.html(
+                                '<i class="fa fa-exclamation-triangle"></i> At least one PDF file is required for accounting mode.'
+                                );
+                        } else {
+                            errorElement.html(
+                                '<i class="fa fa-exclamation-triangle"></i> Please upload a valid PDF file (max 10MB).'
+                                );
+                        }
+                        return false;
+                    } else if (!hasValidDescription) {
+                        errorElement.show();
+                        container.addClass('validation-error');
+                        errorElement.html(
+                            '<i class="fa fa-exclamation-triangle"></i> Please provide a description for the uploaded file.'
+                            );
+
+                        // Find and highlight the description input that needs attention
+                        const descInputs = $('input[name="attachmentDescription[]"]');
+                        descInputs.each(function(index) {
+                            const correspondingFileInput = fileInputs.eq(index);
+                            if (correspondingFileInput[0].files && correspondingFileInput[0].files.length >
+                                0) {
+                                if (!$(this).val().trim()) {
+                                    $(this).addClass('is-invalid');
+                                }
+                            }
+                        });
+                        return false;
+                    } else {
+                        errorElement.hide();
+                        container.removeClass('validation-error');
+                        fileInputs.removeClass('is-invalid');
+                        $('input[name="attachmentDescription[]"]').removeClass('is-invalid');
+                        return true;
+                    }
+                }
+                return true; // Always valid for operational mode
+            }
+
+            // Clear file upload errors when files are selected
+            $(document).on('change', 'input[name="attachmentNames[]"]', function() {
+                if (requestType === 'accounting') {
+                    // Delay validation to allow for proper file processing
+                    setTimeout(function() {
+                        const isValid = validateFileUpload();
+                        // Clear step validation error if file upload is now valid (only for step 2)
+                        const currentStep = $('.content.active, .content.dstepper-block').attr(
+                        'id');
+                        if (isValid && currentStep === 'office-details') {
+                            $('#step2-validation-error').fadeOut();
+                        }
+                    }, 100);
+                }
+            });
+
+            // Clear errors when description is typed
+            $(document).on('input', 'input[name="attachmentDescription[]"]', function() {
+                if (requestType === 'accounting') {
+                    $(this).removeClass('is-invalid');
+                    // Re-validate after description change
+                    setTimeout(function() {
+                        const isValid = validateFileUpload();
+                        // Clear step validation error if file upload is now valid (only for step 2)
+                        const currentStep = $('.content.active, .content.dstepper-block').attr(
+                        'id');
+                        if (isValid && currentStep === 'office-details') {
+                            $('#step2-validation-error').fadeOut();
+                        }
+                    }, 100);
+                }
+            });
+
+            // Handle Next button click with validation (for both steps)
+            $('#nextBtn, #nextBtn2').on('click', function(e) {
+                e.preventDefault();
+
+                const buttonId = $(this).attr('id');
+                let stepErrorContainer, stepErrorMessage;
+
+                // Determine which step we're validating based on button
+                if (buttonId === 'nextBtn') {
+                    // Step 1 to Step 2
+                    stepErrorContainer = '#step-validation-error';
+                    stepErrorMessage = '#step-error-message';
+                } else {
+                    // Step 2 to Step 3
+                    stepErrorContainer = '#step2-validation-error';
+                    stepErrorMessage = '#step2-error-message';
+                }
+
+                // Hide any existing step validation errors
+                $(stepErrorContainer).hide();
+
+                // Get current active step
+                const currentStep = $('.content.active, .content.dstepper-block').attr('id');
+                console.log('Current step:', currentStep, 'Button:', buttonId);
+
+                // Step 1 (Basic Details) validation
+                if (currentStep === 'basic-details') {
+                    // Additional validation for first step fields
+                    const requiredFields = [{
+                            field: $('#partyEntityType'),
+                            name: 'Operation Type'
+                        },
+                        {
+                            field: $('#legalEntityType'),
+                            name: 'Legal Type'
+                        },
+                        {
+                            field: $('#companyName, #companyAutocomplete'),
+                            name: 'Company Name'
+                        },
+                        {
+                            field: $('#addressLine1'),
+                            name: 'Address Line 1'
+                        },
+                        {
+                            field: $('#countryID'),
+                            name: 'Country'
+                        },
+                        {
+                            field: $('#firstName'),
+                            name: 'First Name'
+                        },
+                        {
+                            field: $('#phoneNo'),
+                            name: 'Phone Number'
+                        }
+                    ];
+
+                    let hasError = false;
+                    let missingFields = [];
+
+                    requiredFields.forEach(function(item) {
+                        const $field = item.field;
+                        if ($field.is(':visible') && $field.attr('required') && !$field.val()) {
+                            $field.addClass('is-invalid');
+                            hasError = true;
+                            missingFields.push(item.name);
+                        } else {
+                            $field.removeClass('is-invalid');
+                        }
+                    });
+
+                    if (hasError) {
+                        $(stepErrorMessage).text(
+                            `Please fill in the following required fields: ${missingFields.join(', ')}`);
+                        $(stepErrorContainer).show();
+
+                        // Scroll to the first missing field
+                        const firstInvalidField = $('.is-invalid').first();
+                        if (firstInvalidField.length) {
+                            $('html, body').animate({
+                                scrollTop: firstInvalidField.offset().top - 100
+                            }, 500);
+                        }
+
+                        return false;
+                    }
+                }
+
+                // Step 2 (Office Details) validation - File upload validation only here
+                else if (currentStep === 'office-details') {
+                    // File upload validation only for accounting mode
+                    if (requestType === 'accounting' && !validateFileUpload()) {
+                        // Show step validation error
+                        $(stepErrorMessage).text(
+                            'File upload is required for accounting mode. Please upload a PDF file with description.'
+                            );
+                        $(stepErrorContainer).show();
+
+                        // Scroll to file upload section to show the error
+                        $('html, body').animate({
+                            scrollTop: $('#file-upload-error').offset().top - 100
+                        }, 500);
+
+                        // Highlight the file upload section
+                        $('.file-upload-container').addClass('shake-animation');
+                        setTimeout(function() {
+                            $('.file-upload-container').removeClass('shake-animation');
+                        }, 1000);
+
+                        return false;
+                    }
+
+                    // Validate other required fields in step 2
+                    const step2RequiredFields = [{
+                            field: $('#officeCountry'),
+                            name: 'Office'
+                        },
+                        {
+                            field: $('#billingCurrency'),
+                            name: 'Billing Currency'
+                        },
+                        {
+                            field: $('#creditDays'),
+                            name: 'Credit Days'
+                        },
+                        {
+                            field: $('#maxCreditLimit'),
+                            name: 'Credit Limit'
+                        },
+                        {
+                            field: $('#licenceTypeID'),
+                            name: 'Licence Type'
+                        },
+                        {
+                            field: $('#licenceTypeValue'),
+                            name: 'Licence Value'
+                        }
+                    ];
+
+                    let hasError = false;
+                    let missingFields = [];
+
+                    step2RequiredFields.forEach(function(item) {
+                        const $field = item.field;
+                        if ($field.is(':visible') && $field.attr('required') && !$field.val()) {
+                            $field.addClass('is-invalid');
+                            hasError = true;
+                            missingFields.push(item.name);
+                        } else {
+                            $field.removeClass('is-invalid');
+                        }
+                    });
+
+                    if (hasError) {
+                        $(stepErrorMessage).text(
+                            `Please fill in the following required fields: ${missingFields.join(', ')}`);
+                        $(stepErrorContainer).show();
+
+                        // Scroll to the first missing field
+                        const firstInvalidField = $('.is-invalid').first();
+                        if (firstInvalidField.length) {
+                            $('html, body').animate({
+                                scrollTop: firstInvalidField.offset().top - 100
+                            }, 500);
+                        }
+
+                        return false;
+                    }
+                }
+
+                // All validations passed, proceed to next step
+                console.log('All current step validations passed, proceeding to next step');
+                if (typeof stepper !== 'undefined') {
+                    stepper.next();
+                } else {
+                    console.error('Stepper not found');
+                }
+            });
+
+            // Clear step validation errors when fields are corrected
+            $(document).on('input change', 'input, select', function() {
+                // Clear individual field validation
+                $(this).removeClass('is-invalid');
+
+                // Check if all required fields are now filled for accounting mode
+                if (requestType === 'accounting') {
+                    setTimeout(function() {
+                        const hasValidFiles = validateFileUpload();
+                        const currentStep = $('.content.active, .content.dstepper-block').attr(
+                        'id');
+
+                        if (currentStep === 'basic-details') {
+                            const requiredFields = [
+                                $('#partyEntityType'),
+                                $('#legalEntityType'),
+                                $('#companyName, #companyAutocomplete'),
+                                $('#addressLine1'),
+                                $('#countryID'),
+                                $('#firstName'),
+                                $('#phoneNo')
+                            ];
+
+                            let allFieldsValid = true;
+                            requiredFields.forEach(function($field) {
+                                if ($field.is(':visible') && $field.attr('required') && !
+                                    $field.val()) {
+                                    allFieldsValid = false;
+                                }
+                            });
+
+                            // Hide step validation error if everything is valid
+                            if (allFieldsValid) {
+                                $('#step-validation-error').fadeOut();
+                            }
+                        } else if (currentStep === 'office-details') {
+                            const step2RequiredFields = [
+                                $('#officeCountry'),
+                                $('#billingCurrency'),
+                                $('#creditDays'),
+                                $('#maxCreditLimit'),
+                                $('#licenceTypeID'),
+                                $('#licenceTypeValue')
+                            ];
+
+                            let allFieldsValid = true;
+                            step2RequiredFields.forEach(function($field) {
+                                if ($field.is(':visible') && $field.attr('required') && !
+                                    $field.val()) {
+                                    allFieldsValid = false;
+                                }
+                            });
+
+                            // Hide step validation error if everything is valid
+                            if (hasValidFiles && allFieldsValid) {
+                                $('#step2-validation-error').fadeOut();
+                            }
+                        }
+                    }, 100);
+                }
+            });
+
             // Validate on submit
             $('button[name="createBtn"], button[name="submitBtn"]').on('click', function(e) {
                 syncClientFields();
+
+                // Validate company selection
+                if (!validateCompanySelection()) {
+                    e.preventDefault();
+                    console.warn('Submit button: Company validation failed');
+                    return;
+                }
+
+                // Validate file upload for accounting mode
+                if (!validateFileUpload()) {
+                    e.preventDefault();
+                    console.warn('Submit button: File upload validation failed');
+                    return;
+                }
+
+                // Validate form
                 if (!validateForm()) {
                     e.preventDefault();
-                    console.warn('Submit button: Validation failed');
+                    console.warn('Submit button: Form validation failed');
                 } else {
-                    console.log('Submit button: Validation passed');
+                    console.log('Submit button: All validations passed');
                 }
             });
 
             // Form submission handler
             $('#clientPartyForm').on('submit', function(e) {
+                // Validate company selection
+                if (!validateCompanySelection()) {
+                    e.preventDefault();
+                    return;
+                }
+
+                // Validate file upload for accounting mode
+                if (!validateFileUpload()) {
+                    e.preventDefault();
+                    return;
+                }
+
                 if (requestType === 'operational') {
                     legalEntityType
                         .removeAttr('required')
@@ -1455,12 +2361,13 @@
                         .removeAttr('required')
                         .removeClass('is-invalid')
                         .prop('disabled', true)
-                        .val('nil');
+                        .val('NILL');
                     licenceTypeID
                         .removeAttr('required')
                         .removeClass('is-invalid')
-                        .prop('disabled', true)
-                        .val('');
+                        .prop('disabled', false)
+                        .removeClass('readonly-select')
+                        .removeAttr('readonly');
                     console.log(
                         'Form submit: operational mode, ensured accounting fields are not required', {
                             timestamp: new Date().toISOString()
@@ -1470,11 +2377,13 @@
                         .removeAttr('required')
                         .removeClass('is-invalid')
                         .prop('readonly', true)
-                        .val('nil');
+                        .val('NILL');
                     licenceTypeID
                         .removeAttr('required')
                         .removeClass('is-invalid')
-                        .prop('disabled', false);
+                        .prop('disabled', false)
+                        .removeClass('readonly-select')
+                        .removeAttr('readonly');
                     console.log(
                         'Form submit: overseasEntity checked, ensured licence fields are not required', {
                             timestamp: new Date().toISOString()
@@ -1484,6 +2393,7 @@
                 console.log('Form submitting:', {
                     partyEntityType: partyEntityType.val(),
                     companyName: companyNameInput.val(),
+                    companyAutocomplete: companyAutocomplete.val(),
                     companyId: companyIdInput.val(),
                     companyCode: companyCodeInput.val(),
                     clientID: clientIdInput.val(),
@@ -1495,7 +2405,10 @@
                     licenceTypeValue: licenceTypeValue.val(),
                     licenceTypeID: licenceTypeID.val(),
                     requestType: requestType,
-                    overseasEntity: overseasEntityCheckbox.is(':checked')
+                    overseasEntity: overseasEntityCheckbox.is(':checked'),
+                    hasFileUploads: $('input[name="attachmentNames[]"]').filter(function() {
+                        return this.files && this.files.length > 0;
+                    }).length
                 });
 
                 if ($('#clientPartyForm')[0].checkValidity() === false) {
@@ -1552,7 +2465,7 @@
                                 type: 'GET',
                                 data: {
                                     entityType: entityType
-                                }, // No query parameter
+                                },
                                 success: function(matches) {
                                     console.log('otherInput response:', matches);
                                     $autocompleteList.empty();
@@ -1600,8 +2513,6 @@
                         }, 300);
                     });
 
-
-
                     $otherInput.parent().on('click', '.autocomplete-item', function() {
                         const entity = $(this).data('entity');
                         $otherInput.val(entity.label).removeClass('is-invalid');
@@ -1613,7 +2524,7 @@
 
                     $(document).on('click', function(e) {
                         if (!$(e.target).closest('#otherInput, .autocomplete-list').length) {
-                            $otherInput.parent().find('.').remove();
+                            $otherInput.parent().find('.autocomplete-list').remove();
                         }
                     });
                 }
@@ -1626,31 +2537,7 @@
             // Handle partyEntityType change
             partyEntityType.on('change', function() {
                 toggleCompanyInput();
-
-            });
-
-            // Handle company dropdown selection
-            companySelect.on('change', function() {
-                const selectedOption = $(this).find('option:selected');
-                const companyName = selectedOption.data('name') || selectedOption.text().split(' (')[0];
-                companyIdInput.val(selectedOption.val());
-                companyCodeInput.val(selectedOption.data('code'));
-                companyNameInput.val(companyName);
-                syncClientFields();
-                console.log('companySelect changed:', {
-                    companyId: companyIdInput.val(),
-                    companyCode: companyCodeInput.val(),
-                    clientID: clientIdInput.val(),
-                    clientCode: clientCodeInput.val(),
-                    companyName: companyName,
-                    timestamp: new Date().toISOString()
-                });
-                if (selectedOption.val() && partyEntityType.val()) {
-                    fetchCompanyDetails(partyEntityType.val(), selectedOption.val());
-                } else {
-                    clearBasicDetails();
-                    toggleFieldsReadonly(true);
-                }
+                toggleCountryReadonly(); // Update country readonly state based on entity type
             });
 
             // Initialize maxCreditLimit input
@@ -1680,14 +2567,23 @@
                     licenceTypeValue
                         .prop('readonly', true)
                         .prop('disabled', true)
-                        .val('nil')
+                        .val('NILL') // Changed to capital NILL
                         .removeClass('is-invalid')
                         .removeAttr('required');
                     licenceTypeID
-                        .prop('disabled', true)
+                        .prop('disabled', false) // Keep enabled to preserve value
+                        .addClass('readonly-select') // Add readonly styling
+                        .attr('readonly', true) // Add readonly attribute for styling
                         .removeClass('is-invalid')
-                        .removeAttr('required')
-                        .val('');
+                        .removeAttr('required');
+                    // Prevent user interaction with the select
+                    licenceTypeID.off('click.overseas change.overseas').on('click.overseas change.overseas',
+                        function(e) {
+                            if (overseasEntityCheckbox.is(':checked')) {
+                                e.preventDefault();
+                                return false;
+                            }
+                        });
                     $('#licenseError').hide();
                     $('#licenseSuccess').hide();
                     $('#submitBtn').prop('disabled', false);
@@ -1699,7 +2595,11 @@
                         .attr('required', 'required');
                     licenceTypeID
                         .prop('disabled', false)
+                        .removeClass('readonly-select')
+                        .removeAttr('readonly')
                         .attr('required', 'required');
+                    // Remove event handlers that prevent interaction
+                    licenceTypeID.off('click.overseas change.overseas');
                     $('#licenseSuccess').hide();
                 }
 
@@ -1707,6 +2607,8 @@
                     licenceTypeValueRequired: $('#licenceTypeValue').attr('required'),
                     licenceTypeIDRequired: $('#licenceTypeID').attr('required'),
                     licenceTypeValue: $('#licenceTypeValue').val(),
+                    licenceTypeIDValue: $('#licenceTypeID').val(),
+                    licenceTypeIDDisabled: $('#licenceTypeID').prop('disabled'),
                     timestamp: new Date().toISOString()
                 });
             }
@@ -1747,8 +2649,11 @@
                                     $(mutation.target).removeAttr('required').removeClass(
                                         'is-invalid');
                                     if (mutation.target.id === 'licenceTypeValue') {
-                                        $(mutation.target).val('nil').prop('readonly', true).prop(
+                                        $(mutation.target).val('NILL').prop('readonly', true).prop(
                                             'disabled', true);
+                                    } else if (mutation.target.id === 'licenceTypeID') {
+                                        $(mutation.target).prop('disabled', false).addClass(
+                                            'readonly-select').attr('readonly', true);
                                     } else {
                                         $(mutation.target).val('').prop('disabled', true);
                                     }
@@ -1781,12 +2686,13 @@
                         .removeClass('is-invalid')
                         .prop('readonly', true)
                         .prop('disabled', true)
-                        .val('nil');
+                        .val('NILL');
                     licenceTypeID
                         .removeAttr('required')
                         .removeClass('is-invalid')
-                        .prop('disabled', true)
-                        .val('');
+                        .prop('disabled', false)
+                        .addClass('readonly-select')
+                        .attr('readonly', true);
                     console.log('Global override: Ensured licence fields are not required', {
                         timestamp: new Date().toISOString()
                     });
@@ -1821,12 +2727,13 @@
                         .removeClass('is-invalid')
                         .prop('readonly', true)
                         .prop('disabled', true)
-                        .val('nil');
+                        .val('NILL');
                     licenceTypeID
                         .removeAttr('required')
                         .removeClass('is-invalid')
-                        .prop('disabled', true)
-                        .val('');
+                        .prop('disabled', false)
+                        .addClass('readonly-select')
+                        .attr('readonly', true);
                     console.log('Stepper change: Ensured accounting fields are not required', {
                         timestamp: new Date().toISOString()
                     });
@@ -1846,16 +2753,15 @@
                         const $desc = $('input[name="attachmentDescription[]"]');
                         const $fileInputName = $names.last();
                         const $fileInputDescription = $desc.last();
-                        const allowedExtensions =
-                            /(\.jpg|\.jpeg|\.png|\.gif|\.pdf|\.doc|\.xls|\.docx|\.xlsx)$/i;
+                        const allowedExtensions = /(\.pdf)$/i;
                         const fileValue = $fileInputName.val();
                         const descValue = $fileInputDescription.val().trim();
-                        if (fileValue) {
+
+                        // For accounting mode, validate current file before adding new one
+                        if (requestType === 'accounting' && fileValue) {
                             if (!allowedExtensions.exec(fileValue)) {
                                 $fileInputName.addClass('is-invalid');
-                                alert(
-                                    'Invalid file type. Allowed types: jpg, jpeg, png, gif, pdf, doc, xls, docx, xlsx'
-                                );
+                                alert('Invalid file type. Only PDF files are allowed.');
                                 $fileInputName.val('');
                                 return false;
                             }
@@ -1867,6 +2773,7 @@
                             $fileInputName.removeClass('is-invalid');
                             $fileInputDescription.removeClass('is-invalid');
                         }
+
                         $("#attachClone").append(lsthmtl);
                         init++;
                         console.log('Added attachment field. Total:', init);
@@ -1884,6 +2791,80 @@
                 $(this).parents(".cloned-attachment").remove();
                 init--;
                 console.log('Removed attachment field. Total:', init);
+
+                // Re-validate file uploads after removal for accounting mode
+                if (requestType === 'accounting') {
+                    setTimeout(function() {
+                        const isValid = validateFileUpload();
+                        // Show step validation error if no valid files remain (only in step 2)
+                        const currentStep = $('.content.active, .content.dstepper-block').attr(
+                        'id');
+                        if (!isValid && currentStep === 'office-details') {
+                            $('#step2-error-message').text(
+                                'File upload is required for accounting mode. Please upload a PDF file with description.'
+                                );
+                            $('#step2-validation-error').show();
+                        }
+                    }, 100);
+                }
+            });
+
+            // Additional file validation for PDF only
+            $(document).on('change', 'input[name="attachmentNames[]"]', function() {
+                const file = this.files[0];
+                if (file) {
+                    const allowedTypes = ['application/pdf'];
+                    const allowedExtensions = /(\.pdf)$/i;
+
+                    if (!allowedTypes.includes(file.type) && !allowedExtensions.exec(file.name)) {
+                        $(this).addClass('is-invalid').val('');
+                        alert('Invalid file type. Only PDF files are allowed.');
+                        return false;
+                    }
+
+                    // Check file size (optional - limit to 10MB)
+                    const maxSize = 10 * 1024 * 1024; // 10MB in bytes
+                    if (file.size > maxSize) {
+                        $(this).addClass('is-invalid').val('');
+                        alert('File size too large. Maximum size allowed is 10MB.');
+                        return false;
+                    }
+
+                    $(this).removeClass('is-invalid');
+                }
+            });
+
+            // Sort credit days in ascending order
+            function sortCreditDaysAscending() {
+                const $creditDaysSelect = $('#creditDays');
+                const $options = $creditDaysSelect.find('option:not([value=""], [disabled])');
+
+                if ($options.length > 0) {
+                    // Convert options to array and sort by numeric value
+                    const optionsArray = $options.toArray().sort(function(a, b) {
+                        const valueA = parseInt($(a).val()) || 0;
+                        const valueB = parseInt($(b).val()) || 0;
+                        return valueA - valueB;
+                    });
+
+                    // Remove all non-default options
+                    $options.remove();
+
+                    // Append sorted options
+                    optionsArray.forEach(function(option) {
+                        $creditDaysSelect.append(option);
+                    });
+
+                    console.log('Credit days sorted in ascending order');
+                }
+            }
+
+            // Call sort function after DOM is ready and after any AJAX updates
+            sortCreditDaysAscending();
+
+            // Re-sort if credit days are updated via AJAX
+            $(document).on('DOMNodeInserted', '#creditDays option', function() {
+                setTimeout(sortCreditDaysAscending, 100);
             });
 
             // Form submission logging
@@ -1891,6 +2872,7 @@
                 console.log('Form submitting:', {
                     partyEntityType: partyEntityType.val(),
                     companyName: companyNameInput.val(),
+                    companyAutocomplete: companyAutocomplete.val(),
                     companyId: companyIdInput.val(),
                     companyCode: companyCodeInput.val(),
                     otherCheck: $('#otherCheck').is(':checked'),
@@ -1920,11 +2902,59 @@
             // Initialize on page load
             toggleCompanyInput();
             syncClientFields();
-            // Add this line to initialize file upload visibility
+
+            // Initialize country readonly state
+            toggleCountryReadonly();
+
+            // Apply accounting mode styling if needed
+            if (requestType === 'accounting') {
+                $('body').addClass('accounting-mode');
+                $('.file-upload-container').addClass('file-upload-required');
+                console.log('Accounting mode: File upload is mandatory');
+
+                // Show initial validation message for file upload
+                setTimeout(function() {
+                    validateFileUpload();
+                }, 500);
+            }
+
+            // Sort credit days after a short delay to ensure options are loaded
+            setTimeout(function() {
+                sortCreditDaysAscending();
+            }, 1000);
         });
 
+        // Global functions for compatibility
         window.User = {
             value: '{{ auth()->user()->can('edit-client-party') }}'
+        }
+
+        // Define validateForm function if not defined elsewhere
+        if (typeof validateForm === 'undefined') {
+            window.validateForm = function() {
+                const form = document.getElementById('clientPartyForm');
+
+                // Check HTML5 form validity
+                if (!form.checkValidity()) {
+                    console.warn('Form validation failed - HTML5 validation');
+                    return false;
+                }
+
+                // Check company selection for accounting mode
+                if (!validateCompanySelection()) {
+                    console.warn('Form validation failed - Company selection');
+                    return false;
+                }
+
+                // Check file upload for accounting mode
+                if (!validateFileUpload()) {
+                    console.warn('Form validation failed - File upload requirement');
+                    return false;
+                }
+
+                console.log('All form validations passed');
+                return true;
+            };
         }
     </script>
     <script src="{{ asset('js/client-party/show-create-client-party.js') }}"></script>
