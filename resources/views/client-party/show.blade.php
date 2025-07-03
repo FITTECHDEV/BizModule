@@ -188,14 +188,19 @@
 
                                                             <select class="form-control form-control-sm" name="countryID"
                                                                 id="countryID">
-                                                                <option value=""></option>
+                                                                <option value="">Select a Country...</option>
                                                                 @forelse ($countries as $country)
-                                                                    <option
-                                                                        value="{{ old('countryID', $country->CountryID) }}"
-                                                                        id="{{ $country->CountCode }}"
+                                                                    <option value="{{ $country->CountryID }}"
+                                                                        {{-- FIX 1: Value is now the country's actual ID --}}
+                                                                        data-code="{{ $country->CountCode }}"
+                                                                        {{-- FIX 2: Use data-code instead of a duplicate id --}}
                                                                         @if (old('countryID', $clientParty->Address_CountryId) == $country->CountryID) selected @endif>
-                                                                        {{ $country->CountryName }}</option>
+                                                                        {{-- This logic was already correct --}}
+                                                                        {{ $country->CountryName }}
+                                                                    </option>
                                                                 @empty
+                                                                    <option value="" disabled>No countries found
+                                                                    </option>
                                                                 @endforelse
                                                             </select>
 
@@ -207,45 +212,43 @@
                                                         </div>
 
                                                     </div>
+                                                </div>
+                                                {{-- Province zipcode --}}
+                                                <div class="form-group row mb-1 ">
+                                                    <label for="province"
+                                                        class="col-sm-3 col-lg-4 col-form-label col-form-label-sm"><i
+                                                            class="fa fa-map-pin" aria-hidden="true"></i> Province
+                                                        &
+                                                        Zipcode</label>
+                                                    <div class="col-sm-4 col-lg-4">
+                                                        <input type="text" class="form-control form-control-sm "
+                                                            name="provinceName" id="provinceInput"
+                                                            value="{{ old('provinceName', $clientParty->Address_State) }}"
+                                                            placeholder="S / P">
+                                                        <input type="hidden" name="provinceID" id="provinceID"
+                                                            value="{{ old('provinceID', $clientParty->Address_StateId) }}">
+                                                        <input type="hidden" name="provinceCode" id="provinceCode"
+                                                            value="{{ old('provinceCode', $clientParty->Address_StateCode) }}">
+
                                                     </div>
-                                                        {{-- Province zipcode --}}
-                                                        <div class="form-group row mb-1 ">
-                                                            <label for="province"
-                                                                class="col-sm-3 col-lg-4 col-form-label col-form-label-sm"><i
-                                                                    class="fa fa-map-pin" aria-hidden="true"></i> Province
-                                                                &
-                                                                Zipcode</label>
-                                                            <div class="col-sm-4 col-lg-4">
-                                                                <input type="text"
-                                                                    class="form-control form-control-sm "
-                                                                    name="provinceName" id="provinceInput"
-                                                                    value="{{ old('provinceName', $clientParty->Address_State) }}"
-                                                                    placeholder="S / P">
-                                                                <input type="hidden" name="provinceID" id="provinceID"
-                                                                    value="{{ old('provinceID', $clientParty->Address_StateId) }}">
-                                                                <input type="hidden" name="provinceCode"
-                                                                    id="provinceCode"
-                                                                    value="{{ old('provinceCode', $clientParty->Address_StateCode) }}">
+                                                    <div class="col-sm-4 col-lg-4">
+                                                        <input type="text" class="form-control form-control-sm"
+                                                            value="{{ old('zipCode', $clientParty->Address_Pin) }}"
+                                                            name="zipCode" id="zipCode" placeholder="Zip Code">
+                                                    </div>
+                                                </div>
+                                                {{-- City {{ dd($clientParty) }} --}}
+                                                <div class="form-group row mb-1">
+                                                    <label for="cityName"
+                                                        class="col-sm-3 col-lg-4 col-form-label col-form-label-sm"><i
+                                                            class="fas fa-city"></i> City</label>
+                                                    <div class="col-sm-9 col-lg-8">
+                                                        <input type="text" class="form-control form-control-sm"
+                                                            value="{{ old('cityName', $clientParty->Address_City) }}"
+                                                            name="cityName" id="cityInput">
 
-                                                            </div>
-                                                            <div class="col-sm-4 col-lg-4">
-                                                                <input type="text" class="form-control form-control-sm"
-                                                                    value="{{ old('zipCode', $clientParty->Address_Pin) }}"
-                                                                    name="zipCode" id="zipCode" placeholder="Zip Code">
-                                                            </div>
-                                                        </div>
-                                                        {{-- City {{ dd($clientParty) }} --}}
-                                                        <div class="form-group row mb-1">
-                                                            <label for="cityName"
-                                                                class="col-sm-3 col-lg-4 col-form-label col-form-label-sm"><i
-                                                                    class="fas fa-city"></i> City</label>
-                                                            <div class="col-sm-9 col-lg-8">
-                                                                <input type="text" class="form-control form-control-sm"
-                                                                    value="{{ old('cityName', $clientParty->Address_City) }}"
-                                                                    name="cityName" id="cityInput">
-
-                                                            </div>
-                                                        </div>
+                                                    </div>
+                                                </div>
 
                                             </fieldset>
                                         </div>
@@ -372,60 +375,187 @@
                                                 </div>
                                             </fieldset>
 
-                                            <fieldset class="border p-2 card shadow-lg mb-0 pt-0 pb-0">
-                                                <legend>File Upload</legend>
-                                                @if (count($clientParty->attachments) < 3)
-                                                    <label for="attachmentFile">Attachment<span
-                                                            class="text-danger">*</span> <i class="fa fa-paperclip"></i>
-                                                        <button type="button"
-                                                            class="btn btn-sm btn-outline-warning pull-right w-20 addAttachment"
-                                                            id="addFile">
-                                                            <i class="fa fa-plus"></i> File
-                                                        </button>
-                                                    </label>
-                                                    <div class="input-group hdtuto control-group lst increment">
-                                                        <input type="file" name="attachmentNames[]"
-                                                            class="myfrm form-control mr-1 form-control-sm">
-                                                        <input type="text" name="attachmentDescription[]"
-                                                            class="myfrm form-control form-control-sm"
-                                                            placeholder="Description">
-                                                    </div>
-                                                    <div id="attachClone"></div>
-                                                    <div class="clone d-none">
-                                                        <div class="hdtuto control-group lst input-group mt-1"
-                                                            style="">
+                                            {{-- ENHANCED FILE UPLOAD SECTION --}}
+                                            @if ($type === 'accounting')
+                                                <fieldset class="border p-2 card shadow-lg mb-0 pt-0 pb-0">
+                                                    <legend>File Upload (PDF Only)
+                                                        @if ($clientParty->Status !== 'Created' && $clientParty->Status !== 'Submitted')
+                                                            <span class="text-danger">*</span>
+                                                        @endif
+                                                    </legend>
+
+                                                    {{-- File Upload Controls (only show if status allows editing) --}}
+                                                    @if ($clientParty->Status !== 'Created' && $clientParty->Status !== 'Submitted' && count($clientParty->attachments) < 3)
+                                                        <div class="file-upload-container">
+                                                            <label for="attachmentFile">Attachment (PDF files only) <i
+                                                                    class="fa fa-paperclip"></i>
+                                                                @if ($clientParty->Status !== 'Created' && $clientParty->Status !== 'Submitted')
+                                                                    <span class="text-danger">Required for accounting
+                                                                        mode</span>
+                                                                @endif
+                                                                <button type="button"
+                                                                    class="btn btn-sm btn-outline-warning float-right w-20 addAttachment"
+                                                                    id="addFile">
+                                                                    <i class="fa fa-plus"></i> Add File
+                                                                </button>
+                                                            </label>
+
+                                                            <div class="input-group hdtuto control-group lst increment"
+                                                                id="initial-attachment">
+                                                                <input id="attachments" type="file"
+                                                                    name="attachmentNames[]"
+                                                                    class="myfrm form-control mr-1 form-control-sm"
+                                                                    accept="application/pdf,.pdf"
+                                                                    title="Only PDF files are accepted"
+                                                                    @if ($clientParty->Status !== 'Created' && $clientParty->Status !== 'Submitted') required @endif>
+                                                                <input type="text" name="attachmentDescription[]"
+                                                                    class="myfrm form-control form-control-sm"
+                                                                    placeholder="Description"
+                                                                    @if ($clientParty->Status !== 'Created' && $clientParty->Status !== 'Submitted') required @endif>
+                                                            </div>
+                                                            <small class="text-muted">📄 Only PDF files are accepted (Max
+                                                                10MB)
+                                                                @if ($clientParty->Status !== 'Created' && $clientParty->Status !== 'Submitted')
+                                                                    <span class="text-danger font-weight-bold">- File
+                                                                        upload is mandatory for accounting mode</span>
+                                                                @endif
+                                                            </small>
+                                                            <div id="file-upload-error" class="text-danger mt-2"
+                                                                style="display: none;">
+                                                                <i class="fa fa-exclamation-triangle"></i> At least one
+                                                                file is required for accounting mode.
+                                                            </div>
+                                                            <div id="attachClone"></div>
+                                                        </div>
+                                                    @endif
+
+                                                    {{-- Display Existing Files --}}
+                                                    @if (count($clientParty->attachments) > 0)
+                                                        <div class="existing-files-section mt-3">
+                                                            <h6 class="font-weight-bold text-muted mb-2">
+                                                                <i class="fa fa-paperclip text-primary"></i>
+                                                                Uploaded Files ({{ count($clientParty->attachments) }})
+                                                            </h6>
+
+                                                            <div class="uploaded-files-container">
+                                                                @foreach ($clientParty->attachments as $index => $attachment)
+                                                                    <div class="file-item mb-2 p-2 border rounded"
+                                                                        data-file-id="{{ $attachment->ID }}"
+                                                                        data-file-type="pdf">
+                                                                        <div class="row align-items-center">
+                                                                            <div class="col-md-8">
+                                                                                <div class="file-info">
+                                                                                    <span
+                                                                                        class="file-icon text-danger mr-2">
+                                                                                        <i
+                                                                                            class="fa fa-file-pdf-o fa-lg"></i>
+                                                                                    </span>
+                                                                                    <div
+                                                                                        class="file-details d-inline-block">
+                                                                                        <strong
+                                                                                            class="file-name">{{ $attachment->FileName }}</strong>
+                                                                                        @if ($attachment->Title)
+                                                                                            <br>
+                                                                                            <small
+                                                                                                class="text-muted file-description">
+                                                                                                <i
+                                                                                                    class="fa fa-comment-o"></i>
+                                                                                                {{ $attachment->Title }}
+                                                                                            </small>
+                                                                                        @endif
+                                                                                        <div class="file-meta">
+                                                                                            <small class="text-muted">
+                                                                                                <i
+                                                                                                    class="fa fa-calendar"></i>
+                                                                                                Uploaded:
+                                                                                                {{ \Carbon\Carbon::parse($attachment->CreatedOn ?? now())->format('M d, Y') }}
+                                                                                            </small>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                </div>
+                                                                            </div>
+                                                                            <div class="col-md-4 text-right">
+                                                                                <div class="file-actions">
+                                                                                    {{-- Preview/Download Button --}}
+                                                                                    <a href="{{ route('client-party.preview', [$attachment->CustEntityID]) }}"
+                                                                                        class="btn btn-sm btn-outline-primary mr-1"
+                                                                                        target="_blank"
+                                                                                        data-toggle="tooltip"
+                                                                                        title="Preview/Download PDF">
+                                                                                        <i class="fa fa-eye"></i> View
+                                                                                    </a>
+
+                                                                                    {{-- Delete Button (only show if status allows editing) --}}
+                                                                                    @if ($clientParty->Status !== 'Created' && $clientParty->Status !== 'Submitted')
+                                                                                        <button type="button"
+                                                                                            class="btn btn-sm btn-outline-danger deleteFile"
+                                                                                            data-file-id="{{ $attachment->ID }}"
+                                                                                            data-toggle="tooltip"
+                                                                                            title="Delete File">
+                                                                                            <i class="fa fa-trash"></i>
+                                                                                        </button>
+                                                                                    @endif
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                @endforeach
+                                                            </div>
+
+                                                            {{-- File Statistics --}}
+                                                            <div class="file-statistics mt-2 p-2 bg-light rounded">
+                                                                <small class="text-muted">
+                                                                    <i class="fa fa-info-circle"></i>
+                                                                    <strong>{{ count($clientParty->attachments) }}</strong>
+                                                                    file(s) uploaded
+                                                                    @if (count($clientParty->attachments) >= 3)
+                                                                        <span class="text-warning">• Maximum limit
+                                                                            reached</span>
+                                                                    @else
+                                                                        <span class="text-success">•
+                                                                            {{ 3 - count($clientParty->attachments) }} more
+                                                                            file(s) can be added</span>
+                                                                    @endif
+                                                                </small>
+                                                            </div>
+                                                        </div>
+                                                    @else
+                                                        {{-- No Files Uploaded Message --}}
+                                                        <div
+                                                            class="no-files-message text-center p-4 bg-light rounded mt-3">
+                                                            <i class="fa fa-file-o fa-3x text-muted mb-2"></i>
+                                                            <p class="text-muted mb-0">
+                                                                @if ($clientParty->Status === 'Created' || $clientParty->Status === 'Submitted')
+                                                                    No files were uploaded with this request.
+                                                                @else
+                                                                    No files uploaded yet. Please upload required PDF
+                                                                    documents.
+                                                                @endif
+                                                            </p>
+                                                        </div>
+                                                    @endif
+
+                                                    {{-- Clone Template for Dynamic File Addition --}}
+                                                    <div class="clone-template d-none">
+                                                        <div
+                                                            class="hdtuto control-group lst input-group mt-1 cloned-attachment">
                                                             <input type="file" name="attachmentNames[]"
-                                                                class="myfrm form-control mr-1 form-control-sm">
+                                                                class="myfrm form-control mr-1 form-control-sm"
+                                                                accept="application/pdf,.pdf"
+                                                                title="Only PDF files are accepted">
                                                             <input type="text" name="attachmentDescription[]"
                                                                 class="myfrm form-control form-control-sm"
                                                                 placeholder="Description">
                                                             <div class="input-group-btn">
-                                                                <button class="btn btn-danger btn-sm" type="button"
-                                                                    style="">
-                                                                    <i class="fldemo fa fa-minus"></i> </button>
+                                                                <button class="btn btn-danger btn-sm remove-attachment"
+                                                                    type="button">
+                                                                    <i class="fa fa-minus"></i>
+                                                                </button>
                                                             </div>
                                                         </div>
                                                     </div>
-                                                @endif
-                                                @if (count($clientParty->attachments) > 0)
-                                                    <ul>
-                                                        {{-- <a href="{{ route('client-party.preview',[$attachment->Id]) }}"></a> --}}
-                                                        {{-- {{ route('client-party.preview',[$attachment->Id]) }} --}}
-                                                        @foreach ($clientParty->attachments as $attachment)
-                                                            <li><a
-                                                                    href="{{ route('client-party.preview', [$attachment->CustEntityID]) }}">{{ $attachment->FileName }}
-                                                                    | {{ $attachment->Title }}</a> <a href="#"
-                                                                    class="deleteFile" id="{{ $attachment->ID }}"><i
-                                                                        class="fa fa-times-circle text-danger"></i></a>
-                                                            </li>
-                                                        @endforeach
-
-                                                        {{-- @foreach ($clientParty as $client)
-                                                        <li><a href="{{ route('client-party.preview', [$client->Id]) }}">{{ $client->attachments->FileName }} | {{ $client->attachments->Title }}</a> <a href="#" class="deleteFile" id="{{ $attachment->ID }}"><i class="fa fa-times-circle text-danger"></i></a></li>
-                                                    @endforeach --}}
-                                                    </ul>
-                                                @endif
-                                            </fieldset>
+                                                </fieldset>
+                                            @endif
                                         </div>
                                         <div class="col-md-8 col-lg-12 col-sm-12">
 
@@ -783,12 +913,50 @@
                         </div>
                     </div>
                 </div>
+
+                {{-- Cancel Modal --}}
+                <div class="modal fade" id="cancelModal" tabindex="-1" role="dialog"
+                    aria-labelledby="cancelModalLabel" aria-hidden="true">
+                    <div class="modal-dialog" role="document">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="cancelModalLabel">Reject Entity Request</h5>
+                                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                    <span aria-hidden="true">&times;</span>
+                                </button>
+                            </div>
+                            <form id="cancelForm">
+                                <div class="modal-body">
+                                    <div class="form-group">
+                                        <label for="level">Rejection Level</label>
+                                        <select class="form-control" id="level" name="level" required>
+                                            <option value="">Select Level</option>
+                                            <option value="Rejected">Reject</option>
+                                            <option value="Review">Review</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="reason">Reason for Rejection</label>
+                                        <textarea class="form-control" id="reason" name="reason" rows="3" required
+                                            placeholder="Please provide a detailed reason for rejection..."></textarea>
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" id="close-modal">Cancel</button>
+                                    <button type="button" class="btn btn-danger" id="submit-entity">Submit
+                                        Rejection</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
             @stop
 
             @section('css')
                 <!-- ============================================
-                         EXTERNAL STYLESHEETS
-                    ============================================ -->
+                                         EXTERNAL STYLESHEETS
+                                    ============================================ -->
                 <!-- Bootstrap Stepper -->
                 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bs-stepper/dist/css/bs-stepper.min.css">
 
@@ -800,8 +968,8 @@
 
                 <style>
                     /* ============================================
-                           CSS VARIABLES (Custom Properties)
-                        ============================================ */
+                                           CSS VARIABLES (Custom Properties)
+                                        ============================================ */
                     :root {
                         --primary-color: #007bff;
                         --primary-hover: #0056b3;
@@ -823,12 +991,12 @@
                     }
 
                     /* ============================================
-                           CARD COMPONENTS
-                        ============================================ */
+                                           CARD COMPONENTS
+                                        ============================================ */
                     .card {
                         border: none;
                         border-radius: var(--border-radius-md);
-                        transition: var(--transition-base);
+                        transiti]on: var(--transition-base);
                         box-shadow: var(--shadow-light);
                     }
 
@@ -845,8 +1013,128 @@
                     }
 
                     /* ============================================
-                           BADGE SYSTEM
-                        ============================================ */
+                                           ENHANCED FILE DISPLAY STYLES
+                                        ============================================ */
+                    .file-item {
+                        background: #f8f9fa;
+                        transition: all 0.3s ease;
+                        border: 1px solid #e9ecef !important;
+                        border-radius: 8px;
+                    }
+
+                    .file-item:hover {
+                        background: #e9ecef;
+                        border-color: #007bff !important;
+                        transform: translateY(-1px);
+                        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+                    }
+
+                    .file-icon .fa-file-pdf-o {
+                        color: #dc3545;
+                        font-size: 1.2rem;
+                    }
+
+                    .file-name {
+                        color: #495057;
+                        font-size: 0.9rem;
+                        font-weight: 500;
+                        cursor: pointer;
+                    }
+
+                    .file-name:hover {
+                        color: #007bff;
+                        text-decoration: underline;
+                    }
+
+                    .file-description {
+                        font-size: 0.8rem;
+                        color: #6c757d;
+                        margin-top: 2px;
+                    }
+
+                    .file-meta {
+                        font-size: 0.75rem;
+                        color: #6c757d;
+                        margin-top: 0.25rem;
+                    }
+
+                    .file-actions .btn {
+                        font-size: 0.8rem;
+                        padding: 0.25rem 0.5rem;
+                        margin: 0 2px;
+                    }
+
+                    .file-statistics {
+                        border-left: 4px solid #007bff;
+                        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+                    }
+
+                    .no-files-message {
+                        border: 2px dashed #dee2e6;
+                        background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+                    }
+
+                    .existing-files-section h6 {
+                        border-bottom: 2px solid #dee2e6;
+                        padding-bottom: 0.5rem;
+                        color: #495057;
+                    }
+
+                    .uploaded-files-container {
+                        max-height: 400px;
+                        overflow-y: auto;
+                    }
+
+                    /* File validation states */
+                    .file-item.invalid {
+                        border-color: #dc3545 !important;
+                        background-color: #f8d7da;
+                    }
+
+                    .file-item.valid {
+                        border-color: #28a745 !important;
+                        background-color: #d4edda;
+                    }
+
+                    /* Animation for file deletion */
+                    .file-item.deleting {
+                        opacity: 0.5;
+                        transform: scale(0.95);
+                        transition: all 0.3s ease;
+                    }
+
+                    /* Accounting mode specific styling */
+                    .accounting-mode .file-upload-container {
+                        border: 2px dashed #dc3545;
+                        border-radius: 8px;
+                        padding: 12px;
+                        background-color: #fff5f5;
+                    }
+
+                    .accounting-mode .file-upload-container.has-files {
+                        border-color: #28a745;
+                        background-color: #f8fff9;
+                    }
+
+                    /* PDF file specific styling */
+                    .file-item[data-file-type="pdf"] {
+                        border-left: 4px solid #dc3545;
+                    }
+
+                    /* Enhanced buttons for file actions */
+                    .file-actions .btn-outline-primary:hover {
+                        background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+                        border-color: #0056b3;
+                    }
+
+                    .file-actions .btn-outline-danger:hover {
+                        background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+                        border-color: #c82333;
+                    }
+
+                    /* ============================================
+                                           BADGE SYSTEM
+                                        ============================================ */
                     .badge {
                         font-size: 0.9rem;
                         padding: 0.5em 1em;
@@ -922,8 +1210,8 @@
                     }
 
                     /* ============================================
-                           TYPOGRAPHY
-                        ============================================ */
+                                           TYPOGRAPHY
+                                        ============================================ */
                     .text-muted {
                         font-size: 0.95rem;
                         color: var(--muted-color) !important;
@@ -944,8 +1232,8 @@
                     }
 
                     /* ============================================
-                           FIELDSET & LEGEND STYLING
-                        ============================================ */
+                                           FIELDSET & LEGEND STYLING
+                                        ============================================ */
                     fieldset {
                         border: 2px solid var(--border-color);
                         border-radius: var(--border-radius-md);
@@ -985,8 +1273,8 @@
                     }
 
                     /* ============================================
-                           FORM ELEMENTS
-                        ============================================ */
+                                           FORM ELEMENTS
+                                        ============================================ */
                     .form-control:focus {
                         border-color: var(--primary-color);
                         box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
@@ -1014,8 +1302,8 @@
                     }
 
                     /* ============================================
-                           DISABLED STATES
-                        ============================================ */
+                                           DISABLED STATES
+                                        ============================================ */
                     .disabled {
                         opacity: 0.6;
                         cursor: not-allowed;
@@ -1040,8 +1328,8 @@
                     }
 
                     /* ============================================
-                           TOOLTIP ENHANCEMENTS
-                        ============================================ */
+                                           TOOLTIP ENHANCEMENTS
+                                        ============================================ */
                     .tooltip-inner {
                         background: linear-gradient(135deg, var(--dark-color) 0%, #495057 100%);
                         color: white;
@@ -1056,8 +1344,8 @@
                     }
 
                     /* ============================================
-                           LOADING & PRELOADER
-                        ============================================ */
+                                           LOADING & PRELOADER
+                                        ============================================ */
                     #loader {
                         display: none;
                         position: fixed;
@@ -1148,84 +1436,8 @@
                     }
 
                     /* ============================================
-                           SWEETALERT2 CUSTOMIZATION
-                        ============================================ */
-                    .swal2-popup {
-                        border-radius: var(--border-radius-md);
-                        font-family: inherit;
-                        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-                    }
-
-                    .swal2-title {
-                        font-size: 1.5rem;
-                        font-weight: 600;
-                        color: var(--dark-color);
-                        margin-bottom: 1rem;
-                    }
-
-                    .swal2-content {
-                        font-size: 1rem;
-                        color: var(--muted-color);
-                        line-height: 1.5;
-                    }
-
-                    .swal2-confirm {
-                        background: linear-gradient(135deg, var(--success-color) 0%, #1e7e34 100%);
-                        border: none;
-                        border-radius: var(--border-radius-sm);
-                        padding: 0.75rem 1.5rem;
-                        font-weight: 500;
-                        transition: var(--transition-base);
-                    }
-
-                    .swal2-confirm:hover {
-                        background: linear-gradient(135deg, #1e7e34 0%, #155724 100%);
-                        transform: translateY(-1px);
-                        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-                    }
-
-                    .swal2-cancel {
-                        background: linear-gradient(135deg, var(--muted-color) 0%, #5a6268 100%);
-                        border: none;
-                        border-radius: var(--border-radius-sm);
-                        padding: 0.75rem 1.5rem;
-                        font-weight: 500;
-                        transition: var(--transition-base);
-                    }
-
-                    .swal2-cancel:hover {
-                        background: linear-gradient(135deg, #5a6268 0%, #495057 100%);
-                        transform: translateY(-1px);
-                        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-                    }
-
-                    .swal2-icon.swal2-success .swal2-success-ring {
-                        border: 4px solid var(--success-color);
-                    }
-
-                    .swal2-icon.swal2-error .swal2-x-mark {
-                        color: var(--danger-color);
-                    }
-
-                    .swal2-icon.swal2-warning {
-                        color: var(--warning-color);
-                    }
-
-                    .swal2-icon.swal2-info {
-                        color: var(--info-color);
-                    }
-
-                    .swal2-progress-steps .swal2-progress-step {
-                        background-color: var(--primary-color);
-                    }
-
-                    .swal2-timer-progress-bar {
-                        background: linear-gradient(90deg, var(--primary-color) 0%, var(--success-color) 100%);
-                    }
-
-                    /* ============================================
-                           BUTTON ENHANCEMENTS
-                        ============================================ */
+                                           BUTTON ENHANCEMENTS
+                                        ============================================ */
                     .btn {
                         border-radius: var(--border-radius-sm);
                         font-weight: 500;
@@ -1265,8 +1477,8 @@
                     }
 
                     /* ============================================
-                           RESPONSIVE DESIGN
-                        ============================================ */
+                                           RESPONSIVE DESIGN
+                                        ============================================ */
                     @media (max-width: 768px) {
                         .card {
                             margin-bottom: 1rem;
@@ -1281,14 +1493,29 @@
                             padding: 0.4em 0.8em;
                         }
 
-                        .swal2-popup {
-                            margin: 1rem;
+                        .file-item .row {
+                            flex-direction: column;
+                        }
+
+                        .file-item .col-md-8,
+                        .file-item .col-md-4 {
+                            flex: 0 0 100%;
+                            max-width: 100%;
+                        }
+
+                        .file-actions {
+                            margin-top: 0.5rem;
+                            text-align: left !important;
+                        }
+
+                        .file-actions .btn {
+                            margin-bottom: 0.25rem;
                         }
                     }
 
                     /* ============================================
-                           UTILITY CLASSES
-                        ============================================ */
+                                           UTILITY CLASSES
+                                        ============================================ */
                     .shadow-soft {
                         box-shadow: var(--shadow-light);
                     }
@@ -1322,8 +1549,8 @@
                     }
 
                     /* ============================================
-                           PRINT STYLES
-                        ============================================ */
+                                           PRINT STYLES
+                                        ============================================ */
                     @media print {
 
                         .btn,
@@ -1344,8 +1571,6 @@
                     }
                 </style>
             @stop
-
-
 
             @section('js')
                 <!-- SweetAlert2 JS -->
@@ -1436,8 +1661,186 @@
                     window.approve_client_party = `{{ $approve }}`;
                     window.default_bill_curr = `{{ $clientParty->BillingCurrencyId }}`;
 
+                    window.requestType = @json($type ?? 'operational');
+
                     //New Code
                     $(document).ready(function() {
+                        // Enhanced File Handling Functions
+                        function validateFile(fileInput) {
+                            const file = fileInput.files[0];
+                            if (!file) return false;
+
+                            const allowedTypes = ['application/pdf'];
+                            const allowedExtensions = /(\.pdf)$/i;
+                            const maxSize = 10 * 1024 * 1024; // 10MB
+
+                            if (!allowedTypes.includes(file.type) && !allowedExtensions.exec(file.name)) {
+                                SwalUtils.error('Invalid File Type', 'Only PDF files are allowed.');
+                                fileInput.value = '';
+                                return false;
+                            }
+
+                            if (file.size > maxSize) {
+                                SwalUtils.error('File Too Large', 'File size must be less than 10MB.');
+                                fileInput.value = '';
+                                return false;
+                            }
+
+                            return true;
+                        }
+
+                        function formatFileSize(bytes) {
+                            if (bytes === 0) return '0 Bytes';
+                            const k = 1024;
+                            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+                            const i = Math.floor(Math.log(bytes) / Math.log(k));
+                            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+                        }
+
+                        function updateFileStatistics() {
+                            const fileCount = $('.file-item:not(.deleting)').length;
+                            const maxFiles = 3;
+                            const remainingFiles = maxFiles - fileCount;
+
+                            let statisticsHtml = `<strong>${fileCount}</strong> file(s) uploaded `;
+                            if (fileCount >= maxFiles) {
+                                statisticsHtml += '<span class="text-warning">• Maximum limit reached</span>';
+                            } else {
+                                statisticsHtml +=
+                                    `<span class="text-success">• ${remainingFiles} more file(s) can be added</span>`;
+                            }
+
+                            $('.file-statistics small').html('<i class="fa fa-info-circle"></i> ' + statisticsHtml);
+
+                            // Show/hide add file button based on limit
+                            if (fileCount >= maxFiles) {
+                                $('.addAttachment').hide();
+                            } else {
+                                $('.addAttachment').show();
+                            }
+                        }
+
+                        // File input change handler with enhanced validation
+                        $(document).on('change', 'input[name="attachmentNames[]"]', function() {
+                            const isValid = validateFile(this);
+                            const fileItem = $(this).closest('.file-item');
+
+                            if (isValid) {
+                                fileItem.addClass('valid').removeClass('invalid');
+                                const file = this.files[0];
+                                const fileSize = formatFileSize(file.size);
+
+                                // Add file metadata
+                                const metaInfo =
+                                    `<div class="file-meta">Size: ${fileSize} • ${new Date().toLocaleDateString()}</div>`;
+                                fileItem.find('.file-details').append(metaInfo);
+                            } else {
+                                fileItem.addClass('invalid').removeClass('valid');
+                            }
+                        });
+
+                        // Enhanced delete file handler with improved UX
+                        $(document).on('click', '.deleteFile', async function(e) {
+                            e.preventDefault();
+
+                            const fileId = $(this).data('file-id');
+                            const fileItem = $(this).closest('.file-item');
+                            const fileName = fileItem.find('.file-name').text();
+
+                            // Enhanced confirmation dialog
+                            const confirmResult = await SwalUtils.confirm(
+                                'Delete File?',
+                                `Are you sure you want to delete "${fileName}"? This action cannot be undone.`,
+                                'Yes, Delete!',
+                                'Cancel'
+                            );
+
+                            if (!confirmResult.isConfirmed) return;
+
+                            // Add deleting animation
+                            fileItem.addClass('deleting');
+                            $(this).prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i>');
+
+                            // Show loading with file name
+                            SwalUtils.loading('Deleting File', `Deleting "${fileName}"...`);
+
+                            try {
+                                const response = await $.ajax({
+                                    url: `/delete-client-party-attachment/${fileId}`,
+                                    type: 'POST',
+                                    dataType: 'json',
+                                    headers: {
+                                        'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                                    }
+                                });
+
+                                if (response[1] == 200) {
+                                    await SwalUtils.success('Deleted!',
+                                        `"${fileName}" has been deleted successfully.`, 2000);
+
+                                    // Remove file item with enhanced animation
+                                    fileItem.fadeOut(300, function() {
+                                        $(this).remove();
+                                        updateFileStatistics();
+
+                                        // Check if no files remain
+                                        if ($('.file-item').length === 0) {
+                                            $('.existing-files-section').fadeOut(300);
+                                            $('.no-files-message').fadeIn(300);
+                                        }
+                                    });
+                                } else {
+                                    fileItem.removeClass('deleting');
+                                    $(this).prop('disabled', false).html('<i class="fa fa-trash"></i>');
+                                    await SwalUtils.error('Deletion Failed', 'Unable to delete the file.');
+                                }
+                            } catch (xhr) {
+                                fileItem.removeClass('deleting');
+                                $(this).prop('disabled', false).html('<i class="fa fa-trash"></i>');
+                                console.error('Delete file error:', xhr);
+                                await SwalUtils.error('Deletion Failed',
+                                    xhr.responseJSON?.message || 'An error occurred while deleting the file.');
+                            }
+                        });
+
+                        // Enhanced add attachment functionality
+                        let attachmentCount = {{ count($clientParty->attachments) }};
+                        const maxAttachments = 3;
+
+                        $('.addAttachment').click(async function(e) {
+                            e.preventDefault();
+
+                            if (attachmentCount >= maxAttachments) {
+                                await SwalUtils.warning('Limit Reached',
+                                    'Maximum file attachment limit reached (3 files).');
+                                return;
+                            }
+
+                            const cloneHtml = $('.clone-template').html();
+                            $('#attachClone').append(cloneHtml);
+                            attachmentCount++;
+
+                            updateFileStatistics();
+                        });
+
+                        // Remove attachment handler
+                        $(document).on('click', '.remove-attachment', function() {
+                            $(this).closest('.cloned-attachment').fadeOut(300, function() {
+                                $(this).remove();
+                                attachmentCount--;
+                                updateFileStatistics();
+                            });
+                        });
+
+                        // File preview enhancement
+                        $(document).on('click', '.file-item .file-name', function(e) {
+                            e.preventDefault();
+                            const previewUrl = $(this).closest('.file-item').find('a[href*="preview"]').attr('href');
+                            if (previewUrl) {
+                                window.open(previewUrl, '_blank');
+                            }
+                        });
+
                         // Handle legalEntityType visibility
                         let type = document.body.dataset.type;
                         console.log("Type:-", type);
@@ -1463,11 +1866,11 @@
                         // Make all form fields read-only or disabled, EXCLUDING the <fieldset> inputs
                         // Selects (excluding those in the <fieldset>)
                         $('select[name="partyEntityType"], select[name="legalEntityType"], select[name="countryID"], select[name="officeCountry"], select[name="billingCurrency"], select[name="licenceTypeID"], #level')
-                            .prop('disabled', true);
+                            .prop('readonly', true);
 
                         // Checkboxes (excluding those in the <fieldset>)
                         $('input[name="otherCheck"]:not(.border.p-2 input), input[name="debtorCheck"]:not(.border.p-2 input), input[name="vendorCheck"]:not(.border.p-2 input)')
-                            .prop('disabled', true);
+                            .prop('readonly', true);
 
                         // Text inputs and textareas (excluding those in the <fieldset>)
                         $('input[name="companyName"], input[name="provinceName"], input[name="zipCode"], input[name="cityName"], input[name="firstName"], input[name="lastName"], input[name="department"], input[name="phoneNo"], input[name="contractEmail"], textarea[name="addressLine1"], textarea[name="addressLine2"], input[name="attachmentDescription[]"], textarea[name="reason"], input[name="creditDays"], input[name="maxCreditLimit"], input[name="baseCurrency"], input[name="licenceTypeValue"]')
@@ -1496,6 +1899,7 @@
                                     true);
                                 $('#admin-details table input[type="text"]').prop('readonly', true).prop('disabled',
                                     true);
+                                // $('#admin-details table input[
                                 $('#admin-details table input[type="hidden"]').prop('disabled', true);
 
                                 // Force disable by ID and name - more specific targeting
@@ -1529,8 +1933,6 @@
                                     'background-color': '#f8f9fa'
                                 }).off().attr('onclick', '').removeAttr('data-toggle').removeAttr('title');
 
-                                // Add a disabled class to the entire admin section
-                                $('#admin-details').addClass('admin-section-disabled');
 
                                 // 🎯 Updated: Prevent any form submission from admin section with SweetAlert2
                                 $('#admin-details form').on('submit', async function(e) {
@@ -1762,8 +2164,11 @@
                                 } else if (currentStatus === 'PendingCountryLevelApproval') {
                                     targetStatus = 'PendingGroupLevelApproval';
                                 } else if (currentStatus === 'PendingGroupLevelApproval') {
+                                    targetStatus = 'PendingITVerification';
+                                }else if (currentStatus === 'PendingITVerification') {
                                     targetStatus = 'Created';
-                                } else {
+                                }
+                                 else {
                                     // 🎯 SweetAlert2 error
                                     await SwalUtils.error('Invalid Action',
                                         `Approval not allowed for status: ${currentStatus}`);

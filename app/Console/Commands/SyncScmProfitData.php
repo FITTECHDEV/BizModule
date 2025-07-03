@@ -176,4 +176,3 @@ class SyncScmProfitData extends Command
     }
 }
 
-// Compare this snippet from app/Console/Commands/SyncScmProfitData.php:
