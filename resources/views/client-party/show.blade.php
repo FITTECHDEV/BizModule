@@ -331,6 +331,7 @@
                                         data-placement="top" title="" data-bs-original-title="Update"><i
                                             class="fa fa-edit" aria-hidden="true"></i> Update for later</button> --}}
                                 </div>
+                                {{-- Office Details Content Section --}}
                                 <div id="office-details" class="content active dstepper-block" role="tabpanel"
                                     aria-labelledby="office-details-trigger">
                                     <div class="row">
@@ -371,7 +372,6 @@
                                                         <input type="hidden" name="officeCountryID" id="officeCountryID"
                                                             value="{{ old('officeCountryID', $clientParty->OfficeID) }}">
                                                     </div>
-
                                                 </div>
                                             </fieldset>
 
@@ -560,8 +560,6 @@
                                         <div class="col-md-8 col-lg-12 col-sm-12">
 
                                             @if ($type === 'accounting')
-
-
                                                 <fieldset class="border p-2 card shadow-lg mb-0 pt-0">
                                                     <legend class="w-auto p-0 m-0">Debtor/Vendor</legend>
                                                     <div class="row">
@@ -710,20 +708,55 @@
                                                         </div>
                                                     </div>
                                                 </fieldset>
-
                                             @endif
 
                                         </div>
                                     </div>
+
+                                    {{-- Navigation Buttons Section in Office Details --}}
                                     <button class="btn btn-primary m-2 btn-sm" type="button" name="previous"
                                         onclick="stepper.previous()"><i class="fa fa-step-backward"
                                             aria-hidden="true"></i>
                                         Previous</button>
-                                    @if (Auth::user()->can('create-client-party'))
+
+                                    {{-- Check user permissions for button display --}}
+                                    @if (Auth::user()->can('approve-entity-request'))
+                                        {{-- User can approve entity - show approve/reject buttons here --}}
+                                        @if ($approve)
+                                            <button type="button" name="approveBtn" id="approveBtn"
+                                                class="btn btn-outline-success float-right m-2 btn-sm"
+                                                data-toggle="tooltip" data-placement="top" title="Approve For Creation"
+                                                data-bs-original-title="Approve For Creation">
+                                                <i class="fa fa-check" aria-hidden="true"></i> Approve
+                                            </button>
+                                            <button type="button" name="rejectBtn" id="rejectBtn" data-toggle="modal"
+                                                data-target="#cancelModal" class="btn btn-danger float-right m-2 btn-sm"
+                                                data-toggle="tooltip" data-placement="top" title="Reject For Amendment"
+                                                data-bs-original-title="Reject For Amendment">
+                                                <i class="fa fa-edit" aria-hidden="true"></i> Reject
+                                            </button>
+                                        @else
+                                            <button type="submit" name="createBtn" value="true"
+                                                class="btn btn-outline-success float-right m-2 btn-sm"
+                                                data-toggle="tooltip" data-placement="top"
+                                                title="Approve Entity For Creation"
+                                                data-bs-original-title="Approve Entity For Creation">
+                                                <i class="fa fa-check" aria-hidden="true"></i> Create
+                                            </button>
+                                            <button type="button" name="rejectBtn" id="rejectBtn" data-toggle="modal"
+                                                data-target="#cancelModal" class="btn btn-danger float-right m-2 btn-sm"
+                                                data-toggle="tooltip" data-placement="top" title="Reject For Amendment"
+                                                data-bs-original-title="Reject For Amendment">
+                                                <i class="fa fa-edit" aria-hidden="true"></i> Reject
+                                            </button>
+                                        @endif
+                                    @elseif (Auth::user()->can('create-client-party'))
+                                        {{-- User can create client party - show Next button to go to Admin Details --}}
                                         <button class="btn btn-primary m-2 btn-sm float-right" type="button"
                                             name="next" onclick="stepper.next()">Next <i class="fa fa-step-forward"
                                                 aria-hidden="true"></i></button>
                                     @else
+                                        {{-- Regular user - show Submit/Update buttons --}}
                                         <button type="submit" name="submitBtn" value="true"
                                             class="btn btn-outline-success btn-sm float-right m-2" data-toggle="tooltip"
                                             data-placement="top" title="Will be processed by admin"><i
@@ -735,6 +768,7 @@
                                             Update for later</button>
                                     @endif
                                 </div>
+
 
                                 {{-- Admin Details --}}
                                 @if (Auth::user()->can('create-client-party'))
@@ -823,32 +857,40 @@
                                                 <button class="btn btn-primary m-2 btn-sm" type="button" name="previous"
                                                     onclick="stepper.previous()"><i class="fa fa-step-backward"
                                                         aria-hidden="true"></i> Previous</button>
-                                                @if ($approve)
-                                                    <button type="button" name="approveBtn" id="approveBtn"
-                                                        class="btn btn-outline-success float-right m-2 btn-sm disabled"
-                                                        data-toggle="tooltip" data-placement="top" title=""
-                                                        data-bs-original-title="Approve For Creation" disabled><i
-                                                            class="fa fa-check" aria-hidden="true"></i> Approve</button>
-                                                    <button type="button" name="rejectBtn" id="rejectBtn"
-                                                        data-toggle="modal" data-target="#cancelModal"
-                                                        class="btn btn-danger float-right m-2 btn-sm disabled"
-                                                        data-toggle="tooltip" data-placement="top"
-                                                        title="Reject For Amendment" data-bs-original-title="Update"
-                                                        disabled>
-                                                        <i class="fa fa-edit" aria-hidden="true"></i> Reject </button>
-                                                @else
-                                                    <button type="submit" name="createBtn" value="true"
-                                                        class="btn btn-outline-success float-right m-2 btn-sm disabled"
-                                                        data-toggle="tooltip" data-placement="top" title=""
-                                                        data-bs-original-title="Approve Entity For Creation" disabled><i
-                                                            class="fa fa-check" aria-hidden="true"></i> Create</button>
-                                                    <button type="button" name="rejectBtn" id="rejectBtn"
-                                                        data-toggle="modal" data-target="#cancelModal"
-                                                        class="btn btn-danger float-right m-2 btn-sm disabled"
-                                                        data-toggle="tooltip" data-placement="top"
-                                                        title="Reject For Amendment" data-bs-original-title="Update"
-                                                        disabled>
-                                                        <i class="fa fa-edit" aria-hidden="true"></i> Reject </button>
+
+                                                {{-- Approve/Reject buttons in Admin Details (only if user cannot approve-entity) --}}
+                                                @if (!Auth::user()->can('approve-entity-request'))
+                                                    @if ($approve)
+                                                        <button type="button" name="approveBtn" id="approveBtn"
+                                                            class="btn btn-outline-success float-right m-2 btn-sm"
+                                                            data-toggle="tooltip" data-placement="top"
+                                                            title="Approve For Creation"
+                                                            data-bs-original-title="Approve For Creation">
+                                                            <i class="fa fa-check" aria-hidden="true"></i> Approve
+                                                        </button>
+                                                        <button type="button" name="rejectBtn" id="rejectBtn"
+                                                            data-toggle="modal" data-target="#cancelModal"
+                                                            class="btn btn-danger float-right m-2 btn-sm"
+                                                            data-toggle="tooltip" data-placement="top"
+                                                            title="Reject For Amendment" data-bs-original-title="Update">
+                                                            <i class="fa fa-edit" aria-hidden="true"></i> Reject
+                                                        </button>
+                                                    @else
+                                                        <button type="submit" name="createBtn" value="true"
+                                                            class="btn btn-outline-success float-right m-2 btn-sm"
+                                                            data-toggle="tooltip" data-placement="top"
+                                                            title="Approve Entity For Creation"
+                                                            data-bs-original-title="Approve Entity For Creation">
+                                                            <i class="fa fa-check" aria-hidden="true"></i> Create
+                                                        </button>
+                                                        <button type="button" name="rejectBtn" id="rejectBtn"
+                                                            data-toggle="modal" data-target="#cancelModal"
+                                                            class="btn btn-danger float-right m-2 btn-sm"
+                                                            data-toggle="tooltip" data-placement="top"
+                                                            title="Reject For Amendment" data-bs-original-title="Update">
+                                                            <i class="fa fa-edit" aria-hidden="true"></i> Reject
+                                                        </button>
+                                                    @endif
                                                 @endif
                                             </div>
                                         </div>
@@ -955,8 +997,8 @@
 
             @section('css')
                 <!-- ============================================
-                                         EXTERNAL STYLESHEETS
-                                    ============================================ -->
+                                                                                 EXTERNAL STYLESHEETS
+                                                                            ============================================ -->
                 <!-- Bootstrap Stepper -->
                 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bs-stepper/dist/css/bs-stepper.min.css">
 
@@ -968,8 +1010,8 @@
 
                 <style>
                     /* ============================================
-                                           CSS VARIABLES (Custom Properties)
-                                        ============================================ */
+                                                                                   CSS VARIABLES (Custom Properties)
+                                                                                ============================================ */
                     :root {
                         --primary-color: #007bff;
                         --primary-hover: #0056b3;
@@ -991,8 +1033,8 @@
                     }
 
                     /* ============================================
-                                           CARD COMPONENTS
-                                        ============================================ */
+                                                                                   CARD COMPONENTS
+                                                                                ============================================ */
                     .card {
                         border: none;
                         border-radius: var(--border-radius-md);
@@ -1013,8 +1055,8 @@
                     }
 
                     /* ============================================
-                                           ENHANCED FILE DISPLAY STYLES
-                                        ============================================ */
+                                                                                   ENHANCED FILE DISPLAY STYLES
+                                                                                ============================================ */
                     .file-item {
                         background: #f8f9fa;
                         transition: all 0.3s ease;
@@ -1133,8 +1175,8 @@
                     }
 
                     /* ============================================
-                                           BADGE SYSTEM
-                                        ============================================ */
+                                                                                   BADGE SYSTEM
+                                                                                ============================================ */
                     .badge {
                         font-size: 0.9rem;
                         padding: 0.5em 1em;
@@ -1210,8 +1252,8 @@
                     }
 
                     /* ============================================
-                                           TYPOGRAPHY
-                                        ============================================ */
+                                                                                   TYPOGRAPHY
+                                                                                ============================================ */
                     .text-muted {
                         font-size: 0.95rem;
                         color: var(--muted-color) !important;
@@ -1232,8 +1274,8 @@
                     }
 
                     /* ============================================
-                                           FIELDSET & LEGEND STYLING
-                                        ============================================ */
+                                                                                   FIELDSET & LEGEND STYLING
+                                                                                ============================================ */
                     fieldset {
                         border: 2px solid var(--border-color);
                         border-radius: var(--border-radius-md);
@@ -1273,8 +1315,8 @@
                     }
 
                     /* ============================================
-                                           FORM ELEMENTS
-                                        ============================================ */
+                                                                                   FORM ELEMENTS
+                                                                                ============================================ */
                     .form-control:focus {
                         border-color: var(--primary-color);
                         box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
@@ -1302,8 +1344,8 @@
                     }
 
                     /* ============================================
-                                           DISABLED STATES
-                                        ============================================ */
+                                                                                   DISABLED STATES
+                                                                                ============================================ */
                     .disabled {
                         opacity: 0.6;
                         cursor: not-allowed;
@@ -1328,8 +1370,8 @@
                     }
 
                     /* ============================================
-                                           TOOLTIP ENHANCEMENTS
-                                        ============================================ */
+                                                                                   TOOLTIP ENHANCEMENTS
+                                                                                ============================================ */
                     .tooltip-inner {
                         background: linear-gradient(135deg, var(--dark-color) 0%, #495057 100%);
                         color: white;
@@ -1344,8 +1386,8 @@
                     }
 
                     /* ============================================
-                                           LOADING & PRELOADER
-                                        ============================================ */
+                                                                                   LOADING & PRELOADER
+                                                                                ============================================ */
                     #loader {
                         display: none;
                         position: fixed;
@@ -1436,8 +1478,8 @@
                     }
 
                     /* ============================================
-                                           BUTTON ENHANCEMENTS
-                                        ============================================ */
+                                                                                   BUTTON ENHANCEMENTS
+                                                                                ============================================ */
                     .btn {
                         border-radius: var(--border-radius-sm);
                         font-weight: 500;
@@ -1477,8 +1519,8 @@
                     }
 
                     /* ============================================
-                                           RESPONSIVE DESIGN
-                                        ============================================ */
+                                                                                   RESPONSIVE DESIGN
+                                                                                ============================================ */
                     @media (max-width: 768px) {
                         .card {
                             margin-bottom: 1rem;
@@ -1514,8 +1556,8 @@
                     }
 
                     /* ============================================
-                                           UTILITY CLASSES
-                                        ============================================ */
+                                                                                   UTILITY CLASSES
+                                                                                ============================================ */
                     .shadow-soft {
                         box-shadow: var(--shadow-light);
                     }
@@ -1549,8 +1591,8 @@
                     }
 
                     /* ============================================
-                                           PRINT STYLES
-                                        ============================================ */
+                                                                                   PRINT STYLES
+                                                                                ============================================ */
                     @media print {
 
                         .btn,
@@ -1576,6 +1618,11 @@
                 <!-- SweetAlert2 JS -->
                 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.js"></script>
 
+                <script src="//code.jquery.com/jquery-1.12.4.min.js"></script>
+                <script src="https://cdn.jsdelivr.net/npm/bs-stepper/dist/js/bs-stepper.min.js"></script>
+                <script src="{{ asset('js/client-party/jquery-number/jquery.number.min.js') }}"></script>
+                <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
+
                 <script>
                     window.isShowView = true;
                     /* Ajax setup CSRF */
@@ -1584,13 +1631,6 @@
                             'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
                         }
                     });
-                </script>
-                <script src="//code.jquery.com/jquery-1.12.4.min.js"></script>
-                <script src="https://cdn.jsdelivr.net/npm/bs-stepper/dist/js/bs-stepper.min.js"></script>
-                <script src="{{ asset('js/client-party/jquery-number/jquery.number.min.js') }}"></script>
-                <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
-
-                <script>
                     // 🛠️ SweetAlert2 Utility Functions
                     const SwalUtils = {
                         success: (title, text = '', timer = 2000) => {
@@ -2111,9 +2151,9 @@
                             const otherCheckbox = $('#otherCheck');
                             const otherInput = $('#otherInput');
 
-                            if (!otherCheckbox.is(':checked')) {
+                            if (otherCheckbox.is(':checked')) {
                                 const otherInputValue = otherInput.val()?.trim();
-                                if (!otherInputValue) {
+                                if (otherInputValue) {
                                     // 🎯 SweetAlert2 validation error
                                     await SwalUtils.warning('Validation Error',
                                         'Other Party field is required when not using existing entity.');
@@ -2165,10 +2205,9 @@
                                     targetStatus = 'PendingGroupLevelApproval';
                                 } else if (currentStatus === 'PendingGroupLevelApproval') {
                                     targetStatus = 'PendingITVerification';
-                                }else if (currentStatus === 'PendingITVerification') {
+                                } else if (currentStatus === 'PendingITVerification') {
                                     targetStatus = 'Created';
-                                }
-                                 else {
+                                } else {
                                     // 🎯 SweetAlert2 error
                                     await SwalUtils.error('Invalid Action',
                                         `Approval not allowed for status: ${currentStatus}`);
