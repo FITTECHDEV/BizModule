@@ -233,6 +233,7 @@
                                                             value="{{ old('countryName') }}" class="basic-detail-field">
                                                         <input type="hidden" name="countryCode" id="countryCode"
                                                             value="{{ old('countryCode') }}" class="basic-detail-field">
+
                                                     </div>
                                                 </div>
                                                 {{-- Province zipcode --}}
@@ -406,6 +407,17 @@
                                                                 value="{{ Auth::user()->Office->Name ?? '' }}" disabled>
                                                         @endif
                                                     </div>
+                                                    {{-- Hidden Other fields ONLY for accounting mode users without admin access --}}
+                                                    @if (request()->query('type') === 'accounting' && !Auth::user()->can('create-client-party'))
+                                                        <input type="hidden" name="otherInput" id="hiddenOtherInput"
+                                                            value="{{ old('otherInput') }}">
+                                                        <input type="hidden" name="otherID" id="hiddenOtherID"
+                                                            value="{{ old('otherID') }}">
+                                                        <input type="hidden" name="otherCode" id="hiddenOtherCode"
+                                                            value="{{ old('otherCode') }}">
+                                                        <input type="hidden" name="otherCheck" id="hiddenOtherCheck"
+                                                            value="1">
+                                                    @endif
                                                 </div>
                                             </fieldset>
                                             <fieldset class="border p-2 card shadow-lg mb-0 pt-0 pb-0">
@@ -1308,1822 +1320,2360 @@
         });
 
         $(document).ready(function() {
-    // Cache DOM elements
-    const partyEntityType = $('#partyEntityType');
-    const legalEntityType = $('#legalEntityType');
-    const companyNameInput = $('#companyName');
-    const companyDropdown = $('#companyDropdown');
-    const companyAutocomplete = $('#companyAutocomplete');
-    const companyAutocompleteList = $('#companyAutocompleteList');
-    const companyIdInput = $('#companyId');
-    const companyCodeInput = $('#companyCode');
-    const companySelectHidden = $('#companySelect');
-    const countrySelect = $('#countryID');
-    const debtorType = $('#debtorType');
-    const vendorType = $('#vendorType');
-    const creditDays = $('#creditDays');
-    const maxCreditLimit = $('#maxCreditLimit');
-    const billingCurrency = $('#billingCurrency');
-    const requestType = new URLSearchParams(window.location.search).get('type');
-    const overseasEntityCheckbox = $('#overseasEntity');
-    const licenceTypeValue = $('#licenceTypeValue');
-    const licenceTypeID = $('#licenceTypeID');
-    const licenceTypeCode = $('#licenceTypeCode');
-    const clientIdInput = $('#clientID');
-    const clientCodeInput = $('#clientCode');
+            // Cache DOM elements
+            const partyEntityType = $('#partyEntityType');
+            const legalEntityType = $('#legalEntityType');
+            const companyNameInput = $('#companyName');
+            const companyDropdown = $('#companyDropdown');
+            const companyAutocomplete = $('#companyAutocomplete');
+            const companyAutocompleteList = $('#companyAutocompleteList');
+            const companyIdInput = $('#companyId');
+            const companyCodeInput = $('#companyCode');
+            const companySelectHidden = $('#companySelect');
+            const countrySelect = $('#countryID');
+            const debtorType = $('#debtorType');
+            const vendorType = $('#vendorType');
+            const creditDays = $('#creditDays');
+            const maxCreditLimit = $('#maxCreditLimit');
+            const billingCurrency = $('#billingCurrency');
+            const requestType = new URLSearchParams(window.location.search).get('type');
+            const overseasEntityCheckbox = $('#overseasEntity');
+            const licenceTypeValue = $('#licenceTypeValue');
+            const licenceTypeID = $('#licenceTypeID');
+            const licenceTypeCode = $('#licenceTypeCode');
+            const clientIdInput = $('#clientID');
+            const clientCodeInput = $('#clientCode');
 
-    // Company autocomplete variables
-    let companiesData = [];
-    let selectedIndex = -1;
-    let searchTimeout;
+            // Company autocomplete variables
+            let companiesData = [];
+            let selectedIndex = -1;
+            let searchTimeout;
 
-    // File upload variables
-    let attachmentCount = 1;
-    const maxAttachments = 3;
+            // File upload variables
+            let attachmentCount = 1;
+            const maxAttachments = 3;
 
-    if (!overseasEntityCheckbox.length || !licenceTypeValue.length || !licenceTypeID.length) {
-        console.error('Critical DOM elements missing:', {
-            overseasEntity: !!overseasEntityCheckbox.length,
-            licenceTypeValue: !!licenceTypeValue.length,
-            licenceTypeID: !!licenceTypeID.length
-        });
-    }
-    if (!clientIdInput.length || !clientCodeInput.length) {
-        console.warn('ClientID or ClientCode inputs missing:', {
-            clientIdInput: !!clientIdInput.length,
-            clientCodeInput: !!clientCodeInput.length
-        });
-    }
+            if (!overseasEntityCheckbox.length || !licenceTypeValue.length || !licenceTypeID.length) {
+                console.error('Critical DOM elements missing:', {
+                    overseasEntity: !!overseasEntityCheckbox.length,
+                    licenceTypeValue: !!licenceTypeValue.length,
+                    licenceTypeID: !!licenceTypeID.length
+                });
+            }
+            if (!clientIdInput.length || !clientCodeInput.length) {
+                console.warn('ClientID or ClientCode inputs missing:', {
+                    clientIdInput: !!clientIdInput.length,
+                    clientCodeInput: !!clientCodeInput.length
+                });
+            }
 
-    // ================================
-    // FILE UPLOAD VALIDATION FUNCTIONS
-    // ================================
+            // ================================
+            // OTHER FIELDS INITIALIZATION FOR ACCOUNTING MODE
+            // ================================
 
-    function validateFileUpload() {
-        if (requestType === 'accounting') {
-            const fileInputs = $('input[name="attachmentNames[]"]');
-            const descInputs = $('input[name="attachmentDescription[]"]');
-            let hasValidFile = false;
-            let hasValidDescription = false;
-            const errors = [];
+            function initializeOtherFieldsFromClient() {
+                // ONLY for accounting mode
+                if (requestType === 'accounting') {
+                    const companyName = companyNameInput.val() || companyAutocomplete.val();
+                    const companyId = companyIdInput.val();
+                    const companyCode = companyCodeInput.val();
 
-            fileInputs.each(function(index) {
+                    if (companyName && companyId && companyCode) {
+                        const hasAdminAccess = {{ Auth::user()->can('create-client-party') ? 'true' : 'false' }};
+
+                        if (hasAdminAccess) {
+                            // Use visible admin fields (Step 3)
+                            $('#otherInput').val(companyName);
+                            $('#otherID').val(companyId);
+                            $('#otherCode').val(companyCode);
+                            $('#other_Input').text(companyCode);
+                            $('#otherCheck').prop('checked', true);
+                        } else {
+                            // Use hidden fields in Step 2 for accounting mode only
+                            $('#hiddenOtherInput').val(companyName);
+                            $('#hiddenOtherID').val(companyId);
+                            $('#hiddenOtherCode').val(companyCode);
+                            $('#hiddenOtherCheck').val('1');
+                        }
+
+                        console.log('Initialized Other fields (accounting mode):', {
+                            otherInput: companyName,
+                            otherID: companyId,
+                            otherCode: companyCode,
+                            hasAdminAccess: hasAdminAccess,
+                            mode: 'accounting'
+                        });
+                    }
+                }
+                // Do nothing for operational mode
+            }
+
+            function initializeOtherFieldsFromManualInput() {
+                // ONLY for accounting mode with "Create only in D365"
+                if (requestType === 'accounting') {
+                    const companyName = companyNameInput.val().trim();
+
+                    if (companyName) {
+                        const hasAdminAccess = {{ Auth::user()->can('create-client-party') ? 'true' : 'false' }};
+
+                        if (hasAdminAccess) {
+                            // Use visible admin fields
+                            $('#otherInput').val(companyName);
+                            if (!$('#otherID').val()) {
+                                $('#otherID').val(generateTempId());
+                            }
+                            if (!$('#otherCode').val()) {
+                                $('#otherCode').val(generateTempCode());
+                            }
+                            $('#other_Input').text($('#otherCode').val());
+                            $('#otherCheck').prop('checked', true);
+                        } else {
+                            // Use hidden fields for accounting mode only
+                            $('#hiddenOtherInput').val(companyName);
+                            $('#hiddenOtherID').val(generateTempId());
+                            $('#hiddenOtherCode').val(generateTempCode());
+                            $('#hiddenOtherCheck').val('1');
+                        }
+
+                        console.log('Initialized Other fields from manual input (accounting mode):', {
+                            otherInput: companyName,
+                            hasAdminAccess: hasAdminAccess,
+                            mode: 'accounting - Create only in D365'
+                        });
+                    }
+                }
+                // Do nothing for operational mode
+            }
+
+            // Enhanced function to ensure Other fields are always populated for accounting mode
+            function ensureOtherFieldsForAccountingMode() {
+                // ONLY run this for accounting mode
+                if (requestType === 'accounting') {
+                    const hasAdminAccess = {{ Auth::user()->can('create-client-party') ? 'true' : 'false' }};
+
+                    // Check appropriate fields based on user access
+                    const otherInput = hasAdminAccess ? $('#otherInput').val() : $('#hiddenOtherInput').val();
+                    const companyName = companyNameInput.val() || companyAutocomplete.val();
+                    const companyId = companyIdInput.val();
+                    const companyCode = companyCodeInput.val();
+
+                    if (!otherInput && companyName) {
+                        // Force initialization of Other fields
+                        if (companyId && companyCode) {
+                            initializeOtherFieldsFromClient();
+                        } else {
+                            initializeOtherFieldsFromManualInput();
+                        }
+                    }
+
+                    // Ensure Other checkbox/hidden field is set
+                    if (hasAdminAccess) {
+                        $('#otherCheck').prop('checked', true);
+                    } else {
+                        $('#hiddenOtherCheck').val('1');
+                    }
+
+                    console.log('ensureOtherFieldsForAccountingMode (accounting only):', {
+                        hasAdminAccess: hasAdminAccess,
+                        otherInput: hasAdminAccess ? $('#otherInput').val() : $('#hiddenOtherInput').val(),
+                        otherChecked: hasAdminAccess ? $('#otherCheck').is(':checked') : $(
+                            '#hiddenOtherCheck').val(),
+                        companyName: companyName,
+                        mode: 'accounting'
+                    });
+                }
+                // Do nothing for operational mode
+            }
+
+            // Helper functions for generating temporary IDs and codes
+            function generateTempId() {
+                return 'temp-' + Math.random().toString(36).substr(2, 9);
+            }
+
+            function generateTempCode() {
+                return 'TEMP-' + Math.random().toString(36).substr(2, 6).toUpperCase();
+            }
+
+            // ================================
+            // FILE UPLOAD VALIDATION FUNCTIONS
+            // ================================
+
+            function validateFileUpload() {
+                if (requestType === 'accounting') {
+                    const fileInputs = $('input[name="attachmentNames[]"]');
+                    const descInputs = $('input[name="attachmentDescription[]"]');
+                    let hasValidFile = false;
+                    let hasValidDescription = false;
+                    const errors = [];
+
+                    fileInputs.each(function(index) {
+                        const fileInput = this;
+                        const descInput = descInputs.eq(index);
+
+                        if (fileInput.files && fileInput.files.length > 0) {
+                            const file = fileInput.files[0];
+
+                            // Validate file type
+                            const allowedTypes = ['application/pdf'];
+                            const allowedExtensions = /(\.pdf)$/i;
+
+                            if (!allowedTypes.includes(file.type) && !allowedExtensions.exec(file.name)) {
+                                errors.push(`Invalid file type: ${file.name}. Only PDF files are allowed.`);
+                                $(fileInput).addClass('is-invalid');
+                                return;
+                            }
+
+                            // Validate file size (10MB)
+                            const maxSize = 10 * 1024 * 1024;
+                            if (file.size > maxSize) {
+                                errors.push(`File too large: ${file.name}. Maximum size is 10MB.`);
+                                $(fileInput).addClass('is-invalid');
+                                return;
+                            }
+
+                            // Check if description is provided
+                            const description = descInput.val().trim();
+                            if (!description) {
+                                errors.push(`Description required for: ${file.name}`);
+                                descInput.addClass('is-invalid');
+                                return;
+                            }
+
+                            // File is valid
+                            $(fileInput).removeClass('is-invalid');
+                            descInput.removeClass('is-invalid');
+                            hasValidFile = true;
+                            hasValidDescription = true;
+                        }
+                    });
+
+                    const errorElement = $('#file-upload-error');
+                    const container = $('.file-upload-container');
+
+                    if (errors.length > 0) {
+                        errorElement.html('<i class="fa fa-exclamation-triangle"></i> ' + errors.join('<br>'));
+                        errorElement.show();
+                        container.addClass('validation-error');
+                        return false;
+                    }
+
+                    if (!hasValidFile) {
+                        errorElement.html(
+                            '<i class="fa fa-exclamation-triangle"></i> At least one PDF file is required for accounting mode.'
+                        );
+                        errorElement.show();
+                        container.addClass('validation-error');
+                        return false;
+                    }
+
+                    // All validations passed
+                    errorElement.hide();
+                    container.removeClass('validation-error');
+                    return true;
+                }
+
+                return true; // Always valid for operational mode
+            }
+
+            function showFileError(message) {
+                const errorElement = $('#file-upload-error');
+                errorElement.html('<i class="fa fa-exclamation-triangle"></i> ' + message);
+                errorElement.show();
+                $('.file-upload-container').addClass('validation-error');
+
+                // Auto-hide after 5 seconds
+                setTimeout(function() {
+                    errorElement.fadeOut();
+                    $('.file-upload-container').removeClass('validation-error');
+                }, 5000);
+            }
+
+            function clearStepValidationError() {
+                const currentStep = $('.content.active, .content.dstepper-block').attr('id');
+                if (currentStep === 'office-details') {
+                    $('#step2-validation-error').fadeOut();
+                }
+            }
+
+            // Real-time file validation
+            $(document).on('change', 'input[name="attachmentNames[]"]', function() {
                 const fileInput = this;
-                const descInput = descInputs.eq(index);
+                const file = fileInput.files[0];
 
-                if (fileInput.files && fileInput.files.length > 0) {
-                    const file = fileInput.files[0];
+                if (file) {
+                    // Reset validation state
+                    $(fileInput).removeClass('is-invalid');
 
                     // Validate file type
                     const allowedTypes = ['application/pdf'];
                     const allowedExtensions = /(\.pdf)$/i;
 
                     if (!allowedTypes.includes(file.type) && !allowedExtensions.exec(file.name)) {
-                        errors.push(`Invalid file type: ${file.name}. Only PDF files are allowed.`);
-                        $(fileInput).addClass('is-invalid');
-                        return;
+                        $(fileInput).addClass('is-invalid').val('');
+                        showFileError(`Invalid file type: ${file.name}. Only PDF files are allowed.`);
+                        return false;
                     }
 
                     // Validate file size (10MB)
                     const maxSize = 10 * 1024 * 1024;
                     if (file.size > maxSize) {
-                        errors.push(`File too large: ${file.name}. Maximum size is 10MB.`);
-                        $(fileInput).addClass('is-invalid');
-                        return;
+                        $(fileInput).addClass('is-invalid').val('');
+                        showFileError(`File too large: ${file.name}. Maximum size is 10MB.`);
+                        return false;
                     }
 
-                    // Check if description is provided
-                    const description = descInput.val().trim();
-                    if (!description) {
-                        errors.push(`Description required for: ${file.name}`);
-                        descInput.addClass('is-invalid');
-                        return;
-                    }
+                    // Show file size info
+                    const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
+                    console.log(`File uploaded: ${file.name} (${fileSizeMB} MB)`);
 
-                    // File is valid
-                    $(fileInput).removeClass('is-invalid');
-                    descInput.removeClass('is-invalid');
-                    hasValidFile = true;
-                    hasValidDescription = true;
+                    // Update container state for accounting mode
+                    if (requestType === 'accounting') {
+                        setTimeout(function() {
+                            if (validateFileUpload()) {
+                                $('.file-upload-container').addClass('has-files');
+                                clearStepValidationError();
+                            }
+                        }, 100);
+                    }
                 }
             });
 
-            const errorElement = $('#file-upload-error');
-            const container = $('.file-upload-container');
+            // Real-time description validation
+            $(document).on('input', 'input[name="attachmentDescription[]"]', function() {
+                $(this).removeClass('is-invalid');
 
-            if (errors.length > 0) {
-                errorElement.html('<i class="fa fa-exclamation-triangle"></i> ' + errors.join('<br>'));
-                errorElement.show();
-                container.addClass('validation-error');
-                return false;
+                if (requestType === 'accounting') {
+                    setTimeout(function() {
+                        if (validateFileUpload()) {
+                            clearStepValidationError();
+                        }
+                    }, 100);
+                }
+            });
+
+            // ================================
+            // ATTACHMENT MANAGEMENT
+            // ================================
+
+            // Add attachment button
+            $(".addAttachment").click(function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                if (attachmentCount >= maxAttachments) {
+                    alert('Maximum of 3 file attachments allowed.');
+                    return;
+                }
+
+                // Validate current files before adding new ones (accounting mode only)
+                if (requestType === 'accounting' && attachmentCount > 1) {
+                    const currentFiles = $('input[name="attachmentNames[]"]');
+                    const currentDescs = $('input[name="attachmentDescription[]"]');
+                    let isCurrentValid = true;
+
+                    currentFiles.each(function(index) {
+                        if (this.files && this.files.length > 0) {
+                            const desc = currentDescs.eq(index).val().trim();
+                            if (!desc) {
+                                currentDescs.eq(index).addClass('is-invalid');
+                                isCurrentValid = false;
+                            }
+                        }
+                    });
+
+                    if (!isCurrentValid) {
+                        alert('Please provide descriptions for all uploaded files before adding more.');
+                        return false;
+                    }
+                }
+
+                // Clone the template
+                const templateHtml = $(".clone-template").html();
+                $("#attachClone").append(templateHtml);
+                attachmentCount++;
+
+                console.log('Added attachment field. Total:', attachmentCount);
+            });
+
+            // Remove attachment
+            $("body").on("click", ".remove-attachment", function() {
+                $(this).closest(".cloned-attachment").remove();
+                attachmentCount--;
+
+                console.log('Removed attachment field. Total:', attachmentCount);
+
+                // Re-validate file uploads after removal for accounting mode
+                if (requestType === 'accounting') {
+                    setTimeout(function() {
+                        if (!validateFileUpload()) {
+                            const currentStep = $('.content.active, .content.dstepper-block').attr(
+                                'id');
+                            if (currentStep === 'office-details') {
+                                $('#step2-error-message').text(
+                                    'File upload is required for accounting mode. Please upload a PDF file with description.'
+                                );
+                                $('#step2-validation-error').show();
+                            }
+                        }
+                    }, 100);
+                }
+            });
+
+            // ================================
+            // LICENSE CODE MANAGEMENT (FIXED)
+            // ================================
+
+            // FIXED: Function to manually update license code with better error handling
+            function updateLicenseCode() {
+                const licenceTypeSelect = $('#licenceTypeID');
+                const selectedOption = licenceTypeSelect.find('option:selected');
+                const code = selectedOption.attr('data-code') || '';
+
+                console.log('Manual license code update:', {
+                    selectExists: licenceTypeSelect.length > 0,
+                    selectedValue: licenceTypeSelect.val(),
+                    selectedOption: selectedOption.length > 0,
+                    dataCodeAttribute: selectedOption.attr('data-code'),
+                    code: code,
+                    hiddenInputExists: $('#licenceTypeCode').length > 0,
+                    currentHiddenValue: $('#licenceTypeCode').val()
+                });
+
+                $('#licenceTypeCode').val(code);
+
+                // Trigger change event to notify other handlers
+                $('#licenceTypeCode').trigger('change');
+
+                return code;
             }
 
-            if (!hasValidFile) {
-                errorElement.html(
-                    '<i class="fa fa-exclamation-triangle"></i> At least one PDF file is required for accounting mode.'
-                    );
-                errorElement.show();
-                container.addClass('validation-error');
-                return false;
-            }
+            // FIXED: Delegated event handler for license type change (more robust)
+            $(document).off('change', '#licenceTypeID').on('change', '#licenceTypeID', function() {
+                const selectedOption = $(this).find('option:selected');
+                const code = selectedOption.attr('data-code') || '';
 
-            // All validations passed
-            errorElement.hide();
-            container.removeClass('validation-error');
-            return true;
-        }
+                console.log('licenceTypeID change (delegated):', {
+                    selectedValue: $(this).val(),
+                    selectedText: selectedOption.text(),
+                    code: code,
+                    isOverseas: overseasEntityCheckbox.is(':checked'),
+                    requestType: requestType,
+                    timestamp: new Date().toISOString()
+                });
 
-        return true; // Always valid for operational mode
-    }
+                // Set the code immediately
+                $('#licenceTypeCode').val(code);
 
-    function showFileError(message) {
-        const errorElement = $('#file-upload-error');
-        errorElement.html('<i class="fa fa-exclamation-triangle"></i> ' + message);
-        errorElement.show();
-        $('.file-upload-container').addClass('validation-error');
-
-        // Auto-hide after 5 seconds
-        setTimeout(function() {
-            errorElement.fadeOut();
-            $('.file-upload-container').removeClass('validation-error');
-        }, 5000);
-    }
-
-    function clearStepValidationError() {
-        const currentStep = $('.content.active, .content.dstepper-block').attr('id');
-        if (currentStep === 'office-details') {
-            $('#step2-validation-error').fadeOut();
-        }
-    }
-
-    // Real-time file validation
-    $(document).on('change', 'input[name="attachmentNames[]"]', function() {
-        const fileInput = this;
-        const file = fileInput.files[0];
-
-        if (file) {
-            // Reset validation state
-            $(fileInput).removeClass('is-invalid');
-
-            // Validate file type
-            const allowedTypes = ['application/pdf'];
-            const allowedExtensions = /(\.pdf)$/i;
-
-            if (!allowedTypes.includes(file.type) && !allowedExtensions.exec(file.name)) {
-                $(fileInput).addClass('is-invalid').val('');
-                showFileError(`Invalid file type: ${file.name}. Only PDF files are allowed.`);
-                return false;
-            }
-
-            // Validate file size (10MB)
-            const maxSize = 10 * 1024 * 1024;
-            if (file.size > maxSize) {
-                $(fileInput).addClass('is-invalid').val('');
-                showFileError(`File too large: ${file.name}. Maximum size is 10MB.`);
-                return false;
-            }
-
-            // Show file size info
-            const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
-            console.log(`File uploaded: ${file.name} (${fileSizeMB} MB)`);
-
-            // Update container state for accounting mode
-            if (requestType === 'accounting') {
+                // Add a small delay to ensure DOM is fully updated, then update again
                 setTimeout(function() {
-                    if (validateFileUpload()) {
-                        $('.file-upload-container').addClass('has-files');
-                        clearStepValidationError();
-                    }
-                }, 100);
-            }
-        }
-    });
-
-    // Real-time description validation
-    $(document).on('input', 'input[name="attachmentDescription[]"]', function() {
-        $(this).removeClass('is-invalid');
-
-        if (requestType === 'accounting') {
-            setTimeout(function() {
-                if (validateFileUpload()) {
-                    clearStepValidationError();
-                }
-            }, 100);
-        }
-    });
-
-    // ================================
-    // ATTACHMENT MANAGEMENT
-    // ================================
-
-    // Add attachment button
-    $(".addAttachment").click(function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-
-        if (attachmentCount >= maxAttachments) {
-            alert('Maximum of 3 file attachments allowed.');
-            return;
-        }
-
-        // Validate current files before adding new ones (accounting mode only)
-        if (requestType === 'accounting' && attachmentCount > 1) {
-            const currentFiles = $('input[name="attachmentNames[]"]');
-            const currentDescs = $('input[name="attachmentDescription[]"]');
-            let isCurrentValid = true;
-
-            currentFiles.each(function(index) {
-                if (this.files && this.files.length > 0) {
-                    const desc = currentDescs.eq(index).val().trim();
-                    if (!desc) {
-                        currentDescs.eq(index).addClass('is-invalid');
-                        isCurrentValid = false;
-                    }
-                }
+                    updateLicenseCode();
+                }, 10);
             });
 
-            if (!isCurrentValid) {
-                alert('Please provide descriptions for all uploaded files before adding more.');
-                return false;
-            }
-        }
+            // ================================
+            // COMPANY AUTOCOMPLETE FUNCTIONS
+            // ================================
 
-        // Clone the template
-        const templateHtml = $(".clone-template").html();
-        $("#attachClone").append(templateHtml);
-        attachmentCount++;
-
-        console.log('Added attachment field. Total:', attachmentCount);
-    });
-
-    // Remove attachment
-    $("body").on("click", ".remove-attachment", function() {
-        $(this).closest(".cloned-attachment").remove();
-        attachmentCount--;
-
-        console.log('Removed attachment field. Total:', attachmentCount);
-
-        // Re-validate file uploads after removal for accounting mode
-        if (requestType === 'accounting') {
-            setTimeout(function() {
-                if (!validateFileUpload()) {
-                    const currentStep = $('.content.active, .content.dstepper-block').attr(
-                        'id');
-                    if (currentStep === 'office-details') {
-                        $('#step2-error-message').text(
-                            'File upload is required for accounting mode. Please upload a PDF file with description.'
-                        );
-                        $('#step2-validation-error').show();
-                    }
+            function toggleAutocompleteDropdown(show = true) {
+                if (show && companyAutocomplete.is(':visible') && companiesData.length > 0) {
+                    companyAutocompleteList.addClass('show');
+                } else {
+                    companyAutocompleteList.removeClass('show').empty();
+                    selectedIndex = -1;
                 }
-            }, 100);
-        }
-    });
+            }
 
-    // ================================
-    // LICENSE CODE MANAGEMENT (FIXED)
-    // ================================
+            function renderAutocompleteItems(companies) {
+                companyAutocompleteList.empty();
 
-    // FIXED: Function to manually update license code with better error handling
-    function updateLicenseCode() {
-        const licenceTypeSelect = $('#licenceTypeID');
-        const selectedOption = licenceTypeSelect.find('option:selected');
-        const code = selectedOption.attr('data-code') || '';
+                if (!companies || companies.length === 0) {
+                    companyAutocompleteList.html('<div class="autocomplete-no-results">No companies found</div>');
+                    companyAutocompleteList.addClass('show');
+                    return;
+                }
 
-        console.log('Manual license code update:', {
-            selectExists: licenceTypeSelect.length > 0,
-            selectedValue: licenceTypeSelect.val(),
-            selectedOption: selectedOption.length > 0,
-            dataCodeAttribute: selectedOption.attr('data-code'),
-            code: code,
-            hiddenInputExists: $('#licenceTypeCode').length > 0,
-            currentHiddenValue: $('#licenceTypeCode').val()
-        });
-
-        $('#licenceTypeCode').val(code);
-
-        // Trigger change event to notify other handlers
-        $('#licenceTypeCode').trigger('change');
-
-        return code;
-    }
-
-    // FIXED: Delegated event handler for license type change (more robust)
-    $(document).off('change', '#licenceTypeID').on('change', '#licenceTypeID', function() {
-        const selectedOption = $(this).find('option:selected');
-        const code = selectedOption.attr('data-code') || '';
-
-        console.log('licenceTypeID change (delegated):', {
-            selectedValue: $(this).val(),
-            selectedText: selectedOption.text(),
-            code: code,
-            isOverseas: overseasEntityCheckbox.is(':checked'),
-            requestType: requestType,
-            timestamp: new Date().toISOString()
-        });
-
-        // Set the code immediately
-        $('#licenceTypeCode').val(code);
-
-        // Add a small delay to ensure DOM is fully updated, then update again
-        setTimeout(function() {
-            updateLicenseCode();
-        }, 10);
-    });
-
-    // ================================
-    // COMPANY AUTOCOMPLETE FUNCTIONS
-    // ================================
-
-    function toggleAutocompleteDropdown(show = true) {
-        if (show && companyAutocomplete.is(':visible') && companiesData.length > 0) {
-            companyAutocompleteList.addClass('show');
-        } else {
-            companyAutocompleteList.removeClass('show').empty();
-            selectedIndex = -1;
-        }
-    }
-
-    function renderAutocompleteItems(companies) {
-        companyAutocompleteList.empty();
-
-        if (!companies || companies.length === 0) {
-            companyAutocompleteList.html('<div class="autocomplete-no-results">No companies found</div>');
-            companyAutocompleteList.addClass('show');
-            return;
-        }
-
-        companies.forEach((company, index) => {
-            const item = $(`
+                companies.forEach((company, index) => {
+                    const item = $(`
                 <div class="autocomplete-item" data-index="${index}">
                     <div class="company-name">${escapeHtml(company.name)}</div>
                     <div class="company-code">Code: ${escapeHtml(company.code)}</div>
                 </div>
             `);
 
-            item.data('company', company);
-            companyAutocompleteList.append(item);
-        });
-
-        companyAutocompleteList.addClass('show');
-    }
-
-    function escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
-
-    function filterCompanies(searchTerm) {
-        if (!searchTerm || searchTerm.length < 2) {
-            return companiesData.slice(0, 20);
-        }
-
-        const filtered = companiesData.filter(company =>
-            company.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            company.code.toLowerCase().includes(searchTerm.toLowerCase())
-        );
-
-        return filtered.slice(0, 20); // Limit to 20 results for performance
-    }
-
-    function selectCompany(company) {
-        if (!company) return;
-
-        companyAutocomplete.val(company.name);
-        companyNameInput.val(company.name); // Set the original companyName field that controller expects
-        companyIdInput.val(company.id);
-        companyCodeInput.val(company.code);
-        companySelectHidden.val(company.id);
-
-        toggleAutocompleteDropdown(false);
-
-        // Trigger the existing company selection logic
-        if (partyEntityType.val()) {
-            fetchCompanyDetails(partyEntityType.val(), company.id);
-        }
-
-        // Sync client fields
-        syncClientFields();
-
-        console.log('Company selected:', {
-            name: company.name,
-            id: company.id,
-            code: company.code
-        });
-    }
-
-    function highlightItem(index) {
-        companyAutocompleteList.find('.autocomplete-item').removeClass('highlighted');
-        if (index >= 0 && index < companyAutocompleteList.find('.autocomplete-item').length) {
-            companyAutocompleteList.find('.autocomplete-item').eq(index).addClass('highlighted');
-            selectedIndex = index;
-        }
-    }
-
-    function loadCompaniesForAutocomplete(entityType) {
-        console.log('Loading companies for autocomplete, entityType:', entityType);
-
-        // Show loading state
-        if (companyAutocomplete.is(':visible')) {
-            companyAutocompleteList.html('<div class="autocomplete-loading">Loading companies...</div>')
-                .addClass('show');
-        }
-
-        $.ajax({
-            url: '{{ route('companies') }}',
-            method: 'GET',
-            data: {
-                entityType: entityType
-            },
-            success: function(data) {
-                console.log('Companies loaded:', data.length || 0);
-
-                // Hide loading state
-                companyAutocompleteList.removeClass('show').empty();
-
-                if (data.error) {
-                    companiesData = [];
-                    companyAutocomplete.attr('placeholder', 'Error loading companies...');
-                    if (companyAutocomplete.is(':focus')) {
-                        companyAutocompleteList.html(
-                                `<div class="autocomplete-no-results">${data.error}</div>`)
-                            .addClass('show');
-                    }
-                } else {
-                    companiesData = data || [];
-                    companyAutocomplete.attr('placeholder',
-                        `Type to search ${companiesData.length} companies...`);
-
-                    // If input is focused and has value, show filtered results
-                    if (companyAutocomplete.is(':focus')) {
-                        const searchTerm = companyAutocomplete.val().trim();
-                        if (searchTerm) {
-                            const filteredCompanies = filterCompanies(searchTerm);
-                            renderAutocompleteItems(filteredCompanies);
-                        }
-                    }
-                }
-            },
-            error: function(xhr) {
-                console.error('Error loading companies:', xhr.responseJSON?.error || xhr
-                    .statusText);
-                companiesData = [];
-                companyAutocompleteList.removeClass('show').empty();
-                companyAutocomplete.attr('placeholder', 'Error loading companies...');
-
-                if (companyAutocomplete.is(':focus')) {
-                    companyAutocompleteList.html(
-                        '<div class="autocomplete-no-results">Error loading companies. Please try again.</div>'
-                    ).addClass('show');
-                }
-
-                alert('Failed to load company list. Please try again.');
-            }
-        });
-    }
-
-    // Event handlers for autocomplete
-    companyAutocomplete.on('input', function() {
-        clearTimeout(searchTimeout);
-        const searchTerm = $(this).val().trim();
-
-        // Clear selections if input is cleared
-        if (!searchTerm) {
-            companyNameInput.val(''); // Clear the original companyName field
-            companyIdInput.val('');
-            companyCodeInput.val('');
-            companySelectHidden.val('');
-            toggleAutocompleteDropdown(false);
-            return;
-        }
-
-        searchTimeout = setTimeout(() => {
-            if (companiesData.length > 0) {
-                const filteredCompanies = filterCompanies(searchTerm);
-                renderAutocompleteItems(filteredCompanies);
-                selectedIndex = -1;
-            }
-        }, 300);
-    });
-
-    companyAutocomplete.on('focus', function() {
-        const searchTerm = $(this).val().trim();
-        if (companiesData.length > 0) {
-            const filteredCompanies = filterCompanies(searchTerm);
-            renderAutocompleteItems(filteredCompanies);
-        } else if (searchTerm) {
-            // Show loading if we have a search term but no data yet
-            companyAutocompleteList.html(
-                '<div class="autocomplete-loading">Loading companies...</div>').addClass('show');
-        }
-    });
-
-    companyAutocomplete.on('blur', function(e) {
-        // Delay hiding to allow click events on items
-        setTimeout(() => {
-            if (!companyAutocompleteList.is(':hover')) {
-                toggleAutocompleteDropdown(false);
-            }
-        }, 150);
-    });
-
-    // Keyboard navigation for autocomplete
-    companyAutocomplete.on('keydown', function(e) {
-        const items = companyAutocompleteList.find('.autocomplete-item');
-
-        if (!companyAutocompleteList.hasClass('show') || items.length === 0) {
-            return;
-        }
-
-        switch (e.key) {
-            case 'ArrowDown':
-                e.preventDefault();
-                selectedIndex = Math.min(selectedIndex + 1, items.length - 1);
-                highlightItem(selectedIndex);
-                break;
-
-            case 'ArrowUp':
-                e.preventDefault();
-                selectedIndex = Math.max(selectedIndex - 1, 0);
-                highlightItem(selectedIndex);
-                break;
-
-            case 'Enter':
-                e.preventDefault();
-                if (selectedIndex >= 0) {
-                    const selectedItem = items.eq(selectedIndex);
-                    const company = selectedItem.data('company');
-                    if (company) {
-                        selectCompany(company);
-                    }
-                }
-                break;
-
-            case 'Escape':
-                e.preventDefault();
-                toggleAutocompleteDropdown(false);
-                $(this).blur();
-                break;
-        }
-    });
-
-    // Click handler for autocomplete items
-    companyAutocompleteList.on('click', '.autocomplete-item', function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        const company = $(this).data('company');
-        if (company) {
-            selectCompany(company);
-        }
-    });
-
-    // Prevent autocomplete list from losing focus
-    companyAutocompleteList.on('mousedown', function(e) {
-        e.preventDefault();
-    });
-
-    // Click outside to close autocomplete
-    $(document).on('click', function(e) {
-        if (!$(e.target).closest('.company-autocomplete-container').length) {
-            toggleAutocompleteDropdown(false);
-        }
-    });
-
-    // ================================
-    // FORM FIELD MANAGEMENT
-    // ================================
-
-    function syncClientFields() {
-        if (companyIdInput.val() && companyCodeInput.val()) {
-            clientIdInput.val(companyIdInput.val());
-            clientCodeInput.val(companyCodeInput.val());
-            console.log('syncClientFields: Synced client fields', {
-                clientID: clientIdInput.val(),
-                clientCode: clientCodeInput.val(),
-                companyId: companyIdInput.val(),
-                companyCode: companyCodeInput.val(),
-                timestamp: new Date().toISOString()
-            });
-        } else {
-            console.warn('syncClientFields: companyId or companyCode empty, not clearing client fields', {
-                companyId: companyIdInput.val(),
-                companyCode: companyCodeInput.val(),
-                clientID: clientIdInput.val(),
-                clientCode: clientCodeInput.val(),
-                timestamp: new Date().toISOString()
-            });
-        }
-    }
-
-    function toggleCompanyInput() {
-        let selectedType = partyEntityType.val() || '';
-        const typeMapping = {
-            'Agent/Forwarder': 'Forwarder',
-            'ShippingLine': 'Shipping Line',
-            'Trucker': 'Trucker / Transporter',
-            'Airline': 'Airline',
-            'Client': 'Client',
-            'CreateonlyinD365': 'Create only in D365'
-        };
-        const normalizedType = selectedType.replace(/\s*\/\s*/g, '/').replace(/\s+/g, '');
-        const apiType = typeMapping[normalizedType] || selectedType;
-
-        companyNameInput.hide();
-        companyDropdown.hide();
-        legalEntityType.find('option').prop('disabled', false).show();
-        clearBasicDetails();
-        toggleFieldsReadonly(false);
-
-        const dropdownTypes = ['Client', 'Agent/Forwarder', 'Airline', 'ShippingLine',
-            'Trucker/Transporter'
-        ];
-
-        if (requestType === 'accounting') {
-            if (selectedType === 'Create only in D365') {
-                companyNameInput.show();
-                companyDropdown.css('display', 'none');
-                legalEntityType.find('option').each(function() {
-                    const value = $(this).val();
-                    if (value && value !== 'Only in D365 Debtor' && value !==
-                        'Only in D365 Vendor') {
-                        $(this).prop('disabled', true).hide();
-                    }
+                    item.data('company', company);
+                    companyAutocompleteList.append(item);
                 });
-            } else if (dropdownTypes.includes(normalizedType)) {
-                companyDropdown.show();
-                companyNameInput.hide();
-                toggleFieldsReadonly(true);
 
-                // Load companies for autocomplete
-                loadCompaniesForAutocomplete(apiType);
-
-                legalEntityType.find('option').each(function() {
-                    const value = $(this).val();
-                    if (value === 'Only in D365 Debtor' || value === 'Only in D365 Vendor') {
-                        $(this).prop('disabled', true).hide();
-                    }
-                });
+                companyAutocompleteList.addClass('show');
             }
-        } else {
-            companyNameInput.show();
-            companyDropdown.css('display', 'none');
-        }
 
-        legalEntityType.val('');
-        console.log('toggleCompanyInput:', {
-            requestType,
-            selectedType,
-            normalizedType,
-            apiType,
-            dropdownTypesIncludes: dropdownTypes.includes(normalizedType),
-            companyNameVisible: companyNameInput.is(':visible'),
-            companyDropdownVisible: companyDropdown.is(':visible')
-        });
-        syncClientFields();
-    }
+            function escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
 
-    function clearBasicDetails() {
-        $('.basic-detail-field').not('#countryCode, #countryName, #countryID').val('');
-        companyNameInput.val(''); // Clear the original companyName field
-        companyAutocomplete.val(''); // Clear the autocomplete field
-        companyIdInput.val('');
-        companyCodeInput.val('');
-        companySelectHidden.val('');
-        clientIdInput.val('');
-        clientCodeInput.val('');
-        toggleAutocompleteDropdown(false);
-    }
-
-    function toggleFieldsReadonly(disable) {
-        $('.basic-detail-field').not('#countryCode, #countryName, #countryID').each(function() {
-            $(this).prop('readonly', disable);
-        });
-    }
-
-    function fetchCompanyDetails(entityType, companyId) {
-        console.log('fetchCompanyDetails: entityType=', entityType, 'companyId=', companyId);
-        $.ajax({
-            url: '{{ route('company.details') }}',
-            method: 'GET',
-            data: {
-                entityType: entityType,
-                companyId: companyId
-            },
-            success: function(data) {
-                console.log('fetchCompanyDetails: Response=', data);
-                if (!data.countryCode || !data.countryID) {
-                    console.warn('fetchCompanyDetails: Missing countryCode or countryID', {
-                        countryCode: data.countryCode,
-                        countryID: data.countryID
-                    });
-                    alert(
-                        'Warning: No country code for this company. Please select a country manually.'
-                    );
+            function filterCompanies(searchTerm) {
+                if (!searchTerm || searchTerm.length < 2) {
+                    return companiesData.slice(0, 20);
                 }
-                $('#addressLine1').val(data.addressLine1 || '');
-                $('#addressLine2').val(data.addressLine2 || '');
-                $('#cityName').val(data.cityName || '');
-                $('#zipCode').val(data.zipCode || '');
-                $('#provinceName').val(data.provinceName || '');
-                $('#provinceID').val(data.provinceID || '');
-                $('#provinceCode').val(data.provinceCode || '');
-                $('#cityID').val(data.cityID || '');
-                $('#cityCode').val(data.cityCode || '');
-                $('#countryID').val(data.countryID || '').trigger('change');
-                $('#countryCode').val(data.countryCode || '');
-                $('#countryName').val(data.countryName || '');
-                $('#firstName').val(data.firstName || '-');
-                $('#lastName').val(data.lastName || '-');
-                $('#department').val(data.department || '');
-                $('#phoneNo').val(data.phoneNo || '0');
-                $('#contractEmail').val(data.contractEmail || '');
-                companyIdInput.val(data.companyId || '');
-                companyCodeInput.val(data.companyCode || '');
-                if (data.companyId && data.companyCode) {
-                    clientIdInput.val(data.companyId);
-                    clientCodeInput.val(data.companyCode);
+
+                const filtered = companiesData.filter(company =>
+                    company.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    company.code.toLowerCase().includes(searchTerm.toLowerCase())
+                );
+
+                return filtered.slice(0, 20); // Limit to 20 results for performance
+            }
+
+            function selectCompany(company) {
+                if (!company) return;
+
+                companyAutocomplete.val(company.name);
+                companyNameInput.val(company.name);
+                companyIdInput.val(company.id);
+                companyCodeInput.val(company.code);
+                companySelectHidden.val(company.id);
+
+                toggleAutocompleteDropdown(false);
+
+                // Trigger the existing company selection logic
+                if (partyEntityType.val()) {
+                    fetchCompanyDetails(partyEntityType.val(), company.id);
                 }
+
+                // Sync client fields
                 syncClientFields();
-            },
-            error: function(xhr) {
-                console.error('Error fetching company details:', xhr.responseJSON?.error || xhr
-                    .statusText);
-                clearBasicDetails();
-                toggleFieldsReadonly(true);
-                alert('Failed to retrieve company details.');
-            }
-        });
-    }
 
-    function toggleCountryReadonly() {
-        const partyEntityTypeValue = partyEntityType.val();
-
-        if (requestType === 'accounting' && partyEntityTypeValue !== 'Create only in D365') {
-            countrySelect.prop('readonly', true).prop('disabled', true).addClass('readonly-country');
-            console.log('Country field set to readonly for accounting mode (except Create only in D365)');
-        } else {
-            countrySelect.prop('readonly', false).prop('disabled', false).removeClass('readonly-country');
-            console.log('Country field enabled - operational mode or Create only in D365');
-        }
-    }
-
-    function handleDebtorTypeChange() {
-        const debtorTypeValue = debtorType.val();
-        console.log('debtorType changed:', {
-            debtorType: debtorTypeValue
-        });
-        if (debtorTypeValue === 'CASHCUSTOM') {
-            creditDays.val('0').prop('readonly', true).prop('disabled', true);
-            maxCreditLimit.val('0').prop('readonly', true).prop('disabled', true);
-            console.log('Cash Custom selected: Set creditDays=0, maxCreditLimit=0, fields readonly');
-        } else {
-            creditDays.prop('readonly', false).prop('disabled', false);
-            maxCreditLimit.prop('readonly', false).prop('disabled', false);
-            console.log('Non-Cash Custom selected: creditDays and maxCreditLimit editable');
-        }
-    }
-
-    // ================================
-    // FIXED OVERSEAS ENTITY LICENSE HANDLING
-    // ================================
-
-    function toggleLicenseInput() {
-        const isOverseas = overseasEntityCheckbox.is(':checked');
-        console.log('toggleLicenseInput:', {
-            isOverseas,
-            licenceTypeValueRequired: $('#licenceTypeValue').attr('required'),
-            licenceTypeIDRequired: $('#licenceTypeID').attr('required'),
-            requestType: requestType,
-            timestamp: new Date().toISOString()
-        });
-
-        if (isOverseas || requestType === 'operational') {
-            licenceTypeValue
-                .prop('readonly', true)  // Use readonly instead of disabled
-                .prop('disabled', false) // Ensure it's not disabled so it submits
-                .val('NILL')
-                .removeClass('is-invalid')
-                .removeAttr('required')
-                .addClass('overseas-readonly'); // Add visual class for styling
-
-            licenceTypeID
-                .prop('disabled', false) // Keep enabled to preserve value
-                .addClass('readonly-select') // Add readonly styling
-                .attr('readonly', true) // Add readonly attribute for styling
-                .removeClass('is-invalid')
-                .removeAttr('required');
-
-            // FIXED: Use CSS pointer-events instead of preventing JavaScript events
-            // This allows change events to still fire for our handlers
-            licenceTypeID.css('pointer-events', 'none');
-
-            // Remove any previous event handlers that might conflict
-            licenceTypeID.off('click.overseas change.overseas');
-
-            $('#licenseError').hide();
-            $('#licenseSuccess').hide();
-            $('#submitBtn').prop('disabled', false);
-        } else {
-            licenceTypeValue
-                .prop('readonly', false)
-                .prop('disabled', false)
-                .val('')
-                .removeClass('overseas-readonly');
-
-            licenceTypeID
-                .prop('disabled', false)
-                .removeClass('readonly-select')
-                .removeAttr('readonly');
-
-            // Re-enable pointer events
-            licenceTypeID.css('pointer-events', 'auto');
-
-            // Remove event handlers that prevent interaction
-            licenceTypeID.off('click.overseas change.overseas');
-            $('#licenseSuccess').hide();
-
-            // Set required attributes for accounting mode
-            if (requestType === 'accounting') {
-                licenceTypeValue.attr('required', 'required');
-                licenceTypeID.attr('required', 'required');
-            }
-        }
-
-        // FIXED: Trigger license code update after toggle
-        setTimeout(function() {
-            updateLicenseCode();
-        }, 50);
-    }
-
-    function toggleAccountingFields() {
-        if (requestType === 'operational') {
-            legalEntityType
-                .prop('disabled', true)
-                .removeAttr('required')
-                .removeClass('is-invalid')
-                .val('');
-            billingCurrency
-                .prop('disabled', true)
-                .removeAttr('required')
-                .removeClass('is-invalid')
-                .val('');
-            creditDays
-                .prop('disabled', true)
-                .removeAttr('required')
-                .removeClass('is-invalid')
-                .val('');
-            maxCreditLimit
-                .prop('disabled', true)
-                .removeAttr('required')
-                .removeClass('is-invalid')
-                .val('');
-            licenceTypeValue
-                .prop('disabled', false)  // Keep enabled for submission
-                .prop('readonly', true)
-                .removeAttr('required')
-                .removeClass('is-invalid')
-                .val('NILL')
-                .addClass('overseas-readonly');
-            licenceTypeID
-                .prop('disabled', false)
-                .addClass('readonly-select')
-                .attr('readonly', true)
-                .removeAttr('required')
-                .removeClass('is-invalid')
-                .css('pointer-events', 'none');
-            console.log('toggleAccountingFields: Disabled accounting fields for operational mode');
-        } else if (requestType === 'accounting') {
-            legalEntityType
-                .prop('disabled', false)
-                .attr('required', 'required');
-            billingCurrency
-                .prop('disabled', false)
-                .attr('required', 'required');
-            creditDays
-                .prop('disabled', false)
-                .attr('required', 'required');
-            maxCreditLimit
-                .prop('disabled', false)
-                .attr('required', 'required');
-            console.log('toggleAccountingFields: Enabled accounting fields for accounting mode');
-            toggleLicenseInput();
-        }
-    }
-
-    // ================================
-    // VALIDATION FUNCTIONS
-    // ================================
-
-    function validateCompanySelection() {
-        if (requestType === 'accounting' && companyAutocomplete.is(':visible')) {
-            if (companyAutocomplete.val() && !companyIdInput.val()) {
-                companyAutocomplete.addClass('is-invalid');
-                alert('Please select a company from the dropdown list.');
-                return false;
-            }
-            companyAutocomplete.removeClass('is-invalid');
-        }
-        return true;
-    }
-
-    function validateForm() {
-        const form = document.getElementById('clientPartyForm');
-
-        // Check HTML5 form validity
-        if (!form.checkValidity()) {
-            console.warn('Form validation failed - HTML5 validation');
-            return false;
-        }
-
-        // Check company selection for accounting mode
-        if (!validateCompanySelection()) {
-            console.warn('Form validation failed - Company selection');
-            return false;
-        }
-
-        // Check file upload for accounting mode
-        if (!validateFileUpload()) {
-            console.warn('Form validation failed - File upload requirement');
-            return false;
-        }
-
-        // Update license code before validation
-        updateLicenseCode();
-
-        console.log('All form validations passed');
-        return true;
-    }
-
-    // ================================
-    // OTHER INPUT MANAGEMENT
-    // ================================
-
-    function toggleOtherInput() {
-        const isOtherChecked = $('#otherCheck').is(':checked');
-        const $otherInput = $('#otherInput');
-        const $otherID = $('#otherID');
-        const $otherCode = $('#otherCode');
-        const $otherInputDisplay = $('#other_Input');
-
-        if (isOtherChecked) {
-            $otherInput.attr('required', 'required').val('').off('input').prop('readonly', false);
-            $otherInputDisplay.text('');
-        } else {
-            $otherInput.attr('required', 'required').val('').prop('readonly', false);
-            let debounceTimeout;
-            $otherInput.on('input', function() {
-                clearTimeout(debounceTimeout);
-                debounceTimeout = setTimeout(() => {
-                    const query = $(this).val().trim().toLowerCase();
-                    let entityType = $('#partyEntityType').val() || '';
-                    const typeMapping = {
-                        'Agent / Forwarder': 'Forwarder',
-                        'ShippingLine': 'Shipping Line',
-                        'Trucker': 'Trucker / Transporter',
-                        'Airline': 'Airline',
-                        'Client': 'Client',
-                        'CreateonlyinD365': 'Create only in D365'
-                    };
-                    const normalizedType = entityType.replace(/\s*\/\s*/g, '/').replace(
-                        /\s+/g, '');
-                    entityType = typeMapping[normalizedType] || entityType;
-                    const $autocompleteList = $('<div class="autocomplete-list"></div>');
-                    $otherInput.parent().find('.autocomplete-list').remove();
-                    $otherInput.parent().append($autocompleteList);
-
-                    if (!entityType) {
-                        $autocompleteList.html('<div>Please select a party type</div>');
-                        return;
+                // AUTO-INITIALIZE Other fields for accounting mode
+                setTimeout(function() {
+                    if (requestType === 'accounting') {
+                        initializeOtherFieldsFromClient();
                     }
+                }, 100);
 
-                    console.log('otherInput AJAX:', {
-                        entityType
-                    });
-                    $.ajax({
-                        url: '{{ route('companies') }}',
-                        type: 'GET',
-                        data: {
-                            entityType: entityType
-                        },
-                        success: function(matches) {
-                            console.log('otherInput response:', matches);
-                            $autocompleteList.empty();
-                            if (matches.error) {
-                                $autocompleteList.html(
-                                    `<div>${matches.error}</div>`);
-                                return;
+                console.log('Company selected:', {
+                    name: company.name,
+                    id: company.id,
+                    code: company.code,
+                    otherFieldsInitialized: requestType === 'accounting'
+                });
+            }
+
+            function highlightItem(index) {
+                companyAutocompleteList.find('.autocomplete-item').removeClass('highlighted');
+                if (index >= 0 && index < companyAutocompleteList.find('.autocomplete-item').length) {
+                    companyAutocompleteList.find('.autocomplete-item').eq(index).addClass('highlighted');
+                    selectedIndex = index;
+                }
+            }
+
+            function loadCompaniesForAutocomplete(entityType) {
+                console.log('Loading companies for autocomplete, entityType:', entityType);
+
+                // Show loading state
+                if (companyAutocomplete.is(':visible')) {
+                    companyAutocompleteList.html('<div class="autocomplete-loading">Loading companies...</div>')
+                        .addClass('show');
+                }
+
+                $.ajax({
+                    url: '{{ route('companies') }}',
+                    method: 'GET',
+                    data: {
+                        entityType: entityType
+                    },
+                    success: function(data) {
+                        console.log('Companies loaded:', data.length || 0);
+
+                        // Hide loading state
+                        companyAutocompleteList.removeClass('show').empty();
+
+                        if (data.error) {
+                            companiesData = [];
+                            companyAutocomplete.attr('placeholder', 'Error loading companies...');
+                            if (companyAutocomplete.is(':focus')) {
+                                companyAutocompleteList.html(
+                                        `<div class="autocomplete-no-results">${data.error}</div>`)
+                                    .addClass('show');
                             }
-                            if (matches.length === 0) {
-                                $autocompleteList.html(
-                                    '<div>No entities found</div>');
-                                return;
+                        } else {
+                            companiesData = data || [];
+                            companyAutocomplete.attr('placeholder',
+                                `Type to search ${companiesData.length} companies...`);
+
+                            // If input is focused and has value, show filtered results
+                            if (companyAutocomplete.is(':focus')) {
+                                const searchTerm = companyAutocomplete.val().trim();
+                                if (searchTerm) {
+                                    const filteredCompanies = filterCompanies(searchTerm);
+                                    renderAutocompleteItems(filteredCompanies);
+                                }
                             }
-                            // Filter client-side
-                            const filteredMatches = query ?
-                                matches.filter(entity => entity.name
-                                    .toLowerCase().startsWith(query)) :
-                                matches;
-                            if (filteredMatches.length === 0) {
-                                $autocompleteList.html(
-                                    '<div>No entities found</div>');
-                                return;
-                            }
-                            filteredMatches.forEach(entity => {
-                                const $div = $(
-                                        '<div class="autocomplete-item"></div>'
-                                    )
-                                    .text(
-                                        `${entity.name} (${entity.code})`
-                                    )
-                                    .data('entity', {
-                                        value: entity.id,
-                                        label: entity.name,
-                                        code: entity.code
-                                    });
-                                $autocompleteList.append($div);
-                            });
-                        },
-                        error: function(xhr, status, error) {
-                            console.error('Error:', status, error);
-                            $autocompleteList.html(
-                                '<div>Error loading suggestions</div>');
                         }
-                    });
+                    },
+                    error: function(xhr) {
+                        console.error('Error loading companies:', xhr.responseJSON?.error || xhr
+                            .statusText);
+                        companiesData = [];
+                        companyAutocompleteList.removeClass('show').empty();
+                        companyAutocomplete.attr('placeholder', 'Error loading companies...');
+
+                        if (companyAutocomplete.is(':focus')) {
+                            companyAutocompleteList.html(
+                                '<div class="autocomplete-no-results">Error loading companies. Please try again.</div>'
+                            ).addClass('show');
+                        }
+
+                        alert('Failed to load company list. Please try again.');
+                    }
+                });
+            }
+
+            // Event handlers for autocomplete
+            companyAutocomplete.on('input', function() {
+                clearTimeout(searchTimeout);
+                const searchTerm = $(this).val().trim();
+
+                // Clear selections if input is cleared
+                if (!searchTerm) {
+                    companyNameInput.val(''); // Clear the original companyName field
+                    companyIdInput.val('');
+                    companyCodeInput.val('');
+                    companySelectHidden.val('');
+                    toggleAutocompleteDropdown(false);
+
+                    // Clear Other fields when autocomplete is cleared
+                    if (requestType === 'accounting') {
+                        $('#otherInput').val('');
+                        $('#otherID').val('');
+                        $('#otherCode').val('');
+                        $('#other_Input').text('');
+                    }
+                    return;
+                }
+
+                searchTimeout = setTimeout(() => {
+                    if (companiesData.length > 0) {
+                        const filteredCompanies = filterCompanies(searchTerm);
+                        renderAutocompleteItems(filteredCompanies);
+                        selectedIndex = -1;
+                    }
                 }, 300);
             });
 
-            $otherInput.parent().on('click', '.autocomplete-item', function() {
-                const entity = $(this).data('entity');
-                $otherInput.val(entity.label).removeClass('is-invalid');
-                $otherID.val(entity.value);
-                $otherCode.val(entity.code);
-                $otherInputDisplay.text(entity.code);
-                $otherInput.parent().find('.autocomplete-list').remove();
+            companyAutocomplete.on('focus', function() {
+                const searchTerm = $(this).val().trim();
+                if (companiesData.length > 0) {
+                    const filteredCompanies = filterCompanies(searchTerm);
+                    renderAutocompleteItems(filteredCompanies);
+                } else if (searchTerm) {
+                    // Show loading if we have a search term but no data yet
+                    companyAutocompleteList.html(
+                        '<div class="autocomplete-loading">Loading companies...</div>').addClass('show');
+                }
             });
 
+            companyAutocomplete.on('blur', function(e) {
+                // Delay hiding to allow click events on items
+                setTimeout(() => {
+                    if (!companyAutocompleteList.is(':hover')) {
+                        toggleAutocompleteDropdown(false);
+                    }
+                }, 150);
+            });
+
+            // Keyboard navigation for autocomplete
+            companyAutocomplete.on('keydown', function(e) {
+                const items = companyAutocompleteList.find('.autocomplete-item');
+
+                if (!companyAutocompleteList.hasClass('show') || items.length === 0) {
+                    return;
+                }
+
+                switch (e.key) {
+                    case 'ArrowDown':
+                        e.preventDefault();
+                        selectedIndex = Math.min(selectedIndex + 1, items.length - 1);
+                        highlightItem(selectedIndex);
+                        break;
+
+                    case 'ArrowUp':
+                        e.preventDefault();
+                        selectedIndex = Math.max(selectedIndex - 1, 0);
+                        highlightItem(selectedIndex);
+                        break;
+
+                    case 'Enter':
+                        e.preventDefault();
+                        if (selectedIndex >= 0) {
+                            const selectedItem = items.eq(selectedIndex);
+                            const company = selectedItem.data('company');
+                            if (company) {
+                                selectCompany(company);
+                            }
+                        }
+                        break;
+
+                    case 'Escape':
+                        e.preventDefault();
+                        toggleAutocompleteDropdown(false);
+                        $(this).blur();
+                        break;
+                }
+            });
+
+            // Click handler for autocomplete items
+            companyAutocompleteList.on('click', '.autocomplete-item', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                const company = $(this).data('company');
+                if (company) {
+                    selectCompany(company);
+                }
+            });
+
+            // Prevent autocomplete list from losing focus
+            companyAutocompleteList.on('mousedown', function(e) {
+                e.preventDefault();
+            });
+
+            // Click outside to close autocomplete
             $(document).on('click', function(e) {
-                if (!$(e.target).closest('#otherInput, .autocomplete-list').length) {
-                    $otherInput.parent().find('.autocomplete-list').remove();
-                }
-            });
-        }
-    }
-
-    // ================================
-    // EVENT HANDLERS
-    // ================================
-
-    // Bind debtorType change handler
-    debtorType.on('change', handleDebtorTypeChange);
-    handleDebtorTypeChange();
-
-    if ($('#countryID').length) {
-        $('#countryID').on('change', function() {
-            const selectedOption = $(this).find('option:selected');
-            const countryCode = selectedOption.attr('id') || '';
-            const countryName = selectedOption.text() || '';
-            $('#countryCode').val(countryCode);
-            $('#countryName').val(countryName);
-            console.log('countryID changed:', {
-                countryID: $(this).val(),
-                countryCode: countryCode,
-                countryName: countryName,
-                countryIdOptionExists: $(this).find(`option[value="${$(this).val()}"]`)
-                    .length > 0
-            });
-            if (!countryCode) {
-                console.warn(
-                    'countryID changed: No countryCode set. Please select a valid country.');
-                $('#countryID').addClass('is-invalid');
-            } else {
-                $('#countryID').removeClass('is-invalid');
-            }
-        });
-    } else {
-        console.error('countryID select not found');
-    }
-
-    // Handle partyEntityType change
-    partyEntityType.on('change', function() {
-        toggleCompanyInput();
-        toggleCountryReadonly(); // Update country readonly state based on entity type
-    });
-
-    // Initialize maxCreditLimit input
-    $("#maxCreditLimit").on("input", function() {
-        let maxCreditLimit = $(this).val();
-        if (!$(this).prop('readonly') && maxCreditLimit.startsWith("0")) {
-            $(this).val("1" + maxCreditLimit.slice(1));
-        }
-    });
-
-    // FIXED: Bind overseas entity event and initialize
-    overseasEntityCheckbox.on('change', function() {
-        console.log('Overseas entity checkbox changed:', $(this).is(':checked'));
-        toggleLicenseInput();
-    });
-
-    // FIXED: Global override for overseasEntity changes with proper readonly handling
-    $(document).on('change input', '#overseasEntity', function() {
-        console.log('Overseas entity checkbox changed (global override):', $(this).is(':checked'));
-
-        if ($(this).is(':checked')) {
-            licenceTypeValue
-                .removeAttr('required')
-                .removeClass('is-invalid')
-                .prop('readonly', true)
-                .prop('disabled', false)  // Keep enabled for form submission
-                .val('NILL')
-                .addClass('overseas-readonly');
-
-            licenceTypeID
-                .removeAttr('required')
-                .removeClass('is-invalid')
-                .prop('disabled', false)
-                .addClass('readonly-select')
-                .attr('readonly', true)
-                .css('pointer-events', 'none');
-
-            console.log('Global override: Set licence fields for overseas entity with NILL value');
-        } else {
-            // Reset fields when unchecked
-            licenceTypeValue
-                .prop('readonly', false)
-                .prop('disabled', false)
-                .val('')
-                .removeClass('overseas-readonly');
-
-            if (requestType === 'accounting') {
-                licenceTypeValue.attr('required', 'required');
-                licenceTypeID.attr('required', 'required');
-            }
-
-            licenceTypeID
-                .prop('disabled', false)
-                .removeClass('readonly-select')
-                .removeAttr('readonly')
-                .css('pointer-events', 'auto');
-
-            console.log('Global override: Reset licence fields when overseas unchecked');
-        }
-
-        // Trigger the main toggle function
-        setTimeout(toggleLicenseInput, 10);
-    });
-
-    // Initialize and bind event
-    toggleOtherInput();
-    $('#otherCheck').on('change', toggleOtherInput);
-
-    // Handle Next button click with validation (for both steps)
-    $('#nextBtn, #nextBtn2').on('click', function(e) {
-        e.preventDefault();
-
-        const buttonId = $(this).attr('id');
-        let stepErrorContainer, stepErrorMessage;
-
-        // Determine which step we're validating based on button
-        if (buttonId === 'nextBtn') {
-            // Step 1 to Step 2
-            stepErrorContainer = '#step-validation-error';
-            stepErrorMessage = '#step-error-message';
-        } else {
-            // Step 2 to Step 3
-            stepErrorContainer = '#step2-validation-error';
-            stepErrorMessage = '#step2-error-message';
-        }
-
-        // Hide any existing step validation errors
-        $(stepErrorContainer).hide();
-
-        // Get current active step
-        const currentStep = $('.content.active, .content.dstepper-block').attr('id');
-        console.log('Current step:', currentStep, 'Button:', buttonId);
-
-        // Step 1 (Basic Details) validation
-        if (currentStep === 'basic-details') {
-            // Additional validation for first step fields
-            const requiredFields = [{
-                    field: $('#partyEntityType'),
-                    name: 'Operation Type'
-                },
-                {
-                    field: $('#legalEntityType'),
-                    name: 'Legal Type'
-                },
-                {
-                    field: $('#companyName, #companyAutocomplete'),
-                    name: 'Company Name'
-                },
-                {
-                    field: $('#addressLine1'),
-                    name: 'Address Line 1'
-                },
-                {
-                    field: $('#countryID'),
-                    name: 'Country'
-                },
-                {
-                    field: $('#firstName'),
-                    name: 'First Name'
-                },
-                {
-                    field: $('#phoneNo'),
-                    name: 'Phone Number'
-                }
-            ];
-
-            let hasError = false;
-            let missingFields = [];
-
-            requiredFields.forEach(function(item) {
-                const $field = item.field;
-                if ($field.is(':visible') && $field.attr('required') && !$field.val()) {
-                    $field.addClass('is-invalid');
-                    hasError = true;
-                    missingFields.push(item.name);
-                } else {
-                    $field.removeClass('is-invalid');
+                if (!$(e.target).closest('.company-autocomplete-container').length) {
+                    toggleAutocompleteDropdown(false);
                 }
             });
 
-            if (hasError) {
-                $(stepErrorMessage).text(
-                    `Please fill in the following required fields: ${missingFields.join(', ')}`);
-                $(stepErrorContainer).show();
+            // ================================
+            // FORM FIELD MANAGEMENT
+            // ================================
 
-                // Scroll to the first missing field
-                const firstInvalidField = $('.is-invalid').first();
-                if (firstInvalidField.length) {
-                    $('html, body').animate({
-                        scrollTop: firstInvalidField.offset().top - 100
-                    }, 500);
-                }
-
-                return false;
-            }
-        }
-
-        // Step 2 (Office Details) validation - File upload validation only here
-        else if (currentStep === 'office-details') {
-            // File upload validation only for accounting mode
-            if (requestType === 'accounting' && !validateFileUpload()) {
-                // Show step validation error
-                $(stepErrorMessage).text(
-                    'File upload is required for accounting mode. Please upload a PDF file with description.'
-                );
-                $(stepErrorContainer).show();
-
-                // Scroll to file upload section to show the error
-                $('html, body').animate({
-                    scrollTop: $('#file-upload-error').offset().top - 100
-                }, 500);
-
-                // Highlight the file upload section
-                $('.file-upload-container').addClass('shake-animation');
-                setTimeout(function() {
-                    $('.file-upload-container').removeClass('shake-animation');
-                }, 1000);
-
-                return false;
-            }
-
-            // Validate other required fields in step 2
-            const step2RequiredFields = [{
-                    field: $('#officeCountry'),
-                    name: 'Office'
-                },
-                {
-                    field: $('#billingCurrency'),
-                    name: 'Billing Currency'
-                },
-                {
-                    field: $('#creditDays'),
-                    name: 'Credit Days'
-                },
-                {
-                    field: $('#maxCreditLimit'),
-                    name: 'Credit Limit'
-                },
-                {
-                    field: $('#licenceTypeID'),
-                    name: 'Licence Type'
-                },
-                {
-                    field: $('#licenceTypeValue'),
-                    name: 'Licence Value'
-                }
-            ];
-
-            let hasError = false;
-            let missingFields = [];
-
-            step2RequiredFields.forEach(function(item) {
-                const $field = item.field;
-                if ($field.is(':visible') && $field.attr('required') && !$field.val()) {
-                    $field.addClass('is-invalid');
-                    hasError = true;
-                    missingFields.push(item.name);
-                } else {
-                    $field.removeClass('is-invalid');
-                }
-            });
-
-            if (hasError) {
-                $(stepErrorMessage).text(
-                    `Please fill in the following required fields: ${missingFields.join(', ')}`);
-                $(stepErrorContainer).show();
-
-                // Scroll to the first missing field
-                const firstInvalidField = $('.is-invalid').first();
-                if (firstInvalidField.length) {
-                    $('html, body').animate({
-                        scrollTop: firstInvalidField.offset().top - 100
-                    }, 500);
-                }
-
-                return false;
-            }
-        }
-
-        // All validations passed, proceed to next step
-        console.log('All current step validations passed, proceeding to next step');
-        if (typeof stepper !== 'undefined') {
-            stepper.next();
-        } else {
-            console.error('Stepper not found');
-        }
-    });
-
-    // Clear step validation errors when fields are corrected
-    $(document).on('input change', 'input, select', function() {
-        // Clear individual field validation
-        $(this).removeClass('is-invalid');
-
-        // Check if all required fields are now filled for accounting mode
-        if (requestType === 'accounting') {
-            setTimeout(function() {
-                const hasValidFiles = validateFileUpload();
-                const currentStep = $('.content.active, .content.dstepper-block').attr(
-                    'id');
-
-                if (currentStep === 'basic-details') {
-                    const requiredFields = [
-                        $('#partyEntityType'),
-                        $('#legalEntityType'),
-                        $('#companyName, #companyAutocomplete'),
-                        $('#addressLine1'),
-                        $('#countryID'),
-                        $('#firstName'),
-                        $('#phoneNo')
-                    ];
-
-                    let allFieldsValid = true;
-                    requiredFields.forEach(function($field) {
-                        if ($field.is(':visible') && $field.attr('required') && !
-                            $field.val()) {
-                            allFieldsValid = false;
-                        }
-                    });
-
-                    // Hide step validation error if everything is valid
-                    if (allFieldsValid) {
-                        $('#step-validation-error').fadeOut();
-                    }
-                } else if (currentStep === 'office-details') {
-                    const step2RequiredFields = [
-                        $('#officeCountry'),
-                        $('#billingCurrency'),
-                        $('#creditDays'),
-                        $('#maxCreditLimit'),
-                        $('#licenceTypeID'),
-                        $('#licenceTypeValue')
-                    ];
-
-                    let allFieldsValid = true;
-                    step2RequiredFields.forEach(function($field) {
-                        if ($field.is(':visible') && $field.attr('required') && !
-                            $field.val()) {
-                            allFieldsValid = false;
-                        }
-                    });
-
-                    // Hide step validation error if everything is valid
-                    if (hasValidFiles && allFieldsValid) {
-                        $('#step2-validation-error').fadeOut();
-                    }
-                }
-            }, 100);
-        }
-    });
-
-    // Validate on submit
-    $('button[name="createBtn"], button[name="submitBtn"]').on('click', function(e) {
-        syncClientFields();
-
-        // Validate company selection
-        if (!validateCompanySelection()) {
-            e.preventDefault();
-            console.warn('Submit button: Company validation failed');
-            return;
-        }
-
-        // Validate file upload for accounting mode
-        if (!validateFileUpload()) {
-            e.preventDefault();
-            console.warn('Submit button: File upload validation failed');
-            return;
-        }
-
-        // Validate form
-        if (!validateForm()) {
-            e.preventDefault();
-            console.warn('Submit button: Form validation failed');
-        } else {
-            console.log('Submit button: All validations passed');
-        }
-    });
-
-    // FIXED: Form submission handler with proper overseas entity handling
-    $('#clientPartyForm').on('submit', function(e) {
-        console.log('Form submission - validating files...');
-
-        // FIXED: Update license code before form submission
-        updateLicenseCode();
-
-        // Validate company selection
-        if (!validateCompanySelection()) {
-            e.preventDefault();
-            console.log('Form submission prevented due to company selection validation');
-            return;
-        }
-
-        // Validate file upload for accounting mode
-        if (!validateFileUpload()) {
-            e.preventDefault();
-            console.log('Form submission prevented due to file validation errors');
-
-            // Scroll to file upload section
-            $('html, body').animate({
-                scrollTop: $('.file-upload-container').offset().top - 100
-            }, 500);
-
-            return false;
-        }
-
-        // Handle field states for different modes
-        if (requestType === 'operational') {
-            // For operational mode, disable accounting fields but keep license fields enabled
-            legalEntityType
-                .removeAttr('required')
-                .removeClass('is-invalid')
-                .prop('disabled', true)
-                .val('');
-            billingCurrency
-                .removeAttr('required')
-                .removeClass('is-invalid')
-                .prop('disabled', true)
-                .val('');
-            creditDays
-                .removeAttr('required')
-                .removeClass('is-invalid')
-                .prop('disabled', true)
-                .val('');
-            maxCreditLimit
-                .removeAttr('required')
-                .removeClass('is-invalid')
-                .prop('disabled', true)
-                .val('');
-
-            // For license fields in operational mode - always NILL
-            licenceTypeValue
-                .removeAttr('required')
-                .removeClass('is-invalid')
-                .prop('disabled', false)  // Keep enabled for submission
-                .prop('readonly', true)
-                .val('NILL');
-
-            licenceTypeID
-                .removeAttr('required')
-                .removeClass('is-invalid')
-                .prop('disabled', false)
-                .removeClass('readonly-select')
-                .removeAttr('readonly')
-                .css('pointer-events', 'auto');
-
-            console.log('Form submit: operational mode, ensured license fields submit with NILL');
-
-        } else if (overseasEntityCheckbox.is(':checked')) {
-            // For accounting mode with overseas entity
-            licenceTypeValue
-                .removeAttr('required')
-                .removeClass('is-invalid')
-                .prop('readonly', true)
-                .prop('disabled', false)  // Keep enabled for submission
-                .val('NILL');
-
-            licenceTypeID
-                .removeAttr('required')
-                .removeClass('is-invalid')
-                .prop('disabled', false)
-                .removeClass('readonly-select')
-                .removeAttr('readonly')
-                .css('pointer-events', 'auto');
-
-            console.log('Form submit: overseas entity checked, license fields will submit with NILL');
-        }
-
-        // Log submission data
-        console.log('Form submitting with license data:', {
-            overseasEntity: overseasEntityCheckbox.is(':checked'),
-            licenceTypeValue: licenceTypeValue.val(),
-            licenceTypeID: licenceTypeID.val(),
-            licenceTypeCode: licenceTypeCode.val(),
-            licenceTypeValueDisabled: licenceTypeValue.prop('disabled'),
-            licenceTypeValueReadonly: licenceTypeValue.prop('readonly'),
-            requestType: requestType
-        });
-
-        if ($('#clientPartyForm')[0].checkValidity() === false) {
-            e.preventDefault();
-            e.stopPropagation();
-            console.warn('Form validation failed due to required fields');
-        }
-
-        $('#clientPartyForm').addClass('was-validated');
-        console.log('License field validation passed, form submitting...');
-    });
-
-    // ================================
-    // UTILITY FUNCTIONS
-    // ================================
-
-    function sortCreditDaysAscending() {
-        const $creditDaysSelect = $('#creditDays');
-        const $options = $creditDaysSelect.find('option:not([value=""], [disabled])');
-
-        if ($options.length > 0) {
-            // Convert options to array and sort by numeric value
-            const optionsArray = $options.toArray().sort(function(a, b) {
-                const valueA = parseInt($(a).val()) || 0;
-                const valueB = parseInt($(b).val()) || 0;
-                return valueA - valueB;
-            });
-
-            // Remove all non-default options
-            $options.remove();
-
-            // Append sorted options
-            optionsArray.forEach(function(option) {
-                $creditDaysSelect.append(option);
-            });
-
-            console.log('Credit days sorted in ascending order');
-        }
-    }
-
-    // Monitor required attribute changes
-    function monitorRequiredAttribute() {
-        const observer = new MutationObserver((mutations) => {
-            mutations.forEach((mutation) => {
-                if (mutation.type === 'attributes' && mutation.attributeName ===
-                    'required') {
-                    console.warn('Required attribute changed:', {
-                        element: mutation.target.id,
-                        required: $(mutation.target).attr('required'),
-                        isOverseas: overseasEntityCheckbox.is(':checked'),
-                        requestType: requestType,
+            function syncClientFields() {
+                if (companyIdInput.val() && companyCodeInput.val()) {
+                    clientIdInput.val(companyIdInput.val());
+                    clientCodeInput.val(companyCodeInput.val());
+                    console.log('syncClientFields: Synced client fields', {
+                        clientID: clientIdInput.val(),
+                        clientCode: clientCodeInput.val(),
+                        companyId: companyIdInput.val(),
+                        companyCode: companyCodeInput.val(),
                         timestamp: new Date().toISOString()
                     });
-                    if (requestType === 'operational' || overseasEntityCheckbox.is(
-                            ':checked')) {
-                        if (['legalEntityType', 'billingCurrency', 'creditDays',
-                                'maxCreditLimit', 'licenceTypeValue', 'licenceTypeID'
-                            ].includes(mutation.target.id) && $(mutation.target).attr(
-                                'required')) {
-                            console.warn(
-                                `Conflict: ${mutation.target.id} required despite operational mode or overseasEntity checked. Forcing removal.`
+                } else {
+                    console.warn('syncClientFields: companyId or companyCode empty, not clearing client fields', {
+                        companyId: companyIdInput.val(),
+                        companyCode: companyCodeInput.val(),
+                        clientID: clientIdInput.val(),
+                        clientCode: clientCodeInput.val(),
+                        timestamp: new Date().toISOString()
+                    });
+                }
+            }
+
+            function toggleCompanyInput() {
+                let selectedType = partyEntityType.val() || '';
+                const typeMapping = {
+                    'Agent/Forwarder': 'Forwarder',
+                    'ShippingLine': 'Shipping Line',
+                    'Trucker': 'Trucker / Transporter',
+                    'Airline': 'Airline',
+                    'Client': 'Client',
+                    'CreateonlyinD365': 'Create only in D365'
+                };
+                const normalizedType = selectedType.replace(/\s*\/\s*/g, '/').replace(/\s+/g, '');
+                const apiType = typeMapping[normalizedType] || selectedType;
+
+                companyNameInput.hide();
+                companyDropdown.hide();
+                legalEntityType.find('option').prop('disabled', false).show();
+                clearBasicDetails();
+                toggleFieldsReadonly(false);
+
+                const dropdownTypes = ['Client', 'Agent/Forwarder', 'Airline', 'ShippingLine',
+                    'Trucker/Transporter'
+                ];
+
+                if (requestType === 'accounting') {
+                    if (selectedType === 'Create only in D365') {
+                        companyNameInput.show();
+                        companyDropdown.css('display', 'none');
+                        legalEntityType.find('option').each(function() {
+                            const value = $(this).val();
+                            if (value && value !== 'Only in D365 Debtor' && value !==
+                                'Only in D365 Vendor') {
+                                $(this).prop('disabled', true).hide();
+                            }
+                        });
+                    } else if (dropdownTypes.includes(normalizedType)) {
+                        companyDropdown.show();
+                        companyNameInput.hide();
+                        toggleFieldsReadonly(true);
+
+                        // Load companies for autocomplete
+                        loadCompaniesForAutocomplete(apiType);
+
+                        legalEntityType.find('option').each(function() {
+                            const value = $(this).val();
+                            if (value === 'Only in D365 Debtor' || value === 'Only in D365 Vendor') {
+                                $(this).prop('disabled', true).hide();
+                            }
+                        });
+                    }
+                } else {
+                    companyNameInput.show();
+                    companyDropdown.css('display', 'none');
+                }
+
+                legalEntityType.val('');
+                console.log('toggleCompanyInput:', {
+                    requestType,
+                    selectedType,
+                    normalizedType,
+                    apiType,
+                    dropdownTypesIncludes: dropdownTypes.includes(normalizedType),
+                    companyNameVisible: companyNameInput.is(':visible'),
+                    companyDropdownVisible: companyDropdown.is(':visible')
+                });
+                syncClientFields();
+            }
+
+            function clearBasicDetails() {
+                $('.basic-detail-field').not('#countryCode, #countryName, #countryID').val('');
+                companyNameInput.val(''); // Clear the original companyName field
+                companyAutocomplete.val(''); // Clear the autocomplete field
+                companyIdInput.val('');
+                companyCodeInput.val('');
+                companySelectHidden.val('');
+                clientIdInput.val('');
+                clientCodeInput.val('');
+                toggleAutocompleteDropdown(false);
+
+                // Clear Other fields when clearing basic details
+                if (requestType === 'accounting') {
+                    $('#otherInput').val('');
+                    $('#otherID').val('');
+                    $('#otherCode').val('');
+                    $('#other_Input').text('');
+                }
+            }
+
+            function toggleFieldsReadonly(disable) {
+                $('.basic-detail-field').not('#countryCode, #countryName, #countryID').each(function() {
+                    $(this).prop('readonly', disable);
+                });
+            }
+
+            function fetchCompanyDetails(entityType, companyId) {
+                console.log('fetchCompanyDetails: entityType=', entityType, 'companyId=', companyId);
+                $.ajax({
+                    url: '{{ route('company.details') }}',
+                    method: 'GET',
+                    data: {
+                        entityType: entityType,
+                        companyId: companyId
+                    },
+                    success: function(data) {
+                        console.log('fetchCompanyDetails: Response=', data);
+                        if (!data.countryCode || !data.countryID) {
+                            console.warn('fetchCompanyDetails: Missing countryCode or countryID', {
+                                countryCode: data.countryCode,
+                                countryID: data.countryID
+                            });
+                            alert(
+                                'Warning: No country code for this company. Please select a country manually.'
                             );
-                            $(mutation.target).removeAttr('required').removeClass(
-                                'is-invalid');
-                            if (mutation.target.id === 'licenceTypeValue') {
-                                $(mutation.target).val('NILL').prop('readonly', true).prop(
-                                    'disabled', false); // Keep enabled for submission
-                            } else if (mutation.target.id === 'licenceTypeID') {
-                                $(mutation.target).prop('disabled', false).addClass(
-                                    'readonly-select').attr('readonly', true).css(
-                                    'pointer-events', 'none');
+                        }
+                        $('#addressLine1').val(data.addressLine1 || '');
+                        $('#addressLine2').val(data.addressLine2 || '');
+                        $('#cityName').val(data.cityName || '');
+                        $('#zipCode').val(data.zipCode || '');
+                        $('#provinceName').val(data.provinceName || '');
+                        $('#provinceID').val(data.provinceID || '');
+                        $('#provinceCode').val(data.provinceCode || '');
+                        $('#cityID').val(data.cityID || '');
+                        $('#cityCode').val(data.cityCode || '');
+                        $('#countryID').val(data.countryID || '').trigger('change');
+                        $('#countryCode').val(data.countryCode || '');
+                        $('#countryName').val(data.countryName || '');
+                        $('#firstName').val(data.firstName || '-');
+                        $('#lastName').val(data.lastName || '-');
+                        $('#department').val(data.department || '');
+                        $('#phoneNo').val(data.phoneNo || '0');
+                        $('#contractEmail').val(data.contractEmail || '');
+                        companyIdInput.val(data.companyId || '');
+                        companyCodeInput.val(data.companyCode || '');
+                        if (data.companyId && data.companyCode) {
+                            clientIdInput.val(data.companyId);
+                            clientCodeInput.val(data.companyCode);
+                        }
+                        syncClientFields();
+
+                        // NEW: Initialize Other fields with client data for accounting mode
+                        setTimeout(function() {
+                            initializeOtherFieldsFromClient();
+                        }, 100);
+                    },
+                    error: function(xhr) {
+                        console.error('Error fetching company details:', xhr.responseJSON?.error || xhr
+                            .statusText);
+                        clearBasicDetails();
+                        toggleFieldsReadonly(true);
+                        alert('Failed to retrieve company details.');
+                    }
+                });
+            }
+
+            function toggleCountryReadonly() {
+                const partyEntityTypeValue = partyEntityType.val();
+
+                if (requestType === 'accounting' && partyEntityTypeValue !== 'Create only in D365') {
+                    // Use readonly styling but keep field enabled for submission
+                    countrySelect
+                        .addClass('readonly-country')
+                        .css('pointer-events', 'none') // Prevent user interaction
+                        .prop('readonly', true)
+                        .prop('disabled', false); // Keep enabled so value submits
+
+                    console.log('Country field set to readonly for accounting mode (except Create only in D365)');
+                } else {
+                    countrySelect
+                        .removeClass('readonly-country')
+                        .css('pointer-events', 'auto')
+                        .prop('readonly', false)
+                        .prop('disabled', false);
+
+                    console.log('Country field enabled - operational mode or Create only in D365');
+                }
+            }
+
+            function handleDebtorTypeChange() {
+                const debtorTypeValue = debtorType.val();
+                console.log('debtorType changed:', {
+                    debtorType: debtorTypeValue
+                });
+                if (debtorTypeValue === 'CASHCUSTOM') {
+                    creditDays.val('0').prop('readonly', true).prop('disabled', true);
+                    maxCreditLimit.val('0').prop('readonly', true).prop('disabled', true);
+                    console.log('Cash Custom selected: Set creditDays=0, maxCreditLimit=0, fields readonly');
+                } else {
+                    creditDays.prop('readonly', false).prop('disabled', false);
+                    maxCreditLimit.prop('readonly', false).prop('disabled', false);
+                    console.log('Non-Cash Custom selected: creditDays and maxCreditLimit editable');
+                }
+            }
+
+            // ================================
+            // FIXED OVERSEAS ENTITY LICENSE HANDLING
+            // ================================
+
+            function toggleLicenseInput() {
+                const isOverseas = overseasEntityCheckbox.is(':checked');
+                console.log('toggleLicenseInput:', {
+                    isOverseas,
+                    licenceTypeValueRequired: $('#licenceTypeValue').attr('required'),
+                    licenceTypeIDRequired: $('#licenceTypeID').attr('required'),
+                    requestType: requestType,
+                    timestamp: new Date().toISOString()
+                });
+
+                if (isOverseas || requestType === 'operational') {
+                    licenceTypeValue
+                        .prop('readonly', true) // Use readonly instead of disabled
+                        .prop('disabled', false) // Ensure it's not disabled so it submits
+                        .val('NILL')
+                        .removeClass('is-invalid')
+                        .removeAttr('required')
+                        .addClass('overseas-readonly'); // Add visual class for styling
+
+                    licenceTypeID
+                        .prop('disabled', false) // Keep enabled to preserve value
+                        .addClass('readonly-select') // Add readonly styling
+                        .attr('readonly', true) // Add readonly attribute for styling
+                        .removeClass('is-invalid')
+                        .removeAttr('required');
+
+                    // FIXED: Use CSS pointer-events instead of preventing JavaScript events
+                    // This allows change events to still fire for our handlers
+                    licenceTypeID.css('pointer-events', 'none');
+
+                    // Remove any previous event handlers that might conflict
+                    licenceTypeID.off('click.overseas change.overseas');
+
+                    $('#licenseError').hide();
+                    $('#licenseSuccess').hide();
+                    $('#submitBtn').prop('disabled', false);
+                } else {
+                    licenceTypeValue
+                        .prop('readonly', false)
+                        .prop('disabled', false)
+                        .val('')
+                        .removeClass('overseas-readonly');
+
+                    licenceTypeID
+                        .prop('disabled', false)
+                        .removeClass('readonly-select')
+                        .removeAttr('readonly');
+
+                    // Re-enable pointer events
+                    licenceTypeID.css('pointer-events', 'auto');
+
+                    // Remove event handlers that prevent interaction
+                    licenceTypeID.off('click.overseas change.overseas');
+                    $('#licenseSuccess').hide();
+
+                    // Set required attributes for accounting mode
+                    if (requestType === 'accounting') {
+                        licenceTypeValue.attr('required', 'required');
+                        licenceTypeID.attr('required', 'required');
+                    }
+                }
+
+                // FIXED: Trigger license code update after toggle
+                setTimeout(function() {
+                    updateLicenseCode();
+                }, 50);
+            }
+
+            function toggleAccountingFields() {
+                if (requestType === 'operational') {
+                    legalEntityType
+                        .prop('disabled', true)
+                        .removeAttr('required')
+                        .removeClass('is-invalid')
+                        .val('');
+                    billingCurrency
+                        .prop('disabled', true)
+                        .removeAttr('required')
+                        .removeClass('is-invalid')
+                        .val('');
+                    creditDays
+                        .prop('disabled', true)
+                        .removeAttr('required')
+                        .removeClass('is-invalid')
+                        .val('');
+                    maxCreditLimit
+                        .prop('disabled', true)
+                        .removeAttr('required')
+                        .removeClass('is-invalid')
+                        .val('');
+                    licenceTypeValue
+                        .prop('disabled', false) // Keep enabled for submission
+                        .prop('readonly', true)
+                        .removeAttr('required')
+                        .removeClass('is-invalid')
+                        .val('NILL')
+                        .addClass('overseas-readonly');
+                    licenceTypeID
+                        .prop('disabled', false)
+                        .addClass('readonly-select')
+                        .attr('readonly', true)
+                        .removeAttr('required')
+                        .removeClass('is-invalid')
+                        .css('pointer-events', 'none');
+                    console.log('toggleAccountingFields: Disabled accounting fields for operational mode');
+                } else if (requestType === 'accounting') {
+                    legalEntityType
+                        .prop('disabled', false)
+                        .attr('required', 'required');
+                    billingCurrency
+                        .prop('disabled', false)
+                        .attr('required', 'required');
+                    creditDays
+                        .prop('disabled', false)
+                        .attr('required', 'required');
+                    maxCreditLimit
+                        .prop('disabled', false)
+                        .attr('required', 'required');
+                    console.log('toggleAccountingFields: Enabled accounting fields for accounting mode');
+                    toggleLicenseInput();
+                }
+            }
+
+            // ================================
+            // VALIDATION FUNCTIONS
+            // ================================
+
+            function validateCompanySelection() {
+                if (requestType === 'accounting' && companyAutocomplete.is(':visible')) {
+                    if (companyAutocomplete.val() && !companyIdInput.val()) {
+                        companyAutocomplete.addClass('is-invalid');
+                        alert('Please select a company from the dropdown list.');
+                        return false;
+                    }
+                    companyAutocomplete.removeClass('is-invalid');
+                }
+                return true;
+            }
+
+            function validateForm() {
+                const form = document.getElementById('clientPartyForm');
+
+                // Check HTML5 form validity
+                if (!form.checkValidity()) {
+                    console.warn('Form validation failed - HTML5 validation');
+                    return false;
+                }
+
+                // Check company selection for accounting mode
+                if (!validateCompanySelection()) {
+                    console.warn('Form validation failed - Company selection');
+                    return false;
+                }
+
+                // Check file upload for accounting mode
+                if (!validateFileUpload()) {
+                    console.warn('Form validation failed - File upload requirement');
+                    return false;
+                }
+
+                // Update license code before validation
+                updateLicenseCode();
+
+                console.log('All form validations passed');
+                return true;
+            }
+
+            // ================================
+            // OTHER INPUT MANAGEMENT
+            // ================================
+
+            function toggleOtherInput() {
+                const isOtherChecked = $('#otherCheck').is(':checked');
+                const $otherInput = $('#otherInput');
+                const $otherID = $('#otherID');
+                const $otherCode = $('#otherCode');
+                const $otherInputDisplay = $('#other_Input');
+
+                if (isOtherChecked) {
+                    $otherInput.attr('required', 'required').val('').off('input').prop('readonly', false);
+                    $otherInputDisplay.text('');
+
+                    // For accounting mode, initialize with client data if available
+                    if (requestType === 'accounting') {
+                        setTimeout(function() {
+                            initializeOtherFieldsFromClient();
+                        }, 100);
+                    }
+                } else {
+                    $otherInput.attr('required', 'required').val('').prop('readonly', false);
+                    let debounceTimeout;
+                    $otherInput.on('input', function() {
+                        clearTimeout(debounceTimeout);
+                        debounceTimeout = setTimeout(() => {
+                            const query = $(this).val().trim().toLowerCase();
+                            let entityType = $('#partyEntityType').val() || '';
+                            const typeMapping = {
+                                'Agent / Forwarder': 'Forwarder',
+                                'ShippingLine': 'Shipping Line',
+                                'Trucker': 'Trucker / Transporter',
+                                'Airline': 'Airline',
+                                'Client': 'Client',
+                                'CreateonlyinD365': 'Create only in D365'
+                            };
+                            const normalizedType = entityType.replace(/\s*\/\s*/g, '/').replace(
+                                /\s+/g, '');
+                            entityType = typeMapping[normalizedType] || entityType;
+                            const $autocompleteList = $('<div class="autocomplete-list"></div>');
+                            $otherInput.parent().find('.autocomplete-list').remove();
+                            $otherInput.parent().append($autocompleteList);
+
+                            if (!entityType) {
+                                $autocompleteList.html('<div>Please select a party type</div>');
+                                return;
+                            }
+
+                            console.log('otherInput AJAX:', {
+                                entityType
+                            });
+                            $.ajax({
+                                url: '{{ route('companies') }}',
+                                type: 'GET',
+                                data: {
+                                    entityType: entityType
+                                },
+                                success: function(matches) {
+                                    console.log('otherInput response:', matches);
+                                    $autocompleteList.empty();
+                                    if (matches.error) {
+                                        $autocompleteList.html(
+                                            `<div>${matches.error}</div>`);
+                                        return;
+                                    }
+                                    if (matches.length === 0) {
+                                        $autocompleteList.html(
+                                            '<div>No entities found</div>');
+                                        return;
+                                    }
+                                    // Filter client-side
+                                    const filteredMatches = query ?
+                                        matches.filter(entity => entity.name
+                                            .toLowerCase().startsWith(query)) :
+                                        matches;
+                                    if (filteredMatches.length === 0) {
+                                        $autocompleteList.html(
+                                            '<div>No entities found</div>');
+                                        return;
+                                    }
+                                    filteredMatches.forEach(entity => {
+                                        const $div = $(
+                                                '<div class="autocomplete-item"></div>'
+                                            )
+                                            .text(
+                                                `${entity.name} (${entity.code})`
+                                            )
+                                            .data('entity', {
+                                                value: entity.id,
+                                                label: entity.name,
+                                                code: entity.code
+                                            });
+                                        $autocompleteList.append($div);
+                                    });
+                                },
+                                error: function(xhr, status, error) {
+                                    console.error('Error:', status, error);
+                                    $autocompleteList.html(
+                                        '<div>Error loading suggestions</div>');
+                                }
+                            });
+                        }, 300);
+                    });
+
+                    $otherInput.parent().on('click', '.autocomplete-item', function() {
+                        const entity = $(this).data('entity');
+                        $otherInput.val(entity.label).removeClass('is-invalid');
+                        $otherID.val(entity.value);
+                        $otherCode.val(entity.code);
+                        $otherInputDisplay.text(entity.code);
+                        $otherInput.parent().find('.autocomplete-list').remove();
+                    });
+
+                    $(document).on('click', function(e) {
+                        if (!$(e.target).closest('#otherInput, .autocomplete-list').length) {
+                            $otherInput.parent().find('.autocomplete-list').remove();
+                        }
+                    });
+                }
+            }
+
+            // ================================
+            // EVENT HANDLERS
+            // ================================
+
+            // Bind debtorType change handler
+            debtorType.on('change', handleDebtorTypeChange);
+            handleDebtorTypeChange();
+
+            if ($('#countryID').length) {
+                $('#countryID').on('change', function() {
+                    const selectedOption = $(this).find('option:selected');
+                    const countryCode = selectedOption.attr('id') || '';
+                    const countryName = selectedOption.text() || '';
+                    $('#countryCode').val(countryCode);
+                    $('#countryName').val(countryName);
+                    console.log('countryID changed:', {
+                        countryID: $(this).val(),
+                        countryCode: countryCode,
+                        countryName: countryName,
+                        countryIdOptionExists: $(this).find(`option[value="${$(this).val()}"]`)
+                            .length > 0
+                    });
+                    if (!countryCode) {
+                        console.warn(
+                            'countryID changed: No countryCode set. Please select a valid country.');
+                        $('#countryID').addClass('is-invalid');
+                    } else {
+                        $('#countryID').removeClass('is-invalid');
+                    }
+                });
+            } else {
+                console.error('countryID select not found');
+            }
+
+            // Handle partyEntityType change
+            partyEntityType.on('change', function() {
+                toggleCompanyInput();
+                toggleCountryReadonly(); // Update country readonly state based on entity type
+
+                // Clear Other fields when changing entity type
+                if (requestType === 'accounting') {
+                    $('#otherInput').val('');
+                    $('#otherID').val('');
+                    $('#otherCode').val('');
+                    $('#other_Input').text('');
+                }
+            });
+
+            // NEW: Handle company name input for "Create only in D365" option
+            companyNameInput.on('input blur', function() {
+                const partyEntityTypeValue = partyEntityType.val();
+
+                // For accounting mode with "Create only in D365" option
+                if (requestType === 'accounting' && partyEntityTypeValue === 'Create only in D365') {
+                    setTimeout(function() {
+                        initializeOtherFieldsFromManualInput();
+                    }, 100);
+                }
+            });
+
+            // Initialize maxCreditLimit input
+            $("#maxCreditLimit").on("input", function() {
+                let maxCreditLimit = $(this).val();
+                if (!$(this).prop('readonly') && maxCreditLimit.startsWith("0")) {
+                    $(this).val("1" + maxCreditLimit.slice(1));
+                }
+            });
+
+            // FIXED: Bind overseas entity event and initialize
+            overseasEntityCheckbox.on('change', function() {
+                console.log('Overseas entity checkbox changed:', $(this).is(':checked'));
+                toggleLicenseInput();
+            });
+
+            // FIXED: Global override for overseasEntity changes with proper readonly handling
+            $(document).on('change input', '#overseasEntity', function() {
+                console.log('Overseas entity checkbox changed (global override):', $(this).is(':checked'));
+
+                if ($(this).is(':checked')) {
+                    licenceTypeValue
+                        .removeAttr('required')
+                        .removeClass('is-invalid')
+                        .prop('readonly', true)
+                        .prop('disabled', false) // Keep enabled for form submission
+                        .val('NILL')
+                        .addClass('overseas-readonly');
+
+                    licenceTypeID
+                        .removeAttr('required')
+                        .removeClass('is-invalid')
+                        .prop('disabled', false)
+                        .addClass('readonly-select')
+                        .attr('readonly', true)
+                        .css('pointer-events', 'none');
+
+                    console.log('Global override: Set licence fields for overseas entity with NILL value');
+                } else {
+                    // Reset fields when unchecked
+                    licenceTypeValue
+                        .prop('readonly', false)
+                        .prop('disabled', false)
+                        .val('')
+                        .removeClass('overseas-readonly');
+
+                    if (requestType === 'accounting') {
+                        licenceTypeValue.attr('required', 'required');
+                        licenceTypeID.attr('required', 'required');
+                    }
+
+                    licenceTypeID
+                        .prop('disabled', false)
+                        .removeClass('readonly-select')
+                        .removeAttr('readonly')
+                        .css('pointer-events', 'auto');
+
+                    console.log('Global override: Reset licence fields when overseas unchecked');
+                }
+
+                // Trigger the main toggle function
+                setTimeout(toggleLicenseInput, 10);
+            });
+
+            // Initialize and bind event for Other checkbox
+            toggleOtherInput();
+            $('#otherCheck').on('change', function() {
+                toggleOtherInput();
+
+                // For accounting mode, initialize with client data when checkbox is checked
+                if (requestType === 'accounting' && $(this).is(':checked')) {
+                    setTimeout(function() {
+                        initializeOtherFieldsFromClient();
+                    }, 200);
+                }
+            });
+
+            // Handle Next button click with validation (for both steps)
+            $('#nextBtn, #nextBtn2').on('click', function(e) {
+                e.preventDefault();
+
+                const buttonId = $(this).attr('id');
+                let stepErrorContainer, stepErrorMessage;
+
+                // Determine which step we're validating based on button
+                if (buttonId === 'nextBtn') {
+                    // Step 1 to Step 2
+                    stepErrorContainer = '#step-validation-error';
+                    stepErrorMessage = '#step-error-message';
+                } else {
+                    // Step 2 to Step 3
+                    stepErrorContainer = '#step2-validation-error';
+                    stepErrorMessage = '#step2-error-message';
+                }
+
+                // Hide any existing step validation errors
+                $(stepErrorContainer).hide();
+
+                // Get current active step
+                const currentStep = $('.content.active, .content.dstepper-block').attr('id');
+                console.log('Current step:', currentStep, 'Button:', buttonId);
+
+                // Step 1 (Basic Details) validation
+                if (currentStep === 'basic-details') {
+                    // Additional validation for first step fields
+                    const requiredFields = [{
+                            field: $('#partyEntityType'),
+                            name: 'Operation Type'
+                        },
+                        {
+                            field: $('#legalEntityType'),
+                            name: 'Legal Type'
+                        },
+                        {
+                            field: $('#companyName, #companyAutocomplete'),
+                            name: 'Company Name'
+                        },
+                        {
+                            field: $('#addressLine1'),
+                            name: 'Address Line 1'
+                        },
+                        {
+                            field: $('#countryID'),
+                            name: 'Country'
+                        },
+                        {
+                            field: $('#firstName'),
+                            name: 'First Name'
+                        },
+                        {
+                            field: $('#phoneNo'),
+                            name: 'Phone Number'
+                        }
+                    ];
+
+                    let hasError = false;
+                    let missingFields = [];
+
+                    requiredFields.forEach(function(item) {
+                        const $field = item.field;
+                        if ($field.is(':visible') && $field.attr('required') && !$field.val()) {
+                            $field.addClass('is-invalid');
+                            hasError = true;
+                            missingFields.push(item.name);
+                        } else {
+                            $field.removeClass('is-invalid');
+                        }
+                    });
+
+                    if (hasError) {
+                        $(stepErrorMessage).text(
+                            `Please fill in the following required fields: ${missingFields.join(', ')}`);
+                        $(stepErrorContainer).show();
+
+                        // Scroll to the first missing field
+                        const firstInvalidField = $('.is-invalid').first();
+                        if (firstInvalidField.length) {
+                            $('html, body').animate({
+                                scrollTop: firstInvalidField.offset().top - 100
+                            }, 500);
+                        }
+
+                        return false;
+                    }
+                }
+
+                // Step 2 (Office Details) validation - File upload validation only here
+                else if (currentStep === 'office-details') {
+                    // File upload validation only for accounting mode
+                    if (requestType === 'accounting' && !validateFileUpload()) {
+                        // Show step validation error
+                        $(stepErrorMessage).text(
+                            'File upload is required for accounting mode. Please upload a PDF file with description.'
+                        );
+                        $(stepErrorContainer).show();
+
+                        // Scroll to file upload section to show the error
+                        $('html, body').animate({
+                            scrollTop: $('#file-upload-error').offset().top - 100
+                        }, 500);
+
+                        // Highlight the file upload section
+                        $('.file-upload-container').addClass('shake-animation');
+                        setTimeout(function() {
+                            $('.file-upload-container').removeClass('shake-animation');
+                        }, 1000);
+
+                        return false;
+                    }
+
+                    // Validate other required fields in step 2
+                    const step2RequiredFields = [{
+                            field: $('#officeCountry'),
+                            name: 'Office'
+                        },
+                        {
+                            field: $('#billingCurrency'),
+                            name: 'Billing Currency'
+                        },
+                        {
+                            field: $('#creditDays'),
+                            name: 'Credit Days'
+                        },
+                        {
+                            field: $('#maxCreditLimit'),
+                            name: 'Credit Limit'
+                        },
+                        {
+                            field: $('#licenceTypeID'),
+                            name: 'Licence Type'
+                        },
+                        {
+                            field: $('#licenceTypeValue'),
+                            name: 'Licence Value'
+                        }
+                    ];
+
+                    let hasError = false;
+                    let missingFields = [];
+
+                    step2RequiredFields.forEach(function(item) {
+                        const $field = item.field;
+                        if ($field.is(':visible') && $field.attr('required') && !$field.val()) {
+                            $field.addClass('is-invalid');
+                            hasError = true;
+                            missingFields.push(item.name);
+                        } else {
+                            $field.removeClass('is-invalid');
+                        }
+                    });
+
+                    if (hasError) {
+                        $(stepErrorMessage).text(
+                            `Please fill in the following required fields: ${missingFields.join(', ')}`);
+                        $(stepErrorContainer).show();
+
+                        // Scroll to the first missing field
+                        const firstInvalidField = $('.is-invalid').first();
+                        if (firstInvalidField.length) {
+                            $('html, body').animate({
+                                scrollTop: firstInvalidField.offset().top - 100
+                            }, 500);
+                        }
+
+                        return false;
+                    }
+                }
+
+                // All validations passed, proceed to next step
+                console.log('All current step validations passed, proceeding to next step');
+                if (typeof stepper !== 'undefined') {
+                    stepper.next();
+                } else {
+                    console.error('Stepper not found');
+                }
+            });
+
+            // Clear step validation errors when fields are corrected
+            $(document).on('input change', 'input, select', function() {
+                // Clear individual field validation
+                $(this).removeClass('is-invalid');
+
+                // Check if all required fields are now filled for accounting mode
+                if (requestType === 'accounting') {
+                    setTimeout(function() {
+                        const hasValidFiles = validateFileUpload();
+                        const currentStep = $('.content.active, .content.dstepper-block').attr(
+                            'id');
+
+                        if (currentStep === 'basic-details') {
+                            const requiredFields = [
+                                $('#partyEntityType'),
+                                $('#legalEntityType'),
+                                $('#companyName, #companyAutocomplete'),
+                                $('#addressLine1'),
+                                $('#countryID'),
+                                $('#firstName'),
+                                $('#phoneNo')
+                            ];
+
+                            let allFieldsValid = true;
+                            requiredFields.forEach(function($field) {
+                                if ($field.is(':visible') && $field.attr('required') && !
+                                    $field.val()) {
+                                    allFieldsValid = false;
+                                }
+                            });
+
+                            // Hide step validation error if everything is valid
+                            if (allFieldsValid) {
+                                $('#step-validation-error').fadeOut();
+                            }
+                        } else if (currentStep === 'office-details') {
+                            const step2RequiredFields = [
+                                $('#officeCountry'),
+                                $('#billingCurrency'),
+                                $('#creditDays'),
+                                $('#maxCreditLimit'),
+                                $('#licenceTypeID'),
+                                $('#licenceTypeValue')
+                            ];
+
+                            let allFieldsValid = true;
+                            step2RequiredFields.forEach(function($field) {
+                                if ($field.is(':visible') && $field.attr('required') && !
+                                    $field.val()) {
+                                    allFieldsValid = false;
+                                }
+                            });
+
+                            // Hide step validation error if everything is valid
+                            if (hasValidFiles && allFieldsValid) {
+                                $('#step2-validation-error').fadeOut();
+                            }
+                        }
+                    }, 100);
+                }
+            });
+
+            // Validate on submit
+            $('button[name="createBtn"], button[name="submitBtn"]').on('click', function(e) {
+                syncClientFields();
+
+                // Validate company selection
+                if (!validateCompanySelection()) {
+                    e.preventDefault();
+                    console.warn('Submit button: Company validation failed');
+                    return;
+                }
+
+                // Validate file upload for accounting mode
+                if (!validateFileUpload()) {
+                    e.preventDefault();
+                    console.warn('Submit button: File upload validation failed');
+                    return;
+                }
+
+                // Validate form
+                if (!validateForm()) {
+                    e.preventDefault();
+                    console.warn('Submit button: Form validation failed');
+                } else {
+                    console.log('Submit button: All validations passed');
+                }
+            });
+
+            // FIXED: Form submission handler with proper overseas entity handling
+            // $('#clientPartyForm').on('submit', function(e) {
+            //     console.log('Form submission - validating files...');
+            //     console.log('Form submission - ensuring Other fields for accounting mode...');
+
+            //     // CRITICAL: Ensure Other fields are populated for accounting mode before submission
+            //     if (requestType === 'accounting') {
+            //         ensureOtherFieldsForAccountingMode();
+
+            //         // Double-check that Other fields are properly set
+            //         const otherInput = $('#otherInput').val();
+            //         const otherID = $('#otherID').val();
+            //         const otherCode = $('#otherCode').val();
+            //         const otherChecked = $('#otherCheck').is(':checked');
+
+            //         if (!otherInput || !otherID || !otherCode || !otherChecked) {
+            //             console.warn(
+            //                 'Other fields not properly initialized for accounting mode, attempting to fix...'
+            //             );
+
+            //             // Try one more time to initialize
+            //             const companyName = companyNameInput.val() || companyAutocomplete.val();
+            //             if (companyName) {
+            //                 if (companyIdInput.val() && companyCodeInput.val()) {
+            //                     initializeOtherFieldsFromClient();
+            //                 } else {
+            //                     initializeOtherFieldsFromManualInput();
+            //                 }
+            //             }
+            //         }
+
+            //         // Log final Other fields state
+            //         console.log('Final Other fields state before submission:', {
+            //             otherInput: $('#otherInput').val(),
+            //             otherID: $('#otherID').val(),
+            //             otherCode: $('#otherCode').val(),
+            //             otherChecked: $('#otherCheck').is(':checked'),
+            //             companyName: companyNameInput.val() || companyAutocomplete.val()
+            //         });
+            //     }
+
+            //     // FIXED: Update license code before form submission
+            //     updateLicenseCode();
+
+            //     // Validate company selection
+            //     if (!validateCompanySelection()) {
+            //         e.preventDefault();
+            //         console.log('Form submission prevented due to company selection validation');
+            //         return;
+            //     }
+
+            //     // Validate file upload for accounting mode
+            //     if (!validateFileUpload()) {
+            //         e.preventDefault();
+            //         console.log('Form submission prevented due to file validation errors');
+
+            //         // Scroll to file upload section
+            //         $('html, body').animate({
+            //             scrollTop: $('.file-upload-container').offset().top - 100
+            //         }, 500);
+
+            //         return false;
+            //     }
+
+            //     // For accounting mode, ensure Other fields are populated if checkbox is checked
+            //     if (requestType === 'accounting' && $('#otherCheck').is(':checked')) {
+            //         if (!$('#otherInput').val() && (companyNameInput.val() || companyAutocomplete.val())) {
+            //             initializeOtherFieldsFromClient();
+            //         }
+            //     }
+
+            //     // Handle field states for different modes
+            //     if (requestType === 'operational') {
+            //         // For operational mode, disable accounting fields but keep license fields enabled
+            //         legalEntityType
+            //             .removeAttr('required')
+            //             .removeClass('is-invalid')
+            //             .prop('disabled', true)
+            //             .val('');
+            //         billingCurrency
+            //             .removeAttr('required')
+            //             .removeClass('is-invalid')
+            //             .prop('disabled', true)
+            //             .val('');
+            //         creditDays
+            //             .removeAttr('required')
+            //             .removeClass('is-invalid')
+            //             .prop('disabled', true)
+            //             .val('');
+            //         maxCreditLimit
+            //             .removeAttr('required')
+            //             .removeClass('is-invalid')
+            //             .prop('disabled', true)
+            //             .val('');
+
+            //         // For license fields in operational mode - always NILL
+            //         licenceTypeValue
+            //             .removeAttr('required')
+            //             .removeClass('is-invalid')
+            //             .prop('disabled', false) // Keep enabled for submission
+            //             .prop('readonly', true)
+            //             .val('NILL');
+
+            //         licenceTypeID
+            //             .removeAttr('required')
+            //             .removeClass('is-invalid')
+            //             .prop('disabled', false)
+            //             .removeClass('readonly-select')
+            //             .removeAttr('readonly')
+            //             .css('pointer-events', 'auto');
+
+            //         console.log('Form submit: operational mode, ensured license fields submit with NILL');
+
+            //     } else if (overseasEntityCheckbox.is(':checked')) {
+            //         // For accounting mode with overseas entity
+            //         licenceTypeValue
+            //             .removeAttr('required')
+            //             .removeClass('is-invalid')
+            //             .prop('readonly', true)
+            //             .prop('disabled', false) // Keep enabled for submission
+            //             .val('NILL');
+
+            //         licenceTypeID
+            //             .removeAttr('required')
+            //             .removeClass('is-invalid')
+            //             .prop('disabled', false)
+            //             .removeClass('readonly-select')
+            //             .removeAttr('readonly')
+            //             .css('pointer-events', 'auto');
+
+            //         console.log(
+            //             'Form submit: overseas entity checked, license fields will submit with NILL');
+            //     }
+
+            //     // Log submission data
+            //     console.log('Form submitting with license data:', {
+            //         overseasEntity: overseasEntityCheckbox.is(':checked'),
+            //         licenceTypeValue: licenceTypeValue.val(),
+            //         licenceTypeID: licenceTypeID.val(),
+            //         licenceTypeCode: licenceTypeCode.val(),
+            //         licenceTypeValueDisabled: licenceTypeValue.prop('disabled'),
+            //         licenceTypeValueReadonly: licenceTypeValue.prop('readonly'),
+            //         requestType: requestType
+            //     });
+
+            //     // Log Other fields data for debugging
+            //     console.log('Form submitting with Other fields data:', {
+            //         otherCheck: $('#otherCheck').is(':checked'),
+            //         otherInput: $('#otherInput').val(),
+            //         otherID: $('#otherID').val(),
+            //         otherCode: $('#otherCode').val(),
+            //         requestType: requestType
+            //     });
+
+            //     if ($('#clientPartyForm')[0].checkValidity() === false) {
+            //         e.preventDefault();
+            //         e.stopPropagation();
+            //         console.warn('Form validation failed due to required fields');
+            //     }
+
+            //     $('#clientPartyForm').addClass('was-validated');
+            //     console.log('License field validation passed, form submitting...');
+            // });
+
+            $('#clientPartyForm').on('submit', function(e) {
+                console.log('Form submission - validating files...');
+                console.log('Form submission - ensuring Other fields for accounting mode...');
+
+                // CRITICAL: Ensure Other fields are populated for accounting mode before submission
+                if (requestType === 'accounting') {
+                    const hasAdminAccess =
+                        {{ Auth::user()->can('create-client-party') ? 'true' : 'false' }};
+
+                    console.log('Form submission - ensuring Other fields for accounting mode only');
+                    ensureOtherFieldsForAccountingMode();
+
+                    // Double-check that Other fields are properly set based on user access level
+                    let otherInput, otherID, otherCode, otherChecked;
+
+                    if (hasAdminAccess) {
+                        // Check admin fields (visible in Step 3)
+                        otherInput = $('#otherInput').val();
+                        otherID = $('#otherID').val();
+                        otherCode = $('#otherCode').val();
+                        otherChecked = $('#otherCheck').is(':checked');
+                    } else {
+                        // Check hidden fields (in Step 2)
+                        otherInput = $('#hiddenOtherInput').val();
+                        otherID = $('#hiddenOtherID').val();
+                        otherCode = $('#hiddenOtherCode').val();
+                        otherChecked = $('#hiddenOtherCheck').val() === '1';
+                    }
+
+                    if (!otherInput || !otherID || !otherCode || !otherChecked) {
+                        console.warn(
+                            'Other fields not properly initialized for accounting mode, attempting to fix...'
+                        );
+
+                        // Try one more time to initialize
+                        const companyName = companyNameInput.val() || companyAutocomplete.val();
+                        if (companyName) {
+                            if (companyIdInput.val() && companyCodeInput.val()) {
+                                initializeOtherFieldsFromClient();
                             } else {
-                                $(mutation.target).val('').prop('disabled', true);
+                                initializeOtherFieldsFromManualInput();
+                            }
+                        }
+                    }
+
+                    // Log final Other fields state for accounting mode
+                    console.log('Final Other fields state before submission (accounting mode):', {
+                        hasAdminAccess: hasAdminAccess,
+                        otherInput: hasAdminAccess ? $('#otherInput').val() : $('#hiddenOtherInput')
+                            .val(),
+                        otherID: hasAdminAccess ? $('#otherID').val() : $('#hiddenOtherID').val(),
+                        otherCode: hasAdminAccess ? $('#otherCode').val() : $('#hiddenOtherCode')
+                            .val(),
+                        otherChecked: hasAdminAccess ? $('#otherCheck').is(':checked') : $(
+                            '#hiddenOtherCheck').val() === '1',
+                        companyName: companyNameInput.val() || companyAutocomplete.val(),
+                        mode: 'accounting'
+                    });
+                } else {
+                    console.log('Operational mode - Other fields not required, skipping initialization');
+                }
+
+                // FIXED: Update license code before form submission
+                updateLicenseCode();
+
+                // Validate company selection
+                if (!validateCompanySelection()) {
+                    e.preventDefault();
+                    console.log('Form submission prevented due to company selection validation');
+                    return;
+                }
+
+                // Validate file upload for accounting mode
+                if (!validateFileUpload()) {
+                    e.preventDefault();
+                    console.log('Form submission prevented due to file validation errors');
+
+                    // Scroll to file upload section
+                    $('html, body').animate({
+                        scrollTop: $('.file-upload-container').offset().top - 100
+                    }, 500);
+
+                    return false;
+                }
+
+                // For accounting mode, ensure Other fields are populated based on user access
+                if (requestType === 'accounting') {
+                    const hasAdminAccess =
+                        {{ Auth::user()->can('create-client-party') ? 'true' : 'false' }};
+                    const companyName = companyNameInput.val() || companyAutocomplete.val();
+
+                    if (hasAdminAccess && $('#otherCheck').is(':checked')) {
+                        // Admin user with checkbox checked
+                        if (!$('#otherInput').val() && companyName) {
+                            initializeOtherFieldsFromClient();
+                        }
+                    } else if (!hasAdminAccess && companyName) {
+                        // Non-admin user - ensure hidden fields are populated
+                        if (!$('#hiddenOtherInput').val()) {
+                            if (companyIdInput.val() && companyCodeInput.val()) {
+                                initializeOtherFieldsFromClient();
+                            } else {
+                                initializeOtherFieldsFromManualInput();
                             }
                         }
                     }
                 }
-            });
-        });
 
-        ['legalEntityType', 'billingCurrency', 'creditDays', 'maxCreditLimit', 'licenceTypeValue',
-            'licenceTypeID'
-        ].forEach(id => {
-            if (document.getElementById(id)) {
-                observer.observe(document.getElementById(id), {
-                    attributes: true
+                // Handle field states for different modes
+                if (requestType === 'operational') {
+                    // For operational mode, disable accounting fields but keep license fields enabled
+                    legalEntityType
+                        .removeAttr('required')
+                        .removeClass('is-invalid')
+                        .prop('disabled', true)
+                        .val('');
+                    billingCurrency
+                        .removeAttr('required')
+                        .removeClass('is-invalid')
+                        .prop('disabled', true)
+                        .val('');
+                    creditDays
+                        .removeAttr('required')
+                        .removeClass('is-invalid')
+                        .prop('disabled', true)
+                        .val('');
+                    maxCreditLimit
+                        .removeAttr('required')
+                        .removeClass('is-invalid')
+                        .prop('disabled', true)
+                        .val('');
+
+                    // For license fields in operational mode - always NILL
+                    licenceTypeValue
+                        .removeAttr('required')
+                        .removeClass('is-invalid')
+                        .prop('disabled', false) // Keep enabled for submission
+                        .prop('readonly', true)
+                        .val('NILL');
+
+                    licenceTypeID
+                        .removeAttr('required')
+                        .removeClass('is-invalid')
+                        .prop('disabled', false)
+                        .removeClass('readonly-select')
+                        .removeAttr('readonly')
+                        .css('pointer-events', 'auto');
+
+                    console.log('Form submit: operational mode, ensured license fields submit with NILL');
+
+                } else if (overseasEntityCheckbox.is(':checked')) {
+                    // For accounting mode with overseas entity
+                    licenceTypeValue
+                        .removeAttr('required')
+                        .removeClass('is-invalid')
+                        .prop('readonly', true)
+                        .prop('disabled', false) // Keep enabled for submission
+                        .val('NILL');
+
+                    licenceTypeID
+                        .removeAttr('required')
+                        .removeClass('is-invalid')
+                        .prop('disabled', false)
+                        .removeClass('readonly-select')
+                        .removeAttr('readonly')
+                        .css('pointer-events', 'auto');
+
+                    console.log(
+                        'Form submit: overseas entity checked, license fields will submit with NILL');
+                }
+
+                // Log submission data
+                console.log('Form submitting with license data:', {
+                    overseasEntity: overseasEntityCheckbox.is(':checked'),
+                    licenceTypeValue: licenceTypeValue.val(),
+                    licenceTypeID: licenceTypeID.val(),
+                    licenceTypeCode: licenceTypeCode.val(),
+                    licenceTypeValueDisabled: licenceTypeValue.prop('disabled'),
+                    licenceTypeValueReadonly: licenceTypeValue.prop('readonly'),
+                    requestType: requestType
                 });
-            } else {
-                console.error(`Cannot observe: ${id} not found in DOM`);
+
+                // Log Other fields data for debugging - check both admin and hidden fields
+                if (requestType === 'accounting') {
+                    const hasAdminAccess =
+                        {{ Auth::user()->can('create-client-party') ? 'true' : 'false' }};
+
+                    console.log('Form submitting with Other fields data (accounting mode):', {
+                        hasAdminAccess: hasAdminAccess,
+                        // Admin fields (Step 3)
+                        adminOtherCheck: $('#otherCheck').is(':checked'),
+                        adminOtherInput: $('#otherInput').val(),
+                        adminOtherID: $('#otherID').val(),
+                        adminOtherCode: $('#otherCode').val(),
+                        // Hidden fields (Step 2)
+                        hiddenOtherCheck: $('#hiddenOtherCheck').val(),
+                        hiddenOtherInput: $('#hiddenOtherInput').val(),
+                        hiddenOtherID: $('#hiddenOtherID').val(),
+                        hiddenOtherCode: $('#hiddenOtherCode').val(),
+                        // Active fields being submitted
+                        activeOtherInput: hasAdminAccess ? $('#otherInput').val() : $(
+                            '#hiddenOtherInput').val(),
+                        activeOtherID: hasAdminAccess ? $('#otherID').val() : $('#hiddenOtherID')
+                            .val(),
+                        activeOtherCode: hasAdminAccess ? $('#otherCode').val() : $(
+                            '#hiddenOtherCode').val(),
+                        activeOtherChecked: hasAdminAccess ? $('#otherCheck').is(':checked') : $(
+                            '#hiddenOtherCheck').val() === '1',
+                        requestType: requestType
+                    });
+                } else {
+                    console.log('Form submitting - operational mode, no Other fields data required');
+                }
+
+                if ($('#clientPartyForm')[0].checkValidity() === false) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.warn('Form validation failed due to required fields');
+                }
+
+                $('#clientPartyForm').addClass('was-validated');
+                console.log('All validations passed, form submitting...');
+            });
+            setTimeout(function() {
+                if (requestType === 'accounting') {
+                    // Check if we have old values (form was submitted with errors and returned)
+                    const oldOtherInput = $('input[name="otherInput"]').val();
+                    const oldCompanyName = $('input[name="companyName"]').val() || $(
+                        'input[name="companyAutocomplete"]').val();
+
+                    if (oldOtherInput) {
+                        // Form was returned with errors, restore Other checkbox state
+                        $('#otherCheck').prop('checked', true);
+                        console.log('Restored Other checkbox state from old values');
+                    } else if (oldCompanyName) {
+                        // We have company data but no Other data, initialize it
+                        ensureOtherFieldsForAccountingMode();
+                        console.log('Auto-initialized Other fields on page load for accounting mode');
+                    }
+                }
+            }, 1000);
+
+            // ================================
+            // UTILITY FUNCTIONS FOR DEBUGGING
+            // ================================
+
+            // Global function to manually trigger Other fields initialization
+            window.forceInitializeOtherFields = function() {
+                if (requestType === 'accounting') {
+                    ensureOtherFieldsForAccountingMode();
+                    console.log('Manually triggered Other fields initialization');
+                } else {
+                    console.log('Not in accounting mode, Other fields initialization not needed');
+                }
+            };
+
+            // Enhanced debug function for Other fields
+            window.debugOtherFields = function() {
+                console.log('Other Fields Debug State:', {
+                    requestType: requestType,
+                    otherCheck_checked: $('#otherCheck').is(':checked'),
+                    otherInput_value: $('#otherInput').val(),
+                    otherID_value: $('#otherID').val(),
+                    otherCode_value: $('#otherCode').val(),
+                    otherInput_display: $('#other_Input').text(),
+                    companyName: $('#companyName').val(),
+                    companyAutocomplete: $('#companyAutocomplete').val(),
+                    companyId: $('#companyId').val(),
+                    companyCode: $('#companyCode').val(),
+                    adminSectionVisible: $('#admin-details').is(':visible'),
+                    canCreateClientParty: {{ Auth::user()->can('create-client-party') ? 'true' : 'false' }}
+                });
+            };
+
+            // ================================
+            // UTILITY FUNCTIONS
+            // ================================
+
+            function sortCreditDaysAscending() {
+                const $creditDaysSelect = $('#creditDays');
+                const $options = $creditDaysSelect.find('option:not([value=""], [disabled])');
+
+                if ($options.length > 0) {
+                    // Convert options to array and sort by numeric value
+                    const optionsArray = $options.toArray().sort(function(a, b) {
+                        const valueA = parseInt($(a).val()) || 0;
+                        const valueB = parseInt($(b).val()) || 0;
+                        return valueA - valueB;
+                    });
+
+                    // Remove all non-default options
+                    $options.remove();
+
+                    // Append sorted options
+                    optionsArray.forEach(function(option) {
+                        $creditDaysSelect.append(option);
+                    });
+
+                    console.log('Credit days sorted in ascending order');
+                }
             }
-        });
-    }
 
-    // ================================
-    // DRAG AND DROP FUNCTIONALITY (OPTIONAL ENHANCEMENT)
-    // ================================
+            // Monitor required attribute changes
+            function monitorRequiredAttribute() {
+                const observer = new MutationObserver((mutations) => {
+                    mutations.forEach((mutation) => {
+                        if (mutation.type === 'attributes' && mutation.attributeName ===
+                            'required') {
+                            console.warn('Required attribute changed:', {
+                                element: mutation.target.id,
+                                required: $(mutation.target).attr('required'),
+                                isOverseas: overseasEntityCheckbox.is(':checked'),
+                                requestType: requestType,
+                                timestamp: new Date().toISOString()
+                            });
+                            if (requestType === 'operational' || overseasEntityCheckbox.is(
+                                    ':checked')) {
+                                if (['legalEntityType', 'billingCurrency', 'creditDays',
+                                        'maxCreditLimit', 'licenceTypeValue', 'licenceTypeID'
+                                    ].includes(mutation.target.id) && $(mutation.target).attr(
+                                        'required')) {
+                                    console.warn(
+                                        `Conflict: ${mutation.target.id} required despite operational mode or overseasEntity checked. Forcing removal.`
+                                    );
+                                    $(mutation.target).removeAttr('required').removeClass(
+                                        'is-invalid');
+                                    if (mutation.target.id === 'licenceTypeValue') {
+                                        $(mutation.target).val('NILL').prop('readonly', true).prop(
+                                            'disabled', false); // Keep enabled for submission
+                                    } else if (mutation.target.id === 'licenceTypeID') {
+                                        $(mutation.target).prop('disabled', false).addClass(
+                                            'readonly-select').attr('readonly', true).css(
+                                            'pointer-events', 'none');
+                                    } else {
+                                        $(mutation.target).val('').prop('disabled', true);
+                                    }
+                                }
+                            }
+                        }
+                    });
+                });
 
-    $('.file-upload-container').on('dragover', function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        $(this).addClass('drag-over');
-    });
-
-    $('.file-upload-container').on('dragleave', function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        $(this).removeClass('drag-over');
-    });
-
-    $('.file-upload-container').on('drop', function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        $(this).removeClass('drag-over');
-
-        const files = e.originalEvent.dataTransfer.files;
-        if (files.length > 0) {
-            const fileInput = $(this).find('input[type="file"]').first()[0];
-            if (fileInput) {
-                fileInput.files = files;
-                $(fileInput).trigger('change');
+                ['legalEntityType', 'billingCurrency', 'creditDays', 'maxCreditLimit', 'licenceTypeValue',
+                    'licenceTypeID'
+                ].forEach(id => {
+                    if (document.getElementById(id)) {
+                        observer.observe(document.getElementById(id), {
+                            attributes: true
+                        });
+                    } else {
+                        console.error(`Cannot observe: ${id} not found in DOM`);
+                    }
+                });
             }
-        }
-    });
 
-    // ================================
-    // RE-RUN ON STEPPER CHANGE
-    // ================================
+            // ================================
+            // DRAG AND DROP FUNCTIONALITY (OPTIONAL ENHANCEMENT)
+            // ================================
 
-    // Re-run on stepper change
-    $(document).on('shown.bs-stepper', '.bs-stepper', function() {
-        if (requestType === 'operational' || overseasEntityCheckbox.is(':checked')) {
-            legalEntityType
-                .removeAttr('required')
-                .removeClass('is-invalid')
-                .prop('disabled', true)
-                .val('');
-            billingCurrency
-                .removeAttr('required')
-                .removeClass('is-invalid')
-                .prop('disabled', true)
-                .val('');
-            creditDays
-                .removeAttr('required')
-                .removeClass('is-invalid')
-                .prop('disabled', true)
-                .val('');
-            maxCreditLimit
-                .removeAttr('required')
-                .removeClass('is-invalid')
-                .prop('disabled', true)
-                .val('');
-            licenceTypeValue
-                .removeAttr('required')
-                .removeClass('is-invalid')
-                .prop('readonly', true)
-                .prop('disabled', false)  // Keep enabled for submission
-                .val('NILL')
-                .addClass('overseas-readonly');
-            licenceTypeID
-                .removeAttr('required')
-                .removeClass('is-invalid')
-                .prop('disabled', false)
-                .addClass('readonly-select')
-                .attr('readonly', true)
-                .css('pointer-events', 'none');
-            console.log('Stepper change: Ensured accounting fields are not required');
-        }
-        // Update license code after stepper change
-        setTimeout(updateLicenseCode, 100);
-    });
+            $('.file-upload-container').on('dragover', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                $(this).addClass('drag-over');
+            });
 
-    // Re-sort if credit days are updated via AJAX
-    $(document).on('DOMNodeInserted', '#creditDays option', function() {
-        setTimeout(sortCreditDaysAscending, 100);
-    });
+            $('.file-upload-container').on('dragleave', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                $(this).removeClass('drag-over');
+            });
 
-    // Form submission logging
-    $('form').on('submit', function() {
-        console.log('Form submitting:', {
-            partyEntityType: partyEntityType.val(),
-            companyName: companyNameInput.val(),
-            companyAutocomplete: companyAutocomplete.val(),
-            companyId: companyIdInput.val(),
-            companyCode: companyCodeInput.val(),
-            otherCheck: $('#otherCheck').is(':checked'),
-            otherInput: $('#otherInput').val(),
-            otherID: $('#otherID').val(),
-            otherCode: $('#otherCode').val(),
-            overseasEntity: overseasEntityCheckbox.is(':checked'),
-            licenceTypeValue: licenceTypeValue.val(),
-            licenceTypeID: licenceTypeID.val(),
-            licenceTypeCode: licenceTypeCode.val(),
-            debtorType: debtorType.val(),
-            creditDays: creditDays.val(),
-            maxCreditLimit: maxCreditLimit.val(),
-            legalEntityType: legalEntityType.val(),
-            billingCurrency: billingCurrency.val()
-        });
-    });
+            $('.file-upload-container').on('drop', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                $(this).removeClass('drag-over');
 
-    // ================================
-    // INITIALIZATION
-    // ================================
+                const files = e.originalEvent.dataTransfer.files;
+                if (files.length > 0) {
+                    const fileInput = $(this).find('input[type="file"]').first()[0];
+                    if (fileInput) {
+                        fileInput.files = files;
+                        $(fileInput).trigger('change');
+                    }
+                }
+            });
 
-    // Initialize
-    toggleLicenseInput();
-    toggleAccountingFields();
+            // ================================
+            // RE-RUN ON STEPPER CHANGE
+            // ================================
 
-    // Show/hide fields based on request type
-    if (requestType === "operational") {
-        partyEntityType.closest(".col-md-6").show();
-        legalEntityType.closest(".col-md-6").hide();
-        $("#debtor-vendor").hide();
-    } else if (requestType === "accounting") {
-        partyEntityType.closest(".col-md-6").show();
-        legalEntityType.closest(".col-md-6").show();
-    }
+            // Re-run on stepper change
+            $(document).on('shown.bs-stepper', '.bs-stepper', function() {
+                if (requestType === 'operational' || overseasEntityCheckbox.is(':checked')) {
+                    legalEntityType
+                        .removeAttr('required')
+                        .removeClass('is-invalid')
+                        .prop('disabled', true)
+                        .val('');
+                    billingCurrency
+                        .removeAttr('required')
+                        .removeClass('is-invalid')
+                        .prop('disabled', true)
+                        .val('');
+                    creditDays
+                        .removeAttr('required')
+                        .removeClass('is-invalid')
+                        .prop('disabled', true)
+                        .val('');
+                    maxCreditLimit
+                        .removeAttr('required')
+                        .removeClass('is-invalid')
+                        .prop('disabled', true)
+                        .val('');
+                    licenceTypeValue
+                        .removeAttr('required')
+                        .removeClass('is-invalid')
+                        .prop('readonly', true)
+                        .prop('disabled', false) // Keep enabled for submission
+                        .val('NILL')
+                        .addClass('overseas-readonly');
+                    licenceTypeID
+                        .removeAttr('required')
+                        .removeClass('is-invalid')
+                        .prop('disabled', false)
+                        .addClass('readonly-select')
+                        .attr('readonly', true)
+                        .css('pointer-events', 'none');
+                    console.log('Stepper change: Ensured accounting fields are not required');
+                }
 
-    // Initialize on page load
-    toggleCompanyInput();
-    syncClientFields();
+                // Update license code after stepper change
+                setTimeout(updateLicenseCode, 100);
 
-    // Initialize country readonly state
-    toggleCountryReadonly();
+                if (requestType === 'accounting') {
+                    setTimeout(function() {
+                        ensureOtherFieldsForAccountingMode();
+                    }, 200);
+                }
+            });
 
-    // Apply accounting mode styling if needed
-    if (requestType === 'accounting') {
-        $('body').addClass('accounting-mode');
-        $('.file-upload-container').addClass('file-upload-required');
+            // Re-sort if credit days are updated via AJAX
+            $(document).on('DOMNodeInserted', '#creditDays option', function() {
+                setTimeout(sortCreditDaysAscending, 100);
+            });
 
-        // Add visual indicator for required files
-        $('legend:contains("File Upload")').append(' <span class="text-danger">*</span>');
+            // Form submission logging
+            $('form').on('submit', function() {
+                console.log('Form submitting:', {
+                    partyEntityType: partyEntityType.val(),
+                    companyName: companyNameInput.val(),
+                    companyAutocomplete: companyAutocomplete.val(),
+                    companyId: companyIdInput.val(),
+                    companyCode: companyCodeInput.val(),
+                    otherCheck: $('#otherCheck').is(':checked'),
+                    otherInput: $('#otherInput').val(),
+                    otherID: $('#otherID').val(),
+                    otherCode: $('#otherCode').val(),
+                    overseasEntity: overseasEntityCheckbox.is(':checked'),
+                    licenceTypeValue: licenceTypeValue.val(),
+                    licenceTypeID: licenceTypeID.val(),
+                    licenceTypeCode: licenceTypeCode.val(),
+                    debtorType: debtorType.val(),
+                    creditDays: creditDays.val(),
+                    maxCreditLimit: maxCreditLimit.val(),
+                    legalEntityType: legalEntityType.val(),
+                    billingCurrency: billingCurrency.val()
+                });
+            });
 
-        console.log('Accounting mode: File upload is mandatory');
+            // ================================
+            // INITIALIZATION
+            // ================================
 
-        // Show initial validation message for file upload
-        setTimeout(function() {
-            validateFileUpload();
-        }, 500);
-    }
+            // Initialize
+            toggleLicenseInput();
+            toggleAccountingFields();
 
-    // Call sort function after DOM is ready and after any AJAX updates
-    sortCreditDaysAscending();
+            // Show/hide fields based on request type
+            if (requestType === "operational") {
+                partyEntityType.closest(".col-md-6").show();
+                legalEntityType.closest(".col-md-6").hide();
+                $("#debtor-vendor").hide();
+            } else if (requestType === "accounting") {
+                partyEntityType.closest(".col-md-6").show();
+                legalEntityType.closest(".col-md-6").show();
+            }
 
-    // Re-run to catch late overrides
-    setTimeout(toggleLicenseInput, 1000);
-    setTimeout(toggleLicenseInput, 3000);
-    setTimeout(toggleAccountingFields, 1000);
-    setTimeout(toggleAccountingFields, 3000);
+            // Initialize on page load
+            toggleCompanyInput();
+            syncClientFields();
 
-    // Monitor required attribute changes
-    monitorRequiredAttribute();
+            // Initialize country readonly state
+            toggleCountryReadonly();
 
-    // Sort credit days after a short delay to ensure options are loaded
-    setTimeout(function() {
-        sortCreditDaysAscending();
-    }, 1000);
+            // Apply accounting mode styling if needed
+            if (requestType === 'accounting') {
+                $('body').addClass('accounting-mode');
+                $('.file-upload-container').addClass('file-upload-required');
 
-    // FIXED: Additional event handlers to ensure license code is always updated
-    $('#licenceTypeID').on('focus blur', function() {
-        setTimeout(updateLicenseCode, 10);
-    });
+                // Add visual indicator for required files
+                $('legend:contains("File Upload")').append(' <span class="text-danger">*</span>');
 
-    // FIXED: Backup event handler using different event namespace
-    $(document).on('change.backup', '#licenceTypeID', function() {
-        console.log('Backup license change handler triggered');
-        setTimeout(updateLicenseCode, 20);
-    });
+                console.log('Accounting mode: File upload is mandatory');
 
-    // FIXED: Manual trigger on specific actions
-    $('#licenceTypeID').on('click', function() {
-        if (!overseasEntityCheckbox.is(':checked') && requestType !== 'operational') {
-            setTimeout(updateLicenseCode, 50);
-        }
-    });
+                // Show initial validation message for file upload
+                setTimeout(function() {
+                    validateFileUpload();
+                }, 500);
+            }
 
-    // Expose validation function globally for external calls
-    window.validateFileUpload = validateFileUpload;
+            // Call sort function after DOM is ready and after any AJAX updates
+            sortCreditDaysAscending();
 
-    // Add CSS for overseas readonly styling
-    const overseaStyles = `
+            // Re-run to catch late overrides
+            setTimeout(toggleLicenseInput, 1000);
+            setTimeout(toggleLicenseInput, 3000);
+            setTimeout(toggleAccountingFields, 1000);
+            setTimeout(toggleAccountingFields, 3000);
+
+            // Monitor required attribute changes
+            monitorRequiredAttribute();
+
+            // Sort credit days after a short delay to ensure options are loaded
+            setTimeout(function() {
+                sortCreditDaysAscending();
+            }, 1000);
+
+            // FIXED: Additional event handlers to ensure license code is always updated
+            $('#licenceTypeID').on('focus blur', function() {
+                setTimeout(updateLicenseCode, 10);
+            });
+
+            // FIXED: Backup event handler using different event namespace
+            $(document).on('change.backup', '#licenceTypeID', function() {
+                console.log('Backup license change handler triggered');
+                setTimeout(updateLicenseCode, 20);
+            });
+
+            // FIXED: Manual trigger on specific actions
+            $('#licenceTypeID').on('click', function() {
+                if (!overseasEntityCheckbox.is(':checked') && requestType !== 'operational') {
+                    setTimeout(updateLicenseCode, 50);
+                }
+            });
+
+            // Expose validation function globally for external calls
+            window.validateFileUpload = validateFileUpload;
+
+            // Add CSS for overseas readonly styling
+            const overseaStyles = `
         .overseas-readonly {
             background-color: #f8f9fa !important;
             color: #6c757d !important;
@@ -3143,55 +3693,78 @@
         }
     `;
 
-    // Append styles to head if not already present
-    if (!$('head').find('style[data-overseas-styles]').length) {
-        $('<style>').attr('data-overseas-styles', 'true').text(overseaStyles).appendTo('head');
-    }
-});
+            // Append styles to head if not already present
+            if (!$('head').find('style[data-overseas-styles]').length) {
+                $('<style>').attr('data-overseas-styles', 'true').text(overseaStyles).appendTo('head');
+            }
+        });
 
-// ================================
-// GLOBAL FUNCTIONS FOR COMPATIBILITY
-// ================================
+        // ================================
+        // GLOBAL FUNCTIONS FOR COMPATIBILITY
+        // ================================
 
-window.User = {
-    value: '{{ auth()->user()->can('edit-client-party') }}'
-}
+        window.User = {
+            value: '{{ auth()->user()->can('edit-client-party') }}'
+        }
 
-// FIXED: Global access to license update function for debugging
-window.updateLicenseCode = function() {
-    const licenceTypeSelect = $('#licenceTypeID');
-    const selectedOption = licenceTypeSelect.find('option:selected');
-    const code = selectedOption.attr('data-code') || '';
+        // FIXED: Global access to license update function for debugging
+        window.updateLicenseCode = function() {
+            const licenceTypeSelect = $('#licenceTypeID');
+            const selectedOption = licenceTypeSelect.find('option:selected');
+            const code = selectedOption.attr('data-code') || '';
 
-    console.log('Global license code update:', {
-        selectExists: licenceTypeSelect.length > 0,
-        selectedValue: licenceTypeSelect.val(),
-        selectedOption: selectedOption.length > 0,
-        dataCodeAttribute: selectedOption.attr('data-code'),
-        code: code,
-        hiddenInputExists: $('#licenceTypeCode').length > 0,
-        currentHiddenValue: $('#licenceTypeCode').val()
-    });
+            console.log('Global license code update:', {
+                selectExists: licenceTypeSelect.length > 0,
+                selectedValue: licenceTypeSelect.val(),
+                selectedOption: selectedOption.length > 0,
+                dataCodeAttribute: selectedOption.attr('data-code'),
+                code: code,
+                hiddenInputExists: $('#licenceTypeCode').length > 0,
+                currentHiddenValue: $('#licenceTypeCode').val()
+            });
 
-    $('#licenceTypeCode').val(code);
-    $('#licenceTypeCode').trigger('change');
+            $('#licenceTypeCode').val(code);
+            $('#licenceTypeCode').trigger('change');
 
-    return code;
-};
+            return code;
+        };
 
-// FIXED: Global debug function
-window.debugLicenseState = function() {
-    console.log('License Debug State:', {
-        licenceTypeID_value: $('#licenceTypeID').val(),
-        licenceTypeID_disabled: $('#licenceTypeID').prop('disabled'),
-        licenceTypeID_readonly: $('#licenceTypeID').attr('readonly'),
-        licenceTypeID_pointerEvents: $('#licenceTypeID').css('pointer-events'),
-        licenceTypeID_events: $._data($('#licenceTypeID')[0], 'events'),
-        licenceTypeCode_value: $('#licenceTypeCode').val(),
-        overseasEntity_checked: $('#overseasEntity').is(':checked'),
-        requestType: new URLSearchParams(window.location.search).get('type')
-    });
-};
+        // Make sure to call the ensure function during initial setup
+        if (requestType === 'accounting') {
+            setTimeout(function() {
+                ensureOtherFieldsForAccountingMode();
+            }, 2000);
+        }
+
+        // FIXED: Global debug function
+        window.debugLicenseState = function() {
+            console.log('License Debug State:', {
+                licenceTypeID_value: $('#licenceTypeID').val(),
+                licenceTypeID_disabled: $('#licenceTypeID').prop('disabled'),
+                licenceTypeID_readonly: $('#licenceTypeID').attr('readonly'),
+                licenceTypeID_pointerEvents: $('#licenceTypeID').css('pointer-events'),
+                licenceTypeID_events: $._data($('#licenceTypeID')[0], 'events'),
+                licenceTypeCode_value: $('#licenceTypeCode').val(),
+                overseasEntity_checked: $('#overseasEntity').is(':checked'),
+                requestType: new URLSearchParams(window.location.search).get('type')
+            });
+        };
+
+        // NEW: Global debug function for Other fields
+        window.debugOtherFields = function() {
+            console.log('Other Fields Debug State:', {
+                otherCheck_checked: $('#otherCheck').is(':checked'),
+                otherInput_value: $('#otherInput').val(),
+                otherID_value: $('#otherID').val(),
+                otherCode_value: $('#otherCode').val(),
+                otherInput_display: $('#other_Input').text(),
+                companyName: $('#companyName').val(),
+                companyAutocomplete: $('#companyAutocomplete').val(),
+                companyId: $('#companyId').val(),
+                companyCode: $('#companyCode').val(),
+                requestType: new URLSearchParams(window.location.search).get('type')
+            });
+        };
     </script>
     <script src="{{ asset('js/client-party/show-create-client-party.js') }}"></script>
 @stop

@@ -715,1711 +715,1893 @@
 
                                     {{-- Navigation Buttons Section in Office Details --}}
                                     <button class="btn btn-primary m-2 btn-sm" type="button" name="previous"
-                                        onclick="stepper.previous()"><i class="fa fa-step-backward"
-                                            aria-hidden="true"></i>
-                                        Previous</button>
+                                        onclick="stepper.previous()">
+                                        <i class="fa fa-step-backward" aria-hidden="true"></i> Previous
+                                    </button>
 
-                                    {{-- Check user permissions for button display --}}
+                                    {{-- Check user permissions and entity type for button display --}}
                                     @if (Auth::user()->can('approve-entity-request'))
-                                        {{-- User can approve entity - show approve/reject buttons here --}}
-                                        @if ($approve)
-                                            <button type="button" name="approveBtn" id="approveBtn"
-                                                class="btn btn-outline-success float-right m-2 btn-sm"
-                                                data-toggle="tooltip" data-placement="top" title="Approve For Creation"
-                                                data-bs-original-title="Approve For Creation">
-                                                <i class="fa fa-check" aria-hidden="true"></i> Approve
-                                            </button>
-                                            <button type="button" name="rejectBtn" id="rejectBtn" data-toggle="modal"
-                                                data-target="#cancelModal" class="btn btn-danger float-right m-2 btn-sm"
-                                                data-toggle="tooltip" data-placement="top" title="Reject For Amendment"
-                                                data-bs-original-title="Reject For Amendment">
-                                                <i class="fa fa-edit" aria-hidden="true"></i> Reject
+                                        {{-- User can approve entity --}}
+                                        @if ($type === 'operational')
+                                            {{-- For operational type, only show Next button to go to Admin Details --}}
+                                            <button class="btn btn-primary m-2 btn-sm float-right" type="button"
+                                                name="next" onclick="stepper.next()">
+                                                Next <i class="fa fa-step-forward" aria-hidden="true"></i>
                                             </button>
                                         @else
-                                            <button type="submit" name="createBtn" value="true"
-                                                class="btn btn-outline-success float-right m-2 btn-sm"
-                                                data-toggle="tooltip" data-placement="top"
-                                                title="Approve Entity For Creation"
-                                                data-bs-original-title="Approve Entity For Creation">
-                                                <i class="fa fa-check" aria-hidden="true"></i> Create
-                                            </button>
-                                            <button type="button" name="rejectBtn" id="rejectBtn" data-toggle="modal"
-                                                data-target="#cancelModal" class="btn btn-danger float-right m-2 btn-sm"
-                                                data-toggle="tooltip" data-placement="top" title="Reject For Amendment"
-                                                data-bs-original-title="Reject For Amendment">
-                                                <i class="fa fa-edit" aria-hidden="true"></i> Reject
-                                            </button>
+                                            {{-- For accounting type, show approve/reject buttons here --}}
+                                            @if ($approve)
+                                                <button type="button" name="approveBtn" id="approveBtn"
+                                                    class="btn btn-outline-success float-right m-2 btn-sm"
+                                                    data-toggle="tooltip" data-placement="top"
+                                                    title="Approve For Creation">
+                                                    <i class="fa fa-check" aria-hidden="true"></i> Approve
+                                                </button>
+                                                <button type="button" name="rejectBtn" id="rejectBtn"
+                                                    data-toggle="modal" data-target="#cancelModal"
+                                                    class="btn btn-danger float-right m-2 btn-sm" data-toggle="tooltip"
+                                                    data-placement="top" title="Reject For Amendment">
+                                                    <i class="fa fa-edit" aria-hidden="true"></i> Reject
+                                                </button>
+                                            @else
+                                                <button type="submit" name="createBtn" value="true"
+                                                    class="btn btn-outline-success float-right m-2 btn-sm"
+                                                    data-toggle="tooltip" data-placement="top"
+                                                    title="Approve Entity For Creation">
+                                                    <i class="fa fa-check" aria-hidden="true"></i> Create
+                                                </button>
+                                                <button type="button" name="rejectBtn" id="rejectBtn"
+                                                    data-toggle="modal" data-target="#cancelModal"
+                                                    class="btn btn-danger float-right m-2 btn-sm" data-toggle="tooltip"
+                                                    data-placement="top" title="Reject For Amendment">
+                                                    <i class="fa fa-edit" aria-hidden="true"></i> Reject
+                                                </button>
+                                            @endif
                                         @endif
                                     @elseif (Auth::user()->can('create-client-party'))
-                                        {{-- User can create client party - show Next button to go to Admin Details --}}
+                                        {{-- User can create client party - always show Next button --}}
                                         <button class="btn btn-primary m-2 btn-sm float-right" type="button"
-                                            name="next" onclick="stepper.next()">Next <i class="fa fa-step-forward"
-                                                aria-hidden="true"></i></button>
+                                            name="next" onclick="stepper.next()">
+                                            Next <i class="fa fa-step-forward" aria-hidden="true"></i>
+                                        </button>
                                     @else
                                         {{-- Regular user - show Submit/Update buttons --}}
                                         <button type="submit" name="submitBtn" value="true"
                                             class="btn btn-outline-success btn-sm float-right m-2" data-toggle="tooltip"
-                                            data-placement="top" title="Will be processed by admin"><i
-                                                class="fa fa-thumbs-up" aria-hidden="true"></i> Submit</button>
+                                            data-placement="top" title="Will be processed by admin">
+                                            <i class="fa fa-thumbs-up" aria-hidden="true"></i> Submit
+                                        </button>
                                         <button type="submit" name="updateBtn" id="updateBtn"
                                             class="btn btn-success btn-sm float-right m-2" data-toggle="tooltip"
-                                            data-placement="top" title="Update"><i class="fa fa-edit"
-                                                aria-hidden="true"></i>
-                                            Update for later</button>
+                                            data-placement="top" title="Update">
+                                            <i class="fa fa-edit" aria-hidden="true"></i> Update for later
+                                        </button>
                                     @endif
                                 </div>
+                        </div>
 
 
-                                {{-- Admin Details --}}
-                                @if (Auth::user()->can('create-client-party'))
-                                    <div id="admin-details" class="content" role="tabpanel"
-                                        aria-labelledby="admin-details-trigger">
-                                        <div class="row justify-content-center">
-                                            <div class="com-md-6 col-xl-6 col-sm-12 col-lg-6">
-                                                <fieldset class="border p-2 card shadow-lg mb-0 pt-0">
-                                                    <legend class="w-auto p-0 m-0"></legend>
-                                                    <table class="table table-sm table-borderless">
-                                                        <thead>
-                                                            <th>Entity</th>
-                                                            <th>Create</th>
-                                                            <th>Select</th>
-                                                            <th>Code</th>
-                                                        </thead>
-                                                        <tr>
-                                                            <td>Other</td>
-                                                            <td><input type="checkbox" name="otherCheck" id="otherCheck"
-                                                                    @if ($clientParty->OtherPartyName == '') checked @endif
-                                                                    disabled readonly></td>
-                                                            <td>
-                                                                <input type="text" name="otherInput" id="otherInput"
-                                                                    value="{{ old('otherID', $clientParty->OtherPartyName) }}"
-                                                                    class="form-control form-control-sm" readonly disabled>
-                                                                <input type="hidden" name="otherID" id="otherID"
-                                                                    value="{{ old('otherID', $clientParty->OtherPartyID) }}">
-                                                                <input type="hidden" name="otherCode" id="otherCode"
-                                                                    value="{{ old('otherCode', $clientParty->OtherPartyCode) }}">
-                                                            </td>
-                                                            <td id="other_Input" onclick='copyText(this)'
-                                                                data-toggle="tooltip" title="Click to copy">
-                                                                {{ $clientParty->OtherPartyCode ?? '' }}
-                                                            </td>
-                                                        </tr>
+                        {{-- Admin Details --}}
+                        @if (Auth::user()->can('create-client-party'))
+                            <div id="admin-details" class="content" role="tabpanel"
+                                aria-labelledby="admin-details-trigger">
+                                <div class="row justify-content-center">
+                                    <div class="com-md-6 col-xl-6 col-sm-12 col-lg-6">
+                                        <fieldset class="border p-2 card shadow-lg mb-0 pt-0">
+                                            <legend class="w-auto p-0 m-0"></legend>
+                                            <table class="table table-sm table-borderless">
+                                                <thead>
+                                                    <th>Entity</th>
+                                                    <th>Create</th>
+                                                    <th>Select</th>
+                                                    <th>Code</th>
+                                                </thead>
+                                                <tr>
+                                                    <td>Other</td>
+                                                    <td><input type="checkbox" name="otherCheck" id="otherCheck"
+                                                            @if ($clientParty->OtherPartyName == '') checked @endif disabled
+                                                            readonly></td>
+                                                    <td>
+                                                        <input type="text" name="otherInput" id="otherInput"
+                                                            value="{{ old('otherID', $clientParty->OtherPartyName) }}"
+                                                            class="form-control form-control-sm" readonly disabled>
+                                                        <input type="hidden" name="otherID" id="otherID"
+                                                            value="{{ old('otherID', $clientParty->OtherPartyID) }}">
+                                                        <input type="hidden" name="otherCode" id="otherCode"
+                                                            value="{{ old('otherCode', $clientParty->OtherPartyCode) }}">
+                                                    </td>
+                                                    <td id="other_Input" onclick='copyText(this)' data-toggle="tooltip"
+                                                        title="Click to copy">
+                                                        {{ $clientParty->OtherPartyCode ?? '' }}
+                                                    </td>
+                                                </tr>
 
-                                                        {{-- Only show Debtor and Vendor rows if type is NOT operational --}}
-                                                        @if ($type !== 'operational')
-                                                            <tr>
-                                                                <td>Debtor</td>
-                                                                <td><input type="checkbox" name="debtorCheck"
-                                                                        id="debtorCheck"
-                                                                        @if ($clientParty->RequestforDebtor) checked @endif
-                                                                        disabled readonly></td>
-                                                                <td>
-                                                                    <input type="text" name="debtor" id="debtor"
-                                                                        value="{{ old('debtor', $clientParty->Debtor) }}"
-                                                                        class="form-control form-control-sm" readonly
-                                                                        disabled>
-                                                                    <input type="hidden" name="debtorID"
-                                                                        value="{{ old('debtorID', $clientParty->DebtorID) }}"
-                                                                        id="debtorID">
-                                                                    <input type="hidden" name="debtorCode"
-                                                                        value="{{ old('debtorCode', $clientParty->DebtorCode) }}"
-                                                                        id="debtorCode">
-                                                                </td>
-                                                                <td id="debtor_code" onclick='copyText(this)'
-                                                                    data-toggle="tooltip" title="Click to copy">
-                                                                    {{ $clientParty->DebtorCode ?? '' }}</td>
-                                                            </tr>
-                                                            <tr>
-                                                                <td>Vendor</td>
-                                                                <td><input type="checkbox" name="vendorCheck"
-                                                                        id="vendorCheck"
-                                                                        @if ($clientParty->RequestforVendor) checked @endif
-                                                                        disabled readonly></td>
-                                                                <td>
-                                                                    <input type="text" name="vendor" id="vendor"
-                                                                        value="{{ old('vendor', $clientParty->Vendor) }}"
-                                                                        class="form-control form-control-sm" readonly
-                                                                        disabled>
-                                                                    <input type="hidden" name="vendorID"
-                                                                        value="{{ old('vendorID', $clientParty->VendorID) }}"
-                                                                        id="vendorID">
-                                                                    <input type="hidden" name="vendorCode"
-                                                                        value="{{ old('vendorCode', $clientParty->VendorCode) }}"
-                                                                        id="vendorCode">
-                                                                </td>
-                                                                <td id="vendor_code" onclick="copyText(this)"
-                                                                    data-toggle="tooltip" title="Click to Copy">
-                                                                    {{ $clientParty->VendorCode ?? '' }}</td>
-                                                            </tr>
-                                                        @endif
-                                                    </table>
-                                                </fieldset>
-                                                <button class="btn btn-primary m-2 btn-sm" type="button" name="previous"
-                                                    onclick="stepper.previous()"><i class="fa fa-step-backward"
-                                                        aria-hidden="true"></i> Previous</button>
-
-                                                {{-- Approve/Reject buttons in Admin Details (only if user cannot approve-entity) --}}
-                                                @if (!Auth::user()->can('approve-entity-request'))
-                                                    @if ($approve)
-                                                        <button type="button" name="approveBtn" id="approveBtn"
-                                                            class="btn btn-outline-success float-right m-2 btn-sm"
-                                                            data-toggle="tooltip" data-placement="top"
-                                                            title="Approve For Creation"
-                                                            data-bs-original-title="Approve For Creation">
-                                                            <i class="fa fa-check" aria-hidden="true"></i> Approve
-                                                        </button>
-                                                        <button type="button" name="rejectBtn" id="rejectBtn"
-                                                            data-toggle="modal" data-target="#cancelModal"
-                                                            class="btn btn-danger float-right m-2 btn-sm"
-                                                            data-toggle="tooltip" data-placement="top"
-                                                            title="Reject For Amendment" data-bs-original-title="Update">
-                                                            <i class="fa fa-edit" aria-hidden="true"></i> Reject
-                                                        </button>
-                                                    @else
-                                                        <button type="submit" name="createBtn" value="true"
-                                                            class="btn btn-outline-success float-right m-2 btn-sm"
-                                                            data-toggle="tooltip" data-placement="top"
-                                                            title="Approve Entity For Creation"
-                                                            data-bs-original-title="Approve Entity For Creation">
-                                                            <i class="fa fa-check" aria-hidden="true"></i> Create
-                                                        </button>
-                                                        <button type="button" name="rejectBtn" id="rejectBtn"
-                                                            data-toggle="modal" data-target="#cancelModal"
-                                                            class="btn btn-danger float-right m-2 btn-sm"
-                                                            data-toggle="tooltip" data-placement="top"
-                                                            title="Reject For Amendment" data-bs-original-title="Update">
-                                                            <i class="fa fa-edit" aria-hidden="true"></i> Reject
-                                                        </button>
-                                                    @endif
+                                                {{-- Only show Debtor and Vendor rows if type is NOT operational --}}
+                                                @if ($type !== 'operational')
+                                                    <tr>
+                                                        <td>Debtor</td>
+                                                        <td><input type="checkbox" name="debtorCheck" id="debtorCheck"
+                                                                @if ($clientParty->RequestforDebtor) checked @endif disabled
+                                                                readonly></td>
+                                                        <td>
+                                                            <input type="text" name="debtor" id="debtor"
+                                                                value="{{ old('debtor', $clientParty->Debtor) }}"
+                                                                class="form-control form-control-sm" readonly disabled>
+                                                            <input type="hidden" name="debtorID"
+                                                                value="{{ old('debtorID', $clientParty->DebtorID) }}"
+                                                                id="debtorID">
+                                                            <input type="hidden" name="debtorCode"
+                                                                value="{{ old('debtorCode', $clientParty->DebtorCode) }}"
+                                                                id="debtorCode">
+                                                        </td>
+                                                        <td id="debtor_code" onclick='copyText(this)'
+                                                            data-toggle="tooltip" title="Click to copy">
+                                                            {{ $clientParty->DebtorCode ?? '' }}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td>Vendor</td>
+                                                        <td><input type="checkbox" name="vendorCheck" id="vendorCheck"
+                                                                @if ($clientParty->RequestforVendor) checked @endif disabled
+                                                                readonly></td>
+                                                        <td>
+                                                            <input type="text" name="vendor" id="vendor"
+                                                                value="{{ old('vendor', $clientParty->Vendor) }}"
+                                                                class="form-control form-control-sm" readonly disabled>
+                                                            <input type="hidden" name="vendorID"
+                                                                value="{{ old('vendorID', $clientParty->VendorID) }}"
+                                                                id="vendorID">
+                                                            <input type="hidden" name="vendorCode"
+                                                                value="{{ old('vendorCode', $clientParty->VendorCode) }}"
+                                                                id="vendorCode">
+                                                        </td>
+                                                        <td id="vendor_code" onclick="copyText(this)"
+                                                            data-toggle="tooltip" title="Click to Copy">
+                                                            {{ $clientParty->VendorCode ?? '' }}</td>
+                                                    </tr>
                                                 @endif
-                                            </div>
-                                        </div>
+                                            </table>
+                                        </fieldset>
+
+                                        <button class="btn btn-primary m-2 btn-sm" type="button" name="previous"
+                                            onclick="stepper.previous()">
+                                            <i class="fa fa-step-backward" aria-hidden="true"></i> Previous
+                                        </button>
+
+                                        {{-- Show approval buttons based on entity type and user permissions --}}
+                                        @if (Auth::user()->can('approve-entity-request') && $type === 'operational')
+                                            {{-- For operational type with approve-entity permission, show buttons here --}}
+                                            @if ($approve)
+                                                <button type="button" name="approveBtn" id="approveBtn"
+                                                    class="btn btn-outline-success float-right m-2 btn-sm"
+                                                    data-toggle="tooltip" data-placement="top"
+                                                    title="Approve For Creation">
+                                                    <i class="fa fa-check" aria-hidden="true"></i> Approve
+                                                </button>
+                                                <button type="button" name="rejectBtn" id="rejectBtn"
+                                                    data-toggle="modal" data-target="#cancelModal"
+                                                    class="btn btn-danger float-right m-2 btn-sm" data-toggle="tooltip"
+                                                    data-placement="top" title="Reject For Amendment">
+                                                    <i class="fa fa-edit" aria-hidden="true"></i> Reject
+                                                </button>
+                                            @else
+                                                <button type="submit" name="createBtn" value="true"
+                                                    class="btn btn-outline-success float-right m-2 btn-sm"
+                                                    data-toggle="tooltip" data-placement="top"
+                                                    title="Approve Entity For Creation">
+                                                    <i class="fa fa-check" aria-hidden="true"></i> Create
+                                                </button>
+                                                <button type="button" name="rejectBtn" id="rejectBtn"
+                                                    data-toggle="modal" data-target="#cancelModal"
+                                                    class="btn btn-danger float-right m-2 btn-sm" data-toggle="tooltip"
+                                                    data-placement="top" title="Reject For Amendment">
+                                                    <i class="fa fa-edit" aria-hidden="true"></i> Reject
+                                                </button>
+                                            @endif
+                                        @elseif (!Auth::user()->can('approve-entity-request'))
+                                            {{-- For users without approve-entity permission (existing logic) --}}
+                                            @if ($approve)
+                                                <button type="button" name="approveBtn" id="approveBtn"
+                                                    class="btn btn-outline-success float-right m-2 btn-sm"
+                                                    data-toggle="tooltip" data-placement="top"
+                                                    title="Approve For Creation">
+                                                    <i class="fa fa-check" aria-hidden="true"></i> Approve
+                                                </button>
+                                                <button type="button" name="rejectBtn" id="rejectBtn"
+                                                    data-toggle="modal" data-target="#cancelModal"
+                                                    class="btn btn-danger float-right m-2 btn-sm" data-toggle="tooltip"
+                                                    data-placement="top" title="Reject For Amendment">
+                                                    <i class="fa fa-edit" aria-hidden="true"></i> Reject
+                                                </button>
+                                            @else
+                                                <button type="submit" name="createBtn" value="true"
+                                                    class="btn btn-outline-success float-right m-2 btn-sm"
+                                                    data-toggle="tooltip" data-placement="top"
+                                                    title="Approve Entity For Creation">
+                                                    <i class="fa fa-check" aria-hidden="true"></i> Create
+                                                </button>
+                                                <button type="button" name="rejectBtn" id="rejectBtn"
+                                                    data-toggle="modal" data-target="#cancelModal"
+                                                    class="btn btn-danger float-right m-2 btn-sm" data-toggle="tooltip"
+                                                    data-placement="top" title="Reject For Amendment">
+                                                    <i class="fa fa-edit" aria-hidden="true"></i> Reject
+                                                </button>
+                                            @endif
+                                        @endif
                                     </div>
-                                @endif
-                            </form>
-                        </div>
+                                </div>
+                            </div>
+                        @endif
+                        </form>
                     </div>
                 </div>
+            </div>
 
-                <div class="row">
-                    <div class="col-md-12">
-                        <div class="card shadow-sm p-3 mb-4 bg-white rounded">
-                            <div class="text-center">
-                                <div class="mb-2">
-                                    <span class="font-weight-bold text-muted">Request ID:</span>
-                                    <span class="badge badge-primary copy-text" onclick="copyText(this)"
-                                        data-toggle="tooltip" data-placement="top" title="Click to copy">
-                                        {{ $clientParty->Code }}
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="card shadow-sm p-3 mb-4 bg-white rounded">
+                        <div class="text-center">
+                            <div class="mb-2">
+                                <span class="font-weight-bold text-muted">Request ID:</span>
+                                <span class="badge badge-primary copy-text" onclick="copyText(this)"
+                                    data-toggle="tooltip" data-placement="top" title="Click to copy">
+                                    {{ $clientParty->Code }}
+                                </span>
+
+                                <span class="font-weight-bold text-muted">Requested By:</span>
+                                <span class="font-weight-bold">{{ $clientParty->CreatedBy }}</span>
+
+                            </div>
+
+                            <div class="mb-2">
+                                <span class="font-weight-bold text-muted">Requested On:</span>
+                                <span class="font-weight-bold">{{ $clientParty->CreatedOn }}</span>
+                            </div>
+                            <div class="mb-2">
+                                <span class="font-weight-bold text-muted">Status:</span>
+                                @if ($clientParty->Status == 'Submitted')
+                                    <span
+                                        class="badge badge-{{ $clientParty->paintClientPartyStatus($clientParty->Status) }} badge-pill">
+                                        Submitted
                                     </span>
-
-                                    <span class="font-weight-bold text-muted">Requested By:</span>
-                                    <span class="font-weight-bold">{{ $clientParty->CreatedBy }}</span>
-
-                                </div>
-
-                                <div class="mb-2">
-                                    <span class="font-weight-bold text-muted">Requested On:</span>
-                                    <span class="font-weight-bold">{{ $clientParty->CreatedOn }}</span>
-                                </div>
-                                <div class="mb-2">
-                                    <span class="font-weight-bold text-muted">Status:</span>
-                                    @if ($clientParty->Status == 'Submitted')
-                                        <span
-                                            class="badge badge-{{ $clientParty->paintClientPartyStatus($clientParty->Status) }} badge-pill">
-                                            Submitted
-                                        </span>
-                                    @else
-                                        <span
-                                            class="badge badge-{{ $clientParty->paintClientPartyStatus($clientParty->Status) }} badge-pill">
-                                            {{ $clientParty->Status }}
-                                        </span>
-                                    @endif
-                                </div>
-                                @if ($clientParty->Status == 'Rejected' || $clientParty->Status == 'Review')
-                                    <div class="mb-2">
-                                        <span class="font-weight-bold text-muted">Rejected By:</span>
-                                        <span class="font-weight-bold">{{ $clientParty->RejectedBy }}</span>
-                                    </div>
-                                    <div class="mb-2">
-                                        <span class="font-weight-bold text-muted">Rejected On:</span>
-                                        <span class="font-weight-bold">
-                                            {{ date_format(date_create($clientParty->RejectedOn), 'Y-m-d H:i:s') }}
-                                        </span>
-                                    </div>
-                                    <div class="mb-2">
-                                        <span class="font-weight-bold text-muted">Reason:</span>
-                                        <span class="text-sm text-danger">{{ $clientParty->RejectedReason }}</span>
-                                    </div>
+                                @else
+                                    <span
+                                        class="badge badge-{{ $clientParty->paintClientPartyStatus($clientParty->Status) }} badge-pill">
+                                        {{ $clientParty->Status }}
+                                    </span>
                                 @endif
                             </div>
+                            @if ($clientParty->Status == 'Rejected' || $clientParty->Status == 'Review')
+                                <div class="mb-2">
+                                    <span class="font-weight-bold text-muted">Rejected By:</span>
+                                    <span class="font-weight-bold">{{ $clientParty->RejectedBy }}</span>
+                                </div>
+                                <div class="mb-2">
+                                    <span class="font-weight-bold text-muted">Rejected On:</span>
+                                    <span class="font-weight-bold">
+                                        {{ date_format(date_create($clientParty->RejectedOn), 'Y-m-d H:i:s') }}
+                                    </span>
+                                </div>
+                                <div class="mb-2">
+                                    <span class="font-weight-bold text-muted">Reason:</span>
+                                    <span class="text-sm text-danger">{{ $clientParty->RejectedReason }}</span>
+                                </div>
+                            @endif
                         </div>
                     </div>
                 </div>
+            </div>
 
-                {{-- Cancel Modal --}}
-                <div class="modal fade" id="cancelModal" tabindex="-1" role="dialog"
-                    aria-labelledby="cancelModalLabel" aria-hidden="true">
-                    <div class="modal-dialog" role="document">
-                        <div class="modal-content">
-                            <div class="modal-header">
-                                <h5 class="modal-title" id="cancelModalLabel">Reject Entity Request</h5>
-                                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                                    <span aria-hidden="true">&times;</span>
-                                </button>
+            {{-- Cancel Modal --}}
+            <div class="modal fade" id="cancelModal" tabindex="-1" role="dialog" aria-labelledby="cancelModalLabel"
+                aria-hidden="true">
+                <div class="modal-dialog" role="document">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="cancelModalLabel">Reject Entity Request</h5>
+                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                        <form id="cancelForm">
+                            <div class="modal-body">
+                                <div class="form-group">
+                                    <label for="level">Rejection Level</label>
+                                    <select class="form-control" id="level" name="level" required>
+                                        <option value="">Select Level</option>
+                                        <option value="Rejected">Reject</option>
+                                        <option value="Review">Review</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="reason">Reason for Rejection</label>
+                                    <textarea class="form-control" id="reason" name="reason" rows="3" required
+                                        placeholder="Please provide a detailed reason for rejection..."></textarea>
+                                </div>
                             </div>
-                            <form id="cancelForm">
-                                <div class="modal-body">
-                                    <div class="form-group">
-                                        <label for="level">Rejection Level</label>
-                                        <select class="form-control" id="level" name="level" required>
-                                            <option value="">Select Level</option>
-                                            <option value="Rejected">Reject</option>
-                                            <option value="Review">Review</option>
-                                        </select>
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="reason">Reason for Rejection</label>
-                                        <textarea class="form-control" id="reason" name="reason" rows="3" required
-                                            placeholder="Please provide a detailed reason for rejection..."></textarea>
-                                    </div>
-                                </div>
-                                <div class="modal-footer">
-                                    <button type="button" class="btn btn-secondary" id="close-modal">Cancel</button>
-                                    <button type="button" class="btn btn-danger" id="submit-entity">Submit
-                                        Rejection</button>
-                                </div>
-                            </form>
-                        </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" id="close-modal">Cancel</button>
+                                <button type="button" class="btn btn-danger" id="submit-entity">Submit
+                                    Rejection</button>
+                            </div>
+                        </form>
                     </div>
                 </div>
+            </div>
 
-            @stop
+        @stop
 
-            @section('css')
-                <!-- ============================================
-                                                                                 EXTERNAL STYLESHEETS
-                                                                            ============================================ -->
-                <!-- Bootstrap Stepper -->
-                <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bs-stepper/dist/css/bs-stepper.min.css">
+        @section('css')
+            <!-- ============================================
+                                                                                             EXTERNAL STYLESHEETS
+                                                                                        ============================================ -->
+            <!-- Bootstrap Stepper -->
+            <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bs-stepper/dist/css/bs-stepper.min.css">
 
-                <!-- SweetAlert2 -->
-                <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+            <!-- SweetAlert2 -->
+            <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
 
-                <!-- jQuery UI -->
-                <link rel="stylesheet" href="//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+            <!-- jQuery UI -->
+            <link rel="stylesheet" href="//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
 
-                <style>
-                    /* ============================================
-                                                                                   CSS VARIABLES (Custom Properties)
-                                                                                ============================================ */
-                    :root {
-                        --primary-color: #007bff;
-                        --primary-hover: #0056b3;
-                        --success-color: #28a745;
-                        --danger-color: #dc3545;
-                        --warning-color: #ffc107;
-                        --info-color: #17a2b8;
-                        --dark-color: #343a40;
-                        --muted-color: #6c757d;
-                        --light-gray: #f8f9fa;
-                        --border-color: #ddd;
-                        --legend-color: #E91809;
-                        --shadow-light: 0 2px 4px rgba(0, 0, 0, 0.1);
-                        --shadow-medium: 0 4px 12px rgba(0, 0, 0, 0.1);
-                        --transition-base: all 0.3s ease;
-                        --border-radius-sm: 4px;
-                        --border-radius-md: 8px;
-                        --border-radius-lg: 12px;
+            <style>
+                /* ============================================
+                                                                                               CSS VARIABLES (Custom Properties)
+                                                                                            ============================================ */
+                :root {
+                    --primary-color: #007bff;
+                    --primary-hover: #0056b3;
+                    --success-color: #28a745;
+                    --danger-color: #dc3545;
+                    --warning-color: #ffc107;
+                    --info-color: #17a2b8;
+                    --dark-color: #343a40;
+                    --muted-color: #6c757d;
+                    --light-gray: #f8f9fa;
+                    --border-color: #ddd;
+                    --legend-color: #E91809;
+                    --shadow-light: 0 2px 4px rgba(0, 0, 0, 0.1);
+                    --shadow-medium: 0 4px 12px rgba(0, 0, 0, 0.1);
+                    --transition-base: all 0.3s ease;
+                    --border-radius-sm: 4px;
+                    --border-radius-md: 8px;
+                    --border-radius-lg: 12px;
+                }
+
+                /* ============================================
+                                                                                               CARD COMPONENTS
+                                                                                            ============================================ */
+                .card {
+                    border: none;
+                    border-radius: var(--border-radius-md);
+                    transiti]on: var(--transition-base);
+                    box-shadow: var(--shadow-light);
+                }
+
+                .card:hover {
+                    box-shadow: var(--shadow-medium);
+                    transform: translateY(-2px);
+                }
+
+                .card-header {
+                    background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-hover) 100%);
+                    color: white;
+                    border-radius: var(--border-radius-md) var(--border-radius-md) 0 0 !important;
+                    font-weight: 600;
+                }
+
+                /* ============================================
+                                                                                               ENHANCED FILE DISPLAY STYLES
+                                                                                            ============================================ */
+                .file-item {
+                    background: #f8f9fa;
+                    transition: all 0.3s ease;
+                    border: 1px solid #e9ecef !important;
+                    border-radius: 8px;
+                }
+
+                .file-item:hover {
+                    background: #e9ecef;
+                    border-color: #007bff !important;
+                    transform: translateY(-1px);
+                    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+                }
+
+                .file-icon .fa-file-pdf-o {
+                    color: #dc3545;
+                    font-size: 1.2rem;
+                }
+
+                .file-name {
+                    color: #495057;
+                    font-size: 0.9rem;
+                    font-weight: 500;
+                    cursor: pointer;
+                }
+
+                .file-name:hover {
+                    color: #007bff;
+                    text-decoration: underline;
+                }
+
+                .file-description {
+                    font-size: 0.8rem;
+                    color: #6c757d;
+                    margin-top: 2px;
+                }
+
+                .file-meta {
+                    font-size: 0.75rem;
+                    color: #6c757d;
+                    margin-top: 0.25rem;
+                }
+
+                .file-actions .btn {
+                    font-size: 0.8rem;
+                    padding: 0.25rem 0.5rem;
+                    margin: 0 2px;
+                }
+
+                .file-statistics {
+                    border-left: 4px solid #007bff;
+                    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+                }
+
+                .no-files-message {
+                    border: 2px dashed #dee2e6;
+                    background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+                }
+
+                .existing-files-section h6 {
+                    border-bottom: 2px solid #dee2e6;
+                    padding-bottom: 0.5rem;
+                    color: #495057;
+                }
+
+                .uploaded-files-container {
+                    max-height: 400px;
+                    overflow-y: auto;
+                }
+
+                /* File validation states */
+                .file-item.invalid {
+                    border-color: #dc3545 !important;
+                    background-color: #f8d7da;
+                }
+
+                .file-item.valid {
+                    border-color: #28a745 !important;
+                    background-color: #d4edda;
+                }
+
+                /* Animation for file deletion */
+                .file-item.deleting {
+                    opacity: 0.5;
+                    transform: scale(0.95);
+                    transition: all 0.3s ease;
+                }
+
+                /* Accounting mode specific styling */
+                .accounting-mode .file-upload-container {
+                    border: 2px dashed #dc3545;
+                    border-radius: 8px;
+                    padding: 12px;
+                    background-color: #fff5f5;
+                }
+
+                .accounting-mode .file-upload-container.has-files {
+                    border-color: #28a745;
+                    background-color: #f8fff9;
+                }
+
+                /* PDF file specific styling */
+                .file-item[data-file-type="pdf"] {
+                    border-left: 4px solid #dc3545;
+                }
+
+                /* Enhanced buttons for file actions */
+                .file-actions .btn-outline-primary:hover {
+                    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+                    border-color: #0056b3;
+                }
+
+                .file-actions .btn-outline-danger:hover {
+                    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+                    border-color: #c82333;
+                }
+
+                /* ============================================
+                                                                                               BADGE SYSTEM
+                                                                                            ============================================ */
+                .badge {
+                    font-size: 0.9rem;
+                    padding: 0.5em 1em;
+                    border-radius: var(--border-radius-lg);
+                    vertical-align: middle;
+                    font-weight: 500;
+                    transition: var(--transition-base);
+                }
+
+                .badge-primary {
+                    background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-hover) 100%);
+                    color: white;
+                    cursor: pointer;
+                }
+
+                .badge-primary:hover {
+                    background: linear-gradient(135deg, var(--primary-hover) 0%, #004085 100%);
+                    transform: scale(1.05);
+                }
+
+                .badge-success {
+                    background: linear-gradient(135deg, var(--success-color) 0%, #1e7e34 100%);
+                    color: white;
+                }
+
+                .badge-danger {
+                    background: linear-gradient(135deg, var(--danger-color) 0%, #c82333 100%);
+                    color: white;
+                }
+
+                .badge-warning {
+                    background: linear-gradient(135deg, var(--warning-color) 0%, #e0a800 100%);
+                    color: #212529;
+                }
+
+                .badge-info {
+                    background: linear-gradient(135deg, var(--info-color) 0%, #138496 100%);
+                    color: white;
+                }
+
+                /* Animated badge for copy functionality */
+                .copy-text {
+                    position: relative;
+                    overflow: hidden;
+                }
+
+                .copy-text:hover::after {
+                    content: "Click to copy";
+                    position: absolute;
+                    top: -30px;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    background: var(--dark-color);
+                    color: white;
+                    padding: 4px 8px;
+                    border-radius: var(--border-radius-sm);
+                    font-size: 0.75rem;
+                    white-space: nowrap;
+                    opacity: 0.9;
+                    animation: fadeInUp 0.3s ease;
+                }
+
+                @keyframes fadeInUp {
+                    from {
+                        opacity: 0;
+                        transform: translateX(-50%) translateY(10px);
                     }
 
-                    /* ============================================
-                                                                                   CARD COMPONENTS
-                                                                                ============================================ */
+                    to {
+                        opacity: 0.9;
+                        transform: translateX(-50%) translateY(0);
+                    }
+                }
+
+                /* ============================================
+                                                                                               TYPOGRAPHY
+                                                                                            ============================================ */
+                .text-muted {
+                    font-size: 0.95rem;
+                    color: var(--muted-color) !important;
+                }
+
+                .text-sm {
+                    font-size: 0.85rem;
+                }
+
+                .text-danger {
+                    color: var(--danger-color) !important;
+                }
+
+                label {
+                    font-weight: 600;
+                    color: var(--dark-color);
+                    margin-bottom: 0.5rem;
+                }
+
+                /* ============================================
+                                                                                               FIELDSET & LEGEND STYLING
+                                                                                            ============================================ */
+                fieldset {
+                    border: 2px solid var(--border-color);
+                    border-radius: var(--border-radius-md);
+                    padding: 1rem;
+                    margin-bottom: 1rem;
+                    background: linear-gradient(145deg, #ffffff 0%, #f8f9fa 100%);
+                    box-shadow: var(--shadow-light);
+                    transition: var(--transition-base);
+                }
+
+                fieldset:hover {
+                    border-color: var(--primary-color);
+                    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+                }
+
+                fieldset.scheduler-border {
+                    border: solid 2px var(--border-color);
+                    padding: 0 1rem 1rem 1rem;
+                    border-bottom: none;
+                }
+
+                legend {
+                    font-size: 1.1rem;
+                    font-weight: 700;
+                    color: var(--legend-color);
+                    padding: 0 0.5rem;
+                    margin-bottom: 0;
+                    background: white;
+                    border-radius: var(--border-radius-sm);
+                    box-shadow: var(--shadow-light);
+                }
+
+                legend.scheduler-border {
+                    width: auto !important;
+                    border: none;
+                    font-size: 1rem;
+                }
+
+                /* ============================================
+                                                                                               FORM ELEMENTS
+                                                                                            ============================================ */
+                .form-control:focus {
+                    border-color: var(--primary-color);
+                    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+                }
+
+                .form-control.is-invalid {
+                    border-color: var(--danger-color);
+                    animation: shake 0.5s ease-in-out;
+                }
+
+                @keyframes shake {
+
+                    0%,
+                    100% {
+                        transform: translateX(0);
+                    }
+
+                    25% {
+                        transform: translateX(-5px);
+                    }
+
+                    75% {
+                        transform: translateX(5px);
+                    }
+                }
+
+                /* ============================================
+                                                                                               DISABLED STATES
+                                                                                            ============================================ */
+                .disabled {
+                    opacity: 0.6;
+                    cursor: not-allowed;
+                    filter: grayscale(20%);
+                    transition: var(--transition-base);
+                }
+
+                .admin-section-disabled {
+                    position: relative;
+                }
+
+                .admin-section-disabled::before {
+                    content: '';
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    bottom: 0;
+                    background: rgba(248, 249, 250, 0.8);
+                    z-index: 1;
+                    border-radius: var(--border-radius-md);
+                }
+
+                /* ============================================
+                                                                                               TOOLTIP ENHANCEMENTS
+                                                                                            ============================================ */
+                .tooltip-inner {
+                    background: linear-gradient(135deg, var(--dark-color) 0%, #495057 100%);
+                    color: white;
+                    border-radius: var(--border-radius-sm);
+                    font-size: 0.875rem;
+                    padding: 0.5rem 0.75rem;
+                    box-shadow: var(--shadow-medium);
+                }
+
+                .tooltip .arrow::before {
+                    border-top-color: var(--dark-color);
+                }
+
+                /* ============================================
+                                                                                               LOADING & PRELOADER
+                                                                                            ============================================ */
+                #loader {
+                    display: none;
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    bottom: 0;
+                    width: 100%;
+                    background: rgba(0, 0, 0, 0.8);
+                    z-index: 9999;
+                    backdrop-filter: blur(2px);
+                }
+
+                #loader::after {
+                    content: '';
+                    position: absolute;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    width: 50px;
+                    height: 50px;
+                    border: 5px solid var(--light-gray);
+                    border-top: 5px solid var(--primary-color);
+                    border-radius: 50%;
+                    animation: spin 1s linear infinite;
+                }
+
+                @keyframes spin {
+                    0% {
+                        transform: translate(-50%, -50%) rotate(0deg);
+                    }
+
+                    100% {
+                        transform: translate(-50%, -50%) rotate(360deg);
+                    }
+                }
+
+                /* Original Preloader Styles */
+                .preloader {
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    z-index: 999999999;
+                    width: 100%;
+                    height: 100%;
+                    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+                    overflow: hidden;
+                }
+
+                .preloader-inner {
+                    position: absolute;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                }
+
+                .preloader-icon {
+                    width: 100px;
+                    height: 100px;
+                    display: inline-block;
+                    padding: 0;
+                }
+
+                .preloader-icon span {
+                    position: absolute;
+                    display: inline-block;
+                    width: 100px;
+                    height: 100px;
+                    border-radius: 50%;
+                    background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-hover) 100%);
+                    animation: preloader-fx 1.6s linear infinite;
+                }
+
+                .preloader-icon span:last-child {
+                    animation-delay: -0.8s;
+                }
+
+                @keyframes preloader-fx {
+                    0% {
+                        transform: scale(0);
+                        opacity: 0.5;
+                    }
+
+                    100% {
+                        transform: scale(1);
+                        opacity: 0;
+                    }
+                }
+
+                /* ============================================
+                                                                                               BUTTON ENHANCEMENTS
+                                                                                            ============================================ */
+                .btn {
+                    border-radius: var(--border-radius-sm);
+                    font-weight: 500;
+                    transition: var(--transition-base);
+                    border: none;
+                    box-shadow: var(--shadow-light);
+                }
+
+                .btn:hover {
+                    transform: translateY(-1px);
+                    box-shadow: var(--shadow-medium);
+                }
+
+                .btn:active {
+                    transform: translateY(0);
+                }
+
+                .btn-primary {
+                    background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-hover) 100%);
+                }
+
+                .btn-success {
+                    background: linear-gradient(135deg, var(--success-color) 0%, #1e7e34 100%);
+                }
+
+                .btn-danger {
+                    background: linear-gradient(135deg, var(--danger-color) 0%, #c82333 100%);
+                }
+
+                .btn-warning {
+                    background: linear-gradient(135deg, var(--warning-color) 0%, #e0a800 100%);
+                    color: #212529;
+                }
+
+                .btn-info {
+                    background: linear-gradient(135deg, var(--info-color) 0%, #138496 100%);
+                }
+
+                /* ============================================
+                                                                                               RESPONSIVE DESIGN
+                                                                                            ============================================ */
+                @media (max-width: 768px) {
                     .card {
-                        border: none;
-                        border-radius: var(--border-radius-md);
-                        transiti]on: var(--transition-base);
-                        box-shadow: var(--shadow-light);
+                        margin-bottom: 1rem;
                     }
 
-                    .card:hover {
-                        box-shadow: var(--shadow-medium);
-                        transform: translateY(-2px);
+                    fieldset {
+                        padding: 0.75rem;
                     }
 
-                    .card-header {
-                        background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-hover) 100%);
-                        color: white;
-                        border-radius: var(--border-radius-md) var(--border-radius-md) 0 0 !important;
-                        font-weight: 600;
-                    }
-
-                    /* ============================================
-                                                                                   ENHANCED FILE DISPLAY STYLES
-                                                                                ============================================ */
-                    .file-item {
-                        background: #f8f9fa;
-                        transition: all 0.3s ease;
-                        border: 1px solid #e9ecef !important;
-                        border-radius: 8px;
-                    }
-
-                    .file-item:hover {
-                        background: #e9ecef;
-                        border-color: #007bff !important;
-                        transform: translateY(-1px);
-                        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-                    }
-
-                    .file-icon .fa-file-pdf-o {
-                        color: #dc3545;
-                        font-size: 1.2rem;
-                    }
-
-                    .file-name {
-                        color: #495057;
-                        font-size: 0.9rem;
-                        font-weight: 500;
-                        cursor: pointer;
-                    }
-
-                    .file-name:hover {
-                        color: #007bff;
-                        text-decoration: underline;
-                    }
-
-                    .file-description {
+                    .badge {
                         font-size: 0.8rem;
-                        color: #6c757d;
-                        margin-top: 2px;
+                        padding: 0.4em 0.8em;
                     }
 
-                    .file-meta {
-                        font-size: 0.75rem;
-                        color: #6c757d;
-                        margin-top: 0.25rem;
+                    .file-item .row {
+                        flex-direction: column;
+                    }
+
+                    .file-item .col-md-8,
+                    .file-item .col-md-4 {
+                        flex: 0 0 100%;
+                        max-width: 100%;
+                    }
+
+                    .file-actions {
+                        margin-top: 0.5rem;
+                        text-align: left !important;
                     }
 
                     .file-actions .btn {
-                        font-size: 0.8rem;
-                        padding: 0.25rem 0.5rem;
-                        margin: 0 2px;
+                        margin-bottom: 0.25rem;
                     }
+                }
 
-                    .file-statistics {
-                        border-left: 4px solid #007bff;
-                        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-                    }
+                /* ============================================
+                                                                                               UTILITY CLASSES
+                                                                                            ============================================ */
+                .shadow-soft {
+                    box-shadow: var(--shadow-light);
+                }
 
-                    .no-files-message {
-                        border: 2px dashed #dee2e6;
-                        background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
-                    }
+                .shadow-strong {
+                    box-shadow: var(--shadow-medium);
+                }
 
-                    .existing-files-section h6 {
-                        border-bottom: 2px solid #dee2e6;
-                        padding-bottom: 0.5rem;
-                        color: #495057;
-                    }
+                .rounded-soft {
+                    border-radius: var(--border-radius-sm);
+                }
 
-                    .uploaded-files-container {
-                        max-height: 400px;
-                        overflow-y: auto;
-                    }
+                .rounded-medium {
+                    border-radius: var(--border-radius-md);
+                }
 
-                    /* File validation states */
-                    .file-item.invalid {
-                        border-color: #dc3545 !important;
-                        background-color: #f8d7da;
-                    }
+                .rounded-large {
+                    border-radius: var(--border-radius-lg);
+                }
 
-                    .file-item.valid {
-                        border-color: #28a745 !important;
-                        background-color: #d4edda;
-                    }
+                .gradient-primary {
+                    background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-hover) 100%);
+                }
 
-                    /* Animation for file deletion */
-                    .file-item.deleting {
-                        opacity: 0.5;
-                        transform: scale(0.95);
-                        transition: all 0.3s ease;
-                    }
+                .gradient-success {
+                    background: linear-gradient(135deg, var(--success-color) 0%, #1e7e34 100%);
+                }
 
-                    /* Accounting mode specific styling */
-                    .accounting-mode .file-upload-container {
-                        border: 2px dashed #dc3545;
-                        border-radius: 8px;
-                        padding: 12px;
-                        background-color: #fff5f5;
-                    }
+                .gradient-danger {
+                    background: linear-gradient(135deg, var(--danger-color) 0%, #c82333 100%);
+                }
 
-                    .accounting-mode .file-upload-container.has-files {
-                        border-color: #28a745;
-                        background-color: #f8fff9;
-                    }
+                /* ============================================
+                                                                                               PRINT STYLES
+                                                                                            ============================================ */
+                @media print {
 
-                    /* PDF file specific styling */
-                    .file-item[data-file-type="pdf"] {
-                        border-left: 4px solid #dc3545;
-                    }
-
-                    /* Enhanced buttons for file actions */
-                    .file-actions .btn-outline-primary:hover {
-                        background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
-                        border-color: #0056b3;
-                    }
-
-                    .file-actions .btn-outline-danger:hover {
-                        background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
-                        border-color: #c82333;
-                    }
-
-                    /* ============================================
-                                                                                   BADGE SYSTEM
-                                                                                ============================================ */
-                    .badge {
-                        font-size: 0.9rem;
-                        padding: 0.5em 1em;
-                        border-radius: var(--border-radius-lg);
-                        vertical-align: middle;
-                        font-weight: 500;
-                        transition: var(--transition-base);
-                    }
-
-                    .badge-primary {
-                        background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-hover) 100%);
-                        color: white;
-                        cursor: pointer;
-                    }
-
-                    .badge-primary:hover {
-                        background: linear-gradient(135deg, var(--primary-hover) 0%, #004085 100%);
-                        transform: scale(1.05);
-                    }
-
-                    .badge-success {
-                        background: linear-gradient(135deg, var(--success-color) 0%, #1e7e34 100%);
-                        color: white;
-                    }
-
-                    .badge-danger {
-                        background: linear-gradient(135deg, var(--danger-color) 0%, #c82333 100%);
-                        color: white;
-                    }
-
-                    .badge-warning {
-                        background: linear-gradient(135deg, var(--warning-color) 0%, #e0a800 100%);
-                        color: #212529;
-                    }
-
-                    .badge-info {
-                        background: linear-gradient(135deg, var(--info-color) 0%, #138496 100%);
-                        color: white;
-                    }
-
-                    /* Animated badge for copy functionality */
-                    .copy-text {
-                        position: relative;
-                        overflow: hidden;
-                    }
-
-                    .copy-text:hover::after {
-                        content: "Click to copy";
-                        position: absolute;
-                        top: -30px;
-                        left: 50%;
-                        transform: translateX(-50%);
-                        background: var(--dark-color);
-                        color: white;
-                        padding: 4px 8px;
-                        border-radius: var(--border-radius-sm);
-                        font-size: 0.75rem;
-                        white-space: nowrap;
-                        opacity: 0.9;
-                        animation: fadeInUp 0.3s ease;
-                    }
-
-                    @keyframes fadeInUp {
-                        from {
-                            opacity: 0;
-                            transform: translateX(-50%) translateY(10px);
-                        }
-
-                        to {
-                            opacity: 0.9;
-                            transform: translateX(-50%) translateY(0);
-                        }
-                    }
-
-                    /* ============================================
-                                                                                   TYPOGRAPHY
-                                                                                ============================================ */
-                    .text-muted {
-                        font-size: 0.95rem;
-                        color: var(--muted-color) !important;
-                    }
-
-                    .text-sm {
-                        font-size: 0.85rem;
-                    }
-
-                    .text-danger {
-                        color: var(--danger-color) !important;
-                    }
-
-                    label {
-                        font-weight: 600;
-                        color: var(--dark-color);
-                        margin-bottom: 0.5rem;
-                    }
-
-                    /* ============================================
-                                                                                   FIELDSET & LEGEND STYLING
-                                                                                ============================================ */
-                    fieldset {
-                        border: 2px solid var(--border-color);
-                        border-radius: var(--border-radius-md);
-                        padding: 1rem;
-                        margin-bottom: 1rem;
-                        background: linear-gradient(145deg, #ffffff 0%, #f8f9fa 100%);
-                        box-shadow: var(--shadow-light);
-                        transition: var(--transition-base);
-                    }
-
-                    fieldset:hover {
-                        border-color: var(--primary-color);
-                        box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
-                    }
-
-                    fieldset.scheduler-border {
-                        border: solid 2px var(--border-color);
-                        padding: 0 1rem 1rem 1rem;
-                        border-bottom: none;
-                    }
-
-                    legend {
-                        font-size: 1.1rem;
-                        font-weight: 700;
-                        color: var(--legend-color);
-                        padding: 0 0.5rem;
-                        margin-bottom: 0;
-                        background: white;
-                        border-radius: var(--border-radius-sm);
-                        box-shadow: var(--shadow-light);
-                    }
-
-                    legend.scheduler-border {
-                        width: auto !important;
-                        border: none;
-                        font-size: 1rem;
-                    }
-
-                    /* ============================================
-                                                                                   FORM ELEMENTS
-                                                                                ============================================ */
-                    .form-control:focus {
-                        border-color: var(--primary-color);
-                        box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
-                    }
-
-                    .form-control.is-invalid {
-                        border-color: var(--danger-color);
-                        animation: shake 0.5s ease-in-out;
-                    }
-
-                    @keyframes shake {
-
-                        0%,
-                        100% {
-                            transform: translateX(0);
-                        }
-
-                        25% {
-                            transform: translateX(-5px);
-                        }
-
-                        75% {
-                            transform: translateX(5px);
-                        }
-                    }
-
-                    /* ============================================
-                                                                                   DISABLED STATES
-                                                                                ============================================ */
-                    .disabled {
-                        opacity: 0.6;
-                        cursor: not-allowed;
-                        filter: grayscale(20%);
-                        transition: var(--transition-base);
-                    }
-
-                    .admin-section-disabled {
-                        position: relative;
-                    }
-
-                    .admin-section-disabled::before {
-                        content: '';
-                        position: absolute;
-                        top: 0;
-                        left: 0;
-                        right: 0;
-                        bottom: 0;
-                        background: rgba(248, 249, 250, 0.8);
-                        z-index: 1;
-                        border-radius: var(--border-radius-md);
-                    }
-
-                    /* ============================================
-                                                                                   TOOLTIP ENHANCEMENTS
-                                                                                ============================================ */
-                    .tooltip-inner {
-                        background: linear-gradient(135deg, var(--dark-color) 0%, #495057 100%);
-                        color: white;
-                        border-radius: var(--border-radius-sm);
-                        font-size: 0.875rem;
-                        padding: 0.5rem 0.75rem;
-                        box-shadow: var(--shadow-medium);
-                    }
-
-                    .tooltip .arrow::before {
-                        border-top-color: var(--dark-color);
-                    }
-
-                    /* ============================================
-                                                                                   LOADING & PRELOADER
-                                                                                ============================================ */
+                    .btn,
+                    .badge,
+                    .preloader,
                     #loader {
-                        display: none;
-                        position: fixed;
-                        top: 0;
-                        left: 0;
-                        right: 0;
-                        bottom: 0;
-                        width: 100%;
-                        background: rgba(0, 0, 0, 0.8);
-                        z-index: 9999;
-                        backdrop-filter: blur(2px);
+                        display: none !important;
                     }
 
-                    #loader::after {
-                        content: '';
-                        position: absolute;
-                        top: 50%;
-                        left: 50%;
-                        transform: translate(-50%, -50%);
-                        width: 50px;
-                        height: 50px;
-                        border: 5px solid var(--light-gray);
-                        border-top: 5px solid var(--primary-color);
-                        border-radius: 50%;
-                        animation: spin 1s linear infinite;
+                    .card {
+                        box-shadow: none;
+                        border: 1px solid #ddd;
                     }
 
-                    @keyframes spin {
-                        0% {
-                            transform: translate(-50%, -50%) rotate(0deg);
-                        }
-
-                        100% {
-                            transform: translate(-50%, -50%) rotate(360deg);
-                        }
+                    fieldset {
+                        break-inside: avoid;
                     }
+                }
+            </style>
+        @stop
 
-                    /* Original Preloader Styles */
-                    .preloader {
-                        position: fixed;
-                        top: 0;
-                        left: 0;
-                        z-index: 999999999;
-                        width: 100%;
-                        height: 100%;
-                        background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
-                        overflow: hidden;
+        @section('js')
+            <!-- SweetAlert2 JS -->
+            <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.js"></script>
+
+            <script src="//code.jquery.com/jquery-1.12.4.min.js"></script>
+            <script src="https://cdn.jsdelivr.net/npm/bs-stepper/dist/js/bs-stepper.min.js"></script>
+            <script src="{{ asset('js/client-party/jquery-number/jquery.number.min.js') }}"></script>
+            <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
+
+            <script>
+                window.isShowView = true;
+                /* Ajax setup CSRF */
+                $.ajaxSetup({
+                    headers: {
+                        'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
                     }
-
-                    .preloader-inner {
-                        position: absolute;
-                        top: 50%;
-                        left: 50%;
-                        transform: translate(-50%, -50%);
-                    }
-
-                    .preloader-icon {
-                        width: 100px;
-                        height: 100px;
-                        display: inline-block;
-                        padding: 0;
-                    }
-
-                    .preloader-icon span {
-                        position: absolute;
-                        display: inline-block;
-                        width: 100px;
-                        height: 100px;
-                        border-radius: 50%;
-                        background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-hover) 100%);
-                        animation: preloader-fx 1.6s linear infinite;
-                    }
-
-                    .preloader-icon span:last-child {
-                        animation-delay: -0.8s;
-                    }
-
-                    @keyframes preloader-fx {
-                        0% {
-                            transform: scale(0);
-                            opacity: 0.5;
-                        }
-
-                        100% {
-                            transform: scale(1);
-                            opacity: 0;
-                        }
-                    }
-
-                    /* ============================================
-                                                                                   BUTTON ENHANCEMENTS
-                                                                                ============================================ */
-                    .btn {
-                        border-radius: var(--border-radius-sm);
-                        font-weight: 500;
-                        transition: var(--transition-base);
-                        border: none;
-                        box-shadow: var(--shadow-light);
-                    }
-
-                    .btn:hover {
-                        transform: translateY(-1px);
-                        box-shadow: var(--shadow-medium);
-                    }
-
-                    .btn:active {
-                        transform: translateY(0);
-                    }
-
-                    .btn-primary {
-                        background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-hover) 100%);
-                    }
-
-                    .btn-success {
-                        background: linear-gradient(135deg, var(--success-color) 0%, #1e7e34 100%);
-                    }
-
-                    .btn-danger {
-                        background: linear-gradient(135deg, var(--danger-color) 0%, #c82333 100%);
-                    }
-
-                    .btn-warning {
-                        background: linear-gradient(135deg, var(--warning-color) 0%, #e0a800 100%);
-                        color: #212529;
-                    }
-
-                    .btn-info {
-                        background: linear-gradient(135deg, var(--info-color) 0%, #138496 100%);
-                    }
-
-                    /* ============================================
-                                                                                   RESPONSIVE DESIGN
-                                                                                ============================================ */
-                    @media (max-width: 768px) {
-                        .card {
-                            margin-bottom: 1rem;
-                        }
-
-                        fieldset {
-                            padding: 0.75rem;
-                        }
-
-                        .badge {
-                            font-size: 0.8rem;
-                            padding: 0.4em 0.8em;
-                        }
-
-                        .file-item .row {
-                            flex-direction: column;
-                        }
-
-                        .file-item .col-md-8,
-                        .file-item .col-md-4 {
-                            flex: 0 0 100%;
-                            max-width: 100%;
-                        }
-
-                        .file-actions {
-                            margin-top: 0.5rem;
-                            text-align: left !important;
-                        }
-
-                        .file-actions .btn {
-                            margin-bottom: 0.25rem;
-                        }
-                    }
-
-                    /* ============================================
-                                                                                   UTILITY CLASSES
-                                                                                ============================================ */
-                    .shadow-soft {
-                        box-shadow: var(--shadow-light);
-                    }
-
-                    .shadow-strong {
-                        box-shadow: var(--shadow-medium);
-                    }
-
-                    .rounded-soft {
-                        border-radius: var(--border-radius-sm);
-                    }
-
-                    .rounded-medium {
-                        border-radius: var(--border-radius-md);
-                    }
-
-                    .rounded-large {
-                        border-radius: var(--border-radius-lg);
-                    }
-
-                    .gradient-primary {
-                        background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-hover) 100%);
-                    }
-
-                    .gradient-success {
-                        background: linear-gradient(135deg, var(--success-color) 0%, #1e7e34 100%);
-                    }
-
-                    .gradient-danger {
-                        background: linear-gradient(135deg, var(--danger-color) 0%, #c82333 100%);
-                    }
-
-                    /* ============================================
-                                                                                   PRINT STYLES
-                                                                                ============================================ */
-                    @media print {
-
-                        .btn,
-                        .badge,
-                        .preloader,
-                        #loader {
-                            display: none !important;
-                        }
-
-                        .card {
-                            box-shadow: none;
-                            border: 1px solid #ddd;
-                        }
-
-                        fieldset {
-                            break-inside: avoid;
-                        }
-                    }
-                </style>
-            @stop
-
-            @section('js')
-                <!-- SweetAlert2 JS -->
-                <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.js"></script>
-
-                <script src="//code.jquery.com/jquery-1.12.4.min.js"></script>
-                <script src="https://cdn.jsdelivr.net/npm/bs-stepper/dist/js/bs-stepper.min.js"></script>
-                <script src="{{ asset('js/client-party/jquery-number/jquery.number.min.js') }}"></script>
-                <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
-
-                <script>
-                    window.isShowView = true;
-                    /* Ajax setup CSRF */
-                    $.ajaxSetup({
-                        headers: {
-                            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-                        }
-                    });
-                    // 🛠️ SweetAlert2 Utility Functions
-                    const SwalUtils = {
-                        success: (title, text = '', timer = 2000) => {
-                            return Swal.fire({
-                                icon: 'success',
-                                title: title,
-                                text: text,
-                                confirmButtonColor: '#28a745',
-                                timer: timer,
-                                timerProgressBar: true
-                            });
-                        },
-                        error: (title, text = '') => {
-                            return Swal.fire({
-                                icon: 'error',
-                                title: title,
-                                text: text,
-                                confirmButtonColor: '#dc3545'
-                            });
-                        },
-                        warning: (title, text = '') => {
-                            return Swal.fire({
-                                icon: 'warning',
-                                title: title,
-                                text: text,
-                                confirmButtonColor: '#ffc107'
-                            });
-                        },
-                        confirm: (title, text = '', confirmText = 'Yes', cancelText = 'Cancel') => {
-                            return Swal.fire({
-                                title: title,
-                                text: text,
-                                icon: 'question',
-                                showCancelButton: true,
-                                confirmButtonColor: '#28a745',
-                                cancelButtonColor: '#6c757d',
-                                confirmButtonText: confirmText,
-                                cancelButtonText: cancelText
-                            });
-                        },
-                        loading: (title = 'Processing...', text = 'Please wait...') => {
-                            return Swal.fire({
-                                title: title,
-                                text: text,
-                                allowOutsideClick: false,
-                                didOpen: () => {
-                                    Swal.showLoading();
-                                }
-                            });
-                        }
-                    };
-
-                    /** Function to copy text */
-                    function copyText(element) {
-                        var $temp = $("<input>");
-                        $("body").append($temp);
-                        $temp.val($(element).html()).select();
-                        document.execCommand("copy");
-                        $('.tooltip .tooltip-inner').text('Copied!');
-                        $temp.remove();
-                    }
-
-                    /** Get user authorization status */
-                    window.User = {
-                        value: '{{ auth()->user()->can('edit-client-party') }}',
-                        edit: '{{ $editForm }}'
-                    };
-                    window.approve_client_party = `{{ $approve }}`;
-                    window.default_bill_curr = `{{ $clientParty->BillingCurrencyId }}`;
-
-                    window.requestType = @json($type ?? 'operational');
-
-                    //New Code
-                    $(document).ready(function() {
-                        // Enhanced File Handling Functions
-                        function validateFile(fileInput) {
-                            const file = fileInput.files[0];
-                            if (!file) return false;
-
-                            const allowedTypes = ['application/pdf'];
-                            const allowedExtensions = /(\.pdf)$/i;
-                            const maxSize = 10 * 1024 * 1024; // 10MB
-
-                            if (!allowedTypes.includes(file.type) && !allowedExtensions.exec(file.name)) {
-                                SwalUtils.error('Invalid File Type', 'Only PDF files are allowed.');
-                                fileInput.value = '';
-                                return false;
-                            }
-
-                            if (file.size > maxSize) {
-                                SwalUtils.error('File Too Large', 'File size must be less than 10MB.');
-                                fileInput.value = '';
-                                return false;
-                            }
-
-                            return true;
-                        }
-
-                        function formatFileSize(bytes) {
-                            if (bytes === 0) return '0 Bytes';
-                            const k = 1024;
-                            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-                            const i = Math.floor(Math.log(bytes) / Math.log(k));
-                            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-                        }
-
-                        function updateFileStatistics() {
-                            const fileCount = $('.file-item:not(.deleting)').length;
-                            const maxFiles = 3;
-                            const remainingFiles = maxFiles - fileCount;
-
-                            let statisticsHtml = `<strong>${fileCount}</strong> file(s) uploaded `;
-                            if (fileCount >= maxFiles) {
-                                statisticsHtml += '<span class="text-warning">• Maximum limit reached</span>';
-                            } else {
-                                statisticsHtml +=
-                                    `<span class="text-success">• ${remainingFiles} more file(s) can be added</span>`;
-                            }
-
-                            $('.file-statistics small').html('<i class="fa fa-info-circle"></i> ' + statisticsHtml);
-
-                            // Show/hide add file button based on limit
-                            if (fileCount >= maxFiles) {
-                                $('.addAttachment').hide();
-                            } else {
-                                $('.addAttachment').show();
-                            }
-                        }
-
-                        // File input change handler with enhanced validation
-                        $(document).on('change', 'input[name="attachmentNames[]"]', function() {
-                            const isValid = validateFile(this);
-                            const fileItem = $(this).closest('.file-item');
-
-                            if (isValid) {
-                                fileItem.addClass('valid').removeClass('invalid');
-                                const file = this.files[0];
-                                const fileSize = formatFileSize(file.size);
-
-                                // Add file metadata
-                                const metaInfo =
-                                    `<div class="file-meta">Size: ${fileSize} • ${new Date().toLocaleDateString()}</div>`;
-                                fileItem.find('.file-details').append(metaInfo);
-                            } else {
-                                fileItem.addClass('invalid').removeClass('valid');
+                });
+                // 🛠️ SweetAlert2 Utility Functions
+                const SwalUtils = {
+                    success: (title, text = '', timer = 2000) => {
+                        return Swal.fire({
+                            icon: 'success',
+                            title: title,
+                            text: text,
+                            confirmButtonColor: '#28a745',
+                            timer: timer,
+                            timerProgressBar: true
+                        });
+                    },
+                    error: (title, text = '') => {
+                        return Swal.fire({
+                            icon: 'error',
+                            title: title,
+                            text: text,
+                            confirmButtonColor: '#dc3545'
+                        });
+                    },
+                    warning: (title, text = '') => {
+                        return Swal.fire({
+                            icon: 'warning',
+                            title: title,
+                            text: text,
+                            confirmButtonColor: '#ffc107'
+                        });
+                    },
+                    confirm: (title, text = '', confirmText = 'Yes', cancelText = 'Cancel') => {
+                        return Swal.fire({
+                            title: title,
+                            text: text,
+                            icon: 'question',
+                            showCancelButton: true,
+                            confirmButtonColor: '#28a745',
+                            cancelButtonColor: '#6c757d',
+                            confirmButtonText: confirmText,
+                            cancelButtonText: cancelText
+                        });
+                    },
+                    loading: (title = 'Processing...', text = 'Please wait...') => {
+                        return Swal.fire({
+                            title: title,
+                            text: text,
+                            allowOutsideClick: false,
+                            didOpen: () => {
+                                Swal.showLoading();
                             }
                         });
+                    }
+                };
 
-                        // Enhanced delete file handler with improved UX
-                        $(document).on('click', '.deleteFile', async function(e) {
-                            e.preventDefault();
+                /** Function to copy text */
+                function copyText(element) {
+                    var $temp = $("<input>");
+                    $("body").append($temp);
+                    $temp.val($(element).html()).select();
+                    document.execCommand("copy");
+                    $('.tooltip .tooltip-inner').text('Copied!');
+                    $temp.remove();
+                }
 
-                            const fileId = $(this).data('file-id');
-                            const fileItem = $(this).closest('.file-item');
-                            const fileName = fileItem.find('.file-name').text();
+                /** Get user authorization status */
+                window.User = {
+                    value: '{{ auth()->user()->can('edit-client-party') }}',
+                    edit: '{{ $editForm }}'
+                };
+                window.approve_client_party = `{{ $approve }}`;
+                window.default_bill_curr = `{{ $clientParty->BillingCurrencyId }}`;
 
-                            // Enhanced confirmation dialog
-                            const confirmResult = await SwalUtils.confirm(
-                                'Delete File?',
-                                `Are you sure you want to delete "${fileName}"? This action cannot be undone.`,
-                                'Yes, Delete!',
-                                'Cancel'
-                            );
+                window.requestType = @json($type ?? 'operational');
 
-                            if (!confirmResult.isConfirmed) return;
+                //New Code
+                $(document).ready(function() {
+                    // Enhanced File Handling Functions
+                    function validateFile(fileInput) {
+                        const file = fileInput.files[0];
+                        if (!file) return false;
 
-                            // Add deleting animation
-                            fileItem.addClass('deleting');
-                            $(this).prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i>');
+                        const allowedTypes = ['application/pdf'];
+                        const allowedExtensions = /(\.pdf)$/i;
+                        const maxSize = 10 * 1024 * 1024; // 10MB
 
-                            // Show loading with file name
-                            SwalUtils.loading('Deleting File', `Deleting "${fileName}"...`);
+                        if (!allowedTypes.includes(file.type) && !allowedExtensions.exec(file.name)) {
+                            SwalUtils.error('Invalid File Type', 'Only PDF files are allowed.');
+                            fileInput.value = '';
+                            return false;
+                        }
 
-                            try {
-                                const response = await $.ajax({
-                                    url: `/delete-client-party-attachment/${fileId}`,
-                                    type: 'POST',
-                                    dataType: 'json',
-                                    headers: {
-                                        'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                        if (file.size > maxSize) {
+                            SwalUtils.error('File Too Large', 'File size must be less than 10MB.');
+                            fileInput.value = '';
+                            return false;
+                        }
+
+                        return true;
+                    }
+
+                    function formatFileSize(bytes) {
+                        if (bytes === 0) return '0 Bytes';
+                        const k = 1024;
+                        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+                        const i = Math.floor(Math.log(bytes) / Math.log(k));
+                        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+                    }
+
+                    function updateFileStatistics() {
+                        const fileCount = $('.file-item:not(.deleting)').length;
+                        const maxFiles = 3;
+                        const remainingFiles = maxFiles - fileCount;
+
+                        let statisticsHtml = `<strong>${fileCount}</strong> file(s) uploaded `;
+                        if (fileCount >= maxFiles) {
+                            statisticsHtml += '<span class="text-warning">• Maximum limit reached</span>';
+                        } else {
+                            statisticsHtml +=
+                                `<span class="text-success">• ${remainingFiles} more file(s) can be added</span>`;
+                        }
+
+                        $('.file-statistics small').html('<i class="fa fa-info-circle"></i> ' + statisticsHtml);
+
+                        // Show/hide add file button based on limit
+                        if (fileCount >= maxFiles) {
+                            $('.addAttachment').hide();
+                        } else {
+                            $('.addAttachment').show();
+                        }
+                    }
+
+                    // File input change handler with enhanced validation
+                    $(document).on('change', 'input[name="attachmentNames[]"]', function() {
+                        const isValid = validateFile(this);
+                        const fileItem = $(this).closest('.file-item');
+
+                        if (isValid) {
+                            fileItem.addClass('valid').removeClass('invalid');
+                            const file = this.files[0];
+                            const fileSize = formatFileSize(file.size);
+
+                            // Add file metadata
+                            const metaInfo =
+                                `<div class="file-meta">Size: ${fileSize} • ${new Date().toLocaleDateString()}</div>`;
+                            fileItem.find('.file-details').append(metaInfo);
+                        } else {
+                            fileItem.addClass('invalid').removeClass('valid');
+                        }
+                    });
+
+                    // Enhanced delete file handler with improved UX
+                    $(document).on('click', '.deleteFile', async function(e) {
+                        e.preventDefault();
+
+                        const fileId = $(this).data('file-id');
+                        const fileItem = $(this).closest('.file-item');
+                        const fileName = fileItem.find('.file-name').text();
+
+                        // Enhanced confirmation dialog
+                        const confirmResult = await SwalUtils.confirm(
+                            'Delete File?',
+                            `Are you sure you want to delete "${fileName}"? This action cannot be undone.`,
+                            'Yes, Delete!',
+                            'Cancel'
+                        );
+
+                        if (!confirmResult.isConfirmed) return;
+
+                        // Add deleting animation
+                        fileItem.addClass('deleting');
+                        $(this).prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i>');
+
+                        // Show loading with file name
+                        SwalUtils.loading('Deleting File', `Deleting "${fileName}"...`);
+
+                        try {
+                            const response = await $.ajax({
+                                url: `/delete-client-party-attachment/${fileId}`,
+                                type: 'POST',
+                                dataType: 'json',
+                                headers: {
+                                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                                }
+                            });
+
+                            if (response[1] == 200) {
+                                await SwalUtils.success('Deleted!',
+                                    `"${fileName}" has been deleted successfully.`, 2000);
+
+                                // Remove file item with enhanced animation
+                                fileItem.fadeOut(300, function() {
+                                    $(this).remove();
+                                    updateFileStatistics();
+
+                                    // Check if no files remain
+                                    if ($('.file-item').length === 0) {
+                                        $('.existing-files-section').fadeOut(300);
+                                        $('.no-files-message').fadeIn(300);
                                     }
                                 });
-
-                                if (response[1] == 200) {
-                                    await SwalUtils.success('Deleted!',
-                                        `"${fileName}" has been deleted successfully.`, 2000);
-
-                                    // Remove file item with enhanced animation
-                                    fileItem.fadeOut(300, function() {
-                                        $(this).remove();
-                                        updateFileStatistics();
-
-                                        // Check if no files remain
-                                        if ($('.file-item').length === 0) {
-                                            $('.existing-files-section').fadeOut(300);
-                                            $('.no-files-message').fadeIn(300);
-                                        }
-                                    });
-                                } else {
-                                    fileItem.removeClass('deleting');
-                                    $(this).prop('disabled', false).html('<i class="fa fa-trash"></i>');
-                                    await SwalUtils.error('Deletion Failed', 'Unable to delete the file.');
-                                }
-                            } catch (xhr) {
+                            } else {
                                 fileItem.removeClass('deleting');
                                 $(this).prop('disabled', false).html('<i class="fa fa-trash"></i>');
-                                console.error('Delete file error:', xhr);
-                                await SwalUtils.error('Deletion Failed',
-                                    xhr.responseJSON?.message || 'An error occurred while deleting the file.');
+                                await SwalUtils.error('Deletion Failed', 'Unable to delete the file.');
                             }
-                        });
+                        } catch (xhr) {
+                            fileItem.removeClass('deleting');
+                            $(this).prop('disabled', false).html('<i class="fa fa-trash"></i>');
+                            console.error('Delete file error:', xhr);
+                            await SwalUtils.error('Deletion Failed',
+                                xhr.responseJSON?.message || 'An error occurred while deleting the file.');
+                        }
+                    });
 
-                        // Enhanced add attachment functionality
-                        let attachmentCount = {{ count($clientParty->attachments) }};
-                        const maxAttachments = 3;
+                    // Enhanced add attachment functionality
+                    let attachmentCount = {{ count($clientParty->attachments) }};
+                    const maxAttachments = 3;
 
-                        $('.addAttachment').click(async function(e) {
-                            e.preventDefault();
+                    $('.addAttachment').click(async function(e) {
+                        e.preventDefault();
 
-                            if (attachmentCount >= maxAttachments) {
-                                await SwalUtils.warning('Limit Reached',
-                                    'Maximum file attachment limit reached (3 files).');
-                                return;
-                            }
+                        if (attachmentCount >= maxAttachments) {
+                            await SwalUtils.warning('Limit Reached',
+                                'Maximum file attachment limit reached (3 files).');
+                            return;
+                        }
 
-                            const cloneHtml = $('.clone-template').html();
-                            $('#attachClone').append(cloneHtml);
-                            attachmentCount++;
+                        const cloneHtml = $('.clone-template').html();
+                        $('#attachClone').append(cloneHtml);
+                        attachmentCount++;
 
+                        updateFileStatistics();
+                    });
+
+                    // Remove attachment handler
+                    $(document).on('click', '.remove-attachment', function() {
+                        $(this).closest('.cloned-attachment').fadeOut(300, function() {
+                            $(this).remove();
+                            attachmentCount--;
                             updateFileStatistics();
                         });
+                    });
 
-                        // Remove attachment handler
-                        $(document).on('click', '.remove-attachment', function() {
-                            $(this).closest('.cloned-attachment').fadeOut(300, function() {
-                                $(this).remove();
-                                attachmentCount--;
-                                updateFileStatistics();
+                    // File preview enhancement
+                    $(document).on('click', '.file-item .file-name', function(e) {
+                        e.preventDefault();
+                        const previewUrl = $(this).closest('.file-item').find('a[href*="preview"]').attr('href');
+                        if (previewUrl) {
+                            window.open(previewUrl, '_blank');
+                        }
+                    });
+
+                    // Handle legalEntityType visibility
+                    let type = document.body.dataset.type;
+                    console.log("Type:-", type);
+                    let legalTypeDiv = document.getElementById("legalEntityType")?.closest('.col');
+                    if (legalTypeDiv) {
+                        legalTypeDiv.style.display = type === "accounting" ? "none" : "block";
+                    }
+
+                    // Initialize debtor and vendor dropdowns
+                    let debtor_val = window.default_debtor || '';
+                    let vendor_val = window.default_vendor || '';
+                    if (debtor_val === '') {
+                        $('#debtorType').attr('disabled', 'disabled');
+                    } else {
+                        $('#debtorType').val(debtor_val).trigger('change');
+                    }
+                    if (vendor_val === '') {
+                        $('#vendorType').attr('disabled', 'disabled');
+                    } else {
+                        $('#vendorType').val(vendor_val).trigger('change');
+                    }
+
+                    // Make all form fields read-only or disabled, EXCLUDING the <fieldset> inputs
+                    // Selects (excluding those in the <fieldset>)
+                    $('select[name="partyEntityType"], select[name="legalEntityType"], select[name="countryID"], select[name="officeCountry"], select[name="billingCurrency"], select[name="licenceTypeID"], #level')
+                        .prop('readonly', true);
+
+                    // Checkboxes (excluding those in the <fieldset>)
+                    $('input[name="otherCheck"]:not(.border.p-2 input), input[name="debtorCheck"]:not(.border.p-2 input), input[name="vendorCheck"]:not(.border.p-2 input)')
+                        .prop('readonly', true);
+
+                    // Text inputs and textareas (excluding those in the <fieldset>)
+                    $('input[name="companyName"], input[name="provinceName"], input[name="zipCode"], input[name="cityName"], input[name="firstName"], input[name="lastName"], input[name="department"], input[name="phoneNo"], input[name="contractEmail"], textarea[name="addressLine1"], textarea[name="addressLine2"], input[name="attachmentDescription[]"], textarea[name="reason"], input[name="creditDays"], input[name="maxCreditLimit"], input[name="baseCurrency"], input[name="licenceTypeValue"]')
+                        .prop('readonly', true);
+
+                    // File inputs
+                    $('input[name="attachmentNames[]"]').prop('disabled', true);
+
+                    // Buttons - EXCLUDE approve and reject buttons
+                    $('.addAttachment, .deleteFile').prop('disabled', true).addClass('disabled');
+
+                    // Enable the specific inputs in the <fieldset> explicitly (optional, for clarity)
+                    $('fieldset.border.p-2 input[type="text"], fieldset.border.p-2 input[type="checkbox"], fieldset.border.p-2 input[type="hidden"]')
+                        .prop('readonly', false)
+                        .prop('disabled', false);
+
+                    // ===== UPDATED CODE: Only disable Admin Details if status is "Created" =====
+                    let currentStatus = '{{ $clientParty->Status }}';
+                    console.log('Current Status:', currentStatus);
+
+                    if (currentStatus === 'Created') {
+                        // Use setTimeout to ensure this runs after all other jQuery operations
+                        setTimeout(function() {
+                            // More specific selectors for admin details
+                            $('#admin-details table input[type="checkbox"]').prop('disabled', true).prop('checked',
+                                true);
+                            $('#admin-details table input[type="text"]').prop('readonly', true).prop('disabled',
+                                true);
+                            // $('#admin-details table input[
+                            $('#admin-details table input[type="hidden"]').prop('disabled', true);
+
+                            // Force disable by ID and name - more specific targeting
+                            $('#otherCheck, #debtorCheck, #vendorCheck').prop('disabled', true);
+                            $('#otherInput, #debtor, #vendor').prop('readonly', true).prop('disabled', true);
+                            $('#otherID, #otherCode, #debtorID, #debtorCode, #vendorID, #vendorCode').prop(
+                                'disabled', true);
+
+                            // ONLY disable action buttons if status is "Created"
+                            $('#admin-details button[name="approveBtn"]').prop('disabled', true).addClass(
+                                'disabled');
+                            $('#admin-details button[name="createBtn"]').prop('disabled', true).addClass(
+                                'disabled');
+                            $('#admin-details button[name="rejectBtn"]').prop('disabled', true).addClass(
+                                'disabled');
+                            $('#approveBtn, #createBtn, #rejectBtn').prop('disabled', true).addClass('disabled');
+
+                            // Add stronger visual styling that overrides other styles
+                            $('#admin-details table input, #admin-details table td').css({
+                                'background-color': '#f8f9fa !important',
+                                'cursor': 'not-allowed !important',
+                                'opacity': '0.65 !important',
+                                'pointer-events': 'none'
                             });
-                        });
 
-                        // File preview enhancement
-                        $(document).on('click', '.file-item .file-name', function(e) {
-                            e.preventDefault();
-                            const previewUrl = $(this).closest('.file-item').find('a[href*="preview"]').attr('href');
-                            if (previewUrl) {
-                                window.open(previewUrl, '_blank');
-                            }
-                        });
+                            // Completely disable the table cells and remove all event handlers
+                            $('#other_Input, #debtor_code, #vendor_code').css({
+                                'cursor': 'not-allowed !important',
+                                'opacity': '0.65 !important',
+                                'pointer-events': 'none',
+                                'background-color': '#f8f9fa'
+                            }).off().attr('onclick', '').removeAttr('data-toggle').removeAttr('title');
 
-                        // Handle legalEntityType visibility
-                        let type = document.body.dataset.type;
-                        console.log("Type:-", type);
-                        let legalTypeDiv = document.getElementById("legalEntityType")?.closest('.col');
-                        if (legalTypeDiv) {
-                            legalTypeDiv.style.display = type === "accounting" ? "none" : "block";
-                        }
 
-                        // Initialize debtor and vendor dropdowns
-                        let debtor_val = window.default_debtor || '';
-                        let vendor_val = window.default_vendor || '';
-                        if (debtor_val === '') {
-                            $('#debtorType').attr('disabled', 'disabled');
+                            // 🎯 Updated: Prevent any form submission from admin section with SweetAlert2
+                            $('#admin-details form').on('submit', async function(e) {
+                                e.preventDefault();
+                                await SwalUtils.error('Action Not Allowed',
+                                    'Cannot modify entity - Status is Created');
+                                return false;
+                            });
+
+                            console.log('Admin Details forcefully disabled due to Created status');
+                        }, 100);
+                    } else {
+                        // ===== ENSURE BUTTONS ARE ENABLED FOR NON-CREATED STATUS =====
+                        setTimeout(function() {
+                            // Explicitly enable approve and reject buttons for non-"Created" status
+                            $('#approveBtn, #createBtn, #rejectBtn').prop('disabled', false).removeClass(
+                                'disabled');
+                            $('#submit-entity').prop('disabled', false).removeClass('disabled');
+
+                            // Make sure they have proper styling
+                            $('#approveBtn, #createBtn').removeClass('disabled').css({
+                                'opacity': '1',
+                                'pointer-events': 'auto',
+                                'cursor': 'pointer'
+                            });
+
+                            $('#rejectBtn').removeClass('disabled').css({
+                                'opacity': '1',
+                                'pointer-events': 'auto',
+                                'cursor': 'pointer'
+                            });
+
+                            console.log('Approve and Reject buttons enabled for status:', currentStatus);
+                        }, 150);
+                    }
+
+                    function toggleEntityInput(checkboxId, inputId) {
+                        const checkbox = $(checkboxId);
+                        const input = $(inputId);
+
+                        if (checkbox.is(':checked')) {
+                            // If checkbox is checked, disable the input and remove required attribute
+                            input.prop('disabled', true)
+                                .prop('readonly', true)
+                                .addClass('disabled')
+                                .removeAttr('required')
+                                .removeClass('is-invalid')
+                                .css({
+                                    'background-color': '#d4d2d2',
+                                    'cursor': 'not-allowed',
+                                    'opacity': '0.65'
+                                });
+                            console.log(`${inputId} disabled - ${checkboxId} is checked`);
                         } else {
-                            $('#debtorType').val(debtor_val).trigger('change');
-                        }
-                        if (vendor_val === '') {
-                            $('#vendorType').attr('disabled', 'disabled');
-                        } else {
-                            $('#vendorType').val(vendor_val).trigger('change');
-                        }
-
-                        // Make all form fields read-only or disabled, EXCLUDING the <fieldset> inputs
-                        // Selects (excluding those in the <fieldset>)
-                        $('select[name="partyEntityType"], select[name="legalEntityType"], select[name="countryID"], select[name="officeCountry"], select[name="billingCurrency"], select[name="licenceTypeID"], #level')
-                            .prop('readonly', true);
-
-                        // Checkboxes (excluding those in the <fieldset>)
-                        $('input[name="otherCheck"]:not(.border.p-2 input), input[name="debtorCheck"]:not(.border.p-2 input), input[name="vendorCheck"]:not(.border.p-2 input)')
-                            .prop('readonly', true);
-
-                        // Text inputs and textareas (excluding those in the <fieldset>)
-                        $('input[name="companyName"], input[name="provinceName"], input[name="zipCode"], input[name="cityName"], input[name="firstName"], input[name="lastName"], input[name="department"], input[name="phoneNo"], input[name="contractEmail"], textarea[name="addressLine1"], textarea[name="addressLine2"], input[name="attachmentDescription[]"], textarea[name="reason"], input[name="creditDays"], input[name="maxCreditLimit"], input[name="baseCurrency"], input[name="licenceTypeValue"]')
-                            .prop('readonly', true);
-
-                        // File inputs
-                        $('input[name="attachmentNames[]"]').prop('disabled', true);
-
-                        // Buttons - EXCLUDE approve and reject buttons
-                        $('.addAttachment, .deleteFile').prop('disabled', true).addClass('disabled');
-
-                        // Enable the specific inputs in the <fieldset> explicitly (optional, for clarity)
-                        $('fieldset.border.p-2 input[type="text"], fieldset.border.p-2 input[type="checkbox"], fieldset.border.p-2 input[type="hidden"]')
-                            .prop('readonly', false)
-                            .prop('disabled', false);
-
-                        // ===== UPDATED CODE: Only disable Admin Details if status is "Created" =====
-                        let currentStatus = '{{ $clientParty->Status }}';
-                        console.log('Current Status:', currentStatus);
-
-                        if (currentStatus === 'Created') {
-                            // Use setTimeout to ensure this runs after all other jQuery operations
-                            setTimeout(function() {
-                                // More specific selectors for admin details
-                                $('#admin-details table input[type="checkbox"]').prop('disabled', true).prop('checked',
-                                    true);
-                                $('#admin-details table input[type="text"]').prop('readonly', true).prop('disabled',
-                                    true);
-                                // $('#admin-details table input[
-                                $('#admin-details table input[type="hidden"]').prop('disabled', true);
-
-                                // Force disable by ID and name - more specific targeting
-                                $('#otherCheck, #debtorCheck, #vendorCheck').prop('disabled', true);
-                                $('#otherInput, #debtor, #vendor').prop('readonly', true).prop('disabled', true);
-                                $('#otherID, #otherCode, #debtorID, #debtorCode, #vendorID, #vendorCode').prop(
-                                    'disabled', true);
-
-                                // ONLY disable action buttons if status is "Created"
-                                $('#admin-details button[name="approveBtn"]').prop('disabled', true).addClass(
-                                    'disabled');
-                                $('#admin-details button[name="createBtn"]').prop('disabled', true).addClass(
-                                    'disabled');
-                                $('#admin-details button[name="rejectBtn"]').prop('disabled', true).addClass(
-                                    'disabled');
-                                $('#approveBtn, #createBtn, #rejectBtn').prop('disabled', true).addClass('disabled');
-
-                                // Add stronger visual styling that overrides other styles
-                                $('#admin-details table input, #admin-details table td').css({
-                                    'background-color': '#f8f9fa !important',
-                                    'cursor': 'not-allowed !important',
-                                    'opacity': '0.65 !important',
-                                    'pointer-events': 'none'
-                                });
-
-                                // Completely disable the table cells and remove all event handlers
-                                $('#other_Input, #debtor_code, #vendor_code').css({
-                                    'cursor': 'not-allowed !important',
-                                    'opacity': '0.65 !important',
-                                    'pointer-events': 'none',
-                                    'background-color': '#f8f9fa'
-                                }).off().attr('onclick', '').removeAttr('data-toggle').removeAttr('title');
-
-
-                                // 🎯 Updated: Prevent any form submission from admin section with SweetAlert2
-                                $('#admin-details form').on('submit', async function(e) {
-                                    e.preventDefault();
-                                    await SwalUtils.error('Action Not Allowed',
-                                        'Cannot modify entity - Status is Created');
-                                    return false;
-                                });
-
-                                console.log('Admin Details forcefully disabled due to Created status');
-                            }, 100);
-                        } else {
-                            // ===== ENSURE BUTTONS ARE ENABLED FOR NON-CREATED STATUS =====
-                            setTimeout(function() {
-                                // Explicitly enable approve and reject buttons for non-"Created" status
-                                $('#approveBtn, #createBtn, #rejectBtn').prop('disabled', false).removeClass(
-                                    'disabled');
-                                $('#submit-entity').prop('disabled', false).removeClass('disabled');
-
-                                // Make sure they have proper styling
-                                $('#approveBtn, #createBtn').removeClass('disabled').css({
-                                    'opacity': '1',
-                                    'pointer-events': 'auto',
-                                    'cursor': 'pointer'
-                                });
-
-                                $('#rejectBtn').removeClass('disabled').css({
-                                    'opacity': '1',
-                                    'pointer-events': 'auto',
-                                    'cursor': 'pointer'
-                                });
-
-                                console.log('Approve and Reject buttons enabled for status:', currentStatus);
-                            }, 150);
-                        }
-
-                        function toggleEntityInput(checkboxId, inputId) {
-                            const checkbox = $(checkboxId);
-                            const input = $(inputId);
-
-                            if (checkbox.is(':checked')) {
-                                // If checkbox is checked, disable the input and remove required attribute
-                                input.prop('disabled', true)
-                                    .prop('readonly', true)
-                                    .addClass('disabled')
-                                    .removeAttr('required')
-                                    .removeClass('is-invalid')
+                            // If checkbox is unchecked, enable the input and make it required (unless status is Created)
+                            let currentStatus = '{{ $clientParty->Status }}';
+                            if (currentStatus !== 'Created') {
+                                input.prop('disabled', false)
+                                    .prop('readonly', false)
+                                    .removeClass('disabled')
+                                    .attr('required', true)
                                     .css({
-                                        'background-color': '#d4d2d2',
-                                        'cursor': 'not-allowed',
-                                        'opacity': '0.65'
+                                        'background-color': '',
+                                        'cursor': '',
+                                        'opacity': ''
                                     });
-                                console.log(`${inputId} disabled - ${checkboxId} is checked`);
-                            } else {
-                                // If checkbox is unchecked, enable the input and make it required (unless status is Created)
-                                let currentStatus = '{{ $clientParty->Status }}';
-                                if (currentStatus !== 'Created') {
-                                    input.prop('disabled', false)
-                                        .prop('readonly', false)
-                                        .removeClass('disabled')
-                                        .attr('required', true)
-                                        .css({
-                                            'background-color': '',
-                                            'cursor': '',
-                                            'opacity': ''
-                                        });
 
-                                    // Add visual indicator for required field (specifically for otherInput)
-                                    if (inputId === '#otherInput') {
-                                        const label = $('label[for="otherInput"]');
-                                        if (label.length && !label.find('.text-danger').length) {
-                                            label.append(' <span class="text-danger">*</span>');
-                                        }
+                                // Add visual indicator for required field (specifically for otherInput)
+                                if (inputId === '#otherInput') {
+                                    const label = $('label[for="otherInput"]');
+                                    if (label.length && !label.find('.text-danger').length) {
+                                        label.append(' <span class="text-danger">*</span>');
                                     }
-
-                                    console.log(`${inputId} enabled and made required - ${checkboxId} is unchecked`);
-                                } else {
-                                    console.log(`${inputId} remains disabled - status is Created`);
                                 }
+
+                                console.log(`${inputId} enabled and made required - ${checkboxId} is unchecked`);
+                            } else {
+                                console.log(`${inputId} remains disabled - status is Created`);
+                            }
+                        }
+                    }
+
+                    // Function to initialize all entity toggles
+                    function initializeEntityToggles() {
+                        // Toggle for Other entity
+                        toggleEntityInput('#otherCheck', '#otherInput');
+
+                        // Toggle for Debtor entity (if it exists)
+                        if ($('#debtorCheck').length && $('#debtor').length) {
+                            toggleEntityInput('#debtorCheck', '#debtor');
+                        }
+
+                        // Toggle for Vendor entity (if it exists)
+                        if ($('#vendorCheck').length && $('#vendor').length) {
+                            toggleEntityInput('#vendorCheck', '#vendor');
+                        }
+                    }
+
+                    // Initialize all toggles on page load
+                    initializeEntityToggles();
+
+                    // Add event listeners for all checkboxes with real-time validation
+                    $('#otherCheck, #debtorCheck, #vendorCheck').on('change click', function() {
+                        const checkboxId = '#' + $(this).attr('id');
+                        let inputId;
+
+                        // Map checkbox to corresponding input
+                        switch (checkboxId) {
+                            case '#otherCheck':
+                                inputId = '#otherInput';
+                                break;
+                            case '#debtorCheck':
+                                inputId = '#debtor';
+                                break;
+                            case '#vendorCheck':
+                                inputId = '#vendor';
+                                break;
+                        }
+
+                        if (inputId) {
+                            // Small delay to ensure the checked state is updated
+                            setTimeout(() => toggleEntityInput(checkboxId, inputId), 10);
+                        }
+                    });
+
+                    // Add real-time validation for otherInput
+                    $('#otherInput').on('input blur', function() {
+                        const otherCheckbox = $('#otherCheck');
+                        const input = $(this);
+
+                        if (!otherCheckbox.is(':checked')) {
+                            const value = input.val()?.trim();
+                            if (!value) {
+                                input.addClass('is-invalid');
+                            } else {
+                                input.removeClass('is-invalid');
+                            }
+                        }
+                    });
+
+                    // Handle partyEntityType validation (skipped since field is disabled)
+                    const typeConfig = {
+                        'Agent / Forwarder': {
+                            display: 'Agent / Forwarder',
+                            value: 'Agent / Forwarder'
+                        },
+                        'Trucker / Transporter': {
+                            display: 'Trucker / Transporter',
+                            value: 'Trucker / Transporter'
+                        },
+                        'Client': {
+                            display: 'Client',
+                            value: 'Client'
+                        },
+                        'Airline': {
+                            display: 'Airline',
+                            value: 'Airline'
+                        },
+                        'Shipping Line': {
+                            display: 'Shipping Line',
+                            value: 'Shipping Line'
+                        }
+                    };
+                    const serverPartyType = '{{ $clientParty->OperatioEntityType }}';
+                    const config = typeConfig[serverPartyType] || {
+                        display: serverPartyType,
+                        value: serverPartyType
+                    };
+                    $('#partyEntityType').val(config.value);
+
+                    // 🔥 UPDATED: Approve button handler with SweetAlert2
+                    $('#approveBtn').off('click').on('click', async function(e) {
+                        e.preventDefault();
+
+                        // Validate otherInput if otherCheck is unchecked
+                        const otherCheckbox = $('#otherCheck');
+                        const otherInput = $('#otherInput');
+
+                        if (otherCheckbox.is(':checked')) {
+                            const otherInputValue = otherInput.val()?.trim();
+                            if (otherInputValue) {
+                                // 🎯 SweetAlert2 validation error
+                                await SwalUtils.warning('Validation Error',
+                                    'Other Party field is required when not using existing entity.');
+                                otherInput.addClass('is-invalid').focus();
+                                return;
+                            } else {
+                                otherInput.removeClass('is-invalid');
                             }
                         }
 
-                        // Function to initialize all entity toggles
-                        function initializeEntityToggles() {
-                            // Toggle for Other entity
-                            toggleEntityInput('#otherCheck', '#otherInput');
+                        // 🎯 SweetAlert2 confirmation
+                        const confirmResult = await SwalUtils.confirm(
+                            'Confirm Approval',
+                            'Are you sure you want to approve this entity?',
+                            'Yes, Approve!',
+                            'Cancel'
+                        );
 
-                            // Toggle for Debtor entity (if it exists)
-                            if ($('#debtorCheck').length && $('#debtor').length) {
-                                toggleEntityInput('#debtorCheck', '#debtor');
+                        if (!confirmResult.isConfirmed) return;
+
+                        // Validate OtherParty fields
+                        const otherInputVal = $('input[name="otherInput"]').val()?.trim();
+                        const otherID = $('input[name="otherID"]').val()?.trim();
+                        const otherCode = $('input[name="otherCode"]').val()?.trim();
+
+                        if (type === 'operational' && (!otherInputVal || !otherID || !otherCode)) {
+                            // 🎯 SweetAlert2 validation error
+                            await SwalUtils.error('Missing Information',
+                                'Please ensure all Other Party fields (Name, ID, Code) are filled.');
+                            console.error('Validation failed: Missing OtherParty fields', {
+                                otherInputVal,
+                                otherID,
+                                otherCode
+                            });
+                            return;
+                        }
+
+                        let currentStatus = '{{ $clientParty->Status }}';
+                        let isAccounting =
+                            '{{ $clientParty->DebtorType || $clientParty->VendorType ? 'true' : 'false' }}' ===
+                            'true' ||
+                            '{{ request()->query('type') === 'accounting' ? 'true' : 'false' }}' === 'true';
+                        let targetStatus;
+
+                        if (isAccounting) {
+                            if (currentStatus === 'Not Submitted') {
+                                targetStatus = 'PendingCountryLevelApproval';
+                            } else if (currentStatus === 'PendingCountryLevelApproval') {
+                                targetStatus = 'PendingGroupLevelApproval';
+                            } else if (currentStatus === 'PendingGroupLevelApproval') {
+                                targetStatus = 'PendingITVerification';
+                            } else if (currentStatus === 'PendingITVerification') {
+                                targetStatus = 'Created';
+                            } else {
+                                // 🎯 SweetAlert2 error
+                                await SwalUtils.error('Invalid Action',
+                                    `Approval not allowed for status: ${currentStatus}`);
+                                console.error('Invalid status transition', {
+                                    currentStatus
+                                });
+                                return;
                             }
-
-                            // Toggle for Vendor entity (if it exists)
-                            if ($('#vendorCheck').length && $('#vendor').length) {
-                                toggleEntityInput('#vendorCheck', '#vendor');
+                        } else {
+                            if (currentStatus === 'Not Submitted') {
+                                targetStatus = 'Submitted';
+                            } else if (currentStatus === 'Submitted') {
+                                targetStatus = 'Created';
+                            } else {
+                                // 🎯 SweetAlert2 error
+                                await SwalUtils.error('Invalid Action',
+                                    `Approval not allowed for status: ${currentStatus}`);
+                                console.error('Invalid status transition', {
+                                    currentStatus
+                                });
+                                return;
                             }
                         }
 
-                        // Initialize all toggles on page load
-                        initializeEntityToggles();
+                        // Show loading state
+                        SwalUtils.loading('Processing Approval',
+                            'Please wait while we process your approval...');
 
-                        // Add event listeners for all checkboxes with real-time validation
-                        $('#otherCheck, #debtorCheck, #vendorCheck').on('change click', function() {
-                            const checkboxId = '#' + $(this).attr('id');
-                            let inputId;
-
-                            // Map checkbox to corresponding input
-                            switch (checkboxId) {
-                                case '#otherCheck':
-                                    inputId = '#otherInput';
-                                    break;
-                                case '#debtorCheck':
-                                    inputId = '#debtor';
-                                    break;
-                                case '#vendorCheck':
-                                    inputId = '#vendor';
-                                    break;
-                            }
-
-                            if (inputId) {
-                                // Small delay to ensure the checked state is updated
-                                setTimeout(() => toggleEntityInput(checkboxId, inputId), 10);
-                            }
-                        });
-
-                        // Add real-time validation for otherInput
-                        $('#otherInput').on('input blur', function() {
-                            const otherCheckbox = $('#otherCheck');
-                            const input = $(this);
-
-                            if (!otherCheckbox.is(':checked')) {
-                                const value = input.val()?.trim();
-                                if (!value) {
-                                    input.addClass('is-invalid');
-                                } else {
-                                    input.removeClass('is-invalid');
-                                }
-                            }
-                        });
-
-                        // Handle partyEntityType validation (skipped since field is disabled)
-                        const typeConfig = {
-                            'Agent / Forwarder': {
-                                display: 'Agent / Forwarder',
-                                value: 'Agent / Forwarder'
-                            },
-                            'Trucker / Transporter': {
-                                display: 'Trucker / Transporter',
-                                value: 'Trucker / Transporter'
-                            },
-                            'Client': {
-                                display: 'Client',
-                                value: 'Client'
-                            },
-                            'Airline': {
-                                display: 'Airline',
-                                value: 'Airline'
-                            },
-                            'Shipping Line': {
-                                display: 'Shipping Line',
-                                value: 'Shipping Line'
-                            }
+                        let form_data = {
+                            _token: '{{ csrf_token() }}',
+                            id: '{{ $clientParty->Id }}',
+                            status: targetStatus,
+                            partyEntityType: $('#partyEntityType').val() ||
+                                '{{ $clientParty->OperatioEntityType ?? '' }}',
+                            debtorType: $('input[name="debtorType"]').val() || null,
+                            vendorType: $('input[name="vendorType"]').val() || null,
+                            type: isAccounting ? 'accounting' : 'operational',
+                            otherInput: otherInputVal,
+                            otherID: otherID,
+                            otherCode: otherCode,
+                            otherCheck: $('#otherCheck').is(':checked') ? 1 : 0,
+                            debtor: $('input[name="debtor"]').val() || '',
+                            debtorID: $('input[name="debtorID"]').val() || '',
+                            debtorCode: $('input[name="debtorCode"]').val() || '',
+                            debtorCheck: $('#debtorCheck').is(':checked') ? 1 : 0,
+                            vendor: $('input[name="vendor"]').val() || '',
+                            vendorID: $('input[name="vendorID"]').val() || '',
+                            vendorCode: $('input[name="vendorCode"]').val() || '',
+                            vendorCheck: $('#vendorCheck').is(':checked') ? 1 : 0
                         };
-                        const serverPartyType = '{{ $clientParty->OperatioEntityType }}';
-                        const config = typeConfig[serverPartyType] || {
-                            display: serverPartyType,
-                            value: serverPartyType
-                        };
-                        $('#partyEntityType').val(config.value);
 
-                        // 🔥 UPDATED: Approve button handler with SweetAlert2
-                        $('#approveBtn').off('click').on('click', async function(e) {
-                            e.preventDefault();
+                        console.log('Sending form_data:', form_data);
 
-                            // Validate otherInput if otherCheck is unchecked
-                            const otherCheckbox = $('#otherCheck');
-                            const otherInput = $('#otherInput');
+                        try {
+                            const response = await $.ajax({
+                                url: '{{ route('client-party.approve') }}',
+                                type: 'POST',
+                                dataType: 'json',
+                                data: form_data
+                            });
 
-                            if (otherCheckbox.is(':checked')) {
-                                const otherInputValue = otherInput.val()?.trim();
-                                if (otherInputValue) {
-                                    // 🎯 SweetAlert2 validation error
-                                    await SwalUtils.warning('Validation Error',
-                                        'Other Party field is required when not using existing entity.');
-                                    otherInput.addClass('is-invalid').focus();
-                                    return;
-                                } else {
-                                    otherInput.removeClass('is-invalid');
-                                }
-                            }
+                            console.log('Approval success:', response);
 
-                            // 🎯 SweetAlert2 confirmation
-                            const confirmResult = await SwalUtils.confirm(
-                                'Confirm Approval',
-                                'Are you sure you want to approve this entity?',
-                                'Yes, Approve!',
-                                'Cancel'
+                            // 🎯 SweetAlert2 success
+                            await SwalUtils.success(
+                                'Success!',
+                                response.message || 'Entity approved successfully!',
+                                2000
                             );
 
-                            if (!confirmResult.isConfirmed) return;
+                            window.location.href = '{{ route('client-party.index') }}';
+                        } catch (xhr) {
+                            console.error('AJAX Error:', xhr.responseJSON || xhr.statusText);
+                            let errorMessage = xhr.responseJSON?.message || 'Approval failed';
+                            if (xhr.status === 422 && xhr.responseJSON?.errors) {
+                                errorMessage = 'Validation failed:\n' + Object.values(xhr.responseJSON.errors)
+                                    .flat().join('\n');
+                            }
 
-                            // Validate OtherParty fields
-                            const otherInputVal = $('input[name="otherInput"]').val()?.trim();
-                            const otherID = $('input[name="otherID"]').val()?.trim();
-                            const otherCode = $('input[name="otherCode"]').val()?.trim();
+                            // 🎯 SweetAlert2 error
+                            await SwalUtils.error('Approval Failed', errorMessage);
+                            $('#approveBtn').prop('disabled', false).text('Approve');
+                        }
+                    });
 
-                            if (type === 'operational' && (!otherInputVal || !otherID || !otherCode)) {
+                    // 🔥 UPDATED: Reject button handler with SweetAlert2
+                    $('#close-modal').click(function() {
+                        $('#cancelForm')[0].reset();
+                        $('#cancelModal').modal('hide');
+                    });
+
+                    $('#submit-entity').on('click', async function() {
+                        let form_data = {
+                            id: '{{ $clientParty->Id }}',
+                            level: $('#level option:selected').val(),
+                            reason: $('#reason').val(),
+                        };
+
+                        if (!form_data.level) {
+                            $('#level').addClass('is-invalid');
+                            await SwalUtils.warning('Missing Level', 'Please select a rejection level.');
+                            return;
+                        }
+                        if (!form_data.reason) {
+                            $('#reason').addClass('is-invalid');
+                            await SwalUtils.warning('Missing Reason', 'Please provide a reason for rejection.');
+                            return;
+                        }
+
+                        // Show loading
+                        SwalUtils.loading('Processing Rejection',
+                            'Please wait while we process the rejection...');
+
+                        try {
+                            const response = await $.ajax({
+                                url: '/client-party/reject',
+                                type: 'POST',
+                                dataType: 'json',
+                                data: form_data
+                            });
+
+                            console.log(response);
+
+                            // 🎯 SweetAlert2 success
+                            await SwalUtils.success('Rejected!', 'Entity has been rejected successfully.',
+                                2000);
+                            location.reload();
+                        } catch (xhr) {
+                            // 🎯 SweetAlert2 error
+                            await SwalUtils.error('Rejection Failed', xhr.responseJSON?.message ||
+                                'Unknown error occurred');
+                        }
+                    });
+
+                    // 🔥 UPDATED: File attachment handling with SweetAlert2
+                    let init = {{ $clientParty->attachments->count() + 1 }};
+                    let max_fields = 3;
+                    $('.addAttachment').click(async function() {
+                        let lsthmtl = $('.clone').html();
+                        if (init < max_fields) {
+                            let names = document.getElementsByName('attachmentNames[]');
+                            let desc = document.getElementsByName('attachmentDescription[]');
+                            let fileInputName = names[names.length - 2];
+                            let fileInputDescription = desc[desc.length - 2];
+                            let allowedExtensions = /(\.jpg|\.jpeg|\.png|\.gif)$/i;
+
+                            if (!allowedExtensions.exec(fileInputName.value) || fileInputDescription.value ===
+                                '') {
                                 // 🎯 SweetAlert2 validation error
-                                await SwalUtils.error('Missing Information',
-                                    'Please ensure all Other Party fields (Name, ID, Code) are filled.');
-                                console.error('Validation failed: Missing OtherParty fields', {
-                                    otherInputVal,
-                                    otherID,
-                                    otherCode
-                                });
-                                return;
-                            }
-
-                            let currentStatus = '{{ $clientParty->Status }}';
-                            let isAccounting =
-                                '{{ $clientParty->DebtorType || $clientParty->VendorType ? 'true' : 'false' }}' ===
-                                'true' ||
-                                '{{ request()->query('type') === 'accounting' ? 'true' : 'false' }}' === 'true';
-                            let targetStatus;
-
-                            if (isAccounting) {
-                                if (currentStatus === 'Not Submitted') {
-                                    targetStatus = 'PendingCountryLevelApproval';
-                                } else if (currentStatus === 'PendingCountryLevelApproval') {
-                                    targetStatus = 'PendingGroupLevelApproval';
-                                } else if (currentStatus === 'PendingGroupLevelApproval') {
-                                    targetStatus = 'PendingITVerification';
-                                } else if (currentStatus === 'PendingITVerification') {
-                                    targetStatus = 'Created';
-                                } else {
-                                    // 🎯 SweetAlert2 error
-                                    await SwalUtils.error('Invalid Action',
-                                        `Approval not allowed for status: ${currentStatus}`);
-                                    console.error('Invalid status transition', {
-                                        currentStatus
-                                    });
-                                    return;
-                                }
-                            } else {
-                                if (currentStatus === 'Not Submitted') {
-                                    targetStatus = 'Submitted';
-                                } else if (currentStatus === 'Submitted') {
-                                    targetStatus = 'Created';
-                                } else {
-                                    // 🎯 SweetAlert2 error
-                                    await SwalUtils.error('Invalid Action',
-                                        `Approval not allowed for status: ${currentStatus}`);
-                                    console.error('Invalid status transition', {
-                                        currentStatus
-                                    });
-                                    return;
-                                }
-                            }
-
-                            // Show loading state
-                            SwalUtils.loading('Processing Approval',
-                                'Please wait while we process your approval...');
-
-                            let form_data = {
-                                _token: '{{ csrf_token() }}',
-                                id: '{{ $clientParty->Id }}',
-                                status: targetStatus,
-                                partyEntityType: $('#partyEntityType').val() ||
-                                    '{{ $clientParty->OperatioEntityType ?? '' }}',
-                                debtorType: $('input[name="debtorType"]').val() || null,
-                                vendorType: $('input[name="vendorType"]').val() || null,
-                                type: isAccounting ? 'accounting' : 'operational',
-                                otherInput: otherInputVal,
-                                otherID: otherID,
-                                otherCode: otherCode,
-                                otherCheck: $('#otherCheck').is(':checked') ? 1 : 0,
-                                debtor: $('input[name="debtor"]').val() || '',
-                                debtorID: $('input[name="debtorID"]').val() || '',
-                                debtorCode: $('input[name="debtorCode"]').val() || '',
-                                debtorCheck: $('#debtorCheck').is(':checked') ? 1 : 0,
-                                vendor: $('input[name="vendor"]').val() || '',
-                                vendorID: $('input[name="vendorID"]').val() || '',
-                                vendorCode: $('input[name="vendorCode"]').val() || '',
-                                vendorCheck: $('#vendorCheck').is(':checked') ? 1 : 0
-                            };
-
-                            console.log('Sending form_data:', form_data);
-
-                            try {
-                                const response = await $.ajax({
-                                    url: '{{ route('client-party.approve') }}',
-                                    type: 'POST',
-                                    dataType: 'json',
-                                    data: form_data
-                                });
-
-                                console.log('Approval success:', response);
-
-                                // 🎯 SweetAlert2 success
-                                await SwalUtils.success(
-                                    'Success!',
-                                    response.message || 'Entity approved successfully!',
-                                    2000
+                                await SwalUtils.warning('Invalid File',
+                                    'Either invalid file type or no description provided. Please ensure you upload a valid image file (jpg, jpeg, png, gif) and provide a description.'
                                 );
-
-                                window.location.href = '{{ route('client-party.index') }}';
-                            } catch (xhr) {
-                                console.error('AJAX Error:', xhr.responseJSON || xhr.statusText);
-                                let errorMessage = xhr.responseJSON?.message || 'Approval failed';
-                                if (xhr.status === 422 && xhr.responseJSON?.errors) {
-                                    errorMessage = 'Validation failed:\n' + Object.values(xhr.responseJSON.errors)
-                                        .flat().join('\n');
-                                }
-
-                                // 🎯 SweetAlert2 error
-                                await SwalUtils.error('Approval Failed', errorMessage);
-                                $('#approveBtn').prop('disabled', false).text('Approve');
+                                fileInputName.value = '';
+                                return false;
+                            } else {
+                                $('#attachClone').before(lsthmtl);
+                                init++;
                             }
-                        });
+                        } else {
+                            // 🎯 SweetAlert2 warning
+                            await SwalUtils.warning('Limit Reached',
+                                'Maximum file attachment limit reached (3 files).');
+                        }
+                    });
 
-                        // 🔥 UPDATED: Reject button handler with SweetAlert2
-                        $('#close-modal').click(function() {
-                            $('#cancelForm')[0].reset();
-                            $('#cancelModal').modal('hide');
-                        });
+                    $('body').on('click', '.btn-danger', function() {
+                        $(this).parents('.hdtuto').remove();
+                        init--;
+                    });
 
-                        $('#submit-entity').on('click', async function() {
-                            let form_data = {
-                                id: '{{ $clientParty->Id }}',
-                                level: $('#level option:selected').val(),
-                                reason: $('#reason').val(),
-                            };
+                    // 🔥 UPDATED: Delete file handler with SweetAlert2
+                    let spinner = $('#loader');
+                    $('body').on('click', '.deleteFile', async function() {
+                        let id = $(this).attr('id');
 
-                            if (!form_data.level) {
-                                $('#level').addClass('is-invalid');
-                                await SwalUtils.warning('Missing Level', 'Please select a rejection level.');
-                                return;
-                            }
-                            if (!form_data.reason) {
-                                $('#reason').addClass('is-invalid');
-                                await SwalUtils.warning('Missing Reason', 'Please provide a reason for rejection.');
-                                return;
-                            }
+                        // 🎯 SweetAlert2 confirmation for file deletion
+                        const confirmResult = await SwalUtils.confirm(
+                            'Delete File?',
+                            'Are you sure you want to delete this file? This action cannot be undone.',
+                            'Yes, Delete!',
+                            'Cancel'
+                        );
 
-                            // Show loading
-                            SwalUtils.loading('Processing Rejection',
-                                'Please wait while we process the rejection...');
+                        if (!confirmResult.isConfirmed) return;
 
-                            try {
-                                const response = await $.ajax({
-                                    url: '/client-party/reject',
-                                    type: 'POST',
-                                    dataType: 'json',
-                                    data: form_data
-                                });
+                        let url = '/delete-client-party-attachment/' + id;
 
-                                console.log(response);
+                        // Show loading
+                        SwalUtils.loading('Deleting File', 'Please wait while we delete the file...');
+                        spinner.show();
 
+                        try {
+                            const response = await $.ajax({
+                                url: url,
+                                type: 'POST',
+                                dataType: 'json'
+                            });
+
+                            if (response[1] == 200) {
                                 // 🎯 SweetAlert2 success
-                                await SwalUtils.success('Rejected!', 'Entity has been rejected successfully.',
+                                await SwalUtils.success('Deleted!', 'File has been deleted successfully.',
                                     2000);
                                 location.reload();
-                            } catch (xhr) {
-                                // 🎯 SweetAlert2 error
-                                await SwalUtils.error('Rejection Failed', xhr.responseJSON?.message ||
-                                    'Unknown error occurred');
                             }
-                        });
-
-                        // 🔥 UPDATED: File attachment handling with SweetAlert2
-                        let init = {{ $clientParty->attachments->count() + 1 }};
-                        let max_fields = 3;
-                        $('.addAttachment').click(async function() {
-                            let lsthmtl = $('.clone').html();
-                            if (init < max_fields) {
-                                let names = document.getElementsByName('attachmentNames[]');
-                                let desc = document.getElementsByName('attachmentDescription[]');
-                                let fileInputName = names[names.length - 2];
-                                let fileInputDescription = desc[desc.length - 2];
-                                let allowedExtensions = /(\.jpg|\.jpeg|\.png|\.gif)$/i;
-
-                                if (!allowedExtensions.exec(fileInputName.value) || fileInputDescription.value ===
-                                    '') {
-                                    // 🎯 SweetAlert2 validation error
-                                    await SwalUtils.warning('Invalid File',
-                                        'Either invalid file type or no description provided. Please ensure you upload a valid image file (jpg, jpeg, png, gif) and provide a description.'
-                                    );
-                                    fileInputName.value = '';
-                                    return false;
-                                } else {
-                                    $('#attachClone').before(lsthmtl);
-                                    init++;
-                                }
-                            } else {
-                                // 🎯 SweetAlert2 warning
-                                await SwalUtils.warning('Limit Reached',
-                                    'Maximum file attachment limit reached (3 files).');
-                            }
-                        });
-
-                        $('body').on('click', '.btn-danger', function() {
-                            $(this).parents('.hdtuto').remove();
-                            init--;
-                        });
-
-                        // 🔥 UPDATED: Delete file handler with SweetAlert2
-                        let spinner = $('#loader');
-                        $('body').on('click', '.deleteFile', async function() {
-                            let id = $(this).attr('id');
-
-                            // 🎯 SweetAlert2 confirmation for file deletion
-                            const confirmResult = await SwalUtils.confirm(
-                                'Delete File?',
-                                'Are you sure you want to delete this file? This action cannot be undone.',
-                                'Yes, Delete!',
-                                'Cancel'
-                            );
-
-                            if (!confirmResult.isConfirmed) return;
-
-                            let url = '/delete-client-party-attachment/' + id;
-
-                            // Show loading
-                            SwalUtils.loading('Deleting File', 'Please wait while we delete the file...');
-                            spinner.show();
-
-                            try {
-                                const response = await $.ajax({
-                                    url: url,
-                                    type: 'POST',
-                                    dataType: 'json'
-                                });
-
-                                if (response[1] == 200) {
-                                    // 🎯 SweetAlert2 success
-                                    await SwalUtils.success('Deleted!', 'File has been deleted successfully.',
-                                        2000);
-                                    location.reload();
-                                }
-                            } catch (xhr) {
-                                spinner.hide();
-                                // 🎯 SweetAlert2 error
-                                await SwalUtils.error('Deletion Failed', xhr.responseJSON?.message ||
-                                    'Unknown error occurred');
-                            }
-                        });
+                        } catch (xhr) {
+                            spinner.hide();
+                            // 🎯 SweetAlert2 error
+                            await SwalUtils.error('Deletion Failed', xhr.responseJSON?.message ||
+                                'Unknown error occurred');
+                        }
                     });
-                </script>
-                <script src="{{ asset('js/client-party/show-create-client-party.js') }}"></script>
-            @stop
+
+
+                     // Function to disable all file upload related inputs
+    function disableFileUploadInputs() {
+        // Remove required attribute first to prevent validation errors
+        $('input[name="attachmentNames[]"]').removeAttr('required');
+        $('input[name="attachmentDescription[]"]').removeAttr('required');
+
+        // Disable file input fields
+        $('input[name="attachmentNames[]"]').prop('disabled', true).addClass('disabled');
+
+        // Disable description input fields
+        $('input[name="attachmentDescription[]"]').prop('disabled', true).addClass('disabled');
+
+        // Disable add attachment button
+        $('.addAttachment, #addFile').prop('disabled', true).addClass('disabled');
+
+        // Disable remove attachment buttons
+        $('.remove-attachment').prop('disabled', true).addClass('disabled');
+
+        // Add visual styling to show they're disabled
+        $('input[name="attachmentNames[]"], input[name="attachmentDescription[]"]').css({
+            'background-color': '#f8f9fa',
+            'cursor': 'not-allowed',
+            'opacity': '0.65'
+        });
+
+        // Disable the file upload container interactions
+        $('.file-upload-container').css({
+            'pointer-events': 'none',
+            'opacity': '0.65'
+        });
+
+        // Add disabled class to the initial attachment div
+        $('#initial-attachment').addClass('disabled');
+
+        // Prevent file selection
+        $('input[name="attachmentNames[]"]').on('click', function(e) {
+            e.preventDefault();
+            return false;
+        });
+
+        // Prevent typing in description fields
+        $('input[name="attachmentDescription[]"]').on('keydown keypress keyup', function(e) {
+            e.preventDefault();
+            return false;
+        });
+
+        // Disable the clone template inputs as well and remove required attributes
+        $('.clone-template input[name="attachmentNames[]"]').prop('disabled', true).removeAttr('required');
+        $('.clone-template input[name="attachmentDescription[]"]').prop('disabled', true).removeAttr('required');
+
+        // Also handle any dynamically added inputs
+        $('#attachClone input[name="attachmentNames[]"]').prop('disabled', true).removeAttr('required');
+        $('#attachClone input[name="attachmentDescription[]"]').prop('disabled', true).removeAttr('required');
+
+        console.log('File upload inputs and descriptions have been disabled');
+    }
+
+    // Function to enable file upload inputs (if needed later)
+    function enableFileUploadInputs() {
+        // Enable file input fields and restore required attribute where needed
+        $('input[name="attachmentNames[]"]').prop('disabled', false).removeClass('disabled');
+
+        // Enable description input fields and restore required attribute where needed
+        $('input[name="attachmentDescription[]"]').prop('disabled', false).removeClass('disabled');
+
+        // Conditionally restore required attributes based on your business logic
+        // Only restore if the form/status requires it
+        let shouldBeRequired = '{{ $clientParty->Status !== "Created" && $clientParty->Status !== "Submitted" && $type === "accounting" ? "true" : "false" }}' === 'true';
+        if (shouldBeRequired) {
+            $('input[name="attachmentNames[]"]').attr('required', true);
+            $('input[name="attachmentDescription[]"]').attr('required', true);
+        }
+
+        // Enable add attachment button
+        $('.addAttachment, #addFile').prop('disabled', false).removeClass('disabled');
+
+        // Enable remove attachment buttons
+        $('.remove-attachment').prop('disabled', false).removeClass('disabled');
+
+        // Remove visual styling
+        $('input[name="attachmentNames[]"], input[name="attachmentDescription[]"]').css({
+            'background-color': '',
+            'cursor': '',
+            'opacity': ''
+        });
+
+        // Enable the file upload container interactions
+        $('.file-upload-container').css({
+            'pointer-events': '',
+            'opacity': ''
+        });
+
+        // Remove disabled class from the initial attachment div
+        $('#initial-attachment').removeClass('disabled');
+
+        // Remove event handlers that prevent interaction
+        $('input[name="attachmentNames[]"]').off('click');
+        $('input[name="attachmentDescription[]"]').off('keydown keypress keyup');
+
+        console.log('File upload inputs and descriptions have been enabled');
+    }
+
+    // Call the disable function immediately
+    disableFileUploadInputs();
+
+    // Additional fix: Remove validation from form submission for disabled file inputs
+    $('#clientPartyForm').on('submit', function(e) {
+        // Remove required attribute from disabled file inputs before validation
+        $('input[name="attachmentNames[]"]:disabled').removeAttr('required');
+        $('input[name="attachmentDescription[]"]:disabled').removeAttr('required');
+    });
+
+    // Override browser's built-in validation for disabled file inputs
+    $('input[name="attachmentNames[]"], input[name="attachmentDescription[]"]').on('invalid', function(e) {
+        if ($(this).is(':disabled')) {
+            e.preventDefault();
+            return false;
+        }
+    });
+
+       // Override the existing addAttachment click handler to prevent any action
+    $('.addAttachment').off('click').on('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        console.log('File upload is disabled');
+        return false;
+    });
+
+    // Override the existing remove-attachment click handler
+    $(document).off('click', '.remove-attachment').on('click', '.remove-attachment', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        console.log('Remove attachment is disabled');
+        return false;
+    });
+
+    // Disable file validation function calls
+    $(document).off('change', 'input[name="attachmentNames[]"]');
+
+    // Add a visual indicator that file uploads are disabled
+    $('.file-upload-container').prepend(
+        '<div class="alert alert-info mb-2" id="file-upload-disabled-notice">' +
+        '<i class="fa fa-info-circle"></i> File uploads are currently disabled for this view.' +
+        '</div>'
+    );
+                });
+            </script>
+            <script src="{{ asset('js/client-party/show-create-client-party.js') }}"></script>
+        @stop
