@@ -40,10 +40,9 @@ class Kernel extends ConsoleKernel
         // $schedule->command('inspire')->hourly();
         $schedule->command('TIMS:UploadExpInvAzure')->everyMinute()->withoutOverlapping();
         // $schedule->command('remind:assigned')->everyMinute()->between('8:00', '17:00');
+
         $schedule->job('App\Jobs\RemindAssignedTickets')->between('8:30', '17:00')->everyFourHours()->withoutOverlapping();
-
         $schedule->command('emails:sendApprovalReminder')->between('8:30', '17:00')->withoutOverlapping();
-
         $schedule->command('generate:invoice')->everyFiveMinutes()->withoutOverlapping();
         $schedule->command('tra_adl:invoices')->everyFiveMinutes()->withoutOverlapping();
         $schedule->command('tra_tz:invoices')->everyFiveMinutes()->withoutOverlapping();
@@ -52,7 +51,7 @@ class Kernel extends ConsoleKernel
     /**
      * Register the commands for the application.
      *
-     * @return void
+     * @return voidphp
      */
     protected function commands()
     {
