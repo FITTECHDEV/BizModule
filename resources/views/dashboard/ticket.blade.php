@@ -3,84 +3,195 @@
 @section('title', 'Home-Dashboard')
 
 @section('content_header')
-
 @stop
 
 @section('plugins.Datatables', true)
 @section('css')
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+        integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <!-- Existing CSS -->
     <style>
+        /* General card styling */
         .service-card {
             text-align: center;
-            box-shadow: 0 2px 2px rgba(0, 0, 0, 0.2);
-            -moz-transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, .1);
-            -o-transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, .1);
-            transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, .1);
-            margin-bottom: 10%;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            margin-bottom: 2rem;
+            border-radius: 12px;
+            overflow: hidden;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            background: #fff;
         }
 
         .service-card:hover {
-            box-shadow: 4px 4px 4px rgba(58, 105, 243, 0.3);
-            -webkit-transform: translate(0, -8px);
-            -moz-transform: translate(0, -8px);
-            -ms-transform: translate(0, -8px);
-            -o-transform: translate(0, -8px);
-            transform: translate(0, -8px);
-            box-shadow: 0 40px 40px rgba(0, 0, 0, 0.2);
+            transform: translateY(-6px);
+            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
         }
 
-        .service-card i {
-            font-size: 150px;
-            padding: 10% 0;
-            background-color: #f3f3f3;
-            color: #31D0D4;
-            box-shadow: 0 6px 6px rgba(0, 0, 0, 0.2);
+        .service-card:focus-within {
+            outline: 2px solid #31D0D4;
+            outline-offset: 2px;
+        }
+
+        /* Widget header */
+        .widget-user-header {
+            padding: 1.5rem;
+            color: #fff;
             position: relative;
+            overflow: hidden;
+        }
+
+        .widget-user-header h3 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin: 0;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .widget-user-header h5 {
+            font-size: 0.9rem;
+            font-weight: 400;
+            opacity: 0.9;
+            margin: 0.5rem 0 0;
+        }
+
+        /* Widget image */
+        .widget-user-image {
+            margin-top: -40px;
             z-index: 1;
         }
 
-        .service-card:hover i {
+        .widget-user-image img {
+            width: 80px;
+            height: 80px;
+            border: 4px solid #fff;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+        }
+
+        .service-card:hover .widget-user-image img {
+            transform: scale(1.1);
+        }
+
+        /* Card footer */
+        .card-footer {
+            padding: 1rem;
+            flex-grow: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #f8f9fa;
+        }
+
+        .description-block {
+            padding: 0.5rem;
+        }
+
+        .description-header .badge {
+            font-size: 1rem;
+            padding: 0.5rem 1rem;
+            border-radius: 12px;
+        }
+
+        .description-text {
+            font-size: 0.85rem;
+            color: #555;
+            text-transform: capitalize;
+        }
+
+        /* Log In Tracker specific styling */
+        .login-tracker-card .widget-user-header {
+            background: linear-gradient(135deg, #28a745, #20c997);
+        }
+
+        .login-tracker-card:hover .widget-user-header {
+            background: linear-gradient(135deg, #218838, #1bae87);
+        }
+
+        .login-tracker-card .widget-user-image img {
+            border-color: #20c997;
+        }
+
+        .login-tracker-card .card-footer {
+            background: #e6f4ea;
+        }
+
+        .login-tracker-card .description-header .badge {
+            background: #28a745;
             color: #fff;
-            transition: all ease-in-out 0.5s;
         }
 
-        .service-card i:after {
-            content: "";
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            transform: scaleY(0);
-            transform-origin: bottom center;
-            background: linear-gradient(to left, #8487E2, #31D0D4, #31D0D4, #8487E2);
-            z-index: -1;
-            transition: transform 0.5s;
+        /* Icon styling for widget-user-image */
+        .widget-user-image i {
+            color: #20c997;
+            background: #fff;
+            border: 4px solid #fff;
+            border-radius: 50%;
+            width: 80px;
+            height: 80px;
+            line-height: 72px;
+            /* Center icon vertically */
+            text-align: center;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease, color 0.3s ease, background 0.3s ease;
         }
 
-        .service-card:hover i::after {
-            transform: scaleY(1);
+        .service-card:hover .widget-user-image i {
+            transform: scale(1.1);
+            color: #fff;
+            background: #28a745;
+            /* Matches Log In Tracker header */
         }
 
-        /* .service-card h3{
-                          margin-top: 2%;
-                          font-size: 44px;
-                          font-weight: bold;
-                          color: #464646;
-                        } */
+        /* Ensure consistent positioning */
+        .widget-user-image {
+            margin-top: -40px;
+            z-index: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .service-card {
+                margin-bottom: 1.5rem;
+            }
+
+            .widget-user-header h3 {
+                font-size: 1.2rem;
+            }
+
+            .widget-user-header h5 {
+                font-size: 0.8rem;
+            }
+
+            .widget-user-image img {
+                width: 60px;
+                height: 60px;
+            }
+        }
     </style>
 @stop
+
 @section('content')
-    <div class="p-2">
+    <div class="p-3">
         <div class="row justify-content-center">
-            <div class="col-md-3 mb-2">
+            <!-- Ticketing System -->
+            <div class="col-md-3 col-sm-6 mb-3">
                 <a href="/tickets">
                     <div class="d-flex h-100 flex-column card card-widget widget-user shadow service-card">
                         <div class="widget-user-header bg-info">
                             <h3 class="widget-user-username">TICKETING SYSTEM</h3>
-                            <h5 class="widget-user-desc">Raise A Concern.</h5>
+                            <h5 class="widget-user-desc">Raise A Concern</h5>
                         </div>
                         <div class="widget-user-image">
-                            <img class="img-circle elevation-2" src="{{ asset('site_imgs/images.png') }}" alt="Phone Avatar">
+                            <img class="img-circle elevation-2" src="{{ asset('site_imgs/images.png') }}"
+                                alt="Phone Avatar">
                         </div>
                         <div class="card-footer">
                             <div class="row justify-content-center">
@@ -88,7 +199,7 @@
                                     <div class="col-sm-4 border">
                                         <div class="description-block">
                                             <h5 class="description-header"><span
-                                                    class="badge badge-info">{{ $ticketStat->StatusCount }}</span> </h5>
+                                                    class="badge badge-info">{{ $ticketStat->StatusCount }}</span></h5>
                                             <span class="description-text small">{{ $ticketStat->StatusName }}</span>
                                         </div>
                                     </div>
@@ -97,18 +208,19 @@
                         </div>
                     </div>
                 </a>
-
             </div>
-            <div class="col-md-3 mb-2">
+
+            <!-- Client Party System -->
+            <div class="col-md-3 col-sm-6 mb-3">
                 <a href="/client-party?my_request=true">
                     <div class="d-flex h-100 flex-column card card-widget widget-user shadow service-card">
                         <div class="widget-user-header bg-primary">
                             <h3 class="widget-user-username">CLIENT PARTY SYSTEM</h3>
-                            <h5 class="widget-user-desc">Entity Creation & Mapping.</h5>
+                            <h5 class="widget-user-desc">Entity Creation & Mapping</h5>
                         </div>
                         <div class="widget-user-image">
                             <img class="img-circle elevation-2" src="{{ asset('site_imgs/handshake.jpg') }}"
-                                alt="Phone Avatar">
+                                alt="Handshake Avatar">
                         </div>
                         <div class="card-footer">
                             <div class="row justify-content-center">
@@ -126,12 +238,14 @@
                     </div>
                 </a>
             </div>
+
+            <!-- TIMS Integration -->
             @if (Auth::user()->can('tims-access'))
-                <div class="col-md-3 mb-2">
+                <div class="col-md-3 col-sm-6 mb-3">
                     <a href="/tims">
                         <div class="d-flex h-100 flex-column card card-widget widget-user shadow service-card">
                             <div class="widget-user-header bg-maroon">
-                                <h3 class="widget-user-username">TIMS INTERGRATION</h3>
+                                <h3 class="widget-user-username">TIMS INTEGRATION</h3>
                                 <h5 class="widget-user-desc">KRA Dashboard</h5>
                             </div>
                             <div class="widget-user-image">
@@ -156,26 +270,27 @@
                     </a>
                 </div>
             @endif
+
+            <!-- EFRIS Integration -->
             @if (Auth::user()->can('efris-access'))
-                <div class="col-md-3 mb-2">
+                <div class="col-md-3 col-sm-6 mb-3">
                     <a href="/efris">
                         <div class="d-flex h-100 flex-column card card-widget widget-user shadow service-card">
                             <div class="widget-user-header bg-maroon">
-                                <h3 class="widget-user-username">EFRIS INTERGRATION</h3>
+                                <h3 class="widget-user-username">EFRIS INTEGRATION</h3>
                                 <h5 class="widget-user-desc">EFRIS Dashboard</h5>
                             </div>
                             <div class="widget-user-image">
                                 <img class="img-circle elevation-2"
                                     src="{{ asset('site_imgs/Custom-Icon-Design-Round-World-Flags-Uganda.ico') }}"
-                                    alt="Phone Avatar">
+                                    alt="Uganda Flag">
                             </div>
                             <div class="card-footer">
                                 <div class="row justify-content-center">
                                     @foreach ($efris_stats as $entityStats)
                                         <div class="col-sm-4 border">
                                             <div class="description-block">
-                                                <h5 class="description-header">
-                                                    <span
+                                                <h5 class="description-header"><span
                                                         class="badge badge-primary">{{ $entityStats->EfrisStatus }}</span>
                                                 </h5>
                                                 <span class="description-text small">{{ $entityStats->NoOfInvoice }}</span>
@@ -188,9 +303,10 @@
                     </a>
                 </div>
             @endif
-            {{-- TODO: ADD PERMISSIONS --}}
+
+            <!-- Quote Logger -->
             @if (Auth::user()->can('quote-access'))
-                <div class="col-md-3 mb-2">
+                <div class="col-md-3 col-sm-6 mb-3">
                     <a href="{{ URL::signedRoute('quote-logger') }}">
                         <div class="d-flex h-100 flex-column card card-widget widget-user shadow service-card">
                             <div class="widget-user-header bg-teal">
@@ -198,42 +314,32 @@
                                 <h5 class="widget-user-desc">Quote-Log System</h5>
                             </div>
                             <div class="widget-user-image">
-
                                 <img class="img-circle elevation-2" src="{{ asset('site_imgs/quotation2.png') }}"
-                                    alt="Phone Avatar">
+                                    alt="Quote Avatar">
                             </div>
                             <div class="card-footer">
                                 <div class="row justify-content-center">
-                                    {{-- @foreach ($efris_stats as $entityStats)
-                            <div class="col-sm-4 border">
-                                <div class="description-block">
-                                    <h5 class="description-header">
-                                        <span class="badge badge-primary">{{ $entityStats->EfrisStatus }}</span>
-                                    </h5>
-                                    <span class="description-text small">{{ $entityStats->NoOfInvoice }}</span>
-                                </div>
-                            </div>
-                            @endforeach --}}
+                                    <!-- Placeholder for future stats -->
                                 </div>
                             </div>
                         </div>
                     </a>
                 </div>
             @endif
-            {{-- TODO: ADD PERMISSIONS --}}
+
+            <!-- TRA Integration (Tanzania) -->
             @if (Auth::user()->can('tra-tz-access'))
-                <div class="col-md-3 mb-2">
+                <div class="col-md-3 col-sm-6 mb-3">
                     <a href="/tra">
                         <div class="d-flex h-100 flex-column card card-widget widget-user shadow service-card">
                             <div class="widget-user-header bg-yellow">
-                                <h3 class="widget-user-username">TRA INTERGRATION</h3>
+                                <h3 class="widget-user-username">TRA INTEGRATION</h3>
                                 <h5 class="widget-user-desc">FIT Tanzania Dashboard</h5>
                             </div>
                             <div class="widget-user-image">
-
                                 <img class="img-circle elevation-2"
                                     src="{{ asset('site_imgs/transparent-flag-of-tanzania-flag.png') }}"
-                                    alt="Phone Avatar">
+                                    alt="Tanzania Flag">
                             </div>
                             <div class="card-footer">
                                 <div class="row justify-content-center">
@@ -253,20 +359,19 @@
                     </a>
                 </div>
             @endif
-            {{-- TODO: ADD PERMISSIONS --}}
-            @if (Auth::user()->can('tra-adl-access'))
 
-                <div class="col-md-3 mb-2">
+            <!-- TRA Integration (ADL) -->
+            @if (Auth::user()->can('tra-adl-access'))
+                <div class="col-md-3 col-sm-6 mb-3">
                     <a href="/traADL">
                         <div class="d-flex h-100 flex-column card card-widget widget-user shadow service-card">
                             <div class="widget-user-header bg-info">
-                                <h3 class="widget-user-username">TRA INTERGRATION</h3>
+                                <h3 class="widget-user-username">TRA INTEGRATION</h3>
                                 <h5 class="widget-user-desc">ADL Dashboard</h5>
                             </div>
                             <div class="widget-user-image">
-
                                 <img class="img-circle elevation-2"
-                                    src="{{ asset('site_imgs/africa_direct_limited_logo.jpeg') }}" alt="Phone Avatar">
+                                    src="{{ asset('site_imgs/africa_direct_limited_logo.jpeg') }}" alt="ADL Logo">
                             </div>
                             <div class="card-footer">
                                 <div class="row justify-content-center">
@@ -287,17 +392,16 @@
                 </div>
             @endif
 
-            {{-- TODO: ADD PERMISSIONS --}}
+            <!-- RRA Integration -->
             @if (Auth::user()->can('rra-access'))
-                <div class="col-md-3 mb-2">
+                <div class="col-md-3 col-sm-6 mb-3">
                     <a href="/rra">
                         <div class="d-flex h-100 flex-column card card-widget widget-user shadow service-card">
                             <div class="widget-user-header bg-green">
-                                <h3 class="widget-user-username">RRA INTERGRATION</h3>
+                                <h3 class="widget-user-username">RRA INTEGRATION</h3>
                                 <h5 class="widget-user-desc">FIT Rwanda Dashboard</h5>
                             </div>
                             <div class="widget-user-image">
-
                                 <img class="img-circle elevation-2" src="{{ asset('site_imgs/rw-circle-01.png') }}"
                                     alt="Rwanda Avatar">
                             </div>
@@ -320,11 +424,42 @@
                 </div>
             @endif
 
+            <!-- Log In Tracker -->
+            <div class="col-md-3 col-sm-6 mb-3">
+                <a href="/dashboard">
+                    <div
+                        class="d-flex h-100 flex-column card card-widget widget-user shadow service-card login-tracker-card">
+                        <div class="widget-user-header bg-blue">
+                            <h3 class="widget-user-username">LOG IN TRACKER</h3>
+                            <h5 class="widget-user-desc">Track User Logins</h5>
+                        </div>
+                        <div class="widget-user-image">
+                            <i class="fas fa-user-clock fa-3x"></i>
+                        </div>
+                        {{-- <div class="card-footer">
+                            <div class="row justify-content-center">
+                                @foreach ($rra_stats as $entityStats)
+                                    <div class="col-sm-4 border">
+                                        <div class="description-block">
+                                            <h5 class="description-header"><span
+                                                    class="badge badge-primary">{{ $entityStats->StatusCount }}</span>
+                                            </h5>
+                                            <span class="description-text small">{{ $entityStats->StatusName }}</span>
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div> --}}
+                    </div>
+                </a>
+            </div>
 
         </div>
     </div>
 @stop
 
 @section('js')
-    <script></script>
+    <script>
+        // Optional: Add JavaScript for additional interactivity if needed
+    </script>
 @stop

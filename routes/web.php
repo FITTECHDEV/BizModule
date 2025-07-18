@@ -2,6 +2,11 @@
 
 use Adldap\Laravel\Facades\Adldap;
 use App\Http\Controllers\ClientPartyController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ActivityReportController;
+use App\Http\Controllers\UserController;
+use App\Http\Controllers\ImportController;
+
 use App\Models\Category;
 use App\Models\ClientParty;
 use App\Models\Office;
@@ -9,6 +14,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
+
 
 use Illuminate\Support\Facades\Crypt;
 
@@ -312,3 +318,21 @@ Route::get('/api/company-details', [ClientPartyController::class, 'getCompanyDet
 Route::post('/client-party/fetch-address-details', [ClientPartyController::class, 'fetchAddressDetails'])->name('client-party.fetch-address-details');
 Route::get('/api/clients', [ClientPartyController::class, 'getClients'])->name('clients');
 Route::post('/create-client-party-scm', [ClientPartyController::class, 'CreateClientPartySCM']) ->middleware('auth:api')->name('client.create-party-scm');
+
+Route::get('/', function () {
+    return redirect()->route('home');
+});
+Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+Route::get('/imports', function () {
+    return view('logintracker.imports.index'); })->name('imports.index');
+    
+Route::get('/activity-report', [ActivityReportController::class, 'userActivityReport'])->name('activity.report');
+Route::get('/users/logged-in', [UserController::class, 'loggedInUsers'])->name('users.logged-in');
+Route::get('/users/not-logged-in', [UserController::class, 'notLoggedInUsers'])->name('users.not-logged-in');
+
+// CSV import endpoints
+Route::post('/import/users', [ImportController::class, 'importUsers'])->name('import.users');
+Route::post('/import/sign-ins', [ImportController::class, 'importSignIns'])->name('import.sign_ins');
+
+// User management resource routes (show, create, edit, delete, etc.)
+Route::resource('users', UserController::class);

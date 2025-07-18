@@ -1948,7 +1948,7 @@
                         .prop('readonly', true);
 
                     // Text inputs and textareas (excluding those in the <fieldset>)
-                    $('input[name="companyName"], input[name="provinceName"], input[name="zipCode"], input[name="cityName"], input[name="firstName"], input[name="lastName"], input[name="department"], input[name="phoneNo"], input[name="contractEmail"], textarea[name="addressLine1"], textarea[name="addressLine2"], input[name="attachmentDescription[]"], textarea[name="reason"], input[name="creditDays"], input[name="maxCreditLimit"], input[name="baseCurrency"], input[name="licenceTypeValue"]')
+                    $('input[name="companyName"], input[name="provinceName"], input[name="zipCode"], input[name="cityName"], input[name="firstName"], input[name="lastName"], input[name="department"], input[name="phoneNo"], input[name="contractEmail"], textarea[name="addressLine1"], textarea[name="addressLine2"], input[name="attachmentDescription[]"], input[name="creditDays"], input[name="maxCreditLimit"], input[name="baseCurrency"], input[name="licenceTypeValue"]')
                         .prop('readonly', true);
 
                     // File inputs
