@@ -28,7 +28,6 @@ class Kernel extends ConsoleKernel
     //     \App\Console\Commands\SendApprovalReminderEmails::class,
     // ];
 
-
     /**
      * Define the application's command schedule.
      *
@@ -37,23 +36,86 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule)
     {
-        // $schedule->command('inspire')->hourly();
-        $schedule->command('TIMS:UploadExpInvAzure')->everyMinute()->withoutOverlapping();
-        // $schedule->command('remind:assigned')->everyMinute()->between('8:00', '17:00');
-        $schedule->job('App\Jobs\RemindAssignedTickets')->between('8:30', '17:00')->everyFourHours()->withoutOverlapping();
+        // Ensure logs directory exists
+        $this->ensureLogDirectoryExists();
 
-        $schedule->command('emails:sendApprovalReminder')->between('8:30', '17:00')->withoutOverlapping();
+        // $schedule->command('inspire')->hourly();
+        $schedule->command('TIMS:UploadExpInvAzure')
+            ->everyMinute()
+            ->withoutOverlapping();
+
+        // $schedule->command('remind:assigned')->everyMinute()->between('8:00', '17:00');
+        $schedule->job('App\Jobs\RemindAssignedTickets')
+            ->between('8:30', '17:00')
+            ->everyFourHours()
+            ->withoutOverlapping();
+
+        $schedule->command('emails:sendApprovalReminder')
+            ->between('8:30', '17:00')
+            ->withoutOverlapping();
 
         // $schedule->command('generate:invoice')->everyFiveMinutes()->withoutOverlapping();
-        $schedule->command('tra_adl:invoices')->everyFiveMinutes()->withoutOverlapping();
-        $schedule->command('tra_tz:invoices')->everyFiveMinutes()->withoutOverlapping();
+        $schedule->command('tra_adl:invoices')
+            ->everyFiveMinutes()
+            ->withoutOverlapping();
+
+        $schedule->command('tra_tz:invoices')
+            ->everyFiveMinutes()
+            ->withoutOverlapping();
+
         $schedule->command('sync:scmprofit')
-        ->everyTenMinutes()
-        ->withoutOverlapping()
-        ->appendOutputTo(storage_path('logs/scm-sync.log'));
+            ->everyTenMinutes()
+            ->withoutOverlapping()
+            ->appendOutputTo(storage_path('logs/scm-sync.log'))
+            ->emailOutputOnFailure('admin@yourcompany.com'); // Optional: add your email
 
+        $schedule->command('crmscm:Booking')
+            ->everyFiveMinutes()
+            ->withoutOverlapping()
+            ->appendOutputTo(storage_path('logs/crmscm.log'))
+            ->onSuccess(function () {
+                Log::info('CRMSCM: Scheduled task completed successfully');
+            })
+            ->onFailure(function () {
+                Log::error('CRMSCM: Scheduled task failed');
+            });
+            // ->emailOutputOnFailure('admin@yourcompany.com'); // Optional: add your email
 
+            $schedule->command('z_report_json_tz')
+             ->dailyAt('10:00')
+             ->withoutOverlapping()
+             ->runInBackground();
 
+              $schedule->command('z_report_json_ar')
+             ->dailyAt('10:00')
+             ->withoutOverlapping()
+             ->runInBackground();
+
+    }
+
+    /**
+     * Ensure logs directory exists and is writable
+     */
+    private function ensureLogDirectoryExists()
+    {
+        $logPath = storage_path('logs');
+
+        if (!file_exists($logPath)) {
+            mkdir($logPath, 0755, true);
+        }
+
+        // Create the specific log files if they don't exist
+        $logFiles = [
+            storage_path('logs/crmscm.log'),
+            storage_path('logs/scm-sync.log')
+        ];
+
+        foreach ($logFiles as $logFile) {
+            if (!file_exists($logFile)) {
+                touch($logFile);
+                chmod($logFile, 0644);
+            }
+        }
     }
 
     /**
@@ -67,6 +129,6 @@ class Kernel extends ConsoleKernel
 
         require base_path('routes/console.php');
     }
+
+
 }
-
-

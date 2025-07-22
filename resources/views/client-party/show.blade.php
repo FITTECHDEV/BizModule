@@ -1948,7 +1948,7 @@
                         .prop('readonly', true);
 
                     // Text inputs and textareas (excluding those in the <fieldset>)
-                    $('input[name="companyName"], input[name="provinceName"], input[name="zipCode"], input[name="cityName"], input[name="firstName"], input[name="lastName"], input[name="department"], input[name="phoneNo"], input[name="contractEmail"], textarea[name="addressLine1"], textarea[name="addressLine2"], input[name="attachmentDescription[]"], textarea[name="reason"], input[name="creditDays"], input[name="maxCreditLimit"], input[name="baseCurrency"], input[name="licenceTypeValue"]')
+                    $('input[name="companyName"], input[name="provinceName"], input[name="zipCode"], input[name="cityName"], input[name="firstName"], input[name="lastName"], input[name="department"], input[name="phoneNo"], input[name="contractEmail"], textarea[name="addressLine1"], textarea[name="addressLine2"], input[name="attachmentDescription[]"], input[name="creditDays"], input[name="maxCreditLimit"], input[name="baseCurrency"], input[name="licenceTypeValue"]')
                         .prop('readonly', true);
 
                     // File inputs
@@ -2326,6 +2326,84 @@
                             await SwalUtils.error('Approval Failed', errorMessage);
                             $('#approveBtn').prop('disabled', false).text('Approve');
                         }
+                    });
+
+                    $('button[name="createBtn"]').off('click').on('click', async function(e) {
+                        e.preventDefault();
+
+                        let requestType = window.requestType || 'operational';
+                        let isAccountingType = requestType === 'accounting';
+
+                        // Client-side validation (same as before)
+                        if (isAccountingType) {
+                            console.log('Processing createBtn click for accounting type entity');
+
+                            // Get checkbox values
+                            let otherCheckValue = $('#otherCheck').is(':checked') ? 1 : 0;
+                            let debtorCheckValue = $('#debtorCheck').is(':checked') ? 1 : 0;
+                            let vendorCheckValue = $('#vendorCheck').is(':checked') ? 1 : 0;
+
+                            console.log('Checkbox values:', {
+                                otherCheck: otherCheckValue,
+                                debtorCheck: debtorCheckValue,
+                                vendorCheck: vendorCheckValue
+                            });
+
+                            // Validation for accounting entities
+                            if (otherCheckValue === 0 && !$('#otherInput').val()?.trim()) {
+                                await SwalUtils.warning('Validation Error',
+                                    'Other Party field is required when checkbox is unchecked.');
+                                $('#otherInput').addClass('is-invalid').focus();
+                                return;
+                            }
+
+                            if (debtorCheckValue === 0 && !$('#debtor').val()?.trim()) {
+                                await SwalUtils.warning('Validation Error',
+                                    'Debtor field is required when checkbox is unchecked.');
+                                $('#debtor').addClass('is-invalid').focus();
+                                return;
+                            }
+
+                            if (vendorCheckValue === 0 && !$('#vendor').val()?.trim()) {
+                                await SwalUtils.warning('Validation Error',
+                                    'Vendor field is required when checkbox is unchecked.');
+                                $('#vendor').addClass('is-invalid').focus();
+                                return;
+                            }
+                        }
+
+                        // Confirm action
+                        const confirmResult = await SwalUtils.confirm(
+                            'Confirm Creation',
+                            'Are you sure you want to create this entity?',
+                            'Yes, Create!',
+                            'Cancel'
+                        );
+
+                        if (!confirmResult.isConfirmed) return;
+
+                        // Add checkbox values as hidden inputs to the form
+                        $('#clientPartyForm').find(
+                            'input[name="otherCheckValue"], input[name="debtorCheckValue"], input[name="vendorCheckValue"]'
+                            ).remove();
+
+                        // Add hidden inputs with checkbox values
+                        $('<input>').attr('type', 'hidden').attr('name', 'otherCheck').attr('value', $(
+                            '#otherCheck').is(':checked') ? 1 : 0).appendTo('#clientPartyForm');
+                        $('<input>').attr('type', 'hidden').attr('name', 'debtorCheck').attr('value', $(
+                            '#debtorCheck').is(':checked') ? 1 : 0).appendTo('#clientPartyForm');
+                        $('<input>').attr('type', 'hidden').attr('name', 'vendorCheck').attr('value', $(
+                            '#vendorCheck').is(':checked') ? 1 : 0).appendTo('#clientPartyForm');
+
+                        // Add createBtn indicator
+                        $('<input>').attr('type', 'hidden').attr('name', 'createBtn').attr('value', 'true')
+                            .appendTo('#clientPartyForm');
+
+                        // Show loading
+                        SwalUtils.loading('Creating Entity', 'Please wait while we create the entity...');
+
+                        // Submit the form traditionally
+                        $('#clientPartyForm')[0].submit();
                     });
 
                     // 🔥 UPDATED: Reject button handler with SweetAlert2

@@ -801,7 +801,7 @@ public function store(StoreClientPartyRequest $request)
         try {
             $companyDetails = DB::select(
                 'SET NOCOUNT ON;
-                 EXEC [FITSYSUAT].[dbo].[sp_EntityAddressDetails] @PartyType = ?, @PartyID = ?',
+                 EXEC [dbo].[sp_EntityAddressDetails] @PartyType = ?, @PartyID = ?',
                 [$request->partyEntityType, $request->companyId]
             );
             if (!empty($companyDetails) && isset($companyDetails[0])) {
@@ -889,7 +889,7 @@ public function store(StoreClientPartyRequest $request)
 
         $companyDetails = DB::select(
             'SET NOCOUNT ON;
-             EXEC [FITSYSUAT].[dbo].[sp_EntityAddressDetails] @PartyType = ?, @PartyID = ?',
+             EXEC [dbo].[sp_EntityAddressDetails] @PartyType = ?, @PartyID = ?',
             [$request->partyEntityType, $request->companyId]
         );
 
@@ -2134,7 +2134,7 @@ public function store(StoreClientPartyRequest $request)
                 'SET NOCOUNT ON;
              DECLARE @Status VARCHAR(30), @Remark VARCHAR(1000), @ClientCode VARCHAR(60),
                      @ClientID UNIQUEIDENTIFIER, @OtherCode VARCHAR(60), @OtherID UNIQUEIDENTIFIER;
-             EXEC [FITSYSUAT].[dbo].[Sp_OperationEntityCreation]
+             EXEC [dbo].[Sp_OperationEntityCreation]
                  @RequestID = ?,
                  @Status = @Status OUTPUT,
                  @Remark = @Remark OUTPUT,
@@ -2936,6 +2936,7 @@ private function getApprovalMessage($isAccounting, $status)
 
             // Execute stored procedure
             $results = DB::select('SET NOCOUNT ON; EXEC sp_EntityAddressDetails ?, ?', [$entityType, $companyId]);
+            // dd('sp_EntityAddressDetails results: ' . json_encode($results));
             // Handle string-based error
             if ($results && is_array($results) && count($results) > 0 && is_string($results[0])) {
                 \Log::error('tityAddressDetails failed for entityType: ' . $entityType . ', companyId: ' . $companyId . ', Error: ' . $results[0]);
@@ -2959,7 +2960,7 @@ private function getApprovalMessage($isAccounting, $status)
                 if ($countryCode && !$countryId) {
                     try {
                         $country = DB::selectOne(
-                            "SELECT CountryID FROM [FITSYSUAT].dbo.Cust_Country WHERE CountryCode = ?",
+                            "SELECT CountryID FROM dbo.Cust_Country WHERE CountryCode = ?",
                             [$countryCode]
                         );
                         $countryId = $country ? $country->CountryID : null;
@@ -3025,7 +3026,7 @@ private function getApprovalMessage($isAccounting, $status)
         try {
             $companyDetails = DB::select(
                 'SET NOCOUNT ON;
-             EXEC [FITSYSUAT].[dbo].[tityAddressDetails] @PartyType = ?, @PartyID = ?',
+             EXEC [dbo].[tityAddressDetails] @PartyType = ?, @PartyID = ?',
                 [$partyEntityType, $companyId]
             );
 
