@@ -407,11 +407,17 @@
                                                                     class="myfrm form-control mr-1 form-control-sm"
                                                                     accept="application/pdf,.pdf"
                                                                     title="Only PDF files are accepted"
-                                                                    @if ($clientParty->Status !== 'Created' && $clientParty->Status !== 'Submitted') required @endif>
+                                                                    @if (
+                                                                        $clientParty->Status !== 'Created' &&
+                                                                            $clientParty->Status !== 'Submitted' &&
+                                                                            $clientParty->Status !== 'PendingITVerification') required @endif>
                                                                 <input type="text" name="attachmentDescription[]"
                                                                     class="myfrm form-control form-control-sm"
                                                                     placeholder="Description"
-                                                                    @if ($clientParty->Status !== 'Created' && $clientParty->Status !== 'Submitted') required @endif>
+                                                                    @if (
+                                                                        $clientParty->Status !== 'Created' &&
+                                                                            $clientParty->Status !== 'Submitted' &&
+                                                                            $clientParty->Status !== 'PendingITVerification') required @endif>
                                                             </div>
                                                             <small class="text-muted">📄 Only PDF files are accepted (Max
                                                                 10MB)
@@ -1032,8 +1038,8 @@
 
         @section('css')
             <!-- ============================================
-                                                                                             EXTERNAL STYLESHEETS
-                                                                                        ============================================ -->
+                                                                                                                 EXTERNAL STYLESHEETS
+                                                                                                            ============================================ -->
             <!-- Bootstrap Stepper -->
             <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bs-stepper/dist/css/bs-stepper.min.css">
 
@@ -1045,8 +1051,8 @@
 
             <style>
                 /* ============================================
-                                                                                               CSS VARIABLES (Custom Properties)
-                                                                                            ============================================ */
+                                                                                                                   CSS VARIABLES (Custom Properties)
+                                                                                                                ============================================ */
                 :root {
                     --primary-color: #007bff;
                     --primary-hover: #0056b3;
@@ -1068,8 +1074,8 @@
                 }
 
                 /* ============================================
-                                                                                               CARD COMPONENTS
-                                                                                            ============================================ */
+                                                                                                                   CARD COMPONENTS
+                                                                                                                ============================================ */
                 .card {
                     border: none;
                     border-radius: var(--border-radius-md);
@@ -1090,8 +1096,8 @@
                 }
 
                 /* ============================================
-                                                                                               ENHANCED FILE DISPLAY STYLES
-                                                                                            ============================================ */
+                                                                                                                   ENHANCED FILE DISPLAY STYLES
+                                                                                                                ============================================ */
                 .file-item {
                     background: #f8f9fa;
                     transition: all 0.3s ease;
@@ -1210,8 +1216,8 @@
                 }
 
                 /* ============================================
-                                                                                               BADGE SYSTEM
-                                                                                            ============================================ */
+                                                                                                                   BADGE SYSTEM
+                                                                                                                ============================================ */
                 .badge {
                     font-size: 0.9rem;
                     padding: 0.5em 1em;
@@ -1287,8 +1293,8 @@
                 }
 
                 /* ============================================
-                                                                                               TYPOGRAPHY
-                                                                                            ============================================ */
+                                                                                                                   TYPOGRAPHY
+                                                                                                                ============================================ */
                 .text-muted {
                     font-size: 0.95rem;
                     color: var(--muted-color) !important;
@@ -1309,8 +1315,8 @@
                 }
 
                 /* ============================================
-                                                                                               FIELDSET & LEGEND STYLING
-                                                                                            ============================================ */
+                                                                                                                   FIELDSET & LEGEND STYLING
+                                                                                                                ============================================ */
                 fieldset {
                     border: 2px solid var(--border-color);
                     border-radius: var(--border-radius-md);
@@ -1350,8 +1356,8 @@
                 }
 
                 /* ============================================
-                                                                                               FORM ELEMENTS
-                                                                                            ============================================ */
+                                                                                                                   FORM ELEMENTS
+                                                                                                                ============================================ */
                 .form-control:focus {
                     border-color: var(--primary-color);
                     box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
@@ -1379,8 +1385,8 @@
                 }
 
                 /* ============================================
-                                                                                               DISABLED STATES
-                                                                                            ============================================ */
+                                                                                                                   DISABLED STATES
+                                                                                                                ============================================ */
                 .disabled {
                     opacity: 0.6;
                     cursor: not-allowed;
@@ -1405,8 +1411,8 @@
                 }
 
                 /* ============================================
-                                                                                               TOOLTIP ENHANCEMENTS
-                                                                                            ============================================ */
+                                                                                                                   TOOLTIP ENHANCEMENTS
+                                                                                                                ============================================ */
                 .tooltip-inner {
                     background: linear-gradient(135deg, var(--dark-color) 0%, #495057 100%);
                     color: white;
@@ -1421,8 +1427,8 @@
                 }
 
                 /* ============================================
-                                                                                               LOADING & PRELOADER
-                                                                                            ============================================ */
+                                                                                                                   LOADING & PRELOADER
+                                                                                                                ============================================ */
                 #loader {
                     display: none;
                     position: fixed;
@@ -1513,8 +1519,8 @@
                 }
 
                 /* ============================================
-                                                                                               BUTTON ENHANCEMENTS
-                                                                                            ============================================ */
+                                                                                                                   BUTTON ENHANCEMENTS
+                                                                                                                ============================================ */
                 .btn {
                     border-radius: var(--border-radius-sm);
                     font-weight: 500;
@@ -1554,8 +1560,8 @@
                 }
 
                 /* ============================================
-                                                                                               RESPONSIVE DESIGN
-                                                                                            ============================================ */
+                                                                                                                   RESPONSIVE DESIGN
+                                                                                                                ============================================ */
                 @media (max-width: 768px) {
                     .card {
                         margin-bottom: 1rem;
@@ -1591,8 +1597,8 @@
                 }
 
                 /* ============================================
-                                                                                               UTILITY CLASSES
-                                                                                            ============================================ */
+                                                                                                                   UTILITY CLASSES
+                                                                                                                ============================================ */
                 .shadow-soft {
                     box-shadow: var(--shadow-light);
                 }
@@ -1626,8 +1632,8 @@
                 }
 
                 /* ============================================
-                                                                                               PRINT STYLES
-                                                                                            ============================================ */
+                                                                                                                   PRINT STYLES
+                                                                                                                ============================================ */
                 @media print {
 
                     .btn,
@@ -2328,6 +2334,85 @@
                         }
                     });
 
+                    $('button[name="createBtn"]').off('click').on('click', async function(e) {
+                        e.preventDefault();
+
+                        let requestType = window.requestType || 'operational';
+                        let isAccountingType = requestType === 'accounting';
+
+                        // Client-side validation (same as before)
+                        if (isAccountingType) {
+                            console.log('Processing createBtn click for accounting type entity');
+
+                            // Get checkbox values
+                            let otherCheckValue = $('#otherCheck').is(':checked') ? 1 : 0;
+                            let debtorCheckValue = $('#debtorCheck').is(':checked') ? 1 : 0;
+                            let vendorCheckValue = $('#vendorCheck').is(':checked') ? 1 : 0;
+
+                            console.log('Checkbox values:', {
+                                otherCheck: otherCheckValue,
+                                debtorCheck: debtorCheckValue,
+                                vendorCheck: vendorCheckValue
+                            });
+
+                            // Validation for accounting entities
+                            if (otherCheckValue === 0 && !$('#otherInput').val()?.trim()) {
+                                await SwalUtils.warning('Validation Error',
+                                    'Other Party field is required when checkbox is unchecked.');
+                                $('#otherInput').addClass('is-invalid').focus();
+                                return;
+                            }
+
+                            if (debtorCheckValue === 0 && !$('#debtor').val()?.trim()) {
+                                await SwalUtils.warning('Validation Error',
+                                    'Debtor field is required when checkbox is unchecked.');
+                                $('#debtor').addClass('is-invalid').focus();
+                                return;
+                            }
+
+                            if (vendorCheckValue === 0 && !$('#vendor').val()?.trim()) {
+                                await SwalUtils.warning('Validation Error',
+                                    'Vendor field is required when checkbox is unchecked.');
+                                $('#vendor').addClass('is-invalid').focus();
+                                return;
+                            }
+                        }
+
+                        // Confirm action
+                        const confirmResult = await SwalUtils.confirm(
+                            'Confirm Creation',
+                            'Are you sure you want to create this entity?',
+                            'Yes, Create!',
+                            'Cancel'
+                        );
+
+                        if (!confirmResult.isConfirmed) return;
+
+                        // Add checkbox values as hidden inputs to the form
+                        $('#clientPartyForm').find(
+                            'input[name="otherCheckValue"], input[name="debtorCheckValue"], input[name="vendorCheckValue"]'
+                            ).remove();
+
+                        // Add hidden inputs with checkbox values
+                        $('<input>').attr('type', 'hidden').attr('name', 'otherCheck').attr('value', $(
+                            '#otherCheck').is(':checked') ? 1 : 0).appendTo('#clientPartyForm');
+                        $('<input>').attr('type', 'hidden').attr('name', 'debtorCheck').attr('value', $(
+                            '#debtorCheck').is(':checked') ? 1 : 0).appendTo('#clientPartyForm');
+                        $('<input>').attr('type', 'hidden').attr('name', 'vendorCheck').attr('value', $(
+                            '#vendorCheck').is(':checked') ? 1 : 0).appendTo('#clientPartyForm');
+
+                        // Add createBtn indicator
+                        $('<input>').attr('type', 'hidden').attr('name', 'createBtn').attr('value', 'true')
+                            .appendTo('#clientPartyForm');
+
+                        // Show loading
+                        SwalUtils.loading('Creating Entity', 'Please wait while we create the entity...');
+
+                        // Submit the form traditionally
+                        $('#clientPartyForm')[0].submit();
+                    });
+
+
                     // 🔥 UPDATED: Reject button handler with SweetAlert2
                     $('#close-modal').click(function() {
                         $('#cancelForm')[0].reset();
@@ -2456,151 +2541,365 @@
                     });
 
 
-                     // Function to disable all file upload related inputs
-    function disableFileUploadInputs() {
-        // Remove required attribute first to prevent validation errors
-        $('input[name="attachmentNames[]"]').removeAttr('required');
-        $('input[name="attachmentDescription[]"]').removeAttr('required');
+                    // Function to handle Legal Entity Type changes
+                    function handleLegalEntityType(selectedValue) {
+                        console.log('Legal Entity Type changed to:', selectedValue);
 
-        // Disable file input fields
-        $('input[name="attachmentNames[]"]').prop('disabled', true).addClass('disabled');
+                        // Only proceed if not in disabled/readonly mode (status !== 'Created')
+                        let currentStatus = '{{ $clientParty->Status }}';
+                        if (currentStatus === 'Created') {
+                            console.log('Legal Entity Type changes disabled - Status is Created');
+                            return;
+                        }
 
-        // Disable description input fields
-        $('input[name="attachmentDescription[]"]').prop('disabled', true).addClass('disabled');
+                        // Reset all validation states first
+                        $('#debtorType, #vendorType').removeClass('is-invalid');
 
-        // Disable add attachment button
-        $('.addAttachment, #addFile').prop('disabled', true).addClass('disabled');
+                        // Remove any existing hidden inputs for checkboxes
+                        $('#debtorCheckVal, #vendorCheckVal').remove();
 
-        // Disable remove attachment buttons
-        $('.remove-attachment').prop('disabled', true).addClass('disabled');
+                        switch (selectedValue) {
+                            case 'Debtor':
+                                showDebtorOnly();
+                                break;
 
-        // Add visual styling to show they're disabled
-        $('input[name="attachmentNames[]"], input[name="attachmentDescription[]"]').css({
-            'background-color': '#f8f9fa',
-            'cursor': 'not-allowed',
-            'opacity': '0.65'
-        });
+                            case 'Vendor':
+                                showVendorOnly();
+                                break;
 
-        // Disable the file upload container interactions
-        $('.file-upload-container').css({
-            'pointer-events': 'none',
-            'opacity': '0.65'
-        });
+                            case 'Debtor & Vendor':
+                                showDebtorAndVendor();
+                                break;
 
-        // Add disabled class to the initial attachment div
-        $('#initial-attachment').addClass('disabled');
+                            case 'Only in D365 Debtor':
+                                showD365DebtorOnly();
+                                break;
 
-        // Prevent file selection
-        $('input[name="attachmentNames[]"]').on('click', function(e) {
-            e.preventDefault();
-            return false;
-        });
+                            case 'Only in D365 Vendor':
+                                showD365VendorOnly();
+                                break;
 
-        // Prevent typing in description fields
-        $('input[name="attachmentDescription[]"]').on('keydown keypress keyup', function(e) {
-            e.preventDefault();
-            return false;
-        });
+                            default:
+                                // Hide all by default
+                                hideAllEntities();
+                                break;
+                        }
 
-        // Disable the clone template inputs as well and remove required attributes
-        $('.clone-template input[name="attachmentNames[]"]').prop('disabled', true).removeAttr('required');
-        $('.clone-template input[name="attachmentDescription[]"]').prop('disabled', true).removeAttr('required');
+                        // Update visual indicators
+                        updateAdminDetailsVisuals();
+                    }
 
-        // Also handle any dynamically added inputs
-        $('#attachClone input[name="attachmentNames[]"]').prop('disabled', true).removeAttr('required');
-        $('#attachClone input[name="attachmentDescription[]"]').prop('disabled', true).removeAttr('required');
+                    // Show only Debtor row, hide and disable Vendor
+                    function showDebtorOnly() {
+                        console.log('Showing Debtor only, hiding Vendor');
 
-        console.log('File upload inputs and descriptions have been disabled');
-    }
+                        // Show and enable Debtor row
+                        showAndEnableDebtorRow();
 
-    // Function to enable file upload inputs (if needed later)
-    function enableFileUploadInputs() {
-        // Enable file input fields and restore required attribute where needed
-        $('input[name="attachmentNames[]"]').prop('disabled', false).removeClass('disabled');
+                        // Hide and disable Vendor row
+                        hideAndDisableVendorRow();
 
-        // Enable description input fields and restore required attribute where needed
-        $('input[name="attachmentDescription[]"]').prop('disabled', false).removeClass('disabled');
+                        // Add hidden input for debtor checkbox
+                        $('form').append('<input type="hidden" value="1" name="debtorCheck" id="debtorCheckVal">');
 
-        // Conditionally restore required attributes based on your business logic
-        // Only restore if the form/status requires it
-        let shouldBeRequired = '{{ $clientParty->Status !== "Created" && $clientParty->Status !== "Submitted" && $type === "accounting" ? "true" : "false" }}' === 'true';
-        if (shouldBeRequired) {
-            $('input[name="attachmentNames[]"]').attr('required', true);
-            $('input[name="attachmentDescription[]"]').attr('required', true);
-        }
+                        showEntityTypeChangeFeedback('Debtor only - Vendor section hidden');
+                    }
 
-        // Enable add attachment button
-        $('.addAttachment, #addFile').prop('disabled', false).removeClass('disabled');
+                    // Show only Vendor row, hide and disable Debtor
+                    function showVendorOnly() {
+                        console.log('Showing Vendor only, hiding Debtor');
 
-        // Enable remove attachment buttons
-        $('.remove-attachment').prop('disabled', false).removeClass('disabled');
+                        // Hide and disable Debtor row
+                        hideAndDisableDebtorRow();
 
-        // Remove visual styling
-        $('input[name="attachmentNames[]"], input[name="attachmentDescription[]"]').css({
-            'background-color': '',
-            'cursor': '',
-            'opacity': ''
-        });
+                        // Show and enable Vendor row
+                        showAndEnableVendorRow();
 
-        // Enable the file upload container interactions
-        $('.file-upload-container').css({
-            'pointer-events': '',
-            'opacity': ''
-        });
+                        // Add hidden input for vendor checkbox
+                        $('form').append('<input type="hidden" value="1" name="vendorCheck" id="vendorCheckVal">');
 
-        // Remove disabled class from the initial attachment div
-        $('#initial-attachment').removeClass('disabled');
+                        showEntityTypeChangeFeedback('Vendor only - Debtor section hidden');
+                    }
 
-        // Remove event handlers that prevent interaction
-        $('input[name="attachmentNames[]"]').off('click');
-        $('input[name="attachmentDescription[]"]').off('keydown keypress keyup');
+                    // Show both Debtor and Vendor rows
+                    function showDebtorAndVendor() {
+                        console.log('Showing both Debtor and Vendor');
 
-        console.log('File upload inputs and descriptions have been enabled');
-    }
+                        // Show and enable both rows
+                        showAndEnableDebtorRow();
+                        showAndEnableVendorRow();
 
-    // Call the disable function immediately
-    disableFileUploadInputs();
+                        // Add hidden inputs for both checkboxes
+                        $('form').append('<input type="hidden" value="1" name="debtorCheck" id="debtorCheckVal">');
+                        $('form').append('<input type="hidden" value="1" name="vendorCheck" id="vendorCheckVal">');
 
-    // Additional fix: Remove validation from form submission for disabled file inputs
-    $('#clientPartyForm').on('submit', function(e) {
-        // Remove required attribute from disabled file inputs before validation
-        $('input[name="attachmentNames[]"]:disabled').removeAttr('required');
-        $('input[name="attachmentDescription[]"]:disabled').removeAttr('required');
-    });
+                        showEntityTypeChangeFeedback('Both Debtor & Vendor sections enabled');
+                    }
 
-    // Override browser's built-in validation for disabled file inputs
-    $('input[name="attachmentNames[]"], input[name="attachmentDescription[]"]').on('invalid', function(e) {
-        if ($(this).is(':disabled')) {
-            e.preventDefault();
-            return false;
-        }
-    });
+                    // Show only D365 Debtor, hide Vendor
+                    function showD365DebtorOnly() {
+                        console.log('Showing D365 Debtor only, hiding Vendor');
 
-       // Override the existing addAttachment click handler to prevent any action
-    $('.addAttachment').off('click').on('click', function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        console.log('File upload is disabled');
-        return false;
-    });
+                        // Show and enable Debtor row with D365 styling
+                        showAndEnableDebtorRow();
+                        addD365StylingToDebtor();
 
-    // Override the existing remove-attachment click handler
-    $(document).off('click', '.remove-attachment').on('click', '.remove-attachment', function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        console.log('Remove attachment is disabled');
-        return false;
-    });
+                        // Hide and disable Vendor row
+                        hideAndDisableVendorRow();
 
-    // Disable file validation function calls
-    $(document).off('change', 'input[name="attachmentNames[]"]');
+                        // Add hidden input for debtor checkbox
+                        $('form').append('<input type="hidden" value="1" name="debtorCheck" id="debtorCheckVal">');
 
-    // Add a visual indicator that file uploads are disabled
-    $('.file-upload-container').prepend(
-        '<div class="alert alert-info mb-2" id="file-upload-disabled-notice">' +
-        '<i class="fa fa-info-circle"></i> File uploads are currently disabled for this view.' +
-        '</div>'
-    );
+                        showEntityTypeChangeFeedback('D365 Debtor only - Vendor section hidden');
+                    }
+
+                    // Show only D365 Vendor, hide Debtor
+                    function showD365VendorOnly() {
+                        console.log('Showing D365 Vendor only, hiding Debtor');
+
+                        // Hide and disable Debtor row
+                        hideAndDisableDebtorRow();
+
+                        // Show and enable Vendor row with D365 styling
+                        showAndEnableVendorRow();
+                        addD365StylingToVendor();
+
+                        // Add hidden input for vendor checkbox
+                        $('form').append('<input type="hidden" value="1" name="vendorCheck" id="vendorCheckVal">');
+
+                        showEntityTypeChangeFeedback('D365 Vendor only - Debtor section hidden');
+                    }
+
+                    // Hide all entity rows
+                    function hideAllEntities() {
+                        console.log('Hiding all entity sections');
+
+                        hideAndDisableDebtorRow();
+                        hideAndDisableVendorRow();
+
+                        showEntityTypeChangeFeedback('All entity sections hidden');
+                    }
+
+                    // Show and enable Debtor row
+                    function showAndEnableDebtorRow() {
+                        // Show the debtor table row
+                        $('tr').has('#debtorCheck').show().removeClass('d-none');
+
+                        // Enable Debtor checkbox and input
+                        $('#debtorCheck')
+                            .prop('checked', true)
+                            .prop('disabled', false)
+                            .removeClass('disabled');
+
+                        $('#debtor')
+                            .prop('disabled', false)
+                            .prop('readonly', false)
+                            .removeClass('disabled')
+                            .attr('required', false);
+
+                        // Update debtor type dropdown
+                        $('#debtorType')
+                            .prop('disabled', false)
+                            .prop('required', true)
+                            .removeClass('disabled');
+
+
+                    }
+
+                    // Show and enable Vendor row
+                    function showAndEnableVendorRow() {
+                        // Show the vendor table row
+                        $('tr').has('#vendorCheck').show().removeClass('d-none');
+
+                        // Enable Vendor checkbox and input
+                        $('#vendorCheck')
+                            .prop('checked', true)
+                            .prop('disabled', false)
+                            .removeClass('disabled');
+
+                        $('#vendor')
+                            .prop('disabled', false)
+                            .prop('readonly', false)
+                            .removeClass('disabled')
+                            .attr('required', false);
+
+                        // Update vendor type dropdown
+                        $('#vendorType')
+                            .prop('disabled', false)
+                            .prop('required', true)
+                            .removeClass('disabled')
+                    }
+
+                    // Hide and disable Debtor row
+                    function hideAndDisableDebtorRow() {
+                        // Hide the debtor table row
+                        $('tr').has('#debtorCheck').hide().addClass('d-none');
+
+                        // Disable and clear Debtor fields
+                        $('#debtorCheck')
+                            .prop('checked', false)
+                            .prop('disabled', true)
+                            .addClass('disabled');
+
+                        $('#debtor')
+                            .prop('disabled', true)
+                            .prop('readonly', true)
+                            .addClass('disabled')
+                            .removeAttr('required')
+                            .val(''); // Clear debtor input
+
+                        // Update debtor type dropdown
+                        $('#debtorType')
+                            .prop('disabled', true)
+                            .removeAttr('required')
+                            .addClass('disabled')
+                            .val(''); // Reset selection
+
+                        // Clear debtor related hidden fields
+                        $('#debtorID, #debtorCode').val('');
+
+                        // Make debtor code cell non-interactive
+                        $('#debtor_code')
+                            .css({
+                                'opacity': '0.3',
+                                'pointer-events': 'none',
+                                'background-color': '#f8f9fa'
+                            })
+                            .removeAttr('onclick')
+                            .removeAttr('data-toggle')
+                            .attr('title', 'Debtor disabled by Legal Entity Type');
+
+                        // Remove D365 styling
+                        $('#debtor, #debtorType').removeClass('d365-entity');
+                    }
+
+                    // Hide and disable Vendor row
+                    function hideAndDisableVendorRow() {
+                        // Hide the vendor table row
+                        $('tr').has('#vendorCheck').hide().addClass('d-none');
+
+                        // Disable and clear Vendor fields
+                        $('#vendorCheck')
+                            .prop('checked', false)
+                            .prop('disabled', true)
+                            .addClass('disabled');
+
+                        $('#vendor')
+                            .prop('disabled', true)
+                            .prop('readonly', true)
+                            .addClass('disabled')
+                            .removeAttr('required')
+                            .val(''); // Clear vendor input
+
+                        // Update vendor type dropdown
+                        $('#vendorType')
+                            .prop('disabled', true)
+                            .removeAttr('required')
+                            .addClass('disabled')
+                            .val(''); // Reset selection
+
+                        // Clear vendor related hidden fields
+                        $('#vendorID, #vendorCode').val('');
+
+                        // Make vendor code cell non-interactive
+                        $('#vendor_code')
+                            .css({
+                                'opacity': '0.3',
+                                'pointer-events': 'none',
+                                'background-color': '#f8f9fa'
+                            })
+                            .removeAttr('onclick')
+                            .removeAttr('data-toggle')
+                            .attr('title', 'Vendor disabled by Legal Entity Type');
+
+                        // Remove D365 styling
+                        $('#vendor, #vendorType').removeClass('d365-entity');
+                    }
+
+                    // Add D365 styling to Debtor
+                    function addD365StylingToDebtor() {
+                        $('#debtor').addClass('d365-entity').attr('placeholder', 'D365 Debtor Entity');
+                        $('#debtorType').addClass('d365-entity');
+                        $('#debtor_code').addClass('d365-code');
+                    }
+
+                    // Add D365 styling to Vendor
+                    function addD365StylingToVendor() {
+                        $('#vendor').addClass('d365-entity').attr('placeholder', 'D365 Vendor Entity');
+                        $('#vendorType').addClass('d365-entity');
+                        $('#vendor_code').addClass('d365-code');
+                    }
+
+                    // Update visual indicators for admin details
+                    function updateAdminDetailsVisuals() {
+                        // Add animation class for smooth transitions
+                        $('#admin-details table tr').addClass('entity-transition');
+
+                        // Update table styling
+                        setTimeout(() => {
+                            $('#admin-details table tr').removeClass('entity-transition');
+                        }, 300);
+                    }
+
+                    // Show user feedback when entity type changes
+                    function showEntityTypeChangeFeedback(message) {
+                        // Use SweetAlert2 for better feedback
+                        if (typeof Swal !== 'undefined') {
+                            Swal.fire({
+                                icon: 'info',
+                                title: 'Entity Configuration Updated',
+                                text: message,
+                                toast: true,
+                                position: 'top-end',
+                                showConfirmButton: false,
+                                timer: 3000,
+                                timerProgressBar: true
+                            });
+                        } else {
+                            // Fallback to console log if SweetAlert2 not available
+                            console.log('Entity Configuration:', message);
+                        }
+                    }
+
+                    // Event listener for Legal Entity Type dropdown changes
+                    $('#legalEntityType').on('change', function() {
+                        const selectedValue = $(this).val();
+                        console.log('Legal Entity Type dropdown changed:', selectedValue);
+
+                        if (selectedValue) {
+                            handleLegalEntityType(selectedValue);
+                        } else {
+                            // If no selection, hide all
+                            hideAllEntities();
+                        }
+                    });
+
+                    // Initialize on page load if legal entity type is already selected
+                    $(document).ready(function() {
+                        const currentLegalEntityType = $('#legalEntityType').val();
+                        if (currentLegalEntityType && currentLegalEntityType !== '') {
+                            console.log('Initializing with existing Legal Entity Type:', currentLegalEntityType);
+                            handleLegalEntityType(currentLegalEntityType);
+                        } else {
+                            // Hide all by default if no legal entity type selected
+                            hideAllEntities();
+                        }
+                    });
+
+                    // Override copy function for disabled states
+                    window.originalCopyText = window.copyText;
+                    window.copyText = function(element) {
+                        const $element = $(element);
+                        if ($element.css('pointer-events') === 'none') {
+                            console.log('Copy disabled for this entity type');
+                            return;
+                        }
+                        if (window.originalCopyText) {
+                            window.originalCopyText(element);
+                        }
+                    };
+
+                    console.log('Legal Entity Type handler (Hide/Disable version) initialized for show blade');
                 });
             </script>
             <script src="{{ asset('js/client-party/show-create-client-party.js') }}"></script>
