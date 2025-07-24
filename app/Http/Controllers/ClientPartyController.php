@@ -672,7 +672,7 @@ class ClientPartyController extends Controller
 
 public function store(StoreClientPartyRequest $request)
 {
-// dd('Store method called with request:', $request->all());
+
     $user = $request->user();
     if (!$user->can('request-client-party')) {
         abort(403, "You are not allowed to view this page.");
@@ -1034,7 +1034,6 @@ public function store(StoreClientPartyRequest $request)
             'Status' => $status,
         ];
 
-        // dd('Prepared entity data:', $data);
 
         // Insert entity data
         Log::info('Inserting entity data', ['code' => $code, 'client_party_id' => $client_party_id]);
@@ -1222,6 +1221,7 @@ public function store(StoreClientPartyRequest $request)
                     ];
 
                     if (config('app.env') != 'Local') {
+
                         $entity = $this->createLegalEntityType($entity_type, $data);
                         Log::info('Legal Entity Data:', $data);
                         Log::info('Legal Entity Response:', (array)$entity);
@@ -1302,12 +1302,57 @@ public function store(StoreClientPartyRequest $request)
 
     public function getOfficeNumberSeries($officeCode = null, $entityType = null)
     {
-        $numSeries = DB::table('Cust_OfficeSeriesMapping')
-            ->where('EntityType', $entityType)
-            ->where('OfficeCode', trim($officeCode))
-            ->pluck('SeriesNo');
 
-        return $numSeries[0];
+        try {
+            // Add validation for required parameters
+            if (!$officeCode || !$entityType) {
+                Log::error('getOfficeNumberSeries: Missing required parameters', [
+                    'officeCode' => $officeCode,
+                    'entityType' => $entityType
+                ]);
+                return null;
+            }
+
+            Log::info('getOfficeNumberSeries called', [
+                'officeCode' => $officeCode,
+                'entityType' => $entityType
+            ]);
+
+            $numSeries = DB::table('Cust_OfficeSeriesMapping')
+                ->where('EntityType', $entityType)
+                ->where('OfficeCode', trim($officeCode))
+                ->pluck('SeriesNo');
+
+            // Check if the collection is empty before accessing index 0
+            if ($numSeries->isEmpty()) {
+                Log::warning('getOfficeNumberSeries: No series found', [
+                    'officeCode' => $officeCode,
+                    'entityType' => $entityType,
+                    'query_result' => $numSeries->toArray()
+                ]);
+                return null;
+            }
+
+            $seriesNo = $numSeries->first(); // Use first() instead of [0] for better error handling
+
+            Log::info('getOfficeNumberSeries result', [
+                'officeCode' => $officeCode,
+                'entityType' => $entityType,
+                'seriesNo' => $seriesNo,
+                'found_count' => $numSeries->count()
+            ]);
+
+            return $seriesNo;
+
+        } catch (Exception $e) {
+            Log::error('getOfficeNumberSeries exception', [
+                'officeCode' => $officeCode,
+                'entityType' => $entityType,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return null;
+        }
     }
 
     public function preview(ClientParty $path)
@@ -1323,6 +1368,7 @@ public function store(StoreClientPartyRequest $request)
 
     public function createLegalEntityType(string $type, array $post_data)
     {
+
         $debtor_url = env('DEBTOR_URL');
         $vendor_url = env('VENDER_URL');
 
@@ -1335,7 +1381,12 @@ public function store(StoreClientPartyRequest $request)
         log::info('Entity Token Retrieved:', ['status' => $entityToken['status'], 'token' => $entityToken['token']]);
         $response = Http::withToken($entityToken['token'])
             ->post($request_url, $post_data);
-
+        log::info('Legal Entity Creation Response:', [
+            'status' => $response->status(),
+            'body' => $response->body(),
+            'type' => $type,
+            'post_data' => $post_data
+        ]);
         return json_decode($response->body());
     }
 
@@ -1415,7 +1466,7 @@ public function store(StoreClientPartyRequest $request)
         $incoterms = $this->getIncoTerms();
         // Pass the officeCode from clientParty
         $payTerms = $this->getPaymentTermList($clientParty->OfficeCode);
-        // dd($type);
+
         return view('client-party.show', compact(
             'approve',
             'editForm',
@@ -1478,11 +1529,9 @@ public function store(StoreClientPartyRequest $request)
         }
     }
 
-    public function update(UpdateClientPartyRequest $request, $id)
+public function update(UpdateClientPartyRequest $request, $id)
 {
     $user = Auth::user();
-
-    // dd('Update Request:', $request->all(), 'User:', $user->full_name, 'ID:', $id);
 
     if (!$user->can('update-client-party')) {
         Log::warning('Unauthorized update attempt', ['userId' => $user?->Id, 'id' => $id]);
@@ -1548,7 +1597,7 @@ public function store(StoreClientPartyRequest $request)
     $currentStatus = $cp->Status ?? 'Not Submitted';
     Log::info('Current entity status', ['id' => $id, 'currentStatus' => $currentStatus]);
 
-    // Enhanced Status logic to match store method
+    // Enhanced Status logic - No D365 integration at early stages
     $canCreateClientParty = $user->can('create-client-party');
     $hasAccountingEntities = isset($request->debtorCheck) || isset($request->vendorCheck) ||
                             isset($request->debtor) || isset($request->vendor) ||
@@ -1569,7 +1618,7 @@ public function store(StoreClientPartyRequest $request)
     if (isset($request->createBtn)) {
         if ($canCreateClientParty) {
             if ($hasAccountingEntities) {
-                // Accounting entities workflow
+                // Accounting entities workflow - D365 integration moved to PendingITVerification
                 switch ($currentStatus) {
                     case 'Not Submitted':
                         $status = 'PendingCountryLevelApproval';
@@ -1581,6 +1630,7 @@ public function store(StoreClientPartyRequest $request)
                         $status = 'PendingITVerification';
                         break;
                     case 'PendingITVerification':
+                        // D365 integration will happen here, then status becomes 'Created'
                         $status = 'Created';
                         break;
                     default:
@@ -1615,10 +1665,10 @@ public function store(StoreClientPartyRequest $request)
         'submitBtn' => isset($request->submitBtn)
     ]);
 
-    // License validation (from store method)
+    // License validation
     $licenseNo = $request->licenceTypeValue;
     $partyType = $request->legalEntityType ?? 'Debtor';
-    $officeCode = $request->officeCode ?? 'KE';
+    $officeCode = $request->officeCountryDisp ?? 'KE';
 
     if ($licenseNo && $partyType && $officeCode && !in_array($request->partyEntityType, ['NoSCMIntergration', 'Create only in D365'])) {
         $partyTypes = explode(' & ', $partyType);
@@ -1678,7 +1728,7 @@ public function store(StoreClientPartyRequest $request)
 
         $updateData = [
             'OperatioEntityType' => $partyEntityType,
-            'LegalEntityType' => $request->legalEntityType, // Added missing field
+            'LegalEntityType' => $request->legalEntityType,
             'Name' => $request->companyName,
             'Address_Line1' => $request->addressLine1,
             'Address_Line2' => $request->addressLine2,
@@ -1703,11 +1753,11 @@ public function store(StoreClientPartyRequest $request)
             'DefaultNotifyPartyName' => $request->notifyParty1,
             'DefaultNotifyPartyId' => $request->notifyParty1ID ?: null,
             'DefaultNotifyPartyCode' => $request->notifyParty1Code,
-            'DefaultNotifyParty1Name' => $request->notifyParty2, // Added missing field
-            'DefaultNotifyParty1Id' => $request->notifyParty2ID ?: null, // Added missing field
-            'DefaultNotifyParty1Code' => $request->notifyParty2Code, // Added missing field
-            'DefaultFowarderName' => $request->forwarderName, // Added missing field
-            'DefaultFowarderId' => $request->forwarderID ?: null, // Added missing field
+            'DefaultNotifyParty1Name' => $request->notifyParty2,
+            'DefaultNotifyParty1Id' => $request->notifyParty2ID ?: null,
+            'DefaultNotifyParty1Code' => $request->notifyParty2Code,
+            'DefaultFowarderName' => $request->forwarderName,
+            'DefaultFowarderId' => $request->forwarderID ?: null,
             'AccountMgrOfficeFunMapName' => $request->accountPIC,
             'AccountMgrOfficeFunMapId' => $request->accountPICID ?: null,
             'CreditDays' => $request->creditDays,
@@ -1744,16 +1794,13 @@ public function store(StoreClientPartyRequest $request)
             'VendorCode' => $request->vendorCode,
             'RequestforClient' => isset($request->clientCheck) ? 1 : 0,
             'RequestforShipperConsignee' => isset($request->consigneeCheck) ? 1 : (isset($request->shipperCheck) ? 1 : 0),
-            // 'RequestforOtherParty' => isset($request->otherCheck) ? 1 : 0,
-            // 'RequestforDebtor' => isset($request->debtorCheck) ? 1 : 0,
-            // 'RequestforVendor' => isset($request->vendorCheck) ? 1 : 0,
             'RequestforOtherParty' => $request->otherCheck ? 1 : 0,
-'RequestforDebtor' => $request->debtorCheck ? 1 : 0,
-'RequestforVendor' => $request->vendorCheck ? 1 : 0,
+            'RequestforDebtor' => $request->debtorCheck ? 1 : 0,
+            'RequestforVendor' => $request->vendorCheck ? 1 : 0,
             'LastModifiedOn' => Carbon::now()->format('Y-m-d H:i:s'),
             'LastModifiedBy' => $user->full_name ?? $user->Id ?? 'System',
-            'DebtorType' => $request->debtorType, // Enhanced
-            'VendorType' => $request->vendorType, // Enhanced
+            'DebtorType' => $request->debtorType,
+            'VendorType' => $request->vendorType,
             'Status' => $status,
         ];
 
@@ -1770,19 +1817,6 @@ public function store(StoreClientPartyRequest $request)
             'otherCheck' => isset($request->otherCheck)
         ]);
 
-        // Enable SQL query logging for Cust_entity updates
-        $listener = function ($query) use ($id) {
-            if (str_contains(strtolower($query->sql), 'cust_entity') && in_array($id, $query->bindings)) {
-                Log::debug('SQL Query for Cust_entity update', [
-                    'id' => $id,
-                    'sql' => $query->sql,
-                    'bindings' => $query->bindings,
-                    'time' => $query->time
-                ]);
-            }
-        };
-        DB::listen($listener);
-
         if ($isNewEntity) {
             $cp->fill($updateData)->save();
         } else {
@@ -1794,9 +1828,6 @@ public function store(StoreClientPartyRequest $request)
                 ]);
             }
         }
-
-        // Disable the listener
-        DB::getEventDispatcher()->forget('eloquent.*');
 
         // Verify database values
         $dbValues = DB::table('Cust_entity')->where('Id', $id)->first(['OtherPartyName', 'OtherPartyID', 'OtherPartyCode', 'Status']);
@@ -1865,63 +1896,39 @@ public function store(StoreClientPartyRequest $request)
         }
     }
 
-    // Log history
-    try {
-        $historyComment = $isNewEntity ? 'Entity Created' : 'Entity Updated';
-        if (isset($request->createBtn) && $hasAccountingEntities) {
-            switch ($status) {
-                case 'PendingCountryLevelApproval':
-                    $historyComment = 'Entity Pending Country Level Approval';
-                    break;
-                case 'PendingGroupLevelApproval':
-                    $historyComment = 'Entity Pending Group Level Approval';
-                    break;
-                case 'PendingITVerification':
-                    $historyComment = 'Entity Pending IT Verification';
-                    break;
-                case 'Created':
-                    $historyComment = 'Entity Created Successfully';
-                    break;
-            }
-        } elseif (isset($request->createBtn) && !$hasAccountingEntities) {
-            $historyComment = ($status === 'Submitted') ? 'Entity Submitted' : 'Entity Created Successfully';
-        }
-
-        $history = [
-            'ID' => Str::uuid()->toString(),
-            'CustEntityID' => $cp->Id,
-            'RequestNo' => $cp->Code,
-            'Role' => $user->Role,
-            'ReasonID' => '84d62970-a1ce-47d3-9428-36e4647811f9',
-            'Comment' => $historyComment,
-            'Type' => 'Entity',
-            'PreviousValue' => $currentStatus,
-            'NewValue' => $status,
-            'CreatedBy' => $user->Id ?? 'System',
-            'CreatedOn' => Carbon::now(),
-            'LastModifiedBy' => $user->Id ?? 'System',
-            'LastModifiedOn' => Carbon::now()
-        ];
-        EntityHistory::create($history);
-        Log::info('Entity history logged', ['id' => $id, 'history' => $history]);
-    } catch (Exception $e) {
-        Log::warning('Failed to log history', ['id' => $id, 'error' => $e->getMessage()]);
-    }
-
-    // Handle D365 Integration (from store method) - Only for accounting entities going to PendingCountryLevelApproval
-    $client_party_status = 0;
-    if (isset($request->createBtn) && $status === 'PendingCountryLevelApproval') {
+    // D365 INTEGRATION - NOW HAPPENS AT PendingITVerification STAGE
+    if (isset($request->createBtn) && $currentStatus === 'PendingITVerification' && $status === 'Created') {
         if (isset($request->debtorCheck) || isset($request->vendorCheck)) {
             $entity_types = (strtolower($request->legalEntityType) == 'vendor') ? ['Vendor'] :
                            ((strtolower($request->legalEntityType) == 'debtor') ? ['Customer'] : ['Vendor', 'Customer']);
+
+            $d365IntegrationSuccess = true; // Flag to track overall D365 integration success
 
             foreach ($entity_types as $entity_type) {
                 if ($request->vendorCode != null || $request->debtorCode != null) {
                     continue;
                 }
 
-                $noSeries = $this->getOfficeNumberSeries($request->officeCode,
+                $noSeries = $this->getOfficeNumberSeries($request->officeCountryDisp,
                            ($entity_type == 'Customer') ? 'Debtor' : $entity_type);
+
+
+                // Check if noSeries is null and handle the error
+                if ($noSeries === null) {
+                    Log::error('D365 Integration Failed: No series number found', [
+                        'officeCode' => $request->officeCode,
+                        'entityType' => ($entity_type == 'Customer') ? 'Debtor' : $entity_type,
+                        'id' => $id
+                    ]);
+                    Alert::error('D365 Integration Error',
+                        'No series number found for office: ' . $request->officeCode .
+                        ' and entity type: ' . (($entity_type == 'Customer') ? 'Debtor' : $entity_type))
+                        ->persistent(true, false);
+
+                    // Rollback status change
+                    DB::table('Cust_entity')->where('Id', $id)->update(['Status' => 'PendingITVerification']);
+                    return redirect()->route('client-party.index');
+                }
 
                 $addressLine1 = $request->addressLine1 ?? 'Nairobi';
                 $addressLine2 = $request->addressLine2 ?? '';
@@ -1932,7 +1939,7 @@ public function store(StoreClientPartyRequest $request)
                 $countryCode = $request->countryCode;
 
                 $data = [
-                    "office" => ($request->officeCode == 'UPS') ? 'KE' : $request->officeCode,
+                    "office" => ($request->officeCountryDisp == 'UPS') ? 'KE' : $request->officeCountryDisp,
                     "partyType" => (strcmp(strtolower(App::environment()), 'production') == 0) ? $entity_type : 'TST',
                     "no" => "",
                     "name" => $request->companyName,
@@ -1961,40 +1968,217 @@ public function store(StoreClientPartyRequest $request)
                 ];
 
                 if (config('app.env') != 'Local') {
-                    $entity = $this->createLegalEntityType($entity_type, $data);
-                    Log::info('Legal Entity Data on Update:', $data);
-                    Log::info('Legal Entity Response on Update:', (array)$entity);
-                    $statusCode = $entity->status ?? ($entity->Status ?? null);
-                    $errors = $entity->errors ?? ($entity->Remark ?? null);
+                    try {
+                        Log::info('D365 Integration - Sending data:', [
+                            'entity_type' => $entity_type,
+                            'data' => $data,
+                            'id' => $id
+                        ]);
 
-                    if ($statusCode !== true) {
-                        $client_party_status = 0;
-                        Log::warning('Legal Entity Creation Failed on Update:', ['response' => (array)$entity, 'errors' => $errors]);
-                        $errorMessage = $errors ? json_encode($errors) : 'Failed to create legal entity.';
-                        Alert::warning('Error', $errorMessage)->persistent(true, false);
+                        $entity = $this->createLegalEntityType($entity_type, $data);
+
+                        Log::info('D365 Integration - Raw Response:', [
+                            'entity_type' => $entity_type,
+                            'response' => json_encode($entity),
+                            'id' => $id
+                        ]);
+
+                        // Enhanced validation of D365 response
+                        $isSuccess = false;
+                        $errorMessage = null;
+
+                        if (is_object($entity)) {
+                            // Check for HTTP error status codes
+                            if (property_exists($entity, 'status') && $entity->status >= 400) {
+                                $isSuccess = false;
+                                $errorMessage = property_exists($entity, 'title') ? $entity->title : 'HTTP Error: ' . $entity->status;
+                                if (property_exists($entity, 'errors') && is_object($entity->errors)) {
+                                    $validationErrors = [];
+                                    foreach ($entity->errors as $field => $messages) {
+                                        if (is_array($messages)) {
+                                            $validationErrors[] = $field . ': ' . implode(', ', $messages);
+                                        } else {
+                                            $validationErrors[] = $field . ': ' . $messages;
+                                        }
+                                    }
+                                    $errorMessage .= ' - Validation Errors: ' . implode('; ', $validationErrors);
+                                }
+                            }
+                            // Check for success indicators
+                            elseif (property_exists($entity, 'status') && $entity->status === true) {
+                                $isSuccess = true;
+                            }
+                            elseif (property_exists($entity, 'Status') && $entity->Status === true) {
+                                $isSuccess = true;
+                            }
+                            elseif (property_exists($entity, 'responseCode') || property_exists($entity, 'Code')) {
+                                $isSuccess = true;
+                            }
+                            // Check for error indicators
+                            elseif (property_exists($entity, 'status') && $entity->status === false) {
+                                $isSuccess = false;
+                                $errorMessage = property_exists($entity, 'Remark') ? $entity->Remark : 'D365 API returned status: false';
+                            }
+                            elseif (property_exists($entity, 'Status') && $entity->Status === false) {
+                                $isSuccess = false;
+                                $errorMessage = property_exists($entity, 'Remark') ? $entity->Remark : 'D365 API returned Status: false';
+                            }
+                            elseif (property_exists($entity, 'errors')) {
+                                $isSuccess = false;
+                                $errorMessage = property_exists($entity, 'Remark') ? $entity->Remark : 'D365 API returned errors';
+                            }
+                            else {
+                                // Default to success if no clear error indicators
+                                $isSuccess = true;
+                            }
+                        } else {
+                            $isSuccess = false;
+                            $errorMessage = 'Invalid response format from D365 API';
+                        }
+
+                        Log::info('D365 Integration - Validation Result:', [
+                            'entity_type' => $entity_type,
+                            'isSuccess' => $isSuccess,
+                            'errorMessage' => $errorMessage,
+                            'id' => $id
+                        ]);
+
+                        if (!$isSuccess) {
+                            Log::error('D365 Integration Failed at PendingITVerification (Update):', [
+                                'response' => json_encode($entity),
+                                'errorMessage' => $errorMessage,
+                                'id' => $id,
+                                'entity_type' => $entity_type,
+                                'data_sent' => $data
+                            ]);
+
+                            $d365IntegrationSuccess = false;
+
+                            // Rollback status change
+                            DB::table('Cust_entity')->where('Id', $id)->update(['Status' => 'PendingITVerification']);
+
+                            Alert::error('D365 Integration Error',
+                                'Failed to create ' . $entity_type . ' in D365: ' . $errorMessage)
+                                ->persistent(true, false);
+                            return redirect()->route('client-party.index');
+                        }
+
+                        // Success - update entity codes
+                        $entity_type_col = (strtolower($entity_type) == 'vendor') ? 'Vendor' : 'Debtor';
+                        $entityCode = null;
+
+                        if (property_exists($entity, 'responseCode')) {
+                            $entityCode = $entity->responseCode;
+                        } elseif (property_exists($entity, 'Code')) {
+                            $entityCode = $entity->Code;
+                        }
+
+                        if ($entityCode) {
+                            DB::table('Cust_Entity')->where('Id', $id)->update([
+                                ucfirst($entity_type_col) . 'Code' => $entityCode,
+                            ]);
+                        }
+
+                        Log::info('D365 Integration Success - codes updated at PendingITVerification (Update):', [
+                            'entity_type' => $entity_type,
+                            'code' => $entityCode,
+                            'id' => $id
+                        ]);
+
+                    } catch (Exception $e) {
+                        Log::error('D365 Integration Exception at PendingITVerification (Update):', [
+                            'error' => $e->getMessage(),
+                            'trace' => $e->getTraceAsString(),
+                            'id' => $id,
+                            'entity_type' => $entity_type,
+                            'data_sent' => $data
+                        ]);
+
+                        $d365IntegrationSuccess = false;
+
+                        // Rollback status change
+                        DB::table('Cust_entity')->where('Id', $id)->update(['Status' => 'PendingITVerification']);
+
+                        Alert::error('D365 Integration Error',
+                            'D365 integration failed with exception: ' . $e->getMessage())
+                            ->persistent(true, false);
                         return redirect()->route('client-party.index');
                     }
-
-                    $entity_type_col = (strtolower($entity_type) == 'vendor') ? 'Vendor' : 'Debtor';
-                    DB::table('Cust_Entity')->where('Id', $id)->update([
-                        ucfirst($entity_type_col) . 'Code' => $entity->responseCode ?? $entity->Code ?? null,
-                    ]);
-                    $client_party_status = 1;
                 } else {
-                    $client_party_status = 1;
+                    Log::info('D365 Integration skipped (Local environment) at PendingITVerification (Update)', [
+                        'id' => $id,
+                        'entity_type' => $entity_type,
+                        'noSeries' => $noSeries
+                    ]);
                 }
+            }
+
+            // If we reach here and D365 integration was not successful, ensure status rollback
+            if (!$d365IntegrationSuccess) {
+                DB::table('Cust_entity')->where('Id', $id)->update(['Status' => 'PendingITVerification']);
+                Log::error('D365 Integration overall failure - status rolled back', ['id' => $id]);
+                Alert::error('D365 Integration Error', 'D365 integration failed. Status rolled back to PendingITVerification.')
+                    ->persistent(true, false);
+                return redirect()->route('client-party.index');
             }
         }
     }
 
-    // SCM Integration - Only proceed if status is being set to 'Created' AND it's NOT an accounting entity
-    $shouldRunSCM = isset($request->createBtn) && ($status === 'Created') && !$hasAccountingEntities;
+    // Log history
+    try {
+        $historyComment = $isNewEntity ? 'Entity Created' : 'Entity Updated';
+        if (isset($request->createBtn) && $hasAccountingEntities) {
+            switch ($status) {
+                case 'PendingCountryLevelApproval':
+                    $historyComment = 'Entity Pending Country Level Approval';
+                    break;
+                case 'PendingGroupLevelApproval':
+                    $historyComment = 'Entity Pending Group Level Approval';
+                    break;
+                case 'PendingITVerification':
+                    $historyComment = 'Entity Pending IT Verification';
+                    break;
+                case 'Created':
+                    $historyComment = 'Entity Created Successfully with D365 Integration';
+                    break;
+            }
+        } elseif (isset($request->createBtn) && !$hasAccountingEntities) {
+            $historyComment = ($status === 'Submitted') ? 'Entity Submitted' : 'Entity Created Successfully';
+        }
+
+        $history = [
+            'ID' => Str::uuid()->toString(),
+            'CustEntityID' => $cp->Id,
+            'RequestNo' => $cp->Code,
+            'Role' => $user->Role,
+            'ReasonID' => '84d62970-a1ce-47d3-9428-36e4647811f9',
+            'Comment' => $historyComment,
+            'Type' => 'Entity',
+            'PreviousValue' => $currentStatus,
+            'NewValue' => $status,
+            'CreatedBy' => $user->Id ?? 'System',
+            'CreatedOn' => Carbon::now(),
+            'LastModifiedBy' => $user->Id ?? 'System',
+            'LastModifiedOn' => Carbon::now()
+        ];
+        EntityHistory::create($history);
+        Log::info('Entity history logged', ['id' => $id, 'history' => $history]);
+    } catch (Exception $e) {
+        Log::warning('Failed to log history', ['id' => $id, 'error' => $e->getMessage()]);
+    }
+
+    // SCM Integration - Only proceed if status is being set to 'Created' AND it's NOT an accounting entity OR if it's an accounting entity that already went through D365
+    $shouldRunSCM = isset($request->createBtn) && ($status === 'Created') && (
+        !$hasAccountingEntities ||
+        ($hasAccountingEntities && $currentStatus === 'PendingITVerification')
+    );
 
     Log::info('SCM Decision Logic', [
         'id' => $id,
         'shouldRunSCM' => $shouldRunSCM,
         'createBtn' => isset($request->createBtn),
         'status' => $status,
+        'currentStatus' => $currentStatus,
         'hasAccountingEntities' => $hasAccountingEntities,
         'isAccounting' => $isAccounting
     ]);
@@ -2040,38 +2224,42 @@ public function store(StoreClientPartyRequest $request)
         } else {
             $client_party_status = 1;
         }
-    }
 
-    // Create entity on SCM - Only if we should run SCM and it's ready (NOT for accounting entities)
-    if ($shouldRunSCM && $client_party_status == 1) {
-        if ($request->partyEntityType != 'NoSCMIntegration') {
-            Log::info('Calling CreateClientPartySCM for non-accounting entity', ['id' => $id]);
-            $scmRequest = new \Illuminate\Http\Request(['requestID' => $cp->Id]);
-            $results = $this->CreateClientPartySCM($scmRequest);
-        } else {
-            // Ensure status is set to 'Created' for NoSCMIntegration
-            DB::table('Cust_entity')->where('Id', $cp->Id)->update(['Status' => 'Created']);
-            $results = ['success' => true, 'data' => ['Status' => 'Success', 'Remark' => 'Debtor / Vendor Created In D365']];
-        }
-
-        Log::info('SCM Creation Results:', (array)$results);
-        if (isset($results['success']) && $results['success'] && isset($results['data'])) {
-            if ($results['data']['Status'] === 'Success') {
-                Alert::success('Success', $results['data']['Remark'] ?? 'Entity created successfully in SCM')->showConfirmButton();
+        // Create entity on SCM
+        if ($client_party_status == 1) {
+            if ($request->partyEntityType != 'NoSCMIntegration') {
+                Log::info('Calling CreateClientPartySCM', ['id' => $id]);
+                $scmRequest = new \Illuminate\Http\Request(['requestID' => $cp->Id]);
+                $results = $this->CreateClientPartySCM($scmRequest);
             } else {
-                Alert::error('Failed', $results['data']['Remark'] ?? 'SCM creation failed')->showConfirmButton();
+                // Ensure status is set to 'Created' for NoSCMIntegration
+                DB::table('Cust_entity')->where('Id', $cp->Id)->update(['Status' => 'Created']);
+                $results = ['success' => true, 'data' => ['Status' => 'Success', 'Remark' => 'Entity Created (No SCM Integration)']];
             }
-        } else {
-            Alert::error('Error', $results['error'] ?? 'SCM creation failed')->showConfirmButton();
+
+            Log::info('SCM Creation Results:', (array)$results);
+            if (isset($results['success']) && $results['success'] && isset($results['data'])) {
+                if ($results['data']['Status'] === 'Success') {
+                    $successMessage = $hasAccountingEntities && $currentStatus === 'PendingITVerification'
+                        ? 'Entity created successfully with D365 and SCM integration'
+                        : ($results['data']['Remark'] ?? 'Entity created successfully in SCM');
+                    Alert::success('Success', $successMessage)->showConfirmButton();
+                } else {
+                    Alert::error('Failed', $results['data']['Remark'] ?? 'SCM creation failed')->showConfirmButton();
+                }
+            } else {
+                Alert::error('Error', $results['error'] ?? 'SCM creation failed')->showConfirmButton();
+            }
         }
-    } elseif ($hasAccountingEntities && $status === 'Created') {
-        // For accounting entities that reach 'Created' status, skip SCM and show success message
-        Log::info('Skipping SCM for accounting entity with Created status', [
+    } elseif ($hasAccountingEntities && $status === 'Created' && $currentStatus === 'PendingITVerification') {
+        // For accounting entities that reach 'Created' status from PendingITVerification (D365 integration completed)
+        Log::info('D365 integration completed, entity created', [
             'id' => $id,
             'hasAccountingEntities' => $hasAccountingEntities,
-            'status' => $status
+            'status' => $status,
+            'currentStatus' => $currentStatus
         ]);
-        Alert::success('Success', 'Entity created successfully (SCM skipped for accounting entity)')->showConfirmButton();
+        Alert::success('Success', 'Entity created successfully with D365 integration')->showConfirmButton();
     } else {
         // Provide appropriate success message based on status
         $successMessage = 'Entity Updated.';
@@ -2084,7 +2272,7 @@ public function store(StoreClientPartyRequest $request)
                     $successMessage = 'Entity pending group level approval.';
                     break;
                 case 'PendingITVerification':
-                    $successMessage = 'Entity pending IT verification.';
+                    $successMessage = 'Entity pending IT verification. D365 integration will occur at next approval.';
                     break;
                 case 'Submitted':
                     $successMessage = 'Entity submitted successfully.';
@@ -2708,9 +2896,9 @@ private function getApprovalMessage($isAccounting, $status)
     public function getCompanyDetails()
 
     {
-        // dd('getCompanyDetails called');
+
         try {
-            // dd('getCompanyDetails called with Request: ' . json_encode(Request::all()));
+
             $entityType = Request::get('entityType');
             $companyId = Request::get('companyId');
 
@@ -2720,7 +2908,7 @@ private function getApprovalMessage($isAccounting, $status)
 
             // Execute stored procedure
             $results = DB::select('SET NOCOUNT ON; EXEC sp_EntityAddressDetails ?, ?', [$entityType, $companyId]);
-            // dd('sp_EntityAddressDetails results: ' . json_encode($results));
+
             // Handle string-based error
             if ($results && is_array($results) && count($results) > 0 && is_string($results[0])) {
                 \Log::error('tityAddressDetails failed for entityType: ' . $entityType . ', companyId: ' . $companyId . ', Error: ' . $results[0]);

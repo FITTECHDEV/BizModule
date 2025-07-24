@@ -70,7 +70,7 @@ class Kernel extends ConsoleKernel
             ->emailOutputOnFailure('admin@yourcompany.com'); // Optional: add your email
 
         $schedule->command('crmscm:Booking')
-            ->everyFiveMinutes()
+            ->everyTwentyMinutes()
             ->withoutOverlapping()
             ->appendOutputTo(storage_path('logs/crmscm.log'))
             ->onSuccess(function () {
@@ -79,6 +79,7 @@ class Kernel extends ConsoleKernel
             ->onFailure(function () {
                 Log::error('CRMSCM: Scheduled task failed');
             });
+
             // ->emailOutputOnFailure('admin@yourcompany.com'); // Optional: add your email
 
             $schedule->command('z_report_json_tz')
