@@ -647,9 +647,6 @@
                                                             </div>
                                                         </div>
                                                     </div>
-                                                    <!-- Add officeCode if not present elsewhere -->
-                                                    <input type="hidden" id="officeCode" name="officeCode"
-                                                        value="KE">
                                                 </fieldset>
 
                                             </fieldset>

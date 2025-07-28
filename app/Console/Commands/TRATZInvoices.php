@@ -97,7 +97,7 @@ class TRATZInvoices extends Command
      */
     protected function submitToApi($invoice, $jsonData)
     {
-        $baseUrl = rtrim(env('TRA_BASE_URL'), '/');
+        $baseUrl = rtrim(env('TRA_FITTZ_BASE_URL'), '/');
         $url = "{$baseUrl}/invoices";
 
         $response = Http::withBasicAuth(env('TRA_USERNAME'), env('TRA_PASSWORD'))

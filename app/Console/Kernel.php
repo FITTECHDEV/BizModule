@@ -54,7 +54,7 @@ class Kernel extends ConsoleKernel
             ->between('8:30', '17:00')
             ->withoutOverlapping();
 
-        // $schedule->command('generate:invoice')->everyFiveMinutes()->withoutOverlapping();
+        $schedule->command('generate:invoice')->everyFiveMinutes()->withoutOverlapping();
         $schedule->command('tra_adl:invoices')
             ->everyFiveMinutes()
             ->withoutOverlapping();
@@ -82,15 +82,15 @@ class Kernel extends ConsoleKernel
 
             // ->emailOutputOnFailure('admin@yourcompany.com'); // Optional: add your email
 
-            $schedule->command('z_report_json_tz')
-             ->dailyAt('10:00')
-             ->withoutOverlapping()
-             ->runInBackground();
+            // $schedule->command('z_report_json_tz')
+            //  ->dailyAt('10:00')
+            //  ->withoutOverlapping()
+            //  ->runInBackground();
 
-              $schedule->command('z_report_json_ar')
-             ->dailyAt('10:00')
-             ->withoutOverlapping()
-             ->runInBackground();
+            //   $schedule->command('z_report_json_ar')
+            //  ->dailyAt('10:00')
+            //  ->withoutOverlapping()
+            //  ->runInBackground();
 
     }
 
