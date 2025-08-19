@@ -1829,14 +1829,33 @@ class ClientPartyController extends Controller
         // D365 INTEGRATION - NOW HAPPENS AT PendingITVerification STAGE
         if (isset($request->createBtn) && $currentStatus === 'PendingITVerification' && $status === 'Created') {
             if (isset($request->debtorCheck) || isset($request->vendorCheck)) {
-                $entity_types = (strtolower($request->legalEntityType) == 'vendor') ? ['Vendor'] : ((strtolower($request->legalEntityType) == 'debtor') ? ['Customer'] : ['Vendor', 'Customer']);
+                // Determine if this is a D365-only entity
+                $legalEntityType = strtolower($request->legalEntityType);
+                $isD365OnlyEntity = in_array($legalEntityType, [
+                    'only in d365 vendor',
+                    'only in d365 debtor'
+                ]);
+
+                // Determine entity types based on legal entity type
+                if ($legalEntityType == 'only in d365 vendor') {
+                    $entity_types = ['Vendor'];
+                } elseif ($legalEntityType == 'only in d365 debtor') {
+                    $entity_types = ['Customer'];
+                } elseif ($legalEntityType == 'vendor') {
+                    $entity_types = ['Vendor'];
+                } elseif ($legalEntityType == 'debtor') {
+                    $entity_types = ['Customer'];
+                } else {
+                    $entity_types = ['Vendor', 'Customer'];
+                }
 
                 Log::info('D365 Integration Starting', [
                     'id' => $id,
                     'currentStatus' => $currentStatus,
                     'newStatus' => $status,
                     'entity_types' => $entity_types,
-                    'legalEntityType' => $request->legalEntityType
+                    'legalEntityType' => $request->legalEntityType,
+                    'isD365OnlyEntity' => $isD365OnlyEntity
                 ]);
 
                 $d365IntegrationSuccess = true;
@@ -2160,7 +2179,11 @@ class ClientPartyController extends Controller
                         $historyComment = 'Entity Pending IT Verification';
                         break;
                     case 'Created':
-                        $historyComment = 'Entity Created Successfully with D365 Integration';
+                        if ($isD365OnlyEntity) {
+                            $historyComment = 'Entity Created Successfully with D365 Integration Only';
+                        } else {
+                            $historyComment = 'Entity Created Successfully with D365 Integration';
+                        }
                         break;
                 }
             } elseif (isset($request->createBtn) && !$hasAccountingEntities) {
@@ -2189,19 +2212,28 @@ class ClientPartyController extends Controller
         }
 
         // SCM Integration - Only proceed if status is being set to 'Created' AND it's NOT an accounting entity OR if it's an accounting entity that already went through D365
-        $shouldRunSCM = isset($request->createBtn) && ($status === 'Created') && (
-            !$hasAccountingEntities ||
-            ($hasAccountingEntities && $currentStatus === 'PendingITVerification')
-        );
+        $isD365OnlyEntity = in_array(strtolower($request->legalEntityType), [
+            'only in d365 vendor',
+            'only in d365 debtor'
+        ]);
+
+        $shouldRunSCM = isset($request->createBtn) &&
+            ($status === 'Created') &&
+            !$isD365OnlyEntity && // Skip SCM for D365-only entities
+            (
+                !$hasAccountingEntities ||
+                ($hasAccountingEntities && $currentStatus === 'PendingITVerification')
+            );
 
         Log::info('SCM Decision Logic', [
             'id' => $id,
             'shouldRunSCM' => $shouldRunSCM,
+            'isD365OnlyEntity' => $isD365OnlyEntity,
+            'legalEntityType' => $request->legalEntityType,
             'createBtn' => isset($request->createBtn),
             'status' => $status,
             'currentStatus' => $currentStatus,
-            'hasAccountingEntities' => $hasAccountingEntities,
-            'isAccounting' => $isAccounting
+            'hasAccountingEntities' => $hasAccountingEntities
         ]);
 
         if ($shouldRunSCM) {
@@ -2272,6 +2304,14 @@ class ClientPartyController extends Controller
                     Alert::error('Error', $results['error'] ?? 'SCM creation failed')->showConfirmButton();
                 }
             }
+        } elseif ($isD365OnlyEntity && $status === 'Created' && $currentStatus === 'PendingITVerification') {
+            // For D365-only entities that don't need SCM integration
+            Log::info('D365-only entity created successfully', [
+                'id' => $id,
+                'legalEntityType' => $request->legalEntityType,
+                'status' => $status
+            ]);
+            Alert::success('Success', 'Entity created successfully in D365 (SCM integration skipped)')->showConfirmButton();
         } elseif ($hasAccountingEntities && $status === 'Created' && $currentStatus === 'PendingITVerification') {
             // For accounting entities that reach 'Created' status from PendingITVerification (D365 integration completed)
             Log::info('D365 integration completed, entity created', [

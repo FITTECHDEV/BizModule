@@ -1417,18 +1417,22 @@
                             // Use visible admin fields
                             $('#otherInput').val(companyName);
                             if (!$('#otherID').val()) {
-                                $('#otherID').val(generateTempId());
+                                // $('#otherID').val(generateUUID()); // Use proper UUID
+                                $('#otherID').val();
                             }
                             if (!$('#otherCode').val()) {
-                                $('#otherCode').val(generateTempCode());
+                                // $('#otherCode').val(generateTempCode()); // Code can remain string
+                                $('#otherCode').val();
                             }
                             $('#other_Input').text($('#otherCode').val());
                             $('#otherCheck').prop('checked', true);
                         } else {
                             // Use hidden fields for accounting mode only
                             $('#hiddenOtherInput').val(companyName);
-                            $('#hiddenOtherID').val(generateTempId());
-                            $('#hiddenOtherCode').val(generateTempCode());
+                            // $('#hiddenOtherID').val(generateUUID()); // Use proper UUID
+                            // $('#hiddenOtherCode').val(generateTempCode()); // Code can remain string
+                            $('#hiddenOtherID').val(); // Use proper UUID
+                            $('#hiddenOtherCode').val();
                             $('#hiddenOtherCheck').val('1');
                         }
 
@@ -1439,7 +1443,6 @@
                         });
                     }
                 }
-                // Do nothing for operational mode
             }
 
             // Enhanced function to ensure Other fields are always populated for accounting mode
@@ -1484,11 +1487,20 @@
 
             // Helper functions for generating temporary IDs and codes
             function generateTempId() {
-                return 'temp-' + Math.random().toString(36).substr(2, 9);
+                // Generate a proper GUID/UUID format
+                return generateUUID();
             }
 
             function generateTempCode() {
                 return 'TEMP-' + Math.random().toString(36).substr(2, 6).toUpperCase();
+            }
+
+            function generateUUID() {
+                return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                    var r = Math.random() * 16 | 0,
+                        v = c == 'x' ? r : (r & 0x3 | 0x8);
+                    return v.toString(16);
+                });
             }
 
             // ================================
@@ -1572,6 +1584,32 @@
                 return true; // Always valid for operational mode
             }
 
+            function validateGuidFields() {
+    const guidFields = [
+        'companyId', 'clientID', 'otherID', 'hiddenOtherID',
+        'countryID', 'officeCountryID', 'billingCurrency'
+    ];
+
+    guidFields.forEach(fieldId => {
+        const field = $('#' + fieldId);
+        if (field.length && field.val() && field.val().trim() !== '') {
+            const value = field.val().trim();
+
+            // Check if it's a valid GUID format
+            const guidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+            if (!guidRegex.test(value)) {
+                console.warn(`Invalid GUID format for ${fieldId}:`, value);
+
+                // If it's a temp ID that's not a proper GUID, replace it
+                if (value.startsWith('temp-')) {
+                    field.val(generateUUID());
+                    console.log(`Replaced invalid temp ID with proper GUID for ${fieldId}`);
+                }
+            }
+        }
+    });
+}
             function showFileError(message) {
                 const errorElement = $('#file-upload-error');
                 errorElement.html('<i class="fa fa-exclamation-triangle"></i> ' + message);
@@ -2970,6 +3008,7 @@
 
                     console.log('Form submission - ensuring Other fields for accounting mode only');
                     ensureOtherFieldsForAccountingMode();
+                     validateGuidFields();
 
                     // Double-check that Other fields are properly set based on user access level
                     let otherInput, otherID, otherCode, otherChecked;

@@ -63,22 +63,22 @@ class Kernel extends ConsoleKernel
             ->everyFiveMinutes()
             ->withoutOverlapping();
 
-        $schedule->command('sync:scmprofit')
-            ->everyTenMinutes()
-            ->withoutOverlapping()
-            ->appendOutputTo(storage_path('logs/scm-sync.log'))
-            ->emailOutputOnFailure('admin@yourcompany.com'); // Optional: add your email
+        // $schedule->command('sync:scmprofit')
+        //     ->everyTenMinutes()
+        //     ->withoutOverlapping()
+        //     ->appendOutputTo(storage_path('logs/scm-sync.log'))
+        //     ->emailOutputOnFailure('admin@yourcompany.com'); // Optional: add your email
 
-        $schedule->command('crmscm:Booking')
-            ->everyTwentyMinutes()
-            ->withoutOverlapping()
-            ->appendOutputTo(storage_path('logs/crmscm.log'))
-            ->onSuccess(function () {
-                Log::info('CRMSCM: Scheduled task completed successfully');
-            })
-            ->onFailure(function () {
-                Log::error('CRMSCM: Scheduled task failed');
-            });
+        // $schedule->command('crmscm:Booking')
+        //     ->everyTwentyMinutes()
+        //     ->withoutOverlapping()
+        //     ->appendOutputTo(storage_path('logs/crmscm.log'))
+        //     ->onSuccess(function () {
+        //         Log::info('CRMSCM: Scheduled task completed successfully');
+        //     })
+        //     ->onFailure(function () {
+        //         Log::error('CRMSCM: Scheduled task failed');
+        //     });
 
             // ->emailOutputOnFailure('admin@yourcompany.com'); // Optional: add your email
 
