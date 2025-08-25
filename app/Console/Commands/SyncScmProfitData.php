@@ -48,7 +48,6 @@ class SyncScmProfitData extends Command
 
             $this->syncData($dates);
             $this->displaySummary();
-
         } catch (\Exception $e) {
             $this->error("Critical error: " . $e->getMessage());
             Log::error('SyncScmProfitData failed', [
@@ -118,26 +117,36 @@ class SyncScmProfitData extends Command
     }
 
     private function getTotalRecords(array $dates): int
-    {
-        return DB::connection('pgsql')->selectOne("
-            SELECT COUNT(*) as total FROM vw_scmprofit_integration
-            WHERE CAST(CreatedOn AS date) >= ?
-            OR CAST(UpdatedOn AS date) >= ?",
-            [$dates['start'], $dates['current']]
-        )->total;
-    }
+{
+    return DB::connection('pgsql')->selectOne("
+        SELECT COUNT(*) as total
+        FROM vw_scmprofit_integration
+        WHERE CAST(CreatedOn AS date) = CURRENT_DATE
+           OR CAST(UpdatedOn AS date) = CURRENT_DATE
+    ")->total;
+      Log::info("SCM Sync: Found {$total} records to process for today.");
 
-    private function getRecordsBatch(array $dates, int $offset, int $limit): array
-    {
-        return DB::connection('pgsql')->select("
-            SELECT * FROM vw_scmprofit_integration
-            WHERE CAST(CreatedOn AS date) >= ?
-            OR CAST(UpdatedOn AS date) >= ?
-            ORDER BY bookingno
-            LIMIT ? OFFSET ?",
-            [$dates['start'], $dates['current'], $limit, $offset]
-        );
-    }
+    return $total;
+}
+
+
+  private function getRecordsBatch(array $dates, int $offset, int $limit): array
+{
+    return DB::connection('pgsql')->select(
+        "
+        SELECT *
+        FROM vw_scmprofit_integration
+        WHERE CAST(CreatedOn AS date) = CURRENT_DATE
+           OR CAST(UpdatedOn AS date) = CURRENT_DATE
+        ORDER BY bookingno
+        LIMIT ? OFFSET ?",
+        [$limit, $offset]
+    );
+    Log::info("SCM Sync: Fetched batch with offset {$offset}, limit {$limit}, count: " . count($records));
+
+    return $records;
+}
+
 
     private function processBatch(array $records): void
     {
