@@ -323,10 +323,14 @@ Route::get('/', function () {
     return redirect()->route('home');
 });
 Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+
 Route::get('/imports', function () {
-    return view('logintracker.imports.index'); })->name('imports.index');
-    
+    return view('logintracker.imports.index');
+})->name('imports.index');
+
 Route::get('/activity-report', [ActivityReportController::class, 'userActivityReport'])->name('activity.report');
+
+// Explicit routes for login status
 Route::get('/users/logged-in', [UserController::class, 'loggedInUsers'])->name('users.logged-in');
 Route::get('/users/not-logged-in', [UserController::class, 'notLoggedInUsers'])->name('users.not-logged-in');
 
@@ -334,5 +338,6 @@ Route::get('/users/not-logged-in', [UserController::class, 'notLoggedInUsers'])-
 Route::post('/import/users', [ImportController::class, 'importUsers'])->name('import.users');
 Route::post('/import/sign-ins', [ImportController::class, 'importSignIns'])->name('import.sign_ins');
 
-// User management resource routes (show, create, edit, delete, etc.)
-Route::resource('users', UserController::class);
+// User management resource routes (with UUID constraint to avoid conflicts)
+Route::resource('users', UserController::class)
+    ->where(['user' => '[0-9a-fA-F-]{36}']);

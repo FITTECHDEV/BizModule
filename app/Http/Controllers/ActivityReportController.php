@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
-use App\Models\SigninLog;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -40,14 +39,14 @@ class ActivityReportController extends Controller
                 'users.userPrincipalName',
 
                 // Aggregate data: total logins, first and last login timestamps
-                DB::raw('COUNT(signin_logs.user_id) AS login_count'),
-                DB::raw('MIN(signin_logs.date_utc) AS first_login'),
-                DB::raw('MAX(signin_logs.date_utc) AS last_login')
+                DB::raw('COUNT([dbo].[Azure_LoginDetails].user_id) AS login_count'),
+                DB::raw('MIN([dbo].[Azure_LoginDetails].date_utc) AS first_login'),
+                DB::raw('MAX([dbo].[Azure_LoginDetails].date_utc) AS last_login')
             ])
             // Left join to include users even if they have no sign-ins
-            ->leftJoin('signin_logs', function ($join) use ($startDate, $endDate) {
-                $join->on('signin_logs.user_id', '=', 'users.id')
-                     ->whereBetween('signin_logs.date_utc', [$startDate, $endDate]);
+            ->leftJoin('dbo.Azure_LoginDetails', function ($join) use ($startDate, $endDate) {
+                $join->on('dbo.Azure_LoginDetails.user_id', '=', 'users.id')
+                     ->whereBetween('dbo.Azure_LoginDetails.date_utc', [$startDate, $endDate]);
             });
 
         // Apply search filter if provided

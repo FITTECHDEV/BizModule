@@ -20,6 +20,8 @@ class User extends Authenticatable
      *
      * @var string
      */
+        protected $table = 'dbo.Azure_Users';   // 👈 add this
+
     protected $primaryKey = 'id';
     public $timestamps = false;
 
@@ -126,7 +128,7 @@ class User extends Authenticatable
      */
     public function signIns()
     {
-        return $this->hasMany(SigninLog::class);//, 'user_id', 'id' // Updated to match interactiveSignIns
+        return $this->hasMany(SigninLog::class, 'user_id', 'id');// // Updated to match interactiveSignIns
     }
 
     public function interactiveSignIns()

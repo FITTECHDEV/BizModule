@@ -131,18 +131,18 @@ class DashboardStatsService
         $notLoggedInCount = $totalUsers - $loggedInCount;
 
         // 🔹 All sign-ins for listing
-        $signIns = DB::table('signin_logs')
-            ->join('users', 'signin_logs.user_id', '=', 'users.id')
+        $signIns = DB::table('dbo.Azure_LoginDetails')
+            ->join('users', 'dbo.Azure_LoginDetails.user_id', '=', 'users.id')
             ->select(
                 'users.id',
-                'signin_logs.date_utc',
-                'signin_logs.application',
+                'dbo.Azure_LoginDetails.date_utc',
+                'dbo.Azure_LoginDetails.application',
                 'users.displayName',
                 'users.userPrincipalName as email'
             )
-            ->whereBetween('signin_logs.date_utc', [$startDate, $endDate])
-            ->when($system, fn($q) => $q->where('signin_logs.application', $system))
-            ->orderByDesc('signin_logs.date_utc')
+            ->whereBetween('dbo.Azure_LoginDetails.date_utc', [$startDate, $endDate])
+            ->when($system, fn($q) => $q->where('dbo.Azure_LoginDetails.application', $system))
+            ->orderByDesc('dbo.Azure_LoginDetails.date_utc')
             ->get();
 
         // 🔹 Total and last login

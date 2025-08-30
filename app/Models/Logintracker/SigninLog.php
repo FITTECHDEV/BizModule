@@ -5,6 +5,7 @@ namespace App\Models\Logintracker;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Model representing sign-in records for application users.
@@ -13,7 +14,7 @@ class SigninLog extends Model
 {
     use HasFactory;
 
-    protected $table = 'signin_logs';
+    protected $table = 'dbo.Azure_LoginDetails';
 
     protected $fillable = [
         'date_utc', 'request_id', 'user_agent', 'correlation_id', 'user_id',
@@ -33,21 +34,51 @@ class SigninLog extends Model
         'incoming_token_type_duplicate', 'token_issuer_name', 'latency',
         'conditional_access', 'managed_identity_type', 'associated_resource_id',
         'federated_token_id', 'federated_token_issuer',
+        'created_at', 'updated_at',
     ];
 
+    // Optional: enable casting if column is fixed later
+    protected $casts = [
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+        // 'date_utc' => 'datetime', // Uncomment if column is changed to datetime
+    ];
+
+    /**
+     * Relationships
+     */
     public function user()
     {
         return $this->belongsTo(User::class, 'user_id');
     }
 
+    /**
+     * Query scopes
+     */
     public function scopeLast30Days($query)
     {
-        return $query->where('date_utc', '>=', now()->subDays(30));
+        return $query->whereRaw("CONVERT(datetime, date_utc) >= ?", [now()->subDays(30)->format('Y-m-d H:i:s')]);
+    }
+
+    public function scopeBetweenDateUtc($query, $start, $end)
+    {
+        return $query->whereRaw(
+            "CONVERT(datetime, date_utc) BETWEEN ? AND ?",
+            [
+                Carbon::parse($start)->format('Y-m-d H:i:s'),
+                Carbon::parse($end)->format('Y-m-d H:i:s'),
+            ]
+        );
     }
 
     public function scopeLatestFirst($query)
     {
-        return $query->orderBy('date_utc', 'desc');
+        return $query->orderBy('created_at', 'desc');
+    }
+
+    public function scopeDefaultSort($query)
+    {
+        return $query->orderByRaw("CONVERT(datetime, date_utc) DESC");
     }
 
     public function scopeByApplication($query, $application)
@@ -60,9 +91,28 @@ class SigninLog extends Model
         return $query->where('status', $status);
     }
 
+    public function scopeByUser($query, $userId)
+    {
+        return $query->where('user_id', $userId);
+    }
+
+    /**
+     * Accessors
+     */
     public function getDateUtcFormattedAttribute()
     {
-        return $this->date_utc ? Carbon::parse($this->date_utc)->format('Y-m-d H:i:s') : null;
+        try {
+            return Carbon::parse($this->date_utc)->format('Y-m-d H:i:s');
+        } catch (\Exception $e) {
+            return 'Invalid date';
+        }
+    }
+
+    public function getCreatedAtFormattedAttribute()
+    {
+        return $this->created_at
+            ? Carbon::parse($this->created_at)->format('Y-m-d H:i:s')
+            : null;
     }
 
     public function getIpAddressFormattedAttribute()
@@ -79,6 +129,9 @@ class SigninLog extends Model
         };
     }
 
+    /**
+     * Helpers
+     */
     public function isSuccessful()
     {
         return $this->status === 'Success';
@@ -89,9 +142,14 @@ class SigninLog extends Model
         return $this->status === 'Failed';
     }
 
-    // Optional: Update to reflect actual systems if needed
+    public function usedMfa()
+    {
+        return !empty($this->multifactor_authentication_result) &&
+               $this->multifactor_authentication_result !== 'None';
+    }
+
     public static function getSystemList()
     {
-        return SigninLog::select('system')->distinct()->pluck('system')->toArray();
+        return static::select('system')->distinct()->pluck('system')->toArray();
     }
 }
