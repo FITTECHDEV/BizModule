@@ -20,7 +20,7 @@ class User extends Authenticatable
      *
      * @var string
      */
-        protected $table = 'dbo.Azure_Users';   // 👈 add this
+        protected $table = 'Azure_Users';   // 👈 add this
 
     protected $primaryKey = 'id';
     public $timestamps = false;
