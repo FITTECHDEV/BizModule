@@ -5,6 +5,7 @@ namespace App\Models\Logintracker;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+
 /**
  * App\Models\User
  *
@@ -16,19 +17,21 @@ class User extends Authenticatable
     use HasFactory;
 
     /**
+     * The table associated with the model.
+     *
+     * @var string
+     */
+    protected $table = 'Azure_Users';
+
+    /**
      * The primary key for the model.
      *
      * @var string
      */
-        protected $table = 'Azure_Users';   // 👈 add this
-
     protected $primaryKey = 'id';
-    public $timestamps = false;
-
 
     /**
      * Indicates if the IDs are auto-incrementing.
-     * We're using a string-based GUID/UUID here.
      *
      * @var bool
      */
@@ -42,63 +45,47 @@ class User extends Authenticatable
     protected $keyType = 'string';
 
     /**
+     * Disable timestamps (no created_at/updated_at).
+     *
+     * @var bool
+     */
+    public $timestamps = false;
+
+    /**
      * The attributes that are mass assignable via create() or fill().
      *
      * @var array
      */
     protected $fillable = [
-        // Required core attributes
         'id',
         'userPrincipalName',
         'displayName',
-
-        // Personal details
-        'surname1',
-        'surname2',
-        'givenName1',
-        'givenName2',
-
-        // Email addresses
-        'mail1',
-        'mail2',
-        'email',
-
-        // Account details
+        'surname',
+        'mail',
+        'givenName',
         'userType',
         'jobTitle',
         'department',
         'accountEnabled',
-        'logged_in',
         'usageLocation',
-
-        // Address and contact info
         'streetAddress',
         'state',
         'country',
         'officeLocation',
         'city',
         'postalCode',
-        'telephone',
+        'telephoneNumber',
         'mobilePhone',
         'alternateEmailAddress',
-
-        // Demographics
         'ageGroup',
         'consentProvidedForMinor',
         'legalAgeGroupClassification',
-
-        // Directory and identity metadata
         'companyName',
         'creationType',
         'directorySynced',
         'invitationState',
         'identityIssuer',
-
-        // Timestamps
         'createdDateTime',
-
-        // Authentication
-        'password',
     ];
 
     /**
@@ -107,8 +94,6 @@ class User extends Authenticatable
      * @var array
      */
     protected $casts = [
-        'accountEnabled' => 'boolean',
-        'directorySynced' => 'boolean',
         'createdDateTime' => 'datetime',
     ];
 
@@ -122,13 +107,27 @@ class User extends Authenticatable
     ];
 
     /**
+     * Accessor for accountEnabled since DB stores it as varchar.
+     */
+    public function getAccountEnabledAttribute($value)
+    {
+        return strtolower($value) === 'true' || $value === '1';
+    }
+
+    /**
+     * Accessor for directorySynced since DB stores it as varchar.
+     */
+    public function getDirectorySyncedAttribute($value)
+    {
+        return strtolower($value) === 'true' || $value === '1';
+    }
+
+    /**
      * Get the sign-in records associated with this user.
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\HasMany
      */
     public function signIns()
     {
-        return $this->hasMany(SigninLog::class, 'user_id', 'id');// // Updated to match interactiveSignIns
+        return $this->hasMany(SigninLog::class, 'user_id', 'id');
     }
 
     public function interactiveSignIns()
@@ -136,26 +135,47 @@ class User extends Authenticatable
         return $this->hasMany(SigninLog::class, 'user_id', 'id');
     }
 
-
     public function signinLogs()
-{
-    return $this->hasMany(SigninLog::class, 'user_id', 'id');
+    {
+        return $this->hasMany(SigninLog::class, 'user_id', 'id');
+    }
 
-}
+    /**
+     * Get the systems associated with this user.
+     */
+    public function systems(): BelongsToMany
+    {
+        return $this->belongsToMany(System::class, 'application_user', 'user_id', 'application_id')
+                    ->withPivot('id');
+    }
 
+    /**
+     * Use UUID instead of numeric id for route model binding.
+     */
+    public function getRouteKeyName()
+    {
+        return 'id';
+    }
 
-
-
-/**
- * Get the systems associated with this user.
- *
- * @return \Illuminate\Database\Eloquent\Relations\BelongsToMany
- */
-
-public function systems(): BelongsToMany
-{
-    return $this->belongsToMany(System::class, 'application_user', 'user_id', 'application_id')
-                ->withPivot('id');
-}
+     /**
+     * Find a user by userPrincipalName or id.
+     *
+     * @param string $identifier
+     * @return self|null
+     */
+    public static function findByIdentifier($identifier)
+    {
+        // Try userPrincipalName first
+        $user = self::where('userPrincipalName', $identifier)->first();
+        if ($user) {
+            return $user;
+        }
+        // Try id if it's a GUID
+        if (preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $identifier)) {
+            return self::find($identifier);
+        }
+        \Log::error('Invalid identifier for Azure_Users: ' . $identifier);
+        return null;
+    }
 
 }

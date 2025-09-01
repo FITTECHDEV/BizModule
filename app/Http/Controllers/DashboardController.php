@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Logintracker\User;
+
 use Illuminate\Http\Request;
 use App\Services\LoginFilterService;
 use App\Services\DashboardStatsService;
@@ -197,70 +199,56 @@ class DashboardController extends Controller
         ]);
     }
 
-    public function showDashboard()
-    {
-        // Use the same mock data and logic as index for consistency
-        $filters = $this->filterService->parseFilters(request());
-        $users = $this->getMockUsers();
+public function showDashboard()
+{
+    $filters = $this->filterService->parseFilters(request());
 
-        if ($searchTerm = request()->input('search')) {
-            $users = $users->filter(function ($user) use ($searchTerm) {
-                return stripos($user['displayName'], $searchTerm) !== false ||
-                       stripos($user['userPrincipalName'], $searchTerm) !== false;
-            });
-        }
+    // Fetch real users
+    $query = \App\Models\User::query();
 
-        $perPage = 17;
-        $currentPage = request()->input('page', 1);
-        $total = $users->count();
-        $paginatedUsers = $users->slice(($currentPage - 1) * $perPage, $perPage)->values();
-        $users = new LengthAwarePaginator(
-            $paginatedUsers,
-            $total,
-            $perPage,
-            $currentPage,
-            ['path' => request()->url(), 'query' => request()->query()]
-        );
-
-        $stats = [
-            'totalUsers' => $total,
-            'loggedInCount' => $users->filter(function ($user) {
-                return $user['logged_in'];
-            })->count(),
-            'notLoggedInCount' => $users->filter(function ($user) {
-                return !$user['logged_in'];
-            })->count(),
-            'totalLogins' => $users->sum(function ($user) {
-                return count($user['signIns']);
-            }),
-            'lastLogin' => $users->max(function ($user) {
-                return collect($user['signIns'])->max('created_at');
-            }),
-            'signIns' => $users->flatMap(function ($user) {
-                return $user['signIns'];
-            })->toArray(),
-            'totalDays' => $users->max(function ($user) {
-                return now()->diffInDays($user['createdDateTime']);
-            }) ?: 0,
-        ];
-
-        $systems = $this->filterService->getSystemList();
-
-        return view('logintracker.dashboard', [
-            'users' => $users,
-            'totalUsers' => $stats['totalUsers'],
-            'loggedInCount' => $stats['loggedInCount'],
-            'notLoggedInCount' => $stats['notLoggedInCount'],
-            'totalLogins' => $stats['totalLogins'],
-            'lastLogin' => $stats['lastLogin'],
-            'signIns' => $stats['signIns'],
-            'totalDays' => $stats['totalDays'],
-            'rangeInput' => $filters['range'],
-            'rangeLabel' => $filters['rangeLabel'],
-            'systemInput' => '',
-            'systems' => $systems,
-            'selectedRange' => $filters['range'],
-            'selectedSystem' => '',
-        ]);
+    // Search filter
+    if ($searchTerm = request()->input('search')) {
+        $query->where(function ($q) use ($searchTerm) {
+            $q->where('displayName', 'LIKE', "%{$searchTerm}%")
+              ->orWhere('userPrincipalName', 'LIKE', "%{$searchTerm}%");
+        });
     }
+
+    // Pagination
+    $perPage = 17;
+    $users = $query->paginate($perPage)->withQueryString();
+
+    // Collect stats
+    $stats = [
+        'totalUsers'       => $users->total(),
+        'loggedInCount'    => SigninLog::distinct('user_id')->count(), // users that have logged in
+        'notLoggedInCount' => $users->total() - SigninLog::distinct('user_id')->count(),
+        'totalLogins'      => SigninLog::count(),
+        'lastLogin'        => SigninLog::max('date_utc'),
+        'signIns'          => SigninLog::latest('date_utc')->limit(100)->get(), // last 100 sign-ins
+        'totalDays'        => \Carbon\Carbon::parse(
+                                \App\Models\User::min('createdDateTime')
+                            )->diffInDays(now()),
+    ];
+
+    $systems = $this->filterService->getSystemList();
+
+    return view('logintracker.dashboard', [
+        'users'           => $users,
+        'totalUsers'      => $stats['totalUsers'],
+        'loggedInCount'   => $stats['loggedInCount'],
+        'notLoggedInCount'=> $stats['notLoggedInCount'],
+        'totalLogins'     => $stats['totalLogins'],
+        'lastLogin'       => $stats['lastLogin'],
+        'signIns'         => $stats['signIns'],
+        'totalDays'       => $stats['totalDays'],
+        'rangeInput'      => $filters['range'],
+        'rangeLabel'      => $filters['rangeLabel'],
+        'systemInput'     => '',
+        'systems'         => $systems,
+        'selectedRange'   => $filters['range'],
+        'selectedSystem'  => '',
+    ]);
+}
+
 }

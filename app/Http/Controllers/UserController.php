@@ -4,30 +4,40 @@ namespace App\Http\Controllers;
 
 use App\Models\Logintracker\User;
 use App\Models\Logintracker\SigninLog;
+use App\Models\Logintracker\System; // Explicitly import System model
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Carbon\Carbon;
-use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
-use Maatwebsite\Excel\Facades\Excel;
-use App\Imports\UsersImport;
+use Carbon\Carbon;
+use Illuminate\Validation\ValidationException;
 
 class UserController extends Controller
 {
     protected $perPage = 17;
 
+    /**
+     * Show the form for creating a new user.
+     *
+     * @return \Illuminate\View\View
+     */
     public function create()
     {
         return view('logintracker.users.create');
     }
 
+    /**
+     * Store a newly created user in storage.
+     *
+     * @param \Illuminate\Http\Request $request
+     * @return \Illuminate\Http\RedirectResponse
+     */
     public function store(Request $request)
     {
         try {
             $validated = $request->validate([
-                'id' => 'required|string|unique:users,id|uuid',
-                'userPrincipalName' => 'required|string|unique:users,userPrincipalName|max:72',
+                'id' => 'required|string|unique:Azure_Users,id|uuid', // Use table name Azure_Users
+                'userPrincipalName' => 'required|string|unique:Azure_Users,userPrincipalName|max:72',
                 'displayName' => 'nullable|string|max:23',
                 'surname' => 'nullable|string|max:14',
                 'mail' => 'nullable|email|max:39',
@@ -57,33 +67,44 @@ class UserController extends Controller
         }
     }
 
+    /**
+     * Remove the specified user from storage.
+     *
+     * @param string $id
+     * @return \Illuminate\Http\RedirectResponse
+     */
     public function destroy($id)
     {
         try {
             if (!Str::isUuid($id)) {
-                throw new ValidationException('Invalid ID format.');
+                Log::warning('Invalid UUID format in destroy', ['id' => $id]);
+                return redirect()->route('dashboard')->with('error', 'Invalid ID format.');
             }
 
             $user = User::find($id);
             if (!$user) {
+                Log::notice('User not found in destroy', ['id' => $id]);
                 return redirect()->route('dashboard')->with('error', 'User not found.');
             }
 
             $user->delete();
             return redirect()->route('dashboard')->with('success', 'User deleted successfully.');
-        } catch (ValidationException $e) {
-            Log::warning('Invalid ID in destroy', ['id' => $id, 'error' => $e->getMessage()]);
-            return redirect()->route('dashboard')->with('error', 'Invalid ID format.');
         } catch (\Exception $e) {
             Log::error('Error deleting user', [
                 'id' => $id,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
-            return redirect()->route('dashboard')->with('error', 'An unexpected error occurred.');
+            return redirect()->back()->with('error', 'An unexpected error occurred.');
         }
     }
 
+    /**
+     * Display a listing of users.
+     *
+     * @param \Illuminate\Http\Request $request
+     * @return \Illuminate\Http\JsonResponse|\Illuminate\View\View
+     */
     public function index(Request $request)
     {
         try {
@@ -106,9 +127,9 @@ class UserController extends Controller
                 if ($request->filled('search')) {
                     $query->where(function ($q) use ($search) {
                         $q->where('displayName', 'like', "%{$search}%")
-                            ->orWhere('userPrincipalName', 'like', "%{$search}%")
-                            ->orWhere('mail', 'like', "%{$search}%")
-                            ->orWhere('alternateEmailAddress', 'like', "%{$search}%");
+                          ->orWhere('userPrincipalName', 'like', "%{$search}%")
+                          ->orWhere('mail', 'like', "%{$search}%")
+                          ->orWhere('alternateEmailAddress', 'like', "%{$search}%");
                     });
                 }
 
@@ -149,16 +170,26 @@ class UserController extends Controller
                 $loggedInCount = $loggedInEmails->isEmpty() ? 0 : User::whereIn(DB::raw('LOWER(userPrincipalName)'), $loggedInEmails)->count();
                 $notLoggedInCount = $totalUsers - $loggedInCount;
 
-                $systems = \App\Models\System::orderBy('name')->pluck('name')->toArray();
+                $systems = System::orderBy('name')->pluck('name')->toArray();
                 Log::info('Systems for Dropdown', ['systems' => $systems]);
 
+                // Map users to ensure UUID id
+                $mappedUsers = array_map(function ($user) {
+                    return [
+                        'id' => $user->id,
+                        'displayName' => $user->displayName,
+                        'userPrincipalName' => $user->userPrincipalName,
+                        'mail' => $user->mail,
+                        'alternateEmailAddress' => $user->alternateEmailAddress,
+                        'signIns' => $user->signIns->toArray(),
+                        'sign_ins_count' => $user->sign_ins_count,
+                    ];
+                }, $users->items());
+
                 Log::debug('Executed Queries', DB::getQueryLog());
-                Log::info('AJAX Response Data', [
-                    'totalUsers' => $totalUsers,
-                    'loggedInCount' => $loggedInCount,
-                    'notLoggedInCount' => $notLoggedInCount,
-                    'userCount' => $users->count(),
-                    'sampleUsers' => $users->take(5)->toArray(),
+                Log::debug('AJAX Response Users', [
+                    'user_ids' => array_column($mappedUsers, 'id'),
+                    'sample_users' => array_slice($mappedUsers, 0, 5)
                 ]);
                 DB::disableQueryLog();
 
@@ -166,7 +197,7 @@ class UserController extends Controller
                     'totalUsers' => $totalUsers,
                     'loggedInCount' => $loggedInCount,
                     'notLoggedInCount' => $notLoggedInCount,
-                    'users' => $users->items(),
+                    'users' => $mappedUsers,
                     'totalDays' => $totalDays,
                     'pagination' => (string) $users->links(),
                 ]);
@@ -176,9 +207,9 @@ class UserController extends Controller
             if ($request->filled('search')) {
                 $query->where(function ($q) use ($search) {
                     $q->where('displayName', 'like', "%{$search}%")
-                        ->orWhere('userPrincipalName', 'like', "%{$search}%")
-                        ->orWhere('mail', 'like', "%{$search}%")
-                        ->orWhere('alternateEmailAddress', 'like', "%{$search}%");
+                      ->orWhere('userPrincipalName', 'like', "%{$search}%")
+                      ->orWhere('mail', 'like', "%{$search}%")
+                      ->orWhere('alternateEmailAddress', 'like', "%{$search}%");
                 });
             }
 
@@ -217,13 +248,25 @@ class UserController extends Controller
             $loggedInCount = $loggedInEmails->isEmpty() ? 0 : User::whereIn(DB::raw('LOWER(userPrincipalName)'), $loggedInEmails)->count();
             $notLoggedInCount = $totalUsers - $loggedInCount;
 
-            $systems = \App\Models\System::orderBy('name')->pluck('name')->toArray();
+            $systems = System::orderBy('name')->pluck('name')->toArray();
             Log::info('Systems for Dropdown (Non-AJAX)', ['systems' => $systems]);
+
+            $mappedUsers = array_map(function ($user) {
+                return [
+                    'id' => $user->id,
+                    'displayName' => $user->displayName,
+                    'userPrincipalName' => $user->userPrincipalName,
+                    'mail' => $user->mail,
+                    'alternateEmailAddress' => $user->alternateEmailAddress,
+                    'signIns' => $user->signIns->toArray(),
+                    'sign_ins_count' => $user->sign_ins_count,
+                ];
+            }, $users->items());
 
             $rangeLabel = $this->getRangeLabel($rangeInput);
             $systemInput = $system ?: 'All Systems';
 
-            return view('logintracker.dashboard', compact('users', 'loggedInCount', 'notLoggedInCount', 'rangeInput', 'system', 'totalUsers', 'rangeLabel', 'systemInput', 'systems'));
+            return view('logintracker.dashboard', compact('mappedUsers', 'loggedInCount', 'notLoggedInCount', 'rangeInput', 'system', 'totalUsers', 'rangeLabel', 'systemInput', 'systems'));
         } catch (\Exception $e) {
             Log::error('Error in index method', [
                 'error' => $e->getMessage(),
@@ -236,89 +279,95 @@ class UserController extends Controller
         }
     }
 
-   public function show(Request $request, $id)
-{
-    Log::info('UserController@show called', [
-        'id' => $id,
-        'request_url' => $request->fullUrl(),
-        'request_input' => $request->all(),
-    ]);
+    /**
+     * Display the specified user.
+     *
+     * @param \Illuminate\Http\Request $request
+     * @param string $identifier
+     * @return \Illuminate\View\View
+     */
+    public function show(Request $request, $identifier)
+    {
+        Log::info('UserController@show called', [
+            'identifier' => $identifier,
+            'request_url' => $request->fullUrl(),
+            'request_input' => $request->all(),
+        ]);
 
-    try {
-        // Validate UUID format
-        if (!Str::isUuid($id)) {
-            Log::warning('Invalid UUID format', ['id' => $id]);
-            abort(400, 'Invalid ID format.');
+        try {
+            // Use findByIdentifier to support userPrincipalName or id
+            $user = User::findByIdentifier($identifier);
+            if (!$user) {
+                Log::notice('User not found in show', ['identifier' => $identifier]);
+                abort(404, 'User not found.');
+            }
+
+            $range = $request->input('range', 'this_month');
+            $system = $request->input('system');
+
+            [$start, $end] = $this->resolveDateRange($range);
+
+            $signIns = $user->signIns()
+                ->whereBetween('date_utc', [$start, $end])
+                ->when($system, function ($query) use ($system) {
+                    return $query->where(DB::raw('LOWER(system)'), strtolower($system));
+                })
+                ->orderBy('date_utc', 'desc')
+                ->paginate($this->perPage)
+                ->withQueryString();
+
+            $recentApplications = $user->signIns()
+                ->whereBetween('date_utc', [$start, $end])
+                ->select(
+                    'system',
+                    DB::raw('COUNT(*) as usage_count'),
+                    DB::raw('MAX(date_utc) as last_used'),
+                    DB::raw('GROUP_CONCAT(DISTINCT system ORDER BY system SEPARATOR ", ") as systems')
+                )
+                ->whereNotNull('system')
+                ->groupBy('system')
+                ->orderBy('last_used', 'desc')
+                ->limit(10)
+                ->get()
+                ->map(function ($item) {
+                    if ($item->systems) {
+                        $systemArray = array_unique(array_map('trim', explode(',', $item->systems)));
+                        $item->systems = implode(', ', $systemArray);
+                    }
+                    return $item;
+                });
+
+            $systems = System::orderBy('name')->pluck('name')->toArray();
+            $rangeLabel = $this->getRangeLabel($range);
+
+            Log::info('UserController@show loaded', [
+                'user_id' => $user->id,
+                'range' => $range,
+                'system' => $system,
+                'sign_ins_count' => $signIns->total(),
+                'recent_applications_count' => $recentApplications->count(),
+            ]);
+
+            return view('logintracker.users.show', compact(
+                'user', 'signIns', 'start', 'end', 'system', 'range', 'rangeLabel', 'recentApplications', 'systems'
+            ));
+
+        } catch (\Exception $e) {
+            Log::error('UserController@show failed', [
+                'identifier' => $identifier,
+                'error_message' => $e->getMessage(),
+                'stack_trace' => $e->getTraceAsString(),
+            ]);
+            abort(500, 'An unexpected error occurred.');
         }
-
-        // Load user explicitly by UUID
-        $user = User::with(['signIns' => function ($query) {
-            $query->orderByDesc('date_utc')->limit(10);
-        }])->where('id', $id)->firstOrFail();
-
-        $range = $request->input('range', 'this_month');
-        $system = $request->input('system');
-
-        [$start, $end] = $this->resolveDateRange($range);
-
-        $signIns = $user->signIns()
-            ->whereBetween('date_utc', [$start, $end])
-            ->when($system, function ($query) use ($system) {
-                return $query->where(DB::raw('LOWER(system)'), strtolower($system));
-            })
-            ->orderBy('date_utc', 'desc')
-            ->paginate($this->perPage)
-            ->withQueryString();
-
-        $recentApplications = $user->signIns()
-            ->whereBetween('date_utc', [$start, $end])
-            ->select(
-                'system',
-                DB::raw('COUNT(*) as usage_count'),
-                DB::raw('MAX(date_utc) as last_used'),
-                DB::raw('GROUP_CONCAT(DISTINCT system ORDER BY system SEPARATOR ", ") as systems')
-            )
-            ->whereNotNull('system')
-            ->groupBy('system')
-            ->orderBy('last_used', 'desc')
-            ->limit(10)
-            ->get()
-            ->map(function ($item) {
-                if ($item->systems) {
-                    $systemArray = array_unique(array_map('trim', explode(',', $item->systems)));
-                    $item->systems = implode(', ', $systemArray);
-                }
-                return $item;
-            });
-
-        $systems = \App\Models\System::orderBy('name')->pluck('name')->toArray();
-        $rangeLabel = $this->getRangeLabel($range);
-
-        Log::info('UserController@show loaded', [
-            'user_id' => $user->id,
-            'range' => $range,
-            'system' => $system,
-            'sign_ins_count' => $signIns->total(),
-            'recent_applications_count' => $recentApplications->count(),
-        ]);
-
-        return view('logintracker.users.show', compact(
-            'user', 'signIns', 'start', 'end', 'system', 'range', 'rangeLabel', 'recentApplications', 'systems'
-        ));
-
-    } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-        Log::notice('User not found in show', ['id' => $id]);
-        abort(404, 'User not found.');
-    } catch (\Exception $e) {
-        Log::error('UserController@show failed', [
-            'id' => $id,
-            'error_message' => $e->getMessage(),
-            'stack_trace' => $e->getTraceAsString(),
-        ]);
-        abort(500, 'An unexpected error occurred.');
     }
-}
 
+    /**
+     * Display users with recent sign-in activity.
+     *
+     * @param \Illuminate\Http\Request $request
+     * @return \Illuminate\View\View
+     */
     public function loggedInUsers(Request $request)
     {
         try {
@@ -348,13 +397,13 @@ class UserController extends Controller
             if ($search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('displayName', 'like', "%{$search}%")
-                        ->orWhere('userPrincipalName', 'like', "%{$search}%")
-                        ->orWhere('mail', 'like', "%{$search}%")
-                        ->orWhere('alternateEmailAddress', 'like', "%{$search}%");
+                      ->orWhere('userPrincipalName', 'like', "%{$search}%")
+                      ->orWhere('mail', 'like', "%{$search}%")
+                      ->orWhere('alternateEmailAddress', 'like', "%{$search}%");
                 });
             }
 
-            $users = $query->withCount(['signIns as login_count' => function ($q) use ($filters) {
+            $query->withCount(['signIns as login_count' => function ($q) use ($filters) {
                 $q->whereBetween('date_utc', [$filters['startDate'], $filters['endDate']]);
                 if (!empty($filters['system'])) {
                     $mappedSystems = collect(config('systemmap'))
@@ -377,10 +426,9 @@ class UserController extends Controller
                   ->orderByDesc('date_utc')
                   ->limit(5);
             }])
-            ->orderBy('displayName')
-            ->paginate($this->perPage)
-            ->withQueryString();
+            ->orderBy('displayName');
 
+            $users = $query->paginate($this->perPage)->withQueryString();
             $systems = $filterService->getSystemList();
             $type = 'default';
 
@@ -400,6 +448,12 @@ class UserController extends Controller
         }
     }
 
+    /**
+     * Display users with no sign-in activity.
+     *
+     * @param \Illuminate\Http\Request $request
+     * @return \Illuminate\View\View
+     */
     public function notLoggedInUsers(Request $request)
     {
         try {
@@ -449,9 +503,9 @@ class UserController extends Controller
             if ($search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('displayName', 'like', "%{$search}%")
-                        ->orWhere('userPrincipalName', 'like', "%{$search}%")
-                        ->orWhere('mail', 'like', "%{$search}%")
-                        ->orWhere('alternateEmailAddress', 'like', "%{$search}%");
+                      ->orWhere('userPrincipalName', 'like', "%{$search}%")
+                      ->orWhere('mail', 'like', "%{$search}%")
+                      ->orWhere('alternateEmailAddress', 'like', "%{$search}%");
                 });
             }
 
@@ -477,6 +531,12 @@ class UserController extends Controller
         }
     }
 
+    /**
+     * Resolve date range for filtering.
+     *
+     * @param mixed $input
+     * @return array
+     */
     protected function resolveDateRange($input = null)
     {
         if ($input instanceof Request) {
@@ -511,6 +571,12 @@ class UserController extends Controller
         return [$start, $end];
     }
 
+    /**
+     * Get label for date range.
+     *
+     * @param string $range
+     * @return string
+     */
     private function getRangeLabel($range)
     {
         return match ($range) {
@@ -522,3 +588,4 @@ class UserController extends Controller
         };
     }
 }
+?>

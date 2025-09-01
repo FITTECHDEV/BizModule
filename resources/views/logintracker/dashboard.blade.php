@@ -21,8 +21,7 @@
                     @endphp
                     <option value="this_month" {{ $selectedRange == 'this_month' ? 'selected' : '' }}>This Month</option>
                     <option value="last_month" {{ $selectedRange == 'last_month' ? 'selected' : '' }}>Last Month</option>
-                    <option value="last_3_months" {{ $selectedRange == 'last_3_months' ? 'selected' : '' }}>Last 3 Months
-                    </option>
+                    <option value="last_3_months" {{ $selectedRange == 'last_3_months' ? 'selected' : '' }}>Last 3 Months</option>
                 </select>
             </div>
 
@@ -33,16 +32,14 @@
                         $selectedSystem = request('system', 'SCM');
                     @endphp
                     @foreach ($systems ?? [] as $sys)
-                        <option value="{{ $sys }}" {{ $selectedSystem == $sys ? 'selected' : '' }}>
-                            {{ $sys }}</option>
+                        <option value="{{ $sys }}" {{ $selectedSystem == $sys ? 'selected' : '' }}>{{ $sys }}</option>
                     @endforeach
                 </select>
             </div>
 
             <div class="col-md-3">
                 <label for="search" class="form-label">Search:</label>
-                <input type="text" name="search" id="search" class="form-control" placeholder="Name or UPN"
-                    value="{{ request('search') }}">
+                <input type="text" name="search" id="search" class="form-control" placeholder="Name or UPN" value="{{ request('search') }}">
             </div>
 
             <div class="col-md-3 d-flex align-items-end">
@@ -117,8 +114,13 @@
                     <tbody id="user-table-body">
                         @foreach ($users as $user)
                             @php
+                                \Log::debug('User data in Blade', [
+                                    'user_id' => $user['id'],
+                                    'displayName' => $user['displayName'] ?? 'Unknown',
+                                    'is_uuid' => \Illuminate\Support\Str::isUuid($user['id']) ? 'yes' : 'no'
+                                ]);
                                 $uniqueLoginDays = collect($user['signIns'] ?? [])
-                                    ->pluck('created_at') // Use 'created_at' as per getMockUsers
+                                    ->pluck('created_at')
                                     ->map(fn($d) => \Carbon\Carbon::parse($d)->format('Y-m-d'))
                                     ->unique()
                                     ->count();
@@ -135,8 +137,11 @@
                                     @endif
                                 </td>
                                 <td>
-                                    <a href="{{ route('users.show', $user['id']) }}"
-                                        class="btn btn-sm btn-primary">View</a>
+                                    @if (\Illuminate\Support\Str::isUuid($user['id']))
+                                        <a href="{{ route('users.show', $user['id']) }}" class="btn btn-sm btn-primary">View</a>
+                                    @else
+                                        <span class="text-danger">Invalid ID: {{ $user['id'] }}</span>
+                                    @endif
                                 </td>
                             </tr>
                         @endforeach
@@ -167,25 +172,20 @@
 
     <script>
         $(document).ready(function() {
-            // Trigger update on Apply button click
             $('#apply').on('click', function(e) {
                 e.preventDefault();
                 updateDashboard();
             });
 
-            // Trigger update on dropdown change
-            // Trigger update on page load
             updateDashboard();
-
             $('#system, #range').on('change', function() {
                 updateDashboard();
             });
 
-            // Trigger update on search input (with debounce)
             let searchTimeout;
             $('#search').on('input', function() {
                 clearTimeout(searchTimeout);
-                searchTimeout = setTimeout(updateDashboard, 500); // 500ms debounce
+                searchTimeout = setTimeout(updateDashboard, 500);
             });
 
             function updateDashboard() {
@@ -197,16 +197,10 @@
                     'last_month': 'Last Month',
                     'last_3_months': 'Last 3 Months',
                     'custom': 'Custom'
-                } [range] || range;
+                }[range] || range;
                 var systemLabel = system || 'All Systems';
 
-                console.log('Sending AJAX with:', {
-                    range,
-                    system,
-                    search
-                }); // Debug input
-
-                // Show loading indicator
+                console.log('Sending AJAX with:', { range, system, search });
                 $('#loading').show();
                 $('#user-table').html('<div class="alert alert-info">Loading...</div>');
 
@@ -217,70 +211,52 @@
                         'X-Requested-With': 'XMLHttpRequest',
                         'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
                     },
-                    data: {
-                        range: range,
-                        system: system,
-                        search: search
-                    },
+                    data: { range, system, search },
                     success: function(response) {
-                        console.log('AJAX Response Users:', response.users);
+                        console.log('AJAX Response Users:', response.users.map(u => ({ id: u.id, displayName: u.displayName, is_uuid: /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(u.id) })));
                         $('#loading').hide();
 
-                        // Update summary cards
                         $('#total-users').text(response.totalUsers || 0);
                         $('#logged-in-count').text(response.loggedInCount || 0);
                         $('#not-logged-in-count').text(response.notLoggedInCount || 0);
 
-                        // Update card links with current filters
-                        const queryParams = $.param({
-                            range: range,
-                            system: system,
-                            search: search
-                        });
-                        $('#logged-in-link').attr('href', '{{ route('users.logged-in') }}?' +
-                            queryParams);
-                        $('#not-logged-in-link').attr('href', '{{ route('users.not-logged-in') }}?' +
-                            queryParams);
+                        const queryParams = $.param({ range, system, search });
+                        $('#logged-in-link').attr('href', '{{ route('users.logged-in') }}?' + queryParams);
+                        $('#not-logged-in-link').attr('href', '{{ route('users.not-logged-in') }}?' + queryParams);
 
-                        // Update filter summary
                         $('#range-label').text(rangeLabel).toggle(!!rangeLabel);
                         $('#system-label').text(systemLabel).toggle(!!system);
                         $('#search-label').text('Search: ' + (search || '')).toggle(!!search);
                         $('#filter-summary').toggle(!!rangeLabel || !!system || !!search);
 
-                        // Update user table
                         var tbody = $('#user-table-body');
                         tbody.empty();
                         if (response.users && response.users.length > 0) {
                             $('#user-table').html(`
-                            <table class="table table-striped table-hover align-middle">
-                                <thead class="table-dark">
-                                    <tr>
-                                        <th>Name</th>
-                                        <th>Missed Days</th>
-                                        <th>Last Login</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="user-table-body"></tbody>
-                            </table>
-                            <div class="mt-4" id="pagination"></div>
-                        `);
+                                <table class="table table-striped table-hover align-middle">
+                                    <thead class="table-dark">
+                                        <tr>
+                                            <th>Name</th>
+                                            <th>Missed Days</th>
+                                            <th>Last Login</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="user-table-body"></tbody>
+                                </table>
+                                <div class="mt-4" id="pagination"></div>
+                            `);
                             response.users.forEach(function(user) {
-                                var userSignIns = user.signIns ||
-                            []; // Use signIns, not sign_ins
+                                var isUuid = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(user.id);
+                                console.log('User ID in AJAX:', { id: user.id, is_uuid: isUuid });
+                                var userSignIns = user.signIns || [];
                                 var uniqueLoginDays = userSignIns.length > 0 ?
-                                    userSignIns.map(d => new Date(d.created_at)
-                                        .toLocaleDateString()).filter((d, i, arr) => arr
-                                        .indexOf(d) === i).length :
+                                    userSignIns.map(d => new Date(d.created_at).toLocaleDateString()).filter((d, i, arr) => arr.indexOf(d) === i).length :
                                     0;
-                                var missedDays = Math.max(0, response.totalDays -
-                                    uniqueLoginDays);
+                                var missedDays = Math.max(0, response.totalDays - uniqueLoginDays);
                                 var rowClass = uniqueLoginDays === 0 ? 'table-danger' : '';
                                 var lastLogin = userSignIns.length > 0 ?
-                                    new Date(userSignIns[0].created_at)
-                                .toLocaleString() // Use created_at
-                                    :
+                                    new Date(userSignIns[0].created_at).toLocaleString() :
                                     'N/A';
 
                                 var userRow = '<tr class="' + rowClass + '">' +
@@ -288,32 +264,28 @@
                                     '<td>' + missedDays + '</td>' +
                                     '<td>' + lastLogin + '</td>' +
                                     '<td>' +
-                                    '<a href="/users/' + user.id +
-                                    '" class="btn btn-sm btn-primary">View</a>' +
+                                    (isUuid ?
+                                        '<a href="{{ route('users.show', ['id' => "' + user.id + '"]) }}" class="btn btn-sm btn-primary">View</a>' :
+                                        '<span class="text-danger">Invalid ID: ' + user.id + '</span>') +
                                     '</td>' +
                                     '</tr>';
                                 $('#user-table-body').append(userRow);
                             });
-                            // Reinitialize Bootstrap dropdowns
                             $('.dropdown-toggle').dropdown();
-                            // Append pagination links
                             $('#pagination').html(response.pagination || '');
 
-                            // Handle pagination clicks with AJAX
                             $('#pagination a').on('click', function(e) {
                                 e.preventDefault();
                                 var url = $(this).attr('href');
                                 var urlParams = new URLSearchParams(url.split('?')[1]);
                                 var page = urlParams.get('page');
 
-                                // Update the page and make AJAX request
                                 $.ajax({
                                     url: '{{ route('dashboard') }}',
                                     method: 'GET',
                                     headers: {
                                         'X-Requested-With': 'XMLHttpRequest',
-                                        'X-CSRF-TOKEN': $('meta[name="csrf-token"]')
-                                            .attr('content')
+                                        'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
                                     },
                                     data: {
                                         range: $('#range').val(),
@@ -322,7 +294,6 @@
                                         page: page
                                     },
                                     success: function(response) {
-                                        // Update the table with new data
                                         updateTableContent(response);
                                     }
                                 });
@@ -330,7 +301,7 @@
                         } else {
                             $('#user-table').html(
                                 '<div class="alert alert-info">No users found for the selected filters.</div>'
-                                );
+                            );
                         }
                     },
                     error: function(xhr, status, error) {
@@ -338,35 +309,34 @@
                         $('#loading').hide();
                         $('#total-users').text('0');
                         $('#logged-in-count').text('0');
-                        $('#not-logged-in-count').text('0');
+                        '#not-logged-in-count').text('0');
                         $('#user-table').html(
                             '<div class="alert alert-info">No users found for the selected filters.</div>'
-                            );
+                        );
                     }
                 });
             }
 
             function updateTableContent(response) {
-                // Update summary cards
                 $('#total-users').text(response.totalUsers || 0);
                 $('#logged-in-count').text(response.loggedInCount || 0);
                 $('#not-logged-in-count').text(response.notLoggedInCount || 0);
 
-                // Update user table
                 var tbody = $('#user-table-body');
                 tbody.empty();
 
                 if (response.users && response.users.length > 0) {
                     response.users.forEach(function(user) {
-                        var userSignIns = user.sign_ins || user.signIns || [];
+                        var isUuid = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(user.id);
+                        console.log('User ID in AJAX:', { id: user.id, is_uuid: isUuid });
+                        var userSignIns = user.signIns || [];
                         var uniqueLoginDays = userSignIns.length > 0 ?
-                            userSignIns.map(d => new Date(d.date_utc).toLocaleDateString()).filter((d, i,
-                                arr) => arr.indexOf(d) === i).length :
+                            userSignIns.map(d => new Date(d.created_at).toLocaleDateString()).filter((d, i, arr) => arr.indexOf(d) === i).length :
                             0;
                         var missedDays = Math.max(0, response.totalDays - uniqueLoginDays);
                         var rowClass = uniqueLoginDays === 0 ? 'table-danger' : '';
                         var lastLogin = userSignIns.length > 0 ?
-                            new Date(userSignIns[0].date_utc).toLocaleString() :
+                            new Date(userSignIns[0].created_at).toLocaleString() :
                             'N/A';
 
                         var userRow = '<tr class="' + rowClass + '">' +
@@ -374,25 +344,22 @@
                             '<td>' + missedDays + '</td>' +
                             '<td>' + lastLogin + '</td>' +
                             '<td>' +
-                            '<a href="/users/' + user.id + '" class="btn btn-sm btn-primary">View</a>' +
+                            (isUuid ?
+                                '<a href="{{ route('users.show', ['id' => "' + user.id + '"]) }}" class="btn btn-sm btn-primary">View</a>' :
+                                '<span class="text-danger">Invalid ID: ' + user.id + '</span>') +
                             '</td>' +
                             '</tr>';
                         $('#user-table-body').append(userRow);
                     });
-                    // Reinitialize Bootstrap dropdowns
                     $('.dropdown-toggle').dropdown();
-
-                    // Append pagination links
                     $('#pagination').html(response.pagination || '');
 
-                    // Re-attach pagination click handlers
                     $('#pagination a').on('click', function(e) {
                         e.preventDefault();
                         var url = $(this).attr('href');
                         var urlParams = new URLSearchParams(url.split('?')[1]);
                         var page = urlParams.get('page');
 
-                        // Update the page and make AJAX request
                         $.ajax({
                             url: '{{ route('dashboard') }}',
                             method: 'GET',
@@ -407,18 +374,16 @@
                                 page: page
                             },
                             success: function(response) {
-                                // Update the table with new data
                                 updateTableContent(response);
                             }
                         });
                     });
                 } else {
                     $('#user-table').html(
-                        '<div class="alert alert-info">No users found for the selected filters.</div>');
+                        '<div class="alert alert-info">No users found for the selected filters.</div>'
+                    );
                 }
             }
-
-            // Initial load already called above
         });
     </script>
 @endsection

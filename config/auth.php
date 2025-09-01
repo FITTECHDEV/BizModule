@@ -46,6 +46,11 @@ return [
             'provider' => 'users',
             'hash' => false,
         ],
+
+        'azure' => [ // New guard for Azure_Users
+        'driver' => 'session',
+        'provider' => 'azure_users',
+    ],
     ],
 
     /*

@@ -329,25 +329,52 @@ Route::get('/', function () {
 
 
 
+// Allow any string for user parameter (supports userPrincipalName)
+Route::pattern('user', '.*');
 
-// Constrain any {user} route parameter to UUID (hyphenated)
-Route::pattern('user', '[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}');
-Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+// Authentication routes
+Route::post('/login', [AuthController::class, 'login'])->name('login');
+Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:azure')->name('logout');
 
+// Dashboard route with azure guard
+Route::get('/dashboard', [DashboardController::class, 'index'])
+    ->middleware('auth:azure')
+    ->name('dashboard');
+
+// Imports route with azure guard
 Route::get('/imports', function () {
     return view('logintracker.imports.index');
-})->name('imports.index');
+})->middleware('auth:azure')
+  ->name('imports.index');
 
-Route::get('/activity-report', [ActivityReportController::class, 'userActivityReport'])->name('activity.report');
+// Activity report route with azure guard
+Route::get('/activity-report', [ActivityReportController::class, 'userActivityReport'])
+    ->middleware('auth:azure')
+    ->name('activity.report');
 
-// Explicit routes for login status
-Route::get('/users/logged-in', [UserController::class, 'loggedInUsers'])->name('users.logged-in');
-Route::get('/users/not-logged-in', [UserController::class, 'notLoggedInUsers'])->name('users.not-logged-in');
+// Explicit routes for login status with azure guard
+Route::get('/users/logged-in', [UserController::class, 'loggedInUsers'])
+    ->middleware('auth:azure')
+    ->name('users.logged-in');
+Route::get('/users/not-logged-in', [UserController::class, 'notLoggedInUsers'])
+    ->middleware('auth:azure')
+    ->name('users.not-logged-in');
 
-// CSV import endpoints
-Route::post('/import/users', [ImportController::class, 'importUsers'])->name('import.users');
-Route::post('/import/sign-ins', [ImportController::class, 'importSignIns'])->name('import.sign_ins');
+// CSV import endpoints with azure guard
+Route::post('/import/users', [ImportController::class, 'importUsers'])
+    ->middleware('auth:azure')
+    ->name('import.users');
+Route::post('/import/sign-ins', [ImportController::class, 'importSignIns'])
+    ->middleware('auth:azure')
+    ->name('import.sign_ins');
 
-// User management resource routes (with UUID constraint to avoid conflicts)
+// Explicitly define users.show to use {identifier} (supports userPrincipalName or id)
+Route::get('/users/{identifier}', [UserController::class, 'show'])
+    ->middleware('auth:azure')
+    ->name('users.show');
+
+// Other user resource routes with azure guard
 Route::resource('users', UserController::class)
-    ->parameters(['users' => 'user']);
+    ->parameters(['users' => 'user'])
+    ->except(['show'])
+    ->middleware('auth:azure');
