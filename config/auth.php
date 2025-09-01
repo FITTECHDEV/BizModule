@@ -77,6 +77,11 @@ return [
             'model' => App\Models\User::class,
         ],
 
+        'azure_users' => [
+        'driver' => 'eloquent',
+        'model' => App\Models\AzureUser::class,
+    ],
+
         // 'users' => [
         //     'driver' => 'database',
         //     'table' => 'users',

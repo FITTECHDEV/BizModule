@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Logintracker\User;
+use App\Models\Logintracker\User as AzureUser;
 use App\Models\Logintracker\SigninLog;
 use App\Models\Logintracker\System; // Explicitly import System model
 use Illuminate\Http\Request;
