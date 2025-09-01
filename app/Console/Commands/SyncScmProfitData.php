@@ -332,6 +332,12 @@ class SyncScmProfitData extends Command
             'TransportMode' => $record->transportmode,
             'ServiceClass' => $record->serviceclass,
             'SalesPersonCode' => $record->salespersoncode,
+                    // 🚀 Newly added fields
+            'shipmentmode'   => $record->shipmentmode,
+            'incoterm'       => $record->incoterm,
+            'scopevolume'    => $record->scopevolume,
+            'cargovolume'    => $record->cargovolume,
+            'containerlist'  => $record->containerlist,
         ];
     }
 
