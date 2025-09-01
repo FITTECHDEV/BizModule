@@ -117,37 +117,27 @@ class SyncScmProfitData extends Command
     }
 
     private function getTotalRecords(array $dates): int
-{
-    return DB::connection('pgsql')->selectOne("
-        SELECT COUNT(*) as total
-        FROM vw_scmprofit_integration
-        WHERE CAST(CreatedOn AS date) = CURRENT_DATE
-           OR CAST(UpdatedOn AS date) = CURRENT_DATE
-    ")->total;
-      Log::info("SCM Sync: Found {$total} records to process for today.");
+    {
+        return DB::connection('pgsql')->selectOne(
+            "
+            SELECT COUNT(*) as total FROM vw_scmprofit_integration
+            WHERE CAST(CreatedOn AS date) >= ?
+            OR CAST(UpdatedOn AS date) >= ?",
+            [$dates['start'], $dates['current']]
+        )->total;
+    }
 
-    return $total;
-}
-
-
-  private function getRecordsBatch(array $dates, int $offset, int $limit): array
-{
-    return DB::connection('pgsql')->select(
-        "
-        SELECT *
-        FROM vw_scmprofit_integration
-        WHERE CAST(CreatedOn AS date) = CURRENT_DATE
-           OR CAST(UpdatedOn AS date) = CURRENT_DATE
-        ORDER BY bookingno
-        LIMIT ? OFFSET ?",
-        [$limit, $offset]
-    );
-    Log::info("SCM Sync: Fetched batch with offset {$offset}, limit {$limit}, count: " . count($records));
-
-    return $records;
-}
-
-
+    private function getRecordsBatch(array $dates, int $offset, int $limit): array
+    {
+        return DB::connection('pgsql')->select(
+            "
+          SELECT * FROM vw_scmprofit_integration
+          WHERE CAST(CreatedOn AS date) = CURRENT_DATE
+          OR CAST(UpdatedOn AS date) = CURRENT_DATE
+          ORDER BY bookingno
+          LIMIT 100 OFFSET 0"
+        );
+    }
     private function processBatch(array $records): void
     {
         DB::connection('sqlsrv')->transaction(function () use ($records) {
@@ -332,12 +322,13 @@ class SyncScmProfitData extends Command
             'TransportMode' => $record->transportmode,
             'ServiceClass' => $record->serviceclass,
             'SalesPersonCode' => $record->salespersoncode,
-                    // 🚀 Newly added fields
+            // 🚀 Newly added fields
             'shipmentmode'   => $record->shipmentmode,
             'incoterm'       => $record->incoterm,
             'scopevolume'    => $record->scopevolume,
             'cargovolume'    => $record->cargovolume,
             'containerlist'  => $record->containerlist,
+
         ];
     }
 
