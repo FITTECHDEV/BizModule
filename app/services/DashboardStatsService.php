@@ -131,19 +131,20 @@ class DashboardStatsService
         $notLoggedInCount = $totalUsers - $loggedInCount;
 
         // 🔹 All sign-ins for listing
-        $signIns = DB::table('dbo.Azure_LoginDetails')
-            ->join('users', 'dbo.Azure_LoginDetails.user_id', '=', 'users.id')
-            ->select(
-                'users.id',
-                'dbo.Azure_LoginDetails.date_utc',
-                'dbo.Azure_LoginDetails.application',
-                'users.displayName',
-                'users.userPrincipalName as email'
-            )
-            ->whereBetween('dbo.Azure_LoginDetails.date_utc', [$startDate, $endDate])
-            ->when($system, fn($q) => $q->where('dbo.Azure_LoginDetails.application', $system))
-            ->orderByDesc('dbo.Azure_LoginDetails.date_utc')
-            ->get();
+     $signIns = DB::table('dbo.Azure_LoginDetails')
+        ->join('Azure_Users', 'dbo.Azure_LoginDetails.user_id', '=', 'Azure_Users.id')
+        ->select(
+            'Azure_Users.id',
+            'dbo.Azure_LoginDetails.date_utc',
+            'dbo.Azure_LoginDetails.application',
+            'Azure_Users.displayName',
+            'Azure_Users.userPrincipalName as email'
+       )
+        ->whereBetween('dbo.Azure_LoginDetails.date_utc', [$startDate, $endDate])
+        ->when($system, fn($q) => $q->where('dbo.Azure_LoginDetails.application', $system))
+        ->orderByDesc('dbo.Azure_LoginDetails.date_utc')
+        ->get();
+
 
         // 🔹 Total and last login
         $loginQuery = $this->filterService->applyDateAndSystemFilters(SigninLog::query(), $filters);

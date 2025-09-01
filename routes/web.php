@@ -322,6 +322,16 @@ Route::post('/create-client-party-scm', [ClientPartyController::class, 'CreateCl
 Route::get('/', function () {
     return redirect()->route('home');
 });
+
+
+
+
+
+
+
+
+// Constrain any {user} route parameter to UUID (hyphenated)
+Route::pattern('user', '[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}');
 Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
 Route::get('/imports', function () {
@@ -340,4 +350,4 @@ Route::post('/import/sign-ins', [ImportController::class, 'importSignIns'])->nam
 
 // User management resource routes (with UUID constraint to avoid conflicts)
 Route::resource('users', UserController::class)
-    ->where(['user' => '[0-9a-fA-F-]{36}']);
+    ->parameters(['users' => 'user']);

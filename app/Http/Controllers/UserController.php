@@ -10,6 +10,8 @@ use Carbon\Carbon;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Imports\UsersImport;
 
 class UserController extends Controller
 {
@@ -234,90 +236,88 @@ class UserController extends Controller
         }
     }
 
-    public function show(Request $request, $id)
-    {
-        Log::info('UserController@show called', [
-            'id' => $id,
-            'request_url' => $request->fullUrl(),
-            'request_input' => $request->all(),
+   public function show(Request $request, $id)
+{
+    Log::info('UserController@show called', [
+        'id' => $id,
+        'request_url' => $request->fullUrl(),
+        'request_input' => $request->all(),
+    ]);
+
+    try {
+        // Validate UUID format
+        if (!Str::isUuid($id)) {
+            Log::warning('Invalid UUID format', ['id' => $id]);
+            abort(400, 'Invalid ID format.');
+        }
+
+        // Load user explicitly by UUID
+        $user = User::with(['signIns' => function ($query) {
+            $query->orderByDesc('date_utc')->limit(10);
+        }])->where('id', $id)->firstOrFail();
+
+        $range = $request->input('range', 'this_month');
+        $system = $request->input('system');
+
+        [$start, $end] = $this->resolveDateRange($range);
+
+        $signIns = $user->signIns()
+            ->whereBetween('date_utc', [$start, $end])
+            ->when($system, function ($query) use ($system) {
+                return $query->where(DB::raw('LOWER(system)'), strtolower($system));
+            })
+            ->orderBy('date_utc', 'desc')
+            ->paginate($this->perPage)
+            ->withQueryString();
+
+        $recentApplications = $user->signIns()
+            ->whereBetween('date_utc', [$start, $end])
+            ->select(
+                'system',
+                DB::raw('COUNT(*) as usage_count'),
+                DB::raw('MAX(date_utc) as last_used'),
+                DB::raw('GROUP_CONCAT(DISTINCT system ORDER BY system SEPARATOR ", ") as systems')
+            )
+            ->whereNotNull('system')
+            ->groupBy('system')
+            ->orderBy('last_used', 'desc')
+            ->limit(10)
+            ->get()
+            ->map(function ($item) {
+                if ($item->systems) {
+                    $systemArray = array_unique(array_map('trim', explode(',', $item->systems)));
+                    $item->systems = implode(', ', $systemArray);
+                }
+                return $item;
+            });
+
+        $systems = \App\Models\System::orderBy('name')->pluck('name')->toArray();
+        $rangeLabel = $this->getRangeLabel($range);
+
+        Log::info('UserController@show loaded', [
+            'user_id' => $user->id,
+            'range' => $range,
+            'system' => $system,
+            'sign_ins_count' => $signIns->total(),
+            'recent_applications_count' => $recentApplications->count(),
         ]);
 
-        if (in_array($id, ['logged-in', 'not-logged-in'])) {
-            Log::warning('UserController@show blocked reserved keyword', ['id' => $id]);
-            abort(404);
-        }
+        return view('logintracker.users.show', compact(
+            'user', 'signIns', 'start', 'end', 'system', 'range', 'rangeLabel', 'recentApplications', 'systems'
+        ));
 
-        try {
-            if (!Str::isUuid($id)) {
-                throw new ValidationException('Invalid ID format.');
-            }
-
-            $user = User::with(['signIns' => function ($query) {
-                $query->orderByDesc('date_utc')->limit(10);
-            }])->findOrFail($id);
-
-            $range = $request->input('range', 'this_month');
-            $system = $request->input('system');
-
-            [$start, $end] = $this->resolveDateRange($range);
-
-            $signIns = $user->signIns()
-                ->whereBetween('date_utc', [$start, $end])
-                ->when($system, function ($query) use ($system) {
-                    return $query->where(DB::raw('LOWER(system)'), strtolower($system));
-                })
-                ->orderBy('date_utc', 'desc')
-                ->paginate($this->perPage)
-                ->withQueryString();
-
-            $recentApplications = $user->signIns()
-                ->whereBetween('date_utc', [$start, $end])
-                ->select('system',
-                        DB::raw('COUNT(*) as usage_count'),
-                        DB::raw('MAX(date_utc) as last_used'),
-                        DB::raw('GROUP_CONCAT(DISTINCT system ORDER BY system SEPARATOR ", ") as systems'))
-                ->whereNotNull('system')
-                ->groupBy('system')
-                ->orderBy('last_used', 'desc')
-                ->limit(10)
-                ->get()
-                ->map(function ($item) {
-                    if ($item->systems) {
-                        $systemArray = array_unique(array_map('trim', explode(',', $item->systems)));
-                        $item->systems = implode(', ', $systemArray);
-                    }
-                    return $item;
-                });
-
-            $systems = \App\Models\System::orderBy('name')->pluck('name')->toArray();
-            $rangeLabel = $this->getRangeLabel($range);
-
-            Log::info('UserController@show loaded', [
-                'user_id' => $user->id,
-                'range' => $range,
-                'system' => $system,
-                'sign_ins_count' => $signIns->total(),
-                'recent_applications_count' => $recentApplications->count(),
-            ]);
-
-            return view('logintracker.users.show', compact(
-                'user', 'signIns', 'start', 'end', 'system', 'range', 'rangeLabel', 'recentApplications', 'systems'
-            ));
-        } catch (ValidationException $e) {
-            Log::warning('Invalid ID in show', ['id' => $id, 'error' => $e->getMessage()]);
-            abort(400, 'Invalid ID format.');
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-            Log::notice('User not found in show', ['id' => $id]);
-            abort(404, 'User not found.');
-        } catch (\Exception $e) {
-            Log::error('UserController@show failed', [
-                'id' => $id,
-                'error_message' => $e->getMessage(),
-                'stack_trace' => $e->getTraceAsString(),
-            ]);
-            abort(500, 'An unexpected error occurred.');
-        }
+    } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+        Log::notice('User not found in show', ['id' => $id]);
+        abort(404, 'User not found.');
+    } catch (\Exception $e) {
+        Log::error('UserController@show failed', [
+            'id' => $id,
+            'error_message' => $e->getMessage(),
+            'stack_trace' => $e->getTraceAsString(),
+        ]);
+        abort(500, 'An unexpected error occurred.');
     }
+}
 
     public function loggedInUsers(Request $request)
     {

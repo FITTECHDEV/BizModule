@@ -20,55 +20,51 @@ class ActivityReportController extends Controller
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\View\View
      */
-    public function userActivityReport(Request $request)
-    {
-        // Determine start date: if a date is provided, use its start of day; otherwise, 30 days ago
-        $startDate = $request->has('date')
-            ? Carbon::parse($request->input('date'))->startOfDay()
-            : now()->subDays(30);
+public function userActivityReport(Request $request)
+{
+    // Determine start date
+    $startDate = $request->has('date')
+        ? Carbon::parse($request->input('date'))->startOfDay()
+        : now()->subDays(30);
 
-        // Determine end date: if a date is provided, use its end of day; otherwise, now
-        $endDate = $request->has('date')
-            ? Carbon::parse($request->input('date'))->endOfDay()
-            : now();
+    // Determine end date
+    $endDate = $request->has('date')
+        ? Carbon::parse($request->input('date'))->endOfDay()
+        : now();
 
-        // Start building the query for user activity within the date range
-        $query = User::select([
-                'users.id',
-                'users.displayName',
-                'users.userPrincipalName',
+    // Build query using explicit table name
+    $query = User::select([
+            'Azure_Users.id',
+            'Azure_Users.displayName',
+            'Azure_Users.userPrincipalName',
 
-                // Aggregate data: total logins, first and last login timestamps
-                DB::raw('COUNT([dbo].[Azure_LoginDetails].user_id) AS login_count'),
-                DB::raw('MIN([dbo].[Azure_LoginDetails].date_utc) AS first_login'),
-                DB::raw('MAX([dbo].[Azure_LoginDetails].date_utc) AS last_login')
-            ])
-            // Left join to include users even if they have no sign-ins
-            ->leftJoin('dbo.Azure_LoginDetails', function ($join) use ($startDate, $endDate) {
-                $join->on('dbo.Azure_LoginDetails.user_id', '=', 'users.id')
-                     ->whereBetween('dbo.Azure_LoginDetails.date_utc', [$startDate, $endDate]);
-            });
+            DB::raw('COUNT([dbo].[Azure_LoginDetails].user_id) AS login_count'),
+            DB::raw('MIN([dbo].[Azure_LoginDetails].date_utc) AS first_login'),
+            DB::raw('MAX([dbo].[Azure_LoginDetails].date_utc) AS last_login')
+        ])
+        ->leftJoin('dbo.Azure_LoginDetails', function ($join) use ($startDate, $endDate) {
+            $join->on('dbo.Azure_LoginDetails.user_id', '=', 'Azure_Users.id')
+                 ->whereBetween('dbo.Azure_LoginDetails.date_utc', [$startDate, $endDate]);
+        });
 
-        // Apply search filter if provided
-        if ($request->filled('search')) {
-            $searchTerm = $request->input('search');
-            $query->where(function ($q) use ($searchTerm) {
-                $q->where('users.displayName', 'LIKE', "%{$searchTerm}%")
-                  ->orWhere('users.userPrincipalName', 'LIKE', "%{$searchTerm}%")
-                  ->orWhere('users.mail', 'LIKE', "%{$searchTerm}%");
-            });
-        }
-
-        // Complete the query
-        $activity = $query
-            // Group by required user fields for aggregation
-            ->groupBy('users.id', 'users.displayName', 'users.userPrincipalName')
-            // Order by most active users first
-            ->orderByDesc('login_count')
-            // Paginate the result set (20 per page)
-            ->paginate(20);
-
-        // Return the activity report view with the collected data
-        return view('logintracker.activity_report.index', compact('activity', 'startDate', 'endDate'));
+    // Apply search filter if provided
+    if ($request->filled('search')) {
+        $searchTerm = $request->input('search');
+        $query->where(function ($q) use ($searchTerm) {
+            $q->where('Azure_Users.displayName', 'LIKE', "%{$searchTerm}%")
+              ->orWhere('Azure_Users.userPrincipalName', 'LIKE', "%{$searchTerm}%")
+              ->orWhere('Azure_Users.mail', 'LIKE', "%{$searchTerm}%");
+        });
     }
+
+    // Execute query
+    $activity = $query
+        ->groupBy('Azure_Users.id', 'Azure_Users.displayName', 'Azure_Users.userPrincipalName')
+        ->orderByDesc('login_count')
+        ->paginate(20);
+
+    // Return view
+    return view('logintracker.activity_report.index', compact('activity', 'startDate', 'endDate'));
+}
+
 }
