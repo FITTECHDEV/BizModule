@@ -2,10 +2,12 @@
 
 namespace App\Services;
 
+use App\Models\Logintracker\System;
 use Illuminate\Http\Request;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Log;
 
 class LoginFilterService
 {
@@ -14,12 +16,30 @@ class LoginFilterService
      */
     public function parseFilters(Request $request): array
     {
+        $validRanges = ['this_month', 'last_month', 'last_3_months'];
         $range = $request->input('range', 'this_month');
+        
+        // Validate range
+        if (!in_array($range, $validRanges)) {
+            Log::warning('Invalid range provided, defaulting to this_month', ['range' => $range]);
+            $range = 'this_month';
+        }
+
+        $validSystems = $this->getSystemList();
         $system = $request->input('system', 'SCM');
+        
+        // Validate system
+        if (!in_array($system, $validSystems)) {
+            Log::warning('Invalid system provided, defaulting to SCM', ['system' => $system]);
+            $system = 'SCM';
+        }
+
         $search = $request->input('search', null);
 
-        // Calculate date ranges based on selection
-        $now = Carbon::now();
+        // Set time zone to EAT (Africa/Nairobi)
+        Carbon::setLocale('en');
+        $now = Carbon::now('Africa/Nairobi');
+
         $endDate = $now->clone()->endOfMonth();
         $startDate = match ($range) {
             'last_month'     => $now->clone()->subMonth()->startOfMonth(),
@@ -27,7 +47,7 @@ class LoginFilterService
             default          => $now->clone()->startOfMonth(),
         };
 
-        // For last_month, end date should be end of last month
+        // Adjust end date for specific ranges
         if ($range === 'last_month') {
             $endDate = $now->clone()->subMonth()->endOfMonth();
         } elseif ($range === 'last_3_months') {
@@ -46,7 +66,7 @@ class LoginFilterService
             'range'       => $range,
             'rangeLabel'  => $rangeLabel,
             'system'      => $system,
-            'search'      => $search,
+            'search'      => $search ? strtolower(trim($search)) : null,
         ];
     }
 
@@ -64,7 +84,6 @@ class LoginFilterService
         if (!empty($filters['startDate'])) {
             $query->where('date_utc', '>=', $filters['startDate']);
         }
-
         if (!empty($filters['endDate'])) {
             $query->where('date_utc', '<=', $filters['endDate']);
         }
@@ -72,15 +91,17 @@ class LoginFilterService
         // Apply system filter using system mapping
         if (!empty($filters['system'])) {
             $mappedSystems = collect(config('systemmap'))
-                ->filter(function ($system) use ($filters) {
-                    return $system === $filters['system'];
+                ->filter(function ($systemName) use ($filters) {
+                    return $systemName === $filters['system'];
                 })
                 ->keys()
+                ->map(fn($key) => strtolower($key)) // Normalize to lowercase
                 ->toArray();
+
             if (!empty($mappedSystems)) {
                 $query->where(function ($q) use ($mappedSystems) {
                     foreach ($mappedSystems as $mappedSystem) {
-                        $q->orWhere('application', 'LIKE', "%$mappedSystem%");
+                        $q->orWhereRaw('LOWER(application) LIKE ?', ["%$mappedSystem%"]);
                     }
                 });
             }
@@ -94,16 +115,25 @@ class LoginFilterService
      */
     public function getSystemList(): array
     {
-        return [
-            'SCM',
-            'Odoo',
-            'OPS',
-            'D365 Live',
-            'Fit Express',
-            'FIT ERP',
-            'Fit Express UAT',
-            'FITerp UAT',
-            'OPS UAT',
-        ];
+        // Fetch systems from the System model for consistency with SigninLogsImport
+        $systems = System::pluck('name')->toArray();
+
+        // Fallback to hardcoded list if System model is empty
+        if (empty($systems)) {
+            $systems = [
+                'SCM',
+                'Odoo',
+                'OPS',
+                'D365 Live',
+                'Fit Express',
+                'FIT ERP',
+                'Fit Express UAT',
+                'FITerp UAT',
+                'OPS UAT',
+            ];
+            Log::info('No systems found in System model, using hardcoded list');
+        }
+
+        return array_unique($systems);
     }
 }

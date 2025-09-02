@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 /**
  * App\Models\Logintracker\User
@@ -196,5 +197,70 @@ class AzureUser extends Authenticatable
 
         Log::warning('Failed to find user by identifier in Azure_Users', ['identifier' => $identifier]);
         return null;
+    }
+
+    /**
+     * Find or create user based on userPrincipalName
+     * Handles the string/UUID primary key structure
+     *
+     * @param string $userPrincipalName
+     * @param string|null $displayName
+     * @param string|null $userIdFromCsv
+     * @return self|null
+     */
+    public static function findOrCreateUser($userPrincipalName, $displayName = null, $userIdFromCsv = null)
+    {
+        try {
+            // First try to find by userPrincipalName
+            $user = self::where('userPrincipalName', $userPrincipalName)->first();
+            
+            if (!$user) {
+                // If not found, create new user
+                $userData = [
+                    'userPrincipalName' => $userPrincipalName,
+                    'displayName' => $displayName,
+                ];
+                
+                // Handle ID generation for string primary key
+                if (!empty($userIdFromCsv)) {
+                    // Use the ID from CSV if provided
+                    $userData['id'] = $userIdFromCsv;
+                } else {
+                    // Generate a UUID or use a pattern like user-{timestamp}-{random}
+                    $userData['id'] = 'user-' . time() . '-' . Str::random(8);
+                }
+                
+                $user = self::create($userData);
+                
+                Log::info('Created new Azure user', [
+                    'userPrincipalName' => $userPrincipalName,
+                    'displayName' => $displayName,
+                    'generated_id' => $userData['id'],
+                    'user_id' => $user->id
+                ]);
+            } else {
+                // Update display name if it's different and not empty
+                if (!empty($displayName) && $user->displayName !== $displayName) {
+                    $user->update(['displayName' => $displayName]);
+                    Log::info('Updated user display name', [
+                        'userPrincipalName' => $userPrincipalName,
+                        'old_name' => $user->displayName,
+                        'new_name' => $displayName
+                    ]);
+                }
+            }
+            
+            return $user;
+            
+        } catch (\Exception $e) {
+            Log::error('Failed to find or create user', [
+                'userPrincipalName' => $userPrincipalName,
+                'displayName' => $displayName,
+                'userIdFromCsv' => $userIdFromCsv,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return null;
+        }
     }
 }

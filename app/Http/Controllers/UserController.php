@@ -275,6 +275,11 @@ class UserController extends Controller
 
             [$start, $end] = $this->resolveDateRange($range);
 
+            Log::info('Resolved Date Range', [
+                'start' => $start->toDateTimeString(),
+                'end' => $end->toDateTimeString()
+            ]);
+
             $signIns = $user->signIns()
                 ->whereBetween('date_utc', [$start, $end])
                 ->when($system, function ($query) use ($system) {
@@ -284,26 +289,22 @@ class UserController extends Controller
                 ->paginate($this->perPage)
                 ->withQueryString();
 
+            // FIXED: SQL Server compatible system usage query
             $recentApplications = $user->signIns()
                 ->whereBetween('date_utc', [$start, $end])
-                ->select(
+                ->select([
                     'system',
                     DB::raw('COUNT(*) as usage_count'),
-                    DB::raw('MAX(date_utc) as last_used'),
-                    DB::raw('GROUP_CONCAT(DISTINCT system ORDER BY system SEPARATOR ", ") as systems')
-                )
+                    DB::raw('MAX(date_utc) as last_used')
+                ])
                 ->whereNotNull('system')
                 ->groupBy('system')
                 ->orderBy('last_used', 'desc')
                 ->limit(10)
-                ->get()
-                ->map(function ($item) {
-                    if ($item->systems) {
-                        $systemArray = array_unique(array_map('trim', explode(',', $item->systems)));
-                        $item->systems = implode(', ', $systemArray);
-                    }
-                    return $item;
-                });
+                ->get();
+
+            // If you need concatenated systems, handle it in PHP instead of SQL
+            $systemsList = $recentApplications->pluck('system')->unique()->join(', ');
 
             $systems = System::orderBy('name')->pluck('name')->toArray();
             $rangeLabel = $this->getRangeLabel($range);
@@ -317,7 +318,7 @@ class UserController extends Controller
             ]);
 
             return view('logintracker.users.show', compact(
-                'user', 'signIns', 'start', 'end', 'system', 'range', 'rangeLabel', 'recentApplications', 'systems'
+                'user', 'signIns', 'start', 'end', 'system', 'range', 'rangeLabel', 'recentApplications', 'systems', 'systemsList'
             ));
 
         } catch (\Exception $e) {
@@ -545,5 +546,43 @@ class UserController extends Controller
             'custom' => 'Custom Range',
             default => 'This Month',
         };
+    }
+
+    /**
+     * Helper method for SQL Server compatible string aggregation
+     */
+    private function getSystemUsageWithAggregation($userId, $start, $end)
+    {
+        // Check if using SQL Server
+        if (DB::connection()->getDriverName() === 'sqlsrv') {
+            return SigninLog::select([
+                    'system',
+                    DB::raw('COUNT(*) as usage_count'),
+                    DB::raw('MAX(date_utc) as last_used'),
+                    DB::raw('STRING_AGG(CAST(system AS NVARCHAR(MAX)), \', \') WITHIN GROUP (ORDER BY system) as systems')
+                ])
+                ->where('user_id', $userId)
+                ->whereBetween('date_utc', [$start, $end])
+                ->whereNotNull('system')
+                ->groupBy('system')
+                ->orderBy('last_used', 'desc')
+                ->limit(10)
+                ->get();
+        } else {
+            // MySQL/other databases
+            return SigninLog::select([
+                    'system',
+                    DB::raw('COUNT(*) as usage_count'),
+                    DB::raw('MAX(date_utc) as last_used'),
+                    DB::raw('GROUP_CONCAT(DISTINCT system ORDER BY system SEPARATOR ", ") as systems')
+                ])
+                ->where('user_id', $userId)
+                ->whereBetween('date_utc', [$start, $end])
+                ->whereNotNull('system')
+                ->groupBy('system')
+                ->orderBy('last_used', 'desc')
+                ->limit(10)
+                ->get();
+        }
     }
 }

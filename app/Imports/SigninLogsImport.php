@@ -2,155 +2,290 @@
 
 namespace App\Imports;
 
-use App\Models\SigninLog;
-use App\Models\User;
-use App\Models\System;
+use App\Models\Logintracker\SigninLog;
+use App\Models\Logintracker\System;
+use App\Models\Logintracker\AzureUser;
 use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
 class SigninLogsImport implements ToModel, WithHeadingRow
 {
     public function model(array $row)
     {
-        $row = array_change_key_case($row, CASE_LOWER);
+        return DB::transaction(function () use ($row) {
+            try {
+                $row = array_change_key_case($row, CASE_LOWER);
+                $userPrincipalName = trim($row['username'] ?? '');
+                $userDisplayName = trim($row['user'] ?? '');
+                $userIdFromCsv = trim($row['user id'] ?? '');
 
-        $userId = null;
-        $userPrincipalName = trim($row['username'] ?? '');
-        $userDisplayName = trim($row['user'] ?? '');
-        $userIdFromCsv = trim($row['user id'] ?? '');
+                // Skip if username is empty
+                if (empty($userPrincipalName)) {
+                    Log::info('Skipped import due to empty username', ['row' => $row]);
+                    return null;
+                }
 
-        // Enhanced user matching logic
-        // 1. First try to match by email if username is an email
-        if (filter_var($userPrincipalName, FILTER_VALIDATE_EMAIL)) {
-            $user = User::whereRaw('LOWER(TRIM(userPrincipalName)) = ?', [strtolower($userPrincipalName)])->first();
-            if ($user) {
+                // Fixed user deduplication - use the model method
+                $user = AzureUser::findOrCreateUser($userPrincipalName, $userDisplayName, $userIdFromCsv);
+                
+                if (!$user) {
+                    Log::warning("User could not be found or created", [
+                        'username' => $userPrincipalName,
+                        'display_name' => $userDisplayName,
+                    ]);
+                    return null;
+                }
+
                 $userId = $user->id;
-                Log::info("Found user by email: {$userPrincipalName} -> {$userId}");
-            }
-        }
-        
-        // 2. If no user found by email, try to match by display name and then find by email pattern
-        if (is_null($userId) && !empty($userDisplayName)) {
-            $user = User::where('displayName', 'LIKE', '%' . $userDisplayName . '%')->first();
-            if ($user) {
-                $userId = $user->id;
-                Log::info("Found user by display name: {$userDisplayName} -> {$userId}");
-            }
-        }
-        
-        // 3. If username is UUID and we have display name, try to match and use the known email
-        if (is_null($userId) && preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i', $userPrincipalName) && !empty($userDisplayName)) {
-            $user = User::where('displayName', 'LIKE', '%' . $userDisplayName . '%')->first();
-            if ($user) {
-                $userId = $user->id;
-                Log::info("Found user by display name for UUID: {$userDisplayName} (UUID: {$userPrincipalName}) -> {$userId}");
-            } else {
-                Log::warning("User not found for UUID {$userPrincipalName} with display name: {$userDisplayName}");
+
+                // Map application to system
+                $application = $row['application'] ?? null;
+                $normalizedApp = strtolower(trim($application));
+                $systemMapping = config('systemmap', []);
+                $system = $systemMapping[$normalizedApp] ?? null;
+
+                // Partial match for system
+                if (!$system) {
+                    foreach ($systemMapping as $appKey => $systemName) {
+                        if (strpos($normalizedApp, $appKey) !== false || strpos($appKey, $normalizedApp) !== false) {
+                            $system = $systemName;
+                            break;
+                        }
+                    }
+                }
+
+                $system = $system ?? 'Unknown';
+
+                // Auto-create system and associate with user
+                if ($system !== 'Unknown' && $userId) {
+                    $systemModel = System::firstOrCreate(['name' => $system]);
+                    if ($systemModel && !$user->systems()->where('application_id', $systemModel->id)->exists()) {
+                        $user->systems()->attach($systemModel->id);
+                        Log::info("Associated user {$userPrincipalName} with system {$system}");
+                    }
+                }
+
+                // Fixed date validation
+                $dateUtc = $this->extractDateUtc($row);
+                if (!$dateUtc) {
+                    Log::warning('Skipped import due to missing date_utc', [
+                        'username' => $userPrincipalName, 
+                        'available_keys' => array_keys($row)
+                    ]);
+                    return null;
+                }
+
+                $parsedDate = $this->validateAndParseDate($dateUtc, $userPrincipalName);
+                if (!$parsedDate) {
+                    return null; // Already logged in validateAndParseDate
+                }
+
+                // Check for duplicate signin log
+                $existingLog = SigninLog::where([
+                    'user_id' => $userId,
+                    'date_utc' => $parsedDate,
+                    'request_id' => $row['request id'] ?? null,
+                ])->first();
+
+                if ($existingLog) {
+                    Log::info('Skipped duplicate signin log', [
+                        'user_id' => $userId,
+                        'date_utc' => $parsedDate,
+                        'request_id' => $row['request id'] ?? null
+                    ]);
+                    return null;
+                }
+
+                return new SigninLog([
+                    'date_utc'                          => $parsedDate,
+                    'request_id'                        => $row['request id'] ?? null,
+                    'user_agent'                        => $row['user agent'] ?? null,
+                    'correlation_id'                    => $row['correlation id'] ?? null,
+                    'user_id'                           => $userId,
+                    'user'                              => $row['user'] ?? null,
+                    'username'                          => $row['username'] ?? null,
+                    'user_type'                         => $row['user type'] ?? null,
+                    'cross_tenant_access_type'          => $row['cross tenant access type'] ?? null,
+                    'incoming_token_type'               => $row['incoming token type'] ?? null,
+                    'authentication_protocol'           => $row['authentication protocol'] ?? null,
+                    'unique_token_identifier'           => $row['unique token identifier'] ?? null,
+                    'original_transfer_method'          => $row['original transfer method'] ?? null,
+                    'client_credential_type'            => $row['client credential type'] ?? null,
+                    'token_protection_sign_in_session'  => $row['token protection - sign in session'] ?? null,
+                    'token_protection_status_code'      => $row['token protection - sign in session statuscode'] ?? null,
+                    'application'                       => $application,
+                    'system'                            => $system,
+                    'application_id'                    => $row['application id'] ?? null,
+                    'app_owner_tenant_id'               => $row['app owner tenant id'] ?? null,
+                    'resource'                          => $row['resource'] ?? null,
+                    'resource_id'                       => $row['resource id'] ?? null,
+                    'resource_tenant_id'                => $row['resource tenant id'] ?? null,
+                    'resource_owner_tenant_id'          => $row['resource owner tenant id'] ?? null,
+                    'home_tenant_id'                    => $row['home tenant id'] ?? null,
+                    'home_tenant_name'                  => $row['home tenant name'] ?? null,
+                    'ip_address'                        => $row['ip address'] ?? null,
+                    'location'                          => $row['location'] ?? null,
+                    'status'                            => $row['status'] ?? null,
+                    'sign_in_error_code'                => $row['sign-in error code'] ?? null,
+                    'failure_reason'                    => $row['failure reason'] ?? null,
+                    'client_app'                        => $row['client app'] ?? null,
+                    'device_id'                         => $row['device id'] ?? null,
+                    'browser'                           => $row['browser'] ?? null,
+                    'operating_system'                  => $row['operating system'] ?? null,
+                    'compliant'                         => $row['compliant'] ?? null,
+                    'managed'                           => $row['managed'] ?? null,
+                    'join_type'                         => $row['join type'] ?? null,
+                    'multifactor_auth_result'           => $row['multifactor authentication result'] ?? null,
+                    'multifactor_auth_method'           => $row['multifactor authentication auth method'] ?? null,
+                    'multifactor_auth_detail'           => $row['multifactor authentication auth detail'] ?? null,
+                    'authentication_requirement'        => $row['authentication requirement'] ?? null,
+                    'sign_in_identifier'                => $row['sign-in identifier'] ?? null,
+                    'session_id'                        => $row['session id'] ?? null,
+                    'ip_address_seen_by_resource'       => $row['ip address (seen by resource)'] ?? null,
+                    'through_global_secure_access'      => $row['through global secure access'] ?? null,
+                    'global_secure_access_ip'           => $row['global secure access ip address'] ?? null,
+                    'autonomous_system_number'          => $row['autonomous system number'] ?? null,
+                    'flagged_for_review'                => $row['flagged for review'] ?? null,
+                    'token_issuer_type'                 => $row['token issuer type'] ?? null,
+                    'token_issuer_name'                 => $row['token issuer name'] ?? null,
+                    'latency'                           => $row['latency'] ?? null,
+                    'conditional_access'                => $row['conditional access'] ?? null,
+                    'managed_identity_type'             => $row['managed identity type'] ?? null,
+                    'associated_resource_id'            => $row['associated resource id'] ?? null,
+                    'federated_token_id'                => $row['federated token id'] ?? null,
+                    'federated_token_id_issuer'         => $row['federated token issuer'] ?? null,
+                ]);
+            } catch (\Exception $e) {
+                Log::error('Failed to process sign-in log import row', [
+                    'username' => $row['username'] ?? 'unknown',
+                    'display_name' => $row['user'] ?? 'unknown',
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                    'row_keys' => array_keys($row),
+                ]);
                 return null;
             }
-        }
+        });
+    }
 
-        if (is_null($userId)) {
-            Log::warning("User not found - Username: {$userPrincipalName}, Display Name: {$userDisplayName}");
+    /**
+     * Find or create user based on userPrincipalName
+     */
+    private function findOrCreateUser($userPrincipalName, $displayName = null, $userIdFromCsv = null)
+    {
+        try {
+            // First try to find by userPrincipalName
+            $user = AzureUser::where('userPrincipalName', $userPrincipalName)->first();
+            
+            if (!$user) {
+                // If not found, create new user
+                $userData = [
+                    'userPrincipalName' => $userPrincipalName,
+                    'displayName' => $displayName,
+                ];
+                
+                // Add user ID from CSV if provided
+                if (!empty($userIdFromCsv)) {
+                    $userData['id'] = $userIdFromCsv;
+                }
+                
+                $user = AzureUser::create($userData);
+                
+                Log::info('Created new Azure user', [
+                    'userPrincipalName' => $userPrincipalName,
+                    'displayName' => $displayName,
+                    'user_id' => $user->id
+                ]);
+            } else {
+                // Update display name if it's different and not empty
+                if (!empty($displayName) && $user->displayName !== $displayName) {
+                    $user->update(['displayName' => $displayName]);
+                    Log::info('Updated user display name', [
+                        'userPrincipalName' => $userPrincipalName,
+                        'old_name' => $user->displayName,
+                        'new_name' => $displayName
+                    ]);
+                }
+            }
+            
+            return $user;
+            
+        } catch (\Exception $e) {
+            Log::error('Failed to find or create user', [
+                'userPrincipalName' => $userPrincipalName,
+                'displayName' => $displayName,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
             return null;
         }
+    }
 
-        // Map application to system
-        $application = $row['application'] ?? null;
-        $normalizedApp = strtolower(trim($application));
-
-        // Use the systemmap.php configuration
-        $systemMapping = config('systemmap', []);
-        $system = $systemMapping[$normalizedApp] ?? null;
+    /**
+     * Extract date_utc from row data
+     */
+    private function extractDateUtc($row)
+    {
+        // Try common date field names
+        $dateFields = ['date_utc', 'date (utc)', 'date', 'created date', 'created_date', 'timestamp'];
         
-        // If no mapping found, try to find a partial match
-        if (!$system) {
-            foreach ($systemMapping as $appKey => $systemName) {
-                if (strpos($normalizedApp, $appKey) !== false || strpos($appKey, $normalizedApp) !== false) {
-                    $system = $systemName;
-                    break;
-                }
+        foreach ($dateFields as $field) {
+            if (isset($row[$field]) && !empty(trim($row[$field]))) {
+                return trim($row[$field]);
             }
         }
         
-        // Default to 'Unknown' if no mapping found
-        $system = $system ?? 'Unknown';
-        
-        // Auto-create system if it doesn't exist and associate with user
-        if ($system !== 'Unknown' && $userId) {
-            $systemModel = System::firstOrCreate(['name' => $system]);
+        return null;
+    }
+
+    /**
+     * Validate and parse date string
+     */
+    private function validateAndParseDate($dateString, $username = null)
+    {
+        try {
+            // Handle various date formats
+            $formats = [
+                'Y-m-d H:i:s',
+                'Y-m-d\TH:i:s\Z',
+                'Y-m-d\TH:i:s.u\Z',
+                'Y-m-d\TH:i:s',
+                'm/d/Y H:i:s',
+                'd/m/Y H:i:s',
+                'Y-m-d',
+                'm/d/Y',
+                'd/m/Y'
+            ];
             
-            // Get the user and associate them with this system
-            $user = User::find($userId);
-            if ($user && $systemModel) {
-                // Check if user is already associated with this system
-                if (!$user->systems()->where('application_id', $systemModel->id)->exists()) {
-                    $user->systems()->attach($systemModel->id);
-                    Log::info("Associated user {$userPrincipalName} with system {$system}");
+            foreach ($formats as $format) {
+                try {
+                    $date = Carbon::createFromFormat($format, $dateString);
+                    if ($date) {
+                        return $date->format('Y-m-d H:i:s');
+                    }
+                } catch (\Exception $e) {
+                    // Continue to next format
+                    continue;
                 }
             }
+            
+            // Try Carbon's built-in parsing as fallback
+            $date = Carbon::parse($dateString);
+            if ($date) {
+                return $date->format('Y-m-d H:i:s');
+            }
+            
+        } catch (\Exception $e) {
+            Log::warning('Failed to parse date', [
+                'username' => $username,
+                'date_string' => $dateString,
+                'error' => $e->getMessage()
+            ]);
         }
-
-        return new SigninLog([
-            'date_utc'                          => Carbon::parse($row['date (utc)'])->format('Y-m-d H:i:s'),
-            'request_id'                        => $row['request id'] ?? null,
-            'user_agent'                        => $row['user agent'] ?? null,
-            'correlation_id'                    => $row['correlation id'] ?? null,
-            'user_id'                           => $userId,
-            'user'                              => $row['user'] ?? null,
-            'username'                          => $row['username'] ?? null,
-            'user_type'                         => $row['user type'] ?? null,
-            'cross_tenant_access_type'          => $row['cross tenant access type'] ?? null,
-            'incoming_token_type'               => $row['incoming token type'] ?? null,
-            'authentication_protocol'           => $row['authentication protocol'] ?? null,
-            'unique_token_identifier'           => $row['unique token identifier'] ?? null,
-            'original_transfer_method'          => $row['original transfer method'] ?? null,
-            'client_credential_type'            => $row['client credential type'] ?? null,
-            'token_protection_sign_in_session'  => $row['token protection - sign in session'] ?? null,
-            'token_protection_status_code'      => $row['token protection - sign in session statuscode'] ?? null,
-            'application'                       => $application,
-            'system'                            => $system,
-            'application_id'                    => $row['application id'] ?? null,
-            'app_owner_tenant_id'               => $row['app owner tenant id'] ?? null,
-            'resource'                          => $row['resource'] ?? null,
-            'resource_id'                       => $row['resource id'] ?? null,
-            'resource_tenant_id'                => $row['resource tenant id'] ?? null,
-            'resource_owner_tenant_id'          => $row['resource owner tenant id'] ?? null,
-            'home_tenant_id'                    => $row['home tenant id'] ?? null,
-            'home_tenant_name'                  => $row['home tenant name'] ?? null,
-            'ip_address'                        => $row['ip address'] ?? null,
-            'location'                          => $row['location'] ?? null,
-            'status'                            => $row['status'] ?? null,
-            'sign_in_error_code'                => $row['sign-in error code'] ?? null,
-            'failure_reason'                    => $row['failure reason'] ?? null,
-            'client_app'                        => $row['client app'] ?? null,
-            'device_id'                         => $row['device id'] ?? null,
-            'browser'                           => $row['browser'] ?? null,
-            'operating_system'                  => $row['operating system'] ?? null,
-            'compliant'                         => $row['compliant'] ?? null,
-            'managed'                           => $row['managed'] ?? null,
-            'join_type'                         => $row['join type'] ?? null,
-            'multifactor_auth_result'           => $row['multifactor authentication result'] ?? null,
-            'multifactor_auth_method'           => $row['multifactor authentication auth method'] ?? null,
-            'multifactor_auth_detail'           => $row['multifactor authentication auth detail'] ?? null,
-            'authentication_requirement'        => $row['authentication requirement'] ?? null,
-            'sign_in_identifier'                => $row['sign-in identifier'] ?? null,
-            'session_id'                        => $row['session id'] ?? null,
-            'ip_address_seen_by_resource'       => $row['ip address (seen by resource)'] ?? null,
-            'through_global_secure_access'      => $row['through global secure access'] ?? null,
-            'global_secure_access_ip'           => $row['global secure access ip address'] ?? null,
-            'autonomous_system_number'          => $row['autonomous system  number'] ?? null,
-            'flagged_for_review'                => $row['flagged for review'] ?? null,
-            'token_issuer_type'                 => $row['token issuer type'] ?? null,
-            'token_issuer_name'                 => $row['token issuer name'] ?? null,
-            'latency'                           => $row['latency'] ?? null,
-            'conditional_access'                => $row['conditional access'] ?? null,
-            'managed_identity_type'             => $row['managed identity type'] ?? null,
-            'associated_resource_id'            => $row['associated resource id'] ?? null,
-            'federated_token_id'                => $row['federated token id'] ?? null,
-            'federated_token_issuer'            => $row['federated token issuer'] ?? null,
-        ]);
+        
+        return null;
     }
 }
