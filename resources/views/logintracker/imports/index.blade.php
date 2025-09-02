@@ -7,18 +7,14 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body>
-
 <div class="container mt-5">
-
     {{-- Page Title --}}
     <h1 class="mb-4">Import Data</h1>
     <p class="lead">Import users and sign-in logs. User-system associations and login status are automatically updated when importing sign-in data.</p>
-
     {{-- Back to Dashboard Button --}}
     <div class="mb-4">
         <a href="{{ route('dashboard') }}" class="btn btn-secondary">← Back to Dashboard</a>
     </div>
-
     {{-- Flash Messages --}}
     @if (session('success'))
         <div class="alert alert-success alert-dismissible fade show" role="alert">
@@ -31,7 +27,6 @@
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
     @endif
-
     {{-- Validation Errors --}}
     @if ($errors->any())
         <div class="alert alert-danger">
@@ -43,13 +38,12 @@
             </ul>
         </div>
     @endif
-
     {{-- Import Forms --}}
     <div class="row">
         {{-- Users Import --}}
         <div class="col-md-6">
             <h3>Import Users</h3>
-            <form action="{{ route('import.users') }}" method="POST" enctype="multipart/form-data">
+            <form action="{{ route('imports.users') }}" method="POST" enctype="multipart/form-data">
                 @csrf
                 <div class="mb-3">
                     <label for="userFile" class="form-label">Upload Users CSV</label>
@@ -58,11 +52,10 @@
                 <button type="submit" class="btn btn-primary">Import Users</button>
             </form>
         </div>
-
         {{-- Sign-Ins Import --}}
         <div class="col-md-6">
             <h3>Import Sign-Ins</h3>
-            <form action="{{ route('import.sign_ins') }}" method="POST" enctype="multipart/form-data">
+            <form action="{{ route('imports.sign_ins') }}" method="POST" enctype="multipart/form-data">
                 @csrf
                 <div class="mb-3">
                     <label for="signInFile" class="form-label">Upload Sign-Ins CSV</label>
@@ -72,11 +65,7 @@
             </form>
         </div>
     </div>
-
-
-
 </div>
-
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

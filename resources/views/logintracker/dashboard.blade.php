@@ -73,7 +73,7 @@
             </div>
 
             <div class="col-md-4">
-                <a href="{{ route('users.logged-in') }}" class="text-decoration-none" id="logged-in-link">
+                <a href="{{ route('reporting.users.logged-in') }}" class="text-decoration-none" id="logged-in-link">
                     <div class="card bg-success text-white shadow card-hover">
                         <div class="card-body">
                             <h5 class="card-title">Logged In Users</h5>
@@ -85,7 +85,7 @@
             </div>
 
             <div class="col-md-4">
-                <a href="{{ route('users.not-logged-in') }}" class="text-decoration-none" id="not-logged-in-link">
+                <a href="{{ route('reporting.users.not-logged-in') }}" class="text-decoration-none" id="not-logged-in-link">
                     <div class="card bg-danger text-white shadow card-hover">
                         <div class="card-body">
                             <h5 class="card-title">Not Logged In Users</h5>
@@ -135,14 +135,23 @@
                                     @else
                                         N/A
                                     @endif
-                                </td>
-                                <td>
-                                    @if (\Illuminate\Support\Str::isUuid($user['id']))
-                                        <a href="{{ route('users.show', ['identifier' => $user['id']]) }}" class="btn btn-sm btn-primary">View</a>
-                                    @else
-                                        <span class="text-danger">Invalid ID: {{ $user['id'] }}</span>
-                                    @endif
-                                </td>
+<td>
+    @php
+        $userId = is_array($user) ? ($user['id'] ?? null) : ($user->id ?? null);
+        \Log::info('Debug user data:', ['user' => $user, 'userId' => $userId]);
+    @endphp
+    @if ($userId)
+        <a href="{{ route('reporting.users.show', ['user' => $userId]) }}" 
+           class="btn btn-sm btn-primary">
+           View
+        </a>
+    @else
+        <span class="text-danger">Missing user ID</span>
+        <pre>{{ var_dump($user) }}</pre>
+    @endif
+</td>
+
+
                             </tr>
                         @endforeach
                     </tbody>
@@ -173,7 +182,7 @@
     <script>
        $(document).ready(function() {
     // Define the base URL for the users.show route
-    const userShowBaseUrl = '{{ route('users.show', ['identifier' => ':id']) }}'.replace(':id', '');
+    const userShowBaseUrl = '{{ route('reporting.users.show', ['user' => ':id']) }}'.replace(':id', '');
 
     $('#apply').on('click', function(e) {
         e.preventDefault();
@@ -224,8 +233,8 @@
                 $('#not-logged-in-count').text(response.notLoggedInCount || 0);
 
                 const queryParams = $.param({ range, system, search });
-                $('#logged-in-link').attr('href', '{{ route('users.logged-in') }}?' + queryParams);
-                $('#not-logged-in-link').attr('href', '{{ route('users.not-logged-in') }}?' + queryParams);
+                $('#logged-in-link').attr('href', '{{ route('reporting.users.logged-in') }}?' + queryParams);
+                $('#not-logged-in-link').attr('href', '{{ route('reporting.users.not-logged-in') }}?' + queryParams);
 
                 $('#range-label').text(rangeLabel).toggle(!!rangeLabel);
                 $('#system-label').text(systemLabel).toggle(!!system);

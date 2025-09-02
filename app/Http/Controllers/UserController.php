@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Logintracker\User as AzureUser;
+use App\Models\Logintracker\AzureUser;
 use App\Models\Logintracker\SigninLog;
 use App\Models\Logintracker\System;
 use Illuminate\Http\Request;
@@ -414,7 +414,7 @@ class UserController extends Controller
             ]);
 
             // Update view to match new route
-            return view('logintracker.reporter.logged-in', compact('users', 'filters', 'search', 'systems', 'type'));
+            return view('logintracker.users.logged-in', compact('users', 'filters', 'search', 'systems', 'type'));
         } catch (\Exception $e) {
             Log::error('Error in loggedInUsers', [
                 'error' => $e->getMessage(),
@@ -492,7 +492,7 @@ class UserController extends Controller
             ]);
 
             // Update view to match new route
-            return view('logintracker.reporter.not-logged-in', compact('users', 'filters', 'search', 'systems'));
+            return view('logintracker.users.not-logged-in', compact('users', 'filters', 'search', 'systems'));
         } catch (\Exception $e) {
             Log::error('Error in notLoggedInUsers', [
                 'error' => $e->getMessage(),

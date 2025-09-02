@@ -37,7 +37,7 @@
 
         <div class="col-md-3 d-flex align-items-end">
             <button type="button" class="btn btn-primary me-2" onclick="applyFilters()">Apply</button>
-            <a href="{{ route('users.logged-in') }}" class="btn btn-secondary">Reset</a>
+            <a href="{{ route('reporting.users.logged-in') }}" class="btn btn-secondary">Reset</a>
         </div>
     </div>
 
@@ -82,15 +82,9 @@
                                     ]);
                                 @endphp
                                 <tr>
-                                    <td>
-                                        <strong>{{ $user->displayName ?: 'Unknown' }}</strong>
-                                    </td>
-                                    <td>
-                                        <small class="text-muted">{{ $user->userPrincipalName }}</small>
-                                    </td>
-                                    <td>
-                                        <span class="badge bg-success">{{ $user->login_count }}</span>
-                                    </td>
+                                    <td><strong>{{ $user->displayName ?: 'Unknown' }}</strong></td>
+                                    <td><small class="text-muted">{{ $user->userPrincipalName }}</small></td>
+                                    <td><span class="badge bg-success">{{ $user->login_count }}</span></td>
                                     <td>
                                         @if($user->signIns && $user->signIns->count() > 0)
                                             <small>{{ \Carbon\Carbon::parse($user->signIns->first()->date_utc)->format('M d, Y H:i') }}</small>
@@ -100,7 +94,7 @@
                                     </td>
                                     <td>
                                         @if($user->id && \Illuminate\Support\Str::isUuid($user->id))
-                                            <a href="{{ route('logintracker.users.show', $user->id) }}" class="btn btn-sm btn-primary">
+                                            <a href="{{ route('reporting.users.show', $user->id) }}" class="btn btn-sm btn-primary">
                                                 View Details
                                             </a>
                                         @else
@@ -127,19 +121,19 @@ function applyFilters() {
     const range = document.getElementById('range').value;
     const system = document.getElementById('system').value;
     let search = document.getElementById('search').value;
-    
+
     // Prevent invalid search terms
     if (search === 'logged-in' || search === 'not-logged-in') {
         console.log('Invalid search term detected:', search);
         search = '';
     }
-    
+
     const params = new URLSearchParams();
     if (range) params.set('range', range);
     if (system) params.set('system', system);
     if (search) params.set('search', search);
-    
-    window.location.href = '{{ route("users.logged-in") }}?' + params.toString();
+
+    window.location.href = '{{ route("reporting.users.logged-in") }}?' + params.toString();
 }
 
 // Allow Enter key to trigger search

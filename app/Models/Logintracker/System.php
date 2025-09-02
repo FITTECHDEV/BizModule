@@ -12,6 +12,8 @@ class System extends Model
      *
      * @var bool
      */
+
+        protected $table = 'Azure_SoftwareMaster';
     public $timestamps = true; // Adjust to false if no created_at/updated_at in systems
 
     /**
@@ -49,7 +51,7 @@ class System extends Model
      */
     public function users(): BelongsToMany
     {
-        return $this->belongsToMany(User::class, 'application_user', 'application_id', 'user_id')
+        return $this->belongsToMany(AzureUser::class, 'application_user', 'application_id', 'user_id')
                     ->withPivot('id');
     }
 }

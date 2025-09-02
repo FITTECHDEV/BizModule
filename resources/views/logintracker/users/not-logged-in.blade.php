@@ -37,7 +37,7 @@
 
         <div class="col-md-3 d-flex align-items-end">
             <button type="button" class="btn btn-primary me-2" onclick="applyFilters()">Apply</button>
-            <a href="{{ route('reporter.not-logged-in') }}" class="btn btn-secondary">Reset</a>
+            <a href="{{ route('reporting.users.not-logged-in') }}" class="btn btn-secondary">Reset</a>
         </div>
     </div>
 
@@ -119,7 +119,7 @@ function applyFilters() {
     if (system) params.set('system', system);
     if (search) params.set('search', search);
     
-    window.location.href = '{{ route("reporter.not-logged-in") }}?' + params.toString();
+    window.location.href = '{{ route("reporting.users.not-logged-in") }}?' + params.toString();
 }
 
 // Allow Enter key to trigger search

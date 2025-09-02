@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Log;
  * Represents a user entity within the system, based on Azure AD or manual entry.
  * Handles user authentication and relationship to sign-in activity.
  */
-class User extends Authenticatable
+class AzureUser extends Authenticatable
 {
     use HasFactory;
 

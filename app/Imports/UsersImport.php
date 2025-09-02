@@ -2,7 +2,7 @@
 
 namespace App\Imports;
 
-use App\Models\Lgintracker\User;
+use App\Models\Logintracker\AzureUser;  // ✅ Correct: Use AzureUser, not User
 use Illuminate\Support\Str;
 use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
@@ -14,26 +14,26 @@ class UsersImport implements ToModel, WithHeadingRow
     public function model(array $row)
     {
         $row = array_change_key_case($row, CASE_LOWER);
-
+        
         // Skip if no UPN
         if (empty($row['userprincipalname'])) {
             Log::info('Skipped import due to empty userPrincipalName', ['row' => $row]);
             return null;
         }
-
-        // Skip if user already exists by UPN
-        if (User::where('userPrincipalName', $row['userprincipalname'])->exists()) {
+        
+        // Skip if user already exists by UPN - use AzureUser instead of User
+        if (AzureUser::where('userPrincipalName', $row['userprincipalname'])->exists()) {
             Log::info('Skipped import due to existing userPrincipalName', ['userPrincipalName' => $row['userprincipalname']]);
             return null;
         }
-
-          // Ensure a proper UUID
-    $id = !empty($row['id']) ? $row['id'] : (string) Str::uuid();
-
-        return new User([
-            'id'                        => (string) Str::uuid(),
+        
+        // Ensure a proper UUID
+        $id = !empty($row['id']) ? $row['id'] : (string) Str::uuid();
+        
+        return new AzureUser([  // ✅ Changed from User to AzureUser
+            'id'                        => $id,
             'userPrincipalName'         => $row['userprincipalname'],
-            'displayName'               => $row['displayname'] ,
+            'displayName'               => $row['displayname'],
             'surname'                   => $row['surname'] ?? 'Unknown',
             'mail'                      => $row['mail'] ?? 'Unknown',
             'givenName'                 => $row['givenname'] ?? 'Unknown',
@@ -56,8 +56,7 @@ class UsersImport implements ToModel, WithHeadingRow
             'legalAgeGroupClassification'=> $row['legalagegroupclassification'] ?? null,
             'companyName'               => $row['companyname'] ?? 'Unknown',
             'creationType'              => $row['creationtype'] ?? null,
-            'directorySynced' => !empty($row['directorysynced']) ? 1 : 0,
-
+            'directorySynced'           => !empty($row['directorysynced']) ? 1 : 0,
             'invitationState'           => $row['invitationstate'] ?? null,
             'identityIssuer'            => $row['identityissuer'] ?? null,
             'createdDateTime'           => !empty($row['createddatetime']) ? Carbon::parse($row['createddatetime']) : Carbon::now(),

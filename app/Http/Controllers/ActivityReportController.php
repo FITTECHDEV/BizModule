@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Logintracker\User;
+use App\Models\Logintracker\AzureUser;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -33,7 +33,7 @@ public function userActivityReport(Request $request)
         : now();
 
     // Build query using explicit table name
-    $query = User::select([
+    $query = AzureUser::select([
             'Azure_Users.id',
             'Azure_Users.displayName',
             'Azure_Users.userPrincipalName',
