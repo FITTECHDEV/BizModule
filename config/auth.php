@@ -47,10 +47,6 @@ return [
             'hash' => false,
         ],
 
-        'azure' => [ // New guard for Azure_Users
-        'driver' => 'session',
-        'provider' => 'azure_users',
-    ],
     ],
 
     /*
@@ -73,19 +69,8 @@ return [
     'providers' => [
         'users' => [
             'driver' => 'eloquent',
-            // 'driver' => 'ldap',// Was 'eloquent'.
             'model' => App\Models\User::class,
         ],
-
-        'azure_users' => [
-        'driver' => 'eloquent',
-        'model' => App\Models\AzureUser::class,
-    ],
-
-        // 'users' => [
-        //     'driver' => 'database',
-        //     'table' => 'users',
-        // ],
     ],
 
     /*

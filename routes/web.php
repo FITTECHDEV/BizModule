@@ -328,53 +328,53 @@ Route::get('/', function () {
 
 
 
-
 // Allow any string for user parameter (supports userPrincipalName)
 Route::pattern('user', '.*');
 
 // Authentication routes
 Route::post('/login', [AuthController::class, 'login'])->name('login');
-Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:azure')->name('logout');
+Route::get('/auth/azure/callback', [AuthController::class, 'handleAzureCallback'])->name('azure.callback'); // Add if using Azure AD
+Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth')->name('logout');
 
-// Dashboard route with azure guard
+// Dashboard route with default guard
 Route::get('/dashboard', [DashboardController::class, 'index'])
-    ->middleware('auth:azure')
+    ->middleware('auth')
     ->name('dashboard');
 
-// Imports route with azure guard
+// Imports route with default guard
 Route::get('/imports', function () {
     return view('logintracker.imports.index');
-})->middleware('auth:azure')
+})->middleware('auth')
   ->name('imports.index');
 
-// Activity report route with azure guard
+// Activity report route with default guard
 Route::get('/activity-report', [ActivityReportController::class, 'userActivityReport'])
-    ->middleware('auth:azure')
+    ->middleware('auth')
     ->name('activity.report');
 
-// Explicit routes for login status with azure guard
+// Explicit routes for login status with default guard
 Route::get('/users/logged-in', [UserController::class, 'loggedInUsers'])
-    ->middleware('auth:azure')
+    ->middleware('auth')
     ->name('users.logged-in');
 Route::get('/users/not-logged-in', [UserController::class, 'notLoggedInUsers'])
-    ->middleware('auth:azure')
+    ->middleware('auth')
     ->name('users.not-logged-in');
 
-// CSV import endpoints with azure guard
+// CSV import endpoints with default guard
 Route::post('/import/users', [ImportController::class, 'importUsers'])
-    ->middleware('auth:azure')
+    ->middleware('auth')
     ->name('import.users');
 Route::post('/import/sign-ins', [ImportController::class, 'importSignIns'])
-    ->middleware('auth:azure')
+    ->middleware('auth')
     ->name('import.sign_ins');
 
 // Explicitly define users.show to use {identifier} (supports userPrincipalName or id)
 Route::get('/users/{identifier}', [UserController::class, 'show'])
-    ->middleware('auth:azure')
+    ->middleware('auth')
     ->name('users.show');
 
-// Other user resource routes with azure guard
+// Other user resource routes with default guard
 Route::resource('users', UserController::class)
     ->parameters(['users' => 'user'])
     ->except(['show'])
-    ->middleware('auth:azure');
+    ->middleware('auth');

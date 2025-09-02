@@ -1,12 +1,12 @@
 <?php return array (
-  'adminlte' =>
+  'adminlte' => 
   array (
     'title' => 'FIT SERVICE DESK',
     'title_prefix' => '',
     'title_postfix' => '',
     'use_ico_only' => false,
     'use_full_favicon' => false,
-    'google_fonts' =>
+    'google_fonts' => 
     array (
       'allowed' => true,
     ),
@@ -16,10 +16,10 @@
     'logo_img_xl' => NULL,
     'logo_img_xl_class' => 'brand-image-xs',
     'logo_img_alt' => 'FIT',
-    'auth_logo' =>
+    'auth_logo' => 
     array (
       'enabled' => false,
-      'img' =>
+      'img' => 
       array (
         'path' => 'vendor/adminlte/dist/img/AdminLTELogo.png',
         'alt' => 'Auth Logo',
@@ -28,10 +28,10 @@
         'height' => 50,
       ),
     ),
-    'preloader' =>
+    'preloader' => 
     array (
       'enabled' => true,
-      'img' =>
+      'img' => 
       array (
         'path' => 'vendor/adminlte/dist/img/AdminLTELogo.png',
         'alt' => 'AdminLTE Preloader Image',
@@ -96,82 +96,82 @@
     'enabled_laravel_mix' => true,
     'laravel_mix_css_path' => 'css/app.css',
     'laravel_mix_js_path' => 'js/app.js',
-    'menu' =>
+    'menu' => 
     array (
-      0 =>
+      0 => 
       array (
         'text' => 'Dashboard',
         'url' => 'home',
         'icon' => 'fas fa-tachometer-alt',
       ),
-      1 =>
+      1 => 
       array (
         'text' => ' Tickets',
         'url' => '/#',
         'icon' => 'fas fa-fw fa-ticket-alt  ',
-        'active' =>
+        'active' => 
         array (
           0 => 'tickets/*',
         ),
-        'submenu' =>
+        'submenu' => 
         array (
-          0 =>
+          0 => 
           array (
             'text' => 'Home',
             'url' => '/tickets',
             'icon' => 'fas fa-fw fa-home',
             'can' => 'admin-view',
           ),
-          1 =>
+          1 => 
           array (
             'text' => 'My Tickets',
             'route' => 'tickets.my_tickets',
             'icon' => 'fas fa-fw fa-ticket-alt',
             'can' => 'my-ticket-list',
-            'active' =>
+            'active' => 
             array (
               0 => 'tickets/my-tickets',
             ),
           ),
-          2 =>
+          2 => 
           array (
             'text' => 'My Office Tickets',
             'route' => 'tickets.my_office_tickets',
             'icon' => 'fas fa-fw fa-building',
             'can' => 'view-my-office-tickets',
-            'active' =>
+            'active' => 
             array (
               0 => 'tickets/my-office-tickets',
             ),
           ),
-          3 =>
+          3 => 
           array (
             'text' => 'Assigned',
             'route' => 'tickets.assigned',
             'icon' => 'fas fa-fw fa-ticket-alt',
-            'active' =>
+            'active' => 
             array (
               0 => 'tickets/assigned',
             ),
             'can' => 'view-assigned-tickets',
           ),
-          4 =>
+          4 => 
           array (
             'text' => 'Dashboards',
             'route' => 'reports.index',
             'icon' => 'fas fa-fw fa-chart-bar',
-            'active' =>
+            'active' => 
             array (
               0 => 'reports/*',
             ),
             'can' => 'view-ticket-reports-dashboard',
           ),
-          5 =>
+          5 => 
           array (
             'text' => ' Reports',
             'route' => 'archive',
             'icon' => 'fas fa-fw fa-file-alt',
-            'active' =>
+            'active' => 
             array (
               0 => 'archive/*',
             ),
@@ -179,35 +179,35 @@
           ),
         ),
       ),
-      2 =>
+      2 => 
       array (
         'key' => 'client_party',
         'text' => 'Client Party Request',
         'url' => '/#',
         'icon' => 'fas fa-fw fa-handshake ',
-        'active' =>
+        'active' => 
         array (
           0 => 'client-party/*',
         ),
         'can' => 'view-client-party',
-        'submenu' =>
+        'submenu' => 
         array (
-          0 =>
+          0 => 
           array (
             'text' => ' Requests',
             'url' => 'client-party?submitted_request=true',
             'icon' => 'fas fa-handshake',
-            'active' =>
+            'active' => 
             array (
               0 => 'client-party?submitted_request=true',
             ),
           ),
-          1 =>
+          1 => 
           array (
             'text' => 'Request Client Party',
             'url' => 'client-party/create',
             'icon' => 'fas fa-fw fa-hand-paper ',
-            'active' =>
+            'active' => 
             array (
               0 => 'client-party/create',
             ),
@@ -215,73 +215,73 @@
           ),
         ),
       ),
-      3 =>
+      3 => 
       array (
         'text' => 'TIMS',
         'url' => 'tims',
         'icon' => 'fa fa-fw fa-calculator',
         'can' => 'tims-access',
       ),
-      4 =>
+      4 => 
       array (
         'text' => 'EFRIS',
         'url' => 'efris',
         'icon' => 'fa fa-fw fa-dollar',
         'can' => 'efris-access',
       ),
-      5 =>
+      5 => 
       array (
         'text' => 'LOGIN TRACKER',
         'url' => 'dashboard',
         'icon' => 'fa fa-fw fa-user',
         'can' => 'efris-access',
       ),
-      6 =>
+      6 => 
       array (
         'text' => 'SETTINGS',
         'url' => '/#',
         'icon' => 'fas fa-fw fa-cogs ',
-        'active' =>
+        'active' => 
         array (
           0 => 'settings/*',
         ),
-        'submenu' =>
+        'submenu' => 
         array (
-          0 =>
+          0 => 
           array (
             'text' => 'change_password',
             'route' => 'user.get_change_password',
             'icon' => 'fas fa-fw fa-lock',
             'can' => 'change-user-password',
           ),
-          1 =>
+          1 => 
           array (
             'text' => 'Roles Management',
             'url' => 'roles',
             'icon' => 'fas fa-tasks',
-            'active' =>
+            'active' => 
             array (
               0 => 'roles/*',
             ),
             'can' => 'roles-list',
           ),
-          2 =>
+          2 => 
           array (
             'text' => 'User Management',
             'url' => 'users',
             'icon' => 'fas fa-fw fa-users',
-            'active' =>
+            'active' => 
             array (
               0 => 'users/*',
             ),
             'can' => 'users-list',
           ),
-          3 =>
+          3 => 
           array (
             'text' => 'Category Management',
             'url' => 'categories',
             'icon' => 'fas fa-fw fa-th',
-            'active' =>
+            'active' => 
             array (
               0 => 'categories/*',
             ),
@@ -290,7 +290,7 @@
         ),
       ),
     ),
-    'filters' =>
+    'filters' => 
     array (
       0 => 'JeroenNoten\\LaravelAdminLte\\Menu\\Filters\\GateFilter',
       1 => 'JeroenNoten\\LaravelAdminLte\\Menu\\Filters\\HrefFilter',
@@ -300,26 +300,26 @@
       5 => 'JeroenNoten\\LaravelAdminLte\\Menu\\Filters\\LangFilter',
       6 => 'JeroenNoten\\LaravelAdminLte\\Menu\\Filters\\DataFilter',
     ),
-    'plugins' =>
+    'plugins' => 
     array (
-      'Datatables' =>
+      'Datatables' => 
       array (
         'active' => true,
-        'files' =>
+        'files' => 
         array (
-          0 =>
+          0 => 
           array (
             'type' => 'js',
             'asset' => true,
             'location' => '//cdn.datatables.net/1.10.19/js/jquery.dataTables.min.js',
           ),
-          1 =>
+          1 => 
           array (
             'type' => 'js',
             'asset' => true,
             'location' => '//cdn.datatables.net/1.10.19/js/dataTables.bootstrap4.min.js',
           ),
-          2 =>
+          2 => 
           array (
             'type' => 'css',
             'asset' => true,
@@ -327,54 +327,54 @@
           ),
         ),
       ),
-      'DatatablesPlugins' =>
+      'DatatablesPlugins' => 
       array (
         'active' => true,
-        'files' =>
+        'files' => 
         array (
-          0 =>
+          0 => 
           array (
             'type' => 'js',
             'asset' => true,
             'location' => 'vendor/datatables-plugins/buttons/js/dataTables.buttons.min.js',
           ),
-          1 =>
+          1 => 
           array (
             'type' => 'js',
             'asset' => true,
             'location' => 'vendor/datatables-plugins/buttons/js/buttons.bootstrap4.min.js',
           ),
-          2 =>
+          2 => 
           array (
             'type' => 'js',
             'asset' => true,
             'location' => 'vendor/datatables-plugins/buttons/js/buttons.html5.min.js',
           ),
-          3 =>
+          3 => 
           array (
             'type' => 'js',
             'asset' => true,
             'location' => 'vendor/datatables-plugins/buttons/js/buttons.print.min.js',
           ),
-          4 =>
+          4 => 
           array (
             'type' => 'js',
             'asset' => true,
             'location' => 'vendor/datatables-plugins/jszip/jszip.min.js',
           ),
-          5 =>
+          5 => 
           array (
             'type' => 'js',
             'asset' => true,
             'location' => 'vendor/datatables-plugins/pdfmake/pdfmake.min.js',
           ),
-          6 =>
+          6 => 
           array (
             'type' => 'js',
             'asset' => true,
             'location' => 'vendor/datatables-plugins/pdfmake/vfs_fonts.js',
           ),
-          7 =>
+          7 => 
           array (
             'type' => 'css',
             'asset' => true,
@@ -382,18 +382,18 @@
           ),
         ),
       ),
-      'DatatablesResponsive' =>
+      'DatatablesResponsive' => 
       array (
         'active' => true,
-        'files' =>
+        'files' => 
         array (
-          0 =>
+          0 => 
           array (
             'type' => 'js',
             'asset' => false,
             'location' => '//cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js',
           ),
-          1 =>
+          1 => 
           array (
             'type' => 'css',
             'asset' => false,
@@ -401,18 +401,18 @@
           ),
         ),
       ),
-      'Select2' =>
+      'Select2' => 
       array (
         'active' => false,
-        'files' =>
+        'files' => 
         array (
-          0 =>
+          0 => 
           array (
             'type' => 'js',
             'asset' => false,
             'location' => '//cdnjs.cloudflare.com/ajax/libs/select2/4.0.3/js/select2.min.js',
           ),
-          1 =>
+          1 => 
           array (
             'type' => 'css',
             'asset' => false,
@@ -420,12 +420,12 @@
           ),
         ),
       ),
-      'Chartjs' =>
+      'Chartjs' => 
       array (
         'active' => false,
-        'files' =>
+        'files' => 
         array (
-          0 =>
+          0 => 
           array (
             'type' => 'js',
             'asset' => false,
@@ -433,12 +433,12 @@
           ),
         ),
       ),
-      'Sweetalert2' =>
+      'Sweetalert2' => 
       array (
         'active' => false,
-        'files' =>
+        'files' => 
         array (
-          0 =>
+          0 => 
           array (
             'type' => 'js',
             'asset' => false,
@@ -446,18 +446,18 @@
           ),
         ),
       ),
-      'Pace' =>
+      'Pace' => 
       array (
         'active' => false,
-        'files' =>
+        'files' => 
         array (
-          0 =>
+          0 => 
           array (
             'type' => 'css',
             'asset' => false,
             'location' => '//cdnjs.cloudflare.com/ajax/libs/pace/1.0.2/themes/blue/pace-theme-center-radar.min.css',
           ),
-          1 =>
+          1 => 
           array (
             'type' => 'js',
             'asset' => false,
@@ -466,14 +466,14 @@
         ),
       ),
     ),
-    'iframe' =>
+    'iframe' => 
     array (
-      'default_tab' =>
+      'default_tab' => 
       array (
         'url' => NULL,
         'title' => NULL,
       ),
-      'buttons' =>
+      'buttons' => 
       array (
         'close' => true,
         'close_all' => true,
@@ -482,7 +482,7 @@
         'scroll_right' => true,
         'fullscreen' => true,
       ),
-      'options' =>
+      'options' => 
       array (
         'loading_screen' => 1000,
         'auto_show_new_tab' => true,
@@ -491,7 +491,7 @@
     ),
     'livewire' => false,
   ),
-  'app' =>
+  'app' => 
   array (
     'name' => 'FiT ERP UAT',
     'version' => '',
@@ -505,7 +505,7 @@
     'faker_locale' => 'en_US',
     'key' => 'base64:rmADXdpV8XzUgDmVsLEPONOmSWYVP1dRoTwVcYMr6DE=',
     'cipher' => 'AES-256-CBC',
-    'providers' =>
+    'providers' => 
     array (
       0 => 'Illuminate\\Auth\\AuthServiceProvider',
       1 => 'Illuminate\\Broadcasting\\BroadcastServiceProvider',
@@ -541,7 +541,7 @@
       31 => 'App\\Providers\\EventServiceProvider',
       32 => 'App\\Providers\\RouteServiceProvider',
     ),
-    'aliases' =>
+    'aliases' => 
     array (
       'App' => 'Illuminate\\Support\\Facades\\App',
       'Arr' => 'Illuminate\\Support\\Arr',
@@ -588,38 +588,38 @@
       'CSVReport' => 'Jimmyjs\\ReportGenerator\\Facades\\CSVReportFacade',
     ),
   ),
-  'auth' =>
+  'auth' => 
   array (
-    'defaults' =>
+    'defaults' => 
     array (
       'guard' => 'web',
       'passwords' => 'users',
     ),
-    'guards' =>
+    'guards' => 
     array (
-      'web' =>
+      'web' => 
       array (
         'driver' => 'session',
         'provider' => 'users',
       ),
-      'api' =>
+      'api' => 
       array (
         'driver' => 'token',
         'provider' => 'users',
         'hash' => false,
       ),
     ),
-    'providers' =>
+    'providers' => 
     array (
-      'users' =>
+      'users' => 
       array (
         'driver' => 'eloquent',
         'model' => 'App\\Models\\User',
       ),
     ),
-    'passwords' =>
+    'passwords' => 
     array (
-      'users' =>
+      'users' => 
       array (
         'provider' => 'users',
         'table' => 'Cust_PasswordResets',
@@ -629,15 +629,15 @@
     ),
     'password_timeout' => 10800,
   ),
-  'auth-timeout' =>
+  'auth-timeout' => 
   array (
     'session' => 'last_activity_time',
     'timeout' => 240,
   ),
-  'azure' =>
+  'azure' => 
   array (
     'tenant_id' => 'common',
-    'client' =>
+    'client' => 
     array (
       'id' => '733b368f-b9cd-423c-8638-36ac9066a92e',
       'secret' => '9VI8Q~PiuwnBh.K86gtRTVN6CW5OZjvh7tvoHc57',
@@ -646,84 +646,84 @@
     'domain_hint' => '',
     'scope' => 'User.Read',
   ),
-  'broadcasting' =>
+  'broadcasting' => 
   array (
     'default' => 'log',
-    'connections' =>
+    'connections' => 
     array (
-      'pusher' =>
+      'pusher' => 
       array (
         'driver' => 'pusher',
         'key' => '',
         'secret' => '',
         'app_id' => '',
-        'options' =>
+        'options' => 
         array (
           'cluster' => 'mt1',
           'encrypted' => true,
         ),
       ),
-      'ably' =>
+      'ably' => 
       array (
         'driver' => 'ably',
         'key' => NULL,
       ),
-      'redis' =>
+      'redis' => 
       array (
         'driver' => 'redis',
         'connection' => 'default',
       ),
-      'log' =>
+      'log' => 
       array (
         'driver' => 'log',
       ),
-      'null' =>
+      'null' => 
       array (
         'driver' => 'null',
       ),
     ),
   ),
-  'cache' =>
+  'cache' => 
   array (
     'default' => 'file',
-    'stores' =>
+    'stores' => 
     array (
-      'apc' =>
+      'apc' => 
       array (
         'driver' => 'apc',
       ),
-      'array' =>
+      'array' => 
       array (
         'driver' => 'array',
         'serialize' => false,
       ),
-      'database' =>
+      'database' => 
       array (
         'driver' => 'database',
         'table' => 'cache',
         'connection' => NULL,
         'lock_connection' => NULL,
       ),
-      'file' =>
+      'file' => 
       array (
         'driver' => 'file',
         'path' => 'C:\\inetpub\\wwwroot\\Projects\\UAT\\erp_uat\\storage\\framework/cache/data',
       ),
-      'memcached' =>
+      'memcached' => 
       array (
         'driver' => 'memcached',
         'persistent_id' => NULL,
-        'sasl' =>
+        'sasl' => 
         array (
           0 => NULL,
           1 => NULL,
         ),
-        'options' =>
+        'options' => 
         array (
         ),
-        'servers' =>
+        'servers' => 
         array (
-          0 =>
+          0 => 
           array (
             'host' => '127.0.0.1',
             'port' => 11211,
@@ -731,13 +731,13 @@
           ),
         ),
       ),
-      'redis' =>
+      'redis' => 
       array (
         'driver' => 'redis',
         'connection' => 'cache',
         'lock_connection' => 'default',
       ),
-      'dynamodb' =>
+      'dynamodb' => 
       array (
         'driver' => 'dynamodb',
         'key' => '',
@@ -746,35 +746,35 @@
         'table' => 'cache',
         'endpoint' => NULL,
       ),
-      'octane' =>
+      'octane' => 
       array (
         'driver' => 'octane',
       ),
     ),
     'prefix' => 'fit_erp_uat_cache',
   ),
-  'charts' =>
+  'charts' => 
   array (
     'default_library' => 'Chartjs',
     'global_route_prefix' => 'api/chart',
-    'global_middlewares' =>
+    'global_middlewares' => 
     array (
       0 => 'web',
     ),
     'global_route_name_prefix' => 'charts',
   ),
-  'clockwork' =>
+  'clockwork' => 
   array (
     'enable' => NULL,
-    'features' =>
+    'features' => 
     array (
-      'cache' =>
+      'cache' => 
       array (
         'enabled' => true,
         'collect_queries' => true,
         'collect_values' => false,
       ),
-      'database' =>
+      'database' => 
       array (
         'enabled' => true,
         'collect_queries' => true,
@@ -784,42 +784,42 @@
         'slow_only' => false,
         'detect_duplicate_queries' => false,
       ),
-      'events' =>
+      'events' => 
       array (
         'enabled' => true,
-        'ignored_events' =>
+        'ignored_events' => 
         array (
         ),
       ),
-      'log' =>
+      'log' => 
       array (
         'enabled' => true,
       ),
-      'notifications' =>
+      'notifications' => 
       array (
         'enabled' => true,
       ),
-      'performance' =>
+      'performance' => 
       array (
         'client_metrics' => true,
       ),
-      'queue' =>
+      'queue' => 
       array (
         'enabled' => true,
       ),
-      'redis' =>
+      'redis' => 
       array (
         'enabled' => true,
       ),
-      'routes' =>
+      'routes' => 
       array (
         'enabled' => false,
-        'only_namespaces' =>
+        'only_namespaces' => 
         array (
           0 => 'App',
         ),
       ),
-      'views' =>
+      'views' => 
       array (
         'enabled' => true,
         'collect_data' => false,
@@ -828,50 +828,50 @@
     ),
     'web' => true,
     'toolbar' => true,
-    'requests' =>
+    'requests' => 
     array (
       'on_demand' => false,
       'errors_only' => false,
       'slow_threshold' => NULL,
       'slow_only' => false,
       'sample' => false,
-      'except' =>
+      'except' => 
       array (
         0 => '/horizon/.*',
         1 => '/telescope/.*',
         2 => '/_debugbar/.*',
       ),
-      'only' =>
+      'only' => 
       array (
       ),
       'except_preflight' => true,
     ),
-    'artisan' =>
+    'artisan' => 
     array (
       'collect' => false,
-      'except' =>
+      'except' => 
       array (
       ),
-      'only' =>
+      'only' => 
       array (
       ),
       'collect_output' => false,
       'except_laravel_commands' => true,
     ),
-    'queue' =>
+    'queue' => 
     array (
       'collect' => false,
-      'except' =>
+      'except' => 
       array (
       ),
-      'only' =>
+      'only' => 
       array (
       ),
     ),
-    'tests' =>
+    'tests' => 
     array (
       'collect' => false,
-      'except' =>
+      'except' => 
       array (
       ),
     ),
@@ -884,67 +884,67 @@
     'storage_expiration' => 10080,
     'authentication' => false,
     'authentication_password' => 'VerySecretPassword',
-    'stack_traces' =>
+    'stack_traces' => 
     array (
       'enabled' => true,
       'limit' => 10,
-      'skip_vendors' =>
+      'skip_vendors' => 
       array (
       ),
-      'skip_namespaces' =>
+      'skip_namespaces' => 
       array (
       ),
-      'skip_classes' =>
+      'skip_classes' => 
       array (
       ),
     ),
     'serialization_depth' => 10,
-    'serialization_blackbox' =>
+    'serialization_blackbox' => 
     array (
       0 => 'Illuminate\\Container\\Container',
       1 => 'Illuminate\\Foundation\\Application',
       2 => 'Laravel\\Lumen\\Application',
     ),
     'register_helpers' => true,
-    'headers' =>
+    'headers' => 
     array (
     ),
     'server_timing' => 10,
   ),
-  'cors' =>
+  'cors' => 
   array (
-    'paths' =>
+    'paths' => 
     array (
       0 => 'api/*',
       1 => 'sanctum/csrf-cookie',
     ),
-    'allowed_methods' =>
+    'allowed_methods' => 
     array (
       0 => '*',
     ),
-    'allowed_origins' =>
+    'allowed_origins' => 
     array (
       0 => '*',
     ),
-    'allowed_origins_patterns' =>
+    'allowed_origins_patterns' => 
     array (
     ),
-    'allowed_headers' =>
+    'allowed_headers' => 
     array (
       0 => '*',
     ),
-    'exposed_headers' =>
+    'exposed_headers' => 
     array (
     ),
     'max_age' => 0,
     'supports_credentials' => false,
   ),
-  'database' =>
+  'database' => 
   array (
     'default' => 'sqlsrv',
-    'connections' =>
+    'connections' => 
     array (
-      'sqlite' =>
+      'sqlite' => 
       array (
         'driver' => 'sqlite',
         'url' => NULL,
@@ -952,7 +952,7 @@
         'prefix' => '',
         'foreign_key_constraints' => true,
       ),
-      'mysql' =>
+      'mysql' => 
       array (
         'driver' => 'mysql',
         'url' => NULL,
@@ -968,11 +968,11 @@
         'prefix_indexes' => true,
         'strict' => true,
         'engine' => NULL,
-        'options' =>
+        'options' => 
         array (
         ),
       ),
-      'pgsql' =>
+      'pgsql' => 
       array (
         'driver' => 'pgsql',
         'url' => NULL,
@@ -986,7 +986,7 @@
         'schema' => 'public',
         'sslmode' => 'prefer',
       ),
-      'sqlsrv' =>
+      'sqlsrv' => 
       array (
         'driver' => 'sqlsrv',
         'url' => NULL,
@@ -996,7 +996,7 @@
         'username' => '',
         'password' => '',
       ),
-      'efris' =>
+      'efris' => 
       array (
         'driver' => 'sqlsrv',
         'dsn' => NULL,
@@ -1011,15 +1011,15 @@
       ),
     ),
     'migrations' => 'migrations',
-    'redis' =>
+    'redis' => 
     array (
       'client' => 'phpredis',
-      'options' =>
+      'options' => 
       array (
         'cluster' => 'redis',
         'prefix' => 'fit_erp_uat_database_',
       ),
-      'default' =>
+      'default' => 
       array (
         'url' => NULL,
         'host' => '127.0.0.1',
@@ -1027,7 +1027,7 @@
         'port' => '6379',
         'database' => '0',
       ),
-      'cache' =>
+      'cache' => 
       array (
         'url' => NULL,
         'host' => '127.0.0.1',
@@ -1037,9 +1037,9 @@
       ),
     ),
   ),
-  'datatables' =>
+  'datatables' => 
   array (
-    'search' =>
+    'search' => 
     array (
       'smart' => true,
       'multi_term' => true,
@@ -1048,54 +1048,54 @@
       'starts_with' => false,
     ),
     'index_column' => 'DT_RowIndex',
-    'engines' =>
+    'engines' => 
     array (
       'eloquent' => 'Yajra\\DataTables\\EloquentDataTable',
       'query' => 'Yajra\\DataTables\\QueryDataTable',
       'collection' => 'Yajra\\DataTables\\CollectionDataTable',
       'resource' => 'Yajra\\DataTables\\ApiResourceDataTable',
     ),
-    'builders' =>
+    'builders' => 
     array (
     ),
     'nulls_last_sql' => ':column :direction NULLS LAST',
     'error' => NULL,
-    'columns' =>
+    'columns' => 
     array (
-      'excess' =>
+      'excess' => 
       array (
         0 => 'rn',
         1 => 'row_num',
       ),
       'escape' => '*',
-      'raw' =>
+      'raw' => 
       array (
         0 => 'action',
       ),
-      'blacklist' =>
+      'blacklist' => 
       array (
         0 => 'password',
         1 => 'remember_token',
       ),
       'whitelist' => '*',
     ),
-    'json' =>
+    'json' => 
     array (
-      'header' =>
+      'header' => 
       array (
       ),
       'options' => 0,
     ),
   ),
-  'debugbar' =>
+  'debugbar' => 
   array (
     'enabled' => NULL,
-    'except' =>
+    'except' => 
     array (
       0 => 'telescope*',
       1 => 'horizon*',
     ),
-    'storage' =>
+    'storage' => 
     array (
       'enabled' => true,
       'driver' => 'file',
@@ -1113,7 +1113,7 @@
     'add_ajax_timing' => false,
     'error_handler' => false,
     'clockwork' => false,
-    'collectors' =>
+    'collectors' => 
     array (
       'phpinfo' => true,
       'messages' => true,
@@ -1139,25 +1139,25 @@
       'models' => true,
       'livewire' => true,
     ),
-    'options' =>
+    'options' => 
     array (
-      'auth' =>
+      'auth' => 
       array (
         'show_name' => true,
       ),
-      'db' =>
+      'db' => 
       array (
         'with_params' => true,
         'backtrace' => true,
-        'backtrace_exclude_paths' =>
+        'backtrace_exclude_paths' => 
         array (
         ),
         'timeline' => false,
         'duration_background' => true,
-        'explain' =>
+        'explain' => 
         array (
           'enabled' => false,
-          'types' =>
+          'types' => 
           array (
             0 => 'SELECT',
           ),
@@ -1165,24 +1165,24 @@
         'hints' => false,
         'show_copy' => false,
       ),
-      'mail' =>
+      'mail' => 
       array (
         'full_log' => false,
       ),
-      'views' =>
+      'views' => 
       array (
         'timeline' => false,
         'data' => false,
       ),
-      'route' =>
+      'route' => 
       array (
         'label' => true,
       ),
-      'logs' =>
+      'logs' => 
       array (
         'file' => NULL,
       ),
-      'cache' =>
+      'cache' => 
       array (
         'values' => true,
       ),
@@ -1193,15 +1193,15 @@
     'theme' => 'auto',
     'debug_backtrace_limit' => 50,
   ),
-  'dompdf' =>
+  'dompdf' => 
   array (
     'show_warnings' => false,
     'orientation' => 'portrait',
-    'defines' =>
+    'defines' => 
     array (
       'font_dir' => 'C:\\inetpub\\wwwroot\\Projects\\UAT\\erp_uat\\storage\\fonts/',
       'font_cache' => 'C:\\inetpub\\wwwroot\\Projects\\UAT\\erp_uat\\storage\\fonts/',
-      'temp_dir' => 'C:\\Users\\FITERP~1\\AppData\\Local\\Temp\\2',
+      'temp_dir' => 'C:\\Users\\Fitdev2\\AppData\\Local\\Temp\\2',
       'chroot' => 'C:\\inetpub\\wwwroot\\Projects\\UAT\\erp_uat',
       'enable_font_subsetting' => false,
       'pdf_backend' => 'CPDF',
@@ -1216,14 +1216,14 @@
       'enable_html5_parser' => false,
     ),
   ),
-  'excel' =>
+  'excel' => 
   array (
-    'exports' =>
+    'exports' => 
     array (
       'chunk_size' => 1000,
       'pre_calculate_formulas' => false,
       'strict_null_comparison' => false,
-      'csv' =>
+      'csv' => 
       array (
         'delimiter' => ',',
         'enclosure' => '"',
@@ -1233,7 +1233,7 @@
         'include_separator_line' => false,
         'excel_compatibility' => false,
       ),
-      'properties' =>
+      'properties' => 
       array (
         'creator' => '',
         'lastModifiedBy' => '',
@@ -1246,15 +1246,15 @@
         'company' => '',
       ),
     ),
-    'imports' =>
+    'imports' => 
     array (
       'read_only' => true,
       'ignore_empty' => false,
-      'heading_row' =>
+      'heading_row' => 
       array (
         'formatter' => 'slug',
       ),
-      'csv' =>
+      'csv' => 
       array (
         'delimiter' => ',',
         'enclosure' => '"',
@@ -1262,7 +1262,7 @@
         'contiguous' => false,
         'input_encoding' => 'UTF-8',
       ),
-      'properties' =>
+      'properties' => 
       array (
         'creator' => '',
         'lastModifiedBy' => '',
@@ -1275,7 +1275,7 @@
         'company' => '',
       ),
     ),
-    'extension_detector' =>
+    'extension_detector' => 
     array (
       'xlsx' => 'Xlsx',
       'xlsm' => 'Xlsx',
@@ -1294,27 +1294,27 @@
       'tsv' => 'Csv',
       'pdf' => 'Dompdf',
     ),
-    'value_binder' =>
+    'value_binder' => 
     array (
       'default' => 'Maatwebsite\\Excel\\DefaultValueBinder',
     ),
-    'cache' =>
+    'cache' => 
     array (
       'driver' => 'memory',
-      'batch' =>
+      'batch' => 
       array (
         'memory_limit' => 60000,
       ),
-      'illuminate' =>
+      'illuminate' => 
       array (
         'store' => NULL,
       ),
     ),
-    'transactions' =>
+    'transactions' => 
     array (
       'handler' => 'db',
     ),
-    'temporary_files' =>
+    'temporary_files' => 
     array (
       'local_path' => 'C:\\inetpub\\wwwroot\\Projects\\UAT\\erp_uat\\storage\\framework/laravel-excel',
       'remote_disk' => NULL,
@@ -1322,24 +1322,24 @@
       'force_resync_remote' => NULL,
     ),
   ),
-  'filesystems' =>
+  'filesystems' => 
   array (
     'default' => 'local',
-    'disks' =>
+    'disks' => 
     array (
-      'local' =>
+      'local' => 
       array (
         'driver' => 'local',
         'root' => 'C:\\inetpub\\wwwroot\\Projects\\UAT\\erp_uat\\storage\\app',
       ),
-      'public' =>
+      'public' => 
       array (
         'driver' => 'local',
         'root' => 'C:\\inetpub\\wwwroot\\Projects\\UAT\\erp_uat\\storage\\app/public',
         'url' => 'https://bizuat.freightintime.com/storage',
         'visibility' => 'public',
       ),
-      's3' =>
+      's3' => 
       array (
         'driver' => 's3',
         'key' => '',
@@ -1350,7 +1350,7 @@
         'endpoint' => NULL,
         'use_path_style_endpoint' => false,
       ),
-      'azure' =>
+      'azure' => 
       array (
         'driver' => 'azure',
         'local_address' => 'https://scmprofituatrepo1.blob.core.windows.net',
@@ -1361,15 +1361,15 @@
         'url' => NULL,
       ),
     ),
-    'links' =>
+    'links' => 
     array (
       'C:\\inetpub\\wwwroot\\Projects\\UAT\\erp_uat\\public\\storage' => 'C:\\inetpub\\wwwroot\\Projects\\UAT\\erp_uat\\storage\\app/public',
     ),
   ),
-  'flare' =>
+  'flare' => 
   array (
     'key' => NULL,
-    'reporting' =>
+    'reporting' => 
     array (
       'anonymize_ips' => true,
       'collect_git_information' => false,
@@ -1380,36 +1380,36 @@
       'grouping_type' => NULL,
       'report_logs' => true,
       'maximum_number_of_collected_logs' => 200,
-      'censor_request_body_fields' =>
+      'censor_request_body_fields' => 
       array (
         0 => 'password',
       ),
     ),
     'send_logs_as_events' => true,
-    'censor_request_body_fields' =>
+    'censor_request_body_fields' => 
     array (
       0 => 'password',
     ),
   ),
-  'hashing' =>
+  'hashing' => 
   array (
     'driver' => 'bcrypt',
-    'bcrypt' =>
+    'bcrypt' => 
     array (
       'rounds' => 10,
     ),
-    'argon' =>
+    'argon' => 
     array (
       'memory' => 1024,
       'threads' => 2,
       'time' => 2,
     ),
   ),
-  'htmlmin' =>
+  'htmlmin' => 
   array (
     'blade' => true,
     'force' => false,
-    'ignore' =>
+    'ignore' => 
     array (
       0 => 'resources/views/emails',
       1 => 'resources/views/html',
@@ -1421,13 +1421,13 @@
       7 => 'resources/views/vendor/markdown',
     ),
   ),
-  'ignition' =>
+  'ignition' => 
   array (
     'editor' => 'phpstorm',
     'theme' => 'light',
     'enable_share_button' => true,
     'register_commands' => false,
-    'ignored_solution_providers' =>
+    'ignored_solution_providers' => 
     array (
       0 => 'Facade\\Ignition\\SolutionProviders\\MissingPackageSolutionProvider',
     ),
@@ -1436,23 +1436,23 @@
     'local_sites_path' => '',
     'housekeeping_endpoint_prefix' => '_ignition',
   ),
-  'kra' =>
+  'kra' => 
   array (
     'api_url' => NULL,
     'api_username' => NULL,
     'api_password' => NULL,
   ),
-  'laravel-model-caching' =>
+  'laravel-model-caching' => 
   array (
     'cache-prefix' => '',
     'enabled' => true,
     'use-database-keying' => true,
     'store' => NULL,
   ),
-  'laravel-page-speed' =>
+  'laravel-page-speed' => 
   array (
     'enable' => true,
-    'skip' =>
+    'skip' => 
     array (
       0 => '*.xml',
       1 => '*.less',
@@ -1487,10 +1487,10 @@
       30 => '*.m4v',
       31 => '*.torrent',
     ),
-    'php' =>
+    'php' => 
     array (
       'enable' => true,
-      'skip' =>
+      'skip' => 
       array (
         0 => '*.xml',
         1 => '*.less',
@@ -1527,27 +1527,27 @@
       ),
     ),
   ),
-  'laravel-query-monitor' =>
+  'laravel-query-monitor' => 
   array (
     'enabled' => false,
     'host' => '0.0.0.0',
     'port' => 8081,
   ),
-  'ldap' =>
+  'ldap' => 
   array (
     'logging' => false,
-    'connections' =>
+    'connections' => 
     array (
-      'default' =>
+      'default' => 
       array (
         'auto_connect' => false,
         'connection' => 'Adldap\\Connections\\Ldap',
-        'settings' =>
+        'settings' => 
         array (
           'schema' => 'Adldap\\Schemas\\ActiveDirectory',
           'account_prefix' => '',
           'account_suffix' => '',
-          'hosts' =>
+          'hosts' => 
           array (
             0 => 'corp-dc1.corp.acme.org',
             1 => 'corp-dc2.corp.acme.org',
@@ -1564,52 +1564,52 @@
       ),
     ),
   ),
-  'ldap_auth' =>
+  'ldap_auth' => 
   array (
     'connection' => 'default',
     'provider' => 'Adldap\\Laravel\\Auth\\DatabaseUserProvider',
     'model' => 'App\\Models\\User',
-    'rules' =>
+    'rules' => 
     array (
       0 => 'Adldap\\Laravel\\Validation\\Rules\\DenyTrashed',
     ),
-    'scopes' =>
+    'scopes' => 
     array (
     ),
-    'identifiers' =>
+    'identifiers' => 
     array (
-      'ldap' =>
+      'ldap' => 
       array (
         'locate_users_by' => 'samaccountname',
         'bind_users_by' => 'distinguishedname',
       ),
-      'database' =>
+      'database' => 
       array (
         'guid_column' => 'objectguid',
         'username_column' => 'LoginID',
       ),
-      'windows' =>
+      'windows' => 
       array (
         'locate_users_by' => 'samaccountname',
         'server_key' => 'AUTH_USER',
       ),
     ),
-    'passwords' =>
+    'passwords' => 
     array (
       'sync' => false,
       'column' => 'password',
     ),
     'login_fallback' => true,
-    'sync_attributes' =>
+    'sync_attributes' => 
     array (
       'email' => 'LoginID',
       'FirstName' => 'givenname',
       'LastName' => 'sn',
     ),
-    'logging' =>
+    'logging' => 
     array (
       'enabled' => true,
-      'events' =>
+      'events' => 
       array (
         'Adldap\\Laravel\\Events\\Importing' => 'Adldap\\Laravel\\Listeners\\LogImport',
         'Adldap\\Laravel\\Events\\Synchronized' => 'Adldap\\Laravel\\Listeners\\LogSynchronized',
@@ -1625,34 +1625,34 @@
       ),
     ),
   ),
-  'logging' =>
+  'logging' => 
   array (
     'default' => 'daily',
-    'channels' =>
+    'channels' => 
     array (
-      'stack' =>
+      'stack' => 
       array (
         'driver' => 'stack',
-        'channels' =>
+        'channels' => 
         array (
           0 => 'single',
         ),
         'ignore_exceptions' => false,
       ),
-      'single' =>
+      'single' => 
       array (
         'driver' => 'single',
         'path' => 'C:\\inetpub\\wwwroot\\Projects\\UAT\\erp_uat\\storage\\logs/laravel.log',
         'level' => 'debug',
       ),
-      'daily' =>
+      'daily' => 
       array (
         'driver' => 'daily',
         'path' => 'C:\\inetpub\\wwwroot\\Projects\\UAT\\erp_uat\\storage\\logs/laravel.log',
         'level' => 'debug',
         'days' => 14,
       ),
-      'slack' =>
+      'slack' => 
       array (
         'driver' => 'slack',
         'url' => NULL,
@@ -1660,48 +1660,48 @@
         'emoji' => ':boom:',
         'level' => 'debug',
       ),
-      'papertrail' =>
+      'papertrail' => 
       array (
         'driver' => 'monolog',
         'level' => 'debug',
         'handler' => 'Monolog\\Handler\\SyslogUdpHandler',
-        'handler_with' =>
+        'handler_with' => 
         array (
           'host' => NULL,
           'port' => NULL,
         ),
       ),
-      'stderr' =>
+      'stderr' => 
       array (
         'driver' => 'monolog',
         'level' => 'debug',
         'handler' => 'Monolog\\Handler\\StreamHandler',
         'formatter' => NULL,
-        'with' =>
+        'with' => 
         array (
           'stream' => 'php://stderr',
         ),
       ),
-      'syslog' =>
+      'syslog' => 
       array (
         'driver' => 'syslog',
         'level' => 'debug',
       ),
-      'errorlog' =>
+      'errorlog' => 
       array (
         'driver' => 'errorlog',
         'level' => 'debug',
       ),
-      'null' =>
+      'null' => 
       array (
         'driver' => 'monolog',
         'handler' => 'Monolog\\Handler\\NullHandler',
       ),
-      'emergency' =>
+      'emergency' => 
       array (
         'path' => 'C:\\inetpub\\wwwroot\\Projects\\UAT\\erp_uat\\storage\\logs/laravel.log',
       ),
-      'scm' =>
+      'scm' => 
       array (
         'driver' => 'single',
         'path' => 'C:\\inetpub\\wwwroot\\Projects\\UAT\\erp_uat\\storage\\logs/scm-sync.log',
@@ -1709,18 +1709,18 @@
       ),
     ),
   ),
-  'logviewer' =>
+  'logviewer' => 
   array (
     'max_file_size' => 52428800,
     'pattern' => '*.log',
     'storage_path' => 'C:\\inetpub\\wwwroot\\Projects\\UAT\\erp_uat\\storage\\logs',
   ),
-  'mail' =>
+  'mail' => 
   array (
     'default' => 'smtp',
-    'mailers' =>
+    'mailers' => 
     array (
-      'smtp' =>
+      'smtp' => 
       array (
         'transport' => 'smtp',
         'host' => 'mail.freight-in-time.com',
@@ -1730,70 +1730,70 @@
         'password' => 'rtz=Vu$mW-m*',
         'timeout' => NULL,
         'auth_mode' => NULL,
-        'from' =>
+        'from' => 
         array (
           'address' => 'fitexpress@freight-in-time.com',
           'name' => 'FiT ERP UAT',
         ),
       ),
-      'stream' =>
+      'stream' => 
       array (
-        'ssl' =>
+        'ssl' => 
         array (
           'allow_self_signed' => true,
           'verify_peer' => false,
           'verify_peer_name' => false,
         ),
       ),
-      'ses' =>
+      'ses' => 
       array (
         'transport' => 'ses',
       ),
-      'mailgun' =>
+      'mailgun' => 
       array (
         'transport' => 'mailgun',
       ),
-      'postmark' =>
+      'postmark' => 
       array (
         'transport' => 'postmark',
       ),
-      'sendmail' =>
+      'sendmail' => 
       array (
         'transport' => 'sendmail',
         'path' => '/usr/sbin/sendmail -bs',
       ),
-      'log' =>
+      'log' => 
       array (
         'transport' => 'log',
         'channel' => NULL,
       ),
-      'array' =>
+      'array' => 
       array (
         'transport' => 'array',
       ),
     ),
-    'from' =>
+    'from' => 
     array (
       'address' => 'fitexpress@freight-in-time.com',
       'name' => 'FiT ERP UAT',
     ),
-    'markdown' =>
+    'markdown' => 
     array (
       'theme' => 'default',
-      'paths' =>
+      'paths' => 
       array (
         0 => 'C:\\inetpub\\wwwroot\\Projects\\UAT\\erp_uat\\resources\\views/vendor/mail',
       ),
     ),
   ),
-  'notify' =>
+  'notify' => 
   array (
     'theme' => 'light',
     'demo' => true,
     'timeout' => 5000,
-    'preset-messages' =>
+    'preset-messages' => 
     array (
-      'user-updated' =>
+      'user-updated' => 
       array (
         'message' => 'The user has been updated successfully.',
         'type' => 'success',
@@ -1802,14 +1802,14 @@
       ),
     ),
   ),
-  'permission' =>
+  'permission' => 
   array (
-    'models' =>
+    'models' => 
     array (
       'permission' => 'Spatie\\Permission\\Models\\Permission',
       'role' => 'Spatie\\Permission\\Models\\Role',
     ),
-    'table_names' =>
+    'table_names' => 
     array (
       'roles' => 'Cust_Roles',
       'permissions' => 'Cust_Permissions',
@@ -1817,16 +1817,16 @@
       'model_has_roles' => 'Cust_Model_Has_Roles',
       'role_has_permissions' => 'Cust_Role_Has_permissions',
     ),
-    'column_names' =>
+    'column_names' => 
     array (
       'model_morph_key' => 'model_uuid',
     ),
     'display_permission_in_exception' => false,
     'display_role_in_exception' => false,
     'enable_wildcard_permission' => false,
-    'cache' =>
+    'cache' => 
     array (
-      'expiration_time' =>
+      'expiration_time' => 
       DateInterval::__set_state(array(
          'y' => 0,
          'm' => 0,
@@ -1850,16 +1850,16 @@
       'store' => 'default',
     ),
   ),
-  'queue' =>
+  'queue' => 
   array (
     'default' => 'sync',
-    'connections' =>
+    'connections' => 
     array (
-      'sync' =>
+      'sync' => 
       array (
         'driver' => 'sync',
       ),
-      'database' =>
+      'database' => 
       array (
         'driver' => 'database',
         'table' => 'Cust_Jobs',
@@ -1867,7 +1867,7 @@
         'retry_after' => 90,
         'after_commit' => false,
       ),
-      'beanstalkd' =>
+      'beanstalkd' => 
       array (
         'driver' => 'beanstalkd',
         'host' => 'localhost',
@@ -1876,7 +1876,7 @@
         'block_for' => 0,
         'after_commit' => false,
       ),
-      'sqs' =>
+      'sqs' => 
       array (
         'driver' => 'sqs',
         'key' => '',
@@ -1887,7 +1887,7 @@
         'region' => 'us-east-1',
         'after_commit' => false,
       ),
-      'redis' =>
+      'redis' => 
       array (
         'driver' => 'redis',
         'connection' => 'default',
@@ -1897,38 +1897,45 @@
         'after_commit' => false,
       ),
     ),
-    'failed' =>
+    'failed' => 
     array (
       'driver' => 'database-uuids',
       'database' => 'sqlsrv',
       'table' => 'Cust_Failed_Jobs',
     ),
   ),
-  'report-generator' =>
+  'report-generator' => 
   array (
     'flush' => false,
     'pdfLibrary' => 'dompdf',
   ),
-  'services' =>
+  'services' => 
   array (
-    'mailgun' =>
+    'mailgun' => 
     array (
       'domain' => NULL,
       'secret' => NULL,
       'endpoint' => 'api.mailgun.net',
     ),
-    'postmark' =>
+    'postmark' => 
     array (
       'token' => NULL,
     ),
-    'ses' =>
+    'ses' => 
     array (
       'key' => '',
       'secret' => '',
       'region' => 'us-east-1',
     ),
+    'azure' => 
+    array (
+      'client_id' => '733b368f-b9cd-423c-8638-36ac9066a92e',
+      'client_secret' => '9VI8Q~PiuwnBh.K86gtRTVN6CW5OZjvh7tvoHc57',
+      'redirect' => NULL,
+      'tenant' => 'common',
+    ),
   ),
-  'session' =>
+  'session' => 
   array (
     'driver' => 'file',
     'lifetime' => '120',
@@ -1938,7 +1945,7 @@
     'connection' => NULL,
     'table' => 'sessions',
     'store' => NULL,
-    'lottery' =>
+    'lottery' => 
     array (
       0 => 2,
       1 => 100,
@@ -1950,7 +1957,7 @@
     'http_only' => true,
     'same_site' => 'lax',
   ),
-  'sweetalert' =>
+  'sweetalert' => 
   array (
     'cdn' => NULL,
     'alwaysLoadJS' => false,
@@ -1959,7 +1966,7 @@
     'width' => '32rem',
     'height_auto' => true,
     'padding' => '1.25rem',
-    'animation' =>
+    'animation' => 
     array (
       'enable' => true,
     ),
@@ -1968,7 +1975,7 @@
     'show_close_button' => false,
     'toast_position' => 'top-end',
     'timer_progress_bar' => false,
-    'middleware' =>
+    'middleware' => 
     array (
       'autoClose' => false,
       'toast_position' => 'top-end',
@@ -1976,7 +1983,7 @@
       'timer' => 6000,
       'auto_display_error_messages' => false,
     ),
-    'customClass' =>
+    'customClass' => 
     array (
       'container' => NULL,
       'popup' => NULL,
@@ -1993,7 +2000,7 @@
       'footer' => NULL,
     ),
   ),
-  'tcpdf' =>
+  'tcpdf' => 
   array (
     'page_format' => 'A4',
     'page_orientation' => 'P',
@@ -2012,40 +2019,40 @@
     'tcpdf_calls_in_html' => true,
     'timezone' => 'Africa/Nairobi',
   ),
-  'tims' =>
+  'tims' => 
   array (
     'local_invoice_path' => '',
     'production_invoice_path' => '',
   ),
-  'tinker' =>
+  'tinker' => 
   array (
-    'commands' =>
+    'commands' => 
     array (
     ),
-    'alias' =>
+    'alias' => 
     array (
     ),
-    'dont_alias' =>
+    'dont_alias' => 
     array (
       0 => 'App\\Nova',
     ),
   ),
-  'trustedproxy' =>
+  'trustedproxy' => 
   array (
     'proxies' => NULL,
     'headers' => 94,
   ),
-  'view' =>
+  'view' => 
   array (
-    'paths' =>
+    'paths' => 
     array (
       0 => 'C:\\inetpub\\wwwroot\\Projects\\UAT\\erp_uat\\resources\\views',
     ),
     'compiled' => 'C:\\inetpub\\wwwroot\\Projects\\UAT\\erp_uat\\storage\\framework\\views',
   ),
-  'webpush' =>
+  'webpush' => 
   array (
-    'vapid' =>
+    'vapid' => 
     array (
       'subject' => NULL,
       'public_key' => NULL,
@@ -2055,16 +2062,16 @@
     'model' => 'NotificationChannels\\WebPush\\PushSubscription',
     'table_name' => 'Cust_PushSubscriptions',
     'database_connection' => 'sqlsrv',
-    'client_options' =>
+    'client_options' => 
     array (
     ),
-    'gcm' =>
+    'gcm' => 
     array (
       'key' => NULL,
       'sender_id' => NULL,
     ),
   ),
-  'ide-helper' =>
+  'ide-helper' => 
   array (
     'filename' => '_ide_helper.php',
     'models_filename' => '_ide_helper_models.php',
@@ -2076,43 +2083,43 @@
     'write_model_relation_count_properties' => true,
     'write_eloquent_model_mixins' => false,
     'include_helpers' => false,
-    'helper_files' =>
+    'helper_files' => 
     array (
       0 => 'C:\\inetpub\\wwwroot\\Projects\\UAT\\erp_uat/vendor/laravel/framework/src/Illuminate/Support/helpers.php',
     ),
-    'model_locations' =>
+    'model_locations' => 
     array (
       0 => 'app',
     ),
-    'ignored_models' =>
+    'ignored_models' => 
     array (
     ),
-    'model_hooks' =>
+    'model_hooks' => 
     array (
     ),
-    'extra' =>
+    'extra' => 
     array (
-      'Eloquent' =>
+      'Eloquent' => 
       array (
         0 => 'Illuminate\\Database\\Eloquent\\Builder',
         1 => 'Illuminate\\Database\\Query\\Builder',
       ),
-      'Session' =>
+      'Session' => 
       array (
         0 => 'Illuminate\\Session\\Store',
       ),
     ),
-    'magic' =>
+    'magic' => 
     array (
     ),
-    'interfaces' =>
+    'interfaces' => 
     array (
     ),
-    'custom_db_types' =>
+    'custom_db_types' => 
     array (
     ),
     'model_camel_case_properties' => false,
-    'type_overrides' =>
+    'type_overrides' => 
     array (
       'integer' => 'int',
       'boolean' => 'bool',
@@ -2120,13 +2127,13 @@
     'include_class_docblocks' => false,
     'force_fqn' => false,
     'use_generics_annotations' => true,
-    'additional_relation_types' =>
+    'additional_relation_types' => 
     array (
     ),
-    'additional_relation_return_types' =>
+    'additional_relation_return_types' => 
     array (
     ),
-    'post_migrate' =>
+    'post_migrate' => 
     array (
     ),
   ),
