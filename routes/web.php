@@ -329,52 +329,52 @@ Route::get('/', function () {
 
 
 // Allow any string for user parameter (supports userPrincipalName)
-Route::pattern('user', '.*');
+// Restrict the user pattern to valid identifiers (e.g., GUIDs or emails)
+Route::pattern('user', '[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}|\w{8}-\w{4}-\w{4}-\w{4}-\w{12}');
 
 // Authentication routes
 Route::post('/login', [AuthController::class, 'login'])->name('login');
-Route::get('/auth/azure/callback', [AuthController::class, 'handleAzureCallback'])->name('azure.callback'); // Add if using Azure AD
+Route::get('/auth/azure/callback', [AuthController::class, 'handleAzureCallback'])->name('azure.callback');
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth')->name('logout');
 
-// Dashboard route with default guard
+// Login tracker routes
+Route::prefix('users')->middleware('auth')->group(function () {
+    Route::get('/logged-in', [UserController::class, 'loggedInUsers'])->name('users.logged-in');
+    Route::get('/not-logged-in', [UserController::class, 'notLoggedInUsers'])->name('users.not-logged-in');
+    Route::get('/{identifier}', [UserController::class, 'show'])->name('users.show');
+    Route::resource('/', UserController::class)
+        ->parameters(['' => 'user'])
+        ->except(['show'])
+        ->names([
+            'index' => 'users.index',
+            'create' => 'users.create',
+            'store' => 'users.store',
+            'edit' => 'users.edit',
+            'update' => 'users.update',
+            'destroy' => 'users.destroy',
+        ]);
+});
+
+// Dashboard route
 Route::get('/dashboard', [DashboardController::class, 'index'])
     ->middleware('auth')
     ->name('dashboard');
 
-// Imports route with default guard
+// Imports route
 Route::get('/imports', function () {
     return view('logintracker.imports.index');
 })->middleware('auth')
   ->name('imports.index');
 
-// Activity report route with default guard
+// Activity report route
 Route::get('/activity-report', [ActivityReportController::class, 'userActivityReport'])
     ->middleware('auth')
     ->name('activity.report');
 
-// Explicit routes for login status with default guard
-Route::get('/users/logged-in', [UserController::class, 'loggedInUsers'])
-    ->middleware('auth')
-    ->name('users.logged-in');
-Route::get('/users/not-logged-in', [UserController::class, 'notLoggedInUsers'])
-    ->middleware('auth')
-    ->name('users.not-logged-in');
-
-// CSV import endpoints with default guard
+// CSV import endpoints
 Route::post('/import/users', [ImportController::class, 'importUsers'])
     ->middleware('auth')
-    ->name('import.users');
+    ->name('imports.users');
 Route::post('/import/sign-ins', [ImportController::class, 'importSignIns'])
     ->middleware('auth')
-    ->name('import.sign_ins');
-
-// Explicitly define users.show to use {identifier} (supports userPrincipalName or id)
-Route::get('/users/{identifier}', [UserController::class, 'show'])
-    ->middleware('auth')
-    ->name('users.show');
-
-// Other user resource routes with default guard
-Route::resource('users', UserController::class)
-    ->parameters(['users' => 'user'])
-    ->except(['show'])
-    ->middleware('auth');
+    ->name('imports.sign_ins');

@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Logintracker\User as AzureUser;
 use App\Models\Logintracker\SigninLog;
-use App\Models\Logintracker\System; // Explicitly import System model
+use App\Models\Logintracker\System;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -16,27 +16,16 @@ class UserController extends Controller
 {
     protected $perPage = 17;
 
-    /**
-     * Show the form for creating a new user.
-     *
-     * @return \Illuminate\View\View
-     */
     public function create()
     {
         return view('logintracker.users.create');
     }
 
-    /**
-     * Store a newly created user in storage.
-     *
-     * @param \Illuminate\Http\Request $request
-     * @return \Illuminate\Http\RedirectResponse
-     */
     public function store(Request $request)
     {
         try {
             $validated = $request->validate([
-                'id' => 'required|string|unique:Azure_Users,id|uuid', // Use table name Azure_Users
+                'id' => 'required|string|unique:Azure_Users,id|uuid',
                 'userPrincipalName' => 'required|string|unique:Azure_Users,userPrincipalName|max:72',
                 'displayName' => 'nullable|string|max:23',
                 'surname' => 'nullable|string|max:14',
@@ -49,7 +38,7 @@ class UserController extends Controller
                 'accountEnabled' => 'boolean',
             ]);
 
-            User::create($validated + ['createdDateTime' => now()->format('Y-m-d H:i:s')]);
+            AzureUser::create($validated + ['createdDateTime' => now()->format('Y-m-d H:i:s')]);
 
             return redirect()->route('dashboard')->with('success', 'User added successfully!');
         } catch (ValidationException $e) {
@@ -67,12 +56,6 @@ class UserController extends Controller
         }
     }
 
-    /**
-     * Remove the specified user from storage.
-     *
-     * @param string $id
-     * @return \Illuminate\Http\RedirectResponse
-     */
     public function destroy($id)
     {
         try {
@@ -81,7 +64,7 @@ class UserController extends Controller
                 return redirect()->route('dashboard')->with('error', 'Invalid ID format.');
             }
 
-            $user = User::find($id);
+            $user = AzureUser::find($id);
             if (!$user) {
                 Log::notice('User not found in destroy', ['id' => $id]);
                 return redirect()->route('dashboard')->with('error', 'User not found.');
@@ -99,12 +82,6 @@ class UserController extends Controller
         }
     }
 
-    /**
-     * Display a listing of users.
-     *
-     * @param \Illuminate\Http\Request $request
-     * @return \Illuminate\Http\JsonResponse|\Illuminate\View\View
-     */
     public function index(Request $request)
     {
         try {
@@ -123,7 +100,7 @@ class UserController extends Controller
                     'end' => $end->toDateTimeString(),
                 ]);
 
-                $query = User::query();
+                $query = AzureUser::query();
                 if ($request->filled('search')) {
                     $query->where(function ($q) use ($search) {
                         $q->where('displayName', 'like', "%{$search}%")
@@ -166,14 +143,13 @@ class UserController extends Controller
                     })
                     ->get();
                 $loggedInEmails = $logins->pluck('username')->filter()->unique()->map(fn($email) => strtolower(trim($email)));
-                $totalUsers = User::count();
-                $loggedInCount = $loggedInEmails->isEmpty() ? 0 : User::whereIn(DB::raw('LOWER(userPrincipalName)'), $loggedInEmails)->count();
+                $totalUsers = AzureUser::count();
+                $loggedInCount = $loggedInEmails->isEmpty() ? 0 : AzureUser::whereIn(DB::raw('LOWER(userPrincipalName)'), $loggedInEmails)->count();
                 $notLoggedInCount = $totalUsers - $loggedInCount;
 
                 $systems = System::orderBy('name')->pluck('name')->toArray();
                 Log::info('Systems for Dropdown', ['systems' => $systems]);
 
-                // Map users to ensure UUID id
                 $mappedUsers = array_map(function ($user) {
                     return [
                         'id' => $user->id,
@@ -203,7 +179,7 @@ class UserController extends Controller
                 ]);
             }
 
-            $query = User::query();
+            $query = AzureUser::query();
             if ($request->filled('search')) {
                 $query->where(function ($q) use ($search) {
                     $q->where('displayName', 'like', "%{$search}%")
@@ -244,8 +220,8 @@ class UserController extends Controller
                 })
                 ->get();
             $loggedInEmails = $logins->pluck('username')->filter()->unique()->map(fn($email) => strtolower(trim($email)));
-            $totalUsers = User::count();
-            $loggedInCount = $loggedInEmails->isEmpty() ? 0 : User::whereIn(DB::raw('LOWER(userPrincipalName)'), $loggedInEmails)->count();
+            $totalUsers = AzureUser::count();
+            $loggedInCount = $loggedInEmails->isEmpty() ? 0 : AzureUser::whereIn(DB::raw('LOWER(userPrincipalName)'), $loggedInEmails)->count();
             $notLoggedInCount = $totalUsers - $loggedInCount;
 
             $systems = System::orderBy('name')->pluck('name')->toArray();
@@ -279,13 +255,6 @@ class UserController extends Controller
         }
     }
 
-    /**
-     * Display the specified user.
-     *
-     * @param \Illuminate\Http\Request $request
-     * @param string $identifier
-     * @return \Illuminate\View\View
-     */
     public function show(Request $request, $identifier)
     {
         Log::info('UserController@show called', [
@@ -295,8 +264,7 @@ class UserController extends Controller
         ]);
 
         try {
-            // Use findByIdentifier to support userPrincipalName or id
-            $user = User::findByIdentifier($identifier);
+            $user = AzureUser::findByIdentifier($identifier);
             if (!$user) {
                 Log::notice('User not found in show', ['identifier' => $identifier]);
                 abort(404, 'User not found.');
@@ -362,12 +330,6 @@ class UserController extends Controller
         }
     }
 
-    /**
-     * Display users with recent sign-in activity.
-     *
-     * @param \Illuminate\Http\Request $request
-     * @return \Illuminate\View\View
-     */
     public function loggedInUsers(Request $request)
     {
         try {
@@ -375,7 +337,19 @@ class UserController extends Controller
             $filters = $filterService->parseFilters($request);
             $search = $request->input('search');
 
-            $query = User::whereHas('signIns', function ($q) use ($filters) {
+            // Prevent invalid search terms
+            if ($search === 'logged-in' || empty($search)) {
+                Log::info('Invalid or empty search term, setting to null', ['search' => $search]);
+                $search = null;
+            }
+
+            Log::info('UserController@loggedInUsers called', [
+                'filters' => $filters,
+                'search' => $search,
+                'request_url' => $request->fullUrl(),
+            ]);
+
+            $query = AzureUser::whereHas('signIns', function ($q) use ($filters) {
                 $q->whereBetween('date_utc', [$filters['startDate'], $filters['endDate']]);
                 if (!empty($filters['system'])) {
                     $mappedSystems = collect(config('systemmap'))
@@ -436,24 +410,20 @@ class UserController extends Controller
                 'user_count' => $users->total(),
                 'filters' => $filters,
                 'search' => $search,
+                'user_ids' => $users->pluck('id')->toArray(),
             ]);
 
-            return view('logintracker.users.logged-in', compact('users', 'filters', 'search', 'systems', 'type'));
+            // Update view to match new route
+            return view('logintracker.reporter.logged-in', compact('users', 'filters', 'search', 'systems', 'type'));
         } catch (\Exception $e) {
             Log::error('Error in loggedInUsers', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
-            return redirect()->back()->with('error', 'An unexpected error occurred.');
+            return redirect()->route('dashboard')->with('error', 'An unexpected error occurred.');
         }
     }
 
-    /**
-     * Display users with no sign-in activity.
-     *
-     * @param \Illuminate\Http\Request $request
-     * @return \Illuminate\View\View
-     */
     public function notLoggedInUsers(Request $request)
     {
         try {
@@ -461,7 +431,7 @@ class UserController extends Controller
             $filters = $filterService->parseFilters($request);
             $search = $request->input('search');
 
-            $query = User::query();
+            $query = AzureUser::query();
 
             if (!empty($filters['system'])) {
                 $mappedSystems = collect(config('systemmap'))
@@ -521,7 +491,8 @@ class UserController extends Controller
                 'search' => $search,
             ]);
 
-            return view('logintracker.users.not-logged-in', compact('users', 'filters', 'search', 'systems'));
+            // Update view to match new route
+            return view('logintracker.reporter.not-logged-in', compact('users', 'filters', 'search', 'systems'));
         } catch (\Exception $e) {
             Log::error('Error in notLoggedInUsers', [
                 'error' => $e->getMessage(),
@@ -531,12 +502,6 @@ class UserController extends Controller
         }
     }
 
-    /**
-     * Resolve date range for filtering.
-     *
-     * @param mixed $input
-     * @return array
-     */
     protected function resolveDateRange($input = null)
     {
         if ($input instanceof Request) {
@@ -571,12 +536,6 @@ class UserController extends Controller
         return [$start, $end];
     }
 
-    /**
-     * Get label for date range.
-     *
-     * @param string $range
-     * @return string
-     */
     private function getRangeLabel($range)
     {
         return match ($range) {
@@ -588,4 +547,3 @@ class UserController extends Controller
         };
     }
 }
-?>

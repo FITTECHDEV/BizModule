@@ -75,6 +75,12 @@
                         </thead>
                         <tbody>
                             @foreach ($users as $user)
+                                @php
+                                    \Log::debug('User data in logged-in view', [
+                                        'user_id' => $user->id ?? 'missing',
+                                        'displayName' => $user->displayName ?? 'Unknown',
+                                    ]);
+                                @endphp
                                 <tr>
                                     <td>
                                         <strong>{{ $user->displayName ?: 'Unknown' }}</strong>
@@ -93,9 +99,13 @@
                                         @endif
                                     </td>
                                     <td>
-                                        <a href="{{ route('users.show', $user->id) }}" class="btn btn-sm btn-primary">
-                                            View Details
-                                        </a>
+                                        @if($user->id && \Illuminate\Support\Str::isUuid($user->id))
+                                            <a href="{{ route('logintracker.users.show', $user->id) }}" class="btn btn-sm btn-primary">
+                                                View Details
+                                            </a>
+                                        @else
+                                            <span class="text-danger">Invalid ID</span>
+                                        @endif
                                     </td>
                                 </tr>
                             @endforeach
@@ -116,7 +126,13 @@
 function applyFilters() {
     const range = document.getElementById('range').value;
     const system = document.getElementById('system').value;
-    const search = document.getElementById('search').value;
+    let search = document.getElementById('search').value;
+    
+    // Prevent invalid search terms
+    if (search === 'logged-in' || search === 'not-logged-in') {
+        console.log('Invalid search term detected:', search);
+        search = '';
+    }
     
     const params = new URLSearchParams();
     if (range) params.set('range', range);
@@ -133,4 +149,4 @@ document.getElementById('search').addEventListener('keypress', function(e) {
     }
 });
 </script>
-@endsectio
+@endsection

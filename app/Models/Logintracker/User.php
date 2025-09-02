@@ -5,9 +5,10 @@ namespace App\Models\Logintracker;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Support\Facades\Log;
 
 /**
- * App\Models\User
+ * App\Models\Logintracker\User
  *
  * Represents a user entity within the system, based on Azure AD or manual entry.
  * Handles user authentication and relationship to sign-in activity.
@@ -95,32 +96,18 @@ class User extends Authenticatable
      */
     protected $casts = [
         'createdDateTime' => 'datetime',
+        'accountEnabled' => 'boolean',
+        'directorySynced' => 'boolean',
     ];
 
     /**
-     * Attributes hidden from serialization (e.g. API responses).
+     * Attributes hidden from serialization (e.g., API responses).
      *
      * @var array
      */
     protected $hidden = [
         'password',
     ];
-
-    /**
-     * Accessor for accountEnabled since DB stores it as varchar.
-     */
-    public function getAccountEnabledAttribute($value)
-    {
-        return strtolower($value) === 'true' || $value === '1';
-    }
-
-    /**
-     * Accessor for directorySynced since DB stores it as varchar.
-     */
-    public function getDirectorySyncedAttribute($value)
-    {
-        return strtolower($value) === 'true' || $value === '1';
-    }
 
     /**
      * Get the sign-in records associated with this user.
@@ -130,11 +117,17 @@ class User extends Authenticatable
         return $this->hasMany(SigninLog::class, 'user_id', 'id');
     }
 
+    /**
+     * Get interactive sign-in records associated with this user.
+     */
     public function interactiveSignIns()
     {
         return $this->hasMany(SigninLog::class, 'user_id', 'id');
     }
 
+    /**
+     * Get sign-in logs associated with this user.
+     */
     public function signinLogs()
     {
         return $this->hasMany(SigninLog::class, 'user_id', 'id');
@@ -157,7 +150,20 @@ class User extends Authenticatable
         return 'id';
     }
 
-     /**
+    /**
+     * Check if the user is considered logged in based on recent sign-in activity.
+     *
+     * @param int $days Number of days to consider for recent activity (default: 30)
+     * @return bool
+     */
+    public function isLoggedIn($days = 30): bool
+    {
+        return $this->signIns()
+            ->where('date_utc', '>=', now()->subDays($days))
+            ->exists();
+    }
+
+    /**
      * Find a user by userPrincipalName or id.
      *
      * @param string $identifier
@@ -165,17 +171,30 @@ class User extends Authenticatable
      */
     public static function findByIdentifier($identifier)
     {
-        // Try userPrincipalName first
-        $user = self::where('userPrincipalName', $identifier)->first();
-        if ($user) {
-            return $user;
+        // Validate identifier
+        if (empty($identifier) || strlen($identifier) > 255) {
+            Log::error('Invalid identifier length for Azure_Users', ['identifier' => $identifier]);
+            return null;
         }
-        // Try id if it's a GUID
-        if (preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $identifier)) {
-            return self::find($identifier);
+
+        // Try userPrincipalName (validate as email)
+        if (filter_var($identifier, FILTER_VALIDATE_EMAIL)) {
+            $user = self::where('userPrincipalName', $identifier)->first();
+            if ($user) {
+                return $user;
+            }
         }
-        \Log::error('Invalid identifier for Azure_Users: ' . $identifier);
+
+        // Try id if it's a GUID or string
+        if (preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $identifier) || 
+            preg_match('/^user-\d+$/', $identifier)) {
+            $user = self::find($identifier);
+            if ($user) {
+                return $user;
+            }
+        }
+
+        Log::warning('Failed to find user by identifier in Azure_Users', ['identifier' => $identifier]);
         return null;
     }
-
 }

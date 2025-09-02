@@ -2,14 +2,13 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Logintracker\User;
-
+use App\Models\Logintracker\User as TrackerUser;
 use Illuminate\Http\Request;
 use App\Services\LoginFilterService;
 use App\Services\DashboardStatsService;
-use App\Models\Logintracker\User as TrackerUser;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Database\QueryException;
 
 class DashboardController extends Controller
 {
@@ -82,50 +81,25 @@ class DashboardController extends Controller
     {
         $filters = $this->filterService->parseFilters($request);
 
-        // Use mock data instead of database query
+        // Use mock data for testing
         $users = $this->getMockUsers();
 
-        // Search filter
+        // Search filter with sanitization
         if ($searchTerm = $request->input('search')) {
+            $searchTerm = trim(strip_tags($searchTerm)); // Basic sanitization
+            if (strlen($searchTerm) > 255) {
+                Log::warning('Search term too long', ['searchTerm' => $searchTerm]);
+                $searchTerm = substr($searchTerm, 0, 255);
+            }
             $users = $users->filter(function ($user) use ($searchTerm) {
                 return stripos($user['displayName'], $searchTerm) !== false ||
                        stripos($user['userPrincipalName'], $searchTerm) !== false;
             });
         }
 
-        // Mock relationship filter (uncomment to test)
-        /*
-        $selectedSystem = $request->input('system', 'SCM');
-        if ($selectedSystem) {
-            $mappedSystems = collect(config('systemmap'))
-                ->filter(function ($system) use ($selectedSystem) {
-                    return $system === $selectedSystem;
-                })
-                ->keys()
-                ->toArray();
-
-            if (!empty($mappedSystems)) {
-                $users = $users->filter(function ($user) use ($mappedSystems) {
-                    return collect($user['signIns'])->contains(function ($signIn) use ($mappedSystems) {
-                        foreach ($mappedSystems as $mappedSystem) {
-                            if (stripos($signIn['application'], $mappedSystem) !== false) {
-                                return true;
-                            }
-                        }
-                        return false;
-                    });
-                });
-            }
-        } else {
-            $users = $users->filter(function ($user) {
-                return !empty($user['signIns']);
-            });
-        }
-        */
-
         // Simulate pagination
         $perPage = 17;
-        $currentPage = $request->input('page', 1);
+        $currentPage = max(1, (int) $request->input('page', 1));
         $total = $users->count();
         $paginatedUsers = $users->slice(($currentPage - 1) * $perPage, $perPage)->values();
         $users = new LengthAwarePaginator(
@@ -150,7 +124,7 @@ class DashboardController extends Controller
             }),
             'lastLogin' => $users->max(function ($user) {
                 return collect($user['signIns'])->max('created_at');
-            }),
+            }) ?: null,
             'signIns' => $users->flatMap(function ($user) {
                 return $user['signIns'];
             })->toArray(),
@@ -177,7 +151,7 @@ class DashboardController extends Controller
                 'systemInput' => '',
                 'systems' => $systems,
                 'pagination' => $users->withQueryString()->links()->toHtml(),
-            ]);
+            ], 200);
         }
 
         // Render View
@@ -199,56 +173,74 @@ class DashboardController extends Controller
         ]);
     }
 
-public function showDashboard()
-{
-    $filters = $this->filterService->parseFilters(request());
+    public function showDashboard()
+    {
+        $filters = $this->filterService->parseFilters(request());
 
-    // Fetch real users
-    $query = \App\Models\User::query();
+        try {
+            // Fetch real users from Azure_Users
+            $query = TrackerUser::query();
 
-    // Search filter
-    if ($searchTerm = request()->input('search')) {
-        $query->where(function ($q) use ($searchTerm) {
-            $q->where('displayName', 'LIKE', "%{$searchTerm}%")
-              ->orWhere('userPrincipalName', 'LIKE', "%{$searchTerm}%");
-        });
+            // Search filter with sanitization
+            if ($searchTerm = request()->input('search')) {
+                $searchTerm = trim(strip_tags($searchTerm)); // Basic sanitization
+                if (strlen($searchTerm) > 255) {
+                    Log::warning('Search term too long', ['searchTerm' => $searchTerm]);
+                    $searchTerm = substr($searchTerm, 0, 255);
+                }
+                $query->where(function ($q) use ($searchTerm) {
+                    $q->where('displayName', 'LIKE', "%{$searchTerm}%")
+                      ->orWhere('userPrincipalName', 'LIKE', "%{$searchTerm}%");
+                });
+            }
+
+            // Pagination
+            $perPage = 17;
+            $users = $query->paginate($perPage)->withQueryString();
+
+            // Collect stats
+            $stats = [
+                'totalUsers' => $users->total(),
+                'loggedInCount' => TrackerUser::where(function ($q) {
+                    $q->whereNotNull('last_login')
+                      ->orWhere('logged_in', true);
+                })->distinct('id')->count(),
+                'notLoggedInCount' => TrackerUser::where(function ($q) {
+                    $q->whereNull('last_login')
+                      ->orWhere('logged_in', false);
+                })->count(),
+                'totalLogins' => SigninLog::count(),
+                'lastLogin' => SigninLog::max('date_utc') ?: null,
+                'signIns' => SigninLog::latest('date_utc')->limit(100)->get(),
+                'totalDays' => TrackerUser::min('createdDateTime')
+                    ? \Carbon\Carbon::parse(TrackerUser::min('createdDateTime'))->diffInDays(now())
+                    : 0,
+            ];
+        } catch (QueryException $e) {
+            Log::error('Database query failed in showDashboard', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return response()->view('errors.500', [], 500);
+        }
+
+        $systems = $this->filterService->getSystemList();
+
+        return view('logintracker.dashboard', [
+            'users' => $users,
+            'totalUsers' => $stats['totalUsers'],
+            'loggedInCount' => $stats['loggedInCount'],
+            'notLoggedInCount' => $stats['notLoggedInCount'],
+            'totalLogins' => $stats['totalLogins'],
+            'lastLogin' => $stats['lastLogin'],
+            'signIns' => $stats['signIns'],
+            'totalDays' => $stats['totalDays'],
+            'rangeInput' => $filters['range'],
+            'rangeLabel' => $filters['rangeLabel'],
+            'systemInput' => '',
+            'systems' => $systems,
+            'selectedRange' => $filters['range'],
+            'selectedSystem' => '',
+        ]);
     }
-
-    // Pagination
-    $perPage = 17;
-    $users = $query->paginate($perPage)->withQueryString();
-
-    // Collect stats
-    $stats = [
-        'totalUsers'       => $users->total(),
-        'loggedInCount'    => SigninLog::distinct('user_id')->count(), // users that have logged in
-        'notLoggedInCount' => $users->total() - SigninLog::distinct('user_id')->count(),
-        'totalLogins'      => SigninLog::count(),
-        'lastLogin'        => SigninLog::max('date_utc'),
-        'signIns'          => SigninLog::latest('date_utc')->limit(100)->get(), // last 100 sign-ins
-        'totalDays'        => \Carbon\Carbon::parse(
-                                \App\Models\User::min('createdDateTime')
-                            )->diffInDays(now()),
-    ];
-
-    $systems = $this->filterService->getSystemList();
-
-    return view('logintracker.dashboard', [
-        'users'           => $users,
-        'totalUsers'      => $stats['totalUsers'],
-        'loggedInCount'   => $stats['loggedInCount'],
-        'notLoggedInCount'=> $stats['notLoggedInCount'],
-        'totalLogins'     => $stats['totalLogins'],
-        'lastLogin'       => $stats['lastLogin'],
-        'signIns'         => $stats['signIns'],
-        'totalDays'       => $stats['totalDays'],
-        'rangeInput'      => $filters['range'],
-        'rangeLabel'      => $filters['rangeLabel'],
-        'systemInput'     => '',
-        'systems'         => $systems,
-        'selectedRange'   => $filters['range'],
-        'selectedSystem'  => '',
-    ]);
-}
-
 }
