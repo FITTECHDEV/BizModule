@@ -48,7 +48,6 @@ class SyncScmProfitData extends Command
 
             $this->syncData($dates);
             $this->displaySummary();
-
         } catch (\Exception $e) {
             $this->error("Critical error: " . $e->getMessage());
             Log::error('SyncScmProfitData failed', [
@@ -119,7 +118,8 @@ class SyncScmProfitData extends Command
 
     private function getTotalRecords(array $dates): int
     {
-        return DB::connection('pgsql')->selectOne("
+        return DB::connection('pgsql')->selectOne(
+            "
             SELECT COUNT(*) as total FROM vw_scmprofit_integration
             WHERE CAST(CreatedOn AS date) >= ?
             OR CAST(UpdatedOn AS date) >= ?",
@@ -129,16 +129,15 @@ class SyncScmProfitData extends Command
 
     private function getRecordsBatch(array $dates, int $offset, int $limit): array
     {
-        return DB::connection('pgsql')->select("
-            SELECT * FROM vw_scmprofit_integration
-            WHERE CAST(CreatedOn AS date) >= ?
-            OR CAST(UpdatedOn AS date) >= ?
-            ORDER BY bookingno
-            LIMIT ? OFFSET ?",
-            [$dates['start'], $dates['current'], $limit, $offset]
+        return DB::connection('pgsql')->select(
+            "
+          SELECT * FROM vw_scmprofit_integration
+          WHERE CAST(CreatedOn AS date) = CURRENT_DATE
+          OR CAST(UpdatedOn AS date) = CURRENT_DATE
+          ORDER BY bookingno
+          LIMIT 100 OFFSET 0"
         );
     }
-
     private function processBatch(array $records): void
     {
         DB::connection('sqlsrv')->transaction(function () use ($records) {
@@ -323,6 +322,13 @@ class SyncScmProfitData extends Command
             'TransportMode' => $record->transportmode,
             'ServiceClass' => $record->serviceclass,
             'SalesPersonCode' => $record->salespersoncode,
+            // 🚀 Newly added fields
+            // 'shipmentmode'   => $record->shipmentmode,
+            // 'incoterm'       => $record->incoterm,
+            // 'scopevolume'    => $record->scopevolume,
+            // 'cargovolume'    => $record->cargovolume,
+            // 'containerlist'  => $record->containerlist,
+
         ];
     }
 

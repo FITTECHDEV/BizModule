@@ -39,31 +39,59 @@ class TRAADLInvoices extends Command
      *
      * @return int
      */
-    public function handle()
-    {
-        Log::notice("TRA push running");
+   public function handle()
+{
+    Log::notice("TRA push running");
 
-        $invoiceId = $this->argument('invoiceId');
-        $pendingInvoices = $this->fetchPendingInvoices($invoiceId);
+    $invoiceId = $this->argument('invoiceId');
+    $pendingInvoices = $this->fetchPendingInvoices($invoiceId);
 
-        if ($pendingInvoices->isEmpty()) {
-            Log::info("No pending invoices found.");
-            return 0;
-        }
-
-        foreach ($pendingInvoices as $invoice) {
-            $jsonData = json_decode($invoice->TRAJsonFile, true);
-
-            if ($jsonData) {
-                $this->submitToApi($invoice, $jsonData);
-            } else {
-                Log::error("Failed to decode JSON data for invoice ID: {$invoice->ID}");
-            }
-        }
-
-        Log::notice("TRA push completed");
+    if ($pendingInvoices->isEmpty()) {
+        Log::info("No pending invoices found.");
         return 0;
     }
+
+    // ✅ Check API availability before processing
+    if (!$this->isApiAvailable()) {
+        Log::error("TRA API is not reachable. Skipping all pending invoices.");
+        return 1; // exit with error code
+    }
+
+    foreach ($pendingInvoices as $invoice) {
+        $jsonData = json_decode($invoice->TRAJsonFile, true);
+
+        if ($jsonData) {
+            $this->submitToApi($invoice, $jsonData);
+        } else {
+            Log::error("Failed to decode JSON data for invoice ID: {$invoice->ID}");
+        }
+    }
+
+    Log::notice("TRA push completed");
+    return 0;
+}
+
+/**
+ * Check if TRA API is reachable.
+ *
+ * @return bool
+ */
+protected function isApiAvailable()
+{
+    $baseUrl = rtrim(env('TRA_BASE_URL'), '/');
+    $url = "{$baseUrl}/invoices"; // change this to the real health endpoint or /invoices if none exists
+
+    try {
+        $response = Http::withBasicAuth(env('TRA_USERNAME'), env('TRA_PASSWORD'))
+            ->timeout(5) // short timeout
+            ->get($url);
+
+        return $response->ok();
+    } catch (\Exception $e) {
+        return false;
+    }
+}
+
 
     /**
      * Fetch pending invoices.

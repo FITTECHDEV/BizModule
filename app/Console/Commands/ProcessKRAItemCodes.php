@@ -39,7 +39,7 @@ class ProcessKRAItemCodes extends Command
      * @return int
      */
 
-     public function handle()
+ public function handle()
 {
     // Get the API URL, username, and password from the config file
     $baseUrl = config('kra.api_url');
@@ -52,124 +52,112 @@ class ProcessKRAItemCodes extends Command
         return 1; // Exit with an error code
     }
 
-    // Construct the full API URL by appending the endpoint
     $apiUrl = rtrim($baseUrl, '/') . '/items';
+    $attempt = 1;
 
-    // Execute the first stored procedure
-    $items = DB::select('SET NOCOUNT ON; EXEC dbo.KRA_ItemCodeGeneration');
+    while (true) {
+        // Execute the first stored procedure
+        $items = DB::select('SET NOCOUNT ON; EXEC dbo.KRA_ItemCodeGeneration');
 
-    // Log the raw response for debugging
-    Log::info('Raw response from stored procedure:', $items);
+        Log::info("KRA Command Attempt #{$attempt}: Found " . count($items) . " items");
 
-    foreach ($items as $item) {
-        // Convert the item object to an array
-        $itemArray = (array) $item;
+        if (empty($items)) {
+            Log::info("KRA Command: No items found, retrying in 10 minutes...");
+            $this->info("No items found, retrying in 10 minutes...");
+            sleep(600); // Wait 10 minutes
+            $attempt++;
+            continue; // Retry loop
+        }
 
-        // Extract the concatenated JSON string from the response
-        $concatenatedJson = $itemArray[''];
+        foreach ($items as $item) {
+            $itemArray = (array) $item;
+            $concatenatedJson = $itemArray[''];
+            $jsonArray = '[' . $concatenatedJson . ']';
+            $decodedItems = json_decode($jsonArray, true);
 
-        // Wrap the concatenated JSON string in square brackets to make it a valid JSON array
-        $jsonArray = '[' . $concatenatedJson . ']';
+            if (is_array($decodedItems)) {
+                foreach ($decodedItems as $decodedItem) {
+                    Log::info('Processing item:', $decodedItem);
 
-        // Decode the JSON array
-        $decodedItems = json_decode($jsonArray, true);
+                    try {
+                        $response = Http::withBasicAuth($username, $password)
+                            ->post($apiUrl, $decodedItem);
 
-        // Check if the decoded items are valid and is an array
-        if (is_array($decodedItems)) {
-            foreach ($decodedItems as $decodedItem) {
-                // Log the individual item for debugging
-                Log::info('Processing item:', $decodedItem);
+                        if ($response->successful()) {
+                            $apiResponse = $response->json();
+                            Log::info('API Response:', $apiResponse);
 
-                // Make API request with Basic Authentication
-                $response = Http::withBasicAuth($username, $password)
-                    ->post($apiUrl, $decodedItem);
+                            if (isset($apiResponse['data']['itemCode'])) {
+                                $itemCode = $apiResponse['data']['itemCode'];
 
-                if ($response->successful()) {
-                    // API request was successful
-                    $apiResponse = $response->json();
+                                $getResponse = Http::withBasicAuth($username, $password)
+                                    ->get($baseUrl . '/items/' . $itemCode);
 
-                    // Log the API response for debugging
-                    Log::info('API Response:', $apiResponse);
+                                if ($getResponse->successful()) {
+                                    $itemDetails = $getResponse->json();
+                                    Log::info('Item Details:', $itemDetails);
 
-                    // Check if the API response contains the itemCode in the data object
-                    if (isset($apiResponse['data']['itemCode'])) {
-                        $itemCode = $apiResponse['data']['itemCode'];
+                                    if (isset($itemDetails['name']) && isset($itemDetails['itemCode'])) {
+                                        $name = $itemDetails['name'];
+                                        $itemCode = $itemDetails['itemCode'];
 
-                        // Make a GET request to retrieve item details
-                        $getResponse = Http::withBasicAuth($username, $password)
-                            ->get($baseUrl . '/items/' . $itemCode);
+                                        $status = '';
+                                        $remark = '';
 
-                        if ($getResponse->successful()) {
-                            // GET request was successful
-                            $itemDetails = $getResponse->json();
+                                        try {
+                                            $success = DB::statement('EXEC dbo.KRA_ItemCodeUpdate ?, ?, ?, ?', [
+                                                $name,
+                                                $itemCode,
+                                                &$status,
+                                                &$remark
+                                            ]);
 
-                            // Log the item details for debugging
-                            Log::info('Item Details:', $itemDetails);
-
-                            // Extract the name and itemCode from the GET request response
-                            if (isset($itemDetails['name']) && isset($itemDetails['itemCode'])) {
-                                $name = $itemDetails['name'];
-                                $itemCode = $itemDetails['itemCode'];
-
-                                // Execute the second stored procedure with output parameters
-                                $status = '';
-                                $remark = '';
-
-                                try {
-                                    // Execute the stored procedure
-                                    $success = DB::statement('EXEC dbo.KRA_ItemCodeUpdate ?, ?, ?, ?', [
-                                        $name,
-                                        $itemCode,
-                                        &$status, // Bind output parameter by reference
-                                        &$remark  // Bind output parameter by reference
-                                    ]);
-
-                                    if ($success && $status === 'Success') {
-                                        // Stored procedure executed successfully
-                                        $this->info("Stored procedure executed successfully for Name: $name, ItemCode: $itemCode. Remark: $remark");
-                                        Log::info("Stored procedure executed successfully for Name: $name, ItemCode: $itemCode. Remark: $remark");
+                                            if ($success && $status === 'Success') {
+                                                $this->info("Stored procedure executed successfully for Name: $name, ItemCode: $itemCode. Remark: $remark");
+                                                Log::info("Stored procedure executed successfully for Name: $name, ItemCode: $itemCode. Remark: $remark");
+                                            } else {
+                                                $this->error("Stored procedure failed for Name: $name, ItemCode: $itemCode. Remark: $remark");
+                                                Log::error("Stored procedure failed for Name: $name, ItemCode: $itemCode. Remark: $remark");
+                                            }
+                                        } catch (\Exception $e) {
+                                            $this->error("Stored procedure failed for Name: $name, ItemCode: $itemCode. Error: " . $e->getMessage());
+                                            Log::error("Stored procedure failed for Name: $name, ItemCode: $itemCode. Error: " . $e->getMessage());
+                                        }
                                     } else {
-                                        // Stored procedure failed
-                                        $this->error("Stored procedure failed for Name: $name, ItemCode: $itemCode. Remark: $remark");
-                                        Log::error("Stored procedure failed for Name: $name, ItemCode: $itemCode. Remark: $remark");
+                                        Log::error('Required keys (name or itemCode) missing in GET response:', $itemDetails);
+                                        $this->error("Required keys (name or itemCode) missing in GET response: " . json_encode($itemDetails));
                                     }
-                                } catch (\Exception $e) {
-                                    // Handle exceptions
-                                    $this->error("Stored procedure failed for Name: $name, ItemCode: $itemCode. Error: " . $e->getMessage());
-                                    Log::error("Stored procedure failed for Name: $name, ItemCode: $itemCode. Error: " . $e->getMessage());
+                                } else {
+                                    $errorMessage = $getResponse->body();
+                                    Log::error("GET request failed for itemCode: $itemCode. Error: $errorMessage");
+                                    $this->error("GET request failed for itemCode: $itemCode");
                                 }
                             } else {
-                                // Handle missing keys in the GET request response
-                                Log::error('Required keys (name or itemCode) are missing in the GET request response for item:', $itemDetails);
-                                $this->error("Required keys (name or itemCode) are missing in the GET request response for item: " . json_encode($itemDetails));
+                                Log::error('itemCode missing in API response:', $apiResponse);
+                                $this->error("itemCode missing in API response: " . json_encode($apiResponse));
                             }
                         } else {
-                            // Handle GET request failure
-                            $errorMessage = $getResponse->body();
-                            Log::error("GET request failed for itemCode: $itemCode. Error: $errorMessage");
-                            $this->error("GET request failed for itemCode: $itemCode");
+                            $errorMessage = $response->body();
+                            Log::error("API request failed for item: " . json_encode($decodedItem) . ". Error: $errorMessage");
+                            $this->error("API request failed for item: " . json_encode($decodedItem));
                         }
-                    } else {
-                        // Handle missing itemCode in the API response
-                        Log::error('itemCode is missing in the API response for item:', $apiResponse);
-                        $this->error("itemCode is missing in the API response for item: " . json_encode($apiResponse));
+                    } catch (\Exception $e) {
+                        Log::error("Exception during API request for item: " . json_encode($decodedItem) . ". Error: " . $e->getMessage());
+                        $this->error("Exception during API request for item: " . json_encode($decodedItem));
                     }
-                } else {
-                    // Handle API request failure
-                    $errorMessage = $response->body();
-                    Log::error("API request failed for item: " . json_encode($decodedItem) . ". Error: $errorMessage");
-                    $this->error("API request failed for item: " . json_encode($decodedItem));
                 }
+            } else {
+                Log::error('Invalid JSON response from stored procedure:', $itemArray);
+                $this->error('Invalid JSON response from stored procedure.');
             }
-        } else {
-            // Handle invalid JSON response
-            Log::error('Invalid JSON response from stored procedure:', $itemArray);
-            $this->error('Invalid JSON response from stored procedure.');
         }
+
+        break; // Exit loop after processing items
     }
 
     return 0;
 }
+
     // public function handle()
     // {
     //     // Get the API URL, username, and password from the config file

@@ -1,6 +1,6 @@
 @extends('adminlte::page')
 
-@section('title', 'Tickets')
+@section('title', 'FIT Tanzania')
 
 @section('content_header')
 
@@ -216,8 +216,9 @@
                 $('#hsCodeNote').remove();
             }
             if (action === 're-trigger') {
+               console.log('docNo:', docNo); // Add this
                 $.ajax({
-                    url: '/tims/re-trigger/' + docNo,
+                    url: '/tra/re-trigger/' + docNo,
                     type: 'GET',
                     datatype: 'json',
                     success: function(response) {

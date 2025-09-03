@@ -40,6 +40,14 @@ class ProcessCRMSCMBooking extends Command
 
     public function handle()
     {
+        // Add a 17-minute delay (1020 seconds)
+        if ($this->option('debug')) {
+            $this->info("Delaying execution for 17 minutes...");
+        }
+        Log::info("CRMSCM: Delaying execution for 17 minutes");
+        sleep(1020); // 17 minutes * 60 seconds = 1020 seconds
+        Log::info("CRMSCM: Delay completed, proceeding with command execution");
+
         $this->startTime = now();
         $this->debugMode = $this->option('debug');
 
@@ -53,7 +61,8 @@ class ProcessCRMSCMBooking extends Command
         try {
             $this->validateEnvironment();
 
-            $batchSize = config('crm_scm.batch_size', 100);
+            // $batchSize = config('crm_scm.batch_size', 100);
+            $batchSize = 10; 
             $specificBooking = $this->option('booking');
 
             $records = $this->getRecordsToProcess($batchSize, $specificBooking);
@@ -130,7 +139,8 @@ class ProcessCRMSCMBooking extends Command
         $query = DB::table('CRM_SCMprofit_integration')
             ->whereNull('SCMBookingID')
             ->whereNotNull('SCMBookingXML')
-            ->where('SCMBookingXML', '!=', '');
+            ->where('SCMBookingXML', '!=', '')
+            ->whereNull('SCMINTStatus');
 
         if ($specificBooking) {
             $query->where('bookingno', $specificBooking);
@@ -616,7 +626,7 @@ class ProcessCRMSCMBooking extends Command
         if ($isError) {
             $errors = $this->extractAPIErrors($xmlResponse);
 
-            Log::error("CRMSCM: XML Push Failed", [
+            Log::error("CRMSCM: XML Push Failed123", [
                 'bookingno' => $record->bookingno,
                 'errors' => $errors,
                 'raw_response' => $xmlResponse

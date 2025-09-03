@@ -1,6 +1,6 @@
 @extends('adminlte::page')
 
-@section('title', 'Tickets')
+@section('title', 'KRA Invoices')
 
 @section('content_header')
 
@@ -296,7 +296,7 @@ $('#saveChanges').click(function() {
             submit = true;
         }
     });
-    // submit form 
+    // submit form
     if (submit) {
         $('#editForm').css('filter', 'blur(4px)');
         $('#saveChanges').attr('disabled', 'true');
@@ -363,7 +363,7 @@ function getStats() {
         },
         error: function(error){
             console.log(error);
-        }        
+        }
     });
 
     setTimeout(() => {

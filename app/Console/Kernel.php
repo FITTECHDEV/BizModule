@@ -70,7 +70,7 @@ class Kernel extends ConsoleKernel
             ->emailOutputOnFailure('admin@yourcompany.com'); // Optional: add your email
 
         $schedule->command('crmscm:Booking')
-            ->everyTwentyMinutes()
+            ->everyThirtyMinutes()
             ->withoutOverlapping()
             ->appendOutputTo(storage_path('logs/crmscm.log'))
             ->onSuccess(function () {
@@ -80,17 +80,19 @@ class Kernel extends ConsoleKernel
                 Log::error('CRMSCM: Scheduled task failed');
             });
 
-            // ->emailOutputOnFailure('admin@yourcompany.com'); // Optional: add your email
 
-            // $schedule->command('z_report_json_tz')
-            //  ->dailyAt('10:00')
-            //  ->withoutOverlapping()
-            //  ->runInBackground();
 
-            //   $schedule->command('z_report_json_ar')
-            //  ->dailyAt('10:00')
-            //  ->withoutOverlapping()
-            //  ->runInBackground();
+        // ->emailOutputOnFailure('admin@yourcompany.com'); // Optional: add your email
+
+        // $schedule->command('z_report_json_tz')
+        //  ->dailyAt('10:00')
+        //  ->withoutOverlapping()
+        //  ->runInBackground();
+
+        //   $schedule->command('z_report_json_ar')
+        //  ->dailyAt('10:00')
+        //  ->withoutOverlapping()
+        //  ->runInBackground();
 
     }
 
@@ -130,6 +132,4 @@ class Kernel extends ConsoleKernel
 
         require base_path('routes/console.php');
     }
-
-
 }

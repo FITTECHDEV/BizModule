@@ -155,7 +155,7 @@
         }
 
 
-        let myTicketsTable = $('#my-tickets-table').DataTable({
+        let myTable = $('#my-tickets-table').DataTable({
                 "order": [
                     [8, "desc"]
                 ],

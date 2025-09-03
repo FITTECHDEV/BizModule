@@ -1,7 +1,7 @@
 
 @extends('adminlte::page')
 
-@section('title', 'Tickets')
+@section('title', 'Ticketss')
 
 @section('content_header')
     <div class="container">

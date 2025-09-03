@@ -21,7 +21,6 @@ class TraController extends Controller
     {
         $this->middleware(['auth']);
         $this->header = new TRABillingHeader();
-
     }
 
     public function index()
@@ -37,8 +36,6 @@ class TraController extends Controller
         $traStatsTZ = TRABillingHeader::getStatsByOfficeCode(['AR']);
 
         return view('tra.FIT.index', compact('traTZBillingHeader', 'traStatsTZ'));
-
-
     }
 
 
@@ -58,22 +55,38 @@ class TraController extends Controller
 
     public function reTrigger($docNo)
     {
-        $feedback = DB::select("SET NOCOUNT ON;
-                                    Declare
-                                    @Status as Varchar(50),
-                                    @Remark as Varchar(200)
-                                Exec TRA_RetriggerInvoice
-                                    @InvoiceNo = ?,
-                                    @Status = @Status Output,
-                                    @Remark= @Remark Output
-                                    Select @Status as 'Status',
-                                    @Remark as 'Status_Remark'
-                                   ", [$docNo]);
+        // Log to Laravel logs
+        Log::info("Calling TRA_RetriggerInvoice with:", [
+            'InvoiceNo' => $docNo
+        ]);
 
-        Log::notice(json_encode($feedback));
+        // Optional: also log to console during artisan tinker/commands
+        if (app()->runningInConsole()) {
+            $this->info("Calling TRA_RetriggerInvoice with InvoiceNo
+
+
+
+        : {$docNo}");
+        }
+
+        $feedback = DB::select("
+        SET NOCOUNT ON;
+        DECLARE
+            @Status AS VARCHAR(50),
+            @Remark AS VARCHAR(200)
+        EXEC TRA_RetriggerInvoice
+            @InvoiceNo = ?,
+            @Status = @Status OUTPUT,
+            @Remark = @Remark OUTPUT
+        SELECT @Status AS 'Status',
+               @Remark AS 'Status_Remark'
+    ", [$docNo]);
+
+        Log::notice("TRA_RetriggerInvoice feedback: " . json_encode($feedback));
 
         return $feedback;
     }
+
 
     public function jsonGenerate($id)
     {
@@ -401,6 +414,5 @@ class TraController extends Controller
         ]);
 
         return response()->json($feedback, 200);
-
     }
 }

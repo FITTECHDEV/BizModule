@@ -67,7 +67,7 @@ class HomeController extends Controller
         $priorities = Category::select('ID', 'CategoryCode', 'CategoryName')
             ->where('CategoryType', 'Priority')->orderBy('CategorySeq', 'desc')->get();
 
-        return view('archive.index', compact('priorities'));
+        return view('archive.index', compact('priorities')); 
     }
 
     public function reportsFilter(Request $request)

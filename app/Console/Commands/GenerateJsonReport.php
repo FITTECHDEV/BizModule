@@ -6,28 +6,46 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Carbon\Carbon;
 
 class GenerateJsonReport extends Command
 {
-    protected $signature = 'z_report_json_ar {date?}';
-    protected $description = 'Generates AR JSON report from AR API and SQL Server data';
+    protected $signature = 'z_report_json_tz {date?} {--backfill=}';
+    protected $description = 'Generates TZ JSON report from AR API and SQL Server data (single date, auto, or backfill)';
 
     public function handle()
     {
         $officeCode = 'TZ';
-        $inputDate = $this->argument('date');
+        $inputDate  = $this->argument('date');
+        $backfillStart = $this->option('backfill');
 
         try {
-            if ($inputDate) {
-                $zReportDate = $inputDate;
-                $this->info("Processing ZReport for provided date: {$zReportDate}");
-                Log::info('ZReport command manually triggered', [
-                    'date' => $zReportDate,
-                    'source' => 'manual'
+            $dates = [];
+
+            if ($backfillStart !== null) {
+                // Backfill mode
+                $startDate = $backfillStart ? Carbon::parse($backfillStart) : Carbon::parse('2025-03-02');
+                $endDate   = Carbon::yesterday();
+
+                while ($startDate->lte($endDate)) {
+                    $dates[] = $startDate->toDateString();
+                    $startDate->addDay();
+                }
+
+                $this->info("Backfill mode: processing from {$dates[0]} to {$endDate->toDateString()}");
+                Log::info("TZ ZReport backfill started", [
+                    'range_start' => $dates[0],
+                    'range_end'   => $endDate->toDateString()
                 ]);
+            } elseif ($inputDate) {
+                // Manual single date
+                $dates[] = $inputDate;
+                $this->info("Manual mode: processing {$inputDate}");
+                Log::info("TZ ZReport manual mode", ['date' => $inputDate]);
             } else {
-                // Get today's or next unprocessed date from SQL
+                // Automatic mode: use stored procedure
                 $result = DB::select("
+                    SET NOCOUNT ON;
                     DECLARE @ZreportDate AS DATE;
                     EXEC dbo.TRA_ZReportDate :officeCode, @ZreportDate = @ZreportDate OUTPUT;
                     SELECT @ZreportDate as ZreportDate;
@@ -35,63 +53,83 @@ class GenerateJsonReport extends Command
 
                 if (empty($result) || $result[0]->ZreportDate === null) {
                     $this->info("No ZReportDate to process today.");
-                    Log::info("ZReportDate skipped: no date to process.");
+                    Log::info("TZ ZReport skipped: no date from SP.");
                     return;
                 }
 
-                $zReportDate = $result[0]->ZreportDate;
-                $this->info("Processing ZReport for: {$zReportDate}");
-                Log::info('ZReport command auto-triggered', [
-                    'date' => $zReportDate,
-                    'source' => 'auto'
-                ]);
+                $dates[] = $result[0]->ZreportDate;
+                $this->info("Auto mode: processing {$result[0]->ZreportDate}");
+                Log::info("TZ ZReport auto mode", ['date' => $result[0]->ZreportDate]);
             }
 
-            // API call
-            $apiUrl = "http://13.69.28.214:8888/api/v1/zreports?date=" . $zReportDate;
+            // Process each date
+            foreach ($dates as $zReportDate) {
+                $this->processDate($zReportDate, $officeCode);
+            }
 
-            $this->info("Calling API: $apiUrl");
-            Log::info("Calling AR ZReport API", ['url' => $apiUrl]);
+            $this->info("All reports processed.");
+            Log::info("TZ ZReport command finished", [
+                'mode' => $backfillStart !== null ? 'backfill' : 'normal'
+            ]);
+        } catch (\Exception $e) {
+            Log::error('TZ ZReport generation failed', [
+                'message' => $e->getMessage(),
+                'line'    => $e->getLine(),
+                'file'    => $e->getFile(),
+                'stack'   => $e->getTraceAsString()
+            ]);
 
+            $this->error("Failed to process ZReport: " . $e->getMessage());
+        }
+    }
+
+    private function processDate($zReportDate, $officeCode)
+    {
+        $apiUrl = "http://13.69.28.214:8888/api/v1/zreports?date={$zReportDate}";
+
+        $this->info("Calling API for {$zReportDate}");
+        Log::info("Calling TZ ZReport API", ['date' => $zReportDate]);
+
+        try {
             $response = Http::withBasicAuth('admin', 'aDmiN@2024')
                 ->timeout(120)
                 ->get($apiUrl);
 
             $statusCode = $response->status();
-            Log::info("API response received", ['status_code' => $statusCode]);
+            Log::info("API response received", [
+                'date' => $zReportDate,
+                'status_code' => $statusCode
+            ]);
 
             if (!$response->ok()) {
                 Log::error("Failed to fetch report from API", [
+                    'date' => $zReportDate,
                     'status_code' => $statusCode,
                     'body' => $response->body()
                 ]);
-                $this->error("API request failed. Status: $statusCode");
+                $this->error("API request failed for {$zReportDate} (Status: $statusCode)");
                 return;
             }
 
             $jsonData = $response->body();
 
-            // Run the stored procedure
+            // Run stored procedure
             DB::statement("
-                EXEC dbo.TRA_JSON_Convertor :reportDate, :officeCode, :json
-            ", [
+            EXEC dbo.TRA_JSON_Convertor :reportDate, :officeCode, :json
+        ", [
                 'reportDate' => $zReportDate,
                 'officeCode' => $officeCode,
                 'json'       => $jsonData
             ]);
 
             $this->info("Report for {$zReportDate} processed successfully.");
-            Log::info("ZReport processed successfully", ['date' => $zReportDate]);
-
-        } catch (\Exception $e) {
-            Log::error('ZReport generation failed', [
-                'message' => $e->getMessage(),
-                'line' => $e->getLine(),
-                'file' => $e->getFile(),
-                'stack' => $e->getTraceAsString()
+            Log::info("TZ ZReport processed successfully", ['date' => $zReportDate]);
+        } catch (\Throwable $e) {
+            Log::error("API call failed", [
+                'date' => $zReportDate,
+                'message' => $e->getMessage()
             ]);
-
-            $this->error("Failed to process ZReport: " . $e->getMessage());
+            $this->error("Failed API call for {$zReportDate}: " . $e->getMessage());
         }
     }
 }

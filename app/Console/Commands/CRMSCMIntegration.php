@@ -11,25 +11,9 @@ use Illuminate\Support\Str;
 
 class CRMSCMIntegration extends Command
 {
-    /**
-     * The name and signature of the console command.
-     *
-     * @var string
-     */
     protected $signature = 'int:Integration';
+    protected $description = 'This Command is used to create a booking in SCM';
 
-    /**
-     * The console command description.
-     *
-     * @var string
-     */
-    protected $description = 'This Command is used to create a booking in SCM ';
-
-    /**
-     * Create a new command instance.
-     *
-     * @return void
-     */
     public function __construct()
     {
         parent::__construct();
@@ -37,30 +21,78 @@ class CRMSCMIntegration extends Command
 
     public function handle()
     {
+        // Start time tracking for the entire process
+        $startTime = microtime(true);
+
+        // Get count of pending records before processing
+        $pendingCount = DB::table('CRM_SCMprofit_integration')
+            ->whereNull('SCMBookingID')
+            ->whereNotNull('SCMBookingXML')
+             ->whereNull('SCMINTStatus')
+            ->count();
+
+        Log::info('Starting CRM-SCM Integration', [
+            'pending_records' => $pendingCount,
+            'start_time' => now()->toDateTimeString()
+        ]);
+
         $records = DB::table('CRM_SCMprofit_integration')
             ->whereNull('SCMBookingID')
             ->whereNotNull('SCMBookingXML')
             ->limit(100)
             ->get();
 
+        $processedCount = 0;
+        $successCount = 0;
+        $failedCount = 0;
+
         foreach ($records as $record) {
+            $recordStartTime = microtime(true);
             $this->pushXMLToSCM($record);
+            $recordExecutionTime = microtime(true) - $recordStartTime;
+
+            $processedCount++;
+            $status = DB::table('CRM_SCMprofit_integration')
+                ->where('bookingno', $record->bookingno)
+                ->first()->SCMINTStatus;
+
+            if ($status === 'Success') {
+                $successCount++;
+            } else {
+                $failedCount++;
+            }
+
+            Log::info('Processed record', [
+                'bookingno' => $record->bookingno,
+                'status' => $status,
+                'execution_time_seconds' => round($recordExecutionTime, 3)
+            ]);
         }
+
+        $totalExecutionTime = microtime(true) - $startTime;
+        $remainingPending = DB::table('CRM_SCMprofit_integration')
+            ->whereNull('SCMBookingID')
+            ->whereNotNull('SCMBookingXML')
+            ->count();
+
+        Log::info('Completed CRM-SCM Integration', [
+            'total_processed' => $processedCount,
+            'successful' => $successCount,
+            'failed' => $failedCount,
+            'remaining_pending' => $remainingPending,
+            'total_execution_time_seconds' => round($totalExecutionTime, 3),
+            'end_time' => now()->toDateTimeString()
+        ]);
     }
 
-    /**
-     * Get authentication token using cURL.
-     *
-     * @return string|null
-     */
     private function getAuthToken()
     {
+        $tokenStartTime = microtime(true);
         $tokenUrl = env('SCM_TOKEN_URL');
         $username = env('SCM_USERNAME');
         $password = env('SCM_PASSWORD');
 
         $curl = curl_init();
-
         curl_setopt_array($curl, [
             CURLOPT_URL => $tokenUrl,
             CURLOPT_RETURNTRANSFER => true,
@@ -84,23 +116,37 @@ class CRMSCMIntegration extends Command
         $error = curl_error($curl);
         curl_close($curl);
 
+        $executionTime = microtime(true) - $tokenStartTime;
+
         if ($error) {
-            Log::error("cURL Error: $error");
+            Log::error('Failed to get auth token', [
+                'error' => $error,
+                'execution_time_seconds' => round($executionTime, 3)
+            ]);
             return null;
         }
 
         $data = json_decode($response, true);
-        return $data['access_token'] ?? null;
+        $token = $data['access_token'] ?? null;
+
+        Log::info('Retrieved auth token', [
+            'success' => !is_null($token),
+            'execution_time_seconds' => round($executionTime, 3)
+        ]);
+
+        return $token;
     }
 
-    /**
-     * Push XML data to SCM API.
-     */
     private function pushXMLToSCM($record)
     {
+        $startTime = microtime(true);
         $token = $this->getAuthToken();
+
         if (!$token) {
-            Log::error("Failed to retrieve authentication token");
+            Log::error('Skipping record push due to auth token failure', [
+                'bookingno' => $record->bookingno,
+                'execution_time_seconds' => round(microtime(true) - $startTime, 3)
+            ]);
             return;
         }
 
@@ -111,10 +157,18 @@ class CRMSCMIntegration extends Command
         libxml_use_internal_errors(true);
         $doc = simplexml_load_string($booking_xml);
         if (!$doc) {
-            Log::error("Invalid XML format for record ID: {$record->bookingno}");
+            $errors = libxml_get_errors();
+            Log::error('Invalid XML format', [
+                'bookingno' => $record->bookingno,
+                'errors' => array_map(function($error) {
+                    return $error->message;
+                }, $errors),
+                'execution_time_seconds' => round(microtime(true) - $startTime, 3)
+            ]);
             DB::table('CRM_SCMprofit_integration')
                 ->where('bookingno', $record->bookingno)
                 ->update(['SCMINTStatus' => 'XML Error', 'UpdatedOninSCM' => now()]);
+            libxml_clear_errors();
             return;
         }
         libxml_clear_errors();
@@ -141,7 +195,11 @@ class CRMSCMIntegration extends Command
         curl_close($curl);
 
         if ($error) {
-            Log::error("cURL Error: $error");
+            Log::error('SCM API push failed', [
+                'bookingno' => $record->bookingno,
+                'error' => $error,
+                'execution_time_seconds' => round(microtime(true) - $startTime, 3)
+            ]);
             DB::table('CRM_SCMprofit_integration')
                 ->where('bookingno', $record->bookingno)
                 ->update(['SCMINTStatus' => 'Failed', 'UpdatedOninSCM' => now()]);
@@ -152,7 +210,11 @@ class CRMSCMIntegration extends Command
         $jsonResponse = json_encode($xmlResponse);
         $xmlArrayResponse = json_decode($jsonResponse, true);
 
-        Log::info("SCM Response for Record ID: {$record->bookingno} - " . json_encode($xmlArrayResponse));
+        Log::info('SCM API Response', [
+            'bookingno' => $record->bookingno,
+            'response' => $xmlArrayResponse,
+            'execution_time_seconds' => round(microtime(true) - $startTime, 3)
+        ]);
 
         if (isset($xmlArrayResponse['Transaction']['Status']) && $xmlArrayResponse['Transaction']['Status'] == 'Fail') {
             $errors = isset($xmlArrayResponse['Transaction']['Errors']['Error'])
@@ -161,7 +223,11 @@ class CRMSCMIntegration extends Command
                     : $xmlArrayResponse['Transaction']['Errors']['Error']['Description'])
                 : 'Unknown error';
 
-            Log::warning("XML Push Errors for Record bookingno: {$record->bookingno} - $errors");
+            Log::warning('SCM API push errors', [
+                'bookingno' => $record->bookingno,
+                'errors' => $errors,
+                'execution_time_seconds' => round(microtime(true) - $startTime, 3)
+            ]);
             DB::table('CRM_SCMprofit_integration')
                 ->where('bookingno', $record->bookingno)
                 ->update(['SCMINTStatus' => 'Failed', 'UpdatedOninSCM' => now()]);
@@ -177,6 +243,9 @@ class CRMSCMIntegration extends Command
                 'UpdatedOninSCM' => now(),
             ]);
 
-        Log::info("Successfully pushed XML for Record ID: {$record->bookingno}");
+        Log::info('Successfully pushed XML to SCM', [
+            'bookingno' => $record->bookingno,
+            'execution_time_seconds' => round(microtime(true) - $startTime, 3)
+        ]);
     }
 }

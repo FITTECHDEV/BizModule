@@ -1,6 +1,6 @@
 @extends('adminlte::page')
 
-@section('title', 'Tickets')
+@section('title', 'ADL Invoices')
 
 @section('content_header')
 
@@ -193,10 +193,13 @@
                     data: 'Action',
                     name: 'Action',
                     orderable: false,
-                    searchable: false
-                }
-            ],
-        });
+        searchable: false,
+            render: function(data, type, row) {
+                return `<button onclick="editInvoice('${row.ID}', 're-trigger', '${row.DocNo}')">Re-trigger</button>`;
+            }
+        }
+    ]
+});
 
         $('#cancelModal').click(function() {
             $('#editForm')[0].reset();
