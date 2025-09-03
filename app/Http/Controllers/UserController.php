@@ -414,7 +414,6 @@ class UserController extends Controller
                 'user_ids' => $users->pluck('id')->toArray(),
             ]);
 
-            // Update view to match new route
             return view('logintracker.users.logged-in', compact('users', 'filters', 'search', 'systems', 'type'));
         } catch (\Exception $e) {
             Log::error('Error in loggedInUsers', [
@@ -425,83 +424,126 @@ class UserController extends Controller
         }
     }
 
-    public function notLoggedInUsers(Request $request)
-    {
-        try {
-            $filterService = new \App\Services\LoginFilterService();
-            $filters = $filterService->parseFilters($request);
-            $search = $request->input('search');
+  public function notLoggedInUsers(Request $request)
+{
+    try {
+        $filterService = new \App\Services\LoginFilterService();
+        $filters = $filterService->parseFilters($request);
+        $search = $request->input('search');
 
-            $query = AzureUser::query();
+        Log::info('UserController@notLoggedInUsers called', [
+            'filters' => $filters,
+            'search' => $search,
+            'request_url' => $request->fullUrl(),
+        ]);
 
-            if (!empty($filters['system'])) {
-                $mappedSystems = collect(config('systemmap'))
-                    ->filter(function ($system) use ($filters) {
-                        return $system === $filters['system'];
-                    })
-                    ->keys()
-                    ->toArray();
-                if (!empty($mappedSystems)) {
-                    $query->whereHas('signIns', function ($q) use ($mappedSystems) {
-                        $q->where(function ($query) use ($mappedSystems) {
-                            foreach ($mappedSystems as $mappedSystem) {
-                                $query->orWhere('application', 'LIKE', "%{$mappedSystem}%");
-                            }
-                        });
-                    });
+        // Build the base query using raw SQL to avoid Laravel's query builder issues
+        $baseQuery = "
+            SELECT DISTINCT u.id, u.userPrincipalName, u.displayName, u.mail, u.alternateEmailAddress, 
+                   u.accountEnabled, u.userType, u.jobTitle, u.department
+            FROM Azure_Users u
+            WHERE NOT EXISTS (
+                SELECT 1 
+                FROM dbo.Azure_LoginDetails ald 
+                WHERE u.id = ald.user_id 
+                AND ald.date_utc BETWEEN ? AND ?";
+
+        $params = [$filters['startDate'], $filters['endDate']];
+
+        // Add system filter to the NOT EXISTS subquery if specified
+        if (!empty($filters['system'])) {
+            $mappedSystems = collect(config('systemmap'))
+                ->filter(function ($system) use ($filters) {
+                    return $system === $filters['system'];
+                })
+                ->keys()
+                ->toArray();
+            
+            if (!empty($mappedSystems)) {
+                $systemConditions = [];
+                foreach ($mappedSystems as $mappedSystem) {
+                    $systemConditions[] = "ald.application LIKE ?";
+                    $params[] = "%{$mappedSystem}%";
                 }
+                $baseQuery .= " AND (" . implode(' OR ', $systemConditions) . ")";
             }
-
-            $query->whereDoesntHave('signIns', function ($q) use ($filters) {
-                $q->whereBetween('date_utc', [$filters['startDate'], $filters['endDate']]);
-                if (!empty($filters['system'])) {
-                    $mappedSystems = collect(config('systemmap'))
-                        ->filter(function ($system) use ($filters) {
-                            return $system === $filters['system'];
-                        })
-                        ->keys()
-                        ->toArray();
-                    if (!empty($mappedSystems)) {
-                        $q->where(function ($query) use ($mappedSystems) {
-                            foreach ($mappedSystems as $mappedSystem) {
-                                $query->orWhere('application', 'LIKE', "%{$mappedSystem}%");
-                            }
-                        });
-                    }
-                }
-            });
-
-            if ($search) {
-                $query->where(function ($q) use ($search) {
-                    $q->where('displayName', 'like', "%{$search}%")
-                      ->orWhere('userPrincipalName', 'like', "%{$search}%")
-                      ->orWhere('mail', 'like', "%{$search}%")
-                      ->orWhere('alternateEmailAddress', 'like', "%{$search}%");
-                });
-            }
-
-            $users = $query->orderBy('displayName')
-                          ->paginate($this->perPage)
-                          ->withQueryString();
-
-            $systems = $filterService->getSystemList();
-
-            Log::info('notLoggedInUsers loaded', [
-                'user_count' => $users->total(),
-                'filters' => $filters,
-                'search' => $search,
-            ]);
-
-            // Update view to match new route
-            return view('logintracker.users.not-logged-in', compact('users', 'filters', 'search', 'systems'));
-        } catch (\Exception $e) {
-            Log::error('Error in notLoggedInUsers', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
-            return redirect()->back()->with('error', 'An unexpected error occurred.');
         }
+
+        $baseQuery .= ")";
+
+        // Add search conditions if specified
+        if ($search) {
+            $baseQuery .= " AND (u.displayName LIKE ? OR u.userPrincipalName LIKE ? OR u.mail LIKE ? OR u.alternateEmailAddress LIKE ?)";
+            $searchTerm = "%{$search}%";
+            $params = array_merge($params, [$searchTerm, $searchTerm, $searchTerm, $searchTerm]);
+        }
+
+        $baseQuery .= " ORDER BY u.displayName";
+
+        // Get total count for pagination (remove ORDER BY for count query)
+        $countQueryBase = str_replace(" ORDER BY u.displayName", "", $baseQuery);
+        $countQuery = "SELECT COUNT(*) as total FROM ({$countQueryBase}) as counted_results";
+        $totalCount = \DB::selectOne($countQuery, $params)->total;
+
+        // Get current page and calculate offset
+        $currentPage = $request->get('page', 1);
+        $perPage = $this->perPage;
+        $offset = ($currentPage - 1) * $perPage;
+
+        // Add pagination to the main query
+        $paginatedQuery = $baseQuery . " OFFSET ? ROWS FETCH NEXT ? ROWS ONLY";
+        $params[] = $offset;
+        $params[] = $perPage;
+
+        // Execute the query
+        $usersData = \DB::select($paginatedQuery, $params);
+
+        // Convert to collection and create pagination manually
+        $users = new \Illuminate\Pagination\LengthAwarePaginator(
+            collect($usersData)->map(function ($user) {
+                // Convert stdClass to AzureUser model instance
+                $azureUser = new AzureUser();
+                foreach ((array) $user as $key => $value) {
+                    $azureUser->{$key} = $value;
+                }
+                $azureUser->exists = true;
+                return $azureUser;
+            }),
+            $totalCount,
+            $perPage,
+            $currentPage,
+            [
+                'path' => $request->url(),
+                'pageName' => 'page',
+            ]
+        );
+
+        $users->withQueryString();
+
+        $systems = $filterService->getSystemList();
+
+        // Add debug logging
+        Log::info('notLoggedInUsers loaded', [
+            'user_count' => $users->total(),
+            'filters' => $filters,
+            'search' => $search,
+            'sample_user_data' => $users->first() ? [
+                'id' => $users->first()->id,
+                'userPrincipalName' => $users->first()->userPrincipalName,
+                'displayName' => $users->first()->displayName,
+            ] : 'No users found'
+        ]);
+
+        return view('logintracker.users.not-logged-in', compact('users', 'filters', 'search', 'systems'));
+        
+    } catch (\Exception $e) {
+        Log::error('Error in notLoggedInUsers', [
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString(),
+        ]);
+        return redirect()->back()->with('error', 'An unexpected error occurred.');
     }
+}
 
     protected function resolveDateRange($input = null)
     {

@@ -90,7 +90,7 @@ class DashboardController extends Controller
 
             if ($request->ajax()) {
                 return response()->json([
-                    'users' => $users->items()->map(function ($user) {
+                    'users' => collect($users->items())->map(function ($user) {
                         return [
                             'id' => $user->id ?? $user->userPrincipalName,
                             'userPrincipalName' => $user->userPrincipalName,

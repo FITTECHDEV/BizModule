@@ -4,93 +4,88 @@ namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
-use App\Models\SigninLog;
+use Illuminate\Support\Facades\Log;
 
-class CleanupDuplicateSignins extends Command
+class CleanupDuplicateUsers extends Command
 {
-    /**
-     * The name and signature of the console command.
-     *
-     * @var string
-     */
-    protected $signature = 'signin-logs:cleanup-duplicates {--dry-run : Show what would be deleted without actually deleting}';
+    protected $signature = 'azure:cleanup-duplicates {--dry-run : Preview changes without executing}';
+    protected $description = 'Clean up duplicate Azure users keeping the most recent record';
 
-    /**
-     * The console command description.
-     *
-     * @var string
-     */
-    protected $description = 'Remove duplicate sign-in log entries, keeping the oldest record for each group';
-
-    /**
-     * Execute the console command.
-     */
     public function handle()
     {
-        $this->info('Checking for duplicate sign-in records...');
+        $isDryRun = $this->option('dry-run');
         
+        if ($isDryRun) {
+            $this->info('DRY RUN MODE - No changes will be made');
+        }
+
+        $this->info('Starting duplicate cleanup process...');
+
         // Find duplicates
-        $duplicates = DB::select('
-            SELECT user_id, date_utc, application, ip_address, COUNT(*) as count
-            FROM signin_logs 
-            GROUP BY user_id, date_utc, application, ip_address 
-            HAVING COUNT(*) > 1
-        ');
-        
-        if (empty($duplicates)) {
-            $this->info('No duplicate records found!');
+        $duplicates = DB::table('azure_users')
+            ->select('userPrincipalName', DB::raw('COUNT(*) as count'), DB::raw('GROUP_CONCAT(id) as ids'))
+            ->groupBy('userPrincipalName')
+            ->having('count', '>', 1)
+            ->get();
+
+        if ($duplicates->isEmpty()) {
+            $this->info('No duplicates found!');
             return 0;
         }
-        
-        $this->warn(sprintf('Found %d groups of duplicate records', count($duplicates)));
-        
-        if ($this->option('dry-run')) {
-            $this->info('DRY RUN - Showing what would be deleted:');
-            foreach ($duplicates as $duplicate) {
-                $this->line(sprintf(
-                    'User: %s, Date: %s, App: %s, IP: %s (%d duplicates)',
-                    $duplicate->user_id,
-                    $duplicate->date_utc,
-                    $duplicate->application,
-                    $duplicate->ip_address,
-                    $duplicate->count
-                ));
-            }
-            return 0;
-        }
-        
-        if (!$this->confirm('Do you want to proceed with removing duplicates?')) {
-            $this->info('Operation cancelled.');
-            return 0;
-        }
-        
-        $deletedCount = 0;
+
+        $this->warn("Found {$duplicates->count()} users with duplicates");
+
+        $totalRemoved = 0;
+
         foreach ($duplicates as $duplicate) {
-            // Keep the oldest record (minimum created_at)
-            $recordsToDelete = DB::select('
-                SELECT created_at FROM signin_logs 
-                WHERE user_id = ? AND date_utc = ? AND application = ? AND ip_address = ?
-                ORDER BY created_at ASC
-                LIMIT 999999 OFFSET 1
-            ', [$duplicate->user_id, $duplicate->date_utc, $duplicate->application, $duplicate->ip_address]);
+            $this->info("Processing: {$duplicate->userPrincipalName} ({$duplicate->count} duplicates)");
             
-            foreach ($recordsToDelete as $record) {
-                DB::delete('
-                    DELETE FROM signin_logs 
-                    WHERE user_id = ? AND date_utc = ? AND application = ? AND ip_address = ? AND created_at = ?
-                    LIMIT 1
-                ', [
-                    $duplicate->user_id, 
-                    $duplicate->date_utc, 
-                    $duplicate->application, 
-                    $duplicate->ip_address,
-                    $record->created_at
-                ]);
-                $deletedCount++;
+            $userIds = explode(',', $duplicate->ids);
+            
+            // Get all records for this user
+            $users = DB::table('azure_users')
+                ->whereIn('id', $userIds)
+                ->orderBy('updated_at', 'desc')
+                ->orderBy('created_at', 'desc')
+                ->orderBy('id', 'desc')
+                ->get();
+
+            // Keep the first (most recent) record
+            $keepRecord = $users->first();
+            $removeRecords = $users->skip(1);
+
+            $this->line("  → Keeping record ID: {$keepRecord->id} (updated: {$keepRecord->updated_at})");
+
+            foreach ($removeRecords as $record) {
+                $this->line("  → Removing record ID: {$record->id} (updated: {$record->updated_at})");
+                
+                if (!$isDryRun) {
+                    DB::table('azure_users')->where('id', $record->id)->delete();
+                }
+                $totalRemoved++;
             }
         }
-        
-        $this->info(sprintf('Successfully deleted %d duplicate records!', $deletedCount));
+
+        if ($isDryRun) {
+            $this->info("DRY RUN: Would remove {$totalRemoved} duplicate records");
+        } else {
+            $this->info("Successfully removed {$totalRemoved} duplicate records");
+            Log::info("Cleanup completed: removed {$totalRemoved} duplicate Azure user records");
+        }
+
+        // Verify cleanup
+        $remainingDuplicates = DB::table('azure_users')
+            ->select('userPrincipalName', DB::raw('COUNT(*) as count'))
+            ->groupBy('userPrincipalName')
+            ->having('count', '>', 1)
+            ->count();
+
+        if ($remainingDuplicates > 0 && !$isDryRun) {
+            $this->error("Warning: {$remainingDuplicates} users still have duplicates");
+        } else if (!$isDryRun) {
+            $this->info('✓ All duplicates cleaned up successfully');
+        }
+
         return 0;
     }
 }

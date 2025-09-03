@@ -89,9 +89,17 @@
                                         <span class="badge bg-warning text-dark">Inactive</span>
                                     </td>
                                     <td>
-                                        <a href="{{ route('logintracker.users.show', $user->id) }}" class="btn btn-sm btn-primary">
-                                            View Details
-                                        </a>
+                                        @if($user->userPrincipalName)
+                                            <a href="{{ route('reporting.users.show', $user->userPrincipalName) }}" class="btn btn-sm btn-primary">
+                                                View Details
+                                            </a>
+                                        @elseif($user->id)
+                                            <a href="{{ route('reporting.users.show', $user->id) }}" class="btn btn-sm btn-primary">
+                                                View Details
+                                            </a>
+                                        @else
+                                            <span class="text-muted">No identifier available</span>
+                                        @endif
                                     </td>
                                 </tr>
                             @endforeach

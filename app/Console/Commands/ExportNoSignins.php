@@ -1,5 +1,5 @@
 <?php
-
+// ExportNoSignins.php
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
@@ -8,31 +8,17 @@ use Illuminate\Support\Facades\Storage;
 
 class ExportNoSignins extends Command
 {
-    /**
-     * The name and signature of the console command.
-     *
-     * @var string
-     */
     protected $signature = 'export:no-signins';
-
-    /**
-     * The console command description.
-     *
-     * @var string
-     */
     protected $description = 'Export users who have no sign-ins to a CSV file';
 
-    /**
-     * Execute the console command.
-     */
     public function handle()
     {
         $this->info('🔍 Fetching users without sign-ins...');
 
-        // Fetch userPrincipalNames without any sign-ins
-        $noSignins = DB::table('AzureUsers')
+        // FIXED: Use correct table names
+        $noSignins = DB::table('Azure_Users')
             ->whereNotIn('id', function ($q) {
-                $q->select('user_id')->from('signin_logs');
+                $q->select('user_id')->from('Azure_LoginDetails'); // FIXED: Use correct table name
             })
             ->orderBy('userPrincipalName')
             ->pluck('userPrincipalName');

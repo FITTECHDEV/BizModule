@@ -14,7 +14,8 @@ class SigninLog extends Model
 {
     use HasFactory;
 
-    protected $table = 'dbo.Azure_LoginDetails';
+    // FIXED: Changed from 'dbo.Azure_LoginDetails' to 'Azure_LoginDetails'
+    protected $table = 'Azure_LoginDetails';
 
     protected $fillable = [
         'date_utc', 'request_id', 'user_agent', 'correlation_id', 'user_id',
