@@ -11,6 +11,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 
+
 class UsersImport implements ToCollection, WithHeadingRow
 {
     private $processed = 0;

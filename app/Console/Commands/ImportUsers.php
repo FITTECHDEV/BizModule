@@ -30,127 +30,120 @@ class ImportUsers extends Command
      *
      * @return int
      */
-    public function handle()
-    {
-        $filePath = $this->argument('file');
-        $isDryRun = $this->option('dry-run');
-        $expectedCount = (int) $this->option('expected-count');
+   public function handle()
+{
+    $filePath = $this->argument('file');
+    $isDryRun = $this->option('dry-run');
+    $expectedCount = (int) $this->option('expected-count');
+    $lockKey = 'signin_import_in_progress';
 
-        // Validate file exists
-        if (!file_exists($filePath)) {
-            $this->error("The file {$filePath} does not exist.");
+    if (!file_exists($filePath)) {
+        $this->error("The file {$filePath} does not exist.");
+        return 1;
+    }
+
+    if (Cache::has($lockKey)) {
+        $this->error('Signin import is already in progress. Please wait or clear the lock with:');
+        $this->line("php artisan cache:forget {$lockKey}");
+        Log::warning('Signin import blocked due to active lock', ['lock_key' => $lockKey]);
+        return 1;
+    }
+
+    $this->info($isDryRun ? 'DRY RUN MODE - No actual import will occur' : 'LIVE IMPORT MODE');
+    $this->info('Importing users from: ' . $filePath);
+
+    try {
+        if (!$isDryRun) {
+            Cache::put($lockKey, true, 300);
+            Log::info('Signin import lock acquired', ['lock_key' => $lockKey, 'file' => $filePath]);
+        }
+
+        $this->info('📋 Validating import file...');
+        $validation = $this->preValidateImportFile($filePath);
+
+        if (!$validation['valid']) {
+            $this->error('❌ Validation failed: ' . $validation['message']);
             return 1;
         }
 
-        // Check if import is already running
-        if (Cache::has('import_in_progress')) {
-            $this->error('Import is already in progress. Please wait or clear the lock with: php artisan cache:forget import_in_progress');
-            return 1;
-        }
+        $uniqueUsersInFile = $validation['unique_count'];
+        $totalRowsInFile = $validation['total_rows'];
+        $currentDbCount = AzureUser::count();
 
-        $this->info($isDryRun ? 'DRY RUN MODE - No actual import will occur' : 'LIVE IMPORT MODE');
-        $this->info('Importing users from: ' . $filePath);
-        
-        try {
-            // Set import lock
-            if (!$isDryRun) {
-                Cache::put('import_in_progress', true, 300); // 5 minute timeout
-                Log::info('Import lock acquired', ['lock_key' => 'import_in_progress', 'timeout' => 300]);
-            }
+        $this->info("📊 File Analysis:");
+        $this->line("  Total rows in file: {$totalRowsInFile}");
+        $this->line("  Unique users in file: {$uniqueUsersInFile}");
+        $this->line("  Current users in database: {$currentDbCount}");
+        $this->line("  Expected unique users: {$expectedCount}");
 
-            // Pre-validate the file
-            $this->info('📋 Validating import file...');
-            $validation = $this->preValidateImportFile($filePath);
-            
-            if (!$validation['valid']) {
-                $this->error('❌ Validation failed: ' . $validation['message']);
-                return 1;
-            }
-
-            $uniqueUsersInFile = $validation['unique_count'];
-            $totalRowsInFile = $validation['total_rows'];
-            $currentDbCount = AzureUser::count();
-
-            // Display validation results
-            $this->info("📊 File Analysis:");
-            $this->line("  Total rows in file: {$totalRowsInFile}");
-            $this->line("  Unique users in file: {$uniqueUsersInFile}");
-            $this->line("  Current users in database: {$currentDbCount}");
-            $this->line("  Expected unique users: {$expectedCount}");
-
-            // Warn if counts don't match expectations
-            if ($uniqueUsersInFile > ($expectedCount * 1.2)) { // 20% tolerance
-                $this->warn("⚠️  File contains {$uniqueUsersInFile} unique users, but you expected {$expectedCount}");
-                if (!$this->confirm('Do you want to continue?')) {
-                    $this->info('Import cancelled.');
-                    return 0;
-                }
-            }
-
-            if ($isDryRun) {
-                $this->info('✅ DRY RUN: File validation passed. Use without --dry-run to perform actual import.');
-                $this->displaySampleData($validation);
+        if ($uniqueUsersInFile > ($expectedCount * 1.2)) {
+            $this->warn("⚠️  File contains {$uniqueUsersInFile} unique users, but you expected {$expectedCount}");
+            if (!$this->confirm('Do you want to continue?')) {
+                $this->info('Import cancelled.');
                 return 0;
             }
+        }
 
-            // Perform the actual import
-            $this->info('🚀 Starting import...');
-            
-            Log::info('Starting user import', [
-                'file' => $filePath,
-                'unique_users_in_file' => $uniqueUsersInFile,
-                'current_db_count' => $currentDbCount,
-                'expected_count' => $expectedCount
-            ]);
-
-            Excel::import(new UsersImport, $filePath);
-
-            // Post-import validation
-            $newDbCount = AzureUser::count();
-            $actualImported = $newDbCount - $currentDbCount;
-
-            $this->info('📈 Import Results:');
-            $this->line("  Users in database before: {$currentDbCount}");
-            $this->line("  Users in database after: {$newDbCount}");
-            $this->line("  New users created: {$actualImported}");
-            $this->line("  Users updated: " . ($uniqueUsersInFile - $actualImported));
-
-            // Validate results
-            if ($newDbCount > ($currentDbCount + $expectedCount * 1.5)) {
-                $this->warn("⚠️  Database now has {$newDbCount} users, which seems too many!");
-                $this->warn("You may have duplicates. Consider running: php artisan users:cleanup-duplicates --dry-run");
-                $this->displayDuplicateInfo();
-            } elseif ($actualImported === 0 && $uniqueUsersInFile > 0) {
-                $this->info("ℹ️  No new users created - all users already existed and were updated if needed.");
-            } else {
-                $this->info('✅ Import completed successfully!');
-            }
-
-            Log::info('Import completed', [
-                'users_created' => $actualImported,
-                'total_users' => $newDbCount,
-                'file' => $filePath
-            ]);
-
+        if ($isDryRun) {
+            $this->info('✅ DRY RUN: File validation passed. Use without --dry-run to perform actual import.');
+            $this->displaySampleData($validation);
             return 0;
+        }
 
-        } catch (\Exception $e) {
-            $this->error('❌ Error during import: ' . $e->getMessage());
-            Log::error('Import failed', [
-                'file' => $filePath,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-            return 1;
+        $this->info('🚀 Starting import...');
+        Log::info('Starting user import', [
+            'file' => $filePath,
+            'unique_users_in_file' => $uniqueUsersInFile,
+            'current_db_count' => $currentDbCount,
+            'expected_count' => $expectedCount
+        ]);
 
-        } finally {
-            // Always release the lock
-            if (!$isDryRun) {
-                Cache::forget('import_in_progress');
-                Log::info('Import lock released');
-            }
+        Excel::import(new UsersImport, $filePath);
+
+        $newDbCount = AzureUser::count();
+        $actualImported = $newDbCount - $currentDbCount;
+
+        $this->info('📈 Import Results:');
+        $this->line("  Users in database before: {$currentDbCount}");
+        $this->line("  Users in database after: {$newDbCount}");
+        $this->line("  New users created: {$actualImported}");
+        $this->line("  Users updated: " . ($uniqueUsersInFile - $actualImported));
+
+        if ($newDbCount > ($currentDbCount + $expectedCount * 1.5)) {
+            $this->warn("⚠️  Database now has {$newDbCount} users, which seems too many!");
+            $this->warn("You may have duplicates. Consider running: php artisan users:cleanup-duplicates --dry-run");
+            $this->displayDuplicateInfo();
+        } elseif ($actualImported === 0 && $uniqueUsersInFile > 0) {
+            $this->info("ℹ️  No new users created - all users already existed and were updated if needed.");
+        } else {
+            $this->info('✅ Import completed successfully!');
+        }
+
+        Log::info('Import completed', [
+            'users_created' => $actualImported,
+            'total_users' => $newDbCount,
+            'file' => $filePath
+        ]);
+
+        return 0;
+
+    } catch (\Exception $e) {
+        $this->error('❌ Error during import: ' . $e->getMessage());
+        Log::error('Signin import failed', [
+            'file' => $filePath,
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString()
+        ]);
+        return 1;
+
+    } finally {
+        if (!$isDryRun && Cache::has($lockKey)) {
+            Cache::forget($lockKey);
+            Log::info('Signin import lock released', ['lock_key' => $lockKey]);
         }
     }
+}
+
 
     /**
      * Pre-validate the import file

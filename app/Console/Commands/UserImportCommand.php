@@ -35,111 +35,97 @@ class UserImportCommand extends Command
      *
      * @return int
      */
-    public function handle()
-    {
-        $fileName = $this->option('file');
-        $isDryRun = $this->option('dry-run');
-        $expectedCount = (int) $this->option('expected-count');
-        $force = $this->option('force');
+   public function handle()
+{
+    $fileName = $this->option('file');
+    $isDryRun = $this->option('dry-run');
+    $expectedCount = (int) $this->option('expected-count');
+    $force = $this->option('force');
+    $lockKey = 'user_import_in_progress';
 
-        // Validate file parameter
-        if (!$fileName) {
-            $this->error('Please provide a CSV file path using --file=filename.csv');
-            $this->line('Example: php artisan user:import --file=users.csv');
+    if (!$fileName) {
+        $this->error('Please provide a CSV file path using --file=filename.csv');
+        $this->line('Example: php artisan user:import --file=users.csv');
+        return 1;
+    }
+
+    $filePath = storage_path("app/{$fileName}");
+
+    if (!file_exists($filePath)) {
+        $this->error("The file {$fileName} does not exist in storage/app directory.");
+        $this->line("Looking for: {$filePath}");
+        $this->line('Available files in storage/app:');
+        $this->listStorageFiles();
+        return 1;
+    }
+
+    if (Cache::has($lockKey)) {
+        $this->error('User import is already in progress. Please wait or clear the lock with:');
+        $this->line("php artisan cache:forget {$lockKey}");
+        Log::warning('User import blocked due to active lock', ['lock_key' => $lockKey]);
+        return 1;
+    }
+
+    $this->displayHeader($isDryRun, $fileName);
+
+    try {
+        if (!$isDryRun) {
+            Cache::put($lockKey, true, 600);
+            Log::info('User import lock acquired', ['lock_key' => $lockKey, 'file' => $fileName]);
+        }
+
+        $this->info('🔍 Analyzing CSV file...');
+        $validation = $this->preValidateImportFile($filePath);
+
+        if (!$validation['valid']) {
+            $this->error('❌ File validation failed: ' . $validation['message']);
             return 1;
         }
 
-        // Construct full file path
-        $filePath = storage_path("app/{$fileName}");
+        $this->displayFileAnalysis($validation, $expectedCount);
 
-        // Validate file exists
-        if (!file_exists($filePath)) {
-            $this->error("The file {$fileName} does not exist in storage/app directory.");
-            $this->line("Looking for: {$filePath}");
-            $this->line('Available files in storage/app:');
-            $this->listStorageFiles();
-            return 1;
-        }
-
-        // Check if import is already running
-        if (Cache::has('import_in_progress')) {
-            $this->error('Import is already in progress. Please wait or clear the lock with:');
-            $this->line('php artisan cache:forget import_in_progress');
-            return 1;
-        }
-
-        $this->displayHeader($isDryRun, $fileName);
-        
-        try {
-            // Set import lock
-            if (!$isDryRun) {
-                Cache::put('import_in_progress', true, 600); // 10 minute timeout
-                Log::info('Import lock acquired', [
-                    'lock_key' => 'import_in_progress', 
-                    'timeout' => 600,
-                    'file' => $fileName
-                ]);
-            }
-
-            // Pre-validate the file
-            $this->info('🔍 Analyzing CSV file...');
-            $validation = $this->preValidateImportFile($filePath);
-            
-            if (!$validation['valid']) {
-                $this->error('❌ File validation failed: ' . $validation['message']);
-                return 1;
-            }
-
-            $this->displayFileAnalysis($validation, $expectedCount);
-
-            // Check for potential issues
-            $issues = $this->checkForIssues($validation, $expectedCount);
-            if (!empty($issues)) {
-                $this->displayIssues($issues);
-                
-                if (!$force && !$this->confirm('Do you want to continue despite these issues?')) {
-                    $this->info('Import cancelled by user.');
-                    return 0;
-                }
-            }
-
-            if ($isDryRun) {
-                $this->displayDryRunResults($validation);
-                return 0;
-            }
-
-            // Get current database state
-            $currentDbCount = AzureUser::count();
-            $this->line("Current users in database: {$currentDbCount}");
-
-            // Confirm before proceeding (unless forced)
-            if (!$force && !$this->confirm('Proceed with the import?')) {
+        $issues = $this->checkForIssues($validation, $expectedCount);
+        if (!empty($issues)) {
+            $this->displayIssues($issues);
+            if (!$force && !$this->confirm('Do you want to continue despite these issues?')) {
                 $this->info('Import cancelled by user.');
                 return 0;
             }
+        }
 
-            // Perform the actual import
-            $this->performImport($filePath, $validation, $currentDbCount, $expectedCount);
-
+        if ($isDryRun) {
+            $this->displayDryRunResults($validation);
             return 0;
+        }
 
-        } catch (\Exception $e) {
-            $this->error('❌ Import failed: ' . $e->getMessage());
-            Log::error('User import failed', [
-                'file' => $fileName,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-            return 1;
+        $currentDbCount = AzureUser::count();
+        $this->line("Current users in database: {$currentDbCount}");
 
-        } finally {
-            // Always release the lock
-            if (!$isDryRun && Cache::has('import_in_progress')) {
-                Cache::forget('import_in_progress');
-                Log::info('Import lock released', ['file' => $fileName]);
-            }
+        if (!$force && !$this->confirm('Proceed with the import?')) {
+            $this->info('Import cancelled by user.');
+            return 0;
+        }
+
+        $this->performImport($filePath, $validation, $currentDbCount, $expectedCount);
+        return 0;
+
+    } catch (\Exception $e) {
+        $this->error('❌ Import failed: ' . $e->getMessage());
+        Log::error('User import failed', [
+            'file' => $fileName,
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString()
+        ]);
+        return 1;
+
+    } finally {
+        if (!$isDryRun && Cache::has($lockKey)) {
+            Cache::forget($lockKey);
+            Log::info('User import lock released', ['lock_key' => $lockKey]);
         }
     }
+}
+
 
     /**
      * Display command header

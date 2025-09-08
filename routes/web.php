@@ -415,3 +415,8 @@ Route::post('/import/users', [ImportController::class, 'importUsers'])
 Route::post('/import/sign-ins', [ImportController::class, 'importSignIns'])
     ->middleware('auth')
     ->name('imports.sign_ins');
+
+
+
+Route::post('/dashboard/clear-cache', [DashboardController::class, 'clearDashboardCache'])
+    ->name('dashboard.clear-cache');

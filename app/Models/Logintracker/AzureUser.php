@@ -138,24 +138,48 @@ class AzureUser extends Authenticatable
             ->exists();
     }
 
-    public static function findByIdentifier(string $identifier): ?self
-    {
-        if (empty($identifier) || strlen($identifier) > 255) {
-            Log::error('Invalid identifier length for Azure_Users', ['identifier' => $identifier]);
-            return null;
-        }
-
-        if (filter_var($identifier, FILTER_VALIDATE_EMAIL)) {
-            return self::where('userPrincipalName', $identifier)->first();
-        }
-
-        if (preg_match('/^[0-9a-f-]{36}$/i', $identifier)) {
-            return self::find($identifier);
-        }
-
-        Log::warning('Failed to find user by identifier', ['identifier' => $identifier]);
+   public static function findByIdentifier(string $identifier): ?self
+{
+    if (empty($identifier) || strlen($identifier) > 255) {
+        Log::error('Invalid identifier length for Azure_Users', ['identifier' => $identifier]);
         return null;
     }
+
+    $identifier = strtolower(trim($identifier));
+
+    // Primary match
+    $user = self::whereRaw('LOWER([userPrincipalName]) = ?', [$identifier])->first();
+    if ($user) return $user;
+
+    // Fallback fields
+    $fallbackFields = [
+        'mail',
+        'alternateEmailAddress',
+        'username',
+        '[user]', // yes, literal brackets
+        'sign_in_identifier',
+    ];
+
+    foreach ($fallbackFields as $field) {
+        $user = self::whereRaw("LOWER($field) = ?", [$identifier])->first();
+        if ($user) {
+            Log::info('User resolved via fallback field', ['field' => $field, 'identifier' => $identifier]);
+            return $user;
+        }
+    }
+
+    // UUID match
+    if (preg_match('/^[0-9a-f-]{36}$/i', $identifier)) {
+        $user = self::find($identifier);
+        if ($user) {
+            Log::info('User resolved via UUID', ['identifier' => $identifier]);
+            return $user;
+        }
+    }
+
+    Log::warning('Failed to resolve user by any identifier', ['identifier' => $identifier]);
+    return null;
+}
 
     public static function findOrCreateUser(string $userPrincipalName, ?string $displayName = null, ?string $userIdFromCsv = null): ?self
     {
@@ -214,4 +238,16 @@ class AzureUser extends Authenticatable
             return null;
         }
     }
+
+
+    public function testFindByIdentifierResolvesViaFallback()
+{
+    $user = AzureUser::factory()->create([
+        'mail' => 'fallback@example.com',
+    ]);
+
+    $resolved = AzureUser::findByIdentifier('fallback@example.com');
+    $this->assertEquals($user->id, $resolved->id);
+}
+
 }

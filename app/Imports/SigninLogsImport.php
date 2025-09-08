@@ -5,207 +5,1732 @@ namespace App\Imports;
 use App\Models\Logintracker\SigninLog;
 use App\Models\Logintracker\System;
 use App\Models\Logintracker\AzureUser;
-use Maatwebsite\Excel\Concerns\ToModel;
+use Maatwebsite\Excel\Concerns\ToCollection;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
+use Maatwebsite\Excel\Concerns\WithChunkReading;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Cache;
 use Carbon\Carbon;
+use Illuminate\Support\Str;
+use App\Traits\UuidConversion;
 
-class SigninLogsImport implements ToModel, WithHeadingRow
+class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
 {
-    public function model(array $row)
+    private $userCache = [];
+    private $systemCache = [];
+    private $existingLogs = [];
+    
+    /** Import locking mechanism */
+    private static $lockKey = 'signin_logs_import_lock';
+    private static $lockTimeout = 3600;
+    private static $progressKey = 'signin_import_progress';
+    
+    /** SQL Server parameter limits - more conservative */
+    private int $maxParams = 2100;
+    private int $paramBuffer = 500;
+    
+    /** Performance settings */
+    private bool $useBulkInsert = false;
+    private int $bulkThreshold = 50;
+    private string $tempDir;
+    
+    /** Table structure cache */
+    private ?array $tableColumns = null;
+    private ?array $requiredColumns = null;
+    
+    /** Statistics tracking */
+    private array $stats = [
+        'processed' => 0,
+        'inserted' => 0,
+        'skipped' => 0,
+        'errors' => 0,
+        'bulk_operations' => 0,
+        'single_row_fallbacks' => 0,
+        'users_created' => 0,
+        'users_found' => 0,
+        'users_matched_by_strategy' => [
+            'exact_id' => 0,
+            'username' => 0,
+            'email' => 0,
+            'sign_in_identifier' => 0,
+            'created_new' => 0
+        ]
+    ];
+    
+    /** Memory management */
+    private int $cacheCleanupInterval = 1000;
+
+    use UuidConversion;
+
+    public function isLockOwner(string $lockKey, array $context = []): bool
     {
-        return DB::transaction(function () use ($row) {
-            try {
-                $row = array_change_key_case($row, CASE_LOWER);
-                $userPrincipalName = trim($row['username'] ?? '');
-                $userDisplayName = trim($row['user'] ?? '');
-                $userIdFromCsv = trim($row['user id'] ?? '');
+        $lockKey = $this->generateLockKey($lockKey, $context);
+        $lockData = Cache::get($lockKey);
 
-                // Skip if username is empty
-                if (empty($userPrincipalName)) {
-                    Log::info('Skipped import due to empty username', ['row' => array_keys($row)]);
-                    return null;
-                }
+        return isset($lockData['process']) && $lockData['process'] === (getmypid() ?: 'unknown');
+    }
 
-                // IMPROVEMENT: Add validation for userPrincipalName length
-                if (strlen($userPrincipalName) > 255) {
-                    Log::error('userPrincipalName too long, skipping signin log', [
-                        'userPrincipalName' => $userPrincipalName,
-                        'length' => strlen($userPrincipalName)
-                    ]);
-                    return null;
-                }
+    public function __construct()
+    {
+        $this->tempDir = sys_get_temp_dir();
+        $this->useBulkInsert = env('SIGNIN_USE_BULK_INSERT', false);
+        $this->bulkThreshold = env('SIGNIN_BULK_THRESHOLD', 20);
+        $this->paramBuffer = env('SIGNIN_IMPORT_PARAM_BUFFER', 500);
+        
+        $this->checkAndSetLock();
+        $this->validateConfiguration();
+        $this->initializeProgress();
+        $this->initializeTableStructure();
+        $this->preloadSystemCache();
+        
+        Log::info('SigninLogsImport initialized', [
+            'bulk_insert_enabled' => $this->useBulkInsert,
+            'bulk_threshold' => $this->bulkThreshold,
+            'lock_key' => self::$lockKey
+        ]);
+    }
 
-                // Use the model method to find or create user
-                $user = AzureUser::findOrCreateUser($userPrincipalName, $userDisplayName, $userIdFromCsv);
+    private function checkAndSetLock(): void
+    {
+        if (Cache::has(self::$lockKey)) {
+            $lockData = Cache::get(self::$lockKey);
+            
+            if (isset($lockData['started_at']) && 
+                Carbon::parse($lockData['started_at'])->addSeconds(self::$lockTimeout)->isPast()) {
                 
-                if (!$user) {
-                    Log::error("User could not be found or created for signin log", [
-                        'username' => $userPrincipalName,
-                        'display_name' => $userDisplayName,
-                        'user_id_from_csv' => $userIdFromCsv
-                    ]);
-                    return null;
-                }
-
-                $userId = $user->id;
-
-                // IMPROVEMENT: Log successful user resolution
-                Log::debug('Successfully resolved user for signin log', [
-                    'username' => $userPrincipalName,
-                    'resolved_user_id' => $userId
+                Log::warning('Found stale import lock, clearing it', [
+                    'lock_data' => $lockData,
+                    'lock_age_minutes' => Carbon::parse($lockData['started_at'])->diffInMinutes()
                 ]);
+                
+                Cache::forget(self::$lockKey);
+                Cache::forget(self::$progressKey);
+            } else {
+                throw new \Exception('Another import is already in progress. Please wait and try again.');
+            }
+        }
+        
+        $lockData = [
+            'started_at' => now()->toISOString(),
+            'process_id' => getmypid(),
+            'server' => gethostname(),
+            'process' => getmypid() ?: 'unknown'
+        ];
+        
+        Cache::put(self::$lockKey, $lockData, self::$lockTimeout);
+        Log::info('Import lock acquired', $lockData);
+    }
 
-                // Map application to system
-                $application = $row['application'] ?? null;
-                $normalizedApp = strtolower(trim($application ?? ''));
-                $systemMapping = config('systemmap', []);
-                $system = $systemMapping[$normalizedApp] ?? null;
+    private function initializeProgress(): void
+    {
+        Cache::put(self::$progressKey, [
+            'started_at' => now()->toISOString(),
+            'processed' => 0,
+            'total' => 0,
+            'status' => 'initializing',
+            'current_batch' => 0,
+            'total_batches' => 0,
+            'memory_usage_mb' => round(memory_get_usage(true) / 1024 / 1024, 2)
+        ], self::$lockTimeout);
+    }
 
-                // Partial match for system
-                if (!$system && !empty($normalizedApp)) {
-                    foreach ($systemMapping as $appKey => $systemName) {
-                        if (strpos($normalizedApp, $appKey) !== false || strpos($appKey, $normalizedApp) !== false) {
-                            $system = $systemName;
-                            break;
-                        }
-                    }
+    private function updateProgress(array $updates): void
+    {
+        $current = Cache::get(self::$progressKey, []);
+        $updated = array_merge($current, $updates, [
+            'updated_at' => now()->toISOString(),
+            'memory_usage_mb' => round(memory_get_usage(true) / 1024 / 1024, 2)
+        ]);
+        
+        Cache::put(self::$progressKey, $updated, self::$lockTimeout);
+    }
+
+    private function validateConfiguration(): void
+    {
+        $configs = [
+            'DB_CONNECTION' => env('DB_CONNECTION'),
+            'SIGNIN_EXCEL_CHUNK_SIZE' => env('SIGNIN_EXCEL_CHUNK_SIZE', 200)
+        ];
+        
+        foreach ($configs as $key => $value) {
+            if (empty($value)) {
+                Log::warning("Configuration potentially missing: {$key}");
+            }
+        }
+        
+        try {
+            DB::connection()->getPdo();
+            Log::info('Database connection validated');
+        } catch (\Exception $e) {
+            throw new \Exception('Database connection failed: ' . $e->getMessage());
+        }
+    }
+
+    private function getUserFromCacheOrCreate(string $userPrincipalName, ?string $userDisplayName = null, ?string $userIdFromCsv = null)
+    {
+        $userPrincipalName = trim($userPrincipalName);
+        if (empty($userPrincipalName) || strlen($userPrincipalName) > 255) {
+            Log::warning('Invalid username provided', ['username' => $userPrincipalName]);
+            $this->stats['errors']++;
+            return null;
+        }
+
+        // Check cache first
+        if (isset($this->userCache[$userPrincipalName])) {
+            $this->stats['users_found']++;
+            $this->stats['users_matched_by_strategy']['username']++;
+            return $this->userCache[$userPrincipalName];
+        }
+
+        // Try multiple matching strategies
+        $user = $this->findUserByMultipleStrategies($userPrincipalName, $userIdFromCsv);
+        
+        if ($user) {
+            $this->userCache[$userPrincipalName] = $user;
+            $this->stats['users_found']++;
+            return $user;
+        }
+
+        // Create new user if not found
+        return $this->createUserFromSigninData($userPrincipalName, $userDisplayName, $userIdFromCsv);
+    }
+
+    private function findUserByMultipleStrategies(string $userPrincipalName, ?string $userIdFromCsv = null)
+{
+    // First, try exact matches with better error handling
+    $strategies = [
+        'exact_id' => function() use ($userIdFromCsv) {
+            if (empty($userIdFromCsv)) return null;
+            
+            try {
+                if ($this->isValidUuid($userIdFromCsv)) {
+                    return AzureUser::where('id', $userIdFromCsv)
+                        ->orWhere('azure_id', $userIdFromCsv)
+                        ->first();
                 }
-
-                $system = $system ?? 'Unknown';
-
-                // Auto-create system and associate with user
-                if ($system !== 'Unknown' && $userId) {
-                    $systemModel = System::firstOrCreate(['name' => $system]);
-                    if ($systemModel && !$user->systems()->where('application_id', $systemModel->id)->exists()) {
-                        $user->systems()->attach($systemModel->id);
-                        Log::info("Associated user {$userPrincipalName} with system {$system}");
-                    }
-                }
-
-                // Extract and validate date
-                $dateUtc = $this->extractDateUtc($row);
-                if (!$dateUtc) {
-                    Log::warning('Skipped import due to missing date_utc', [
-                        'username' => $userPrincipalName, 
-                        'available_keys' => array_keys($row)
-                    ]);
-                    return null;
-                }
-
-                $parsedDate = $this->validateAndParseDate($dateUtc, $userPrincipalName);
-                if (!$parsedDate) {
-                    return null; // Already logged in validateAndParseDate
-                }
-
-                // Check for duplicate signin log
-                $existingLog = SigninLog::where([
-                    'user_id' => $userId,
-                    'date_utc' => $parsedDate,
-                    'request_id' => $row['request id'] ?? null,
-                ])->first();
-
-                if ($existingLog) {
-                    Log::info('Skipped duplicate signin log', [
-                        'user_id' => $userId,
-                        'date_utc' => $parsedDate,
-                        'request_id' => $row['request id'] ?? null
-                    ]);
-                    return null;
-                }
-
-                // FIXED: Map fields to match the model's $fillable array
-                return new SigninLog([
-                    'date_utc'                                      => $parsedDate,
-                    'request_id'                                    => $row['request id'] ?? null,
-                    'user_agent'                                    => $row['user agent'] ?? null,
-                    'correlation_id'                                => $row['correlation id'] ?? null,
-                    'user_id'                                       => $userId,
-                    'system'                                        => $system,
-                    'user'                                          => $row['user'] ?? null,
-                    'username'                                      => $row['username'] ?? null,
-                    'user_type'                                     => $row['user type'] ?? null,
-                    'cross_tenant_access_type'                      => $row['cross tenant access type'] ?? null,
-                    'incoming_token_type'                           => $row['incoming token type'] ?? null,
-                    'authentication_protocol'                       => $row['authentication protocol'] ?? null,
-                    'unique_token_identifier'                       => $row['unique token identifier'] ?? null,
-                    'original_transfer_method'                      => $row['original transfer method'] ?? null,
-                    'client_credential_type'                        => $row['client credential type'] ?? null,
-                    'token_protection_sign_in_session'              => $row['token protection - sign in session'] ?? null,
-                    'application'                                   => $application,
-                    'application_id'                                => $row['application id'] ?? null,
-                    'resource'                                      => $row['resource'] ?? null,
-                    'resource_id'                                   => $row['resource id'] ?? null,
-                    'resource_tenant_id'                            => $row['resource tenant id'] ?? null,
-                    'resource_owner_tenant_id'                      => $row['resource owner tenant id'] ?? null,
-                    'home_tenant_id'                                => $row['home tenant id'] ?? null,
-                    'home_tenant_name'                              => $row['home tenant name'] ?? null,
-                    'ip_address'                                    => $row['ip address'] ?? null,
-                    'location'                                      => $row['location'] ?? null,
-                    'status'                                        => $row['status'] ?? null,
-                    'sign_in_error_code'                            => $row['sign-in error code'] ?? null,
-                    'failure_reason'                                => $row['failure reason'] ?? null,
-                    'client_app'                                    => $row['client app'] ?? null,
-                    'device_id'                                     => $row['device id'] ?? null,
-                    'browser'                                       => $row['browser'] ?? null,
-                    'operating_system'                              => $row['operating system'] ?? null,
-                    'compliant'                                     => $row['compliant'] ?? null,
-                    'managed'                                       => $row['managed'] ?? null,
-                    'join_type'                                     => $row['join type'] ?? null,
-                    
-                    // FIXED: Corrected field names to match model
-                    'multifactor_authentication_result'             => $row['multifactor authentication result'] ?? null,
-                    'multifactor_authentication_auth_method'        => $row['multifactor authentication auth method'] ?? null,
-                    'multifactor_authentication_auth_detail'        => $row['multifactor authentication auth detail'] ?? null,
-                    
-                    'authentication_requirement'                    => $row['authentication requirement'] ?? null,
-                    'sign_in_identifier'                            => $row['sign-in identifier'] ?? null,
-                    'session_id'                                    => $row['session id'] ?? null,
-                    'ip_address_seen_by_resource'                   => $row['ip address (seen by resource)'] ?? null,
-                    'through_global_secure_access'                  => $row['through global secure access'] ?? null,
-                    
-                    // FIXED: Corrected field name
-                    'global_secure_access_ip_address'               => $row['global secure access ip address'] ?? null,
-                    
-                    'autonomous_system_number'                      => $row['autonomous system number'] ?? null,
-                    'flagged_for_review'                            => $row['flagged for review'] ?? null,
-                    'token_issuer_type'                             => $row['token issuer type'] ?? null,
-                    
-                    // FIXED: Removed incorrect field mapping
-                    'incoming_token_type_duplicate'                 => null, // This field exists in model but no CSV mapping
-                    
-                    'token_issuer_name'                             => $row['token issuer name'] ?? null,
-                    'latency'                                       => $row['latency'] ?? null,
-                    'conditional_access'                            => $row['conditional access'] ?? null,
-                    'managed_identity_type'                         => $row['managed identity type'] ?? null,
-                    'associated_resource_id'                        => $row['associated resource id'] ?? null,
-                    'federated_token_id'                            => $row['federated token id'] ?? null,
-                    
-                    // FIXED: Corrected field name
-                    'federated_token_issuer'                        => $row['federated token issuer'] ?? null,
-                ]);
-
             } catch (\Exception $e) {
-                Log::error('Failed to process sign-in log import row', [
-                    'username' => $row['username'] ?? 'unknown',
-                    'display_name' => $row['user'] ?? 'unknown',
-                    'error' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString(),
-                    'row_keys' => array_keys($row),
+                Log::debug('UUID strategy failed', [
+                    'user_id' => $userIdFromCsv,
+                    'error' => $e->getMessage()
+                ]);
+            }
+            return null;
+        },
+        
+        'username_exact' => function() use ($userPrincipalName) {
+            try {
+                return AzureUser::where('userPrincipalName', $userPrincipalName)->first();
+            } catch (\Exception $e) {
+                Log::debug('Username exact match failed', [
+                    'username' => $userPrincipalName,
+                    'error' => $e->getMessage()
                 ]);
                 return null;
             }
-        });
+        },
+        
+        'email_match' => function() use ($userPrincipalName) {
+            if (!filter_var($userPrincipalName, FILTER_VALIDATE_EMAIL)) {
+                return null;
+            }
+            
+            try {
+                return AzureUser::where('mail', $userPrincipalName)
+                    ->orWhere('userPrincipalName', $userPrincipalName)
+                    ->first();
+            } catch (\Exception $e) {
+                Log::debug('Email match failed', [
+                    'email' => $userPrincipalName,
+                    'error' => $e->getMessage()
+                ]);
+                return null;
+            }
+        },
+        
+        'case_insensitive' => function() use ($userPrincipalName) {
+            try {
+                return AzureUser::whereRaw('LOWER(userPrincipalName) = LOWER(?)', [$userPrincipalName])
+                    ->orWhereRaw('LOWER(mail) = LOWER(?)', [$userPrincipalName])
+                    ->first();
+            } catch (\Exception $e) {
+                Log::debug('Case insensitive match failed', [
+                    'username' => $userPrincipalName,
+                    'error' => $e->getMessage()
+                ]);
+                return null;
+            }
+        },
+        
+        'partial_domain_match' => function() use ($userPrincipalName) {
+            if (!str_contains($userPrincipalName, '@')) return null;
+            
+            try {
+                $domain = substr(strrchr($userPrincipalName, '@'), 1);
+                $username = strstr($userPrincipalName, '@', true);
+                
+                // Look for users with same username but different domain
+                return AzureUser::where('userPrincipalName', 'LIKE', $username . '@%')
+                    ->orWhere('mail', 'LIKE', $username . '@%')
+                    ->first();
+            } catch (\Exception $e) {
+                Log::debug('Partial domain match failed', [
+                    'username' => $userPrincipalName,
+                    'error' => $e->getMessage()
+                ]);
+                return null;
+            }
+        },
+        
+        'sign_in_identifier_match' => function() use ($userPrincipalName) {
+            try {
+                // Check if any existing user has this as their sign-in identifier
+                $signinLog = DB::table('Azure_LoginDetails')
+                    ->where('sign_in_identifier', $userPrincipalName)
+                    ->select('user_id')
+                    ->first();
+                
+                if ($signinLog) {
+                    return AzureUser::find($signinLog->user_id);
+                }
+                return null;
+            } catch (\Exception $e) {
+                Log::debug('Sign-in identifier match failed', [
+                    'identifier' => $userPrincipalName,
+                    'error' => $e->getMessage()
+                ]);
+                return null;
+            }
+        }
+    ];
+
+    foreach ($strategies as $strategy => $finder) {
+        try {
+            $user = $finder();
+            if ($user) {
+                $this->stats['users_matched_by_strategy'][$strategy] = 
+                    ($this->stats['users_matched_by_strategy'][$strategy] ?? 0) + 1;
+                
+                Log::debug("User found using strategy: {$strategy}", [
+                    'username' => $userPrincipalName,
+                    'user_id' => $user->id,
+                    'strategy' => $strategy
+                ]);
+                return $user;
+            }
+        } catch (\Exception $e) {
+            Log::warning("Strategy '{$strategy}' failed", [
+                'username' => $userPrincipalName,
+                'error' => $e->getMessage()
+            ]);
+            $this->stats['errors']++;
+        }
     }
 
-    /**
-     * Extract date_utc from row data
-     */
+    return null;
+}
+
+    private function createUserFromSigninData(string $userPrincipalName, ?string $userDisplayName = null, ?string $userIdFromCsv = null)
+{
+    try {
+        // Enhanced validation
+        if (strlen($userPrincipalName) > 255) {
+            Log::warning('Username too long', ['username' => substr($userPrincipalName, 0, 50)]);
+            return null;
+        }
+        
+        // Check for obviously invalid usernames
+        if (in_array(strtolower($userPrincipalName), ['null', 'undefined', 'n/a', '', 'unknown'])) {
+            Log::warning('Invalid username detected', ['username' => $userPrincipalName]);
+            return null;
+        }
+        
+        // Generate consistent Azure ID
+        $azureId = null;
+        if (!empty($userIdFromCsv) && $this->isValidUuid($userIdFromCsv)) {
+            $azureId = $userIdFromCsv;
+        } else {
+            $azureId = (string) Str::uuid();
+        }
+        
+        $userData = [
+            'id' => (string) Str::uuid(),
+            'azure_id' => $azureId,
+            'userPrincipalName' => $userPrincipalName,
+            'displayName' => $this->cleanDisplayName($userDisplayName, $userPrincipalName),
+            'mail' => $this->extractEmailFromUsername($userPrincipalName),
+            'accountEnabled' => true,
+            'userType' => 'Member',
+            'companyName' => 'Freight in Time',
+            'createdDateTime' => now(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ];
+
+        // Use updateOrCreate to handle race conditions
+        $user = AzureUser::updateOrCreate(
+            ['userPrincipalName' => $userPrincipalName],
+            $userData
+        );
+
+        $this->userCache[$userPrincipalName] = $user;
+        
+        if ($user->wasRecentlyCreated) {
+            $this->stats['users_created']++;
+            $this->stats['users_matched_by_strategy']['created_new']++;
+            Log::info('Created new user from signin log', [
+                'username' => $userPrincipalName,
+                'user_id' => $user->id,
+                'display_name' => $userData['displayName']
+            ]);
+        } else {
+            $this->stats['users_found']++;
+            $this->stats['users_matched_by_strategy']['username']++;
+            Log::debug('Found existing user via updateOrCreate', [
+                'username' => $userPrincipalName,
+                'user_id' => $user->id
+            ]);
+        }
+        
+        return $user;
+        
+    } catch (\Exception $e) {
+        Log::error('Failed to create user from signin log', [
+            'username' => $userPrincipalName,
+            'error' => $e->getMessage(),
+            'trace' => substr($e->getTraceAsString(), 0, 300)
+        ]);
+        $this->stats['errors']++;
+        return null;
+    }
+}
+
+    private function cleanDisplayName(?string $displayName, string $userPrincipalName): string
+    {
+        if (!empty($displayName) && $displayName !== $userPrincipalName) {
+            return substr(trim($displayName), 0, 255);
+        }
+
+        $emailPart = strpos($userPrincipalName, '@') !== false 
+            ? substr($userPrincipalName, 0, strpos($userPrincipalName, '@'))
+            : $userPrincipalName;
+            
+        $displayName = str_replace(['.', '_', '-'], ' ', $emailPart);
+        $displayName = ucwords(strtolower($displayName));
+        
+        return substr($displayName, 0, 255);
+    }
+
+    private function extractEmailFromUsername(string $userPrincipalName): ?string
+    {
+        if (filter_var($userPrincipalName, FILTER_VALIDATE_EMAIL)) {
+            return substr($userPrincipalName, 0, 255);
+        }
+        return null;
+    }
+
+    public function collection(Collection $rows): void
+    {
+        if ($rows->isEmpty()) {
+            Log::warning('Empty collection provided to SigninLogsImport');
+            return;
+        }
+
+        $lockService = app(\App\Services\ImportLockService::class);
+        $context = $this->getLockContext();
+        
+        try {
+            if (!$lockService->acquireLock(self::$lockKey, self::$lockTimeout, $context)) {
+                throw new \Exception('Another import is already running. Please wait and try again.');
+            }
+
+            $this->processCollectionBatches($rows);
+            
+        } catch (\Exception $e) {
+            Log::error('Import failed with critical error', [
+                'error' => $e->getMessage(),
+                'stats' => $this->stats,
+                'trace' => substr($e->getTraceAsString(), 0, 500)
+            ]);
+
+            $this->updateProgress([
+                'status' => 'failed',
+                'error' => $e->getMessage(),
+                'final_stats' => $this->stats
+            ]);
+
+            $this->cleanup();
+            throw $e;
+            
+        } finally {
+            if ($lockService->isLockOwner(self::$lockKey, $context)) {
+                $lockService->releaseLock(self::$lockKey, $context);
+            }
+            $this->logFinalStats();
+        }
+    }
+
+private function processCollectionBatches(Collection $collection)
+{
+    $totalRows = $collection->count();
+    $chunkSize = $this->calculateOptimalChunkSize();
+    $chunks = $collection->chunk($chunkSize);
+    $batchNumber = 0;
+    $consecutiveFailures = 0;
+    $maxConsecutiveFailures = 5;
+
+    Log::info('Starting signin logs import', [
+        'total_rows' => $totalRows,
+        'chunk_size' => $chunkSize,
+        'total_batches' => $chunks->count()
+    ]);
+
+    $this->updateProgress([
+        'total' => $totalRows,
+        'total_batches' => $chunks->count(),
+        'chunk_size' => $chunkSize,
+        'status' => 'processing'
+    ]);
+
+    foreach ($chunks as $chunkIndex => $chunk) {
+        $batchNumber++;
+        $startTime = microtime(true);
+        
+        try {
+            $this->processBatch($chunk, $batchNumber);
+            $consecutiveFailures = 0; // Reset failure counter on success
+           
+            $duration = microtime(true) - $startTime;
+            Log::info("Batch {$batchNumber} completed successfully", [
+                'chunk_size' => $chunk->count(),
+                'duration_seconds' => round($duration, 2),
+                'rows_per_second' => $duration > 0 ? round($chunk->count() / $duration, 2) : 0,
+                'memory_usage_mb' => round(memory_get_usage(true) / 1024 / 1024, 2),
+                'cumulative_stats' => [
+                    'processed' => $this->stats['processed'],
+                    'inserted' => $this->stats['inserted'],
+                    'skipped' => $this->stats['skipped'],
+                    'errors' => $this->stats['errors']
+                ]
+            ]);
+
+            // Periodic maintenance
+            if ($batchNumber % 10 === 0) {
+                $this->cleanupCaches();
+                Log::info("Periodic maintenance after batch {$batchNumber}", [
+                    'cache_cleanup' => 'completed',
+                    'stats' => $this->stats,
+                    'memory_after_cleanup_mb' => round(memory_get_usage(true) / 1024 / 1024, 2)
+                ]);
+            }
+           
+            $this->updateProgress([
+                'current_batch' => $batchNumber,
+                'status' => 'processing_batch_' . $batchNumber,
+                'processed' => $this->stats['processed'],
+                'inserted' => $this->stats['inserted'],
+                'completion_percentage' => round(($batchNumber / $chunks->count()) * 100, 2)
+            ]);
+
+        } catch (\Exception $e) {
+            $consecutiveFailures++;
+            
+            Log::error("Batch {$batchNumber} failed completely", [
+                'error' => $e->getMessage(),
+                'consecutive_failures' => $consecutiveFailures,
+                'chunk_index' => $chunkIndex,
+                'rows_in_batch' => $chunk->count(),
+                'current_stats' => $this->stats,
+                'trace' => substr($e->getTraceAsString(), 0, 500)
+            ]);
+            
+            // If too many consecutive failures, abort the import
+            if ($consecutiveFailures >= $maxConsecutiveFailures) {
+                Log::critical("Too many consecutive batch failures, aborting import", [
+                    'consecutive_failures' => $consecutiveFailures,
+                    'max_allowed' => $maxConsecutiveFailures,
+                    'final_stats' => $this->stats
+                ]);
+                
+                $this->updateProgress([
+                    'status' => 'aborted',
+                    'reason' => 'Too many consecutive failures',
+                    'final_stats' => $this->stats
+                ]);
+                
+                throw new \Exception("Import aborted due to {$consecutiveFailures} consecutive batch failures");
+            }
+            
+            // Mark all rows in this batch as errors
+            $this->stats['errors'] += $chunk->count();
+            
+            // Update progress to reflect the failure
+            $this->updateProgress([
+                'current_batch' => $batchNumber,
+                'status' => 'batch_failed_' . $batchNumber,
+                'last_error' => $e->getMessage(),
+                'consecutive_failures' => $consecutiveFailures
+            ]);
+            
+            continue; // Continue with next batch
+        }
+    }
+
+    // Invalidate dashboard cache after successful import
+    $this->invalidateDashboardCache();
+    
+    Log::info('Import processing completed', [
+        'total_batches_processed' => $batchNumber,
+        'final_stats' => $this->stats
+    ]);
+
+    $this->updateProgress([
+        'status' => 'completed',
+        'final_stats' => $this->stats,
+        'completion_percentage' => 100
+    ]);
+}
+private function processBatch(Collection $batch, int $batchNumber): void
+{
+    if ($batch->isEmpty()) {
+        Log::info("Batch {$batchNumber} skipped: no rows to process.");
+        return;
+    }
+   
+    $startTime = microtime(true);
+    $duplicateCheckData = [];
+    $signinLogsToInsert = [];
+    $insertedCount = 0;
+   
+    Log::info("Processing batch {$batchNumber}", [
+        'rows' => $batch->count(),
+        'memory_usage_mb' => round(memory_get_usage(true) / 1024 / 1024, 2)
+    ]);
+   
+    DB::beginTransaction();
+    try {
+        DB::statement("SET TRANSACTION ISOLATION LEVEL READ COMMITTED");
+        $this->preloadData($batch);
+       
+        $userSystemAssociations = [];
+       
+        foreach ($batch as $rowIndex => $row) {
+            $normalizedRow = array_change_key_case($row->toArray(), CASE_LOWER);
+            $result = $this->processRowSafely($normalizedRow, $batchNumber, $rowIndex);
+            
+            if ($result['signin_log']) {
+                $signinLogsToInsert[] = $result['signin_log'];
+                $duplicateCheckData[] = [
+                    'username' => $result['signin_log']['username'],
+                    'date_utc' => $result['signin_log']['date_utc'],
+                    'request_id' => $result['signin_log']['request_id']
+                ];
+            }
+            
+            if ($result['user_system']) {
+                $userSystemAssociations[] = $result['user_system'];
+            }
+            
+            $this->stats['processed']++;
+        }
+       
+        $this->preloadExistingLogs($duplicateCheckData);
+        $insertedCount = $this->executeOptimalInsert($signinLogsToInsert, $batchNumber);
+        $this->stats['inserted'] += $insertedCount;
+        $this->bulkInsertUserSystemAssociations($userSystemAssociations);
+       
+        DB::commit();
+       
+        $duration = microtime(true) - $startTime;
+        Log::info("Batch {$batchNumber} completed successfully", [
+            'signin_logs_processed' => count($signinLogsToInsert),
+            'signin_logs_inserted' => $insertedCount,
+            'duration_seconds' => round($duration, 2),
+            'rows_per_second' => $duration > 0 ? round($insertedCount / $duration, 2) : 0
+        ]);
+       
+    } catch (\Exception $e) {
+        DB::rollBack();
+        Log::error("Batch {$batchNumber} failed", [
+            'error' => $e->getMessage(),
+            'trace' => substr($e->getTraceAsString(), 0, 500),
+            'stats' => $this->stats
+        ]);
+        $this->stats['errors'] += $batch->count();
+        
+        // Don't re-throw - let processing continue with next batch
+        return;
+    }
+    
+    $this->updateProgress([
+        'processed' => $this->stats['processed'],
+        'inserted' => $this->stats['inserted'],
+        'current_batch' => $batchNumber
+    ]);
+}
+private function processRow(array $row, int $batchNumber = 0, int $rowIndex = 0)
+{
+    // Enhanced logging for debugging
+    if ($rowIndex < 3) { // Log first 3 rows of each batch for debugging
+        Log::debug("Processing row {$rowIndex} in batch {$batchNumber}", [
+            'row_keys' => array_keys($row),
+            'sample_data' => array_slice($row, 0, 5, true)
+        ]);
+    }
+
+    $userPrincipalName = trim($row['username'] ?? '');
+    $userDisplayName = trim($row['user'] ?? '');
+    $userIdFromCsv = trim($row['user id'] ?? $row['user_id'] ?? '');
+   
+    if (empty($userPrincipalName) || strlen($userPrincipalName) > 255) {
+        Log::warning('Invalid username in row', [
+            'batch' => $batchNumber,
+            'row' => $rowIndex,
+            'username' => substr($userPrincipalName, 0, 50),
+            'length' => strlen($userPrincipalName)
+        ]);
+        $this->stats['skipped']++;
+        return ['signin_log' => null, 'user_system' => null];
+    }
+   
+    $user = $this->getUserFromCacheOrCreate($userPrincipalName, $userDisplayName, $userIdFromCsv);
+    if (!$user) {
+        Log::warning('No user found or created for row', [
+            'batch' => $batchNumber,
+            'row' => $rowIndex,
+            'username' => $userPrincipalName
+        ]);
+        $this->stats['skipped']++;
+        return ['signin_log' => null, 'user_system' => null];
+    }
+   
+    $application = $row['application'] ?? null;
+    $system = $this->mapApplicationToSystem($application);
+   
+    // CRITICAL FIX: Better date field extraction
+    $dateUtc = $this->extractDateUtc($row);
+    if (!$dateUtc) {
+        Log::warning('No valid date found in row', [
+            'batch' => $batchNumber,
+            'row' => $rowIndex,
+            'username' => $userPrincipalName,
+            'available_fields' => array_keys($row),
+            'date_fields_checked' => [
+                'date_utc' => $row['date_utc'] ?? 'missing',
+                'date (utc)' => $row['date (utc)'] ?? 'missing', 
+                'date' => $row['date'] ?? 'missing',
+                'created_date' => $row['created_date'] ?? 'missing'
+            ]
+        ]);
+        $this->stats['skipped']++;
+        return ['signin_log' => null, 'user_system' => null];
+    }
+   
+    $parsedDate = $this->validateAndParseDate($dateUtc, $userPrincipalName);
+    if (!$parsedDate) {
+        Log::warning('Failed to parse date in row', [
+            'batch' => $batchNumber,
+            'row' => $rowIndex,
+            'username' => $userPrincipalName,
+            'raw_date' => $dateUtc,
+            'date_sample' => substr($dateUtc, 0, 50)
+        ]);
+        $this->stats['skipped']++;
+        return ['signin_log' => null, 'user_system' => null];
+    }
+   
+    // CRITICAL FIX: Better request ID handling
+    $requestId = $row['request_id'] ?? $row['request id'] ?? $row['requestid'] ?? null;
+    if (empty($requestId)) {
+        $requestId = 'IMPORT-' . uniqid() . '-' . $batchNumber . '-' . $rowIndex;
+    }
+    
+    $duplicateKey = $user->id . '|' . $parsedDate . '|' . $requestId;
+    if (isset($this->existingLogs[$duplicateKey])) {
+        Log::debug('Duplicate signin log detected', [
+            'batch' => $batchNumber,
+            'row' => $rowIndex,
+            'username' => $userPrincipalName,
+            'date_utc' => $parsedDate,
+            'request_id' => $requestId
+        ]);
+        $this->stats['skipped']++;
+        return ['signin_log' => null, 'user_system' => null];
+    }
+   
+    try {
+        $signinLogData = $this->prepareSigninLogData($row, $user, $system, $parsedDate);
+        
+        // CRITICAL FIX: Validate the prepared data
+        if (!$this->validateSigninLogData($signinLogData, $batchNumber, $rowIndex)) {
+            Log::warning('Signin log data validation failed', [
+                'batch' => $batchNumber,
+                'row' => $rowIndex,
+                'username' => $userPrincipalName,
+                'validation_errors' => $this->getValidationErrors($signinLogData)
+            ]);
+            $this->stats['skipped']++;
+            return ['signin_log' => null, 'user_system' => null];
+        }
+
+        $userSystemAssociation = null;
+        if ($system !== 'Unknown' && isset($this->systemCache[$system])) {
+            $userSystemAssociation = [
+                'user_id' => $user->id,
+                'application_id' => (string) $this->systemCache[$system]->id,
+            ];
+        }
+        
+        return [
+            'signin_log' => $signinLogData,
+            'user_system' => $userSystemAssociation
+        ];
+        
+    } catch (\Exception $e) {
+        Log::error('Error preparing signin log data', [
+            'batch' => $batchNumber,
+            'row' => $rowIndex,
+            'username' => $userPrincipalName,
+            'error' => $e->getMessage(),
+            'trace' => substr($e->getTraceAsString(), 0, 300)
+        ]);
+        $this->stats['errors']++;
+        return ['signin_log' => null, 'user_system' => null];
+    }
+}
+    private function invalidateDashboardCache(): void
+{
+    try {
+        // Clear specific dashboard-related cache keys
+        Cache::forget('dashboard_stats_cache');
+        Cache::forget('actual_date_range');
+        
+        // Clear cache keys with patterns (if cache tagging is available)
+        try {
+            Cache::tags(['dashboard', 'user_stats', 'signin_logs'])->flush();
+            Log::info('Dashboard cache cleared using tags');
+        } catch (\Exception $e) {
+            // Fallback for cache drivers that don't support tags
+            Log::info('Dashboard cache cleared individually (tag support unavailable)');
+        }
+
+        Log::info('Dashboard cache invalidated after signin import', [
+            'imported_records' => $this->stats['inserted'],
+            'users_created' => $this->stats['users_created'],
+            'users_found' => $this->stats['users_found']
+        ]);
+
+    } catch (\Exception $e) {
+        Log::error('Failed to invalidate dashboard cache', [
+            'error' => $e->getMessage(),
+            'stats' => $this->stats
+        ]);
+    }
+}
+
+    private function formatBytes($bytes): string
+    {
+        $units = ['B', 'KB', 'MB', 'GB', 'TB'];
+        $bytes = max($bytes, 0);
+        $pow = floor(($bytes ? log($bytes) : 0) / log(1024));
+        $pow = min($pow, count($units) - 1);
+        $bytes /= pow(1024, $pow);
+        return round($bytes, 2) . ' ' . $units[$pow];
+    }
+
+    private function preloadSystemCache(): void
+    {
+        $systems = System::all()->keyBy('name');
+        $this->systemCache = $systems->toArray();
+        Log::info('Preloaded system cache', ['count' => count($this->systemCache)]);
+    }
+
+    private function cleanupCaches(): void
+    {
+        if ($this->stats['processed'] > 0 &&
+            $this->stats['processed'] % $this->cacheCleanupInterval === 0) {
+
+            $start = microtime(true);
+            $memoryBefore = memory_get_usage(true);
+
+            Log::info('Initiating cache cleanup', [
+                'processed_rows' => $this->stats['processed'],
+                'memory_before_mb' => round($memoryBefore / 1024 / 1024, 2),
+                'cache_sizes' => [
+                    'users' => count($this->userCache),
+                    'systems' => count($this->systemCache),
+                    'existing_logs' => count($this->existingLogs)
+                ]
+            ]);
+
+            $this->userCache = array_slice($this->userCache, -500, null, true);
+            $this->systemCache = array_slice($this->systemCache, -100, null, true);
+            $this->existingLogs = [];
+
+            gc_collect_cycles();
+
+            $memoryAfter = memory_get_usage(true);
+            $duration = round(microtime(true) - $start, 3);
+
+            Log::info('Cache cleanup completed', [
+                'memory_after_mb' => round($memoryAfter / 1024 / 1024, 2),
+                'memory_delta_mb' => round(($memoryAfter - $memoryBefore) / 1024 / 1024, 2),
+                'duration_seconds' => $duration
+            ]);
+        }
+    }
+
+    private function cleanup(): void
+    {
+        Log::info('Performing cleanup after import failure');
+        
+        $this->userCache = [];
+        $this->systemCache = [];
+        $this->existingLogs = [];
+        
+        $tempFiles = glob($this->tempDir . '/signin_bulk_*');
+        foreach ($tempFiles as $file) {
+            if (file_exists($file) && is_writable($file)) {
+                unlink($file);
+                Log::debug('Cleaned up temporary file: ' . $file);
+            }
+        }
+    }
+
+    private function releaseLock(): void
+    {
+        Cache::forget(self::$lockKey);
+        Cache::forget(self::$progressKey);
+        
+        Log::info('Import lock released', [
+            'final_stats' => $this->stats
+        ]);
+    }
+
+    private function getLockContext(): array
+    {
+        return [
+            'source' => 'signin_logs',
+            'timestamp' => now()->toDateTimeString(),
+            'user_id' => auth()->id() ?? 'system'
+        ];
+    }
+
+    public function __destruct()
+    {
+        $this->releaseLock();
+    }
+
+    public function chunkSize(): int
+    {
+        return env('SIGNIN_EXCEL_CHUNK_SIZE', 200);
+    }
+
+    private function initializeTableStructure(): void
+    {
+        try {
+            $this->tableColumns = Schema::getColumnListing('Azure_LoginDetails');
+            $this->requiredColumns = $this->getRequiredColumns();
+            
+            Log::info('Table structure initialized', [
+                'total_columns' => count($this->tableColumns),
+                'required_columns' => count($this->requiredColumns),
+                'required_fields' => array_keys($this->requiredColumns)
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to initialize table structure: ' . $e->getMessage());
+            throw $e;
+        }
+    }
+
+    private function getRequiredColumns(): array
+    {
+        $required = [];
+        
+        try {
+            $columnInfo = DB::select("
+                SELECT COLUMN_NAME, DATA_TYPE, IS_NULLABLE, COLUMN_DEFAULT
+                FROM INFORMATION_SCHEMA.COLUMNS 
+                WHERE TABLE_NAME = 'Azure_LoginDetails' 
+                  AND IS_NULLABLE = 'NO'
+            ");
+            
+            foreach ($columnInfo as $column) {
+                $required[strtolower($column->COLUMN_NAME)] = [
+                    'type' => $column->DATA_TYPE,
+                    'default' => $column->COLUMN_DEFAULT
+                ];
+            }
+        } catch (\Exception $e) {
+            Log::warning('Could not fetch column constraints: ' . $e->getMessage());
+            $required = [
+                'date_utc' => ['type' => 'datetime', 'default' => null],
+                'request_id' => ['type' => 'varchar', 'default' => null],
+                'user_id' => ['type' => 'varchar', 'default' => null],
+                'system' => ['type' => 'varchar', 'default' => null]
+            ];
+        }
+        
+        return $required;
+    }
+
+    private function calculateOptimalChunkSize(): int
+    {
+        $columnCount = count($this->tableColumns ?? []);
+        $memoryUsageMb = round(memory_get_usage(true) / 1024 / 1024, 2);
+
+        if ($columnCount === 0) {
+            Log::warning('Column count unavailable, using fallback chunk size', [
+                'memory_usage_mb' => $memoryUsageMb
+            ]);
+            return $this->fallbackChunkSize ?? 5;
+        }
+
+        $safeSize = (int) floor(($this->maxParams - $this->paramBuffer) / $columnCount);
+
+        $maxChunkByColumn = match (true) {
+            $columnCount >= 70 => 5,
+            $columnCount >= 60 => 10,
+            $columnCount >= 50 => 15,
+            $columnCount >= 30 => 25,
+            default => 50,
+        };
+
+        if ($memoryUsageMb > ($this->memoryThresholdMb ?? 150)) {
+            $maxChunkByColumn = max(1, floor($maxChunkByColumn / 2));
+            Log::info('Memory usage high, reducing chunk size', [
+                'memory_usage_mb' => $memoryUsageMb,
+                'adjusted_max_chunk' => $maxChunkByColumn
+            ]);
+        }
+
+        $chunkSize = min($safeSize, $maxChunkByColumn);
+        $finalSize = max(1, $chunkSize);
+
+        Log::info('Calculated optimal chunk size', [
+            'column_count' => $columnCount,
+            'safe_size' => $safeSize,
+            'final_chunk_size' => $finalSize,
+            'memory_usage_mb' => $memoryUsageMb
+        ]);
+
+        return $finalSize;
+    }
+
+    private function executeOptimalInsert(array $signinLogs, int $batchNumber): int
+    {
+        if (empty($signinLogs)) {
+            return 0;
+        }
+        
+        $columnCount = count($signinLogs[0]);
+        $rowCount = count($signinLogs);
+        
+        Log::debug("Insert strategy analysis", [
+            'batch' => $batchNumber,
+            'rows' => $rowCount,
+            'columns' => $columnCount,
+            'bulk_threshold' => $this->bulkThreshold,
+            'use_bulk_insert' => $this->useBulkInsert
+        ]);
+        
+        if ($this->useBulkInsert && $columnCount >= $this->bulkThreshold && $rowCount >= 10) {
+            return $this->executeBulkInsert($signinLogs, $batchNumber);
+        }
+        
+        if ($columnCount < $this->bulkThreshold && $rowCount > 1) {
+            return $this->executeChunkedBatchInsert($signinLogs, $batchNumber);
+        }
+        
+        return $this->executeSingleRowInserts($signinLogs, $batchNumber);
+    }
+
+    private function executeBulkInsert(array $signinLogs, int $batchNumber): int
+    {
+        $this->stats['bulk_operations']++;
+        
+        try {
+            $tempFile = tempnam($this->tempDir, 'signin_bulk_');
+            $csvFile = $tempFile . '.csv';
+            rename($tempFile, $csvFile);
+            
+            $handle = fopen($csvFile, 'w');
+            if (!$handle) {
+                throw new \Exception("Cannot create temporary CSV file: {$csvFile}");
+            }
+            
+            $columns = array_keys($signinLogs[0]);
+            foreach ($signinLogs as $row) {
+                $values = [];
+                foreach ($columns as $col) {
+                    $value = $row[$col];
+                    if ($value instanceof Carbon) {
+                        $values[] = $value->format('Y-m-d H:i:s');
+                    } elseif (is_null($value)) {
+                        $values[] = '';
+                    } else {
+                        $values[] = $value;
+                    }
+                }
+                fputcsv($handle, $values);
+            }
+            fclose($handle);
+            
+            $columnList = '(' . implode(', ', array_map(function($col) {
+                return '[' . str_replace(']', ']]', $col) . ']';
+            }, $columns)) . ')';
+            
+            $sql = "
+                BULK INSERT Azure_LoginDetails {$columnList}
+                FROM '{$csvFile}'
+                WITH (
+                    FIELDTERMINATOR = ',',
+                    ROWTERMINATOR = '\\n',
+                    KEEPNULLS,
+                    BATCHSIZE = 1000,
+                    TABLOCK
+                )
+            ";
+            
+            DB::statement($sql);
+            
+            $insertedCount = count($signinLogs);
+            
+            Log::info("BULK INSERT completed successfully", [
+                'batch' => $batchNumber,
+                'rows' => $insertedCount,
+                'columns' => count($columns),
+                'temp_file' => $csvFile
+            ]);
+            
+            unlink($csvFile);
+            return $insertedCount;
+            
+        } catch (\Exception $e) {
+            if (isset($csvFile) && file_exists($csvFile)) {
+                unlink($csvFile);
+            }
+            
+            Log::warning("BULK INSERT failed, falling back to batch insert", [
+                'batch' => $batchNumber,
+                'error' => $e->getMessage()
+            ]);
+            
+            return $this->executeChunkedBatchInsert($signinLogs, $batchNumber);
+        }
+    }
+
+private function executeChunkedBatchInsert(array $signinLogs, int $batchNumber): int
+{
+    $columnCount = count($signinLogs[0]);
+    $availableParams = $this->maxParams - $this->paramBuffer;
+    $theoreticalChunkSize = max(1, (int) floor($availableParams / $columnCount));
+
+    // Determine safe chunk size based on column count (60 columns total)
+    $safeChunkSize = match (true) {
+        $columnCount >= 80 => 1,
+        $columnCount >= 60 => min($theoreticalChunkSize, 2), // Your case - 60 columns
+        $columnCount >= 40 => min($theoreticalChunkSize, 3),
+        $columnCount >= 25 => min($theoreticalChunkSize, 5),
+        default => min($theoreticalChunkSize, 8),
+    };
+
+    Log::debug("Chunked batch insert strategy", [
+        'batch' => $batchNumber,
+        'total_rows' => count($signinLogs),
+        'columns_per_row' => $columnCount,
+        'theoretical_chunk_size' => $theoreticalChunkSize,
+        'safe_chunk_size' => $safeChunkSize
+    ]);
+
+    $insertedCount = 0;
+
+    foreach (array_chunk($signinLogs, $safeChunkSize) as $chunkIndex => $chunk) {
+        $paramCount = count($chunk) * $columnCount;
+
+        if ($paramCount >= $availableParams || $paramCount > 1800) {
+            Log::warning("Parameter count exceeded safety threshold", [
+                'batch' => $batchNumber,
+                'chunk' => $chunkIndex + 1,
+                'param_count' => $paramCount,
+                'safety_threshold' => $availableParams
+            ]);
+
+            $insertedCount += $this->executeSingleRowInserts($chunk, $batchNumber);
+            continue;
+        }
+
+        try {
+            // Safety check: Remove any ID columns from all records in chunk
+            $cleanChunk = array_map(function($record) {
+                unset($record['id'], $record['Id'], $record['ID']);
+                return $record;
+            }, $chunk);
+
+            DB::table('Azure_LoginDetails')->timeout(120)->insert($cleanChunk);
+            $insertedCount += count($cleanChunk);
+
+            Log::debug("Batch chunk inserted successfully", [
+                'batch' => $batchNumber,
+                'chunk' => $chunkIndex + 1,
+                'rows' => count($cleanChunk),
+                'params' => $paramCount
+            ]);
+
+        } catch (\Exception $e) {
+            $isParamLimitError = str_contains($e->getMessage(), '2100') ||
+                                 str_contains($e->getMessage(), 'parameter number') ||
+                                 str_contains($e->getMessage(), 'maximum of') ||
+                                 str_contains($e->getMessage(), 'IMSSP');
+
+            Log::error($isParamLimitError 
+                ? "Parameter limit error - using single-row fallback"
+                : "Batch chunk failed - trying single inserts", [
+                'batch' => $batchNumber,
+                'chunk' => $chunkIndex + 1,
+                'param_count' => $paramCount,
+                'error_snippet' => substr($e->getMessage(), 0, 200)
+            ]);
+
+            $insertedCount += $this->executeSingleRowInserts($chunk, $batchNumber);
+        }
+    }
+
+    return $insertedCount;
+}
+
+
+private function executeSingleRowInserts(array $signinLogs, int $batchNumber): int
+{
+    $this->stats['single_row_fallbacks']++;
+    
+    Log::info("Using single-row insert mode", [
+        'batch' => $batchNumber,
+        'rows' => count($signinLogs)
+    ]);
+    
+    $insertedCount = 0;
+    
+    foreach ($signinLogs as $index => $signinLog) {
+        try {
+            // Safety check: Remove any ID columns that might have been added
+            unset($signinLog['id'], $signinLog['Id'], $signinLog['ID']);
+            
+            // Debug logging for first record
+            if ($index === 0) {
+                Log::debug("Single row insert - first record columns", [
+                    'batch' => $batchNumber,
+                    'column_count' => count($signinLog),
+                    'columns' => array_keys($signinLog)
+                ]);
+            }
+            
+            DB::table('Azure_LoginDetails')->insert($signinLog);
+            $insertedCount++;
+            
+            if (($index + 1) % 50 === 0) {
+                Log::debug("Single-row progress update", [
+                    'batch' => $batchNumber,
+                    'completed' => $index + 1,
+                    'total' => count($signinLogs),
+                    'success_rate' => round(($insertedCount / ($index + 1)) * 100, 2) . '%'
+                ]);
+            }
+            
+        } catch (\Exception $e) {
+            Log::error("Single signin log insert failed", [
+                'batch' => $batchNumber,
+                'index' => $index,
+                'error' => $e->getMessage(),
+                'user_id' => $signinLog['user_id'] ?? 'unknown',
+                'username' => $signinLog['username'] ?? 'unknown'
+            ]);
+            $this->stats['errors']++;
+        }
+    }
+    
+    Log::info("Single-row insertion completed", [
+        'batch' => $batchNumber,
+        'inserted' => $insertedCount,
+        'total' => count($signinLogs),
+        'success_rate' => count($signinLogs) > 0 ? round(($insertedCount / count($signinLogs)) * 100, 2) . '%' : '0%'
+    ]);
+    
+    return $insertedCount;
+}
+
+
+
+
+    private function preloadData(Collection $batch)
+    {
+        $usernames = [];
+        $systems = [];
+        $duplicateCheckData = [];
+        
+        foreach ($batch as $row) {
+            $row = array_change_key_case($row->toArray(), CASE_LOWER);
+            $username = trim($row['username'] ?? '');
+            
+            if (!empty($username) && strlen($username) <= 255) {
+                $usernames[] = $username;
+                
+                $dateUtc = $this->extractDateUtc($row);
+                if ($dateUtc) {
+                    $parsedDate = $this->validateAndParseDate($dateUtc);
+                    if ($parsedDate) {
+                        $duplicateCheckData[] = [
+                            'username' => $username,
+                            'date_utc' => $parsedDate,
+                            'request_id' => $row['request id'] ?? null
+                        ];
+                    }
+                }
+                
+                $application = $row['application'] ?? null;
+                $system = $this->mapApplicationToSystem($application);
+                if ($system !== 'Unknown') {
+                    $systems[] = $system;
+                }
+            }
+        }
+        
+        $this->preloadUsers(array_unique($usernames));
+        $this->preloadSystems(array_unique($systems));
+        $this->preloadExistingLogs($duplicateCheckData);
+    }
+
+    private function preloadUsers(array $usernames)
+    {
+        if (empty($usernames)) return;
+        
+        foreach (array_chunk($usernames, 500) as $chunk) {
+            $existingUsers = AzureUser::whereIn('userPrincipalName', $chunk)
+                ->get()
+                ->keyBy('userPrincipalName');
+            
+            foreach ($existingUsers as $user) {
+                $this->userCache[$user->userPrincipalName] = $user;
+            }
+        }
+        
+        Log::info('Preloaded users', ['count' => count($this->userCache)]);
+    }
+
+    private function preloadSystems(array $systemNames)
+    {
+        if (empty($systemNames)) return;
+        
+        $existingSystems = System::whereIn('name', $systemNames)
+            ->get()
+            ->keyBy('name');
+        
+        foreach ($existingSystems as $system) {
+            $this->systemCache[$system->name] = $system;
+        }
+        
+        $missingSystemNames = array_diff($systemNames, $existingSystems->pluck('name')->toArray());
+        if (!empty($missingSystemNames)) {
+            try {
+                $newSystems = [];
+                foreach ($missingSystemNames as $systemName) {
+                    $newSystems[] = [
+                        'name' => $systemName,
+                        'created_at' => now(),
+                        'updated_at' => now()
+                    ];
+                }
+                
+                System::insert($newSystems);
+                
+                $newSystemModels = System::whereIn('name', $missingSystemNames)->get()->keyBy('name');
+                foreach ($newSystemModels as $system) {
+                    $this->systemCache[$system->name] = $system;
+                }
+                
+                Log::info('Preloaded systems', [
+                    'existing' => count($existingSystems),
+                    'created' => count($missingSystemNames)
+                ]);
+                
+            } catch (\Exception $e) {
+                Log::error('Failed to create systems during preload', [
+                    'systems' => $missingSystemNames,
+                    'error' => $e->getMessage()
+                ]);
+                
+                foreach ($missingSystemNames as $systemName) {
+                    try {
+                        $system = System::create(['name' => $systemName]);
+                        $this->systemCache[$systemName] = $system;
+                    } catch (\Exception $e2) {
+                        Log::warning('Failed to create individual system', [
+                            'system' => $systemName,
+                            'error' => $e2->getMessage()
+                        ]);
+                    }
+                }
+            }
+        } else {
+            Log::info('Preloaded systems', [
+                'existing' => count($existingSystems),
+                'created' => 0
+            ]);
+        }
+    }
+
+    private function preloadExistingLogs(array $duplicateCheckData)
+    {
+        if (empty($duplicateCheckData)) return;
+        
+        $userIds = [];
+        $dates = [];
+        
+        foreach ($duplicateCheckData as $data) {
+            if (isset($this->userCache[$data['username']])) {
+                $userIds[] = $this->userCache[$data['username']]->id;
+                $dates[] = $data['date_utc'];
+            }
+        }
+        
+        if (!empty($userIds)) {
+            foreach (array_chunk(array_unique($userIds), 200) as $userChunk) {
+                foreach (array_chunk(array_unique($dates), 200) as $dateChunk) {
+                    $existingLogs = DB::table('Azure_LoginDetails')
+                        ->whereIn('user_id', $userChunk)
+                        ->whereIn('date_utc', $dateChunk)
+                        ->select('user_id', 'date_utc', 'request_id')
+                        ->get();
+                    foreach ($existingLogs as $log) {
+                        $key = $log->user_id . '|' . $log->date_utc . '|' . $log->request_id;
+                        $this->existingLogs[$key] = true;
+                    }
+                }
+            }
+        }
+        
+        Log::info('Preloaded existing logs for duplicate check', ['count' => count($this->existingLogs)]);
+    }
+
+    private function prepareSigninLogData(array $row, $user, string $system, string $parsedDate): array
+    {
+        return [
+            'date_utc' => $parsedDate,
+            'request_id' => $this->getValueOrDefault($row['request_id'] ?? null, 'IMPORT-' . uniqid()),
+            'user_id' => $user->id,
+            'system' => $system !== 'Unknown' ? $system : 'Import-Unknown',
+            'user_agent' => $this->truncateString($row['user_agent'] ?? null, 'text'),
+            'correlation_id' => $this->truncateString($row['correlation_id'] ?? null, 255),
+            'user' => $this->truncateString($row['user'] ?? null, 255),
+            'username' => $this->truncateString($row['username'] ?? null, 255),
+            'user_type' => $this->truncateString($row['user_type'] ?? null, 255),
+            'cross_tenant_access_type' => $this->truncateString($row['cross_tenant_access_type'] ?? null, 255),
+            'incoming_token_type' => $this->truncateString($row['incoming_token_type'] ?? null, 255),
+            'authentication_protocol' => $this->truncateString($row['authentication_protocol'] ?? null, 255),
+            'unique_token_identifier' => $this->truncateString($row['unique_token_identifier'] ?? null, 255),
+            'original_transfer_method' => $this->truncateString($row['original_transfer_method'] ?? null, 255),
+            'client_credential_type' => $this->truncateString($row['client_credential_type'] ?? null, 255),
+            'token_protection_sign_in_session' => $this->truncateString($row['token_protection_sign_in_session'] ?? null, 255),
+            'token_protection_sign_in_session_status_code' => $this->truncateString($row['token_protection_sign_in_session_status_code'] ?? null, 255),
+            'application' => $this->truncateString($row['application'] ?? null, 255),
+            'application_id' => $this->truncateString($row['application_id'] ?? null, 255),
+            'app_owner_tenant_id' => $this->truncateString($row['app_owner_tenant_id'] ?? null, 255),
+            'resource' => $this->truncateString($row['resource'] ?? null, 255),
+            'resource_id' => $this->truncateString($row['resource_id'] ?? null, 255),
+            'resource_tenant_id' => $this->truncateString($row['resource_tenant_id'] ?? null, 255),
+            'resource_owner_tenant_id' => $this->truncateString($row['resource_owner_tenant_id'] ?? null, 255),
+            'home_tenant_id' => $this->truncateString($row['home_tenant_id'] ?? null, 255),
+            'home_tenant_name' => $this->truncateString($row['home_tenant_name'] ?? null, 255),
+            'ip_address' => $this->truncateString($row['ip_address'] ?? null, 45),
+            'location' => $this->truncateString($row['location'] ?? null, 255),
+            'status' => $this->truncateString($row['status'] ?? null, 255),
+            'sign_in_error_code' => $this->truncateString($row['sign_in_error_code'] ?? null, 255),
+            'failure_reason' => $this->truncateString($row['failure_reason'] ?? null, 'text'),
+            'client_app' => $this->truncateString($row['client_app'] ?? null, 255),
+            'device_id' => $this->truncateString($row['device_id'] ?? null, 255),
+            'browser' => $this->truncateString($row['browser'] ?? null, 255),
+            'operating_system' => $this->truncateString($row['operating_system'] ?? null, 255),
+            'compliant' => $this->convertBitField($row['compliant'] ?? null),
+            'managed' => $this->convertBitField($row['managed'] ?? null),
+            'join_type' => $this->truncateString($row['join_type'] ?? null, 255),
+            'multifactor_authentication_result' => $this->truncateString($row['multifactor_authentication_result'] ?? null, 255),
+            'multifactor_authentication_auth_method' => $this->truncateString($row['multifactor_authentication_auth_method'] ?? null, 255),
+            'multifactor_authentication_auth_detail' => $this->truncateString($row['multifactor_authentication_auth_detail'] ?? null, 255),
+            'authentication_requirement' => $this->truncateString($row['authentication_requirement'] ?? null, 255),
+            'sign_in_identifier' => $this->truncateString($row['sign_in_identifier'] ?? null, 255),
+            'session_id' => $this->truncateString($row['session_id'] ?? null, 255),
+            'ip_address_seen_by_resource' => $this->truncateString($row['ip_address_seen_by_resource'] ?? null, 45),
+            'through_global_secure_access' => $this->convertBitField($row['through_global_secure_access'] ?? null),
+            'global_secure_access_ip_address' => $this->truncateString($row['global_secure_access_ip_address'] ?? null, 45),
+            'autonomous_system_number' => $this->truncateString($row['autonomous_system_number'] ?? null, 255),
+            'flagged_for_review' => $this->convertBitField($row['flagged_for_review'] ?? null),
+            'token_issuer_type' => $this->truncateString($row['token_issuer_type'] ?? null, 255),
+            'incoming_token_type_2' => $this->truncateString($row['incoming_token_type_2'] ?? null, 255),
+            'token_issuer_name' => $this->truncateString($row['token_issuer_name'] ?? null, 255),
+            'latency' => $this->truncateString($row['latency'] ?? null, 255),
+            'conditional_access' => $this->truncateString($row['conditional_access'] ?? null, 255),
+            'managed_identity_type' => $this->truncateString($row['managed_identity_type'] ?? null, 255),
+            'associated_resource_id' => $this->truncateString($row['associated_resource_id'] ?? null, 255),
+            'federated_token_id' => $this->truncateString($row['federated_token_id'] ?? null, 255),
+            'federated_token_issuer' => $this->truncateString($row['federated_token_issuer'] ?? null, 255),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ];
+    }
+
+    private function getValueOrDefault($value, $default)
+    {
+        return ($value === null || $value === '') ? $default : $value;
+    }
+
+    private function validateRequiredFields(array $data, int $batchNumber, int $rowIndex): bool
+    {
+        foreach ($this->requiredColumns as $column => $info) {
+            if (!array_key_exists($column, $data) || 
+                ($data[$column] === null && $info['default'] === null)) {
+                
+                Log::warning("Required field missing or null", [
+                    'batch' => $batchNumber,
+                    'row' => $rowIndex,
+                    'field' => $column,
+                    'user_id' => $data['user_id'] ?? 'unknown'
+                ]);
+                
+                return false;
+            }
+        }
+        
+        return true;
+    }
+
+    private function truncateString($value, $maxLength)
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+        
+        if ($maxLength === 'text') {
+            return $value;
+        }
+        
+        $stringValue = (string) $value;
+        return strlen($stringValue) > $maxLength ? substr($stringValue, 0, $maxLength) : $stringValue;
+    }
+
+    private function mapApplicationToSystem($application)
+    {
+        if (empty($application)) {
+            return 'Unknown';
+        }
+        
+        $normalizedApp = strtolower(trim($application));
+        $systemMapping = config('systemmap', []);
+        $system = $systemMapping[$normalizedApp] ?? null;
+        
+        if (!$system) {
+            foreach ($systemMapping as $appKey => $systemName) {
+                if (strpos($normalizedApp, $appKey) !== false || strpos($appKey, $normalizedApp) !== false) {
+                    $system = $systemName;
+                    break;
+                }
+            }
+        }
+        
+        return $system ?? 'Unknown';
+    }
+
+    private function convertBitField($value)
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+        
+        if (is_bool($value)) {
+            return $value ? 1 : 0;
+        }
+        
+        if (is_numeric($value)) {
+            return ((int) $value) ? 1 : 0;
+        }
+        
+        if (is_string($value)) {
+            $value = strtolower(trim($value));
+            if (in_array($value, ['true', '1', 'yes', 'on', 'enabled'])) {
+                return 1;
+            } elseif (in_array($value, ['false', '0', 'no', 'off', 'disabled'])) {
+                return 0;
+            }
+        }
+        
+        return 0;
+    }
+
+
+private function bulkInsertUserSystemAssociations(array $associations)
+{
+    if (empty($associations)) {
+        Log::debug('No user-system associations to process');
+        return;
+    }
+
+    // Deduplicate associations
+    $uniqueAssociations = [];
+    foreach ($associations as $assoc) {
+        if (!isset($assoc['user_id'], $assoc['application_id'])) {
+            Log::warning('Invalid association data', ['association' => $assoc]);
+            continue;
+        }
+
+        $key = $assoc['user_id'] . '|' . $assoc['application_id'];
+        if (!isset($uniqueAssociations[$key])) {
+            $uniqueAssociations[$key] = [
+                'user_id' => $assoc['user_id'],
+                'application_id' => $assoc['application_id'],
+                'created_at' => now(),
+                'updated_at' => now()
+            ];
+        }
+    }
+
+    if (empty($uniqueAssociations)) {
+        Log::debug('No valid associations after deduplication');
+        return;
+    }
+
+    Log::info('Processing user-system associations', [
+        'original_count' => count($associations),
+        'unique_count' => count($uniqueAssociations)
+    ]);
+
+    // Process in chunks of 100
+    foreach (array_chunk(array_values($uniqueAssociations), 100) as $chunkIndex => $chunk) {
+        try {
+            $userIds = array_column($chunk, 'user_id');
+            $applicationIds = array_column($chunk, 'application_id');
+
+            // Check for existing associations
+            $existingPairs = DB::table('Azure_Application_UserMapping')
+                ->whereIn('user_id', $userIds)
+                ->whereIn('application_id', $applicationIds)
+                ->select('user_id', 'application_id')
+                ->get()
+                ->mapWithKeys(fn($row) => [$row->user_id . '|' . $row->application_id => true])
+                ->all();
+
+            // Filter out existing associations and add IDs if needed
+            $newAssociations = [];
+            foreach ($chunk as $assoc) {
+                $key = $assoc['user_id'] . '|' . $assoc['application_id'];
+                if (isset($existingPairs[$key])) {
+                    continue; // Skip existing association
+                }
+
+                // Check if the table expects an ID column
+                $tableColumns = Schema::getColumnListing('Azure_Application_UserMapping');
+                
+                if (in_array('id', $tableColumns) || in_array('Id', $tableColumns)) {
+                    $assoc[in_array('id', $tableColumns) ? 'id' : 'Id'] = (string) Str::uuid();
+                }
+
+                $newAssociations[] = $assoc;
+            }
+
+            if (!empty($newAssociations)) {
+                DB::table('Azure_Application_UserMapping')->insert($newAssociations);
+                
+                Log::info('Inserted user-application associations chunk', [
+                    'chunk_index' => $chunkIndex + 1,
+                    'new_associations' => count($newAssociations),
+                    'skipped_existing' => count($chunk) - count($newAssociations)
+                ]);
+            } else {
+                Log::debug('No new associations to insert in chunk', [
+                    'chunk_index' => $chunkIndex + 1,
+                    'all_existing' => count($chunk)
+                ]);
+            }
+
+        } catch (\Exception $e) {
+            Log::warning('Batch association insert failed, trying individual inserts', [
+                'chunk_index' => $chunkIndex + 1,
+                'chunk_size' => count($chunk),
+                'error' => $e->getMessage()
+            ]);
+
+            $this->insertUserSystemAssociationsIndividually($chunk);
+        }
+    }
+
+    Log::info('User-application associations processing completed', [
+        'total_unique_associations' => count($uniqueAssociations),
+        'processing_chunks' => ceil(count($uniqueAssociations) / 100)
+    ]);
+}
+
+    private function insertUserSystemAssociationsIndividually(array $associations)
+    {
+        $insertedCount = 0;
+        $skippedCount = 0;
+
+        foreach ($associations as $assoc) {
+            try {
+                $exists = DB::table('Azure_Application_UserMapping')
+                    ->where('user_id', $assoc['user_id'])
+                    ->where('application_id', $assoc['application_id'])
+                    ->exists();
+
+                if (!$exists) {
+                    DB::table('Azure_Application_UserMapping')->insert([
+                        'Id' => (string) Str::uuid(),
+                        'user_id' => $assoc['user_id'],
+                        'application_id' => $assoc['application_id']
+                    ]);
+                    $insertedCount++;
+                } else {
+                    $skippedCount++;
+                }
+
+            } catch (\Exception $e) {
+                if (str_contains($e->getMessage(), 'duplicate') ||
+                    str_contains($e->getMessage(), 'UNIQUE constraint') ||
+                    str_contains($e->getMessage(), 'PRIMARY KEY constraint')) {
+                    $skippedCount++;
+                    Log::debug('Duplicate user-application association skipped', [
+                        'user_id' => $assoc['user_id'],
+                        'application_id' => $assoc['application_id']
+                    ]);
+                } else {
+                    Log::error('Failed to insert individual user-application association', [
+                        'user_id' => $assoc['user_id'],
+                        'application_id' => $assoc['application_id'],
+                        'error' => $e->getMessage()
+                    ]);
+                }
+            }
+        }
+
+        if ($insertedCount > 0 || $skippedCount > 0) {
+            Log::info('Individual user-application associations completed', [
+                'inserted' => $insertedCount,
+                'skipped' => $skippedCount
+            ]);
+        }
+    }
+
     private function extractDateUtc($row)
     {
-        // Try common date field names
-        $dateFields = ['date_utc', 'date (utc)', 'date', 'created date', 'created_date', 'timestamp'];
+        $dateFields = [
+            'date_utc',
+            'date (utc)',
+            'date',
+            'created_date',
+            'created_date',
+            'timestamp',
+            'signin_date',
+            'login_date'
+        ];
         
         foreach ($dateFields as $field) {
             if (isset($row[$field]) && !empty(trim($row[$field]))) {
@@ -216,51 +1741,298 @@ class SigninLogsImport implements ToModel, WithHeadingRow
         return null;
     }
 
-    /**
-     * Validate and parse date string
-     */
     private function validateAndParseDate($dateString, $username = null)
     {
+        if (empty($dateString)) {
+            return null;
+        }
+        
         try {
-            // Handle various date formats
             $formats = [
                 'Y-m-d H:i:s',
                 'Y-m-d\TH:i:s\Z',
                 'Y-m-d\TH:i:s.u\Z',
                 'Y-m-d\TH:i:s',
+                'Y-m-d\TH:i:s.v\Z',
                 'm/d/Y H:i:s',
                 'd/m/Y H:i:s',
                 'Y-m-d',
                 'm/d/Y',
-                'd/m/Y'
+                'd/m/Y',
+                'c',
+                'r'
             ];
             
             foreach ($formats as $format) {
                 try {
                     $date = Carbon::createFromFormat($format, $dateString);
-                    if ($date) {
+                    if ($date && $date->year >= 2010 && $date->year <= 2030) {
                         return $date->format('Y-m-d H:i:s');
                     }
                 } catch (\Exception $e) {
-                    // Continue to next format
                     continue;
                 }
             }
             
-            // Try Carbon's built-in parsing as fallback
             $date = Carbon::parse($dateString);
-            if ($date) {
+            if ($date && $date->year >= 2010 && $date->year <= 2030) {
                 return $date->format('Y-m-d H:i:s');
             }
             
         } catch (\Exception $e) {
             Log::warning('Failed to parse date', [
                 'username' => $username,
-                'date_string' => $dateString,
+                'date_string' => substr($dateString, 0, 100),
                 'error' => $e->getMessage()
             ]);
         }
         
         return null;
     }
+
+    private function isValidUuid($uuid): bool
+    {
+        if (!is_string($uuid)) {
+            return false;
+        }
+        return preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $uuid) === 1;
+    }
+
+    private function generateNumericId(): int
+    {
+        $uuid = (string) Str::uuid();
+        $numericId = $this->uuidToBigInt($uuid);
+        
+        if (!is_numeric($numericId)) {
+            Log::error('Invalid numeric ID generated from UUID', ['uuid' => $uuid]);
+            throw new \Exception('Failed to generate valid numeric ID');
+        }
+        
+        return (int) $numericId;
+    }
+
+    public function getStats(): array
+{
+    $baseStats = [
+        'processed' => $this->stats['processed'],
+        'inserted' => $this->stats['inserted'],
+        'skipped' => $this->stats['skipped'],
+        'errors' => $this->stats['errors'],
+        'users_created' => $this->stats['users_created'],
+        'users_found' => $this->stats['users_found'],
+        'bulk_operations' => $this->stats['bulk_operations'],
+        'single_row_fallbacks' => $this->stats['single_row_fallbacks']
+    ];
+    
+    $calculatedStats = [
+        'success_rate' => $this->stats['processed'] > 0 
+            ? round(($this->stats['inserted'] / $this->stats['processed']) * 100, 2) 
+            : 0,
+        'error_rate' => $this->stats['processed'] > 0 
+            ? round(($this->stats['errors'] / $this->stats['processed']) * 100, 2) 
+            : 0,
+        'skip_rate' => $this->stats['processed'] > 0 
+            ? round(($this->stats['skipped'] / $this->stats['processed']) * 100, 2) 
+            : 0,
+        'memory_peak_mb' => round(memory_get_peak_usage(true) / 1024 / 1024, 2),
+        'user_match_strategies' => $this->stats['users_matched_by_strategy'] ?? [],
+        'error_breakdown' => $this->stats['error_types'] ?? []
+    ];
+    
+    return array_merge($baseStats, $calculatedStats);
+}
+
+    public static function getImportStatus(): array
+    {
+        $lockData = Cache::get(self::$lockKey);
+        $progressData = Cache::get(self::$progressKey, []);
+        
+        return [
+            'is_running' => Cache::has(self::$lockKey),
+            'lock_data' => $lockData,
+            'progress' => $progressData,
+            'can_start_new' => !Cache::has(self::$lockKey)
+        ];
+    }
+
+    public static function forceClearLock(): bool
+    {
+        $cleared = Cache::forget(self::$lockKey);
+        $progressCleared = Cache::forget(self::$progressKey);
+        
+        Log::warning('Import lock force cleared', [
+            'lock_cleared' => $cleared,
+            'progress_cleared' => $progressCleared
+        ]);
+        
+        return $cleared;
+    }
+
+    private function acquireImportLock(): bool
+    {
+        if (Cache::has(self::$lockKey)) {
+            $lockData = Cache::get(self::$lockKey);
+            if (isset($lockData['started_at']) && 
+                Carbon::parse($lockData['started_at'])->addSeconds(self::$lockTimeout)->isPast()) {
+                Log::warning('Found stale import lock, clearing it', [
+                    'lock_data' => $lockData,
+                    'lock_age_minutes' => Carbon::parse($lockData['started_at'])->diffInMinutes()
+                ]);
+                Cache::forget(self::$lockKey);
+                Cache::forget(self::$progressKey);
+            } else {
+                return false;
+            }
+        }
+
+        $lockData = [
+            'started_at' => now()->toISOString(),
+            'process_id' => getmypid(),
+            'server' => gethostname(),
+            'process' => getmypid() ?: 'unknown'
+        ];
+
+        Cache::put(self::$lockKey, $lockData, self::$lockTimeout);
+        Log::info('Import lock acquired', $lockData);
+        return true;
+    }
+
+    private function releaseImportLock(): void
+    {
+        $this->releaseLock();
+    }
+
+    private function bulkInsertSigninLogs(array $signinLogs)
+    {
+        return $this->executeOptimalInsert($signinLogs, 0);
+    }
+
+    private function processRowSafely(array $row, int $batchNumber, int $rowIndex): array
+{
+    try {
+        return $this->processRow($row, $batchNumber, $rowIndex);
+    } catch (\Exception $e) {
+        // Categorize the error for better debugging
+        $errorType = $this->categorizeError($e);
+        
+        Log::error("Row processing failed", [
+            'batch' => $batchNumber,
+            'row' => $rowIndex,
+            'error_type' => $errorType,
+            'error' => $e->getMessage(),
+            'username' => $row['username'] ?? 'unknown',
+            'row_sample' => array_slice($row, 0, 3), // First 3 fields only
+            'trace' => substr($e->getTraceAsString(), 0, 200)
+        ]);
+        
+        $this->stats['errors']++;
+        $this->stats['error_types'][$errorType] = ($this->stats['error_types'][$errorType] ?? 0) + 1;
+        
+        return ['signin_log' => null, 'user_system' => null];
+    }
+}
+
+private function categorizeError(\Exception $e): string
+{
+    $message = strtolower($e->getMessage());
+    
+    if (str_contains($message, 'user') || str_contains($message, 'principal')) {
+        return 'user_related';
+    } elseif (str_contains($message, 'date') || str_contains($message, 'time')) {
+        return 'date_parsing';
+    } elseif (str_contains($message, 'database') || str_contains($message, 'sql')) {
+        return 'database_error';
+    } elseif (str_contains($message, 'validation') || str_contains($message, 'required')) {
+        return 'validation_error';
+    } elseif (str_contains($message, 'duplicate') || str_contains($message, 'constraint')) {
+        return 'duplicate_entry';
+    } elseif (str_contains($message, 'memory') || str_contains($message, 'timeout')) {
+        return 'resource_error';
+    } else {
+        return 'unknown';
+    }
+}
+
+private function logFinalStats(): void
+{
+    $finalStats = $this->getStats();
+    
+    Log::info('Import completed - Final Statistics', [
+        'summary' => [
+            'total_processed' => $finalStats['processed'],
+            'successful_inserts' => $finalStats['inserted'],
+            'skipped_records' => $finalStats['skipped'],
+            'total_errors' => $finalStats['errors'],
+            'success_rate' => $finalStats['success_rate'] . '%',
+            'error_rate' => $finalStats['error_rate'] . '%'
+        ],
+        'user_management' => [
+            'users_created' => $finalStats['users_created'],
+            'users_found' => $finalStats['users_found'],
+            'match_strategies' => $finalStats['user_match_strategies']
+        ],
+        'performance' => [
+            'bulk_operations' => $finalStats['bulk_operations'],
+            'single_row_fallbacks' => $finalStats['single_row_fallbacks'],
+            'peak_memory_mb' => $finalStats['memory_peak_mb']
+        ],
+        'error_analysis' => $finalStats['error_breakdown']
+    ]);
+    
+    // Log warnings for concerning statistics
+    if ($finalStats['error_rate'] > 10) {
+        Log::warning('High error rate detected', [
+            'error_rate' => $finalStats['error_rate'] . '%',
+            'recommendation' => 'Review error logs and consider data quality improvements'
+        ]);
+    }
+    
+    if ($finalStats['skip_rate'] > 20) {
+        Log::warning('High skip rate detected', [
+            'skip_rate' => $finalStats['skip_rate'] . '%',
+            'recommendation' => 'Review data format and validation rules'
+        ]);
+    }
+}
+
+private function validateSigninLogData(array $data, int $batchNumber = 0, int $rowIndex = 0): bool
+{
+    $requiredFields = ['date_utc', 'user_id', 'system'];
+    $errors = [];
+    
+    foreach ($requiredFields as $field) {
+        if (!isset($data[$field]) || $data[$field] === null || $data[$field] === '') {
+            $errors[] = "Missing required field: {$field}";
+        }
+    }
+    
+    // Validate field lengths
+    if (isset($data['username']) && strlen($data['username']) > 255) {
+        $errors[] = "Username too long: " . strlen($data['username']) . " chars";
+    }
+    
+    if (isset($data['user_agent']) && strlen($data['user_agent']) > 500) {
+        $data['user_agent'] = substr($data['user_agent'], 0, 500);
+    }
+    
+    if (isset($data['date_utc'])) {
+        try {
+            Carbon::parse($data['date_utc']);
+        } catch (\Exception $e) {
+            $errors[] = "Invalid date format: " . $data['date_utc'];
+        }
+    }
+    
+    if (!empty($errors)) {
+        Log::warning('Data validation failed', [
+            'batch' => $batchNumber,
+            'row' => $rowIndex,
+            'errors' => $errors,
+            'data_sample' => array_slice($data, 0, 5, true)
+        ]);
+        return false;
+    }
+    
+    return true;
+}
 }

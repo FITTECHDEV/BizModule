@@ -1,0 +1,43 @@
+<?php
+
+return [
+    // Microsoft Applications
+    'windows sign in' => 'SCM',
+    'microsoft azure cli' => 'OPS',
+    'microsoft exchange rest api based powershell' => 'Odoo',
+    'azure active directory powershell' => 'Fit Express',
+    'microsoft azure powershell' => 'OPS',
+    'azure portal' => 'OPS',
+    'microsoft office 365 portal' => 'Office 365',
+    'microsoft teams' => 'Microsoft Teams',
+    'microsoft outlook' => 'Microsoft Outlook',
+    'microsoft sharepoint' => 'Microsoft SharePoint',
+    'microsoft onedrive' => 'Microsoft OneDrive',
+
+    // FIT Systems
+    'fit erp' => 'FIT ERP',
+    'fit express' => 'Fit Express',
+    ' fit express' => 'Fit Express',
+    'fit express uat' => 'Fit Express UAT',
+    'fiterpuat' => 'FIT ERP UAT',
+    'fit portal' => 'FIT PORTAL',
+    'fit dashboard' => 'FIT DASHBOARD',
+
+    // Operations Systems
+    'ops' => 'OPS',
+    'ops uat' => 'OPS UAT',
+    'operations portal' => 'OPS',
+
+    // Other Systems
+    'odoo' => 'Odoo',
+    'scm' => 'SCM',
+    'd365 live' => 'SCM', // <-- ensure this maps to SCM for your dashboard
+    'd365' => 'SCM',
+    'd368 live' => 'D368 LIVE',
+    'd368' => 'D368 LIVE',
+
+    // Common variations
+    'microsoft d365' => 'SCM',
+    'dynamics 365' => 'SCM',
+    'microsoft dynamics' => 'SCM',
+];

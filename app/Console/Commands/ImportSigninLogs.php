@@ -3,154 +3,202 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
-use App\Models\SigninLog;
+use App\Services\AzureSignInImportService;
+use App\Services\ImportLockService;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
-use Carbon\Carbon;
+use Illuminate\Support\Facades\Log;
+use Exception;
 
-class ImportSigninLogsRaw extends Command
+class ImportSigninLogsCommand extends Command
 {
-    protected $signature = 'import:signin-logs {file}';
-    protected $description = 'Import Signin Log records from CSV';
+    protected $signature = 'import:signin-logs {file} 
+                            {--large : Use memory-efficient processing for large files} 
+                            {--force : Override import lock if another import is running}';
+
+    protected $description = 'Import Signin Log records from CSV with batch processing';
+
+    private AzureSignInImportService $importService;
+    private ImportLockService $lockService;
+
+    private int $maxParams = 2100;
+    private int $paramBuffer = 50;
+
+    public function __construct(AzureSignInImportService $importService, ImportLockService $lockService)
+    {
+        parent::__construct();
+        $this->importService = $importService;
+        $this->lockService = $lockService;
+    }
 
     public function handle()
     {
         $filePath = $this->argument('file');
+        $isLargeFile = $this->option('large');
+        $force = $this->option('force');
 
         if (!file_exists($filePath)) {
             $this->error("❌ File not found: $filePath");
             return 1;
         }
 
-        $handle = fopen($filePath, 'r');
-
-        if (!$handle) {
-            $this->error("❌ Unable to open file: $filePath");
+        // Acquire lock to prevent concurrent imports
+        if (!$this->lockService->acquireLock('signin_import', 1800) && !$force) {
+            $this->error("❌ Another import is already running. Use --force to override.");
             return 1;
         }
 
-        $header = fgetcsv($handle); // read header row
-        $expectedColumns = count($header);
-
-        $this->info("✅ Detected $expectedColumns columns in CSV header.");
-
-        $count = 0;
-        $skipped = 0;
-        $lineNumber = 1; // starts after header
-
-        DB::beginTransaction();
+        if ($force) {
+            Log::warning("⚠️ Import lock overridden with --force", ['file' => $filePath]);
+        }
 
         try {
-            while (($data = fgetcsv($handle)) !== false) {
-                $lineNumber++;
+            $this->info("🚀 Starting Azure Sign-in import from: $filePath");
 
-                if (count($data) !== $expectedColumns) {
-                    $this->warn("⚠️  Skipping row $lineNumber — found " . count($data) . " columns, expected $expectedColumns.");
-                    $skipped++;
-                    continue;
-                }
+            // Pre-check: estimate batch size from first row
+            $header = $this->getCsvHeader($filePath);
+            if ($header) {
+                $dbColumns = count($header) + 3; // id, created_at, updated_at
+                $batchSize = (int) floor(($this->maxParams - $this->paramBuffer) / $dbColumns);
 
-                $record = new SigninLog();
-                $record->id = (string) Str::uuid();
-
-                // Safe date parsing
-                $record->date_utc = (!empty($data[0]) && strtotime($data[0]))
-                    ? Carbon::parse($data[0])->format('Y-m-d H:i:s')
-                    : null;
-
-                $record->request_id = $data[1];
-                $record->user_agent = $data[2];
-                $record->correlation_id = $data[3];
-                $record->user_id = $data[4];
-                $record->user = $data[5];
-                $record->username = $data[6];
-                $record->user_type = $data[7];
-                $record->cross_tenant_access_type = $data[8];
-                $record->incoming_token_type = $data[9];
-                $record->authentication_protocol = $data[10];
-                $record->unique_token_identifier = $data[11];
-                $record->original_transfer_method = $data[12];
-                $record->client_credential_type = $data[13];
-                $record->token_protection_sign_in_session = $data[14];
-                $record->token_protection_sign_in_session_status_code = $data[15];
-                $record->application = $data[16];
-                $record->application_id = $data[17];
-                $record->app_owner_tenant_id = $data[18];
-                $record->resource = $data[19];
-                $record->resource_id = $data[20];
-                $record->resource_tenant_id = $data[21];
-                $record->resource_owner_tenant_id = $data[22];
-                $record->home_tenant_id = $data[23];
-                $record->home_tenant_name = $data[24];
-                $record->ip_address = $data[25];
-                $record->location = $data[26];
-                $record->status = $data[27];
-                $record->sign_in_error_code = $data[28];
-                $record->failure_reason = $data[29];
-                $record->client_app = $data[30];
-                $record->device_id = $data[31];
-                $record->browser = $data[32];
-                $record->operating_system = $data[33];
-
-                // Safe numeric casting for tinyint(1) columns
-                $record->compliant = is_numeric($data[34]) ? (int)$data[34] : null;
-                $record->managed = is_numeric($data[35]) ? (int)$data[35] : null;
-
-                $record->join_type = $data[36];
-                $record->multifactor_authentication_result = $data[37];
-                $record->multifactor_authentication_auth_method = $data[38];
-                $record->multifactor_authentication_auth_detail = $data[39];
-                $record->authentication_requirement = $data[40];
-                $record->sign_in_identifier = $data[41];
-                $record->session_id = $data[42];
-                $record->ip_address_seen_by_resource = $data[43];
-                $record->through_global_secure_access = $data[44];
-                $record->global_secure_access_ip_address = $data[45];
-                $record->autonomous_system_number = $data[46];
-                $record->flagged_for_review = $data[47];
-                $record->token_issuer_type = $data[48];
-
-                // Defensive: assign if column exists
-                $record->incoming_token_type_duplicate = ($expectedColumns > 56) ? $data[49] : null;
-
-                $record->token_issuer_name = $data[49];
-                $record->latency = $data[50];
-                $record->conditional_access = $data[51];
-                $record->managed_identity_type = $data[52];
-                $record->associated_resource_id = $data[53];
-                $record->federated_token_id = $data[54];
-                $record->federated_token_issuer = $data[55];
-
-                $record->created_at = Carbon::now();
-                $record->updated_at = Carbon::now();
-
-                // Save safely with error catch
-                try {
-                    $record->save();
-                    $count++;
-                } catch (\Exception $e) {
-                    $this->error("❌ Failed to save record on line $lineNumber: " . $e->getMessage());
-                    DB::rollBack();
-                    fclose($handle);
-                    return 1;
+                if ($batchSize < 10) {
+                    $this->warn("⚠️ Detected $dbColumns columns. Batch size will be very small ($batchSize). Import may be slow.");
+                    Log::warning("Low batch size detected: $batchSize for $dbColumns columns.");
                 }
             }
 
-            DB::commit();
-            fclose($handle);
-
-            $this->info("✅ Imported $count records successfully.");
-            if ($skipped > 0) {
-                $this->warn("⚠️  Skipped $skipped rows due to invalid column counts.");
+            if ($isLargeFile) {
+                $this->info("📊 Using memory-efficient processing for large file...");
+                $stats = $this->importService->importFromLargeCsv($filePath);
+            } else {
+                $this->info("📊 Processing file with standard batch import...");
+                $stats = $this->importService->importFromFile($filePath);
             }
 
-        } catch (\Exception $e) {
-            DB::rollBack();
-            fclose($handle);
-            $this->error("❌ Critical error: " . $e->getMessage());
+            $this->displayImportStats($stats);
+
+            Log::info("✅ Import completed", [
+                'file' => $filePath,
+                'stats' => $stats,
+                'mode' => $isLargeFile ? 'large' : 'standard'
+            ]);
+
+            $this->info("✅ Import completed successfully!");
+            return 0;
+
+        } catch (Exception $e) {
+            $this->error("❌ Import failed: " . $e->getMessage());
             return 1;
+        } finally {
+            $this->lockService->releaseLock('signin_import');
+        }
+    }
+
+    private function getCsvHeader(string $filePath): ?array
+    {
+        $handle = fopen($filePath, 'r');
+        if (!$handle) {
+            return null;
+        }
+        $header = fgetcsv($handle);
+        fclose($handle);
+        return $header;
+    }
+
+    private function displayImportStats(array $stats): void
+    {
+        $this->info("📊 Import Statistics:");
+        $this->info("   Total Records: " . ($stats['total_records'] ?? 0));
+        $this->info("   Successful: " . $stats['successful_imports']);
+        $this->info("   Failed: " . $stats['failed_imports']);
+
+        if (isset($stats['skipped_rows'])) {
+            $this->info("   Skipped: " . $stats['skipped_rows']);
         }
 
-        return 0;
+        $this->info("   Duration: " . round($stats['duration_seconds'], 2) . " seconds");
+        $this->info("   Speed: " . round($stats['records_per_second'], 2) . " records/second");
     }
+
+    private function executeChunkedBatchInsert(array $signinLogs, int $batchNumber): int
+    {
+        $columnCount = count($signinLogs[0]);
+        $availableParams = $this->maxParams - $this->paramBuffer;
+        $theoreticalChunkSize = max(1, (int) floor($availableParams / $columnCount));
+
+        if ($columnCount >= 80) {
+            $safeChunkSize = 1;
+        } elseif ($columnCount >= 60) {
+            $safeChunkSize = min($theoreticalChunkSize, 2);
+        } elseif ($columnCount >= 40) {
+            $safeChunkSize = min($theoreticalChunkSize, 3);
+        } elseif ($columnCount >= 25) {
+            $safeChunkSize = min($theoreticalChunkSize, 5);
+        } else {
+            $safeChunkSize = min($theoreticalChunkSize, 8);
+        }
+
+        Log::debug("Enhanced chunked batch insert", [
+            'batch' => $batchNumber,
+            'total_rows' => count($signinLogs),
+            'columns_per_row' => $columnCount,
+            'theoretical_chunk_size' => $theoreticalChunkSize,
+            'safe_chunk_size' => $safeChunkSize,
+            'max_params_per_chunk' => $safeChunkSize * $columnCount
+        ]);
+
+        $insertedCount = 0;
+
+        foreach (array_chunk($signinLogs, $safeChunkSize) as $chunkIndex => $chunk) {
+            $paramCount = count($chunk) * $columnCount;
+
+            if ($paramCount >= $availableParams || $paramCount > 1800) {
+                Log::warning("Parameter count exceeded safety threshold, using single-row fallback", [
+                    'batch' => $batchNumber,
+                    'chunk' => $chunkIndex + 1,
+                    'param_count' => $paramCount,
+                    'safety_threshold' => $availableParams
+                ]);
+
+                $insertedCount += $this->executeSingleRowInserts($chunk, $batchNumber);
+                continue;
+            }
+
+            try {
+                DB::table('Azure_LoginDetails')
+                    ->timeout(120)
+                    ->insert($chunk);
+
+                $insertedCount += count($chunk);
+
+                Log::debug("Enhanced batch chunk inserted", [
+                    'batch' => $batchNumber,
+                    'chunk' => $chunkIndex + 1,
+                    'rows' => count($chunk),
+                    'params' => $paramCount,
+                    'columns' => $columnCount
+                ]);
+
+            } catch (\Exception $e) {
+                $isParamLimitError = str_contains($e->getMessage(), '2100') ||
+                                     str_contains($e->getMessage(), 'parameter number') ||
+                                     str_contains($e->getMessage(), 'maximum of') ||
+                                     str_contains($e->getMessage(), 'IMSSP');
+
+                Log::error($isParamLimitError
+                    ? "Parameter limit error confirmed, forcing single-row mode"
+                    : "Batch chunk failed for other reason, trying single inserts", [
+                    'batch' => $batchNumber,
+                    'chunk' => $chunkIndex + 1,
+                    'param_count' => $paramCount,
+                    'error_snippet' => substr($e->getMessage(), 0, 200)
+                ]);
+
+                $insertedCount += $this->executeSingleRowInserts($chunk, $batchNumber);
+            }
+        }
+
+        return $insertedCount;
+    }
+
+    // You can define executeSingleRowInserts() here if needed
 }
