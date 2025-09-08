@@ -40,6 +40,22 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
     /** Table structure cache */
     private ?array $tableColumns = null;
     private ?array $requiredColumns = null;
+
+    /**
+ * Add validation error tracking property at the top of your class
+ */
+private array $validationErrors = [];
+
+
+    
+/**
+ * Get validation errors for reporting
+ */
+public function getValidationErrors(): array
+{
+    return $this->validationErrors ?? [];
+}
+
     
     /** Statistics tracking */
     private array $stats = [
@@ -169,169 +185,175 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
         }
     }
 
-    private function getUserFromCacheOrCreate(string $userPrincipalName, ?string $userDisplayName = null, ?string $userIdFromCsv = null)
-    {
-        $userPrincipalName = trim($userPrincipalName);
-        if (empty($userPrincipalName) || strlen($userPrincipalName) > 255) {
-            Log::warning('Invalid username provided', ['username' => $userPrincipalName]);
-            $this->stats['errors']++;
-            return null;
-        }
+   
+/**
+ * Enhanced getUserFromCacheOrCreate method with better error handling
+ */
+private function getUserFromCacheOrCreate(string $userPrincipalName, ?string $userDisplayName = null, ?string $userIdFromCsv = null)
+{
+    $userPrincipalName = trim($userPrincipalName);
+    
+    if (empty($userPrincipalName) || strlen($userPrincipalName) > 255) {
+        Log::warning('Invalid username provided', [
+            'username' => substr($userPrincipalName, 0, 50),
+            'length' => strlen($userPrincipalName)
+        ]);
+        $this->stats['errors']++;
+        return null;
+    }
 
-        // Check cache first
-        if (isset($this->userCache[$userPrincipalName])) {
-            $this->stats['users_found']++;
-            $this->stats['users_matched_by_strategy']['username']++;
-            return $this->userCache[$userPrincipalName];
-        }
+    // Check cache first - use lowercase for consistent caching
+    $cacheKey = strtolower($userPrincipalName);
+    if (isset($this->userCache[$cacheKey])) {
+        $this->stats['users_found']++;
+        $this->stats['users_matched_by_strategy']['username']++;
+        return $this->userCache[$cacheKey];
+    }
 
-        // Try multiple matching strategies
-        $user = $this->findUserByMultipleStrategies($userPrincipalName, $userIdFromCsv);
-        
-        if ($user) {
-            $this->userCache[$userPrincipalName] = $user;
-            $this->stats['users_found']++;
-            return $user;
-        }
+    // Try multiple matching strategies
+    $user = $this->findUserByMultipleStrategies($userPrincipalName, $userIdFromCsv);
+    
+    if ($user) {
+        // Cache with lowercase key for consistency
+        $this->userCache[$cacheKey] = $user;
+        $this->stats['users_found']++;
+        return $user;
+    }
 
-        // Create new user if not found
+    // Create new user if enabled and not found
+    if (env('SIGNIN_IMPORT_CREATE_USERS', false)) {
         return $this->createUserFromSigninData($userPrincipalName, $userDisplayName, $userIdFromCsv);
     }
 
-    private function findUserByMultipleStrategies(string $userPrincipalName, ?string $userIdFromCsv = null)
+    // Log failure and return null
+    Log::warning('User not found and creation disabled', [
+        'username' => $userPrincipalName,
+        'user_id_from_csv' => $userIdFromCsv,
+        'create_users_enabled' => env('SIGNIN_IMPORT_CREATE_USERS', false)
+    ]);
+    
+    return null;
+}
+
+
+/**
+ * COMPLETELY REWRITTEN findUserByMultipleStrategies method 
+ * Optimized for SQL Server with proper case-insensitive handling
+ */
+private function findUserByMultipleStrategies(string $userPrincipalName, ?string $userIdFromCsv = null)
 {
-    // First, try exact matches with better error handling
-    $strategies = [
-        'exact_id' => function() use ($userIdFromCsv) {
-            if (empty($userIdFromCsv)) return null;
-            
+    $userPrincipalName = trim($userPrincipalName);
+    
+    if (empty($userPrincipalName)) {
+        Log::warning('Empty userPrincipalName provided for user lookup');
+        return null;
+    }
+
+    try {
+        // Strategy 1: Exact ID match (if provided)
+        if (!empty($userIdFromCsv) && $this->isValidUuid($userIdFromCsv)) {
             try {
-                if ($this->isValidUuid($userIdFromCsv)) {
-                    return AzureUser::where('id', $userIdFromCsv)
-                        ->orWhere('azure_id', $userIdFromCsv)
-                        ->first();
+                $user = AzureUser::where('id', $userIdFromCsv)->first();
+                if ($user) {
+                    $this->stats['users_matched_by_strategy']['exact_id']++;
+                    Log::debug("User found via exact ID match", [
+                        'username' => $userPrincipalName,
+                        'user_id' => $user->id,
+                        'strategy' => 'exact_id'
+                    ]);
+                    return $user;
                 }
             } catch (\Exception $e) {
-                Log::debug('UUID strategy failed', [
+                Log::warning('Exact ID lookup failed', [
                     'user_id' => $userIdFromCsv,
                     'error' => $e->getMessage()
                 ]);
             }
-            return null;
-        },
-        
-        'username_exact' => function() use ($userPrincipalName) {
-            try {
-                return AzureUser::where('userPrincipalName', $userPrincipalName)->first();
-            } catch (\Exception $e) {
-                Log::debug('Username exact match failed', [
-                    'username' => $userPrincipalName,
-                    'error' => $e->getMessage()
-                ]);
-                return null;
-            }
-        },
-        
-        'email_match' => function() use ($userPrincipalName) {
-            if (!filter_var($userPrincipalName, FILTER_VALIDATE_EMAIL)) {
-                return null;
-            }
-            
-            try {
-                return AzureUser::where('mail', $userPrincipalName)
-                    ->orWhere('userPrincipalName', $userPrincipalName)
-                    ->first();
-            } catch (\Exception $e) {
-                Log::debug('Email match failed', [
-                    'email' => $userPrincipalName,
-                    'error' => $e->getMessage()
-                ]);
-                return null;
-            }
-        },
-        
-        'case_insensitive' => function() use ($userPrincipalName) {
-            try {
-                return AzureUser::whereRaw('LOWER(userPrincipalName) = LOWER(?)', [$userPrincipalName])
-                    ->orWhereRaw('LOWER(mail) = LOWER(?)', [$userPrincipalName])
-                    ->first();
-            } catch (\Exception $e) {
-                Log::debug('Case insensitive match failed', [
-                    'username' => $userPrincipalName,
-                    'error' => $e->getMessage()
-                ]);
-                return null;
-            }
-        },
-        
-        'partial_domain_match' => function() use ($userPrincipalName) {
-            if (!str_contains($userPrincipalName, '@')) return null;
-            
-            try {
-                $domain = substr(strrchr($userPrincipalName, '@'), 1);
-                $username = strstr($userPrincipalName, '@', true);
-                
-                // Look for users with same username but different domain
-                return AzureUser::where('userPrincipalName', 'LIKE', $username . '@%')
-                    ->orWhere('mail', 'LIKE', $username . '@%')
-                    ->first();
-            } catch (\Exception $e) {
-                Log::debug('Partial domain match failed', [
-                    'username' => $userPrincipalName,
-                    'error' => $e->getMessage()
-                ]);
-                return null;
-            }
-        },
-        
-        'sign_in_identifier_match' => function() use ($userPrincipalName) {
-            try {
-                // Check if any existing user has this as their sign-in identifier
-                $signinLog = DB::table('Azure_LoginDetails')
-                    ->where('sign_in_identifier', $userPrincipalName)
-                    ->select('user_id')
-                    ->first();
-                
-                if ($signinLog) {
-                    return AzureUser::find($signinLog->user_id);
-                }
-                return null;
-            } catch (\Exception $e) {
-                Log::debug('Sign-in identifier match failed', [
-                    'identifier' => $userPrincipalName,
-                    'error' => $e->getMessage()
-                ]);
-                return null;
-            }
         }
-    ];
 
-    foreach ($strategies as $strategy => $finder) {
+        // Strategy 2: Direct case-insensitive userPrincipalName match
+        // Using COLLATE for SQL Server case-insensitive comparison
         try {
-            $user = $finder();
+            $user = AzureUser::whereRaw('LOWER(RTRIM(LTRIM(userPrincipalName))) = LOWER(?)', [trim($userPrincipalName)])->first();
             if ($user) {
-                $this->stats['users_matched_by_strategy'][$strategy] = 
-                    ($this->stats['users_matched_by_strategy'][$strategy] ?? 0) + 1;
-                
-                Log::debug("User found using strategy: {$strategy}", [
-                    'username' => $userPrincipalName,
+                $this->stats['users_matched_by_strategy']['username']++;
+                Log::debug("User found via case-insensitive username match", [
+                    'search_term' => $userPrincipalName,
+                    'found_username' => $user->userPrincipalName,
                     'user_id' => $user->id,
-                    'strategy' => $strategy
+                    'strategy' => 'username_case_insensitive'
                 ]);
                 return $user;
             }
         } catch (\Exception $e) {
-            Log::warning("Strategy '{$strategy}' failed", [
+            Log::warning('Case-insensitive username lookup failed', [
                 'username' => $userPrincipalName,
                 'error' => $e->getMessage()
             ]);
-            $this->stats['errors']++;
         }
+
+        // Strategy 3: Email/Mail field match (if it looks like an email)
+        if (filter_var($userPrincipalName, FILTER_VALIDATE_EMAIL)) {
+            try {
+                $user = AzureUser::whereRaw('LOWER(RTRIM(LTRIM(mail))) = LOWER(?)', [trim($userPrincipalName)])
+                    ->orWhereRaw('LOWER(RTRIM(LTRIM(alternateEmailAddress))) = LOWER(?)', [trim($userPrincipalName)])
+                    ->first();
+                if ($user) {
+                    $this->stats['users_matched_by_strategy']['email']++;
+                    Log::debug("User found via email match", [
+                        'email' => $userPrincipalName,
+                        'found_username' => $user->userPrincipalName,
+                        'user_id' => $user->id,
+                        'strategy' => 'email_match'
+                    ]);
+                    return $user;
+                }
+            } catch (\Exception $e) {
+                Log::warning('Email lookup failed', [
+                    'email' => $userPrincipalName,
+                    'error' => $e->getMessage()
+                ]);
+            }
+        }
+
+        // Strategy 4: Fallback - try a broader search with LIKE operator
+        try {
+            $searchPattern = '%' . trim($userPrincipalName) . '%';
+            $user = AzureUser::whereRaw('LOWER(userPrincipalName) LIKE LOWER(?)', [$searchPattern])
+                ->orWhereRaw('LOWER(mail) LIKE LOWER(?)', [$searchPattern])
+                ->first();
+            if ($user) {
+                $this->stats['users_matched_by_strategy']['sign_in_identifier']++;
+                Log::info("User found via pattern match", [
+                    'search_term' => $userPrincipalName,
+                    'pattern' => $searchPattern,
+                    'found_username' => $user->userPrincipalName,
+                    'user_id' => $user->id,
+                    'strategy' => 'pattern_match'
+                ]);
+                return $user;
+            }
+        } catch (\Exception $e) {
+            Log::warning('Pattern matching lookup failed', [
+                'username' => $userPrincipalName,
+                'error' => $e->getMessage()
+            ]);
+        }
+
+        // Log the failed lookup attempt with available users for debugging
+        $this->logFailedUserLookup($userPrincipalName, $userIdFromCsv);
+        
+    } catch (\Exception $e) {
+        Log::error('Critical error in user lookup strategies', [
+            'username' => $userPrincipalName,
+            'user_id_from_csv' => $userIdFromCsv,
+            'error' => $e->getMessage(),
+            'trace' => substr($e->getTraceAsString(), 0, 500)
+        ]);
     }
 
     return null;
 }
-
     private function createUserFromSigninData(string $userPrincipalName, ?string $userDisplayName = null, ?string $userIdFromCsv = null)
 {
     try {
@@ -1995,6 +2017,9 @@ private function logFinalStats(): void
     }
 }
 
+/**
+ * Enhanced validateSigninLogData method with error collection
+ */
 private function validateSigninLogData(array $data, int $batchNumber = 0, int $rowIndex = 0): bool
 {
     $requiredFields = ['date_utc', 'user_id', 'system'];
@@ -2024,6 +2049,16 @@ private function validateSigninLogData(array $data, int $batchNumber = 0, int $r
     }
     
     if (!empty($errors)) {
+        // Store validation errors for later retrieval
+        $errorKey = "batch_{$batchNumber}_row_{$rowIndex}";
+        $this->validationErrors[$errorKey] = [
+            'batch' => $batchNumber,
+            'row' => $rowIndex,
+            'errors' => $errors,
+            'data_sample' => array_slice($data, 0, 5, true),
+            'username' => $data['username'] ?? 'unknown'
+        ];
+        
         Log::warning('Data validation failed', [
             'batch' => $batchNumber,
             'row' => $rowIndex,
@@ -2035,4 +2070,97 @@ private function validateSigninLogData(array $data, int $batchNumber = 0, int $r
     
     return true;
 }
+
+ /**
+ * Enhanced logging for failed user lookups to help with debugging
+ */
+private function logFailedUserLookup(string $searchTerm, ?string $userIdFromCsv = null): void
+{
+    // Only log detailed info for first few failures to avoid spam
+    static $failureCount = 0;
+    $failureCount++;
+    
+    if ($failureCount <= 5) {
+        // Get a sample of existing usernames for comparison
+        $sampleUsers = AzureUser::select('userPrincipalName', 'id', 'mail')
+            ->whereRaw('LOWER(userPrincipalName) LIKE ?', ['%' . strtolower(substr($searchTerm, 0, 3)) . '%'])
+            ->limit(3)
+            ->get()
+            ->toArray();
+
+        Log::warning("User lookup failed - no match found", [
+            'search_term' => $searchTerm,
+            'user_id_from_csv' => $userIdFromCsv,
+            'failure_count' => $failureCount,
+            'similar_users_sample' => $sampleUsers,
+            'total_users_in_db' => AzureUser::count(),
+            'search_term_length' => strlen($searchTerm),
+            'contains_at_symbol' => str_contains($searchTerm, '@'),
+            'is_email_format' => filter_var($searchTerm, FILTER_VALIDATE_EMAIL) ? 'yes' : 'no'
+        ]);
+    } else if ($failureCount == 6) {
+        Log::info("Suppressing detailed user lookup failure logs after 5 failures");
+    }
+}
+
+/**
+ * Add method to get detailed import statistics including validation errors
+ */
+public function getDetailedStats(): array
+{
+    $baseStats = $this->getStats();
+    
+    return array_merge($baseStats, [
+        'validation_errors' => [
+            'total_validation_failures' => count($this->validationErrors),
+            'error_details' => array_slice($this->validationErrors, 0, 10), // First 10 errors only
+            'common_error_types' => $this->analyzeCommonErrors()
+        ],
+        'user_lookup_analysis' => [
+            'total_lookup_attempts' => array_sum($this->stats['users_matched_by_strategy']),
+            'successful_strategies' => array_filter($this->stats['users_matched_by_strategy'], fn($count) => $count > 0)
+        ]
+    ]);
+}
+
+
+/**
+ * Analyze common validation error patterns
+ */
+private function analyzeCommonErrors(): array
+{
+    $errorTypes = [];
+    
+    foreach ($this->validationErrors as $errorData) {
+        foreach ($errorData['errors'] as $error) {
+            $type = $this->categorizeValidationError($error);
+            $errorTypes[$type] = ($errorTypes[$type] ?? 0) + 1;
+        }
+    }
+    
+    return $errorTypes;
+}
+
+
+/**
+ * Categorize validation errors for better reporting
+ */
+private function categorizeValidationError(string $error): string
+{
+    if (str_contains($error, 'user_id')) {
+        return 'missing_user_id';
+    } elseif (str_contains($error, 'date_utc')) {
+        return 'missing_or_invalid_date';
+    } elseif (str_contains($error, 'system')) {
+        return 'missing_system';
+    } elseif (str_contains($error, 'too long')) {
+        return 'field_length_exceeded';
+    } else {
+        return 'other_validation_error';
+    }
+}
+
+
+
+
 }
