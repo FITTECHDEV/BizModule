@@ -23,8 +23,13 @@ class DashboardController extends Controller
         $this->statsService = $statsService;
     }
 
+    
+
     public function index(Request $request)
 {
+
+    set_time_limit(120); // 2 minutes
+
     // Add cache busting parameter support
     if ($request->has('refresh_cache')) {
         $this->clearDashboardCache();
@@ -105,19 +110,17 @@ class DashboardController extends Controller
             }
             $q->orderBy('date_utc', 'desc');
         }])
-        ->leftJoin('Azure_LoginDetails as ald', function($join) use ($startDate, $endDate, $system) {
-            $join->on(function($q) {
-                $q->whereColumn('Azure_Users.id', 'ald.user_id')
-                  ->orWhereColumn('Azure_Users.userPrincipalName', 'ald.username');
-            });
-            
-            if ($startDate && $endDate) {
-                $join->whereBetween('ald.date_utc', [$startDate, $endDate]);
-            }
-            if ($system && $system !== 'all') {
-                $join->where('ald.system', $system);
-            }
-        })
+->leftJoin('Azure_LoginDetails as ald', function($join) use ($startDate, $endDate, $system) {
+    // Use username matching instead of broken user_id relationship
+    $join->on(\DB::raw('LOWER(LTRIM(RTRIM(Azure_Users.userPrincipalName)))'), '=', \DB::raw('LOWER(LTRIM(RTRIM(ald.username)))'));
+    
+    if ($startDate && $endDate) {
+        $join->whereBetween('ald.date_utc', [$startDate, $endDate]);
+    }
+    if ($system && $system !== 'all') {
+        $join->where('ald.system', $system);
+    }
+})
         // FIXED: Group by the same columns we're selecting
         ->groupBy('Azure_Users.id', 'Azure_Users.userPrincipalName', 'Azure_Users.displayName', 'Azure_Users.mail');
 
@@ -222,160 +225,116 @@ class DashboardController extends Controller
         return response()->view('errors.500', [], 500);
     }
 }
-    private function getActualDateRange()
-    {
-        return Cache::remember('actual_date_range', 1800, function () {
-            $dateRange = SigninLog::selectRaw('MIN(date_utc) as min_date, MAX(date_utc) as max_date')->first();
-            
-            $result = [
-                'min_date' => $dateRange && $dateRange->min_date ? Carbon::parse($dateRange->min_date) : now()->subYear(),
-                'max_date' => $dateRange && $dateRange->max_date ? Carbon::parse($dateRange->max_date) : now(),
-                'has_data' => $dateRange && $dateRange->min_date ? true : false
-            ];
-            
-            Log::info('Actual data range cached', [
-                'min_date' => $result['min_date']->toDateString(),
-                'max_date' => $result['max_date']->toDateString(),
-                'has_data' => $result['has_data']
-            ]);
-            
-            return $result;
-        });
+   private function getActualDateRange()
+{
+    return Cache::remember('actual_date_range', 1800, function () {
+        $dateRange = SigninLog::selectRaw('MIN(date_utc) as min_date, MAX(date_utc) as max_date')->first();
+
+        $minDate = $dateRange?->min_date ? Carbon::parse($dateRange->min_date) : now()->subYear();
+        $maxDate = $dateRange?->max_date ? Carbon::parse($dateRange->max_date) : now();
+        $hasData = $dateRange?->min_date !== null;
+
+        Log::info('Actual data range cached', [
+            'min_date' => $minDate->toDateString(),
+            'max_date' => $maxDate->toDateString(),
+            'has_data' => $hasData
+        ]);
+
+        return [
+            'min_date' => $minDate,
+            'max_date' => $maxDate,
+            'has_data' => $hasData
+        ];
+    });
+}
+
+   private function calculateStats($startDate, $endDate, $system)
+{
+    $cacheKey = 'dashboard_stats_' . md5($startDate->format('Y-m-d') . $endDate->format('Y-m-d') . $system);
+
+    return Cache::remember($cacheKey, 600, function () use ($startDate, $endDate, $system) {
+        $totalUsers = AzureUser::count();
+
+        $signInQuery = SigninLog::query();
+        if ($startDate && $endDate) {
+            $signInQuery->whereBetween('date_utc', [$startDate, $endDate]);
+        }
+        if ($system && $system !== 'all') {
+            $signInQuery->where('system', $system);
+        }
+
+        $totalLogins = $signInQuery->count();
+        $signIns = $signInQuery->latest('date_utc')->limit(100)->get();
+        $lastLogin = $signInQuery->max('date_utc'); // Scoped to filters
+
+        $loggedInCount = $this->getLoggedInUsersCount($startDate, $endDate, $system);
+        $notLoggedInCount = max(0, $totalUsers - $loggedInCount);
+
+        Log::info('Dashboard stats calculated', [
+            'total_users' => $totalUsers,
+            'logged_in_count' => $loggedInCount,
+            'not_logged_in_count' => $notLoggedInCount,
+            'total_logins' => $totalLogins,
+            'system' => $system,
+            'date_range' => [$startDate->toDateString(), $endDate->toDateString()]
+        ]);
+
+        return [
+            'totalUsers' => $totalUsers,
+            'loggedInCount' => $loggedInCount,
+            'notLoggedInCount' => $notLoggedInCount,
+            'totalLogins' => $totalLogins,
+            'lastLogin' => $lastLogin,
+            'signIns' => $signIns,
+            'totalDays' => $startDate->diffInDays($endDate) + 1,
+        ];
+    });
+}
+
+public function getLoggedInUsersCount($startDate, $endDate, $system)
+{
+    Log::info('getLoggedInUsersCount called with corrected username matching', [
+        'startDate' => $startDate->toDateString(),
+        'endDate' => $endDate->toDateString(),
+        'system' => $system
+    ]);
+
+    $sql = "
+        SELECT COUNT(DISTINCT au.id) as count
+        FROM Azure_Users au
+        INNER JOIN Azure_LoginDetails ald 
+            ON LOWER(LTRIM(RTRIM(au.userPrincipalName))) = LOWER(LTRIM(RTRIM(ald.username)))
+        WHERE ald.system = ?
+        AND ald.date_utc BETWEEN ? AND ?
+    ";
+
+    $params = [
+        $system,
+        $startDate->format('Y-m-d H:i:s'),
+        $endDate->format('Y-m-d H:i:s')
+    ];
+
+    try {
+        $result = \DB::select($sql, $params);
+        $count = (int) ($result[0]->count ?? 0);
+
+        Log::info('Username-based query completed', [
+            'count' => $count,
+            'system' => $system,
+            'date_range' => [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')]
+        ]);
+
+        return $count;
+
+    } catch (\Exception $e) {
+        Log::error('Username matching query failed', [
+            'sql' => $sql,
+            'params' => $params,
+            'error' => $e->getMessage()
+        ]);
+        return 0;
     }
-
-    private function calculateStats($startDate, $endDate, $system)
-    {
-        $cacheKey = 'dashboard_stats_' . md5($startDate . $endDate . $system);
-        
-        return Cache::remember($cacheKey, 600, function () use ($startDate, $endDate, $system) {
-            $totalUsers = AzureUser::count();
-            
-            $signInQuery = SigninLog::query();
-            if ($startDate && $endDate) {
-                $signInQuery->whereBetween('date_utc', [$startDate, $endDate]);
-            }
-            if ($system && $system !== 'all') {
-                $signInQuery->where('system', $system);
-            }
-            
-            $totalLogins = $signInQuery->count();
-            $signIns = $signInQuery->latest('date_utc')->limit(100)->get();
-            $lastLogin = SigninLog::max('date_utc');
-            
-            $loggedInCount = $this->getLoggedInUsersCount($startDate, $endDate, $system);
-            $notLoggedInCount = max(0, $totalUsers - $loggedInCount);
-
-            Log::info('Dashboard stats calculated', [
-                'total_users' => $totalUsers,
-                'logged_in_count' => $loggedInCount,
-                'not_logged_in_count' => $notLoggedInCount,
-                'total_logins' => $totalLogins,
-                'system' => $system,
-                'date_range' => [$startDate?->toDateString(), $endDate?->toDateString()]
-            ]);
-
-            return [
-                'totalUsers' => $totalUsers,
-                'loggedInCount' => $loggedInCount,
-                'notLoggedInCount' => $notLoggedInCount,
-                'totalLogins' => $totalLogins,
-                'lastLogin' => $lastLogin,
-                'signIns' => $signIns,
-                'totalDays' => $startDate && $endDate ? $startDate->diffInDays($endDate) + 1 : 365,
-            ];
-        });
-    }
-
-    public function getLoggedInUsersCount($startDate, $endDate, $system)
-    {
-        // Create a cache key based on parameters
-        $cacheKey = 'logged_in_users_count_' . md5($startDate . $endDate . $system);
-        
-        return Cache::remember($cacheKey, 300, function () use ($startDate, $endDate, $system) {
-            $conditions = [];
-            $params = [];
-            
-            if ($system && $system !== 'all') {
-                $conditions[] = "ald.system = ?";
-                $params[] = $system;
-            }
-            
-            if ($startDate && $endDate) {
-                $conditions[] = "ald.date_utc BETWEEN ? AND ?";
-                $params[] = $startDate;
-                $params[] = $endDate;
-            } elseif ($startDate) {
-                $conditions[] = "ald.date_utc >= ?";
-                $params[] = $startDate;
-            }
-            
-            $whereClause = !empty($conditions) ? 'WHERE ' . implode(' AND ', $conditions) : '';
-            
-            // Enhanced matching strategies with better SQL
-            $strategies = [
-                'exact_id_match' => "
-                    SELECT COUNT(DISTINCT au.id) as count 
-                    FROM Azure_Users au 
-                    INNER JOIN Azure_LoginDetails ald ON au.id = ald.user_id 
-                    {$whereClause}
-                ",
-                'username_exact_match' => "
-                    SELECT COUNT(DISTINCT au.id) as count 
-                    FROM Azure_Users au 
-                    INNER JOIN Azure_LoginDetails ald ON au.userPrincipalName = ald.username
-                    {$whereClause}
-                ",
-                'username_case_insensitive' => "
-                    SELECT COUNT(DISTINCT au.id) as count 
-                    FROM Azure_Users au 
-                    INNER JOIN Azure_LoginDetails ald ON LOWER(au.userPrincipalName) = LOWER(ald.username)
-                    {$whereClause}
-                ",
-                'sign_in_identifier_match' => "
-                    SELECT COUNT(DISTINCT au.id) as count 
-                    FROM Azure_Users au 
-                    INNER JOIN Azure_LoginDetails ald ON LOWER(au.userPrincipalName) = LOWER(ald.sign_in_identifier)
-                    {$whereClause} AND ald.sign_in_identifier IS NOT NULL
-                ",
-                'mail_match' => "
-                    SELECT COUNT(DISTINCT au.id) as count 
-                    FROM Azure_Users au 
-                    INNER JOIN Azure_LoginDetails ald ON LOWER(au.mail) = LOWER(ald.username)
-                    {$whereClause} AND au.mail IS NOT NULL
-                "
-            ];
-
-            foreach ($strategies as $strategy => $sql) {
-                try {
-                    $result = \DB::select($sql, $params);
-                    $count = (int) ($result[0]->count ?? 0);
-                    
-                    if ($count > 0) {
-                        Log::info("Logged in users count calculated using {$strategy}", [
-                            'count' => $count,
-                            'system' => $system,
-                            'date_range' => [$startDate?->toDateString(), $endDate?->toDateString()]
-                        ]);
-                        return $count;
-                    }
-                } catch (\Exception $e) {
-                    Log::warning("Strategy {$strategy} failed", [
-                        'error' => $e->getMessage()
-                    ]);
-                    continue;
-                }
-            }
-
-            Log::warning('No matches found with any strategy', [
-                'system' => $system,
-                'date_range' => [$startDate?->toDateString(), $endDate?->toDateString()],
-                'total_users' => AzureUser::count(),
-                'total_signin_logs' => SigninLog::count()
-            ]);
-            
-            return 0;
-        });
-    }
+}
 
     /**
      * Clear dashboard-related caches (can be called after imports)
@@ -721,4 +680,27 @@ class DashboardController extends Controller
             ]);
         }
     }
+    public function debugRelationships(Request $request) 
+{
+    $system = $request->input('system', 'SCM');
+    
+    // Check data existence
+    $diagnostics = [
+        'total_users' => \DB::select("SELECT COUNT(*) as count FROM Azure_Users")[0]->count,
+        'total_logins' => \DB::select("SELECT COUNT(*) as count FROM Azure_LoginDetails")[0]->count,
+        'logins_with_user_id' => \DB::select("SELECT COUNT(*) as count FROM Azure_LoginDetails WHERE user_id IS NOT NULL")[0]->count,
+        'logins_with_username' => \DB::select("SELECT COUNT(*) as count FROM Azure_LoginDetails WHERE username IS NOT NULL")[0]->count,
+        'system_logins' => \DB::select("SELECT COUNT(*) as count FROM Azure_LoginDetails WHERE system = ?", [$system])[0]->count,
+    ];
+    
+    // Sample data
+    $sampleLogins = \DB::select("SELECT TOP 5 user_id, username, system, date_utc FROM Azure_LoginDetails WHERE system = ? ORDER BY date_utc DESC", [$system]);
+    $sampleUsers = \DB::select("SELECT TOP 5 id, userPrincipalName, displayName FROM Azure_Users");
+    
+    return response()->json([
+        'diagnostics' => $diagnostics,
+        'sample_logins' => $sampleLogins,
+        'sample_users' => $sampleUsers
+    ], 200, [], JSON_PRETTY_PRINT);
+}
 }

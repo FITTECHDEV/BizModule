@@ -42,10 +42,10 @@ public function userActivityReport(Request $request)
             DB::raw('MIN([dbo].[Azure_LoginDetails].date_utc) AS first_login'),
             DB::raw('MAX([dbo].[Azure_LoginDetails].date_utc) AS last_login')
         ])
-        ->leftJoin('dbo.Azure_LoginDetails', function ($join) use ($startDate, $endDate) {
-            $join->on('dbo.Azure_LoginDetails.user_id', '=', 'Azure_Users.id')
-                 ->whereBetween('dbo.Azure_LoginDetails.date_utc', [$startDate, $endDate]);
-        });
+       ->leftJoin('dbo.Azure_LoginDetails', function ($join) use ($startDate, $endDate) {
+    $join->on('dbo.Azure_LoginDetails.username', '=', 'Azure_Users.userPrincipalName')
+         ->whereBetween('dbo.Azure_LoginDetails.date_utc', [$startDate, $endDate]);
+});
 
     // Apply search filter if provided
     if ($request->filled('search')) {

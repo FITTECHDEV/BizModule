@@ -58,23 +58,24 @@ public function getValidationErrors(): array
 
     
     /** Statistics tracking */
-    private array $stats = [
-        'processed' => 0,
-        'inserted' => 0,
-        'skipped' => 0,
-        'errors' => 0,
-        'bulk_operations' => 0,
-        'single_row_fallbacks' => 0,
-        'users_created' => 0,
-        'users_found' => 0,
-        'users_matched_by_strategy' => [
-            'exact_id' => 0,
-            'username' => 0,
-            'email' => 0,
-            'sign_in_identifier' => 0,
-            'created_new' => 0
-        ]
-    ];
+  private array $stats = [
+    'processed' => 0,
+    'inserted' => 0,
+    'skipped' => 0,
+    'errors' => 0,
+    'bulk_operations' => 0,
+    'single_row_fallbacks' => 0,
+    'users_created' => 0,
+    'users_found' => 0,
+    'users_id_generated' => 0, // ADDED THIS LINE
+    'users_matched_by_strategy' => [
+        'exact_id' => 0,
+        'username' => 0,
+        'email' => 0,
+        'sign_in_identifier' => 0,
+        'created_new' => 0
+    ]
+];
     
     /** Memory management */
     private int $cacheCleanupInterval = 1000;
@@ -205,20 +206,44 @@ private function getUserFromCacheOrCreate(string $userPrincipalName, ?string $us
     // Check cache first - use lowercase for consistent caching
     $cacheKey = strtolower($userPrincipalName);
     if (isset($this->userCache[$cacheKey])) {
-        $this->stats['users_found']++;
-        $this->stats['users_matched_by_strategy']['username']++;
-        return $this->userCache[$cacheKey];
-    }
-
-    // Try multiple matching strategies
-    $user = $this->findUserByMultipleStrategies($userPrincipalName, $userIdFromCsv);
-    
-    if ($user) {
-        // Cache with lowercase key for consistency
-        $this->userCache[$cacheKey] = $user;
+        $user = $this->userCache[$cacheKey];
+        
+        // CRITICAL FIX: Check if cached user has null ID and fix it
+        if (empty($user->id)) {
+            $user = $this->fixUserNullId($user);
+            if ($user) {
+                $this->userCache[$cacheKey] = $user;
+            }
+        }
+        
         $this->stats['users_found']++;
         return $user;
     }
+
+    // Try multiple matching strategies
+ $user = $this->findUserByMultipleStrategies($userPrincipalName, $userIdFromCsv);
+
+if ($user) {
+    // ADD THIS BLOCK - Check for null ID and fix it
+    if (empty($user->id)) {
+        Log::info('🔧 Found user with null ID, fixing...', [
+            'username' => $userPrincipalName
+        ]);
+        $user = $this->fixUserNullId($user);
+        if (!$user) {
+            Log::error('❌ Failed to fix null ID, skipping user', [
+                'username' => $userPrincipalName
+            ]);
+            return null;
+        }
+    }
+    // END OF NEW BLOCK
+    
+    // Cache with lowercase key for consistency
+    $this->userCache[$cacheKey] = $user;
+    $this->stats['users_found']++;
+    return $user;
+}
 
     // Create new user if enabled and not found
     if (env('SIGNIN_IMPORT_CREATE_USERS', false)) {
@@ -233,6 +258,104 @@ private function getUserFromCacheOrCreate(string $userPrincipalName, ?string $us
     ]);
     
     return null;
+}
+
+/**
+ * CRITICAL METHOD: Fixes users with null IDs by generating new UUIDs
+ */
+private function fixUserNullId($user)
+{
+    if (!$user) {
+        return null;
+    }
+
+    if (!empty($user->id)) {
+        return $user; // Already has valid ID
+    }
+
+    try {
+        // Generate new UUID
+        $newId = (string) Str::uuid();
+        
+        // Update the user record in database
+        $updated = DB::table('Azure_Users')
+            ->where('userPrincipalName', $user->userPrincipalName)
+            ->update(['id' => $newId]);
+        
+        if ($updated) {
+            // Update the model instance
+            $user->id = $newId;
+            
+            Log::info('✅ Generated ID for user', [
+                'username' => $user->userPrincipalName,
+                'new_id' => $newId
+            ]);
+            
+            // Track this fix
+            $this->stats['users_id_generated'] = ($this->stats['users_id_generated'] ?? 0) + 1;
+            
+            return $user;
+        } else {
+            Log::error('❌ Failed to update user ID in database', [
+                'username' => $user->userPrincipalName
+            ]);
+            return null;
+        }
+        
+    } catch (\Exception $e) {
+        Log::error('❌ Exception while fixing user ID', [
+            'username' => $user->userPrincipalName ?? 'unknown',
+            'error' => $e->getMessage()
+        ]);
+        return null;
+    }
+}
+
+
+
+/**
+ * CRITICAL NEW METHOD: Ensures user has valid ID, generates one if missing
+ */
+private function ensureUserHasValidId($user)
+{
+    if (!empty($user->id)) {
+        return $user; // Already has valid ID
+    }
+
+    try {
+        // Generate new UUID
+        $newId = (string) Str::uuid();
+        
+        // Update the user record in database
+        DB::table('Azure_Users')
+            ->where('userPrincipalName', $user->userPrincipalName)
+            ->update(['id' => $newId]);
+        
+        // Update the model instance
+        $user->id = $newId;
+        $user->refresh(); // Reload from database to ensure consistency
+        
+        Log::info('Successfully generated ID for existing user', [
+            'username' => $user->userPrincipalName,
+            'new_id' => $newId,
+            'display_name' => $user->displayName ?? 'unknown'
+        ]);
+        
+        // Track this as a user update
+        $this->stats['users_id_generated'] = ($this->stats['users_id_generated'] ?? 0) + 1;
+        
+        return $user;
+        
+    } catch (\Exception $e) {
+        Log::error('Failed to generate ID for user', [
+            'username' => $user->userPrincipalName ?? 'unknown',
+            'error' => $e->getMessage(),
+            'trace' => substr($e->getTraceAsString(), 0, 300)
+        ]);
+        
+        // Return user as-is, let validation handle the null ID
+        return $user;
+    }
 }
 
 
@@ -1608,10 +1731,10 @@ private function bulkInsertUserSystemAssociations(array $associations)
         $key = $assoc['user_id'] . '|' . $assoc['application_id'];
         if (!isset($uniqueAssociations[$key])) {
             $uniqueAssociations[$key] = [
+                // REMOVE Id - let SQL Server auto-generate the bigint
                 'user_id' => $assoc['user_id'],
-                'application_id' => $assoc['application_id'],
-                'created_at' => now(),
-                'updated_at' => now()
+                'application_id' => (string) $assoc['application_id'], // Keep as string
+                // REMOVE created_at and updated_at - columns don't exist
             ];
         }
     }
@@ -1641,22 +1764,13 @@ private function bulkInsertUserSystemAssociations(array $associations)
                 ->mapWithKeys(fn($row) => [$row->user_id . '|' . $row->application_id => true])
                 ->all();
 
-            // Filter out existing associations and add IDs if needed
+            // Filter out existing associations - NO ID COLUMN NEEDED
             $newAssociations = [];
             foreach ($chunk as $assoc) {
                 $key = $assoc['user_id'] . '|' . $assoc['application_id'];
-                if (isset($existingPairs[$key])) {
-                    continue; // Skip existing association
+                if (!isset($existingPairs[$key])) {
+                    $newAssociations[] = $assoc; // Already formatted correctly above
                 }
-
-                // Check if the table expects an ID column
-                $tableColumns = Schema::getColumnListing('Azure_Application_UserMapping');
-                
-                if (in_array('id', $tableColumns) || in_array('Id', $tableColumns)) {
-                    $assoc[in_array('id', $tableColumns) ? 'id' : 'Id'] = (string) Str::uuid();
-                }
-
-                $newAssociations[] = $assoc;
             }
 
             if (!empty($newAssociations)) {
@@ -1666,11 +1780,6 @@ private function bulkInsertUserSystemAssociations(array $associations)
                     'chunk_index' => $chunkIndex + 1,
                     'new_associations' => count($newAssociations),
                     'skipped_existing' => count($chunk) - count($newAssociations)
-                ]);
-            } else {
-                Log::debug('No new associations to insert in chunk', [
-                    'chunk_index' => $chunkIndex + 1,
-                    'all_existing' => count($chunk)
                 ]);
             }
 
@@ -1684,62 +1793,58 @@ private function bulkInsertUserSystemAssociations(array $associations)
             $this->insertUserSystemAssociationsIndividually($chunk);
         }
     }
-
-    Log::info('User-application associations processing completed', [
-        'total_unique_associations' => count($uniqueAssociations),
-        'processing_chunks' => ceil(count($uniqueAssociations) / 100)
-    ]);
 }
 
-    private function insertUserSystemAssociationsIndividually(array $associations)
-    {
-        $insertedCount = 0;
-        $skippedCount = 0;
+   private function insertUserSystemAssociationsIndividually(array $associations)
+{
+    $insertedCount = 0;
+    $skippedCount = 0;
 
-        foreach ($associations as $assoc) {
-            try {
-                $exists = DB::table('Azure_Application_UserMapping')
-                    ->where('user_id', $assoc['user_id'])
-                    ->where('application_id', $assoc['application_id'])
-                    ->exists();
+    foreach ($associations as $assoc) {
+        try {
+            $exists = DB::table('Azure_Application_UserMapping')
+                ->where('user_id', $assoc['user_id'])
+                ->where('application_id', $assoc['application_id'])
+                ->exists();
 
-                if (!$exists) {
-                    DB::table('Azure_Application_UserMapping')->insert([
-                        'Id' => (string) Str::uuid(),
-                        'user_id' => $assoc['user_id'],
-                        'application_id' => $assoc['application_id']
-                    ]);
-                    $insertedCount++;
-                } else {
-                    $skippedCount++;
-                }
+            if (!$exists) {
+                DB::table('Azure_Application_UserMapping')->insert([
+                    // REMOVE Id - let SQL Server auto-generate
+                    'user_id' => $assoc['user_id'],
+                    'application_id' => (string) $assoc['application_id']
+                    // REMOVE created_at and updated_at
+                ]);
+                $insertedCount++;
+            } else {
+                $skippedCount++;
+            }
 
-            } catch (\Exception $e) {
-                if (str_contains($e->getMessage(), 'duplicate') ||
-                    str_contains($e->getMessage(), 'UNIQUE constraint') ||
-                    str_contains($e->getMessage(), 'PRIMARY KEY constraint')) {
-                    $skippedCount++;
-                    Log::debug('Duplicate user-application association skipped', [
-                        'user_id' => $assoc['user_id'],
-                        'application_id' => $assoc['application_id']
-                    ]);
-                } else {
-                    Log::error('Failed to insert individual user-application association', [
-                        'user_id' => $assoc['user_id'],
-                        'application_id' => $assoc['application_id'],
-                        'error' => $e->getMessage()
-                    ]);
-                }
+        } catch (\Exception $e) {
+            if (str_contains($e->getMessage(), 'duplicate') ||
+                str_contains($e->getMessage(), 'UNIQUE constraint') ||
+                str_contains($e->getMessage(), 'PRIMARY KEY constraint')) {
+                $skippedCount++;
+                Log::debug('Duplicate user-application association skipped', [
+                    'user_id' => $assoc['user_id'],
+                    'application_id' => $assoc['application_id']
+                ]);
+            } else {
+                Log::error('Failed to insert individual user-application association', [
+                    'user_id' => $assoc['user_id'],
+                    'application_id' => $assoc['application_id'],
+                    'error' => $e->getMessage()
+                ]);
             }
         }
-
-        if ($insertedCount > 0 || $skippedCount > 0) {
-            Log::info('Individual user-application associations completed', [
-                'inserted' => $insertedCount,
-                'skipped' => $skippedCount
-            ]);
-        }
     }
+
+    if ($insertedCount > 0 || $skippedCount > 0) {
+        Log::info('Individual user-application associations completed', [
+            'inserted' => $insertedCount,
+            'skipped' => $skippedCount
+        ]);
+    }
+}
 
     private function extractDateUtc($row)
     {
@@ -1833,18 +1938,20 @@ private function bulkInsertUserSystemAssociations(array $associations)
         return (int) $numericId;
     }
 
-    public function getStats(): array
+
+public function getStats(): array
 {
-    $baseStats = [
-        'processed' => $this->stats['processed'],
-        'inserted' => $this->stats['inserted'],
-        'skipped' => $this->stats['skipped'],
-        'errors' => $this->stats['errors'],
-        'users_created' => $this->stats['users_created'],
-        'users_found' => $this->stats['users_found'],
-        'bulk_operations' => $this->stats['bulk_operations'],
-        'single_row_fallbacks' => $this->stats['single_row_fallbacks']
-    ];
+  $baseStats = [
+    'processed' => $this->stats['processed'],
+    'inserted' => $this->stats['inserted'],
+    'skipped' => $this->stats['skipped'],
+    'errors' => $this->stats['errors'],
+    'users_created' => $this->stats['users_created'],
+    'users_found' => $this->stats['users_found'],
+    'users_id_generated' => $this->stats['users_id_generated'] ?? 0, // ADD THIS LINE
+    'bulk_operations' => $this->stats['bulk_operations'],
+    'single_row_fallbacks' => $this->stats['single_row_fallbacks']
+];
     
     $calculatedStats = [
         'success_rate' => $this->stats['processed'] > 0 
@@ -2159,8 +2266,5 @@ private function categorizeValidationError(string $error): string
         return 'other_validation_error';
     }
 }
-
-
-
 
 }
