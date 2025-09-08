@@ -255,81 +255,115 @@ class UserController extends Controller
         }
     }
 
-    public function show(Request $request, $identifier)
-    {
-        Log::info('UserController@show called', [
-            'identifier' => $identifier,
-            'request_url' => $request->fullUrl(),
-            'request_input' => $request->all(),
+   public function show(Request $request, $identifier)
+{
+    Log::info('UserController@show called', [
+        'identifier'    => $identifier,
+        'request_url'   => $request->fullUrl(),
+        'request_input' => $request->all(),
+    ]);
+
+    try {
+        // 🔹 Resolve user (UUID, UPN, or fallback email)
+        $user = AzureUser::findByIdentifier($identifier);
+        if (!$user) {
+            Log::notice('User not found in show', ['identifier' => $identifier]);
+            abort(404, 'User not found.');
+        }
+
+        // 🔹 Handle date range
+        $range        = $request->input('range', 'this_month');
+        $system       = $request->input('system');
+        $selectedDate = $request->input('date');
+
+        if ($selectedDate && strtotime($selectedDate)) {
+            $date  = Carbon::parse($selectedDate);
+            $start = $date->copy()->startOfDay();
+            $end   = $date->copy()->endOfDay();
+            $range = 'custom';
+        } else {
+            [$start, $end] = $this->resolveDateRange($range);
+        }
+
+        Log::info('Final Date Range', [
+            'start'  => $start->toDateTimeString(),
+            'end'    => $end->toDateTimeString(),
+            'range'  => $range,
+            'system' => $system,
         ]);
 
-        try {
-            $user = AzureUser::findByIdentifier($identifier);
-            if (!$user) {
-                Log::notice('User not found in show', ['identifier' => $identifier]);
-                abort(404, 'User not found.');
-            }
+        // 🔹 Primary query: by user_id (UUID)
+        $signInsQuery = $user->signIns()
+            ->whereBetween('date_utc', [$start, $end]);
 
-            $range = $request->input('range', 'this_month');
-            $system = $request->input('system');
+        if ($system) {
+            $signInsQuery->whereRaw('LOWER(system) = ?', [strtolower($system)]);
+        }
 
-            [$start, $end] = $this->resolveDateRange($range);
+        $signIns = $signInsQuery
+            ->orderBy('date_utc', 'desc')
+            ->paginate($this->perPage)
+            ->withQueryString();
 
-            Log::info('Resolved Date Range', [
-                'start' => $start->toDateTimeString(),
-                'end' => $end->toDateTimeString()
+        // 🔹 Fallback: by username (UPN) if no sign-ins via UUID
+        if ($signIns->isEmpty() && !empty($user->userPrincipalName)) {
+            Log::info('Fallback to username for signIns', [
+                'userPrincipalName' => $user->userPrincipalName,
             ]);
 
-            $signIns = $user->signIns()
+            $signIns = SigninLog::whereRaw('LOWER(username) = ?', [strtolower($user->userPrincipalName)])
                 ->whereBetween('date_utc', [$start, $end])
-                ->when($system, function ($query) use ($system) {
-                    return $query->where(DB::raw('LOWER(system)'), strtolower($system));
-                })
+                ->when($system, fn($q) => $q->whereRaw('LOWER(system) = ?', [strtolower($system)]))
                 ->orderBy('date_utc', 'desc')
                 ->paginate($this->perPage)
                 ->withQueryString();
-
-            // FIXED: SQL Server compatible system usage query
-            $recentApplications = $user->signIns()
-                ->whereBetween('date_utc', [$start, $end])
-                ->select([
-                    'system',
-                    DB::raw('COUNT(*) as usage_count'),
-                    DB::raw('MAX(date_utc) as last_used')
-                ])
-                ->whereNotNull('system')
-                ->groupBy('system')
-                ->orderBy('last_used', 'desc')
-                ->limit(10)
-                ->get();
-
-            // If you need concatenated systems, handle it in PHP instead of SQL
-            $systemsList = $recentApplications->pluck('system')->unique()->join(', ');
-
-            $systems = System::orderBy('name')->pluck('name')->toArray();
-            $rangeLabel = $this->getRangeLabel($range);
-
-            Log::info('UserController@show loaded', [
-                'user_id' => $user->id,
-                'range' => $range,
-                'system' => $system,
-                'sign_ins_count' => $signIns->total(),
-                'recent_applications_count' => $recentApplications->count(),
-            ]);
-
-            return view('logintracker.users.show', compact(
-                'user', 'signIns', 'start', 'end', 'system', 'range', 'rangeLabel', 'recentApplications', 'systems', 'systemsList'
-            ));
-
-        } catch (\Exception $e) {
-            Log::error('UserController@show failed', [
-                'identifier' => $identifier,
-                'error_message' => $e->getMessage(),
-                'stack_trace' => $e->getTraceAsString(),
-            ]);
-            abort(500, 'An unexpected error occurred.');
         }
+
+        // 🔹 Recent applications used by the user
+        $recentApplications = SigninLog::where('user_id', $user->id)
+            ->whereBetween('date_utc', [$start, $end])
+            ->when($system, fn($q) => $q->whereRaw('LOWER(system) = ?', [strtolower($system)]))
+            ->whereNotNull('application')
+            ->where('application', '!=', '')
+            ->select([
+                'application',
+                'system',
+                DB::raw('COUNT(*) as usage_count'),
+                DB::raw('MAX(date_utc) as last_used'),
+            ])
+            ->groupBy('application', 'system')
+            ->orderBy('last_used', 'desc')
+            ->limit(10)
+            ->get();
+
+        // 🔹 Load all systems for filters
+        $systems    = System::orderBy('name')->pluck('name')->toArray();
+        $rangeLabel = $this->getRangeLabel($range);
+
+        return view('logintracker.users.show', compact(
+            'user',
+            'signIns',
+            'start',
+            'end',
+            'system',
+            'range',
+            'rangeLabel',
+            'recentApplications',
+            'systems',
+            'selectedDate'
+        ));
+
+    } catch (\Throwable $e) {
+        Log::error('UserController@show failed', [
+            'identifier'    => $identifier,
+            'error_message' => $e->getMessage(),
+            'stack_trace'   => $e->getTraceAsString(),
+        ]);
+        abort(500, 'An unexpected error occurred.');
     }
+}
+
+
 
     public function loggedInUsers(Request $request)
     {

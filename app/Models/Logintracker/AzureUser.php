@@ -138,48 +138,45 @@ class AzureUser extends Authenticatable
             ->exists();
     }
 
-   public static function findByIdentifier(string $identifier): ?self
-{
-    if (empty($identifier) || strlen($identifier) > 255) {
-        Log::error('Invalid identifier length for Azure_Users', ['identifier' => $identifier]);
+public static function findByIdentifier(string $identifier): ?self
+    {
+        if (empty($identifier) || strlen($identifier) > 255) {
+            Log::error('Invalid identifier length for Azure_Users', ['identifier' => $identifier]);
+            return null;
+        }
+
+        $identifier = strtolower(trim($identifier));
+
+        // Primary match
+        $user = self::whereRaw('LOWER([userPrincipalName]) = ?', [$identifier])->first();
+        if ($user) return $user;
+
+        // Only use columns that actually exist in your table based on fillable array
+        $fallbackFields = [
+            'mail',
+            'alternateEmailAddress',
+        ];
+
+        foreach ($fallbackFields as $field) {
+            $user = self::whereRaw("LOWER($field) = ?", [$identifier])->first();
+            if ($user) {
+                Log::info('User resolved via fallback field', ['field' => $field, 'identifier' => $identifier]);
+                return $user;
+            }
+        }
+
+        // UUID match
+        if (preg_match('/^[0-9a-f-]{36}$/i', $identifier)) {
+            $user = self::find($identifier);
+            if ($user) {
+                Log::info('User resolved via UUID', ['identifier' => $identifier]);
+                return $user;
+            }
+        }
+
+        Log::warning('Failed to resolve user by any identifier', ['identifier' => $identifier]);
         return null;
     }
-
-    $identifier = strtolower(trim($identifier));
-
-    // Primary match
-    $user = self::whereRaw('LOWER([userPrincipalName]) = ?', [$identifier])->first();
-    if ($user) return $user;
-
-    // Fallback fields
-    $fallbackFields = [
-        'mail',
-        'alternateEmailAddress',
-        'username',
-        '[user]', // yes, literal brackets
-        'sign_in_identifier',
-    ];
-
-    foreach ($fallbackFields as $field) {
-        $user = self::whereRaw("LOWER($field) = ?", [$identifier])->first();
-        if ($user) {
-            Log::info('User resolved via fallback field', ['field' => $field, 'identifier' => $identifier]);
-            return $user;
-        }
-    }
-
-    // UUID match
-    if (preg_match('/^[0-9a-f-]{36}$/i', $identifier)) {
-        $user = self::find($identifier);
-        if ($user) {
-            Log::info('User resolved via UUID', ['identifier' => $identifier]);
-            return $user;
-        }
-    }
-
-    Log::warning('Failed to resolve user by any identifier', ['identifier' => $identifier]);
-    return null;
-}
 
     public static function findOrCreateUser(string $userPrincipalName, ?string $displayName = null, ?string $userIdFromCsv = null): ?self
     {

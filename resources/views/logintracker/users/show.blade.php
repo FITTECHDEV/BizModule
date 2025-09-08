@@ -17,11 +17,15 @@
                 <div class="col-md-6">
                     <div class="row mb-3">
                         <div class="col-md-5 fw-bold">User Principal Name</div>
+                        <div class="col-md-7">{{ $user->userPrincipalName ?? 'N/A' }}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-5 fw-bold">Display Name</div>
                         <div class="col-md-7">{{ $user->displayName ?? 'N/A' }}</div>
                     </div>
                     <div class="row mb-3">
                         <div class="col-md-5 fw-bold">Email</div>
-                        <div class="col-md-7">{{ $user->userPrincipalName ?? 'N/A' }}</div>
+                        <div class="col-md-7">{{ $user->mail ?? 'N/A' }}</div>
                     </div>
                     <div class="row mb-3">
                         <div class="col-md-5 fw-bold">Job Title</div>
@@ -61,6 +65,66 @@
         </div>
     </div>
 
+    {{-- FIXED: Filter Form --}}
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Filter Data</h5>
+        </div>
+        <div class="card-body">
+<form method="GET" 
+      action="{{ route('reporting.users.show', $user->userPrincipalName ?? $user->id) }}" 
+      id="filterForm">
+                <div class="row align-items-end">
+                    <div class="col-md-3">
+                        <label for="range" class="form-label">Date Range</label>
+                        <select name="range" id="range" class="form-select">
+                            <option value="this_month" {{ ($range ?? 'this_month') == 'this_month' ? 'selected' : '' }}>This Month</option>
+                            <option value="last_month" {{ ($range ?? '') == 'last_month' ? 'selected' : '' }}>Last Month</option>
+                            <option value="last_3_months" {{ ($range ?? '') == 'last_3_months' ? 'selected' : '' }}>Last 3 Months</option>
+                            <option value="custom" {{ ($range ?? '') == 'custom' ? 'selected' : '' }}>Custom Date</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3" id="customDateDiv" style="{{ ($range ?? '') == 'custom' ? '' : 'display: none;' }}">
+                        <label for="date" class="form-label">Select Date</label>
+                        <input type="date" name="date" id="date" class="form-control" value="{{ $selectedDate ?? '' }}">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="system" class="form-label">System</label>
+                        <select name="system" id="system" class="form-select">
+                            <option value="">All Systems</option>
+                            @foreach($systems as $systemOption)
+                                <option value="{{ $systemOption }}" {{ ($system ?? '') == $systemOption ? 'selected' : '' }}>
+                                    {{ $systemOption }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <button type="submit" class="btn btn-primary">Apply Filter</button>
+<a href="{{ route('reporting.users.show', $user->userPrincipalName ?? $user->id) }}" 
+   class="btn btn-outline-secondary">
+   Reset
+</a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {{-- Current Filter Display --}}
+    @if(isset($start) && isset($end))
+        <div class="alert alert-info mb-4">
+            <strong>Showing data for:</strong> 
+            {{ $start->format('M j, Y') }} 
+            @if($start->format('Y-m-d') != $end->format('Y-m-d'))
+                to {{ $end->format('M j, Y') }}
+            @endif
+            @if($system)
+                | System: <strong>{{ $system }}</strong>
+            @endif
+        </div>
+    @endif
+
     {{-- Recent Applications Used --}}
     <div class="card mb-4">
         <div class="card-header">
@@ -68,7 +132,7 @@
         </div>
         <div class="card-body">
             @if ($recentApplications->isEmpty())
-                <div class="alert alert-info">No recent application usage found.</div>
+                <div class="alert alert-info">No recent application usage found for the selected date range.</div>
             @else
                 <div class="row">
                 @foreach ($recentApplications as $app)
@@ -77,13 +141,8 @@
                             <div class="card-body">
                                 <h5 class="card-title fs-5">{{ $app->application ?? 'Unknown App' }}</h5>
                                 <p class="card-text fs-6">
-                                    @php
-                                        $applicationName = $app->application ?? 'Unknown App';
-                                        $systemNames = $app->systems ?? 'N/A';
-                                        $showSystems = $systemNames !== 'N/A' && strtolower($applicationName) !== strtolower($systemNames);
-                                    @endphp
-                                    @if($showSystems)
-                                        <span class="text-muted">Systems: {{ $systemNames }}</span><br>
+                                    @if($app->system && $app->system != $app->application)
+                                        <span class="text-muted">System: {{ $app->system }}</span><br>
                                     @endif
                                     <span class="badge bg-primary fs-6">{{ $app->usage_count }} logins</span><br>
                                     <span class="text-muted">Last used: {{ \Carbon\Carbon::parse($app->last_used)->format('M j, Y g:i A') }}</span>
@@ -97,28 +156,20 @@
         </div>
     </div>
 
-
-
     {{-- Sign In History Table --}}
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h4 class="mb-0">Sign In History (Last 30 Days)</h4>
+        <h4 class="mb-0">Sign In History</h4>
         <div class="d-flex gap-3">
             {{-- Search Field --}}
             <div class="input-group" style="width: 300px;">
                 <span class="input-group-text"><i class="fas fa-search"></i></span>
                 <input type="text" class="form-control" id="applicationSearch" placeholder="Search applications...">
             </div>
-            {{-- Calendar --}}
-            <div class="input-group" style="width: 250px;">
-                <span class="input-group-text"><i class="fas fa-calendar-alt"></i></span>
-                <input type="date" class="form-control" id="dateFilter">
-                <button class="btn btn-outline-secondary" type="button" id="clearDate" title="Clear date filter">Clear</button>
-            </div>
         </div>
     </div>
 
     @if ($signIns->isEmpty())
-        <div class="alert alert-info">No login history available.</div>
+        <div class="alert alert-info">No login history available for the selected date range.</div>
     @else
         <table class="table table-striped">
             <thead class="table-dark">
@@ -157,7 +208,6 @@
         </div>
     @endif
 
-
     {{-- Back to Dashboard --}}
     <div class="mt-4">
         <a href="{{ route('dashboard') }}" class="btn btn-secondary">← Back to Dashboard</a>
@@ -166,6 +216,35 @@
 </div>
 
 <script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle range selection change
+    const rangeSelect = document.getElementById('range');
+    const customDateDiv = document.getElementById('customDateDiv');
+    const dateInput = document.getElementById('date');
+    
+    rangeSelect.addEventListener('change', function() {
+        if (this.value === 'custom') {
+            customDateDiv.style.display = 'block';
+            dateInput.setAttribute('required', 'required');
+        } else {
+            customDateDiv.style.display = 'none';
+            dateInput.removeAttribute('required');
+            dateInput.value = '';
+        }
+    });
+    
+    // Auto-submit form when range changes (except for custom)
+    rangeSelect.addEventListener('change', function() {
+        if (this.value !== 'custom') {
+            document.getElementById('filterForm').submit();
+        }
+    });
+    
+    // Auto-submit when system changes
+    document.getElementById('system').addEventListener('change', function() {
+        document.getElementById('filterForm').submit();
+    });
+    
     // Search functionality for applications
     document.getElementById('applicationSearch').addEventListener('input', function() {
         const searchTerm = this.value.toLowerCase();
@@ -181,61 +260,17 @@
         });
     });
     
-    // Date filter functionality
-    document.getElementById('dateFilter').addEventListener('change', function() {
-        if (this.value) {
-            const selectedDate = new Date(this.value);
-            const tableRows = document.querySelectorAll('#signInTableBody tr');
-            
-            tableRows.forEach(row => {
-                const dateCell = row.cells[0].textContent;
-                const rowDate = new Date(dateCell);
-                
-                if (rowDate.toDateString() === selectedDate.toDateString()) {
-                    row.style.display = '';
-                } else {
-                    row.style.display = 'none';
-                }
-            });
-        }
-    });
+    // Restore scroll position after page load
+    const savedScrollPos = sessionStorage.getItem('scrollPosition');
+    if (savedScrollPos) {
+        window.scrollTo(0, parseInt(savedScrollPos));
+        sessionStorage.removeItem('scrollPosition');
+    }
     
-    // Clear date filter
-    document.getElementById('clearDate').addEventListener('click', function() {
-        document.getElementById('dateFilter').value = '';
-        const tableRows = document.querySelectorAll('#signInTableBody tr');
-        tableRows.forEach(row => {
-            row.style.display = '';
-        });
+    // Store scroll position before form submission
+    document.getElementById('filterForm').addEventListener('submit', function() {
+        sessionStorage.setItem('scrollPosition', window.pageYOffset);
     });
-    
-    // Prevent pagination from jumping to top
-    document.addEventListener('DOMContentLoaded', function() {
-        const paginationContainer = document.getElementById('pagination-container');
-        if (paginationContainer) {
-            paginationContainer.addEventListener('click', function(e) {
-                if (e.target.tagName === 'A' && e.target.href) {
-                    e.preventDefault();
-                    
-                    // Get the current scroll position
-                    const currentScrollPos = window.pageYOffset;
-                    
-                    // Navigate to the new page
-                    window.location.href = e.target.href;
-                    
-                    // Store scroll position to restore after page load
-                    sessionStorage.setItem('scrollPosition', currentScrollPos);
-                }
-            });
-        }
-        
-        // Restore scroll position after page load
-        const savedScrollPos = sessionStorage.getItem('scrollPosition');
-        if (savedScrollPos) {
-            window.scrollTo(0, parseInt(savedScrollPos));
-            sessionStorage.removeItem('scrollPosition');
-        }
-    });
-</script>
+});
 
 @endsection
