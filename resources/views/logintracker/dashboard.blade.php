@@ -166,9 +166,7 @@
         </div>
     </div>
 
-    
-<style>
-        /* Card hover effects */
+    <style>
         .card-hover {
             transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
             cursor: pointer;
@@ -183,7 +181,6 @@
             transform: translateY(-2px);
         }
 
-        /* Table styling */
         .table-responsive {
             border-radius: 0.375rem;
             overflow: hidden;
@@ -194,201 +191,82 @@
             font-size: 0.875rem;
         }
 
-        /* IMPROVED COMPACT PAGINATION STYLES */
+        /* Compact Pagination Styles */
         .compact-pagination {
             display: flex;
             justify-content: center;
             align-items: center;
-            margin: 15px 0;
         }
 
         .compact-pagination .pagination {
-            margin: 0 !important;
-            padding: 0;
-            gap: 3px;
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-        }
-
-        .compact-pagination .page-item {
-            margin: 0 !important;
+            margin: 0;
+            gap: 2px;
         }
 
         .compact-pagination .page-item .page-link {
-            padding: 0.3rem 0.6rem !important;
-            font-size: 0.85rem !important;
-            line-height: 1.3 !important;
-            border-radius: 0.3rem !important;
-            margin: 0 !important;
-            min-width: 2.2rem;
-            height: 2.2rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            padding: 0.375rem 0.75rem;
+            font-size: 0.875rem;
+            line-height: 1.2;
+            border-radius: 0.25rem;
+            margin: 0;
+            min-width: 2.5rem;
             text-align: center;
             border: 1px solid #dee2e6;
-            color: #495057;
+            color: #0d6efd;
             background-color: #fff;
-            text-decoration: none;
-            transition: all 0.2s ease-in-out;
+            transition: all 0.15s ease-in-out;
+        }
+
+        .compact-pagination .page-item.active .page-link {
+            background-color: #0d6efd;
+            border-color: #0d6efd;
+            color: #fff;
             font-weight: 500;
         }
 
-        /* Active page styling */
-        .compact-pagination .page-item.active .page-link {
-            background-color: #0d6efd !important;
-            border-color: #0d6efd !important;
-            color: #fff !important;
-            font-weight: 600;
-            box-shadow: 0 2px 4px rgba(13, 110, 253, 0.3);
-        }
-
-        /* Hover effects */
-        .compact-pagination .page-item:not(.disabled):not(.active):hover .page-link {
-            background-color: #f8f9fa;
+        .compact-pagination .page-item:hover .page-link {
+            background-color: #e9ecef;
             border-color: #adb5bd;
             color: #0a58ca;
-            transform: translateY(-1px);
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
 
         .compact-pagination .page-item.active:hover .page-link {
-            background-color: #0b5ed7 !important;
-            border-color: #0a58ca !important;
-            transform: translateY(-1px);
+            background-color: #0b5ed7;
+            border-color: #0a58ca;
+            color: #fff;
         }
 
-        /* Disabled page styling */
         .compact-pagination .page-item.disabled .page-link {
-            color: #6c757d !important;
-            background-color: #f8f9fa !important;
-            border-color: #dee2e6 !important;
+            color: #6c757d;
+            background-color: #fff;
+            border-color: #dee2e6;
             cursor: not-allowed;
-            opacity: 0.6;
-            pointer-events: none;
+            opacity: 0.65;
         }
 
-        /* First and last page buttons (Previous/Next) */
         .compact-pagination .page-item:first-child .page-link,
         .compact-pagination .page-item:last-child .page-link {
-            font-weight: 600;
-            min-width: 3rem;
-            background-color: #f8f9fa;
-            border-color: #ced4da;
+            font-weight: 500;
         }
 
-        .compact-pagination .page-item:first-child:hover .page-link,
-        .compact-pagination .page-item:last-child:hover .page-link {
-            background-color: #e9ecef;
-            border-color: #adb5bd;
-        }
-
-        /* Ellipsis dots styling */
-        .compact-pagination .page-item.disabled .page-link[aria-label*="..."] {
-            padding: 0.3rem 0.4rem !important;
-            min-width: 1.8rem;
-            font-weight: 700;
-            color: #6c757d;
-            background-color: transparent;
-            border-color: transparent;
-        }
-
-        /* Loading spinner replacement for pagination area */
-        .pagination-loading {
-            display: none !important;
-        }
-
-        /* Remove default Bootstrap pagination margins */
-        .pagination {
-            margin-bottom: 0 !important;
+        /* Hide ellipsis dots if they're taking too much space */
+        .compact-pagination .page-item.disabled .page-link:contains("...") {
+            padding: 0.375rem 0.5rem;
+            min-width: auto;
         }
 
         /* Responsive adjustments */
-        @media (max-width: 768px) {
+        @media (max-width: 576px) {
             .compact-pagination .page-item .page-link {
-                padding: 0.25rem 0.45rem !important;
-                font-size: 0.8rem !important;
+                padding: 0.25rem 0.5rem;
+                font-size: 0.75rem;
                 min-width: 2rem;
-                height: 2rem;
-            }
-            
-            .compact-pagination .page-item:first-child .page-link,
-            .compact-pagination .page-item:last-child .page-link {
-                min-width: 2.5rem;
             }
             
             .compact-pagination {
-                margin: 10px 0;
+                flex-wrap: wrap;
+                gap: 4px;
             }
-
-            .compact-pagination .pagination {
-                gap: 2px;
-            }
-        }
-
-        @media (max-width: 576px) {
-            .compact-pagination .page-item .page-link {
-                padding: 0.2rem 0.35rem !important;
-                font-size: 0.75rem !important;
-                min-width: 1.8rem;
-                height: 1.8rem;
-            }
-            
-            .compact-pagination .page-item:first-child .page-link,
-            .compact-pagination .page-item:last-child .page-link {
-                min-width: 2.2rem;
-            }
-
-            .compact-pagination .pagination {
-                gap: 1px;
-            }
-
-            /* Hide some page numbers on very small screens */
-            .compact-pagination .page-item:nth-child(n+6):nth-last-child(n+4) {
-                display: none;
-            }
-        }
-
-        /* Focus states for accessibility */
-        .compact-pagination .page-item .page-link:focus {
-            outline: 2px solid #0d6efd;
-            outline-offset: 2px;
-            box-shadow: none;
-        }
-
-        /* Animation for page changes */
-        .compact-pagination .page-item .page-link {
-            position: relative;
-            overflow: hidden;
-        }
-
-        .compact-pagination .page-item .page-link:before {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 0;
-            height: 0;
-            background: rgba(13, 110, 253, 0.1);
-            border-radius: 50%;
-            transform: translate(-50%, -50%);
-            transition: width 0.3s ease, height 0.3s ease;
-        }
-
-        .compact-pagination .page-item .page-link:hover:before {
-            width: 100%;
-            height: 100%;
-        }
-
-        /* Ensure proper spacing in pagination container */
-        .mt-3 {
-            margin-top: 1rem !important;
-        }
-
-        /* Override any conflicting styles */
-        .compact-pagination * {
-            box-sizing: border-box;
         }
     </style>
 

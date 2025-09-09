@@ -239,6 +239,43 @@ class ImportController extends Controller
     }
 }
 
+/**
+ * Clear only essential dashboard cache keys (faster than full cache clear)
+ */
+private function clearEssentialDashboardCache(): void
+{
+    try {
+        // Clear specific essential cache keys
+        $essentialKeys = [
+            'actual_date_range',
+            'dashboard_stats_cache',
+        ];
+        
+        foreach ($essentialKeys as $key) {
+            Cache::forget($key);
+        }
+        
+        // Try Redis cache tags if available (non-blocking)
+        if (config('cache.default') === 'redis') {
+            try {
+                Cache::tags(['dashboard'])->flush();
+                Log::info('Essential dashboard cache cleared using Redis tags');
+            } catch (\Exception $e) {
+                // Silently continue if tags not supported
+                Log::debug('Redis tags not available, using key-based clearing');
+            }
+        }
+        
+        Log::info('Essential dashboard cache cleared successfully');
+        
+    } catch (\Exception $e) {
+        Log::warning('Failed to clear essential dashboard cache', [
+            'error' => $e->getMessage()
+        ]);
+        // Don't throw - this is non-critical
+    }
+}
+
     /**
  * **UPDATED METHOD: More robust cache clearing**
  */

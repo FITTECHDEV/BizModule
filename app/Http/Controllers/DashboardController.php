@@ -27,102 +27,113 @@ class DashboardController extends Controller
 
     public function index(Request $request)
 {
-
     set_time_limit(120); // 2 minutes
 
-    // Add cache busting parameter support
-    if ($request->has('refresh_cache')) {
-        $this->clearDashboardCache();
-    }
+    try {
+        // Add cache busting parameter support
+        if ($request->has('refresh_cache')) {
+            $this->clearDashboardCache();
+        }
 
-    $filters = $this->filterService->parseFilters($request);
-    $range = $filters['range'] ?? 'last_3_months';
-    $system = $request->input('system', 'SCM');
-    $search = $request->input('search');
+        $filters = $this->filterService->parseFilters($request);
+        $range = $filters['range'] ?? 'last_3_months';
+        $system = $request->input('system', 'SCM');
+        $search = $request->input('search');
 
-    $actualDateRange = $this->getActualDateRange();
-    
-    // FIXED: Calculate intended date ranges first, then constrain to actual data
-    $intendedStartDate = match ($range) {
-        'this_month' => now()->startOfMonth(),
-        'last_month' => now()->subMonth()->startOfMonth(),
-        'last_3_months' => now()->subMonths(3)->startOfDay(),
-        'last_6_months' => now()->subMonths(6)->startOfDay(),
-        'last_year' => now()->subYear()->startOfDay(),
-        'all_time' => $actualDateRange['min_date'],
-        default => now()->subMonths(3)->startOfDay(),
-    };
-    
-    $intendedEndDate = match ($range) {
-        'this_month' => now()->endOfMonth(),
-        'last_month' => now()->subMonth()->endOfMonth(),
-        'last_3_months' => now()->endOfDay(),
-        'last_6_months' => now()->endOfDay(),
-        'last_year' => now()->endOfDay(),
-        'all_time' => $actualDateRange['max_date'],
-        default => now()->endOfDay(),
-    };
+        // FIX: Wrap getActualDateRange in try-catch
+        try {
+            $actualDateRange = $this->getActualDateRange();
+        } catch (\Exception $e) {
+            Log::error('Failed to get actual date range', [
+                'error' => $e->getMessage()
+            ]);
+            // Provide fallback date range
+            $actualDateRange = [
+                'min_date' => now()->subYear(),
+                'max_date' => now(),
+                'has_data' => false
+            ];
+        }
+        
+        // Calculate intended date ranges first, then constrain to actual data
+        $intendedStartDate = match ($range) {
+            'this_month' => now()->startOfMonth(),
+            'last_month' => now()->subMonth()->startOfMonth(),
+            'last_3_months' => now()->subMonths(3)->startOfDay(),
+            'last_6_months' => now()->subMonths(6)->startOfDay(),
+            'last_year' => now()->subYear()->startOfDay(),
+            'all_time' => $actualDateRange['min_date'],
+            default => now()->subMonths(3)->startOfDay(),
+        };
+        
+        $intendedEndDate = match ($range) {
+            'this_month' => now()->endOfMonth(),
+            'last_month' => now()->subMonth()->endOfMonth(),
+            'last_3_months' => now()->endOfDay(),
+            'last_6_months' => now()->endOfDay(),
+            'last_year' => now()->endOfDay(),
+            'all_time' => $actualDateRange['max_date'],
+            default => now()->endOfDay(),
+        };
 
-    // FIXED: Now constrain the intended dates to actual data availability
-    $startDate = max($intendedStartDate, $actualDateRange['min_date']);
-    $endDate = min($intendedEndDate, $actualDateRange['max_date']);
+        // Now constrain the intended dates to actual data availability
+        $startDate = max($intendedStartDate, $actualDateRange['min_date']);
+        $endDate = min($intendedEndDate, $actualDateRange['max_date']);
 
-    // FIXED: Handle case where intended range is completely outside actual data
-    if ($startDate > $endDate) {
-        Log::warning('Requested date range is outside actual data range', [
+        // Handle case where intended range is completely outside actual data
+        if ($startDate > $endDate) {
+            Log::warning('Requested date range is outside actual data range', [
+                'range' => $range,
+                'intended_start' => $intendedStartDate->toDateString(),
+                'intended_end' => $intendedEndDate->toDateString(),
+                'actual_min' => $actualDateRange['min_date']->toDateString(),
+                'actual_max' => $actualDateRange['max_date']->toDateString(),
+                'system' => $system
+            ]);
+            
+            // Use the actual data range instead
+            $startDate = $actualDateRange['min_date'];
+            $endDate = $actualDateRange['max_date'];
+        }
+
+        $totalDays = $startDate && $endDate ? $startDate->diffInDays($endDate) + 1 : 365;
+
+        Log::info('Dashboard using corrected date range', [
             'range' => $range,
+            'system' => $system,
             'intended_start' => $intendedStartDate->toDateString(),
             'intended_end' => $intendedEndDate->toDateString(),
-            'actual_min' => $actualDateRange['min_date']->toDateString(),
-            'actual_max' => $actualDateRange['max_date']->toDateString(),
-            'system' => $system
+            'actual_start' => $startDate->toDateString(),
+            'actual_end' => $endDate->toDateString(),
+            'actual_data_range' => [$actualDateRange['min_date']->toDateString(), $actualDateRange['max_date']->toDateString()]
         ]);
-        
-        // Use the actual data range instead
-        $startDate = $actualDateRange['min_date'];
-        $endDate = $actualDateRange['max_date'];
-    }
 
-    $totalDays = $startDate && $endDate ? $startDate->diffInDays($endDate) + 1 : 365;
-
-    Log::info('Dashboard using corrected date range', [
-        'range' => $range,
-        'system' => $system,
-        'intended_start' => $intendedStartDate->toDateString(),
-        'intended_end' => $intendedEndDate->toDateString(),
-        'actual_start' => $startDate->toDateString(),
-        'actual_end' => $endDate->toDateString(),
-        'actual_data_range' => [$actualDateRange['min_date']->toDateString(), $actualDateRange['max_date']->toDateString()]
-    ]);
-
-    try {
         $baseUserQuery = AzureUser::query();
 
-        // Enhanced query with multiple join conditions - FIXED: Select only the columns we need
+        // Enhanced query with multiple join conditions
         $query = $baseUserQuery
-        ->select('Azure_Users.id', 'Azure_Users.userPrincipalName', 'Azure_Users.displayName', 'Azure_Users.mail')
-        ->with(['signIns' => function ($q) use ($startDate, $endDate, $system) {
-            if ($startDate && $endDate) {
-                $q->whereBetween('date_utc', [$startDate, $endDate]);
-            }
-            if ($system && $system !== 'all') {
-                $q->where('system', $system);
-            }
-            $q->orderBy('date_utc', 'desc');
-        }])
-->leftJoin('Azure_LoginDetails as ald', function($join) use ($startDate, $endDate, $system) {
-    // Use username matching instead of broken user_id relationship
-    $join->on(\DB::raw('LOWER(LTRIM(RTRIM(Azure_Users.userPrincipalName)))'), '=', \DB::raw('LOWER(LTRIM(RTRIM(ald.username)))'));
-    
-    if ($startDate && $endDate) {
-        $join->whereBetween('ald.date_utc', [$startDate, $endDate]);
-    }
-    if ($system && $system !== 'all') {
-        $join->where('ald.system', $system);
-    }
-})
-        // FIXED: Group by the same columns we're selecting
-        ->groupBy('Azure_Users.id', 'Azure_Users.userPrincipalName', 'Azure_Users.displayName', 'Azure_Users.mail');
+            ->select('Azure_Users.id', 'Azure_Users.userPrincipalName', 'Azure_Users.displayName', 'Azure_Users.mail')
+            ->with(['signIns' => function ($q) use ($startDate, $endDate, $system) {
+                if ($startDate && $endDate) {
+                    $q->whereBetween('date_utc', [$startDate, $endDate]);
+                }
+                if ($system && $system !== 'all') {
+                    $q->where('system', $system);
+                }
+                $q->orderBy('date_utc', 'desc');
+            }])
+            ->leftJoin('Azure_LoginDetails as ald', function($join) use ($startDate, $endDate, $system) {
+                // Use username matching instead of broken user_id relationship
+                $join->on(\DB::raw('LOWER(LTRIM(RTRIM(Azure_Users.userPrincipalName)))'), '=', \DB::raw('LOWER(LTRIM(RTRIM(ald.username)))'));
+                
+                if ($startDate && $endDate) {
+                    $join->whereBetween('ald.date_utc', [$startDate, $endDate]);
+                }
+                if ($system && $system !== 'all') {
+                    $join->where('ald.system', $system);
+                }
+            })
+            ->groupBy('Azure_Users.id', 'Azure_Users.userPrincipalName', 'Azure_Users.displayName', 'Azure_Users.mail');
 
         if ($search) {
             $search = trim(strip_tags($search));
@@ -139,7 +150,27 @@ class DashboardController extends Controller
         $perPage = 17;
         $users = $query->paginate($perPage)->withQueryString();
 
-        $stats = $this->calculateStats($startDate, $endDate, $system);
+        // FIX: Wrap stats calculation in try-catch
+        try {
+            $stats = $this->calculateStats($startDate, $endDate, $system);
+        } catch (\Exception $e) {
+            Log::error('Failed to calculate dashboard stats', [
+                'error' => $e->getMessage(),
+                'system' => $system,
+                'date_range' => [$startDate->toDateString(), $endDate->toDateString()]
+            ]);
+            
+            // Provide fallback stats
+            $stats = [
+                'totalUsers' => 0,
+                'loggedInCount' => 0,
+                'notLoggedInCount' => 0,
+                'totalLogins' => 0,
+                'lastLogin' => null,
+                'signIns' => collect(),
+                'error' => true
+            ];
+        }
 
         $systems = $this->filterService->getSystemList();
         array_unshift($systems, 'all');
@@ -181,7 +212,6 @@ class DashboardController extends Controller
                 'systemInput' => $system,
                 'systems' => $systems,
                 'pagination' => $users->withQueryString()->links()->toHtml(),
-                // ADDED: Include date range info for debugging
                 'dateRange' => [
                     'start' => $startDate->toDateString(),
                     'end' => $endDate->toDateString(),
@@ -207,7 +237,6 @@ class DashboardController extends Controller
             'systems' => $systems,
             'selectedRange' => $range,
             'selectedSystem' => $system,
-            // ADDED: Pass date range info to view
             'actualDateRange' => [
                 'start' => $startDate->toDateString(),
                 'end' => $endDate->toDateString(),
@@ -222,6 +251,22 @@ class DashboardController extends Controller
             'error' => $e->getMessage(),
             'stack' => $e->getTraceAsString(),
         ]);
+        
+        if ($request->ajax()) {
+            return response()->json(['error' => 'Database error occurred'], 500);
+        }
+        
+        return response()->view('errors.500', [], 500);
+    } catch (\Exception $e) {
+        Log::error('Unexpected error in DashboardController', [
+            'error' => $e->getMessage(),
+            'stack' => $e->getTraceAsString(),
+        ]);
+        
+        if ($request->ajax()) {
+            return response()->json(['error' => 'An unexpected error occurred'], 500);
+        }
+        
         return response()->view('errors.500', [], 500);
     }
 }
@@ -249,9 +294,10 @@ class DashboardController extends Controller
 }
 private function calculateStats($startDate, $endDate, $system)
 {
+    // FIX: Define $cacheKey at the very beginning
     $cacheKey = 'dashboard_stats_' . md5($startDate->format('Y-m-d') . $endDate->format('Y-m-d') . $system);
     
-    return Cache::remember($cacheKey, 1800, function () use ($startDate, $endDate, $system) {
+    return Cache::remember($cacheKey, 1800, function () use ($startDate, $endDate, $system, $cacheKey) {
         $queryStartTime = microtime(true);
         
         try {
