@@ -247,65 +247,152 @@ class DashboardController extends Controller
         ];
     });
 }
-
-   private function calculateStats($startDate, $endDate, $system)
+private function calculateStats($startDate, $endDate, $system)
 {
     $cacheKey = 'dashboard_stats_' . md5($startDate->format('Y-m-d') . $endDate->format('Y-m-d') . $system);
+    
+    return Cache::remember($cacheKey, 1800, function () use ($startDate, $endDate, $system) {
+        $queryStartTime = microtime(true);
+        
+        try {
+            // Single optimized SQL query with better error handling
+            $statsQuery = "
+                SELECT 
+                    (SELECT COUNT(*) FROM Azure_Users) as total_users,
+                    COUNT(DISTINCT CASE WHEN ald.username IS NOT NULL AND ald.username != '' THEN ald.username END) as logged_in_count,
+                    COUNT(*) as total_logins,
+                    MAX(ald.date_utc) as last_login
+                FROM Azure_LoginDetails ald
+                WHERE ald.system = ?
+                AND ald.date_utc BETWEEN ? AND ?
+            ";
+            
+            $statsResult = \DB::select($statsQuery, [
+                $system,
+                $startDate->format('Y-m-d H:i:s'),
+                $endDate->format('Y-m-d H:i:s')
+            ]);
 
-    return Cache::remember($cacheKey, 600, function () use ($startDate, $endDate, $system) {
-        $totalUsers = AzureUser::count();
+            // Handle empty result set
+            if (empty($statsResult)) {
+                throw new \Exception('No stats data returned from query');
+            }
+            
+            $statsResult = $statsResult[0];
+            $statsQueryTime = microtime(true) - $queryStartTime;
 
-        $signInQuery = SigninLog::query();
-        if ($startDate && $endDate) {
-            $signInQuery->whereBetween('date_utc', [$startDate, $endDate]);
+            // Get recent sign-ins with improved error handling and performance
+            $signInsStartTime = microtime(true);
+            $signIns = collect();
+            
+            try {
+                $signInsRaw = \DB::table('Azure_LoginDetails')
+                    ->where('system', $system)
+                    ->whereBetween('date_utc', [$startDate, $endDate])
+                    ->whereNotNull('request_id') // Ensure we have a valid identifier
+                    ->orderBy('date_utc', 'desc')
+                    ->limit(50)
+                    ->select(['request_id', 'system', 'date_utc', 'application', 'username', 'user'])
+                    ->get();
+
+                $signIns = $signInsRaw->map(function($item) {
+                    return (object)[
+                        'id' => $item->request_id,
+                        'system' => $item->system,
+                        'date_utc' => \Carbon\Carbon::parse($item->date_utc),
+                        'application' => $item->application ?? 'N/A',
+                        'username' => $item->username ?? 'N/A',
+                        'user' => $item->user ?? 'N/A'
+                    ];
+                });
+            } catch (\Exception $signInError) {
+                Log::warning('Failed to load recent sign-ins', [
+                    'error' => $signInError->getMessage(),
+                    'system' => $system
+                ]);
+                // Continue with empty collection
+            }
+            
+            $signInsQueryTime = microtime(true) - $signInsStartTime;
+
+            // Process results with validation
+            $totalUsers = max(0, (int) ($statsResult->total_users ?? 0));
+            $loggedInCount = max(0, (int) ($statsResult->logged_in_count ?? 0));
+            $notLoggedInCount = max(0, $totalUsers - $loggedInCount);
+            $totalLogins = max(0, (int) ($statsResult->total_logins ?? 0));
+
+            $totalQueryTime = microtime(true) - $queryStartTime;
+
+            Log::info('Optimized dashboard stats calculated', [
+                'total_users' => $totalUsers,
+                'logged_in_count' => $loggedInCount,
+                'not_logged_in_count' => $notLoggedInCount,
+                'total_logins' => $totalLogins,
+                'system' => $system,
+                'performance' => [
+                    'total_query_time_ms' => round($totalQueryTime * 1000, 2),
+                    'stats_query_time_ms' => round($statsQueryTime * 1000, 2),
+                    'signins_query_time_ms' => round($signInsQueryTime * 1000, 2),
+                    'signins_loaded' => $signIns->count()
+                ],
+                'date_range' => [$startDate->toDateString(), $endDate->toDateString()],
+                'cache_key' => $cacheKey
+            ]);
+
+            return [
+                'totalUsers' => $totalUsers,
+                'loggedInCount' => $loggedInCount,
+                'notLoggedInCount' => $notLoggedInCount,
+                'totalLogins' => $totalLogins,
+                'lastLogin' => $statsResult->last_login,
+                'signIns' => $signIns,
+                'totalDays' => $startDate->diffInDays($endDate) + 1,
+            ];
+
+        } catch (\Exception $e) {
+            $totalQueryTime = microtime(true) - $queryStartTime;
+            
+            Log::error('Dashboard stats calculation failed', [
+                'error' => $e->getMessage(),
+                'system' => $system,
+                'date_range' => [$startDate->toDateString(), $endDate->toDateString()],
+                'query_time_ms' => round($totalQueryTime * 1000, 2),
+                'cache_key' => $cacheKey,
+                'stack_trace' => $e->getTraceAsString()
+            ]);
+            
+            // Return safe defaults with indication of failure
+            return [
+                'totalUsers' => 0,
+                'loggedInCount' => 0,
+                'notLoggedInCount' => 0,
+                'totalLogins' => 0,
+                'lastLogin' => null,
+                'signIns' => collect(),
+                'totalDays' => $startDate->diffInDays($endDate) + 1,
+                'error' => true // Flag to indicate calculation failed
+            ];
         }
-        if ($system && $system !== 'all') {
-            $signInQuery->where('system', $system);
-        }
-
-        $totalLogins = $signInQuery->count();
-        $signIns = $signInQuery->latest('date_utc')->limit(100)->get();
-        $lastLogin = $signInQuery->max('date_utc'); // Scoped to filters
-
-        $loggedInCount = $this->getLoggedInUsersCount($startDate, $endDate, $system);
-        $notLoggedInCount = max(0, $totalUsers - $loggedInCount);
-
-        Log::info('Dashboard stats calculated', [
-            'total_users' => $totalUsers,
-            'logged_in_count' => $loggedInCount,
-            'not_logged_in_count' => $notLoggedInCount,
-            'total_logins' => $totalLogins,
-            'system' => $system,
-            'date_range' => [$startDate->toDateString(), $endDate->toDateString()]
-        ]);
-
-        return [
-            'totalUsers' => $totalUsers,
-            'loggedInCount' => $loggedInCount,
-            'notLoggedInCount' => $notLoggedInCount,
-            'totalLogins' => $totalLogins,
-            'lastLogin' => $lastLogin,
-            'signIns' => $signIns,
-            'totalDays' => $startDate->diffInDays($endDate) + 1,
-        ];
     });
 }
+// OPTIMIZED:
 
 public function getLoggedInUsersCount($startDate, $endDate, $system)
 {
-    Log::info('getLoggedInUsersCount called with corrected username matching', [
+    Log::info('getLoggedInUsersCount called (optimized version)', [
         'startDate' => $startDate->toDateString(),
         'endDate' => $endDate->toDateString(),
         'system' => $system
     ]);
 
+    // Much simpler query - just count distinct usernames (no complex joins)
     $sql = "
-        SELECT COUNT(DISTINCT au.id) as count
-        FROM Azure_Users au
-        INNER JOIN Azure_LoginDetails ald 
-            ON LOWER(LTRIM(RTRIM(au.userPrincipalName))) = LOWER(LTRIM(RTRIM(ald.username)))
-        WHERE ald.system = ?
-        AND ald.date_utc BETWEEN ? AND ?
+        SELECT COUNT(DISTINCT username) as count
+        FROM Azure_LoginDetails
+        WHERE system = ?
+        AND date_utc BETWEEN ? AND ?
+        AND username IS NOT NULL
+        AND username != ''
     ";
 
     $params = [
@@ -315,19 +402,23 @@ public function getLoggedInUsersCount($startDate, $endDate, $system)
     ];
 
     try {
+        $startTime = microtime(true);
         $result = \DB::select($sql, $params);
+        $queryTime = microtime(true) - $startTime;
+        
         $count = (int) ($result[0]->count ?? 0);
 
-        Log::info('Username-based query completed', [
+        Log::info('Optimized username count completed', [
             'count' => $count,
             'system' => $system,
+            'query_time_ms' => round($queryTime * 1000, 2),
             'date_range' => [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')]
         ]);
 
         return $count;
 
     } catch (\Exception $e) {
-        Log::error('Username matching query failed', [
+        Log::error('Optimized username count failed', [
             'sql' => $sql,
             'params' => $params,
             'error' => $e->getMessage()
@@ -335,6 +426,7 @@ public function getLoggedInUsersCount($startDate, $endDate, $system)
         return 0;
     }
 }
+
 
     /**
      * Clear dashboard-related caches (can be called after imports)

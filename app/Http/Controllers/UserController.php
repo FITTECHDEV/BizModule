@@ -14,6 +14,33 @@ use Illuminate\Validation\ValidationException;
 
 class UserController extends Controller
 {
+
+    /**
+ * System names to hide from dropdowns / filters.
+ * Stored lowercase for robust comparisons.
+ *
+ * @var string[]
+ */
+protected $excludedSystems = [
+    'microsoft teams',
+    'office 365',
+    'unknown',
+];
+
+/**
+ * Return visible systems (excludes configured names) — case-insensitive.
+ *
+ * @return array
+ */
+protected function visibleSystems(): array
+{
+    // Use LOWER(name) so matching is case-insensitive
+    return System::whereNotIn(DB::raw('LOWER(name)'), $this->excludedSystems)
+        ->orderBy('name')
+        ->pluck('name')
+        ->toArray();
+}
+
     protected $perPage = 17;
 
     public function create()
@@ -147,7 +174,7 @@ class UserController extends Controller
                 $loggedInCount = $loggedInEmails->isEmpty() ? 0 : AzureUser::whereIn(DB::raw('LOWER(userPrincipalName)'), $loggedInEmails)->count();
                 $notLoggedInCount = $totalUsers - $loggedInCount;
 
-                $systems = System::orderBy('name')->pluck('name')->toArray();
+                $systems = $this->visibleSystems();
                 Log::info('Systems for Dropdown', ['systems' => $systems]);
 
                 $mappedUsers = array_map(function ($user) {
@@ -224,7 +251,7 @@ class UserController extends Controller
             $loggedInCount = $loggedInEmails->isEmpty() ? 0 : AzureUser::whereIn(DB::raw('LOWER(userPrincipalName)'), $loggedInEmails)->count();
             $notLoggedInCount = $totalUsers - $loggedInCount;
 
-            $systems = System::orderBy('name')->pluck('name')->toArray();
+            $systems = $this->visibleSystems();
             Log::info('Systems for Dropdown (Non-AJAX)', ['systems' => $systems]);
 
             $mappedUsers = array_map(function ($user) {
@@ -337,7 +364,7 @@ class UserController extends Controller
             ->get();
 
         // 🔹 Load all systems for filters
-        $systems    = System::orderBy('name')->pluck('name')->toArray();
+        $systems    = $this->visibleSystems();
         $rangeLabel = $this->getRangeLabel($range);
 
         return view('logintracker.users.show', compact(

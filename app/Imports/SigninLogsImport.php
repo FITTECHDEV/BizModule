@@ -186,80 +186,65 @@ public function getValidationErrors(): array
         }
     }
 
-   
 /**
- * Enhanced getUserFromCacheOrCreate method with better error handling
- */
-private function getUserFromCacheOrCreate(string $userPrincipalName, ?string $userDisplayName = null, ?string $userIdFromCsv = null)
-{
-    $userPrincipalName = trim($userPrincipalName);
-    
-    if (empty($userPrincipalName) || strlen($userPrincipalName) > 255) {
-        Log::warning('Invalid username provided', [
-            'username' => substr($userPrincipalName, 0, 50),
-            'length' => strlen($userPrincipalName)
-        ]);
-        $this->stats['errors']++;
-        return null;
-    }
-
-    // Check cache first - use lowercase for consistent caching
-    $cacheKey = strtolower($userPrincipalName);
-    if (isset($this->userCache[$cacheKey])) {
-        $user = $this->userCache[$cacheKey];
+     * CRITICAL FIX: Enhanced user resolution with better null ID handling
+     */
+    private function getUserFromCacheOrCreate(string $userPrincipalName, ?string $userDisplayName = null, ?string $userIdFromCsv = null)
+    {
+        $userPrincipalName = trim($userPrincipalName);
         
-        // CRITICAL FIX: Check if cached user has null ID and fix it
-        if (empty($user->id)) {
-            $user = $this->fixUserNullId($user);
-            if ($user) {
-                $this->userCache[$cacheKey] = $user;
-            }
-        }
-        
-        $this->stats['users_found']++;
-        return $user;
-    }
-
-    // Try multiple matching strategies
- $user = $this->findUserByMultipleStrategies($userPrincipalName, $userIdFromCsv);
-
-if ($user) {
-    // ADD THIS BLOCK - Check for null ID and fix it
-    if (empty($user->id)) {
-        Log::info('🔧 Found user with null ID, fixing...', [
-            'username' => $userPrincipalName
-        ]);
-        $user = $this->fixUserNullId($user);
-        if (!$user) {
-            Log::error('❌ Failed to fix null ID, skipping user', [
-                'username' => $userPrincipalName
+        if (empty($userPrincipalName) || strlen($userPrincipalName) > 255) {
+            Log::warning('Invalid username provided', [
+                'username' => substr($userPrincipalName, 0, 50),
+                'length' => strlen($userPrincipalName)
             ]);
+            $this->stats['errors']++;
             return null;
         }
+
+        // Check cache first
+        $cacheKey = strtolower($userPrincipalName);
+        if (isset($this->userCache[$cacheKey])) {
+            $user = $this->userCache[$cacheKey];
+            
+            // CRITICAL: Ensure user has valid ID
+            if (empty($user->id)) {
+                Log::warning('Cached user has no ID, removing from cache and re-resolving', [
+                    'username' => $userPrincipalName
+                ]);
+                unset($this->userCache[$cacheKey]);
+            } else {
+                $this->stats['users_found']++;
+                return $user;
+            }
+        }
+
+        // Try to find user with comprehensive database check
+        $user = $this->findUserWithValidation($userPrincipalName, $userIdFromCsv);
+        
+        if ($user && !empty($user->id)) {
+            // Cache only users with valid IDs
+            $this->userCache[$cacheKey] = $user;
+            $this->stats['users_found']++;
+            return $user;
+        }
+
+        // Create new user if enabled
+        if (env('SIGNIN_IMPORT_CREATE_USERS', false)) {
+            $newUser = $this->createUserFromSigninData($userPrincipalName, $userDisplayName, $userIdFromCsv);
+            if ($newUser && !empty($newUser->id)) {
+                $this->userCache[$cacheKey] = $newUser;
+                return $newUser;
+            }
+        }
+
+        Log::warning('No valid user found and creation disabled/failed', [
+            'username' => $userPrincipalName,
+            'create_users_enabled' => env('SIGNIN_IMPORT_CREATE_USERS', false)
+        ]);
+        
+        return null;
     }
-    // END OF NEW BLOCK
-    
-    // Cache with lowercase key for consistency
-    $this->userCache[$cacheKey] = $user;
-    $this->stats['users_found']++;
-    return $user;
-}
-
-    // Create new user if enabled and not found
-    if (env('SIGNIN_IMPORT_CREATE_USERS', false)) {
-        return $this->createUserFromSigninData($userPrincipalName, $userDisplayName, $userIdFromCsv);
-    }
-
-    // Log failure and return null
-    Log::warning('User not found and creation disabled', [
-        'username' => $userPrincipalName,
-        'user_id_from_csv' => $userIdFromCsv,
-        'create_users_enabled' => env('SIGNIN_IMPORT_CREATE_USERS', false)
-    ]);
-    
-    return null;
-}
-
 /**
  * CRITICAL METHOD: Fixes users with null IDs by generating new UUIDs
  */
@@ -841,11 +826,12 @@ private function processRow(array $row, int $batchNumber = 0, int $rowIndex = 0)
     }
    
     $user = $this->getUserFromCacheOrCreate($userPrincipalName, $userDisplayName, $userIdFromCsv);
-    if (!$user) {
+    if (!$user || empty($user->id)) { // CRITICAL FIX: Also check for empty ID
         Log::warning('No user found or created for row', [
             'batch' => $batchNumber,
             'row' => $rowIndex,
-            'username' => $userPrincipalName
+            'username' => $userPrincipalName,
+            'user_has_id' => $user ? !empty($user->id) : false
         ]);
         $this->stats['skipped']++;
         return ['signin_log' => null, 'user_system' => null];
@@ -892,21 +878,22 @@ private function processRow(array $row, int $batchNumber = 0, int $rowIndex = 0)
         $requestId = 'IMPORT-' . uniqid() . '-' . $batchNumber . '-' . $rowIndex;
     }
     
-    $duplicateKey = $user->id . '|' . $parsedDate . '|' . $requestId;
-    if (isset($this->existingLogs[$duplicateKey])) {
-        Log::debug('Duplicate signin log detected', [
-            'batch' => $batchNumber,
-            'row' => $rowIndex,
-            'username' => $userPrincipalName,
-            'date_utc' => $parsedDate,
-            'request_id' => $requestId
-        ]);
-        $this->stats['skipped']++;
-        return ['signin_log' => null, 'user_system' => null];
-    }
-   
     try {
         $signinLogData = $this->prepareSigninLogData($row, $user, $system, $parsedDate);
+        $signinLogData['request_id'] = $requestId; // Ensure request_id is set
+        
+        // CRITICAL FIX: Real-time duplicate check instead of cache-based
+        if ($this->isDuplicateInDatabase($signinLogData)) {
+            Log::debug('Duplicate signin log detected via database check', [
+                'batch' => $batchNumber,
+                'row' => $rowIndex,
+                'username' => $userPrincipalName,
+                'date_utc' => $parsedDate,
+                'request_id' => $requestId
+            ]);
+            $this->stats['skipped']++;
+            return ['signin_log' => null, 'user_system' => null];
+        }
         
         // CRITICAL FIX: Validate the prepared data
         if (!$this->validateSigninLogData($signinLogData, $batchNumber, $rowIndex)) {
@@ -972,6 +959,33 @@ private function processRow(array $row, int $batchNumber = 0, int $rowIndex = 0)
             'error' => $e->getMessage(),
             'stats' => $this->stats
         ]);
+    }
+}
+
+/**
+ * CRITICAL FIX: Real-time database duplicate check
+ */
+private function isDuplicateInDatabase(array $signinLogData): bool
+{
+    try {
+        // Check using the actual primary key constraint fields
+        $exists = DB::table('Azure_LoginDetails')
+            ->where('date_utc', $signinLogData['date_utc'])
+            ->where('request_id', $signinLogData['request_id'])
+            ->where('user_id', $signinLogData['user_id'])
+            ->exists();
+        
+        return $exists;
+        
+    } catch (\Exception $e) {
+        Log::error('Error checking for duplicate record in database', [
+            'error' => $e->getMessage(),
+            'user_id' => $signinLogData['user_id'] ?? 'unknown',
+            'date_utc' => $signinLogData['date_utc'] ?? 'unknown',
+            'request_id' => $signinLogData['request_id'] ?? 'unknown'
+        ]);
+        // Return false to allow processing - better to attempt insert than skip incorrectly
+        return false;
     }
 }
 
@@ -1345,13 +1359,12 @@ private function executeChunkedBatchInsert(array $signinLogs, int $batchNumber):
 
     return $insertedCount;
 }
-
-
+/**
+ * FIXED: Use proper UPSERT with correct SQL syntax
+ */
 private function executeSingleRowInserts(array $signinLogs, int $batchNumber): int
 {
-    $this->stats['single_row_fallbacks']++;
-    
-    Log::info("Using single-row insert mode", [
+    Log::info("Using single-row UPSERT mode", [
         'batch' => $batchNumber,
         'rows' => count($signinLogs)
     ]);
@@ -1360,43 +1373,77 @@ private function executeSingleRowInserts(array $signinLogs, int $batchNumber): i
     
     foreach ($signinLogs as $index => $signinLog) {
         try {
-            // Safety check: Remove any ID columns that might have been added
+            // Remove any ID columns that might cause issues
             unset($signinLog['id'], $signinLog['Id'], $signinLog['ID']);
             
-            // Debug logging for first record
-            if ($index === 0) {
-                Log::debug("Single row insert - first record columns", [
-                    'batch' => $batchNumber,
-                    'column_count' => count($signinLog),
-                    'columns' => array_keys($signinLog)
-                ]);
-            }
+            // First, try to check if record exists (more reliable than MERGE)
+            $exists = DB::table('Azure_LoginDetails')
+                ->where('date_utc', $signinLog['date_utc'])
+                ->where('request_id', $signinLog['request_id'])
+                ->where('user_id', $signinLog['user_id'])
+                ->exists();
             
-            DB::table('Azure_LoginDetails')->insert($signinLog);
-            $insertedCount++;
-            
-            if (($index + 1) % 50 === 0) {
-                Log::debug("Single-row progress update", [
+            if ($exists) {
+                // Record exists, update it
+                $updated = DB::table('Azure_LoginDetails')
+                    ->where('date_utc', $signinLog['date_utc'])
+                    ->where('request_id', $signinLog['request_id'])
+                    ->where('user_id', $signinLog['user_id'])
+                    ->update([
+                        'updated_at' => now(),
+                        'system' => $signinLog['system'], // Update system in case it changed
+                    ]);
+                
+                if ($updated) {
+                    Log::debug("Updated existing record", [
+                        'batch' => $batchNumber,
+                        'index' => $index,
+                        'username' => $signinLog['username'] ?? 'unknown'
+                    ]);
+                    $this->stats['skipped']++; // Count as skipped since we didn't insert
+                }
+            } else {
+                // Record doesn't exist, insert it
+                DB::table('Azure_LoginDetails')->insert($signinLog);
+                $insertedCount++;
+                
+                Log::debug("Inserted new record", [
                     'batch' => $batchNumber,
-                    'completed' => $index + 1,
-                    'total' => count($signinLogs),
-                    'success_rate' => round(($insertedCount / ($index + 1)) * 100, 2) . '%'
+                    'index' => $index,
+                    'username' => $signinLog['username'] ?? 'unknown'
                 ]);
             }
             
         } catch (\Exception $e) {
-            Log::error("Single signin log insert failed", [
-                'batch' => $batchNumber,
-                'index' => $index,
-                'error' => $e->getMessage(),
-                'user_id' => $signinLog['user_id'] ?? 'unknown',
-                'username' => $signinLog['username'] ?? 'unknown'
-            ]);
-            $this->stats['errors']++;
+            // Handle different types of errors appropriately
+            $errorMessage = $e->getMessage();
+            
+            if (str_contains($errorMessage, 'duplicate') || 
+                str_contains($errorMessage, 'PRIMARY KEY') ||
+                str_contains($errorMessage, 'UNIQUE constraint')) {
+                
+                Log::info("Duplicate record handled gracefully", [
+                    'batch' => $batchNumber,
+                    'index' => $index,
+                    'username' => $signinLog['username'] ?? 'unknown',
+                    'error_type' => 'duplicate'
+                ]);
+                $this->stats['skipped']++;
+                
+            } else {
+                Log::error("Single signin log operation failed", [
+                    'batch' => $batchNumber,
+                    'index' => $index,
+                    'error' => $errorMessage,
+                    'username' => $signinLog['username'] ?? 'unknown',
+                    'error_type' => 'database_error'
+                ]);
+                $this->stats['errors']++;
+            }
         }
     }
     
-    Log::info("Single-row insertion completed", [
+    Log::info("UPSERT insertion completed", [
         'batch' => $batchNumber,
         'inserted' => $insertedCount,
         'total' => count($signinLogs),
@@ -1405,6 +1452,7 @@ private function executeSingleRowInserts(array $signinLogs, int $batchNumber): i
     
     return $insertedCount;
 }
+
 
 
 
@@ -1526,39 +1574,132 @@ private function executeSingleRowInserts(array $signinLogs, int $batchNumber): i
         }
     }
 
-    private function preloadExistingLogs(array $duplicateCheckData)
-    {
-        if (empty($duplicateCheckData)) return;
-        
-        $userIds = [];
-        $dates = [];
-        
-        foreach ($duplicateCheckData as $data) {
-            if (isset($this->userCache[$data['username']])) {
-                $userIds[] = $this->userCache[$data['username']]->id;
-                $dates[] = $data['date_utc'];
+/**
+ * ENHANCED: More comprehensive preloadExistingLogs with better coverage
+ */
+private function preloadExistingLogs(array $duplicateCheckData)
+{
+    if (empty($duplicateCheckData)) {
+        Log::info('No duplicate check data provided, skipping preload');
+        return;
+    }
+
+    $totalPreloaded = 0;
+    $userIds = [];
+    $dates = [];
+    $requestIds = [];
+
+    // Extract all identifiers from the check data
+    foreach ($duplicateCheckData as $data) {
+        if (isset($this->userCache[$data['username']])) {
+            $user = $this->userCache[$data['username']];
+            if (!empty($user->id)) { // CRITICAL: Only use users with valid IDs
+                $userIds[] = $user->id;
+                if (!empty($data['date_utc'])) {
+                    $dates[] = $data['date_utc'];
+                }
+                if (!empty($data['request_id'])) {
+                    $requestIds[] = $data['request_id'];
+                }
             }
         }
-        
-        if (!empty($userIds)) {
-            foreach (array_chunk(array_unique($userIds), 200) as $userChunk) {
-                foreach (array_chunk(array_unique($dates), 200) as $dateChunk) {
-                    $existingLogs = DB::table('Azure_LoginDetails')
-                        ->whereIn('user_id', $userChunk)
-                        ->whereIn('date_utc', $dateChunk)
-                        ->select('user_id', 'date_utc', 'request_id')
-                        ->get();
-                    foreach ($existingLogs as $log) {
-                        $key = $log->user_id . '|' . $log->date_utc . '|' . $log->request_id;
+    }
+
+    if (empty($userIds)) {
+        Log::warning('No valid user IDs found for preloading existing logs');
+        return;
+    }
+
+    // CRITICAL FIX: Use broader date range to catch more potential duplicates
+    $uniqueUserIds = array_unique($userIds);
+    $uniqueDates = array_unique($dates);
+    $uniqueRequestIds = array_unique(array_filter($requestIds)); // Remove empty request IDs
+
+    Log::info('Starting comprehensive preload of existing logs', [
+        'unique_users' => count($uniqueUserIds),
+        'unique_dates' => count($uniqueDates),
+        'unique_request_ids' => count($uniqueRequestIds)
+    ]);
+
+    try {
+        // Strategy 1: Load by user IDs and date range (broader coverage)
+        if (!empty($uniqueUserIds) && !empty($uniqueDates)) {
+            foreach (array_chunk($uniqueUserIds, 100) as $userChunk) {
+                $minDate = min($uniqueDates);
+                $maxDate = max($uniqueDates);
+                
+                // Expand date range by 1 day on each side to catch edge cases
+                $expandedMinDate = date('Y-m-d H:i:s', strtotime($minDate . ' -1 day'));
+                $expandedMaxDate = date('Y-m-d H:i:s', strtotime($maxDate . ' +1 day'));
+                
+                $existingLogs = DB::table('Azure_LoginDetails')
+                    ->whereIn('user_id', $userChunk)
+                    ->whereBetween('date_utc', [$expandedMinDate, $expandedMaxDate])
+                    ->select('user_id', 'date_utc', 'request_id')
+                    ->get();
+
+                foreach ($existingLogs as $log) {
+                    $key = $log->user_id . '|' . $log->date_utc . '|' . $log->request_id;
+                    $this->existingLogs[$key] = true;
+                    $totalPreloaded++;
+                }
+            }
+        }
+
+        // Strategy 2: Load by specific request IDs (if available)
+        if (!empty($uniqueRequestIds)) {
+            foreach (array_chunk($uniqueRequestIds, 200) as $requestChunk) {
+                $existingLogs = DB::table('Azure_LoginDetails')
+                    ->whereIn('request_id', $requestChunk)
+                    ->select('user_id', 'date_utc', 'request_id')
+                    ->get();
+
+                foreach ($existingLogs as $log) {
+                    $key = $log->user_id . '|' . $log->date_utc . '|' . $log->request_id;
+                    if (!isset($this->existingLogs[$key])) {
                         $this->existingLogs[$key] = true;
+                        $totalPreloaded++;
                     }
                 }
             }
         }
-        
-        Log::info('Preloaded existing logs for duplicate check', ['count' => count($this->existingLogs)]);
-    }
 
+        // Strategy 3: Recent logs for the users (catch any recent duplicates)
+        foreach (array_chunk($uniqueUserIds, 50) as $userChunk) {
+            $recentLogs = DB::table('Azure_LoginDetails')
+                ->whereIn('user_id', $userChunk)
+                ->where('date_utc', '>=', date('Y-m-d H:i:s', strtotime('-7 days')))
+                ->select('user_id', 'date_utc', 'request_id')
+                ->get();
+
+            foreach ($recentLogs as $log) {
+                $key = $log->user_id . '|' . $log->date_utc . '|' . $log->request_id;
+                if (!isset($this->existingLogs[$key])) {
+                    $this->existingLogs[$key] = true;
+                    $totalPreloaded++;
+                }
+            }
+        }
+
+        Log::info('Enhanced preload completed', [
+            'total_preloaded' => $totalPreloaded,
+            'unique_keys' => count($this->existingLogs),
+            'memory_usage_mb' => round(memory_get_usage(true) / 1024 / 1024, 2)
+        ]);
+
+    } catch (\Exception $e) {
+        Log::error('Error during comprehensive preload of existing logs', [
+            'error' => $e->getMessage(),
+            'preloaded_so_far' => $totalPreloaded,
+            'trace' => substr($e->getTraceAsString(), 0, 300)
+        ]);
+        
+        // Continue with whatever we managed to preload
+        Log::info('Continuing with partial preload', [
+            'partial_count' => count($this->existingLogs)
+        ]);
+    }
+}
     private function prepareSigninLogData(array $row, $user, string $system, string $parsedDate): array
     {
         return [
@@ -1731,10 +1872,8 @@ private function bulkInsertUserSystemAssociations(array $associations)
         $key = $assoc['user_id'] . '|' . $assoc['application_id'];
         if (!isset($uniqueAssociations[$key])) {
             $uniqueAssociations[$key] = [
-                // REMOVE Id - let SQL Server auto-generate the bigint
                 'user_id' => $assoc['user_id'],
-                'application_id' => (string) $assoc['application_id'], // Keep as string
-                // REMOVE created_at and updated_at - columns don't exist
+                'application_id' => (string) $assoc['application_id'],
             ];
         }
     }
@@ -1749,8 +1888,12 @@ private function bulkInsertUserSystemAssociations(array $associations)
         'unique_count' => count($uniqueAssociations)
     ]);
 
-    // Process in chunks of 100
-    foreach (array_chunk(array_values($uniqueAssociations), 100) as $chunkIndex => $chunk) {
+    // Get the current max ID to generate new IDs
+    $maxId = DB::table('Azure_Application_UserMapping')->max('Id') ?? 0;
+    $nextId = $maxId + 1;
+
+    // Process in chunks of 50 (smaller chunks for safer insertion)
+    foreach (array_chunk(array_values($uniqueAssociations), 50) as $chunkIndex => $chunk) {
         try {
             $userIds = array_column($chunk, 'user_id');
             $applicationIds = array_column($chunk, 'application_id');
@@ -1764,38 +1907,53 @@ private function bulkInsertUserSystemAssociations(array $associations)
                 ->mapWithKeys(fn($row) => [$row->user_id . '|' . $row->application_id => true])
                 ->all();
 
-            // Filter out existing associations - NO ID COLUMN NEEDED
+            // Filter out existing associations and add explicit IDs
             $newAssociations = [];
             foreach ($chunk as $assoc) {
                 $key = $assoc['user_id'] . '|' . $assoc['application_id'];
                 if (!isset($existingPairs[$key])) {
-                    $newAssociations[] = $assoc; // Already formatted correctly above
+                    $newAssociations[] = [
+                        'Id' => $nextId++,  // CRITICAL FIX: Explicit ID
+                        'user_id' => $assoc['user_id'],
+                        'application_id' => $assoc['application_id']
+                    ];
                 }
             }
 
             if (!empty($newAssociations)) {
-                DB::table('Azure_Application_UserMapping')->insert($newAssociations);
-                
-                Log::info('Inserted user-application associations chunk', [
-                    'chunk_index' => $chunkIndex + 1,
-                    'new_associations' => count($newAssociations),
-                    'skipped_existing' => count($chunk) - count($newAssociations)
-                ]);
+                // Try batch insert first
+                try {
+                    DB::table('Azure_Application_UserMapping')->insert($newAssociations);
+                    
+                    Log::info('Inserted user-application associations chunk', [
+                        'chunk_index' => $chunkIndex + 1,
+                        'new_associations' => count($newAssociations),
+                        'skipped_existing' => count($chunk) - count($newAssociations)
+                    ]);
+                } catch (\Exception $e) {
+                    Log::warning('Batch association insert failed, trying individual inserts', [
+                        'chunk_index' => $chunkIndex + 1,
+                        'chunk_size' => count($newAssociations),
+                        'error' => $e->getMessage()
+                    ]);
+
+                    $this->insertUserSystemAssociationsIndividually($newAssociations);
+                }
             }
 
         } catch (\Exception $e) {
-            Log::warning('Batch association insert failed, trying individual inserts', [
+            Log::error('Critical error in association processing', [
                 'chunk_index' => $chunkIndex + 1,
-                'chunk_size' => count($chunk),
                 'error' => $e->getMessage()
             ]);
-
-            $this->insertUserSystemAssociationsIndividually($chunk);
+            
+            // Continue with next chunk instead of failing entirely
+            continue;
         }
     }
 }
 
-   private function insertUserSystemAssociationsIndividually(array $associations)
+private function insertUserSystemAssociationsIndividually(array $associations)
 {
     $insertedCount = 0;
     $skippedCount = 0;
@@ -1808,11 +1966,13 @@ private function bulkInsertUserSystemAssociations(array $associations)
                 ->exists();
 
             if (!$exists) {
+                // Get fresh max ID for each insert to avoid conflicts
+                $maxId = DB::table('Azure_Application_UserMapping')->max('Id') ?? 0;
+                
                 DB::table('Azure_Application_UserMapping')->insert([
-                    // REMOVE Id - let SQL Server auto-generate
+                    'Id' => $maxId + 1,  // CRITICAL FIX: Explicit ID
                     'user_id' => $assoc['user_id'],
-                    'application_id' => (string) $assoc['application_id']
-                    // REMOVE created_at and updated_at
+                    'application_id' => $assoc['application_id']
                 ]);
                 $insertedCount++;
             } else {
@@ -1845,6 +2005,7 @@ private function bulkInsertUserSystemAssociations(array $associations)
         ]);
     }
 }
+
 
     private function extractDateUtc($row)
     {
@@ -2266,5 +2427,102 @@ private function categorizeValidationError(string $error): string
         return 'other_validation_error';
     }
 }
+
+private function isDuplicateRecord(array $signinLogData): bool
+    {
+        try {
+            // Check using the actual primary key constraint fields
+            $exists = DB::table('Azure_LoginDetails')
+                ->where('date_utc', $signinLogData['date_utc'])
+                ->where('request_id', $signinLogData['request_id'])
+                ->where('user_id', $signinLogData['user_id'])
+                ->exists();
+            
+            if ($exists) {
+                Log::debug('Duplicate record detected via database check', [
+                    'date_utc' => $signinLogData['date_utc'],
+                    'request_id' => $signinLogData['request_id'],
+                    'user_id' => $signinLogData['user_id'],
+                    'username' => $signinLogData['username'] ?? 'unknown'
+                ]);
+                return true;
+            }
+            
+            return false;
+            
+        } catch (\Exception $e) {
+            Log::error('Error checking for duplicate record', [
+                'error' => $e->getMessage(),
+                'data' => $signinLogData
+            ]);
+            // Return false to allow processing - better to attempt insert than skip incorrectly
+            return false;
+        }
+    }
+
+
+     /**
+     * CRITICAL FIX: Comprehensive user lookup with validation
+     */
+    private function findUserWithValidation(string $userPrincipalName, ?string $userIdFromCsv = null)
+    {
+        try {
+            // Strategy 1: Direct username match with ID validation
+            $user = AzureUser::whereRaw('LOWER(RTRIM(LTRIM(userPrincipalName))) = LOWER(?)', [trim($userPrincipalName)])
+                ->whereNotNull('id')  // CRITICAL: Only get users with valid IDs
+                ->where('id', '!=', '') // Additional safety check
+                ->first();
+            
+            if ($user) {
+                Log::debug('User found via username with valid ID', [
+                    'username' => $userPrincipalName,
+                    'found_username' => $user->userPrincipalName,
+                    'user_id' => $user->id
+                ]);
+                $this->stats['users_matched_by_strategy']['username']++;
+                return $user;
+            }
+
+            // Strategy 2: Try by exact ID if provided
+            if (!empty($userIdFromCsv) && $this->isValidUuid($userIdFromCsv)) {
+                $user = AzureUser::where('id', $userIdFromCsv)->first();
+                if ($user) {
+                    Log::debug('User found via exact ID', [
+                        'username' => $userPrincipalName,
+                        'user_id' => $user->id
+                    ]);
+                    $this->stats['users_matched_by_strategy']['exact_id']++;
+                    return $user;
+                }
+            }
+
+            // Strategy 3: Email field match
+            if (filter_var($userPrincipalName, FILTER_VALIDATE_EMAIL)) {
+                $user = AzureUser::whereRaw('LOWER(RTRIM(LTRIM(mail))) = LOWER(?)', [trim($userPrincipalName)])
+                    ->whereNotNull('id')
+                    ->where('id', '!=', '')
+                    ->first();
+                    
+                if ($user) {
+                    Log::debug('User found via email with valid ID', [
+                        'username' => $userPrincipalName,
+                        'user_id' => $user->id
+                    ]);
+                    $this->stats['users_matched_by_strategy']['email']++;
+                    return $user;
+                }
+            }
+
+        } catch (\Exception $e) {
+            Log::error('Error in user lookup', [
+                'username' => $userPrincipalName,
+                'error' => $e->getMessage()
+            ]);
+        }
+
+        return null;
+    }
+
+    
 
 }

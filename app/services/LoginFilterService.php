@@ -91,9 +91,7 @@ class LoginFilterService
         // Apply system filter using system mapping
         if (!empty($filters['system'])) {
             $mappedSystems = collect(config('systemmap'))
-                ->filter(function ($systemName) use ($filters) {
-                    return $systemName === $filters['system'];
-                })
+                ->filter(fn($systemName) => $systemName === $filters['system'])
                 ->keys()
                 ->map(fn($key) => strtolower($key)) // Normalize to lowercase
                 ->toArray();
@@ -115,8 +113,14 @@ class LoginFilterService
      */
     public function getSystemList(): array
     {
-        // Fetch systems from the System model for consistency with SigninLogsImport
-        $systems = System::pluck('name')->toArray();
+        // Systems to exclude
+        $excluded = ['microsoft teams', 'office 365', 'unknown'];
+
+        // Fetch systems from DB excluding the unwanted ones
+        $systems = System::whereNotIn(\DB::raw('LOWER(name)'), $excluded)
+            ->orderBy('name')
+            ->pluck('name')
+            ->toArray();
 
         // Fallback to hardcoded list if System model is empty
         if (empty($systems)) {
@@ -134,6 +138,15 @@ class LoginFilterService
             Log::info('No systems found in System model, using hardcoded list');
         }
 
-        return array_unique($systems);
+        // Ensure unique + sorted
+        $systems = array_values(array_unique($systems));
+
+        Log::info('System list loaded', [
+            'count' => count($systems),
+            'excluded' => $excluded,
+            'systems' => $systems,
+        ]);
+
+        return $systems;
     }
 }
