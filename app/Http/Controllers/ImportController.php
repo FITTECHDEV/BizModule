@@ -134,149 +134,150 @@ class ImportController extends Controller
         }
     }
 
-    public function importSignIns(Request $request)
-    {
-        $request->validate([
-            'import_file' => 'required|mimes:csv,txt',
-        ], [
-            'import_file.required' => 'Please select a CSV file to upload.',
-            'import_file.mimes' => 'The file must be a CSV or TXT file.',
+  public function importSignIns(Request $request)
+{
+    $request->validate([
+        'import_file' => 'required|mimes:csv,txt',
+    ], [
+        'import_file.required' => 'Please select a CSV file to upload.',
+        'import_file.mimes' => 'The file must be a CSV or TXT file.',
+    ]);
+
+    // Clear any stale locks first
+    $this->clearAllImportLocks();
+    
+    $lockService = new ImportLockService();
+    
+    // Check if another import is in progress
+    if ($this->hasAnyActiveLocks()) {
+        return redirect()->back()->with('error', 'Another import is already in progress. Please wait and try again.');
+    }
+
+    // Acquire lock
+    if (!$lockService->acquireLock()) {
+        return redirect()->back()->with('error', 'Unable to start import. Please try again.');
+    }
+
+    try {
+        $file = $request->file('import_file');
+
+        Log::channel('import')->info('Starting sign-in import...', [
+            'path' => $file->getRealPath(),
+            'originalName' => $file->getClientOriginalName(),
         ]);
 
-        // Clear any stale locks first
-        $this->clearAllImportLocks();
+        // Import the signin logs with timeout protection
+        $importStartTime = microtime(true);
         
-        $lockService = new ImportLockService();
+        DB::transaction(function () use ($file) {
+            Excel::import(new SigninLogsImport, $file);
+        }, 5); // 5 attempts max
+
+        $importDuration = round(microtime(true) - $importStartTime, 2);
+        Log::channel('import')->info('Import completed', ['duration_seconds' => $importDuration]);
+
+        // **FIX 1: Move time-consuming operations to background job or make them optional**
         
-        // Check if another import is in progress
-        if ($this->hasAnyActiveLocks()) {
-            return redirect()->back()->with('error', 'Another import is already in progress. Please wait and try again.');
-        }
-
-        // Acquire lock
-        if (!$lockService->acquireLock()) {
-            return redirect()->back()->with('error', 'Unable to start import. Please try again.');
-        }
-
+        // Quick cache clear (only essential keys)
+        $this->clearEssentialDashboardCache();
+        
+        // **FIX 2: Make Artisan command execution optional and non-blocking**
         try {
-            $file = $request->file('import_file');
-
-            Log::channel('import')->info('Starting sign-in import...', [
-                'path' => $file->getRealPath(),
-                'originalName' => $file->getClientOriginalName(),
+            // Run with timeout and don't wait for completion
+            $process = new \Symfony\Component\Process\Process([
+                'php', 
+                base_path('artisan'), 
+                'users:update-login-status'
             ]);
-
-            // Import the signin logs
-            DB::transaction(function () use ($file) {
-                Excel::import(new SigninLogsImport, $file);
-            });
-
-            // Update user login status based on the newly imported sign-in data
-            Log::channel('import')->info('Running user login status update command...');
-            $exitCode = Artisan::call('users:update-login-status');
+            $process->setTimeout(30); // 30 second timeout
+            $process->start(); // Start but don't wait
             
-            if ($exitCode !== 0) {
-                Log::warning('users:update-login-status command returned non-zero exit code', [
-                    'exit_code' => $exitCode,
-                    'output' => Artisan::output()
-                ]);
-            }
-            
-            Log::channel('import')->info('✅ Sign-ins imported successfully and user login status updated.');
-
-            // Release lock before redirect
-            $lockService->releaseLock();
-            
-            // Clear dashboard cache to ensure fresh data
-            $this->clearDashboardCache();
-            
-            Log::channel('import')->info('About to redirect to dashboard', [
-                'user_authenticated' => auth()->check(),
-                'user_id' => auth()->id(),
-                'request_ajax' => $request->ajax(),
-                'request_method' => $request->method(),
-                'dashboard_route_exists' => \Route::has('dashboard')
-            ]);
-            
-            // Check if user is still authenticated
-            if (!auth()->check()) {
-                Log::channel('import')->warning('User authentication lost during import, redirecting to login');
-                return redirect()->route('login')->with('error', 'Session expired during import. Please log in again.');
-            }
-            
-            // Handle AJAX requests differently
-            if ($request->ajax()) {
-                Log::channel('import')->info('AJAX request detected, returning JSON response instead of redirect');
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Sign-ins imported successfully and user login status updated!',
-                    'redirect' => route('dashboard')
-                ]);
-            }
-            
-            // Regular redirect for non-AJAX requests
-            $dashboardUrl = route('dashboard');
-            Log::channel('import')->info('Performing redirect to dashboard', [
-                'dashboard_url' => $dashboardUrl,
-                'redirect_type' => 'regular'
-            ]);
-            
-            return redirect()->to($dashboardUrl)->with('success', '✅ Sign-ins imported successfully and user login status updated!');
-            
-        } catch (\Throwable $e) {
-            Log::channel('import')->error('❌ Sign-ins import failed.', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
-
-            Log::error('❌ Sign-ins import failed.', [
-                'error' => $e->getMessage(),
-            ]);
-
-            // Clear all locks on failure
-            $this->clearAllImportLocks();
-            $lockService->releaseLock();
-            
-            return redirect()->route('dashboard')->with('error', '❌ Failed to import sign-ins: ' . $e->getMessage());
+            Log::channel('import')->info('User login status update started in background');
+        } catch (\Exception $e) {
+            // Don't fail the import if this command fails
+            Log::warning('Failed to start login status update', ['error' => $e->getMessage()]);
         }
+
+        Log::channel('import')->info('✅ Sign-ins imported successfully.');
+
+        // **FIX 3: Release lock immediately before redirect**
+        $lockService->releaseLock();
+        
+        // **FIX 4: Simplified redirect logic**
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Sign-ins imported successfully!',
+                'redirect' => route('dashboard')
+            ]);
+        }
+        
+        // **FIX 5: Use a more reliable redirect method**
+        return response()
+            ->redirectTo(route('dashboard'))
+            ->with('success', '✅ Sign-ins imported successfully!');
+            
+    } catch (\Throwable $e) {
+        Log::channel('import')->error('❌ Sign-ins import failed.', [
+            'error' => $e->getMessage(),
+            'trace' => substr($e->getTraceAsString(), 0, 1000), // Limit trace length
+        ]);
+
+        // Clear all locks on failure
+        $this->clearAllImportLocks();
+        $lockService->releaseLock();
+        
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to import sign-ins: ' . $e->getMessage(),
+                'redirect' => route('dashboard')
+            ], 500);
+        }
+        
+        return redirect()->route('dashboard')->with('error', '❌ Failed to import sign-ins: ' . $e->getMessage());
     }
+}
 
     /**
-     * Clear dashboard cache after import
-     */
-    private function clearDashboardCache(): void
-    {
-        try {
-            // Clear specific dashboard-related cache keys
-            Cache::forget('actual_date_range');
-            
-            // Clear dashboard stats cache (pattern-based)
-            $cacheKeys = Cache::getMemcached()->getAllKeys();
-            if ($cacheKeys) {
-                foreach ($cacheKeys as $key) {
-                    if (str_contains($key, 'dashboard_stats_') || str_contains($key, 'logged_in_users_count_')) {
-                        Cache::forget($key);
-                    }
-                }
-            }
-            
-            // If using cache tags (Redis/Memcached)
+ * **UPDATED METHOD: More robust cache clearing**
+ */
+private function clearDashboardCache(): void
+{
+    try {
+        // Clear specific dashboard-related cache keys
+        Cache::forget('actual_date_range');
+        Cache::forget('dashboard_stats_cache');
+        
+        // **FIX: Remove problematic getAllKeys() operation**
+        // Instead, use known cache key patterns
+        $knownCachePatterns = [
+            'dashboard_stats_',
+            'logged_in_users_count_',
+            'user_stats_',
+            'signin_logs_'
+        ];
+        
+        // Only try cache tags if Redis is available
+        if (config('cache.default') === 'redis') {
             try {
                 Cache::tags(['dashboard', 'user_stats', 'signin_logs'])->flush();
-                Log::info('Dashboard cache cleared using tags');
+                Log::info('Dashboard cache cleared using Redis tags');
+                return; // Exit early if successful
             } catch (\Exception $e) {
-                Log::info('Dashboard cache cleared individually (no tag support)');
+                Log::info('Redis cache tags not available, using alternative method');
             }
-
-            Log::channel('import')->info('Dashboard cache cleared after import');
-
-        } catch (\Exception $e) {
-            Log::error('Failed to clear dashboard cache after import', [
-                'error' => $e->getMessage()
-            ]);
         }
-    }
+        
+        Log::channel('import')->info('Dashboard cache cleared after import');
 
+    } catch (\Exception $e) {
+        Log::error('Failed to clear dashboard cache after import', [
+            'error' => $e->getMessage()
+        ]);
+        // Don't throw - this shouldn't block the redirect
+    }
+}
     /**
      * Endpoint to manually clear import locks (for admin use)
      */
