@@ -36,8 +36,8 @@
     </table>
 
     {{-- Pagination Controls --}}
-    <div class="mt-4">
-        {{ $users->links() }}
+<div class="logintracker-pagination mt-4">
+            {{ $users->links('logintracker.vendor.Pagination.tailwind') }}
     </div>
     
 </div>

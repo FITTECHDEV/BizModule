@@ -157,11 +157,12 @@
                 </div>
 
                 {{-- Compact Pagination --}}
-                <div class="mt-3">
-                    <div class="compact-pagination">
-                        {{ $users->withQueryString()->links() }}
-                    </div>
-                </div>
+               <div class="mt-3">
+    <div class="compact-pagination">
+        {{ $users->withQueryString()->links('logintracker.vendor.Pagination.tailwind') }}
+    </div>
+</div>
+
             @endif
         </div>
     </div>
