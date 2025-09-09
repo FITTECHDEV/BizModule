@@ -86,39 +86,141 @@ class UsersImport implements ToCollection, WithHeadingRow
         }
     }
 
-    /**
-     * SIMPLIFIED: Use updateOrCreate for atomic upsert
-     */
-    private function upsertAzureUser($userPrincipalName, $row, $rowNumber)
-    {
-        try {
-            $userData = $this->prepareUserData($row);
-            
-            // Use updateOrCreate for atomic operation
-            $user = AzureUser::updateOrCreate(
-                ['userPrincipalName' => $userPrincipalName],
-                $userData
-            );
-            
-            $action = $user->wasRecentlyCreated ? 'created' : 'updated';
-            
-            Log::debug("Row {$rowNumber}: {$action} user", [
-                'userPrincipalName' => $userPrincipalName,
-                'displayName' => $user->displayName,
-                'azure_id' => $user->azure_id
-            ]);
-            
-            return $user;
-            
-        } catch (\Exception $e) {
-            Log::error("Row {$rowNumber}: Failed to upsert user", [
-                'userPrincipalName' => $userPrincipalName,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-            return null;
-        }
+
+    
+/**
+ * Validates user data before database operations to prevent empty records
+ */
+private function validateUserBeforeUpsert($userPrincipalName, $userData, $rowNumber)
+{
+    // Critical field validation
+    if (empty($userPrincipalName) || trim($userPrincipalName) === '') {
+        throw new \InvalidArgumentException("Row {$rowNumber}: userPrincipalName cannot be empty");
     }
+    
+    if (empty($userData['displayName']) || trim($userData['displayName']) === '' || $userData['displayName'] === 'Unknown User') {
+        Log::warning("Row {$rowNumber}: displayName is empty or default value", [
+            'userPrincipalName' => $userPrincipalName,
+            'displayName' => $userData['displayName']
+        ]);
+        // Don't throw error, but log it
+    }
+    
+    // Validate email format
+    if (!filter_var($userPrincipalName, FILTER_VALIDATE_EMAIL)) {
+        throw new \InvalidArgumentException("Row {$rowNumber}: userPrincipalName must be a valid email format");
+    }
+    
+  if (strpos($userPrincipalName, 'User-') === 0) {
+    Log::warning("Row {$rowNumber}: Rejecting userPrincipalName with User- prefix", [
+        'userPrincipalName' => $userPrincipalName,
+        'reason' => 'System-generated ID format detected'
+    ]);
+    throw new \InvalidArgumentException("Row {$rowNumber}: userPrincipalName starting with 'User-' appears to be a system-generated ID, not a valid email");
+}
+    
+    // Ensure azure_id is valid
+    if (empty($userData['azure_id'])) {
+        Log::warning("Row {$rowNumber}: azure_id is empty, generating new UUID", [
+            'userPrincipalName' => $userPrincipalName
+        ]);
+        $userData['azure_id'] = (string) Str::uuid();
+    }
+    
+    return $userData;
+}
+
+  /**
+ * Enhanced upsertAzureUser method with validation
+ */
+private function upsertAzureUser($userPrincipalName, $row, $rowNumber)
+{
+    try {
+        $userData = $this->prepareUserData($row);
+        
+        // Validate before database operation
+        $userData = $this->validateUserBeforeUpsert($userPrincipalName, $userData, $rowNumber);
+        
+        // Use updateOrCreate with explicit where clause
+        $user = AzureUser::updateOrCreate(
+            ['userPrincipalName' => $userPrincipalName],
+            $userData
+        );
+        
+        // Verify the created/updated user has required data
+        if (empty($user->userPrincipalName) || empty($user->displayName)) {
+            Log::error("Row {$rowNumber}: Created user has empty critical fields", [
+                'user_id' => $user->id,
+                'userPrincipalName' => $user->userPrincipalName,
+                'displayName' => $user->displayName
+            ]);
+            
+            // Delete the malformed record
+            $user->delete();
+            throw new \Exception("Created user record is invalid - deleted to prevent corruption");
+        }
+        
+        $action = $user->wasRecentlyCreated ? 'created' : 'updated';
+        
+        Log::debug("Row {$rowNumber}: {$action} user", [
+            'userPrincipalName' => $userPrincipalName,
+            'displayName' => $user->displayName,
+            'azure_id' => $user->azure_id
+        ]);
+        
+        return $user;
+        
+    } catch (\Exception $e) {
+        Log::error("Row {$rowNumber}: Failed to upsert user", [
+            'userPrincipalName' => $userPrincipalName,
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString()
+        ]);
+        return null;
+    }
+}
+
+/**
+ * Clean up empty or malformed user records
+ */
+public function cleanupEmptyUsers()
+{
+    try {
+        Log::info("Starting cleanup of empty user records");
+        
+        $emptyUsers = AzureUser::where(function($query) {
+            $query->whereNull('userPrincipalName')
+                  ->orWhere('userPrincipalName', '')
+                  ->orWhere('userPrincipalName', 'like', 'User-%')
+                  ->orWhereNull('displayName')
+                  ->orWhere('displayName', '')
+                  ->orWhere('displayName', 'Unknown User');
+        })->get();
+        
+        $deletedCount = 0;
+        foreach ($emptyUsers as $user) {
+            Log::info("Deleting empty user record", [
+                'id' => $user->id,
+                'userPrincipalName' => $user->userPrincipalName,
+                'displayName' => $user->displayName
+            ]);
+            
+            $user->delete();
+            $deletedCount++;
+        }
+        
+        Log::info("Cleanup completed", ['deleted_count' => $deletedCount]);
+        
+        return redirect()->back()->with('success', "Cleaned up {$deletedCount} empty user records.");
+        
+    } catch (\Exception $e) {
+        Log::error('Error during user cleanup', [
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString(),
+        ]);
+        return redirect()->back()->with('error', 'An error occurred during cleanup.');
+    }
+}
 
     /**
      * Keep your existing prepareUserData method - it's good

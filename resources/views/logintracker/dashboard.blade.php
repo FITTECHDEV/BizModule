@@ -167,109 +167,125 @@
         </div>
     </div>
 
-    <style>
-        .card-hover {
-            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-            cursor: pointer;
-        }
+   <style>
+    .card-hover {
+        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        cursor: pointer;
+    }
 
-        .card-hover:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15) !important;
-        }
+    .card-hover:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15) !important;
+    }
 
-        .card-hover:active {
-            transform: translateY(-2px);
-        }
+    .card-hover:active {
+        transform: translateY(-2px);
+    }
 
-        .table-responsive {
-            border-radius: 0.375rem;
-            overflow: hidden;
-        }
+    .table-responsive {
+        border-radius: 0.375rem;
+        overflow: hidden;
+    }
 
-        .btn-sm {
-            padding: 0.25rem 0.5rem;
-            font-size: 0.875rem;
-        }
+    .btn-sm {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.875rem;
+    }
 
-        /* Compact Pagination Styles */
-        .compact-pagination {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
+    /* Pagination Container */
+    .compact-pagination {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin-top: 1rem;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
 
-        .compact-pagination .pagination {
-            margin: 0;
-            gap: 2px;
-        }
+    /* Pagination Wrapper */
+    .compact-pagination .pagination {
+        margin: 0;
+        gap: 0.4rem;
+        display: flex;
+        flex-wrap: wrap;
+    }
 
+    /* Page Links */
+    .compact-pagination .page-item .page-link {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 0.6rem 1rem;
+        min-width: 2.75rem;
+        height: 2.75rem;
+        border-radius: 9999px; /* pill-shaped */
+        font-size: 0.9rem;
+        font-weight: 500;
+        border: 1px solid #dee2e6;
+        background-color: #fff;
+        color: #0d6efd;
+        transition: all 0.2s ease-in-out;
+    }
+
+    /* Active Page */
+    .compact-pagination .page-item.active .page-link {
+        background-color: #0d6efd;
+        color: #fff;
+        border-color: #0d6efd;
+        font-weight: 600;
+        box-shadow: 0 2px 6px rgba(13, 110, 253, 0.3);
+    }
+
+    /* Hover State */
+    .compact-pagination .page-item .page-link:hover {
+        background-color: #e9f2ff;
+        border-color: #b6d4fe;
+        color: #0a58ca;
+    }
+
+    .compact-pagination .page-item.active:hover .page-link {
+        background-color: #0b5ed7;
+        border-color: #0a58ca;
+        color: #fff;
+    }
+
+    /* Disabled */
+    .compact-pagination .page-item.disabled .page-link {
+        background-color: #f8f9fa;
+        color: #adb5bd;
+        border-color: #dee2e6;
+        cursor: not-allowed;
+        opacity: 0.65;
+    }
+
+    /* First & Last (Prev/Next arrows) */
+    .compact-pagination .page-item:first-child .page-link,
+    .compact-pagination .page-item:last-child .page-link {
+        font-weight: 600;
+    }
+
+    /* Ellipsis (...) */
+    .compact-pagination .page-item.disabled .page-link:contains("...") {
+        padding: 0.6rem 0.8rem;
+        min-width: auto;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 576px) {
         .compact-pagination .page-item .page-link {
-            padding: 0.375rem 0.75rem;
-            font-size: 0.875rem;
-            line-height: 1.2;
-            border-radius: 0.25rem;
-            margin: 0;
-            min-width: 2.5rem;
-            text-align: center;
-            border: 1px solid #dee2e6;
-            color: #0d6efd;
-            background-color: #fff;
-            transition: all 0.15s ease-in-out;
+            padding: 0.5rem 0.75rem;
+            font-size: 0.8rem;
+            min-width: 2.25rem;
+            height: 2.25rem;
         }
 
-        .compact-pagination .page-item.active .page-link {
-            background-color: #0d6efd;
-            border-color: #0d6efd;
-            color: #fff;
-            font-weight: 500;
+        .compact-pagination {
+            flex-wrap: wrap;
+            gap: 0.4rem;
         }
+    }
+</style>
 
-        .compact-pagination .page-item:hover .page-link {
-            background-color: #e9ecef;
-            border-color: #adb5bd;
-            color: #0a58ca;
-        }
-
-        .compact-pagination .page-item.active:hover .page-link {
-            background-color: #0b5ed7;
-            border-color: #0a58ca;
-            color: #fff;
-        }
-
-        .compact-pagination .page-item.disabled .page-link {
-            color: #6c757d;
-            background-color: #fff;
-            border-color: #dee2e6;
-            cursor: not-allowed;
-            opacity: 0.65;
-        }
-
-        .compact-pagination .page-item:first-child .page-link,
-        .compact-pagination .page-item:last-child .page-link {
-            font-weight: 500;
-        }
-
-        /* Hide ellipsis dots if they're taking too much space */
-        .compact-pagination .page-item.disabled .page-link:contains("...") {
-            padding: 0.375rem 0.5rem;
-            min-width: auto;
-        }
-
-        /* Responsive adjustments */
-        @media (max-width: 576px) {
-            .compact-pagination .page-item .page-link {
-                padding: 0.25rem 0.5rem;
-                font-size: 0.75rem;
-                min-width: 2rem;
-            }
-            
-            .compact-pagination {
-                flex-wrap: wrap;
-                gap: 4px;
-            }
-        }
-    </style>
 
     <script>
         $(document).ready(function() {

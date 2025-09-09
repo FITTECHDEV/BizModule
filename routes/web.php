@@ -420,3 +420,5 @@ Route::post('/import/sign-ins', [ImportController::class, 'importSignIns'])
 
 Route::post('/dashboard/clear-cache', [DashboardController::class, 'clearDashboardCache'])
     ->name('dashboard.clear-cache');
+
+    Route::get('/users/cleanup-empty', [UserController::class, 'cleanupEmptyUsers'])->name('users.cleanup');

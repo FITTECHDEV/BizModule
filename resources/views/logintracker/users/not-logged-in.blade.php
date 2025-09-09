@@ -110,8 +110,8 @@
         </div>
 
         {{-- Pagination --}}
-        <div class="mt-4">
-            {{ $users->withQueryString()->links() }}
+        <div class="logintracker-pagination mt-4">
+            {{ $users->withQueryString()->links('logintracker.vendor.Pagination.tailwind') }}
         </div>
     @endif
 </div>

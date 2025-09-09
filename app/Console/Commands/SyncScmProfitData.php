@@ -170,54 +170,82 @@ class SyncScmProfitData extends Command
         });
     }
 
-    private function processRecord($record): void
-    {
-        $bookingNo = $record->bookingno;
+   private function processRecord($record): void
+{
+    $bookingNo = $record->bookingno;
 
-        if ($this->option('debug')) {
-            $this->info("Processing record: " . json_encode($record));
-        }
+    if ($this->option('debug')) {
+        Log::info("🔍 Processing record", [
+            'bookingno' => $bookingNo,
+            'record' => (array) $record,
+        ]);
+    }
 
-        if (empty($bookingNo)) {
-            throw new \Exception("BookingNo is required but missing");
-        }
+    if (empty($bookingNo)) {
+        throw new \Exception("BookingNo is required but missing");
+    }
 
-        $existingRecord = DB::connection('sqlsrv')
+    $existingRecord = DB::connection('sqlsrv')
+        ->table('CRM_SCMprofit_integration')
+        ->where('bookingno', $bookingNo)
+        ->exists();
+
+    Log::info("🔎 Existence check", [
+        'bookingno' => $bookingNo,
+        'exists' => $existingRecord
+    ]);
+
+    $data = $this->transformRecord($record);
+
+    if ($this->isDryRun) {
+        $action = $existingRecord ? 'UPDATE' : 'INSERT';
+        $this->line("DRY RUN: Would {$action} BookingNo: {$bookingNo}");
+        Log::info("📝 DRY RUN", [
+            'action' => $action,
+            'bookingno' => $bookingNo,
+            'data' => $data
+        ]);
+        return;
+    }
+
+    if ($existingRecord) {
+        $affected = DB::connection('sqlsrv')
             ->table('CRM_SCMprofit_integration')
             ->where('bookingno', $bookingNo)
-            ->exists();
+            ->update($data);
 
-        $data = $this->transformRecord($record);
+        Log::info("✏️ Update result", [
+            'bookingno' => $bookingNo,
+            'rows_affected' => $affected,
+            'data' => $data
+        ]);
+        // 👇 Fetch back the updated row
+    $updatedRow = DB::connection('sqlsrv')
+        ->table('CRM_SCMprofit_integration')
+        ->where('bookingno', $bookingNo)
+        ->first();
 
-        if ($this->isDryRun) {
-            $action = $existingRecord ? 'UPDATE' : 'INSERT';
-            $this->line("DRY RUN: Would {$action} BookingNo: {$bookingNo}");
-            return;
-        }
+    Log::info("📥 Updated row from SQL Server", [
+        'bookingno' => $bookingNo,
+        'db_record' => $updatedRow,
+    ]);
 
-        if ($existingRecord) {
-            DB::connection('sqlsrv')
-                ->table('CRM_SCMprofit_integration')
-                ->where('bookingno', $bookingNo)
-                ->update($data);
 
-            $this->stats['updated']++;
+        $this->stats['updated']++;
+    } else {
+        DB::connection('sqlsrv')
+            ->table('CRM_SCMprofit_integration')
+            ->insert($data);
 
-            if ($this->getOutput()->isVerbose()) {
-                $this->info("Updated BookingNo: {$bookingNo}");
-            }
-        } else {
-            DB::connection('sqlsrv')
-                ->table('CRM_SCMprofit_integration')
-                ->insert($data);
+        Log::info("➕ Inserted record", [
+            'bookingno' => $bookingNo,
+            'data' => $data
+        ]);
 
-            $this->stats['inserted']++;
-
-            if ($this->getOutput()->isVerbose()) {
-                $this->info("Inserted BookingNo: {$bookingNo}");
-            }
-        }
+        $this->stats['inserted']++;
     }
+}
+
 
     private function transformRecord($record): array
     {

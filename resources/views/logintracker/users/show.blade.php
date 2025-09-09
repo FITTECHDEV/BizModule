@@ -65,52 +65,6 @@
         </div>
     </div>
 
-    {{-- FIXED: Filter Form --}}
-    <div class="card mb-4">
-        <div class="card-header">
-            <h5 class="mb-0">Filter Data</h5>
-        </div>
-        <div class="card-body">
-<form method="GET" 
-      action="{{ route('reporting.users.show', $user->userPrincipalName ?? $user->id) }}" 
-      id="filterForm">
-                <div class="row align-items-end">
-                    <div class="col-md-3">
-                        <label for="range" class="form-label">Date Range</label>
-                        <select name="range" id="range" class="form-select">
-                            <option value="this_month" {{ ($range ?? 'this_month') == 'this_month' ? 'selected' : '' }}>This Month</option>
-                            <option value="last_month" {{ ($range ?? '') == 'last_month' ? 'selected' : '' }}>Last Month</option>
-                            <option value="last_3_months" {{ ($range ?? '') == 'last_3_months' ? 'selected' : '' }}>Last 3 Months</option>
-                            <option value="custom" {{ ($range ?? '') == 'custom' ? 'selected' : '' }}>Custom Date</option>
-                        </select>
-                    </div>
-                    <div class="col-md-3" id="customDateDiv" style="{{ ($range ?? '') == 'custom' ? '' : 'display: none;' }}">
-                        <label for="date" class="form-label">Select Date</label>
-                        <input type="date" name="date" id="date" class="form-control" value="{{ $selectedDate ?? '' }}">
-                    </div>
-                    <div class="col-md-3">
-                        <label for="system" class="form-label">System</label>
-                        <select name="system" id="system" class="form-select">
-                            <option value="">All Systems</option>
-                            @foreach($systems as $systemOption)
-                                <option value="{{ $systemOption }}" {{ ($system ?? '') == $systemOption ? 'selected' : '' }}>
-                                    {{ $systemOption }}
-                                </option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div class="col-md-3">
-                        <button type="submit" class="btn btn-primary">Apply Filter</button>
-<a href="{{ route('reporting.users.show', $user->userPrincipalName ?? $user->id) }}" 
-   class="btn btn-outline-secondary">
-   Reset
-</a>
-                    </div>
-                </div>
-            </form>
-        </div>
-    </div>
-
     {{-- Current Filter Display --}}
     @if(isset($start) && isset($end))
         <div class="alert alert-info mb-4">
@@ -156,14 +110,61 @@
         </div>
     </div>
 
-    {{-- Sign In History Table --}}
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    {{-- Sign In History Header with Search and Filter --}}
+    <div class="d-flex justify-content-between align-items-start mb-4">
         <h4 class="mb-0">Sign In History</h4>
-        <div class="d-flex gap-3">
+        
+        <div class="d-flex flex-column gap-3">
             {{-- Search Field --}}
             <div class="input-group" style="width: 300px;">
                 <span class="input-group-text"><i class="fas fa-search"></i></span>
                 <input type="text" class="form-control" id="applicationSearch" placeholder="Search applications...">
+            </div>
+            
+            {{-- Filter Form --}}
+            <div class="card" style="width: 600px;">
+                <div class="card-header py-2">
+                    <h6 class="mb-0">Filter Data</h6>
+                </div>
+                <div class="card-body py-3">
+                    <form method="GET" 
+                          action="{{ route('reporting.users.show', $user->userPrincipalName ?? $user->id) }}" 
+                          id="filterForm">
+                        <div class="row align-items-end g-2">
+                            <div class="col-md-4">
+                                <label for="range" class="form-label small">Date Range</label>
+                                <select name="range" id="range" class="form-select form-select-sm">
+                                    <option value="this_month" {{ ($range ?? 'this_month') == 'this_month' ? 'selected' : '' }}>This Month</option>
+                                    <option value="last_month" {{ ($range ?? '') == 'last_month' ? 'selected' : '' }}>Last Month</option>
+                                    <option value="last_3_months" {{ ($range ?? '') == 'last_3_months' ? 'selected' : '' }}>Last 3 Months</option>
+                                    <option value="custom" {{ ($range ?? '') == 'custom' ? 'selected' : '' }}>Custom Date</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3" id="customDateDiv" style="{{ ($range ?? '') == 'custom' ? '' : 'display: none;' }}">
+                                <label for="date" class="form-label small">Select Date</label>
+                                <input type="date" name="date" id="date" class="form-control form-control-sm" value="{{ $selectedDate ?? '' }}">
+                            </div>
+                            <div class="col-md-3">
+                                <label for="system" class="form-label small">System</label>
+                                <select name="system" id="system" class="form-select form-select-sm">
+                                    <option value="">All Systems</option>
+                                    @foreach($systems as $systemOption)
+                                        <option value="{{ $systemOption }}" {{ ($system ?? '') == $systemOption ? 'selected' : '' }}>
+                                            {{ $systemOption }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-md-2 d-flex flex-column gap-1">
+                                <button type="submit" class="btn btn-primary btn-sm">Apply</button>
+                                <a href="{{ route('reporting.users.show', $user->userPrincipalName ?? $user->id) }}" 
+                                   class="btn btn-outline-secondary btn-sm">
+                                   Reset
+                                </a>
+                            </div>
+                        </div>
+                    </form>
+                </div>
             </div>
         </div>
     </div>
@@ -204,7 +205,7 @@
         
         {{-- Pagination --}}
         <div class="d-flex justify-content-center mt-4" id="pagination-container">
-            {{ $signIns->withQueryString()->links() }}
+            {{ $signIns->withQueryString()->links('logintracker.vendor.Pagination.tailwind') }}
         </div>
     @endif
 
@@ -272,5 +273,6 @@ document.addEventListener('DOMContentLoaded', function() {
         sessionStorage.setItem('scrollPosition', window.pageYOffset);
     });
 });
+</script>
 
 @endsection
