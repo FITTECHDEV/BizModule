@@ -71,7 +71,7 @@
         <div class="mt-4">
     {{ $activity->withQueryString()->links('logintracker.vendor.Pagination.tailwind') }}
 </div>
-
+ 
     </div>
 
 </div>

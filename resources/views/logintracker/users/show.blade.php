@@ -111,63 +111,53 @@
     </div>
 
     {{-- Sign In History Header with Search and Filter --}}
-    <div class="d-flex justify-content-between align-items-start mb-4">
-        <h4 class="mb-0">Sign In History</h4>
-        
-        <div class="d-flex flex-column gap-3">
-            {{-- Search Field --}}
-            <div class="input-group" style="width: 300px;">
-                <span class="input-group-text"><i class="fas fa-search"></i></span>
-                <input type="text" class="form-control" id="applicationSearch" placeholder="Search applications...">
-            </div>
-            
-            {{-- Filter Form --}}
-            <div class="card" style="width: 600px;">
-                <div class="card-header py-2">
-                    <h6 class="mb-0">Filter Data</h6>
-                </div>
-                <div class="card-body py-3">
-                    <form method="GET" 
-                          action="{{ route('reporting.users.show', $user->userPrincipalName ?? $user->id) }}" 
-                          id="filterForm">
-                        <div class="row align-items-end g-2">
-                            <div class="col-md-4">
-                                <label for="range" class="form-label small">Date Range</label>
-                                <select name="range" id="range" class="form-select form-select-sm">
-                                    <option value="this_month" {{ ($range ?? 'this_month') == 'this_month' ? 'selected' : '' }}>This Month</option>
-                                    <option value="last_month" {{ ($range ?? '') == 'last_month' ? 'selected' : '' }}>Last Month</option>
-                                    <option value="last_3_months" {{ ($range ?? '') == 'last_3_months' ? 'selected' : '' }}>Last 3 Months</option>
-                                    <option value="custom" {{ ($range ?? '') == 'custom' ? 'selected' : '' }}>Custom Date</option>
-                                </select>
-                            </div>
-                            <div class="col-md-3" id="customDateDiv" style="{{ ($range ?? '') == 'custom' ? '' : 'display: none;' }}">
-                                <label for="date" class="form-label small">Select Date</label>
-                                <input type="date" name="date" id="date" class="form-control form-control-sm" value="{{ $selectedDate ?? '' }}">
-                            </div>
-                            <div class="col-md-3">
-                                <label for="system" class="form-label small">System</label>
-                                <select name="system" id="system" class="form-select form-select-sm">
-                                    <option value="">All Systems</option>
-                                    @foreach($systems as $systemOption)
-                                        <option value="{{ $systemOption }}" {{ ($system ?? '') == $systemOption ? 'selected' : '' }}>
-                                            {{ $systemOption }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                            </div>
-                            <div class="col-md-2 d-flex flex-column gap-1">
-                                <button type="submit" class="btn btn-primary btn-sm">Apply</button>
-                                <a href="{{ route('reporting.users.show', $user->userPrincipalName ?? $user->id) }}" 
-                                   class="btn btn-outline-secondary btn-sm">
-                                   Reset
-                                </a>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
+<div class="row align-items-center mb-3">
+    {{-- Left side: Heading --}}
+    <div class="col-md-3">
+        <h4 class="mb-0 fw-semibold">Sign In History</h4>
     </div>
+
+    {{-- Right side: Search + Filters --}}
+    <div class="col-md-9">
+        <form method="GET" 
+              action="{{ route('reporting.users.show', $user->userPrincipalName ?? $user->id) }}" 
+              id="filterForm"
+              class="d-flex flex-wrap align-items-center gap-2 justify-content-end bg-light p-2 rounded">
+
+            {{-- Search --}}
+            <div class="input-group input-group-sm w-auto">
+                <span class="input-group-text bg-white"><i class="fas fa-search"></i></span>
+                <input type="text" class="form-control" id="applicationSearch" 
+                       name="search"
+                       placeholder="Search applications..." 
+                       value="{{ request('search') }}">
+            </div>
+
+            {{-- Calendar Date Picker --}}
+            <input type="date" 
+                   name="date" 
+                   id="date" 
+                   class="form-control form-control-sm w-auto"
+                   value="{{ request('date') ?? $selectedDate ?? '' }}">
+
+            {{-- System Filter --}}
+            <select name="system" id="system" class="form-select form-select-sm w-auto">
+                <option value="">All Systems</option>
+                @foreach($systems as $systemOption)
+                    <option value="{{ $systemOption }}" {{ ($system ?? '') == $systemOption ? 'selected' : '' }}>
+                        {{ $systemOption }}
+                    </option>
+                @endforeach
+            </select>
+
+            {{-- Buttons --}}
+            <button type="submit" class="btn btn-primary btn-sm">Apply</button>
+            <a href="{{ route('reporting.users.show', $user->userPrincipalName ?? $user->id) }}" 
+               class="btn btn-outline-secondary btn-sm">Reset</a>
+        </form>
+    </div>
+</div>
+
 
     @if ($signIns->isEmpty())
         <div class="alert alert-info">No login history available for the selected date range.</div>
