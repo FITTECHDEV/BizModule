@@ -247,4 +247,15 @@ public static function findByIdentifier(string $identifier): ?self
     $this->assertEquals($user->id, $resolved->id);
 }
 
+
+public function scopeValid($query)
+{
+    return $query->whereNotNull('displayName')
+        ->where('displayName', '!=', '')
+        ->whereRaw("displayName NOT LIKE 'User-%'")
+        ->whereNotNull('userPrincipalName')
+        ->where('userPrincipalName', '!=', '')
+        ->whereRaw("userPrincipalName NOT LIKE 'User-%'");
+}
+
 }

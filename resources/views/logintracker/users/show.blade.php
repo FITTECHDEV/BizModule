@@ -142,7 +142,7 @@
 
             {{-- System Filter --}}
             <select name="system" id="system" class="form-select form-select-sm w-auto">
-                <option value="">All Systems</option>
+                <!-- <option value="">All Systems</option> -->
                 @foreach($systems as $systemOption)
                     <option value="{{ $systemOption }}" {{ ($system ?? '') == $systemOption ? 'selected' : '' }}>
                         {{ $systemOption }}

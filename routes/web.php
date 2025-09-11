@@ -422,3 +422,4 @@ Route::post('/dashboard/clear-cache', [DashboardController::class, 'clearDashboa
     ->name('dashboard.clear-cache');
 
     Route::get('/users/cleanup-empty', [UserController::class, 'cleanupEmptyUsers'])->name('users.cleanup');
+

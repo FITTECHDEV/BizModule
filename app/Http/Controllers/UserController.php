@@ -16,7 +16,7 @@ class UserController extends Controller
 {
 
     /**
- * System names to hide from dropdowns / filters.
+ * System names to hide from dropdowns / filfters.
  * Stored lowercase for robust comparisons.
  *
  * @var string[]
@@ -109,104 +109,27 @@ protected function visibleSystems(): array
         }
     }
 
-    public function index(Request $request)
-    {
-        try {
-            [$start, $end] = $this->resolveDateRange($request);
-            $rangeInput = $request->input('range', 'this_month');
-            $system = $request->input('system');
-            $search = $request->input('search');
+   public function index(Request $request)
+{
+    try {
+        [$start, $end] = $this->resolveDateRange($request);
+        $rangeInput = $request->input('range', 'this_month');
+        $system = $request->input('system');
+        $search = $request->input('search');
 
-            if ($request->ajax()) {
-                DB::enableQueryLog();
-                Log::info('AJAX Request for index', [
-                    'range' => $rangeInput,
-                    'system' => $system,
-                    'search' => $search,
-                    'start' => $start->toDateTimeString(),
-                    'end' => $end->toDateTimeString(),
-                ]);
+        if ($request->ajax()) {
+            DB::enableQueryLog();
+            Log::info('AJAX Request for index', [
+                'range' => $rangeInput,
+                'system' => $system,
+                'search' => $search,
+                'start' => $start->toDateTimeString(),
+                'end' => $end->toDateTimeString(),
+            ]);
 
-                $query = AzureUser::query();
-                if ($request->filled('search')) {
-                    $query->where(function ($q) use ($search) {
-                        $q->where('displayName', 'like', "%{$search}%")
-                          ->orWhere('userPrincipalName', 'like', "%{$search}%")
-                          ->orWhere('mail', 'like', "%{$search}%")
-                          ->orWhere('alternateEmailAddress', 'like', "%{$search}%");
-                    });
-                }
+            // ✅ hide system-generated users
+            $query = AzureUser::valid();
 
-                if ($system) {
-                    $query->whereHas('systems', function ($q) use ($system) {
-                        $q->where('name', $system);
-                    });
-                } else {
-                    $query->whereHas('signIns', function ($q) use ($start, $end) {
-                        $q->whereBetween('date_utc', [$start, $end]);
-                    });
-                }
-
-                $query->withCount(['signIns as sign_ins_count' => function ($q) use ($start, $end, $system) {
-                    $q->whereBetween('date_utc', [$start, $end]);
-                    if ($system) {
-                        $q->where(DB::raw('LOWER(system)'), strtolower($system));
-                    }
-                }])
-                ->with(['signIns' => function ($q) use ($start, $end, $system) {
-                    $q->whereBetween('date_utc', [$start, $end]);
-                    if ($system) {
-                        $q->where(DB::raw('LOWER(system)'), strtolower($system));
-                    }
-                    $q->latest('date_utc');
-                }]);
-
-                $users = $query->paginate($this->perPage)->withQueryString();
-                $totalDays = $start->diffInDays($end) + 1;
-
-                $logins = SigninLog::whereBetween('date_utc', [$start, $end])
-                    ->when($system, function ($query) use ($system) {
-                        return $query->where(DB::raw('LOWER(system)'), strtolower($system));
-                    })
-                    ->get();
-                $loggedInEmails = $logins->pluck('username')->filter()->unique()->map(fn($email) => strtolower(trim($email)));
-                $totalUsers = AzureUser::count();
-                $loggedInCount = $loggedInEmails->isEmpty() ? 0 : AzureUser::whereIn(DB::raw('LOWER(userPrincipalName)'), $loggedInEmails)->count();
-                $notLoggedInCount = $totalUsers - $loggedInCount;
-
-                $systems = $this->visibleSystems();
-                Log::info('Systems for Dropdown', ['systems' => $systems]);
-
-                $mappedUsers = array_map(function ($user) {
-                    return [
-                        'id' => $user->id,
-                        'displayName' => $user->displayName,
-                        'userPrincipalName' => $user->userPrincipalName,
-                        'mail' => $user->mail,
-                        'alternateEmailAddress' => $user->alternateEmailAddress,
-                        'signIns' => $user->signIns->toArray(),
-                        'sign_ins_count' => $user->sign_ins_count,
-                    ];
-                }, $users->items());
-
-                Log::debug('Executed Queries', DB::getQueryLog());
-                Log::debug('AJAX Response Users', [
-                    'user_ids' => array_column($mappedUsers, 'id'),
-                    'sample_users' => array_slice($mappedUsers, 0, 5)
-                ]);
-                DB::disableQueryLog();
-
-                return response()->json([
-                    'totalUsers' => $totalUsers,
-                    'loggedInCount' => $loggedInCount,
-                    'notLoggedInCount' => $notLoggedInCount,
-                    'users' => $mappedUsers,
-                    'totalDays' => $totalDays,
-                    'pagination' => (string) $users->links(),
-                ]);
-            }
-
-            $query = AzureUser::query();
             if ($request->filled('search')) {
                 $query->where(function ($q) use ($search) {
                     $q->where('displayName', 'like', "%{$search}%")
@@ -241,18 +164,20 @@ protected function visibleSystems(): array
             }]);
 
             $users = $query->paginate($this->perPage)->withQueryString();
+            $totalDays = $start->diffInDays($end) + 1;
+
             $logins = SigninLog::whereBetween('date_utc', [$start, $end])
                 ->when($system, function ($query) use ($system) {
                     return $query->where(DB::raw('LOWER(system)'), strtolower($system));
                 })
                 ->get();
             $loggedInEmails = $logins->pluck('username')->filter()->unique()->map(fn($email) => strtolower(trim($email)));
-            $totalUsers = AzureUser::count();
-            $loggedInCount = $loggedInEmails->isEmpty() ? 0 : AzureUser::whereIn(DB::raw('LOWER(userPrincipalName)'), $loggedInEmails)->count();
+            $totalUsers = AzureUser::valid()->count(); // ✅ count only valid users
+            $loggedInCount = $loggedInEmails->isEmpty() ? 0 : AzureUser::valid()->whereIn(DB::raw('LOWER(userPrincipalName)'), $loggedInEmails)->count();
             $notLoggedInCount = $totalUsers - $loggedInCount;
 
             $systems = $this->visibleSystems();
-            Log::info('Systems for Dropdown (Non-AJAX)', ['systems' => $systems]);
+            Log::info('Systems for Dropdown', ['systems' => $systems]);
 
             $mappedUsers = array_map(function ($user) {
                 return [
@@ -266,21 +191,101 @@ protected function visibleSystems(): array
                 ];
             }, $users->items());
 
-            $rangeLabel = $this->getRangeLabel($rangeInput);
-            $systemInput = $system ?: 'All Systems';
-
-            return view('logintracker.dashboard', compact('mappedUsers', 'loggedInCount', 'notLoggedInCount', 'rangeInput', 'system', 'totalUsers', 'rangeLabel', 'systemInput', 'systems'));
-        } catch (\Exception $e) {
-            Log::error('Error in index method', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
+            Log::debug('Executed Queries', DB::getQueryLog());
+            Log::debug('AJAX Response Users', [
+                'user_ids' => array_column($mappedUsers, 'id'),
+                'sample_users' => array_slice($mappedUsers, 0, 5)
             ]);
-            if ($request->ajax()) {
-                return response()->json(['error' => 'An unexpected error occurred.'], 500);
-            }
-            return redirect()->back()->with('error', 'An unexpected error occurred.');
+            DB::disableQueryLog();
+
+            return response()->json([
+                'totalUsers' => $totalUsers,
+                'loggedInCount' => $loggedInCount,
+                'notLoggedInCount' => $notLoggedInCount,
+                'users' => $mappedUsers,
+                'totalDays' => $totalDays,
+                'pagination' => (string) $users->links(),
+            ]);
         }
+
+        // ✅ non-AJAX path also hides system-generated users
+        $query = AzureUser::valid();
+
+        if ($request->filled('search')) {
+            $query->where(function ($q) use ($search) {
+                $q->where('displayName', 'like', "%{$search}%")
+                  ->orWhere('userPrincipalName', 'like', "%{$search}%")
+                  ->orWhere('mail', 'like', "%{$search}%")
+                  ->orWhere('alternateEmailAddress', 'like', "%{$search}%");
+            });
+        }
+
+        if ($system) {
+            $query->whereHas('systems', function ($q) use ($system) {
+                $q->where('name', $system);
+            });
+        } else {
+            $query->whereHas('signIns', function ($q) use ($start, $end) {
+                $q->whereBetween('date_utc', [$start, $end]);
+            });
+        }
+
+        $query->withCount(['signIns as sign_ins_count' => function ($q) use ($start, $end, $system) {
+            $q->whereBetween('date_utc', [$start, $end]);
+            if ($system) {
+                $q->where(DB::raw('LOWER(system)'), strtolower($system));
+            }
+        }])
+        ->with(['signIns' => function ($q) use ($start, $end, $system) {
+            $q->whereBetween('date_utc', [$start, $end]);
+            if ($system) {
+                $q->where(DB::raw('LOWER(system)'), strtolower($system));
+            }
+            $q->latest('date_utc');
+        }]);
+
+        $users = $query->paginate($this->perPage)->withQueryString();
+        $logins = SigninLog::whereBetween('date_utc', [$start, $end])
+            ->when($system, function ($query) use ($system) {
+                return $query->where(DB::raw('LOWER(system)'), strtolower($system));
+            })
+            ->get();
+        $loggedInEmails = $logins->pluck('username')->filter()->unique()->map(fn($email) => strtolower(trim($email)));
+        $totalUsers = AzureUser::valid()->count(); // ✅ count only valid users
+        $loggedInCount = $loggedInEmails->isEmpty() ? 0 : AzureUser::valid()->whereIn(DB::raw('LOWER(userPrincipalName)'), $loggedInEmails)->count();
+        $notLoggedInCount = $totalUsers - $loggedInCount;
+
+        $systems = $this->visibleSystems();
+        Log::info('Systems for Dropdown (Non-AJAX)', ['systems' => $systems]);
+
+        $mappedUsers = array_map(function ($user) {
+            return [
+                'id' => $user->id,
+                'displayName' => $user->displayName,
+                'userPrincipalName' => $user->userPrincipalName,
+                'mail' => $user->mail,
+                'alternateEmailAddress' => $user->alternateEmailAddress,
+                'signIns' => $user->signIns->toArray(),
+                'sign_ins_count' => $user->sign_ins_count,
+            ];
+        }, $users->items());
+
+        $rangeLabel = $this->getRangeLabel($rangeInput);
+        $systemInput = $system ?: 'All Systems';
+
+        return view('logintracker.dashboard', compact('mappedUsers', 'loggedInCount', 'notLoggedInCount', 'rangeInput', 'system', 'totalUsers', 'rangeLabel', 'systemInput', 'systems'));
+    } catch (\Exception $e) {
+        Log::error('Error in index method', [
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString(),
+        ]);
+        if ($request->ajax()) {
+            return response()->json(['error' => 'An unexpected error occurred.'], 500);
+        }
+        return redirect()->back()->with('error', 'An unexpected error occurred.');
     }
+}
+
 
    public function show(Request $request, $identifier)
 {
@@ -393,99 +398,98 @@ protected function visibleSystems(): array
 
 
     public function loggedInUsers(Request $request)
-    {
-        try {
-            $filterService = new \App\Services\LoginFilterService();
-            $filters = $filterService->parseFilters($request);
-            $search = $request->input('search');
+{
+    try {
+        $filterService = new \App\Services\LoginFilterService();
+        $filters = $filterService->parseFilters($request);
+        $search = $request->input('search');
 
-            // Prevent invalid search terms
-            if ($search === 'logged-in' || empty($search)) {
-                Log::info('Invalid or empty search term, setting to null', ['search' => $search]);
-                $search = null;
-            }
-
-            Log::info('UserController@loggedInUsers called', [
-                'filters' => $filters,
-                'search' => $search,
-                'request_url' => $request->fullUrl(),
-            ]);
-
-            $query = AzureUser::whereHas('signIns', function ($q) use ($filters) {
-                $q->whereBetween('date_utc', [$filters['startDate'], $filters['endDate']]);
-                if (!empty($filters['system'])) {
-                    $mappedSystems = collect(config('systemmap'))
-                        ->filter(function ($system) use ($filters) {
-                            return $system === $filters['system'];
-                        })
-                        ->keys()
-                        ->toArray();
-                    if (!empty($mappedSystems)) {
-                        $q->where(function ($query) use ($mappedSystems) {
-                            foreach ($mappedSystems as $mappedSystem) {
-                                $query->orWhere('application', 'LIKE', "%{$mappedSystem}%");
-                            }
-                        });
-                    }
-                }
-            });
-
-            if ($search) {
-                $query->where(function ($q) use ($search) {
-                    $q->where('displayName', 'like', "%{$search}%")
-                      ->orWhere('userPrincipalName', 'like', "%{$search}%")
-                      ->orWhere('mail', 'like', "%{$search}%")
-                      ->orWhere('alternateEmailAddress', 'like', "%{$search}%");
-                });
-            }
-
-            $query->withCount(['signIns as login_count' => function ($q) use ($filters) {
-                $q->whereBetween('date_utc', [$filters['startDate'], $filters['endDate']]);
-                if (!empty($filters['system'])) {
-                    $mappedSystems = collect(config('systemmap'))
-                        ->filter(function ($system) use ($filters) {
-                            return $system === $filters['system'];
-                        })
-                        ->keys()
-                        ->toArray();
-                    if (!empty($mappedSystems)) {
-                        $q->where(function ($query) use ($mappedSystems) {
-                            foreach ($mappedSystems as $mappedSystem) {
-                                $query->orWhere('application', 'LIKE', "%{$mappedSystem}%");
-                            }
-                        });
-                    }
-                }
-            }])
-            ->with(['signIns' => function ($q) use ($filters) {
-                $q->whereBetween('date_utc', [$filters['startDate'], $filters['endDate']])
-                  ->orderByDesc('date_utc')
-                  ->limit(5);
-            }])
-            ->orderBy('displayName');
-
-            $users = $query->paginate($this->perPage)->withQueryString();
-            $systems = $filterService->getSystemList();
-            $type = 'default';
-
-            Log::info('loggedInUsers loaded', [
-                'user_count' => $users->total(),
-                'filters' => $filters,
-                'search' => $search,
-                'user_ids' => $users->pluck('id')->toArray(),
-            ]);
-
-            return view('logintracker.users.logged-in', compact('users', 'filters', 'search', 'systems', 'type'));
-        } catch (\Exception $e) {
-            Log::error('Error in loggedInUsers', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
-            return redirect()->route('dashboard')->with('error', 'An unexpected error occurred.');
+        if ($search === 'logged-in' || empty($search)) {
+            $search = null;
         }
-    }
 
-  public function notLoggedInUsers(Request $request)
+        Log::info('UserController@loggedInUsers called', [
+            'filters' => $filters,
+            'search' => $search,
+            'request_url' => $request->fullUrl(),
+        ]);
+
+        // ✅ hide system-generated users
+        $query = AzureUser::valid()->whereHas('signIns', function ($q) use ($filters) {
+            $q->whereBetween('date_utc', [$filters['startDate'], $filters['endDate']]);
+            if (!empty($filters['system'])) {
+                $mappedSystems = collect(config('systemmap'))
+                    ->filter(function ($system) use ($filters) {
+                        return $system === $filters['system'];
+                    })
+                    ->keys()
+                    ->toArray();
+                if (!empty($mappedSystems)) {
+                    $q->where(function ($query) use ($mappedSystems) {
+                        foreach ($mappedSystems as $mappedSystem) {
+                            $query->orWhere('application', 'LIKE', "%{$mappedSystem}%");
+                        }
+                    });
+                }
+            }
+        });
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('displayName', 'like', "%{$search}%")
+                  ->orWhere('userPrincipalName', 'like', "%{$search}%")
+                  ->orWhere('mail', 'like', "%{$search}%")
+                  ->orWhere('alternateEmailAddress', 'like', "%{$search}%");
+            });
+        }
+
+        $query->withCount(['signIns as login_count' => function ($q) use ($filters) {
+            $q->whereBetween('date_utc', [$filters['startDate'], $filters['endDate']]);
+            if (!empty($filters['system'])) {
+                $mappedSystems = collect(config('systemmap'))
+                    ->filter(function ($system) use ($filters) {
+                        return $system === $filters['system'];
+                    })
+                    ->keys()
+                    ->toArray();
+                if (!empty($mappedSystems)) {
+                    $q->where(function ($query) use ($mappedSystems) {
+                        foreach ($mappedSystems as $mappedSystem) {
+                            $query->orWhere('application', 'LIKE', "%{$mappedSystem}%");
+                        }
+                    });
+                }
+            }
+        }])
+        ->with(['signIns' => function ($q) use ($filters) {
+            $q->whereBetween('date_utc', [$filters['startDate'], $filters['endDate']])
+              ->orderByDesc('date_utc')
+              ->limit(5);
+        }])
+        ->orderBy('displayName');
+
+        $users = $query->paginate($this->perPage)->withQueryString();
+        $systems = $filterService->getSystemList();
+        $type = 'default';
+
+        Log::info('loggedInUsers loaded', [
+            'user_count' => $users->total(),
+            'filters' => $filters,
+            'search' => $search,
+            'user_ids' => $users->pluck('id')->toArray(),
+        ]);
+
+        return view('logintracker.users.logged-in', compact('users', 'filters', 'search', 'systems', 'type'));
+    } catch (\Exception $e) {
+        Log::error('Error in loggedInUsers', [
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString(),
+        ]);
+        return redirect()->route('dashboard')->with('error', 'An unexpected error occurred.');
+    }
+}
+
+public function notLoggedInUsers(Request $request)
 {
     try {
         $filterService = new \App\Services\LoginFilterService();
@@ -498,20 +502,25 @@ protected function visibleSystems(): array
             'request_url' => $request->fullUrl(),
         ]);
 
-        // Build the base query using raw SQL to avoid Laravel's query builder issues
-        $baseQuery = "
-            SELECT DISTINCT u.id, u.userPrincipalName, u.displayName, u.mail, u.alternateEmailAddress, 
-                   u.accountEnabled, u.userType, u.jobTitle, u.department
-            FROM Azure_Users u
-            WHERE NOT EXISTS (
-                SELECT 1 
-                FROM dbo.Azure_LoginDetails ald 
-                WHERE u.id = ald.user_id 
-                AND ald.date_utc BETWEEN ? AND ?";
+        // ✅ exclude system-generated users with displayName like User-%
+$baseQuery = "
+    SELECT DISTINCT u.id, u.userPrincipalName, u.displayName, u.mail, u.alternateEmailAddress, 
+           u.accountEnabled, u.userType, u.jobTitle, u.department
+    FROM Azure_Users u
+    WHERE (
+        u.displayName IS NULL 
+        OR u.displayName = '' 
+        OR LOWER(u.displayName) NOT LIKE 'user-%'
+    )
+    AND NOT EXISTS (
+        SELECT 1 
+        FROM dbo.Azure_LoginDetails ald 
+        WHERE u.id = ald.user_id 
+        AND ald.date_utc BETWEEN ? AND ?";
+
 
         $params = [$filters['startDate'], $filters['endDate']];
 
-        // Add system filter to the NOT EXISTS subquery if specified
         if (!empty($filters['system'])) {
             $mappedSystems = collect(config('systemmap'))
                 ->filter(function ($system) use ($filters) {
@@ -532,7 +541,6 @@ protected function visibleSystems(): array
 
         $baseQuery .= ")";
 
-        // Add search conditions if specified
         if ($search) {
             $baseQuery .= " AND (u.displayName LIKE ? OR u.userPrincipalName LIKE ? OR u.mail LIKE ? OR u.alternateEmailAddress LIKE ?)";
             $searchTerm = "%{$search}%";
@@ -541,28 +549,22 @@ protected function visibleSystems(): array
 
         $baseQuery .= " ORDER BY u.displayName";
 
-        // Get total count for pagination (remove ORDER BY for count query)
         $countQueryBase = str_replace(" ORDER BY u.displayName", "", $baseQuery);
         $countQuery = "SELECT COUNT(*) as total FROM ({$countQueryBase}) as counted_results";
         $totalCount = \DB::selectOne($countQuery, $params)->total;
 
-        // Get current page and calculate offset
         $currentPage = $request->get('page', 1);
         $perPage = $this->perPage;
         $offset = ($currentPage - 1) * $perPage;
 
-        // Add pagination to the main query
         $paginatedQuery = $baseQuery . " OFFSET ? ROWS FETCH NEXT ? ROWS ONLY";
         $params[] = $offset;
         $params[] = $perPage;
 
-        // Execute the query
         $usersData = \DB::select($paginatedQuery, $params);
 
-        // Convert to collection and create pagination manually
         $users = new \Illuminate\Pagination\LengthAwarePaginator(
             collect($usersData)->map(function ($user) {
-                // Convert stdClass to AzureUser model instance
                 $azureUser = new AzureUser();
                 foreach ((array) $user as $key => $value) {
                     $azureUser->{$key} = $value;
@@ -580,10 +582,8 @@ protected function visibleSystems(): array
         );
 
         $users->withQueryString();
-
         $systems = $filterService->getSystemList();
 
-        // Add debug logging
         Log::info('notLoggedInUsers loaded', [
             'user_count' => $users->total(),
             'filters' => $filters,
@@ -605,7 +605,6 @@ protected function visibleSystems(): array
         return redirect()->back()->with('error', 'An unexpected error occurred.');
     }
 }
-
     protected function resolveDateRange($input = null)
     {
         if ($input instanceof Request) {

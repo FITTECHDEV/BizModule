@@ -213,7 +213,7 @@ public function index(Request $request)
         if ($system && $system !== 'all') {
             // For specific system: show only users who have used this system (regardless of date)
             // but filter their sign-ins by date range
-            $query = AzureUser::query()
+            $query = AzureUser::valid()
                 ->select('Azure_Users.id', 'Azure_Users.userPrincipalName', 'Azure_Users.displayName', 'Azure_Users.mail')
                 ->join('Azure_LoginDetails as ald_filter', 'Azure_Users.id', '=', 'ald_filter.user_id')
                 ->where('ald_filter.system', $system)
@@ -230,7 +230,7 @@ public function index(Request $request)
                 }]);
         } else {
             // For 'all' systems: show all users but filter sign-ins by date range
-            $query = AzureUser::query()
+            $query = AzureUser::valid()
                 ->select('Azure_Users.id', 'Azure_Users.userPrincipalName', 'Azure_Users.displayName', 'Azure_Users.mail')
                 ->with(['signIns' => function ($q) use ($startDate, $endDate) {
                     if ($startDate && $endDate) {

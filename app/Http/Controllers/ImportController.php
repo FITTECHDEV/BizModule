@@ -72,67 +72,71 @@ class ImportController extends Controller
         return false;
     }
 
-    public function importUsers(Request $request)
-    {
-        $request->validate([
-            'import_file' => 'required|file|mimetypes:text/plain,text/csv,application/csv,application/vnd.ms-excel',
-        ], [
-            'import_file.required' => 'Please select a CSV file to upload.',
-            'import_file.mimetypes' => 'The file must be a CSV or TXT file.',
+   public function importUsers(Request $request)
+{
+    $request->validate([
+        'import_file' => 'required|file|mimetypes:text/plain,text/csv,application/csv,application/vnd.ms-excel',
+    ], [
+        'import_file.required' => 'Please select a CSV file to upload.',
+        'import_file.mimetypes' => 'The file must be a CSV or TXT file.',
+    ]);
+
+    // Clear any stale locks first
+    $this->clearAllImportLocks();
+    
+    $lockService = new ImportLockService();
+    
+    // Check if another import is in progress
+    if ($this->hasAnyActiveLocks()) {
+        return redirect()->back()->with('error', 'Another import is already in progress. Please wait and try again.');
+    }
+
+    // Acquire lock
+    if (!$lockService->acquireLock()) {
+        return redirect()->back()->with('error', 'Unable to start import. Please try again.');
+    }
+
+    try {
+        $file = $request->file('import_file');
+
+        Log::channel('import')->info('Starting user import...', [
+            'path' => $file->getRealPath(),
+            'originalName' => $file->getClientOriginalName(),
         ]);
 
-        // Clear any stale locks first
+        DB::transaction(function () use ($file) {
+            Excel::import(new UsersImport, $file);
+        });
+
+        // 🔑 Run cleanup immediately after import
+        (new \App\Imports\UsersImport())->cleanupEmptyUsers();
+
+        Log::channel('import')->info('✅ Users imported and cleaned successfully.');
+
+        $lockService->releaseLock();
+        
+        // Clear dashboard cache after successful import & cleanup
+        $this->clearDashboardCache();
+        
+        return redirect()->route('dashboard')->with('success', '✅ Users imported and cleaned successfully!');
+    } catch (\Throwable $e) {
+        Log::channel('import')->error('❌ Users import failed.', [
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString(),
+        ]);
+
+        Log::error('❌ Users import failed.', [
+            'error' => $e->getMessage(),
+        ]);
+
+        // Clear all locks on failure
         $this->clearAllImportLocks();
+        $lockService->releaseLock();
         
-        $lockService = new ImportLockService();
-        
-        // Check if another import is in progress
-        if ($this->hasAnyActiveLocks()) {
-            return redirect()->back()->with('error', 'Another import is already in progress. Please wait and try again.');
-        }
-
-        // Acquire lock
-        if (!$lockService->acquireLock()) {
-            return redirect()->back()->with('error', 'Unable to start import. Please try again.');
-        }
-
-        try {
-            $file = $request->file('import_file');
-
-            Log::channel('import')->info('Starting user import...', [
-                'path' => $file->getRealPath(),
-                'originalName' => $file->getClientOriginalName(),
-            ]);
-
-            DB::transaction(function () use ($file) {
-                Excel::import(new UsersImport, $file);
-            });
-
-            Log::channel('import')->info('✅ Users imported successfully.');
-
-            $lockService->releaseLock();
-            
-            // Clear dashboard cache after successful import
-            $this->clearDashboardCache();
-            
-            return redirect()->route('dashboard')->with('success', '✅ Users imported successfully!');
-        } catch (\Throwable $e) {
-            Log::channel('import')->error('❌ Users import failed.', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
-
-            Log::error('❌ Users import failed.', [
-                'error' => $e->getMessage(),
-            ]);
-
-            // Clear all locks on failure
-            $this->clearAllImportLocks();
-            $lockService->releaseLock();
-            
-            return redirect()->route('dashboard')->with('error', '❌ Failed to import users: ' . $e->getMessage());
-        }
+        return redirect()->route('dashboard')->with('error', '❌ Failed to import users: ' . $e->getMessage());
     }
+}
+
 
   public function importSignIns(Request $request)
 {
