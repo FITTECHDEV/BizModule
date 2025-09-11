@@ -352,9 +352,9 @@ Route::pattern('user', '[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}|\w{8}-\w{
 // ----------------------
 // Authentication routes
 // ----------------------
-Route::post('/login', [AuthController::class, 'login'])->name('login');
-Route::get('/auth/azure/callback', [AuthController::class, 'handleAzureCallback'])->name('azure.callback');
-Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth')->name('logout');
+// Route::post('/login', [AuthController::class, 'login'])->name('login');
+// Route::get('/auth/azure/callback', [AuthController::class, 'handleAzureCallback'])->name('azure.callback');
+// Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth')->name('logout');
 
 // ----------------------
 // Reporting routes (Login Tracker)
