@@ -17,13 +17,51 @@ class DashboardStatsService
         $this->filterService = $filterService;
     }
 
+    /**
+     * Get raw system names that map to a clean system name
+     */
+    private function getRawSystemNames($cleanSystemName)
+    {
+        return collect(config('systemmap'))
+            ->filter(fn($mappedName) => $mappedName === $cleanSystemName)
+            ->keys()
+            ->toArray();
+    }
+
+    /**
+     * Apply system filter to a query - improved version that checks multiple fields
+     */
+    private function applySystemFilter($query, $systemName)
+    {
+        if (empty($systemName)) {
+            return $query;
+        }
+
+        $rawSystemNames = $this->getRawSystemNames($systemName);
+        
+        return $query->where(function ($q) use ($rawSystemNames, $systemName) {
+            // Try direct system field match first
+            $q->where(DB::raw('LOWER(system)'), strtolower($systemName));
+            
+            // If there are raw system mappings, also check application field
+            if (!empty($rawSystemNames)) {
+                foreach ($rawSystemNames as $rawSystem) {
+                    $q->orWhere('application', 'LIKE', "%{$rawSystem}%");
+                }
+            }
+            
+            // Also try direct application field match
+            $q->orWhere(DB::raw('LOWER(application)'), 'like', '%' . strtolower($systemName) . '%');
+        });
+    }
+
     public function generateStats(array $filters)
     {
         ['startDate' => $startDate, 'endDate' => $endDate, 'system' => $system, 'search' => $search] = $filters;
         $totalDays = (int) ($startDate->diffInDays($endDate) + 1);
 
         // 🔹 Users with filters - show all users who have used the system, with date-filtered login counts
-        $usersQuery = AzureUser::query()
+        $usersQuery = AzureUser::valid()
             ->select('id', 'displayName', 'userPrincipalName')
             ->withCount(['signIns as sign_ins_count' => function ($q) use ($filters) {
                 // Apply date filters to count only logins in the selected period
@@ -33,21 +71,9 @@ class DashboardStatsService
                 if (!empty($filters['endDate'])) {
                     $q->where('date_utc', '<=', $filters['endDate']);
                 }
-                // Apply system filter
+                // FIXED: Apply improved system filter
                 if (!empty($filters['system'])) {
-                    $mappedSystems = collect(config('systemmap'))
-                        ->filter(function ($systemName) use ($filters) {
-                            return $systemName === $filters['system'];
-                        })
-                        ->keys()
-                        ->toArray();
-                    if (!empty($mappedSystems)) {
-                        $q->where(function ($query) use ($mappedSystems) {
-                            foreach ($mappedSystems as $mappedSystem) {
-                                $query->orWhere('application', 'LIKE', "%$mappedSystem%");
-                            }
-                        });
-                    }
+                    $this->applySystemFilter($q, $filters['system']);
                 }
             }])
             ->with(['signIns' => function ($q) use ($filters) {
@@ -58,20 +84,9 @@ class DashboardStatsService
                 if (!empty($filters['endDate'])) {
                     $q->where('date_utc', '<=', $filters['endDate']);
                 }
+                // FIXED: Apply improved system filter
                 if (!empty($filters['system'])) {
-                    $mappedSystems = collect(config('systemmap'))
-                        ->filter(function ($systemName) use ($filters) {
-                            return $systemName === $filters['system'];
-                        })
-                        ->keys()
-                        ->toArray();
-                    if (!empty($mappedSystems)) {
-                        $q->where(function ($query) use ($mappedSystems) {
-                            foreach ($mappedSystems as $mappedSystem) {
-                                $query->orWhere('application', 'LIKE', "%$mappedSystem%");
-                            }
-                        });
-                    }
+                    $this->applySystemFilter($q, $filters['system']);
                 }
                 $q->orderByDesc('date_utc')->limit(5);
             }]);
@@ -96,7 +111,7 @@ class DashboardStatsService
         }
 
         // 🔹 Logged in / not logged in count
-        $loggedInQuery = AzureUser::query();
+        $loggedInQuery = AzureUser::valid();
 
         $loggedInCount = $loggedInQuery->whereHas('signIns', function ($q) use ($filters) {
             // Apply date filters
@@ -106,26 +121,14 @@ class DashboardStatsService
             if (!empty($filters['endDate'])) {
                 $q->where('date_utc', '<=', $filters['endDate']);
             }
-            // Apply system filter to signin logs
+            // FIXED: Apply improved system filter
             if (!empty($filters['system'])) {
-                $mappedSystems = collect(config('systemmap'))
-                    ->filter(function ($systemName) use ($filters) {
-                        return $systemName === $filters['system'];
-                    })
-                    ->keys()
-                    ->toArray();
-                if (!empty($mappedSystems)) {
-                    $q->where(function ($query) use ($mappedSystems) {
-                        foreach ($mappedSystems as $mappedSystem) {
-                            $query->orWhere('application', 'LIKE', "%$mappedSystem%");
-                        }
-                    });
-                }
+                $this->applySystemFilter($q, $filters['system']);
             }
         })->count();
 
-        // Total users should always be the total count in the database
-        $totalUsers = AzureUser::count();
+        // Total users should always be the total count of valid users in the database
+        $totalUsers = AzureUser::valid()->count();
 
         // Calculate not logged in count - simply total users minus those who logged in during the filtered period
         $notLoggedInCount = $totalUsers - $loggedInCount;
@@ -137,31 +140,42 @@ class DashboardStatsService
                 'Azure_Users.id',
                 'Azure_LoginDetails.date_utc',
                 'Azure_LoginDetails.application',
+                'Azure_LoginDetails.system',
                 'Azure_Users.displayName',
                 'Azure_Users.userPrincipalName as email'
             )
             ->whereBetween('Azure_LoginDetails.date_utc', [$startDate, $endDate]);
 
         if ($system) {
-            $mappedSystems = collect(config('systemmap'))
-                ->filter(function ($systemName) use ($system) {
-                    return $systemName === $system;
-                })
-                ->keys()
-                ->toArray();
-            if (!empty($mappedSystems)) {
-                $signInsQuery->where(function ($query) use ($mappedSystems) {
-                    foreach ($mappedSystems as $mappedSystem) {
-                        $query->orWhere('Azure_LoginDetails.application', 'LIKE', "%$mappedSystem%");
+            // FIXED: Apply improved system filter to the join query
+            $rawSystemNames = $this->getRawSystemNames($system);
+            
+            $signInsQuery->where(function ($query) use ($rawSystemNames, $system) {
+                // Try direct system field match first
+                $query->where(DB::raw('LOWER(Azure_LoginDetails.system)'), strtolower($system));
+                
+                // If there are raw system mappings, also check application field
+                if (!empty($rawSystemNames)) {
+                    foreach ($rawSystemNames as $rawSystem) {
+                        $query->orWhere('Azure_LoginDetails.application', 'LIKE', "%{$rawSystem}%");
                     }
-                });
-            }
+                }
+                
+                // Also try direct application field match
+                $query->orWhere(DB::raw('LOWER(Azure_LoginDetails.application)'), 'like', '%' . strtolower($system) . '%');
+            });
         }
 
         $signIns = $signInsQuery->orderByDesc('Azure_LoginDetails.date_utc')->get();
 
         // 🔹 Total and last login
-        $loginQuery = $this->filterService->applyDateAndSystemFilters(SigninLog::query(), $filters);
+        $loginQuery = SigninLog::query()
+            ->whereBetween('date_utc', [$startDate, $endDate]);
+        
+        if ($system) {
+            $this->applySystemFilter($loginQuery, $system);
+        }
+        
         $totalLogins = $loginQuery->count();
         $lastLogin = $loginQuery->max('date_utc');
 
