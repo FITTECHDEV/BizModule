@@ -10,6 +10,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\DB;
+
 use Carbon\Carbon;
 
 class DashboardController extends Controller
@@ -24,13 +26,18 @@ class DashboardController extends Controller
     }
 
 
-      private $excludedSystems = [
+ private $excludedSystems = [
         'Import-Unknown',
         'Unknown', 
         'Microsoft Teams',
-        'Office 365'
+        'Office 365',
+        'Windows Authentication',  
+        'IT Infrastructure',       
+        'FITerp UAT',             
+        'Web Browser',           
+        'Mobile/Desktop Client',
+        'all'
     ];
-
 // Add this method to properly map raw system names to display names
 // private function getSystemMapping()
 // {
@@ -92,341 +99,381 @@ class DashboardController extends Controller
    /**
      * IMPROVED: Get available systems from database, excluding unwanted ones
      */
-   private function getAvailableSystems()
-{
-    return Cache::remember('available_systems_clean', 3600, function () {
-        $systems = \DB::table('Azure_LoginDetails')
-            ->selectRaw('TRIM(system) as clean_system, COUNT(*) as count')
-            ->whereNotNull('system')
-            ->where('system', '!=', '')
-            ->whereNotIn(\DB::raw('TRIM(LOWER(system))'), array_map('strtolower', $this->excludedSystems))
-            ->groupBy(\DB::raw('TRIM(system)'))
-            ->orderByRaw('COUNT(*) DESC')
-            ->pluck('clean_system')
-            ->map(function($system) {
-                return $this->normalizeSystemName($system);
-            })
-            ->unique()
-            ->values()
-            ->toArray();
-        
-        Log::info('Clean available systems loaded with normalization', [
-            'count' => count($systems),
-            'systems' => $systems,
-            'excluded' => $this->excludedSystems
-        ]);
-        
-        return $systems;
-    });
-}
+    private function getAvailableSystems()
+    {
+        return Cache::remember('available_systems_clean_v2', 3600, function () {
+            // Get all unique systems from the database
+            $rawSystems = DB::table('Azure_LoginDetails')
+                ->selectRaw('TRIM(system) as clean_system, COUNT(*) as count')
+                ->whereNotNull('system')
+                ->where('system', '!=', '')
+                ->groupBy(DB::raw('TRIM(system)'))
+                ->orderByRaw('COUNT(*) DESC')
+                ->get();
 
-
-
-
-private function normalizeSystemName($systemName)
-{
-    if (empty($systemName)) {
-        return 'Unknown';
+            // Apply systemmap normalization and exclude unwanted systems
+            $systems = $rawSystems
+                ->map(function($item) {
+                    $normalized = $this->normalizeSystemName($item->clean_system);
+                    return $normalized;
+                })
+                ->unique()
+                ->filter(function($system) {
+                    return !in_array($system, $this->excludedSystems);
+                })
+                ->values()
+                ->toArray();
+            
+            Log::info('Clean available systems loaded with enhanced filtering', [
+                'count' => count($systems),
+                'systems' => $systems,
+                'excluded' => $this->excludedSystems
+            ]);
+            
+            return $systems;
+        });
     }
-    
-    // Trim whitespace and normalize case
-    $normalized = trim($systemName);
-    
-    // Apply system mapping for known variations
-    $systemAliases = [
-        'fit express' => 'Fit Express',
-        ' fit express' => 'Fit Express',
-        'fitexpress' => 'Fit Express',
-        'fit_express' => 'Fit Express',
-        'fit express uat' => 'Fit Express UAT',
-        ' fit express uat' => 'Fit Express UAT',
-        'fiterpuat' => 'FIT ERP UAT',
-        ' fiterpuat' => 'FIT ERP UAT',
-        'fit erp' => 'FIT ERP',
-        ' fit erp' => 'FIT ERP',
-        'd365 live' => 'D365 Live',
-        'd365live' => 'D365 Live',
-        'windows sign in' => 'Windows Authentication',
-        'microsoft teams' => 'Microsoft Teams',
-        'office 365' => 'Office 365',
-    ];
-    
-    $lowerNormalized = strtolower($normalized);
-    
-    return $systemAliases[$lowerNormalized] ?? $normalized;
-}
 
-public function index(Request $request)
+
+
+
+    /**
+     * Enhanced system name normalization using systemmap.php
+     */
+    private function normalizeSystemName($systemName)
+    {
+        if (empty($systemName)) {
+            return 'Unknown';
+        }
+        
+        $normalized = trim($systemName);
+        
+        // Use the systemmap configuration for normalization
+        $systemMap = config('systemmap', []);
+        $lowerNormalized = strtolower($normalized);
+        
+        // Check if this raw system name maps to a clean name
+        if (isset($systemMap[$lowerNormalized])) {
+            return $systemMap[$lowerNormalized];
+        }
+        
+        // Check case-insensitive matches
+        foreach ($systemMap as $rawName => $cleanName) {
+            if (strtolower($rawName) === $lowerNormalized) {
+                return $cleanName;
+            }
+        }
+        
+        // Return normalized version if no mapping found
+        return $normalized;
+    }
+
+
+/**
+ * Helper function to get raw system names from config
+ */
+private function getRawSystemNames($cleanSystemName)
 {
-    set_time_limit(120); // 2 minutes
-
-    try {
-        // Add cache busting parameter support
-        if ($request->has('refresh_cache')) {
-            $this->clearDashboardCache();
-        }
-
-        $filters = $this->filterService->parseFilters($request);
-        $range = $filters['range'] ?? 'last_3_months';
-        $system = $this->validateSystemSelection($request->input('system', 'all'));
-        $search = $request->input('search');
-
-        Log::info('Dashboard query with clean system filtering', [
-            'selected_system' => $system,
-            'range' => $range,
-            'excluded_systems' => $this->excludedSystems
-        ]);
-
-        // Get actual date range from clean data
-        try {
-            $actualDateRange = $this->getActualDateRange();
-        } catch (\Exception $e) {
-            Log::error('Failed to get actual date range', [
-                'error' => $e->getMessage()
-            ]);
-            $actualDateRange = [
-                'min_date' => now()->subYear(),
-                'max_date' => now(),
-                'has_data' => false
-            ];
-        }
-        
-        // Calculate intended date ranges - DON'T auto-correct for empty periods
-        $startDate = match ($range) {
-            'this_month' => now()->startOfMonth(),
-            'last_month' => now()->subMonth()->startOfMonth(),
-            'last_3_months' => now()->subMonths(3)->startOfDay(),
-            'last_6_months' => now()->subMonths(6)->startOfDay(),
-            'last_year' => now()->subYear()->startOfDay(),
-            'all_time' => $actualDateRange['min_date'],
-            default => now()->subMonths(3)->startOfDay(),
-        };
-        
-        $endDate = match ($range) {
-            'this_month' => now()->endOfMonth(),
-            'last_month' => now()->subMonth()->endOfMonth(),
-            'last_3_months' => now()->endOfDay(),
-            'last_6_months' => now()->endOfDay(),
-            'last_year' => now()->endOfDay(),
-            'all_time' => $actualDateRange['max_date'],
-            default => now()->endOfDay(),
-        };
-
-        // Only constrain dates for 'all_time' - let other ranges show empty results if no data
-        if ($range === 'all_time') {
-            $startDate = max($startDate, $actualDateRange['min_date']);
-            $endDate = min($endDate, $actualDateRange['max_date']);
-            
-            if ($startDate > $endDate) {
-                $startDate = $actualDateRange['min_date'];
-                $endDate = $actualDateRange['max_date'];
-            }
-        }
-
-        // Check if the selected period has any data (for logging purposes)
-        $hasDataInPeriod = $startDate >= $actualDateRange['min_date'] && 
-                          $startDate <= $actualDateRange['max_date'];
-
-        if (!$hasDataInPeriod && $range !== 'all_time') {
-            Log::info('Selected date range has no data - will show empty results', [
-                'range' => $range,
-                'selected_start' => $startDate->toDateString(),
-                'selected_end' => $endDate->toDateString(),
-                'actual_data_range' => [
-                    'min' => $actualDateRange['min_date']->toDateString(),
-                    'max' => $actualDateRange['max_date']->toDateString()
-                ]
-            ]);
-        }
-
-        $totalDays = $startDate && $endDate ? $startDate->diffInDays($endDate) + 1 : 365;
-
-        Log::info('Dashboard using selected date range', [
-            'range' => $range,
-            'system' => $system,
-            'start_date' => $startDate->toDateString(),
-            'end_date' => $endDate->toDateString(),
-            'has_data_in_period' => $hasDataInPeriod,
-            'excluded_systems' => $this->excludedSystems
-        ]);
-
-        // IMPROVED USER QUERY: Handle system and date filtering correctly
-        if ($system && $system !== 'all') {
-    // Get all variations of the selected system name
-    $systemVariations = $this->getSystemVariations($system);
-    
-    $query = AzureUser::valid()
-        ->select('Azure_Users.id', 'Azure_Users.userPrincipalName', 'Azure_Users.displayName', 'Azure_Users.mail')
-        ->join('Azure_LoginDetails as ald_filter', 'Azure_Users.id', '=', 'ald_filter.user_id')
-        ->where(function($q) use ($systemVariations) {
-            foreach ($systemVariations as $variation) {
-                $q->orWhere('ald_filter.system', $variation);
-            }
-        })
-        ->whereNotIn('ald_filter.system', $this->excludedSystems)
-        ->groupBy('Azure_Users.id', 'Azure_Users.userPrincipalName', 'Azure_Users.displayName', 'Azure_Users.mail')
-        ->with(['signIns' => function ($q) use ($startDate, $endDate, $systemVariations) {
-            if ($startDate && $endDate) {
-                $q->whereBetween('date_utc', [$startDate, $endDate]);
-            }
-            $q->where(function($subQ) use ($systemVariations) {
-                foreach ($systemVariations as $variation) {
-                    $subQ->orWhere('system', $variation);
-                }
-            });
-            $q->whereNotIn('system', $this->excludedSystems);
-            $q->orderBy('date_utc', 'desc');
-        }]);
-} else {
-    // For 'all' systems: show all users but filter sign-ins by date range
-    $query = AzureUser::valid()
-        ->select('Azure_Users.id', 'Azure_Users.userPrincipalName', 'Azure_Users.displayName', 'Azure_Users.mail')
-        ->with(['signIns' => function ($q) use ($startDate, $endDate) {
-            if ($startDate && $endDate) {
-                $q->whereBetween('date_utc', [$startDate, $endDate]);
-            }
-            $q->whereNotIn('system', $this->excludedSystems);
-            $q->orderBy('date_utc', 'desc');
-        }]);
+    return collect(config('systemmap'))
+        ->filter(fn($mappedName) => $mappedName === $cleanSystemName)
+        ->keys()
+        ->toArray();
 }
 
 
-        // Add search functionality
-        if ($search) {
-            $search = trim(strip_tags($search));
-            if (strlen($search) > 255) {
-                $search = substr($search, 0, 255);
-            }
-            $query->where(function ($q) use ($search) {
-                $q->where('Azure_Users.displayName', 'LIKE', "%{$search}%")
-                  ->orWhere('Azure_Users.userPrincipalName', 'LIKE', "%{$search}%")
-                  ->orWhere('Azure_Users.mail', 'LIKE', "%{$search}%");
-            });
-        }
 
-        $perPage = 17;
-        $users = $query->paginate($perPage)->withQueryString();
+    public function index(Request $request)
+    {
+        set_time_limit(120); // 2 minutes
 
-        // Calculate stats with improved method
         try {
-            $stats = $this->calculateStats($startDate, $endDate, $system);
-        } catch (\Exception $e) {
-            Log::error('Failed to calculate dashboard stats', [
-                'error' => $e->getMessage(),
-                'system' => $system,
-                'date_range' => [$startDate->toDateString(), $endDate->toDateString()]
+            // Add cache busting parameter support
+            if ($request->has('refresh_cache')) {
+                $this->clearDashboardCache();
+            }
+
+            $filters = $this->filterService->parseFilters($request);
+            $range = $filters['range'] ?? 'last_3_months';
+            $system = $this->validateSystemSelection($request->input('system', 'all'));
+            $search = $request->input('search');
+
+            Log::info('Dashboard query with enhanced system filtering v2', [
+                'selected_system' => $system,
+                'range' => $range,
+                'excluded_systems' => $this->excludedSystems
             ]);
+
+            // Get actual date range from clean data
+            try {
+                $actualDateRange = $this->getActualDateRange();
+            } catch (\Exception $e) {
+                Log::error('Failed to get actual date range', [
+                    'error' => $e->getMessage()
+                ]);
+                $actualDateRange = [
+                    'min_date' => now()->subYear(),
+                    'max_date' => now(),
+                    'has_data' => false
+                ];
+            }
             
-            // Provide fallback stats
-            $stats = [
-                'totalUsers' => 0,
-                'loggedInCount' => 0,
-                'notLoggedInCount' => 0,
-                'totalLogins' => 0,
-                'lastLogin' => null,
-                'signIns' => collect(),
-                'error' => true
-            ];
-        }
+            // Calculate intended date ranges
+            $startDate = match ($range) {
+                'this_month' => now()->startOfMonth(),
+                'last_month' => now()->subMonth()->startOfMonth(),
+                'last_3_months' => now()->subMonths(3)->startOfDay(),
+                'last_6_months' => now()->subMonths(6)->startOfDay(),
+                'last_year' => now()->subYear()->startOfDay(),
+                'all_time' => $actualDateRange['min_date'],
+                default => now()->subMonths(3)->startOfDay(),
+            };
+            
+            $endDate = match ($range) {
+                'this_month' => now()->endOfMonth(),
+                'last_month' => now()->subMonth()->endOfMonth(),
+                'last_3_months' => now()->endOfDay(),
+                'last_6_months' => now()->endOfDay(),
+                'last_year' => now()->endOfDay(),
+                'all_time' => $actualDateRange['max_date'],
+                default => now()->endOfDay(),
+            };
 
-        // Get clean systems list (excludes unwanted systems)
-        $systems = $this->getAvailableSystems();
-        array_unshift($systems, 'all');
+            // Only constrain dates for 'all_time'
+            if ($range === 'all_time') {
+                $startDate = max($startDate, $actualDateRange['min_date']);
+                $endDate = min($endDate, $actualDateRange['max_date']);
+                
+                if ($startDate > $endDate) {
+                    $startDate = $actualDateRange['min_date'];
+                    $endDate = $actualDateRange['max_date'];
+                }
+            }
 
-        if ($request->ajax()) {
-            return response()->json([
-                'users' => collect($users->items())->map(function ($user) {
-                    return [
-                        'id' => $user->id ?? $user->userPrincipalName,
-                        'userPrincipalName' => $user->userPrincipalName,
-                        'displayName' => $user->displayName ?? 'Unknown',
-                        'mail' => $user->mail ?? 'N/A',
-                        'signIns' => $user->signIns->map(function ($signIn) {
-                            return [
-                                'id' => $signIn->id,
-                                'system' => $signIn->system,
-                                'date_utc' => $signIn->date_utc->toIso8601String(),
-                                'application' => $signIn->application ?? 'N/A',
-                            ];
-                        })->toArray(),
-                    ];
-                })->toArray(),
+            $hasDataInPeriod = $startDate >= $actualDateRange['min_date'] && 
+                              $startDate <= $actualDateRange['max_date'];
+
+            if (!$hasDataInPeriod && $range !== 'all_time') {
+                Log::info('Selected date range has no data - will show empty results', [
+                    'range' => $range,
+                    'selected_start' => $startDate->toDateString(),
+                    'selected_end' => $endDate->toDateString(),
+                    'actual_data_range' => [
+                        'min' => $actualDateRange['min_date']->toDateString(),
+                        'max' => $actualDateRange['max_date']->toDateString()
+                    ]
+                ]);
+            }
+
+            $totalDays = $startDate && $endDate ? $startDate->diffInDays($endDate) + 1 : 365;
+
+            Log::info('Dashboard using selected date range', [
+                'range' => $range,
+                'system' => $system,
+                'start_date' => $startDate->toDateString(),
+                'end_date' => $endDate->toDateString(),
+                'has_data_in_period' => $hasDataInPeriod,
+                'excluded_systems' => $this->excludedSystems
+            ]);
+
+            // FIXED: Enhanced user query with consistent system filtering
+            if ($system && $system !== 'all') {
+                $query = AzureUser::valid()
+                    ->select('Azure_Users.id', 'Azure_Users.userPrincipalName', 'Azure_Users.displayName', 'Azure_Users.mail')
+                    ->join('Azure_LoginDetails as ald_filter', 'Azure_Users.id', '=', 'ald_filter.user_id')
+                    ->whereNotIn('ald_filter.system', $this->excludedSystems);
+
+                // Apply the same system filtering as UserController
+                $this->applySystemFilter($query->where(function($q) use ($system) {
+                    // This creates a sub-query for the system filter
+                }), $system);
+
+                $query = $query->groupBy('Azure_Users.id', 'Azure_Users.userPrincipalName', 'Azure_Users.displayName', 'Azure_Users.mail')
+                    ->with(['signIns' => function ($q) use ($startDate, $endDate, $system) {
+                        if ($startDate && $endDate) {
+                            $q->whereBetween('date_utc', [$startDate, $endDate]);
+                        }
+                        $this->applySystemFilter($q, $system);
+                        $q->whereNotIn('system', $this->excludedSystems);
+                        $q->orderBy('date_utc', 'desc');
+                    }]);
+            } else {
+                // For 'all' systems: show all users but filter sign-ins by date range and excluded systems
+                $query = AzureUser::valid()
+                    ->select('Azure_Users.id', 'Azure_Users.userPrincipalName', 'Azure_Users.displayName', 'Azure_Users.mail')
+                    ->with(['signIns' => function ($q) use ($startDate, $endDate) {
+                        if ($startDate && $endDate) {
+                            $q->whereBetween('date_utc', [$startDate, $endDate]);
+                        }
+                        $q->whereNotIn('system', $this->excludedSystems);
+                        $q->orderBy('date_utc', 'desc');
+                    }]);
+            }
+
+            // Add search functionality
+            if ($search) {
+                $search = trim(strip_tags($search));
+                if (strlen($search) > 255) {
+                    $search = substr($search, 0, 255);
+                }
+                $query->where(function ($q) use ($search) {
+                    $q->where('Azure_Users.displayName', 'LIKE', "%{$search}%")
+                      ->orWhere('Azure_Users.userPrincipalName', 'LIKE', "%{$search}%")
+                      ->orWhere('Azure_Users.mail', 'LIKE', "%{$search}%");
+                });
+            }
+
+            $perPage = 17;
+            $users = $query->paginate($perPage)->withQueryString();
+
+            // Calculate stats with improved method
+            try {
+                $stats = $this->calculateStats($startDate, $endDate, $system);
+            } catch (\Exception $e) {
+                Log::error('Failed to calculate dashboard stats', [
+                    'error' => $e->getMessage(),
+                    'system' => $system,
+                    'date_range' => [$startDate->toDateString(), $endDate->toDateString()]
+                ]);
+                
+                // Provide fallback stats
+                $stats = [
+                    'totalUsers' => 0,
+                    'loggedInCount' => 0,
+                    'notLoggedInCount' => 0,
+                    'totalLogins' => 0,
+                    'lastLogin' => null,
+                    'signIns' => collect(),
+                    'error' => true
+                ];
+            }
+
+            // Get clean systems list (excludes unwanted systems)
+            $systems = $this->getAvailableSystems();
+            array_unshift($systems, 'all');
+
+            if ($request->ajax()) {
+                return response()->json([
+                    'users' => collect($users->items())->map(function ($user) {
+                        return [
+                            'id' => $user->id ?? $user->userPrincipalName,
+                            'userPrincipalName' => $user->userPrincipalName,
+                            'displayName' => $user->displayName ?? 'Unknown',
+                            'mail' => $user->mail ?? 'N/A',
+                            'signIns' => $user->signIns->map(function ($signIn) {
+                                return [
+                                    'id' => $signIn->id,
+                                    'system' => $this->normalizeSystemName($signIn->system),
+                                    'date_utc' => $signIn->date_utc->toIso8601String(),
+                                    'application' => $signIn->application ?? 'N/A',
+                                ];
+                            })->toArray(),
+                        ];
+                    })->toArray(),
+                    'totalUsers' => $stats['totalUsers'],
+                    'loggedInCount' => $stats['loggedInCount'],
+                    'notLoggedInCount' => $stats['notLoggedInCount'],
+                    'totalLogins' => $stats['totalLogins'],
+                    'lastLogin' => $stats['lastLogin'],
+                    'signIns' => $stats['signIns']->map(function ($signIn) {
+                        return [
+                            'id' => $signIn->id,
+                            'system' => $this->normalizeSystemName($signIn->system),
+                            'date_utc' => $signIn->date_utc->toIso8601String(),
+                            'application' => $signIn->application ?? 'N/A',
+                        ];
+                    })->toArray(),
+                    'totalDays' => $totalDays,
+                    'rangeInput' => $range,
+                    'rangeLabel' => $filters['rangeLabel'] ?? $range,
+                    'systemInput' => $system,
+                    'systems' => $systems,
+                    'pagination' => $users->withQueryString()->links()->toHtml(),
+                    'dateRange' => [
+                        'start' => $startDate->toDateString(),
+                        'end' => $endDate->toDateString(),
+                        'data_available' => $hasDataInPeriod
+                    ],
+                    'excludedSystems' => $this->excludedSystems
+                ], 200);
+            }
+
+            return view('logintracker.dashboard', [
+                'users' => $users,
                 'totalUsers' => $stats['totalUsers'],
                 'loggedInCount' => $stats['loggedInCount'],
                 'notLoggedInCount' => $stats['notLoggedInCount'],
                 'totalLogins' => $stats['totalLogins'],
                 'lastLogin' => $stats['lastLogin'],
-                'signIns' => $stats['signIns']->map(function ($signIn) {
-                    return [
-                        'id' => $signIn->id,
-                        'system' => $signIn->system,
-                        'date_utc' => $signIn->date_utc->toIso8601String(),
-                        'application' => $signIn->application ?? 'N/A',
-                    ];
-                })->toArray(),
+                'signIns' => $stats['signIns'],
                 'totalDays' => $totalDays,
                 'rangeInput' => $range,
                 'rangeLabel' => $filters['rangeLabel'] ?? $range,
                 'systemInput' => $system,
                 'systems' => $systems,
-                'pagination' => $users->withQueryString()->links()->toHtml(),
-                'dateRange' => [
+                'selectedRange' => $range,
+                'selectedSystem' => $system,
+                'actualDateRange' => [
                     'start' => $startDate->toDateString(),
                     'end' => $endDate->toDateString(),
                     'data_available' => $hasDataInPeriod
                 ],
                 'excludedSystems' => $this->excludedSystems
-            ], 200);
+            ]);
+            
+        } catch (QueryException $e) {
+            Log::error('Database query failed in DashboardController', [
+                'error' => $e->getMessage(),
+                'stack' => $e->getTraceAsString(),
+            ]);
+            
+            if ($request->ajax()) {
+                return response()->json(['error' => 'Database error occurred'], 500);
+            }
+            
+            return response()->view('errors.500', [], 500);
+        } catch (\Exception $e) {
+            Log::error('Unexpected error in DashboardController', [
+                'error' => $e->getMessage(),
+                'stack' => $e->getTraceAsString(),
+            ]);
+            
+            if ($request->ajax()) {
+                return response()->json(['error' => 'An unexpected error occurred'], 500);
+            }
+            
+            return response()->view('errors.500', [], 500);
         }
-
-        return view('logintracker.dashboard', [
-            'users' => $users,
-            'totalUsers' => $stats['totalUsers'],
-            'loggedInCount' => $stats['loggedInCount'],
-            'notLoggedInCount' => $stats['notLoggedInCount'],
-            'totalLogins' => $stats['totalLogins'],
-            'lastLogin' => $stats['lastLogin'],
-            'signIns' => $stats['signIns'],
-            'totalDays' => $totalDays,
-            'rangeInput' => $range,
-            'rangeLabel' => $filters['rangeLabel'] ?? $range,
-            'systemInput' => $system,
-            'systems' => $systems,
-            'selectedRange' => $range,
-            'selectedSystem' => $system,
-            'actualDateRange' => [
-                'start' => $startDate->toDateString(),
-                'end' => $endDate->toDateString(),
-                'data_available' => $hasDataInPeriod
-            ],
-            'excludedSystems' => $this->excludedSystems
-        ]);
-        
-    } catch (QueryException $e) {
-        Log::error('Database query failed in DashboardController', [
-            'error' => $e->getMessage(),
-            'stack' => $e->getTraceAsString(),
-        ]);
-        
-        if ($request->ajax()) {
-            return response()->json(['error' => 'Database error occurred'], 500);
-        }
-        
-        return response()->view('errors.500', [], 500);
-    } catch (\Exception $e) {
-        Log::error('Unexpected error in DashboardController', [
-            'error' => $e->getMessage(),
-            'stack' => $e->getTraceAsString(),
-        ]);
-        
-        if ($request->ajax()) {
-            return response()->json(['error' => 'An unexpected error occurred'], 500);
-        }
-        
-        return response()->view('errors.500', [], 500);
     }
-}
 
+
+
+   /**
+     * Apply enhanced system filter - matches UserController logic exactly
+     * Checks both 'system' and 'application' fields with proper case-insensitive matching
+     */
+    private function applySystemFilter($query, $systemName)
+    {
+        if (empty($systemName) || $systemName === 'all') {
+            return $query;
+        }
+
+        $rawSystemNames = $this->getRawSystemNames($systemName);
+        
+        return $query->where(function ($q) use ($rawSystemNames, $systemName) {
+            // Try direct system field match first
+            $q->where(DB::raw('LOWER(system)'), strtolower($systemName));
+            
+            // If there are raw system mappings, also check application field
+            if (!empty($rawSystemNames)) {
+                foreach ($rawSystemNames as $rawSystem) {
+                    $q->orWhere('application', 'LIKE', "%{$rawSystem}%");
+                }
+            }
+            
+            // Also try direct application field match
+            $q->orWhere(DB::raw('LOWER(application)'), 'like', '%' . strtolower($systemName) . '%');
+        });
+    }
 
 
 private function getSystemVariations($systemName)
@@ -463,234 +510,210 @@ private function getSystemVariations($systemName)
    /**
  * IMPROVED: System-filtered stats calculation showing only users who use the selected system
  */
-private function calculateStats($startDate, $endDate, $system)
-{
-    $cacheKey = 'dashboard_stats_flexible_' . md5($startDate->format('Y-m-d') . $endDate->format('Y-m-d') . $system);
-    
-    return Cache::remember($cacheKey, 1800, function () use ($startDate, $endDate, $system, $cacheKey) {
-        $queryStartTime = microtime(true);
+             
+        private function calculateStats($startDate, $endDate, $system)
+    {
+        $cacheKey = 'dashboard_stats_enhanced_v2_' . md5($startDate->format('Y-m-d') . $endDate->format('Y-m-d') . $system);
         
-        try {
-            // Build WHERE clause excluding unwanted systems
-            $excludedSystemsStr = "'" . implode("','", $this->excludedSystems) . "'";
-            $systemWhere = "AND TRIM(LOWER(ald.system)) NOT IN (" . strtolower($excludedSystemsStr) . ")";
-            $params = [$startDate->format('Y-m-d H:i:s'), $endDate->format('Y-m-d H:i:s')];
+        return Cache::remember($cacheKey, 1800, function () use ($startDate, $endDate, $system) {
+            $queryStartTime = microtime(true);
             
-            if ($system && $system !== 'all') {
-                // Get all variations for flexible matching
-                $systemVariations = $this->getSystemVariations($system);
-                $systemPlaceholders = implode(',', array_fill(0, count($systemVariations), '?'));
-                $systemWhere .= " AND ald.system IN ({$systemPlaceholders})";
-                $params = array_merge($params, $systemVariations);
-            }
-            
-            // MODIFIED: Calculate stats with flexible system matching
-            if ($system && $system !== 'all') {
-                $statsQuery = "
-                    SELECT 
-                        COUNT(DISTINCT au.id) as total_users_for_system,
-                        COUNT(DISTINCT ald.user_id) as logged_in_count,
-                        COUNT(*) as total_logins,
-                        MAX(ald.date_utc) as last_login
-                    FROM Azure_LoginDetails ald
-                    INNER JOIN Azure_Users au ON au.id = ald.user_id
-                    WHERE ald.date_utc BETWEEN ? AND ?
-                    {$systemWhere}
-                    AND ald.user_id IS NOT NULL
-                ";
+            try {
+                if ($system && $system !== 'all') {
+                    // For specific system: count users who have used that system in the period
+                    $loggedInQuery = AzureUser::valid()
+                        ->whereHas('signIns', function ($q) use ($startDate, $endDate, $system) {
+                            $q->whereBetween('date_utc', [$startDate, $endDate]);
+                            $this->applySystemFilter($q, $system);
+                            $q->whereNotIn('system', $this->excludedSystems);
+                        });
+                    
+                    $loggedInCount = $loggedInQuery->count();
+                    
+                    // Total users who have ever used this system
+                    $totalSystemUsersQuery = AzureUser::valid()
+                        ->whereHas('signIns', function ($q) use ($system) {
+                            $this->applySystemFilter($q, $system);
+                            $q->whereNotIn('system', $this->excludedSystems);
+                        });
+                    
+                    $totalUsers = $totalSystemUsersQuery->count();
+                    
+                    // Total logins for this system in the period
+                    $totalLoginsQuery = SigninLog::whereBetween('date_utc', [$startDate, $endDate])
+                        ->whereNotIn('system', $this->excludedSystems);
+                    
+                    $this->applySystemFilter($totalLoginsQuery, $system);
+                    $totalLogins = $totalLoginsQuery->count();
+                    
+                    // Last login for this system
+                    $lastLoginQuery = SigninLog::whereBetween('date_utc', [$startDate, $endDate])
+                        ->whereNotIn('system', $this->excludedSystems);
+                    
+                    $this->applySystemFilter($lastLoginQuery, $system);
+                    $lastLogin = $lastLoginQuery->max('date_utc');
+                    
+                } else {
+                    // For 'all' systems: use original logic but with enhanced exclusions
+                    $loggedInCount = AzureUser::valid()
+                        ->whereHas('signIns', function ($q) use ($startDate, $endDate) {
+                            $q->whereBetween('date_utc', [$startDate, $endDate]);
+                            $q->whereNotIn('system', $this->excludedSystems);
+                        })
+                        ->count();
+                    
+                    $totalUsers = AzureUser::valid()->count();
+                    
+                    $totalLogins = SigninLog::whereBetween('date_utc', [$startDate, $endDate])
+                        ->whereNotIn('system', $this->excludedSystems)
+                        ->count();
+                    
+                    $lastLogin = SigninLog::whereBetween('date_utc', [$startDate, $endDate])
+                        ->whereNotIn('system', $this->excludedSystems)
+                        ->max('date_utc');
+                }
                 
-                // Get total users for this system (all variations)
-                $systemVariations = $this->getSystemVariations($system);
-                $systemPlaceholders = implode(',', array_fill(0, count($systemVariations), '?'));
-                $totalSystemUsersQuery = "
-                    SELECT COUNT(DISTINCT au.id) as total_system_users
-                    FROM Azure_Users au
-                    INNER JOIN Azure_LoginDetails ald ON au.id = ald.user_id
-                    WHERE ald.system IN ({$systemPlaceholders})
-                    AND TRIM(LOWER(ald.system)) NOT IN ({$excludedSystemsStr})
-                    AND ald.user_id IS NOT NULL
-                ";
-                
-                $totalSystemUsersResult = \DB::select($totalSystemUsersQuery, $systemVariations);
-                $totalSystemUsers = (int) ($totalSystemUsersResult[0]->total_system_users ?? 0);
-                
-            } else {
-                // For 'all' systems: use original logic but with flexible matching
-                $statsQuery = "
-                    SELECT 
-                        COUNT(DISTINCT au.id) as total_users_for_system,
-                        COUNT(DISTINCT ald.user_id) as logged_in_count,
-                        COUNT(*) as total_logins,
-                        MAX(ald.date_utc) as last_login
-                    FROM Azure_Users au
-                    LEFT JOIN Azure_LoginDetails ald ON au.id = ald.user_id 
-                        AND ald.date_utc BETWEEN ? AND ?
-                        {$systemWhere}
-                    WHERE au.id IS NOT NULL
-                ";
-                
-                $totalSystemUsers = AzureUser::count(); // All users for 'all' systems
-            }
-            
-            $statsResult = \DB::select($statsQuery, $params);
-            
-            if (empty($statsResult)) {
-                throw new \Exception('No stats data returned');
-            }
-            
-            $statsResult = $statsResult[0];
+                $notLoggedInCount = max(0, $totalUsers - $loggedInCount);
 
-            // Use system-specific total users count
-            if ($system && $system !== 'all') {
-                $totalUsers = max(0, $totalSystemUsers);
-                $loggedInCount = max(0, (int) ($statsResult->logged_in_count ?? 0));
-            } else {
-                $totalUsers = max(0, (int) ($statsResult->total_users_for_system ?? 0));
-                $loggedInCount = max(0, (int) ($statsResult->logged_in_count ?? 0));
-            }
-            
-            $notLoggedInCount = max(0, $totalUsers - $loggedInCount);
-            $totalLogins = max(0, (int) ($statsResult->total_logins ?? 0));
+                // Get recent sign-ins with enhanced system filtering
+                $signInsQuery = SigninLog::whereBetween('date_utc', [$startDate, $endDate])
+                    ->whereNotIn('system', $this->excludedSystems)
+                    ->whereNotNull('request_id');
+                
+                if ($system && $system !== 'all') {
+                    $this->applySystemFilter($signInsQuery, $system);
+                }
+                
+                $signInsRaw = $signInsQuery
+                    ->orderBy('date_utc', 'desc')
+                    ->limit(50)
+                    ->select(['request_id', 'system', 'date_utc', 'application', 'username'])
+                    ->get();
 
-            // Get recent sign-ins with flexible system matching
-            $signInsQuery = \DB::table('Azure_LoginDetails')
-                ->whereBetween('date_utc', [$startDate, $endDate])
-                ->whereNotIn(\DB::raw('TRIM(LOWER(system))'), array_map('strtolower', $this->excludedSystems))
-                ->whereNotNull('request_id');
-            
-            if ($system && $system !== 'all') {
-                $systemVariations = $this->getSystemVariations($system);
-                $signInsQuery->whereIn('system', $systemVariations);
-            }
-            
-            $signInsRaw = $signInsQuery
-                ->orderBy('date_utc', 'desc')
-                ->limit(50)
-                ->select(['request_id', 'system', 'date_utc', 'application', 'username'])
-                ->get();
+                $signIns = $signInsRaw->map(function($item) {
+                    return (object)[
+                        'id' => $item->request_id,
+                        'system' => $this->normalizeSystemName($item->system),
+                        'date_utc' => \Carbon\Carbon::parse($item->date_utc),
+                        'application' => $item->application ?? 'N/A',
+                        'username' => $item->username ?? 'N/A'
+                    ];
+                });
 
-            $signIns = $signInsRaw->map(function($item) {
-                return (object)[
-                    'id' => $item->request_id,
-                    'system' => $this->normalizeSystemName($item->system), // Normalize for display
-                    'date_utc' => \Carbon\Carbon::parse($item->date_utc),
-                    'application' => $item->application ?? 'N/A',
-                    'username' => $item->username ?? 'N/A'
+                $totalQueryTime = microtime(true) - $queryStartTime;
+
+                Log::info('Dashboard stats calculated with enhanced system matching v2', [
+                    'total_users' => $totalUsers,
+                    'logged_in_count' => $loggedInCount,
+                    'not_logged_in_count' => $notLoggedInCount,
+                    'total_logins' => $totalLogins,
+                    'system' => $system,
+                    'excluded_systems' => $this->excludedSystems,
+                    'query_time_ms' => round($totalQueryTime * 1000, 2),
+                    'date_range' => [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')],
+                    'system_specific' => ($system !== 'all')
+                ]);
+
+                return [
+                    'totalUsers' => $totalUsers,
+                    'loggedInCount' => $loggedInCount,
+                    'notLoggedInCount' => $notLoggedInCount,
+                    'totalLogins' => $totalLogins,
+                    'lastLogin' => $lastLogin,
+                    'signIns' => $signIns,
+                    'totalDays' => $startDate->diffInDays($endDate) + 1,
                 ];
-            });
 
-            $totalQueryTime = microtime(true) - $queryStartTime;
-
-            Log::info('Dashboard stats calculated with flexible system matching', [
-                'total_users' => $totalUsers,
-                'logged_in_count' => $loggedInCount,
-                'not_logged_in_count' => $notLoggedInCount,
-                'total_logins' => $totalLogins,
-                'system' => $system,
-                'system_variations_used' => $system !== 'all' ? $this->getSystemVariations($system) : ['all'],
-                'excluded_systems' => $this->excludedSystems,
-                'query_time_ms' => round($totalQueryTime * 1000, 2),
-                'date_range' => [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')],
-                'system_specific' => ($system !== 'all')
-            ]);
-
-            return [
-                'totalUsers' => $totalUsers,
-                'loggedInCount' => $loggedInCount,
-                'notLoggedInCount' => $notLoggedInCount,
-                'totalLogins' => $totalLogins,
-                'lastLogin' => $statsResult->last_login,
-                'signIns' => $signIns,
-                'totalDays' => $startDate->diffInDays($endDate) + 1,
-            ];
-
-        } catch (\Exception $e) {
-            Log::error('Flexible system stats calculation failed', [
-                'error' => $e->getMessage(),
-                'system' => $system,
-                'excluded_systems' => $this->excludedSystems
-            ]);
-            
-            return [
-                'totalUsers' => 0,
-                'loggedInCount' => 0,
-                'notLoggedInCount' => 0,
-                'totalLogins' => 0,
-                'lastLogin' => null,
-                'signIns' => collect(),
-                'totalDays' => $startDate->diffInDays($endDate) + 1,
-                'error' => true
-            ];
-        }
-    });
-}
-
-
-
-
-
-public function debugSystemMapping(Request $request)
-{
-    $system = $request->input('system', 'SCM');
-    
-    $systemMapping = $this->getSystemMapping();
-    $rawSystemNames = $this->getRawSystemNames($system);
-    
-    // Get actual system values from the database
-    $actualSystems = \DB::table('Azure_LoginDetails')
-        ->selectRaw('system, COUNT(*) as count')
-        ->whereNotNull('system')
-        ->groupBy('system')
-        ->orderBy('count', 'desc')
-        ->get();
-    
-    // Check which systems would match your mapping
-    $matchingCounts = [];
-    foreach ($rawSystemNames as $rawSystem) {
-        $count = \DB::table('Azure_LoginDetails')
-            ->where('system', $rawSystem)
-            ->count();
-        $matchingCounts[$rawSystem] = $count;
-    }
-    
-    return response()->json([
-        'selected_system' => $system,
-        'raw_system_names_for_selection' => $rawSystemNames,
-        'system_mapping' => $systemMapping,
-        'actual_systems_in_db' => $actualSystems,
-        'matching_counts' => $matchingCounts,
-        'recommendation' => $this->generateSystemMappingRecommendation($system, $actualSystems, $matchingCounts)
-    ], 200, [], JSON_PRETTY_PRINT);
-}
-
-private function generateSystemMappingRecommendation($system, $actualSystems, $matchingCounts)
-{
-    $recommendations = [];
-    
-    if (array_sum($matchingCounts) === 0) {
-        $recommendations[] = "No records found for mapped system '{$system}'. Check if the mapping is correct.";
-        
-        // Find similar system names
-        $similarSystems = $actualSystems->filter(function($dbSystem) use ($system) {
-            return stripos($dbSystem->system, strtolower($system)) !== false || 
-                   stripos(strtolower($system), strtolower($dbSystem->system)) !== false;
+            } catch (\Exception $e) {
+                Log::error('Enhanced system stats calculation failed v2', [
+                    'error' => $e->getMessage(),
+                    'system' => $system,
+                    'excluded_systems' => $this->excludedSystems
+                ]);
+                
+                return [
+                    'totalUsers' => 0,
+                    'loggedInCount' => 0,
+                    'notLoggedInCount' => 0,
+                    'totalLogins' => 0,
+                    'lastLogin' => null,
+                    'signIns' => collect(),
+                    'totalDays' => $startDate->diffInDays($endDate) + 1,
+                    'error' => true
+                ];
+            }
         });
-        
-        if ($similarSystems->count() > 0) {
-            $recommendations[] = "Similar systems found: " . $similarSystems->pluck('system')->implode(', ');
-        }
-    } else {
-        $recommendations[] = "Found " . array_sum($matchingCounts) . " total records across mapped systems.";
     }
-    
-    return $recommendations;
-}
+
+
+
+
+
+  public function debugSystemMapping(Request $request)
+    {
+        $system = $request->input('system', 'SCM');
+        
+        $rawSystemNames = $this->getRawSystemNames($system);
+        
+        // Get actual system values from the database
+        $actualSystems = \DB::table('Azure_LoginDetails')
+            ->selectRaw('system, COUNT(*) as count')
+            ->whereNotNull('system')
+            ->whereNotIn('system', $this->excludedSystems)
+            ->groupBy('system')
+            ->orderBy('count', 'desc')
+            ->get();
+        
+        // Check which systems would match your mapping
+        $matchingCounts = [];
+        foreach ($rawSystemNames as $rawSystem) {
+            $count = \DB::table('Azure_LoginDetails')
+                ->where('system', $rawSystem)
+                ->whereNotIn('system', $this->excludedSystems)
+                ->count();
+            $matchingCounts[$rawSystem] = $count;
+        }
+        
+        return response()->json([
+            'selected_system' => $system,
+            'raw_system_names_for_selection' => $rawSystemNames,
+            'system_mapping_from_config' => config('systemmap'),
+            'actual_systems_in_db' => $actualSystems,
+            'matching_counts' => $matchingCounts,
+            'excluded_systems' => $this->excludedSystems,
+            'available_systems_after_filtering' => $this->getAvailableSystems(),
+            'recommendation' => $this->generateSystemMappingRecommendation($system, $actualSystems, $matchingCounts)
+        ], 200, [], JSON_PRETTY_PRINT);
+    }
+
+ private function generateSystemMappingRecommendation($system, $actualSystems, $matchingCounts)
+    {
+        $recommendations = [];
+        
+        if (array_sum($matchingCounts) === 0) {
+            $recommendations[] = "No records found for mapped system '{$system}'. Check if the mapping is correct.";
+            
+            // Find similar system names
+            $similarSystems = $actualSystems->filter(function($dbSystem) use ($system) {
+                return stripos($dbSystem->system, strtolower($system)) !== false || 
+                       stripos(strtolower($system), strtolower($dbSystem->system)) !== false;
+            });
+            
+            if ($similarSystems->count() > 0) {
+                $recommendations[] = "Similar systems found: " . $similarSystems->pluck('system')->implode(', ');
+            }
+        } else {
+            $recommendations[] = "Found " . array_sum($matchingCounts) . " total records across mapped systems.";
+        }
+        
+        return $recommendations;
+    }
 /**
      * IMPROVED: Clean date range calculation excluding unwanted systems
      */
-     private function getActualDateRange()
+    private function getActualDateRange()
     {
-        return Cache::remember('actual_date_range_clean', 1800, function () {
+        return Cache::remember('actual_date_range_clean_v2', 1800, function () {
             $dateRange = SigninLog::whereNotIn('system', $this->excludedSystems)
                 ->selectRaw('MIN(date_utc) as min_date, MAX(date_utc) as max_date')
                 ->first();
@@ -699,7 +722,7 @@ private function generateSystemMappingRecommendation($system, $actualSystems, $m
             $maxDate = $dateRange?->max_date ? Carbon::parse($dateRange->max_date) : now();
             $hasData = $dateRange?->min_date !== null;
 
-            Log::info('Clean date range calculated', [
+            Log::info('Clean date range calculated v2', [
                 'min_date' => $minDate->toDateString(),
                 'max_date' => $maxDate->toDateString(),
                 'has_data' => $hasData,
@@ -777,8 +800,10 @@ public function getLoggedInUsersCount($startDate, $endDate, $system)
         $cacheKeys = [
             'actual_date_range',
             'actual_date_range_clean',
+            'actual_date_range_clean_v2',
             'available_systems',
-            'available_systems_clean'
+            'available_systems_clean',
+            'available_systems_clean_v2'
         ];
         
         foreach ($cacheKeys as $key) {
@@ -788,27 +813,26 @@ public function getLoggedInUsersCount($startDate, $endDate, $system)
         // Clear pattern-based cache keys
         try {
             Cache::tags(['dashboard', 'user_stats'])->flush();
-            Log::info('Dashboard cache cleared using tags');
+            Log::info('Dashboard cache cleared using tags v2');
         } catch (\Exception $e) {
             // Fallback for drivers without tag support
-            Log::info('Cache tags not supported, cleared individual keys');
+            Log::info('Cache tags not supported, cleared individual keys v2');
         }
         
         return response()->json([
-            'message' => 'Dashboard cache cleared successfully',
+            'message' => 'Dashboard cache cleared successfully v2',
             'excluded_systems' => $this->excludedSystems
         ]);
     }
 
-
-     private function validateSystemSelection($system)
+    private function validateSystemSelection($system)
     {
         if ($system === 'all') {
             return $system;
         }
         
         if (in_array($system, $this->excludedSystems)) {
-            Log::warning('Attempt to filter by excluded system', [
+            Log::warning('Attempt to filter by excluded system v2', [
                 'requested_system' => $system,
                 'excluded_systems' => $this->excludedSystems
             ]);
@@ -817,7 +841,7 @@ public function getLoggedInUsersCount($startDate, $endDate, $system)
         
         $availableSystems = $this->getAvailableSystems();
         if (!in_array($system, $availableSystems)) {
-            Log::warning('Invalid system selection', [
+            Log::warning('Invalid system selection v2', [
                 'requested_system' => $system,
                 'available_systems' => $availableSystems
             ]);

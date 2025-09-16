@@ -310,7 +310,7 @@
                     <a href="{{ URL::signedRoute('quote-logger') }}">
                         <div class="d-flex h-100 flex-column card card-widget widget-user shadow service-card">
                             <div class="widget-user-header bg-teal">
-                                <h3 class="widget-user-username">QUOTE LOGGER</h3>
+                                <h3 class="widget-user-username">QUOTE LOGGErrrrR</h3>
                                 <h5 class="widget-user-desc">Quote-Log System</h5>
                             </div>
                             <div class="widget-user-image">
