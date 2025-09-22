@@ -124,7 +124,7 @@
               id="filterForm"
               class="d-flex flex-wrap align-items-center gap-2 justify-content-end bg-light p-2 rounded">
 
-            {{-- Search --}}
+            {{-- Server-side Search --}}
             <div class="input-group input-group-sm w-auto">
                 <span class="input-group-text bg-white"><i class="fas fa-search"></i></span>
                 <input type="text" class="form-control" id="applicationSearch" 
@@ -140,9 +140,9 @@
                    class="form-control form-control-sm w-auto"
                    value="{{ request('date') ?? $selectedDate ?? '' }}">
 
-            {{-- System Filter --}}
+            {{-- IMPROVED: System Filter with All Systems option --}}
             <select name="system" id="system" class="form-select form-select-sm w-auto">
-                <!-- <option value="">All Systems</option> -->
+                <option value="" {{ empty($system) ? 'selected' : '' }}>All Systems</option>
                 @foreach($systems as $systemOption)
                     <option value="{{ $systemOption }}" {{ ($system ?? '') == $systemOption ? 'selected' : '' }}>
                         {{ $systemOption }}
@@ -158,44 +158,81 @@
     </div>
 </div>
 
-
+    {{-- IMPROVED: Enhanced No Data Message --}}
     @if ($signIns->isEmpty())
-        <div class="alert alert-info">No login history available for the selected date range.</div>
+        <div class="alert alert-info">
+            <h6>No login history available</h6>
+            @if($system)
+                <p class="mb-0">No sign-ins found for system "<strong>{{ $system }}</strong>" in the selected date range.</p>
+            @elseif(request('search'))
+                <p class="mb-0">No sign-ins found matching search term "<strong>{{ request('search') }}</strong>".</p>
+            @else
+                <p class="mb-0">No sign-ins found for the selected date range.</p>
+            @endif
+        </div>
     @else
-        <table class="table table-striped">
-            <thead class="table-dark">
-                <tr>
-                    <th>Date</th>
-                    <th>IP Address</th>
-                    <th>Application</th>
-                    <th>System</th>
-                    <th>Status</th>
-                </tr>
-            </thead>
-            <tbody id="signInTableBody">
-                @foreach ($signIns as $signIn)
+        {{-- IMPROVED: Enhanced Table with Better Responsive Design --}}
+        <div class="table-responsive">
+            <table class="table table-striped table-hover">
+                <thead class="table-dark">
                     <tr>
-                        <td>{{ \Carbon\Carbon::parse($signIn->date_utc)->format('D, M j, Y g:i A') }}</td>
-                        <td>{{ $signIn->ip_address ?? 'N/A' }}</td>
-                        <td>
-                            <span class="fw-bold">{{ $signIn->application ?? 'N/A' }}</span>
-                        </td>
-                        <td>
-                            <span class="badge bg-secondary">{{ $signIn->system ?? 'N/A' }}</span>
-                        </td>
-                        <td>
-                            <span class="badge {{ $signIn->status === 'Success' ? 'bg-success' : 'bg-danger' }}">
-                                {{ $signIn->status }}
-                            </span>
-                        </td>
+                        <th>Date</th>
+                        <th>IP Address</th>
+                        <th>Application</th>
+                        <th>System</th>
+                        <th>Status</th>
+                        <th class="d-none d-md-table-cell">Location</th>
                     </tr>
-                @endforeach
-            </tbody>
-        </table>
+                </thead>
+                <tbody id="signInTableBody">
+                    @foreach ($signIns as $signIn)
+                        <tr class="signin-row" 
+                            data-application="{{ strtolower($signIn->application ?? '') }}"
+                            data-system="{{ strtolower($signIn->system ?? '') }}">
+                            <td>
+                                <span class="fw-medium">{{ \Carbon\Carbon::parse($signIn->date_utc)->format('D, M j') }}</span><br>
+                                <small class="text-muted">{{ \Carbon\Carbon::parse($signIn->date_utc)->format('g:i A') }}</small>
+                            </td>
+                            <td>
+                                <code class="text-muted">{{ $signIn->ip_address ?? 'N/A' }}</code>
+                            </td>
+                            <td>
+                                <span class="fw-bold text-primary">{{ $signIn->application ?? 'N/A' }}</span>
+                                @if($signIn->application && $signIn->system && $signIn->application != $signIn->system)
+                                    <br><small class="text-muted">via {{ $signIn->system }}</small>
+                                @endif
+                            </td>
+                            <td>
+                                <span class="badge bg-secondary">{{ $signIn->system ?? 'N/A' }}</span>
+                            </td>
+                            <td>
+                                <span class="badge {{ $signIn->status === 'Success' ? 'bg-success' : 'bg-danger' }}">
+                                    {{ $signIn->status ?? 'Unknown' }}
+                                </span>
+                            </td>
+                            <td class="d-none d-md-table-cell">
+                                <small class="text-muted">
+                                    {{ $signIn->city ?? '' }}{{ $signIn->city && $signIn->country ? ', ' : '' }}{{ $signIn->country ?? 'N/A' }}
+                                </small>
+                            </td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
         
-        {{-- Pagination --}}
-        <div class="d-flex justify-content-center mt-4" id="pagination-container">
-            {{ $signIns->withQueryString()->links('logintracker.vendor.Pagination.tailwind') }}
+        {{-- IMPROVED: Enhanced Pagination with Info --}}
+        <div class="d-flex justify-content-between align-items-center mt-4" id="pagination-container">
+            <div class="text-muted">
+                Showing {{ $signIns->firstItem() ?? 0 }} to {{ $signIns->lastItem() ?? 0 }} 
+                of {{ $signIns->total() }} results
+                @if($system)
+                    for system "<strong>{{ $system }}</strong>"
+                @endif
+            </div>
+            <div>
+                {{ $signIns->withQueryString()->links('logintracker.vendor.Pagination.tailwind') }}
+            </div>
         </div>
     @endif
 
@@ -206,61 +243,158 @@
 
 </div>
 
+{{-- IMPROVED: Enhanced JavaScript --}}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Handle range selection change
     const rangeSelect = document.getElementById('range');
     const customDateDiv = document.getElementById('customDateDiv');
     const dateInput = document.getElementById('date');
+    const filterForm = document.getElementById('filterForm');
+    const systemSelect = document.getElementById('system');
+    const searchInput = document.getElementById('applicationSearch');
     
-    rangeSelect.addEventListener('change', function() {
-        if (this.value === 'custom') {
-            customDateDiv.style.display = 'block';
-            dateInput.setAttribute('required', 'required');
-        } else {
-            customDateDiv.style.display = 'none';
-            dateInput.removeAttribute('required');
-            dateInput.value = '';
-        }
-    });
-    
-    // Auto-submit form when range changes (except for custom)
-    rangeSelect.addEventListener('change', function() {
-        if (this.value !== 'custom') {
-            document.getElementById('filterForm').submit();
-        }
-    });
-    
-    // Auto-submit when system changes
-    document.getElementById('system').addEventListener('change', function() {
-        document.getElementById('filterForm').submit();
-    });
-    
-    // Search functionality for applications
-    document.getElementById('applicationSearch').addEventListener('input', function() {
-        const searchTerm = this.value.toLowerCase();
-        const tableRows = document.querySelectorAll('#signInTableBody tr');
-        
-        tableRows.forEach(row => {
-            const applicationCell = row.cells[2].textContent.toLowerCase();
-            if (searchTerm === '' || applicationCell.includes(searchTerm)) {
-                row.style.display = '';
+    // Handle range selection change
+    if (rangeSelect) {
+        rangeSelect.addEventListener('change', function() {
+            if (this.value === 'custom') {
+                if (customDateDiv) {
+                    customDateDiv.style.display = 'block';
+                    dateInput.setAttribute('required', 'required');
+                }
             } else {
-                row.style.display = 'none';
+                if (customDateDiv) {
+                    customDateDiv.style.display = 'none';
+                    dateInput.removeAttribute('required');
+                    dateInput.value = '';
+                }
+                // Auto-submit for non-custom ranges
+                filterForm.submit();
             }
         });
-    });
+    }
     
-    // Restore scroll position after page load
-    const savedScrollPos = sessionStorage.getItem('scrollPosition');
+    // Auto-submit when system changes
+    if (systemSelect) {
+        systemSelect.addEventListener('change', function() {
+            // Clear search when changing system
+            if (searchInput) {
+                searchInput.value = '';
+            }
+            filterForm.submit();
+        });
+    }
+    
+    // IMPROVED: Enhanced search functionality with debouncing
+    if (searchInput) {
+        let searchTimeout;
+        
+        // Real-time client-side filtering
+        searchInput.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            const searchTerm = this.value.toLowerCase().trim();
+            
+            // Client-side filtering for current page
+            const tableRows = document.querySelectorAll('#signInTableBody .signin-row');
+            let visibleCount = 0;
+            
+            tableRows.forEach(row => {
+                const applicationText = row.getAttribute('data-application') || '';
+                const systemText = row.getAttribute('data-system') || '';
+                const isVisible = searchTerm === '' || 
+                                applicationText.includes(searchTerm) || 
+                                systemText.includes(searchTerm);
+                
+                if (isVisible) {
+                    row.style.display = '';
+                    visibleCount++;
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+            
+            // Show/hide "no results" message for client-side filtering
+            updateClientSideNoResults(visibleCount, searchTerm);
+            
+            // Debounced server-side search for comprehensive results
+            if (searchTerm.length >= 2 || searchTerm === '') {
+                searchTimeout = setTimeout(() => {
+                    filterForm.submit();
+                }, 1000); // 1 second delay
+            }
+        });
+        
+        // Immediate search on Enter key
+        searchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                clearTimeout(searchTimeout);
+                filterForm.submit();
+            }
+        });
+    }
+    
+    // Function to show/hide client-side no results message
+    function updateClientSideNoResults(visibleCount, searchTerm) {
+        let noResultsRow = document.getElementById('client-no-results');
+        
+        if (visibleCount === 0 && searchTerm.length > 0) {
+            if (!noResultsRow) {
+                const tbody = document.getElementById('signInTableBody');
+                if (tbody) {
+                    noResultsRow = document.createElement('tr');
+                    noResultsRow.id = 'client-no-results';
+                    noResultsRow.innerHTML = `
+                        <td colspan="6" class="text-center py-4">
+                            <div class="text-muted">
+                                <i class="fas fa-search mb-2"></i><br>
+                                No results found for "${searchTerm}" on this page.<br>
+                                <small>Results from other pages will appear after a brief delay.</small>
+                            </div>
+                        </td>
+                    `;
+                    tbody.appendChild(noResultsRow);
+                }
+            }
+        } else if (noResultsRow) {
+            noResultsRow.remove();
+        }
+    }
+    
+    // IMPROVED: Enhanced scroll position restoration
+    const SCROLL_STORAGE_KEY = 'userShowScrollPosition';
+    const savedScrollPos = sessionStorage.getItem(SCROLL_STORAGE_KEY);
+    
     if (savedScrollPos) {
-        window.scrollTo(0, parseInt(savedScrollPos));
-        sessionStorage.removeItem('scrollPosition');
+        // Restore scroll position after a short delay to ensure content is loaded
+        setTimeout(() => {
+            window.scrollTo({
+                top: parseInt(savedScrollPos),
+                behavior: 'smooth'
+            });
+        }, 100);
+        sessionStorage.removeItem(SCROLL_STORAGE_KEY);
     }
     
     // Store scroll position before form submission
-    document.getElementById('filterForm').addEventListener('submit', function() {
-        sessionStorage.setItem('scrollPosition', window.pageYOffset);
+    filterForm.addEventListener('submit', function() {
+        sessionStorage.setItem(SCROLL_STORAGE_KEY, window.pageYOffset.toString());
+    });
+    
+    // IMPROVED: Loading states for better UX
+    filterForm.addEventListener('submit', function(e) {
+        const submitBtn = filterForm.querySelector('button[type="submit"]');
+        if (submitBtn) {
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Applying...';
+            submitBtn.disabled = true;
+        }
+    });
+    
+    // Reset loading state if form submission fails
+    window.addEventListener('pageshow', function() {
+        const submitBtn = filterForm.querySelector('button[type="submit"]');
+        if (submitBtn) {
+            submitBtn.innerHTML = 'Apply';
+            submitBtn.disabled = false;
+        }
     });
 });
 </script>

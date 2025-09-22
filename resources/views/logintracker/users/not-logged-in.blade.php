@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends('logintracker.layouts.app')
 
 @section('content')
 <div class="container mt-4">
@@ -89,16 +89,15 @@
                                         <span class="badge bg-warning text-dark">Inactive</span>
                                     </td>
                                     <td>
-                                        @if($user->userPrincipalName)
-                                            <a href="{{ route('reporting.users.show', $user->userPrincipalName) }}" class="btn btn-sm btn-primary">
-                                                View Details
-                                            </a>
-                                        @elseif($user->id)
-                                            <a href="{{ route('reporting.users.show', $user->id) }}" class="btn btn-sm btn-primary">
+                                        @php
+                                            $userId = $user->id ?? $user->userPrincipalName;
+                                        @endphp
+                                        @if($userId)
+                                            <a href="{{ route('reporting.users.show', ['user' => $userId]) }}" class="btn btn-sm btn-primary">
                                                 View Details
                                             </a>
                                         @else
-                                            <span class="text-muted">No identifier available</span>
+                                            <span class="text-muted">No ID available</span>
                                         @endif
                                     </td>
                                 </tr>
@@ -109,18 +108,139 @@
             </div>
         </div>
 
-        {{-- Pagination --}}
-        <div class="logintracker-pagination mt-4">
-            {{ $users->withQueryString()->links('logintracker.vendor.Pagination.tailwind') }}
+        {{-- Pagination with enhanced styling --}}
+        <div class="mt-3" id="pagination-container">
+            {{ $users->withQueryString()->links() }}
         </div>
     @endif
 </div>
+
+<style>
+    /* Pagination styling consistent with dashboard */
+    .pagination svg,
+    svg.arrow,
+    svg.pagination-arrow,
+    .pagination-arrow,
+    .arrow-left,
+    .arrow-right,
+    .arrow-container,
+    .pagination-large-arrow {
+        display: none !important;
+        width: 0 !important;
+        height: 0 !important;
+        visibility: hidden !important;
+    }
+
+    .pagination,
+    #pagination-container nav,
+    #pagination-container .pagination {
+        display: flex !important;
+        justify-content: center !important;
+        align-items: center !important;
+        gap: 0.5rem !important;
+        margin: 1rem 0 !important;
+        font-size: 0.875rem !important;
+        flex-wrap: wrap !important;
+        padding: 0 !important;
+        list-style: none !important;
+    }
+
+    .pagination a,
+    .pagination span,
+    .pagination button,
+    .page-link,
+    #pagination-container a,
+    #pagination-container span,
+    #pagination-container button {
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        min-width: 32px !important;
+        height: 32px !important;
+        padding: 0 0.5rem !important;
+        margin: 0 2px !important;
+        font-size: 0.875rem !important;
+        font-weight: 500 !important;
+        line-height: 1 !important;
+        color: #4b5563 !important;
+        background-color: #ffffff !important;
+        border: 1px solid #d1d5db !important;
+        border-radius: 6px !important;
+        text-decoration: none !important;
+        transition: all 0.15s ease !important;
+        cursor: pointer !important;
+        vertical-align: middle !important;
+        overflow: hidden !important;
+        white-space: nowrap !important;
+    }
+
+    .pagination a:hover:not(.disabled):not(.active),
+    .page-link:hover:not(.disabled):not(.active),
+    #pagination-container a:hover:not(.disabled):not(.active) {
+        background-color: #f3f4f6 !important;
+        border-color: #9ca3af !important;
+        color: #1f2937 !important;
+    }
+
+    .pagination .active,
+    .pagination .current,
+    .page-item.active .page-link,
+    #pagination-container .active,
+    #pagination-container .current {
+        background-color: #3b82f6 !important;
+        border-color: #3b82f6 !important;
+        color: #ffffff !important;
+        font-weight: 600 !important;
+    }
+
+    .pagination .disabled,
+    .pagination [disabled],
+    .page-item.disabled .page-link,
+    #pagination-container .disabled,
+    #pagination-container [disabled] {
+        opacity: 0.5 !important;
+        cursor: not-allowed !important;
+        background-color: #f9fafb !important;
+        color: #9ca3af !important;
+        pointer-events: none !important;
+    }
+
+    .pagination [rel="prev"]::before {
+        content: "←" !important;
+        margin-right: 0.25rem !important;
+    }
+
+    .pagination [rel="next"]::after {
+        content: "→" !important;
+        margin-left: 0.25rem !important;
+    }
+
+    #pagination-container {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        gap: 0.5rem !important;
+        margin: 1rem 0 !important;
+    }
+
+    body #pagination-container svg,
+    body .pagination svg {
+        display: none !important;
+        max-width: 0 !important;
+        max-height: 0 !important;
+    }
+</style>
 
 <script>
 function applyFilters() {
     const range = document.getElementById('range').value;
     const system = document.getElementById('system').value;
-    const search = document.getElementById('search').value;
+    let search = document.getElementById('search').value;
+    
+    // Sanitize search input
+    if (search.length > 255) {
+        search = search.substring(0, 255);
+    }
     
     const params = new URLSearchParams();
     if (range) params.set('range', range);
@@ -130,10 +250,47 @@ function applyFilters() {
     window.location.href = '{{ route("reporting.users.not-logged-in") }}?' + params.toString();
 }
 
-// Allow Enter key to trigger search
-document.getElementById('search').addEventListener('keypress', function(e) {
-    if (e.key === 'Enter') {
-        applyFilters();
+// Enhanced event handling
+document.addEventListener('DOMContentLoaded', function() {
+    // Enter key support
+    document.getElementById('search').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            applyFilters();
+        }
+    });
+
+    // Cleanup pagination arrows on load
+    function cleanupPaginationArrows() {
+        document.querySelectorAll('#pagination-container svg, .pagination svg').forEach(svg => {
+            svg.remove();
+        });
+    }
+
+    // Run cleanup after a short delay to ensure DOM is ready
+    setTimeout(cleanupPaginationArrows, 100);
+
+    // Also run cleanup when pagination changes (for AJAX-loaded content)
+    const observer = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+            if (mutation.addedNodes.length) {
+                mutation.addedNodes.forEach(function(node) {
+                    if (node.nodeType === 1 && (
+                        node.classList?.contains('pagination') ||
+                        node.querySelector?.('.pagination')
+                    )) {
+                        setTimeout(cleanupPaginationArrows, 10);
+                    }
+                });
+            }
+        });
+    });
+
+    const paginationContainer = document.getElementById('pagination-container');
+    if (paginationContainer) {
+        observer.observe(paginationContainer, {
+            childList: true,
+            subtree: true
+        });
     }
 });
 </script>

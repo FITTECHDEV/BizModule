@@ -11,43 +11,54 @@
 
         @include('logintracker.partials.alerts')
 
-        {{-- Filters --}}
-        <div class="row g-2 mb-4" id="filter-form">
-            <div class="col-md-3">
-                <label for="range" class="form-label">Date Range:</label>
-                <select name="range" id="range" class="form-select">
-                    @php
-                        $selectedRange = request('range', 'this_month');
-                    @endphp
-                    <option value="this_month" {{ $selectedRange == 'this_month' ? 'selected' : '' }}>This Month</option>
-                    <option value="last_month" {{ $selectedRange == 'last_month' ? 'selected' : '' }}>Last Month</option>
-                    <option value="last_3_months" {{ $selectedRange == 'last_3_months' ? 'selected' : '' }}>Last 3 Months</option>
-                </select>
-            </div>
+       {{-- Filters --}}
+<div class="row g-2 mb-4" id="filter-form">
+    <div class="col-md-2">
+        <label for="range" class="form-label">Date Range:</label>
+        <select name="range" id="range" class="form-select">
+            @php
+                $selectedRange = request('range', 'this_month');
+            @endphp
+            <option value="this_month" {{ $selectedRange == 'this_month' ? 'selected' : '' }}>This Month</option>
+            <option value="last_month" {{ $selectedRange == 'last_month' ? 'selected' : '' }}>Last Month</option>
+            <option value="last_3_months" {{ $selectedRange == 'last_3_months' ? 'selected' : '' }}>Last 3 Months</option>
+            <option value="custom" {{ $selectedRange == 'custom' ? 'selected' : '' }}>Custom Date</option>
+        </select>
+    </div>
 
-            <div class="col-md-3">
-                <label for="system" class="form-label">System:</label>
-                <select name="system" id="system" class="form-select">
-                    @php
-                        $selectedSystem = request('system', 'SCM');
-                    @endphp
-                    @foreach ($systems ?? [] as $sys)
-                        <option value="{{ $sys }}" {{ $selectedSystem == $sys ? 'selected' : '' }}>{{ $sys }}</option>
-                    @endforeach
-                </select>
-            </div>
+    <div class="col-md-2">
+        <label for="system" class="form-label">System:</label>
+        <select name="system" id="system" class="form-select">
+            @php
+                $selectedSystem = request('system', 'all');
+            @endphp
+            <!-- <option value="all" {{ $selectedSystem == 'all' ? 'selected' : '' }}>All Systems</option> -->
+            @foreach ($systems ?? [] as $sys)
+                <option value="{{ $sys }}" {{ $selectedSystem == $sys ? 'selected' : '' }}>{{ $sys }}</option>
+            @endforeach
+        </select>
+    </div>
 
-            <div class="col-md-3">
-                <label for="search" class="form-label">Search:</label>
-                <input type="text" name="search" id="search" class="form-control" placeholder="Name or UPN" value="{{ request('search') }}">
-            </div>
+    {{-- NEW: Calendar Date Picker --}}
+    <div class="col-md-2" id="customDateDiv" style="{{ $selectedRange == 'custom' ? '' : 'display: none;' }}">
+        <label for="date" class="form-label">Select Date:</label>
+        <input type="date" 
+               name="date" 
+               id="date" 
+               class="form-control"
+               value="{{ request('date') ?? $selectedDate ?? '' }}">
+    </div>
 
-            <div class="col-md-3 d-flex align-items-end">
-                <button type="button" class="btn btn-primary me-2" id="apply">Apply</button>
-                <a href="{{ route('dashboard') }}" class="btn btn-secondary">Reset</a>
-            </div>
-        </div>
+    <div class="col-md-3">
+        <label for="search" class="form-label">Search:</label>
+        <input type="text" name="search" id="search" class="form-control" placeholder="Name or UPN" value="{{ request('search') }}">
+    </div>
 
+    <div class="col-md-3 d-flex align-items-end">
+        <button type="button" class="btn btn-primary me-2" id="apply">Apply</button>
+        <a href="{{ route('dashboard') }}" class="btn btn-secondary">Reset</a>
+    </div>
+</div>
         {{-- Filter Summary --}}
         <div id="filter-summary" class="alert alert-light" style="display: none;">
             <strong>Filters:</strong>
@@ -165,7 +176,7 @@
         </div>
     </div>
 
- <style>
+<style>
     /* CRITICAL: Force remove ALL arrow elements and SVGs */
     .pagination svg,
     .logintracker-pagination svg,
@@ -392,11 +403,51 @@
         max-height: 0 !important;
     }
 </style>
-
-  <script>
+<script>
     $(document).ready(function() {
         // Define the base URL for the users.show route
         const userShowBaseUrl = '{{ route('reporting.users.show', ['user' => ':id']) }}'.replace(':id', '');
+
+        // Enhanced system label mapping for better display
+        const systemDisplayLabels = {
+            'all': 'All Systems',
+            'this_month': 'This Month',
+            'last_month': 'Last Month',
+            'last_3_months': 'Last 3 Months',
+            'last_6_months': 'Last 6 Months',
+            'last_year': 'Last Year',
+            'all_time': 'All Time',
+            'custom': 'Custom Date'
+        };
+
+        // Calendar functionality
+        const rangeSelect = $('#range');
+        const customDateDiv = $('#customDateDiv');
+        const dateInput = $('#date');
+
+        // Handle range selection change
+        rangeSelect.on('change', function() {
+            const selectedRange = $(this).val();
+            
+            if (selectedRange === 'custom') {
+                customDateDiv.show();
+                dateInput.attr('required', 'required');
+                // Don't auto-update when switching to custom - wait for date selection
+            } else {
+                customDateDiv.hide();
+                dateInput.removeAttr('required');
+                dateInput.val('');
+                // Auto-update for predefined ranges
+                updateDashboard();
+            }
+        });
+
+        // Handle date input change for custom date
+        dateInput.on('change', function() {
+            if (rangeSelect.val() === 'custom' && $(this).val()) {
+                updateDashboard();
+            }
+        });
 
         // Add cleanup function for pagination arrows
         function cleanupPaginationArrows() {
@@ -442,7 +493,10 @@
         });
 
         $('#system, #range').on('change', function() {
-            updateDashboard();
+            // Range change is handled by the calendar functionality above
+            if ($(this).attr('id') === 'system') {
+                updateDashboard();
+            }
         });
 
         let searchTimeout;
@@ -452,18 +506,17 @@
         });
 
         function updateDashboard() {
-            var range = $('#range').val();
-            var system = $('#system').val() || 'SCM';
-            var search = encodeURIComponent($('#search').val());
-            var rangeLabel = {
-                'this_month': 'This Month',
-                'last_month': 'Last Month',
-                'last_3_months': 'Last 3 Months',
-                'custom': 'Custom'
-            }[range] || range;
-            var systemLabel = system || 'All Systems';
+            var range = $('#range').val() || 'last_3_months';
+            var system = $('#system').val() || 'all';
+            var search = encodeURIComponent($('#search').val() || '');
+            var date = $('#date').val() || ''; // Add date parameter
+            
+            // Enhanced label display using mapping
+            var rangeLabel = systemDisplayLabels[range] || range;
+            var systemLabel = system === 'all' ? 'All Systems' : system;
 
-            console.log('Sending AJAX with:', { range, system, search });
+            console.log('Enhanced AJAX request:', { range, system, search, date, rangeLabel, systemLabel });
+            
             $('#loading').show();
             $('#user-table').html('<div class="alert alert-info">Loading...</div>');
 
@@ -474,28 +527,35 @@
                     'X-Requested-With': 'XMLHttpRequest',
                     'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
                 },
-                data: { range, system, search },
+                data: { range, system, search, date }, // Include date parameter
                 success: function(response) {
-                    console.log('AJAX Response:', response);
+                    console.log('Enhanced AJAX Response:', response);
                     $('#loading').hide();
 
-                    // Update summary cards
+                    // Update summary cards with enhanced error handling
                     $('#total-users').text(response.totalUsers || 0);
                     $('#logged-in-count').text(response.loggedInCount || 0);
                     $('#not-logged-in-count').text(response.notLoggedInCount || 0);
 
-                    // Update filter links
-                    const queryParams = $.param({ range, system, search });
+                    // Update filter links with proper query parameters
+                    const queryParams = $.param({ range, system, search, date });
                     $('#logged-in-link').attr('href', '{{ route('reporting.users.logged-in') }}?' + queryParams);
                     $('#not-logged-in-link').attr('href', '{{ route('reporting.users.not-logged-in') }}?' + queryParams);
 
-                    // Update filter labels
-                    $('#range-label').text(rangeLabel).toggle(!!rangeLabel);
-                    $('#system-label').text(systemLabel).toggle(!!system);
+                    // Enhanced filter label display with custom date support
+                    if (range === 'custom' && date) {
+                        $('#range-label').text(rangeLabel + ': ' + date).show();
+                    } else {
+                        $('#range-label').text(rangeLabel).toggle(range !== 'last_3_months');
+                    }
+                    $('#system-label').text(systemLabel).toggle(system !== 'all');
                     $('#search-label').text('Search: ' + (search ? decodeURIComponent(search) : '')).toggle(!!search);
-                    $('#filter-summary').toggle(!!rangeLabel || !!system || !!search);
+                    
+                    // Show filter summary if any non-default filters are active
+                    var hasActiveFilters = range !== 'last_3_months' || system !== 'all' || !!search || (range === 'custom' && !!date);
+                    $('#filter-summary').toggle(hasActiveFilters);
 
-                    // Users data is directly in response.users array from controller
+                    // Enhanced users data handling with better error checking
                     var usersData = response.users || [];
 
                     if (usersData && usersData.length > 0) {
@@ -520,7 +580,7 @@
                         `;
                         $('#user-table').html(tableHtml);
 
-                        // Populate table rows
+                        // Enhanced table row population with better data validation
                         usersData.forEach(function(user) {
                             var userSignIns = user.signIns || [];
                             var uniqueLoginDays = 0;
@@ -537,13 +597,18 @@
                             var lastLogin = 'Never';
                             
                             if (userSignIns.length > 0) {
-                                lastLogin = new Date(userSignIns[0].date_utc).toLocaleString();
+                                try {
+                                    lastLogin = new Date(userSignIns[0].date_utc).toLocaleString();
+                                } catch (e) {
+                                    console.warn('Date parsing error for user:', user.id, e);
+                                    lastLogin = 'Invalid Date';
+                                }
                             }
 
-                            // Use the ID from controller response
-                            var userId = user.id;
+                            // Enhanced user data validation
+                            var userId = user.id || user.userPrincipalName;
                             var displayName = user.displayName || 'Unknown';
-                            var email = user.userPrincipalName || 'N/A';
+                            var email = user.userPrincipalName || user.mail || 'N/A';
 
                             var userRow = `
                                 <tr class="${rowClass}">
@@ -564,39 +629,56 @@
                             $('#user-table-body').append(userRow);
                         });
 
-                        // Handle pagination if present
+                        // Enhanced pagination handling
                         if (response.pagination) {
                             $('#pagination-container').html(response.pagination);
-                            // Clean up arrows after inserting pagination HTML
                             setTimeout(function() {
                                 cleanupPaginationArrows();
                                 bindPaginationEvents();
                             }, 10);
                         }
                     } else {
+                        // Enhanced no-data message with system-specific context
+                        var noDataMessage = system !== 'all' 
+                            ? `No users found for system "${systemLabel}" in the selected date range.`
+                            : 'No users found for the selected filters.';
+                        
+                        if (range === 'custom' && date) {
+                            noDataMessage += ` (Date: ${date})`;
+                        }
+                        
                         $('#user-table').html(
-                            '<div class="alert alert-info">No users found for the selected filters.</div>'
+                            `<div class="alert alert-info">${noDataMessage}</div>`
                         );
                     }
                 },
                 error: function(xhr, status, error) {
-                    console.error('AJAX Error:', status, error, xhr.responseText);
+                    console.error('Enhanced AJAX Error:', status, error, xhr.responseText);
                     $('#loading').hide();
                     $('#total-users').text('0');
                     $('#logged-in-count').text('0');
                     $('#not-logged-in-count').text('0');
+                    
+                    // Enhanced error message with system context
+                    var errorMessage = 'An error occurred while loading data.';
+                    if (xhr.status === 404) {
+                        errorMessage = 'Dashboard endpoint not found. Please check your routes.';
+                    } else if (xhr.status === 500) {
+                        errorMessage = 'Server error occurred. Please check the logs and try again.';
+                    } else if (xhr.status === 422) {
+                        errorMessage = 'Invalid filter parameters. Please reset and try again.';
+                    }
+                    
                     $('#user-table').html(
-                        '<div class="alert alert-danger">An error occurred while loading data. Please try again later.</div>'
+                        `<div class="alert alert-danger">${errorMessage}</div>`
                     );
                 }
             });
         }
 
         function bindPaginationEvents() {
-            // Clean up arrows first
             cleanupPaginationArrows();
             
-            // Target pagination links within the container
             $('#pagination-container a').off('click').on('click', function(e) {
                 e.preventDefault();
                 var url = $(this).attr('href');
@@ -618,6 +700,7 @@
                         range: $('#range').val(),
                         system: $('#system').val(),
                         search: $('#search').val(),
+                        date: $('#date').val(), // Include date in pagination
                         page: page
                     },
                     success: function(response) {
@@ -628,7 +711,7 @@
                         console.error('Pagination AJAX Error:', status, error, xhr.responseText);
                         $('#loading').hide();
                         $('#user-table').html(
-                            '<div class="alert alert-danger">An error occurred while loading data. Please try again later.</div>'
+                            '<div class="alert alert-danger">An error occurred while loading pagination data. Please try again.</div>'
                         );
                     }
                 });
@@ -641,9 +724,7 @@
             $('#logged-in-count').text(response.loggedInCount || 0);
             $('#not-logged-in-count').text(response.notLoggedInCount || 0);
 
-            // Users data is directly in response.users array from controller
             var usersData = response.users || [];
-
             var tbody = $('#user-table-body');
             tbody.empty();
 
@@ -664,12 +745,17 @@
                     var lastLogin = 'Never';
                     
                     if (userSignIns.length > 0) {
-                        lastLogin = new Date(userSignIns[0].date_utc).toLocaleString();
+                        try {
+                            lastLogin = new Date(userSignIns[0].date_utc).toLocaleString();
+                        } catch (e) {
+                            console.warn('Date parsing error for user:', user.id, e);
+                            lastLogin = 'Invalid Date';
+                        }
                     }
 
-                    var userId = user.id;
+                    var userId = user.id || user.userPrincipalName;
                     var displayName = user.displayName || 'Unknown';
-                    var email = user.userPrincipalName || 'N/A';
+                    var email = user.userPrincipalName || user.mail || 'N/A';
 
                     var userRow = `
                         <tr class="${rowClass}">
@@ -693,31 +779,41 @@
                 // Update pagination
                 if (response.pagination) {
                     $('#pagination-container').html(response.pagination);
-                    // Clean up arrows after updating pagination HTML
                     setTimeout(function() {
                         cleanupPaginationArrows();
                         bindPaginationEvents();
                     }, 10);
                 }
             } else {
+                var system = $('#system').val();
+                var range = $('#range').val();
+                var date = $('#date').val();
+                var systemLabel = system === 'all' ? 'All Systems' : system;
+                var noDataMessage = system !== 'all' 
+                    ? `No users found for system "${systemLabel}" in the selected date range.`
+                    : 'No users found for the selected filters.';
+                
+                if (range === 'custom' && date) {
+                    noDataMessage += ` (Date: ${date})`;
+                }
+                    
                 $('#user-table').html(
-                    '<div class="alert alert-info">No users found for the selected filters.</div>'
+                    `<div class="alert alert-info">${noDataMessage}</div>`
                 );
             }
         }
 
-        // Set up MutationObserver to catch any dynamic changes to pagination
+        // Enhanced MutationObserver for pagination cleanup
         const paginationObserver = new MutationObserver(function(mutations) {
             mutations.forEach(function(mutation) {
                 if (mutation.addedNodes.length) {
-                    // Check if pagination elements were added
                     mutation.addedNodes.forEach(function(node) {
                         if (node.nodeType === 1 && (
                             node.classList?.contains('pagination') ||
                             node.querySelector?.('.pagination') ||
                             node.querySelector?.('svg')
                         )) {
-                            cleanupPaginationArrows();
+                            setTimeout(cleanupPaginationArrows, 5);
                         }
                     });
                 }
@@ -733,11 +829,108 @@
             });
         }
 
-        // Initial cleanup on page load
-        cleanupPaginationArrows();
-        
-        // Bind initial pagination events if table exists
-        bindPaginationEvents();
+        // Initial cleanup and setup on page load
+        setTimeout(function() {
+            cleanupPaginationArrows();
+            bindPaginationEvents();
+        }, 100);
+
+        // Enhanced error boundary for AJAX failures
+        $(document).ajaxError(function(event, jqXHR, ajaxSettings, thrownError) {
+            console.error('Global AJAX Error Handler:', {
+                url: ajaxSettings.url,
+                status: jqXHR.status,
+                statusText: jqXHR.statusText,
+                responseText: jqXHR.responseText,
+                thrownError: thrownError
+            });
+            
+            // Only handle dashboard-related AJAX errors
+            if (ajaxSettings.url && ajaxSettings.url.includes('dashboard')) {
+                $('#loading').hide();
+                
+                if (!$('#user-table .alert-danger').length) {
+                    $('#user-table').html(
+                        '<div class="alert alert-danger">Network error occurred. Please refresh the page and try again.</div>'
+                    );
+                }
+            }
+        });
+
+        // Enhanced form validation
+        $('#search').on('input', function() {
+            var searchValue = $(this).val();
+            if (searchValue.length > 255) {
+                $(this).val(searchValue.substring(0, 255));
+                $(this).addClass('is-invalid');
+                setTimeout(() => $(this).removeClass('is-invalid'), 2000);
+            }
+        });
+
+        // Enhanced keyboard shortcuts
+        $(document).on('keydown', function(e) {
+            // Ctrl+R or F5 for refresh (prevent default and trigger update instead)
+            if ((e.ctrlKey && e.key === 'r') || e.key === 'F5') {
+                e.preventDefault();
+                updateDashboard();
+                return false;
+            }
+            
+            // Enter key in search field
+            if (e.key === 'Enter' && $('#search').is(':focus')) {
+                e.preventDefault();
+                updateDashboard();
+                return false;
+            }
+        });
+
+        // Enhanced accessibility improvements
+        $('#apply').attr('aria-label', 'Apply selected filters to update dashboard data');
+        $('#system').attr('aria-label', 'Select system to filter users');
+        $('#range').attr('aria-label', 'Select date range for filtering');
+        $('#search').attr('aria-label', 'Search users by name or email');
+        $('#date').attr('aria-label', 'Select custom date for filtering');
+
+        // Performance monitoring (development only)
+        if (typeof console !== 'undefined' && console.time) {
+            var performanceLog = {
+                dashboardUpdates: 0,
+                totalResponseTime: 0,
+                
+                startTimer: function() {
+                    this.startTime = performance.now();
+                },
+                
+                endTimer: function() {
+                    if (this.startTime) {
+                        var duration = performance.now() - this.startTime;
+                        this.dashboardUpdates++;
+                        this.totalResponseTime += duration;
+                        
+                        console.log('Dashboard Update Performance:', {
+                            duration: Math.round(duration) + 'ms',
+                            average: Math.round(this.totalResponseTime / this.dashboardUpdates) + 'ms',
+                            updates: this.dashboardUpdates
+                        });
+                        
+                        this.startTime = null;
+                    }
+                }
+            };
+            
+            // Hook into AJAX calls for performance monitoring
+            $(document).ajaxSend(function(event, jqXHR, settings) {
+                if (settings.url.includes('dashboard')) {
+                    performanceLog.startTimer();
+                }
+            });
+            
+            $(document).ajaxComplete(function(event, jqXHR, settings) {
+                if (settings.url.includes('dashboard')) {
+                    performanceLog.endTimer();
+                }
+            });
+        }
     });
 </script>
 @endsection
