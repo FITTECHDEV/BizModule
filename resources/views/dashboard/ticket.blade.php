@@ -320,6 +320,39 @@
                 </div>
             @endif
 
+                    @if (Auth::user()->can('efris-access'))
+                <div class="col-md-3 mb-2">
+                    <a href="/efris">
+                        <div class="d-flex h-100 flex-column card card-widget widget-user shadow service-card">
+                            <div class="widget-user-header bg-maroon">
+                                <h3 class="widget-user-username">Azure Management</h3>
+                                <h5 class="widget-user-desc">AZURE Dashboard</h5>
+                            </div>
+                            <div class="widget-user-image">
+                                <img class="img-circle elevation-2"
+                                    src="{{ asset('site_imgs/Custom-Icon-Design-Round-World-Flags-Uganda.ico') }}"
+                                    alt="Phone Avatar">
+                            </div>
+                            <div class="card-footer">
+                                <div class="row justify-content-center">
+                                    @foreach ($efris_stats as $entityStats)
+                                        <div class="col-sm-4 border">
+                                            <div class="description-block">
+                                                <h5 class="description-header">
+                                                    <span
+                                                        class="badge badge-primary">{{ $entityStats->EfrisStatus }}</span>
+                                                </h5>
+                                                <span class="description-text small">{{ $entityStats->NoOfInvoice }}</span>
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+            @endif
+
 
         </div>
     </div>
