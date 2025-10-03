@@ -425,6 +425,7 @@
             @endif
 
             <!-- Log In Tracker -->
+            @if (Auth::user()->can('approve-all-entity-request'))
             <div class="col-md-3 col-sm-6 mb-3">
                 <a href="/dashboard">
                     <div
@@ -453,6 +454,7 @@
                     </div>
                 </a>
             </div>
+            @endif
 
         </div>
     </div>
