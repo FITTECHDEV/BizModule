@@ -84,15 +84,15 @@ class Kernel extends ConsoleKernel
 
         // ->emailOutputOnFailure('admin@yourcompany.com'); // Optional: add your email
 
-        // $schedule->command('z_report_json_tz')
-        //  ->dailyAt('10:00')
-        //  ->withoutOverlapping()
-        //  ->runInBackground();
+        $schedule->command('z_report_json_tz')
+         ->dailyAt('10:00')
+         ->withoutOverlapping()
+         ->runInBackground();
 
-        //   $schedule->command('z_report_json_ar')
-        //  ->dailyAt('10:00')
-        //  ->withoutOverlapping()
-        //  ->runInBackground();
+          $schedule->command('z_report_json_ar')
+         ->dailyAt('10:00')
+         ->withoutOverlapping()
+         ->runInBackground();
 
     }
 

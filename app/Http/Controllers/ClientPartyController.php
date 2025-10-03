@@ -3015,13 +3015,33 @@ class ClientPartyController extends Controller
                     'countryID' => $countryId,
                     'countryCode' => $countryCode,
                     'countryName' => $countryName,
-                    'phoneNo' => property_exists($item, 'Cont_Bch_PhoneNumbers') && $item->Cont_Bch_PhoneNumbers !== '-' ? $item->Cont_Bch_PhoneNumbers : null,
-                    'contractEmail' => property_exists($item, 'Cont_Bch_Email') && $item->Cont_Bch_Email !== '-' ? $item->Cont_Bch_Email : null,
+                    'phoneNo' => property_exists($item, 'Cont_Bch_PhoneNumbers')
+                        ? ($item->Cont_Bch_PhoneNumbers !== '-' ? $item->Cont_Bch_PhoneNumbers : null)
+                        : (property_exists($item, 'Contact_PhoneNumbers')
+                            ? ($item->Contact_PhoneNumbers !== '-' ? $item->Contact_PhoneNumbers : null)
+                            : null),
+
+                    'contractEmail' => property_exists($item, 'Cont_Bch_Email')
+                        ? ($item->Cont_Bch_Email !== '-' ? $item->Cont_Bch_Email : null)
+                        : (property_exists($item, 'Contact_Email')
+                            ? $item->Contact_Email
+                            : null),
                     'contactId' => property_exists($item, 'ContactId') ? $item->ContactId : null,
                     'addressType' => property_exists($item, 'Cont_Bch_PhoneNumbers') && $item->Cont_Bch_PhoneNumbers ? $item->Cont_Bch_PhoneNumbers : null,
-                    'firstName' => property_exists($item, 'Cont_Bch_PersonName_FirstName') ? $item->Cont_Bch_PersonName_FirstName : null, // Pass '-' through
-                    'lastName' => property_exists($item, 'Cont_Bch_PersonName_LastName') ? $item->Cont_Bch_PersonName_LastName : null, // Pass '-' through
-                    'department' => property_exists($item, 'Cont_Bch_Dept') && $item->Cont_Bch_Dept !== '-' ? $item->Cont_Bch_Dept : null
+                    'firstName' => property_exists($item, 'Cont_Bch_PersonName_FirstName')
+                        ? $item->Cont_Bch_PersonName_FirstName
+                        : (property_exists($item, 'Contact_PersonName_FirstName')
+                            ? $item->Contact_PersonName_FirstName
+                            : null),
+
+                    'lastName'  => property_exists($item, 'Cont_Bch_PersonName_LastName')
+                        ? $item->Cont_Bch_PersonName_LastName
+                        : (property_exists($item, 'Contact_PersonName_LastName')
+                            ? $item->Contact_PersonName_LastName
+                            : null),
+                    'department' => property_exists($item, 'Cont_Bch_Dept')
+                        ? ($item->Cont_Bch_Dept !== '-' ? $item->Cont_Bch_Dept : null)
+                        : null,
                 ];
 
                 return $mapped;

@@ -89,7 +89,7 @@ class GenerateJsonReport extends Command
 
         $this->info("Calling API for {$zReportDate}");
         Log::info("Calling TZ ZReport API", ['date' => $zReportDate]);
-
+        //GET
         try {
             $response = Http::withBasicAuth('admin', 'aDmiN@2024')
                 ->timeout(120)
@@ -108,7 +108,7 @@ class GenerateJsonReport extends Command
                     'body' => $response->body()
                 ]);
                 $this->error("API request failed for {$zReportDate} (Status: $statusCode)");
-                return;
+
             }
 
             $jsonData = $response->body();
@@ -116,7 +116,7 @@ class GenerateJsonReport extends Command
             // Run stored procedure
             DB::statement("
             EXEC dbo.TRA_JSON_Convertor :reportDate, :officeCode, :json
-        ", [
+         ", [
                 'reportDate' => $zReportDate,
                 'officeCode' => $officeCode,
                 'json'       => $jsonData
@@ -124,7 +124,9 @@ class GenerateJsonReport extends Command
 
             $this->info("Report for {$zReportDate} processed successfully.");
             Log::info("TZ ZReport processed successfully", ['date' => $zReportDate]);
-        } catch (\Throwable $e) {
+        }
+
+        catch (\Throwable $e) {
             Log::error("API call failed", [
                 'date' => $zReportDate,
                 'message' => $e->getMessage()
