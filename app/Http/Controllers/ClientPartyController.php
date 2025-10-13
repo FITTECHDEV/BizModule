@@ -2815,11 +2815,6 @@ class ClientPartyController extends Controller
         return view('client-party.approve', compact('counts'));
     }
 
-
-
-
-
-
     public function deleteFile($id)
     {
         if (!Auth::user()->can('create-client-party-SCM')) {

@@ -9,27 +9,38 @@ use Carbon\Carbon;
 
 class SyncScmDetails extends Command
 {
-    protected $signature = 'sync:scmdetails';
+    protected $signature = 'sync:scmdetails {date? : Date to sync in YYYY-MM-DD format (defaults to today)}';
     protected $description = 'Copy rows from SQL Server CRM_UpdateSCMDetails into Odoo scmdetails table';
 
     public function handle()
     {
-        $today = Carbon::today()->toDateString();
-        $this->info("Starting sync for {$today}...");
-        Log::info("SyncScmDetails: Starting sync for {$today}");
+        // Use provided date or default to today
+        $dateInput = $this->argument('date');
+        try {
+            $syncDate = $dateInput
+                ? Carbon::parse($dateInput)->toDateString()
+                : Carbon::today()->toDateString();
+        } catch (\Exception $e) {
+            $this->error("❌ Invalid date format. Please use YYYY-MM-DD.");
+            Log::error("SyncScmDetails: Invalid date format provided - {$dateInput}");
+            return 1;
+        }
+
+        $this->info("Starting sync for {$syncDate}...");
+        Log::info("SyncScmDetails: Starting sync for {$syncDate}");
 
         try {
-            // Fetch rows from SQL Server (only today's records)
+            // Fetch rows from SQL Server for the specified date
             $rows = DB::connection('sqlsrv')->select("
-    SELECT [Id],[Bookingno],[CRMid],[Action],[Value],[CreatedOn],[UpdatedOn],[Status]
-    FROM [dbo].[CRM_UpdateSCMDetails]
-    WHERE CAST([CreatedOn] AS DATE) = CAST(GETDATE() AS DATE)
-    ORDER BY [CreatedOn] DESC
-");
-
+                SELECT [Id],[Bookingno],[CRMid],[Action],[Value],[CreatedOn],[UpdatedOn],[Status]
+                FROM [dbo].[CRM_UpdateSCMDetails]
+                WHERE CAST([CreatedOn] AS DATE) = ?
+                ORDER BY [CreatedOn] DESC
+            ", [$syncDate]);
 
             if (empty($rows)) {
-                $this->info("No rows found for today.");
+                $this->info("No rows found for {$syncDate}.");
+                Log::info("SyncScmDetails: No rows found for {$syncDate}");
                 return 0;
             }
 
@@ -89,14 +100,15 @@ class SyncScmDetails extends Command
                 }
             }
 
-            $this->info("🎉 Sync complete: {$inserted} rows upserted, {$skipped} rows skipped.");
-            Log::info("SyncScmDetails: Completed successfully. {$inserted} upserted, {$skipped} skipped.");
+            $this->info("🎉 Sync complete for {$syncDate}: {$inserted} rows upserted, {$skipped} rows skipped.");
+            Log::info("SyncScmDetails: Completed successfully for {$syncDate}. {$inserted} upserted, {$skipped} skipped.");
 
         } catch (\Exception $e) {
             $this->error("❌ Error: " . $e->getMessage());
-            Log::error("SyncScmDetails: Failed with error - " . $e->getMessage(), [
+            Log::error("SyncScmDetails: Failed with error for {$syncDate} - " . $e->getMessage(), [
                 'trace' => $e->getTraceAsString()
             ]);
+            return 1;
         }
 
         return 0;

@@ -46,6 +46,7 @@ return [
             'provider' => 'users',
             'hash' => false,
         ],
+
     ],
 
     /*
@@ -68,14 +69,8 @@ return [
     'providers' => [
         'users' => [
             'driver' => 'eloquent',
-            // 'driver' => 'ldap',// Was 'eloquent'.
             'model' => App\Models\User::class,
         ],
-
-        // 'users' => [
-        //     'driver' => 'database',
-        //     'table' => 'users',
-        // ],
     ],
 
     /*

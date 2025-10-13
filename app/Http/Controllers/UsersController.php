@@ -223,7 +223,7 @@ class UsersController extends Controller
         // update user
         $user = User::where('ID', $id)->first();
         User::where('ID', $id)->update($input);
-        
+
         // TODO: notify user about the update
 
         // delete existing roles
