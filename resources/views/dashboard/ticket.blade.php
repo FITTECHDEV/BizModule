@@ -320,38 +320,36 @@
                 </div>
             @endif
 
-                    @if (Auth::user()->can('efris-access'))
-                <div class="col-md-3 mb-2">
-                    <a href="/efris">
-                        <div class="d-flex h-100 flex-column card card-widget widget-user shadow service-card">
-                            <div class="widget-user-header bg-maroon">
-                                <h3 class="widget-user-username">Azure Management</h3>
-                                <h5 class="widget-user-desc">AZURE Dashboard</h5>
-                            </div>
-                            <div class="widget-user-image">
-                                <img class="img-circle elevation-2"
-                                    src="{{ asset('site_imgs/Custom-Icon-Design-Round-World-Flags-Uganda.ico') }}"
-                                    alt="Phone Avatar">
-                            </div>
-                            <div class="card-footer">
-                                <div class="row justify-content-center">
-                                    @foreach ($efris_stats as $entityStats)
-                                        <div class="col-sm-4 border">
-                                            <div class="description-block">
-                                                <h5 class="description-header">
-                                                    <span
-                                                        class="badge badge-primary">{{ $entityStats->EfrisStatus }}</span>
-                                                </h5>
-                                                <span class="description-text small">{{ $entityStats->NoOfInvoice }}</span>
-                                            </div>
-                                        </div>
-                                    @endforeach
-                                </div>
+                   <!-- @if (Auth::user()->can('azure-access')) -->
+    <div class="col-md-3 mb-2">
+        <a href="/azure">
+            <div class="d-flex h-100 flex-column card card-widget widget-user shadow service-card">
+                <div class="widget-user-header bg-purple">
+                    <h3 class="widget-user-username">AZURE MANAGEMENT</h3>
+                    <h5 class="widget-user-desc">Azure Dashboard</h5>
+                </div>
+                <div class="widget-user-image">
+                    <img class="img-circle elevation-2" 
+                         src="{{ asset('site_imgs/azure_logo.png') }}" 
+                         alt="Azure Logo">
+                </div>
+                <div class="card-footer">
+                    <div class="row justify-content-center">
+                        <div class="col-sm-12 text-center">
+                            <div class="description-block">
+                                <h5 class="description-header">
+                                    <span class="badge badge-info">Active</span>
+                                </h5>
+                                <span class="description-text small">System Status</span>
                             </div>
                         </div>
-                    </a>
+                    </div>
                 </div>
-            @endif
+            </div>
+        </a>
+    </div>
+<!-- @endif -->
+
 
 
         </div>
