@@ -25,7 +25,8 @@ class GenerateJsonReportTZ extends Command
             if ($backfillStart !== null) {
                 // Backfill mode
                 $startDate = $backfillStart ? Carbon::parse($backfillStart) : Carbon::parse('2025-03-02');
-                $endDate   = Carbon::yesterday();
+                $endDate = Carbon::parse('2025-09-30');
+
 
                 while ($startDate->lte($endDate)) {
                     $dates[] = $startDate->toDateString();
@@ -91,50 +92,10 @@ class GenerateJsonReportTZ extends Command
         Log::info("Calling AR ZReport API", ['date' => $zReportDate]);
 
             //GET
-        try {
-            $response = Http::withBasicAuth('admin', '+2#83Indd{Bq')
-                ->timeout(120)
-                ->get($apiUrl);
-
-            $statusCode = $response->status();
-            Log::info("API response received", [
-                'date' => $zReportDate,
-                'status_code' => $statusCode
-            ]);
-
-            if (!$response->ok()) {
-                Log::error("Failed to fetch report from API", [
-                    'date' => $zReportDate,
-                    'status_code' => $statusCode,
-                    'body' => $response->body()
-                ]);
-                $this->error("API request failed for {$zReportDate} (Status: $statusCode)");
-
-            }
-
-            $jsonData = $response->body();
-
-            // Run stored procedure
-            DB::statement("
-                EXEC dbo.TRA_JSON_Convertor :reportDate, :officeCode, :json
-            ", [
-                'reportDate' => $zReportDate,
-                'officeCode' => $officeCode,
-                'json'       => $jsonData
-            ]);
-
-            $this->info("Report for {$zReportDate} processed successfully.");
-            Log::info("AR ZReport processed successfully", ['date' => $zReportDate]);
-        }
-
-
-               //    POST
         // try {
         //     $response = Http::withBasicAuth('admin', '+2#83Indd{Bq')
         //         ->timeout(120)
-        //         ->post($apiUrl, [ // 👈 switched to POST
-        //             'date' => $zReportDate // 👈 send date in body (adjust if API expects differently)
-        //         ]);
+        //         ->get($apiUrl);
 
         //     $statusCode = $response->status();
         //     Log::info("API response received", [
@@ -149,14 +110,15 @@ class GenerateJsonReportTZ extends Command
         //             'body' => $response->body()
         //         ]);
         //         $this->error("API request failed for {$zReportDate} (Status: $statusCode)");
+
         //     }
 
-        //     $jsonData = $response->body() ?: '{}';
+        //     $jsonData = $response->body();
 
         //     // Run stored procedure
         //     DB::statement("
-        //     EXEC dbo.TRA_JSON_Convertor :reportDate, :officeCode, :json
-        //      ", [
+        //         EXEC dbo.TRA_JSON_Convertor :reportDate, :officeCode, :json
+        //     ", [
         //         'reportDate' => $zReportDate,
         //         'officeCode' => $officeCode,
         //         'json'       => $jsonData
@@ -165,6 +127,45 @@ class GenerateJsonReportTZ extends Command
         //     $this->info("Report for {$zReportDate} processed successfully.");
         //     Log::info("AR ZReport processed successfully", ['date' => $zReportDate]);
         // }
+
+
+               //    POST
+        try {
+            $response = Http::withBasicAuth('admin', '+2#83Indd{Bq')
+                ->timeout(120)
+                ->post($apiUrl, [ // 👈 switched to POST
+                    'date' => $zReportDate // 👈 send date in body (adjust if API expects differently)
+                ]);
+
+            $statusCode = $response->status();
+            Log::info("API response received", [
+                'date' => $zReportDate,
+                'status_code' => $statusCode
+            ]);
+
+            if (!$response->ok()) {
+                Log::error("Failed to fetch report from API", [
+                    'date' => $zReportDate,
+                    'status_code' => $statusCode,
+                    'body' => $response->body()
+                ]);
+                $this->error("API request failed for {$zReportDate} (Status: $statusCode)");
+            }
+
+            $jsonData = $response->body() ?: '{}';
+
+            // Run stored procedure
+            DB::statement("
+            EXEC dbo.TRA_JSON_Convertor :reportDate, :officeCode, :json
+             ", [
+                'reportDate' => $zReportDate,
+                'officeCode' => $officeCode,
+                'json'       => $jsonData
+            ]);
+
+            $this->info("Report for {$zReportDate} processed successfully.");
+            Log::info("AR ZReport processed successfully", ['date' => $zReportDate]);
+        }
 
         catch (\Throwable $e) {
             Log::error("API call failed", [

@@ -107,6 +107,7 @@ class ClientPartyController extends Controller
         $licenceTypes = $this->getLicenceType();
         $tarrifs = $this->getTarrif();
         $incoterms = $this->getIncoTerms();
+        
 
         $payTerms = [];
         $user = Auth::user();
@@ -1229,6 +1230,7 @@ class ClientPartyController extends Controller
             ->with('success', $results['data']['Status'] ?? 'Success')
             ->with('success_message', $results['data']['Remark'] ?? 'Entity processed successfully');
     }
+
     // Get Office Number
 
     public function getOfficeNumberSeries($officeCode = null, $entityType = null)
@@ -2814,11 +2816,6 @@ class ClientPartyController extends Controller
         ];
         return view('client-party.approve', compact('counts'));
     }
-
-
-
-
-
 
     public function deleteFile($id)
     {
