@@ -347,7 +347,7 @@ protected function visibleSystems(): array
 }
 
 
-  public function show(Request $request, $identifier)
+public function show(Request $request, $identifier)
 {
     Log::info('UserController@show called', [
         'identifier'    => $identifier,
@@ -382,6 +382,8 @@ protected function visibleSystems(): array
             'end'    => $end->toDateTimeString(),
             'range'  => $range,
             'system' => $system,
+            'user_id' => $user->id, // Log user_id to track NULL cases
+            'has_valid_user_id' => !is_null($user->id),
         ]);
 
         // IMPROVED: Primary query with excluded systems filtering
@@ -422,9 +424,13 @@ protected function visibleSystems(): array
             ->withQueryString();
 
         // IMPROVED: Fallback with excluded systems and proper system filtering
+        // CRITICAL FIX: Always use username fallback (even if user->id exists) to ensure we find all records
+        // This handles cases where user_id is NULL or doesn't match
         if ($signIns->isEmpty() && !empty($user->userPrincipalName)) {
             Log::info('Fallback to username for signIns', [
                 'userPrincipalName' => $user->userPrincipalName,
+                'user_id_was_null' => is_null($user->id),
+                'reason' => 'Primary query returned no results'
             ]);
 
             $fallbackQuery = SigninLog::whereRaw('LOWER(username) = ?', [strtolower($user->userPrincipalName)])
@@ -464,12 +470,37 @@ protected function visibleSystems(): array
         }
 
         // IMPROVED: Recent applications with excluded systems and proper system filtering
-        $recentApplicationsQuery = SigninLog::where('user_id', $user->id)
-            ->whereBetween('date_utc', [$start, $end])
-            ->whereNotIn('system', $this->excludedSystems)
-            ->whereNotNull('application')
-            ->where('application', '!=', '');
+        // CRITICAL FIX: Use username fallback when user_id is NULL
+        // This ensures we find applications even for users without a valid user_id
+        $recentApplicationsQuery = null;
 
+        if (!is_null($user->id)) {
+            // Primary query using user_id
+            $recentApplicationsQuery = SigninLog::where('user_id', $user->id)
+                ->whereBetween('date_utc', [$start, $end])
+                ->whereNotIn('system', $this->excludedSystems)
+                ->whereNotNull('application')
+                ->where('application', '!=', '');
+
+            Log::info('Using user_id for recent applications', [
+                'user_id' => $user->id,
+                'userPrincipalName' => $user->userPrincipalName,
+            ]);
+        } else {
+            // Fallback: user_id is NULL, use username instead
+            Log::info('User has NULL id - using username fallback for recent applications', [
+                'userPrincipalName' => $user->userPrincipalName,
+                'reason' => 'user_id is NULL in Azure_Users table'
+            ]);
+
+            $recentApplicationsQuery = SigninLog::whereRaw('LOWER(username) = ?', [strtolower($user->userPrincipalName)])
+                ->whereBetween('date_utc', [$start, $end])
+                ->whereNotIn('system', $this->excludedSystems)
+                ->whereNotNull('application')
+                ->where('application', '!=', '');
+        }
+
+        // Apply system filtering if specified
         if ($system) {
             $systemMap = config('systemmap', []);
             $rawSystemNames = collect($systemMap)
@@ -507,6 +538,13 @@ protected function visibleSystems(): array
             ->orderBy('last_used', 'desc')
             ->limit(10)
             ->get();
+
+        Log::info('Recent applications retrieved', [
+            'user_id' => $user->id,
+            'userPrincipalName' => $user->userPrincipalName,
+            'application_count' => $recentApplications->count(),
+            'used_fallback' => is_null($user->id),
+        ]);
 
         // Load all systems for filters
         $systems    = $this->visibleSystems();
