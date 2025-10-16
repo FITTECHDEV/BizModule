@@ -62,7 +62,7 @@ class ProcessCRMSCMBooking extends Command
             $this->validateEnvironment();
 
             // $batchSize = config('crm_scm.batch_size', 100);
-            $batchSize = 10; 
+            $batchSize = 10;
             $specificBooking = $this->option('booking');
 
             $records = $this->getRecordsToProcess($batchSize, $specificBooking);
