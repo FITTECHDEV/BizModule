@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "e822be7a18785983ee96d8e7e49d1b21",
+    "content-hash": "d634dd0f3de267996662ba558750fe3d",
     "packages": [
         {
             "name": "academe/laravel-azure-file-storage-driver",
@@ -2016,27 +2016,26 @@
         },
         {
             "name": "jeroennoten/laravel-adminlte",
-            "version": "v3.9.2",
+            "version": "v3.15.2",
             "source": {
                 "type": "git",
                 "url": "https://github.com/jeroennoten/Laravel-AdminLTE.git",
-                "reference": "93baa120687458fe6d06aab3bd147f30f08617e8"
+                "reference": "8f2fe5f6767b69ec5ef28087a10638b9f50e58e7"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/jeroennoten/Laravel-AdminLTE/zipball/93baa120687458fe6d06aab3bd147f30f08617e8",
-                "reference": "93baa120687458fe6d06aab3bd147f30f08617e8",
+                "url": "https://api.github.com/repos/jeroennoten/Laravel-AdminLTE/zipball/8f2fe5f6767b69ec5ef28087a10638b9f50e58e7",
+                "reference": "8f2fe5f6767b69ec5ef28087a10638b9f50e58e7",
                 "shasum": ""
             },
             "require": {
                 "almasaeed2010/adminlte": "3.2.*",
-                "laravel/framework": ">=7.0",
-                "php": ">=7.2.5"
+                "laravel/framework": ">=8.0",
+                "php": ">=7.3"
             },
             "require-dev": {
-                "orchestra/testbench": ">=4.0",
-                "phpunit/phpunit": ">=9.1",
-                "scrutinizer/ocular": "^1.9"
+                "orchestra/testbench": ">=6.0",
+                "phpunit/phpunit": ">=9.1"
             },
             "type": "library",
             "extra": {
@@ -2070,9 +2069,9 @@
             ],
             "support": {
                 "issues": "https://github.com/jeroennoten/Laravel-AdminLTE/issues",
-                "source": "https://github.com/jeroennoten/Laravel-AdminLTE/tree/v3.9.2"
+                "source": "https://github.com/jeroennoten/Laravel-AdminLTE/tree/v3.15.2"
             },
-            "time": "2023-08-25T17:01:05+00:00"
+            "time": "2025-08-12T18:28:10+00:00"
         },
         {
             "name": "jimmyjs/laravel-report-generator",

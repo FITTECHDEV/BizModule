@@ -16,7 +16,7 @@
         "genealabs/laravel-model-caching": "^0.11.3",
         "guzzlehttp/guzzle": "^7.5",
         "htmlmin/htmlmin": "^8.0",
-        "jeroennoten/laravel-adminlte": "^3.6",
+        "jeroennoten/laravel-adminlte": "^3.15",
         "jimmyjs/laravel-report-generator": "^2.1",
         "juliomotol/laravel-auth-timeout": "^3.0",
         "laravel-notification-channels/webpush": "^5.1",

@@ -42,9 +42,9 @@
     {{-- NEW: Calendar Date Picker --}}
     <div class="col-md-2" id="customDateDiv" style="{{ $selectedRange == 'custom' ? '' : 'display: none;' }}">
         <label for="date" class="form-label">Select Date:</label>
-        <input type="date" 
-               name="date" 
-               id="date" 
+        <input type="date"
+               name="date"
+               id="date"
                class="form-control"
                value="{{ request('date') ?? $selectedDate ?? '' }}">
     </div>
@@ -135,11 +135,11 @@
                                         ->unique()
                                         ->count();
                                     $missedDays = max(0, ($totalDays ?? 30) - $uniqueLoginDays);
-                                    
+
                                     // Use userPrincipalName as ID since regular ID might be null
                                     $userId = $user->id ?? $user->userPrincipalName;
                                 @endphp
-                                
+
                                 <tr @if ($uniqueLoginDays === 0) class="table-danger" @endif>
                                     <td>{{ $user->displayName ?? 'Unknown' }}</td>
                                     <td>{{ $user->userPrincipalName ?? 'N/A' }}</td>
@@ -153,7 +153,7 @@
                                     </td>
                                     <td>
                                         @if ($userId)
-                                            <a href="{{ route('reporting.users.show', ['user' => $userId]) }}" 
+                                            <a href="{{ route('reporting.users.show', ['user' => $userId]) }}"
                                                class="btn btn-sm btn-primary">
                                                <i class="fas fa-eye"></i> View
                                             </a>
@@ -428,7 +428,7 @@
         // Handle range selection change
         rangeSelect.on('change', function() {
             const selectedRange = $(this).val();
-            
+
             if (selectedRange === 'custom') {
                 customDateDiv.show();
                 dateInput.attr('required', 'required');
@@ -453,14 +453,14 @@
         function cleanupPaginationArrows() {
             // Remove any SVG elements in pagination
             $('#pagination-container svg, .pagination svg, .logintracker-pagination svg').remove();
-            
+
             // Remove any elements with arrow classes
             $('.pagination-arrow, .arrow-left, .arrow-right, .arrow-container, .pagination-large-arrow').remove();
-            
+
             // Force consistent styling on pagination elements
             $('#pagination-container a, #pagination-container span, #pagination-container button').each(function() {
                 $(this).find('svg').remove(); // Remove any nested SVGs
-                
+
                 // Apply consistent dimensions
                 $(this).css({
                     'display': 'inline-flex',
@@ -475,7 +475,7 @@
                     'vertical-align': 'middle',
                     'overflow': 'hidden'
                 });
-                
+
                 // Ensure active state styling
                 if ($(this).hasClass('active') || $(this).hasClass('current')) {
                     $(this).css({
@@ -510,13 +510,13 @@
             var system = $('#system').val() || 'all';
             var search = encodeURIComponent($('#search').val() || '');
             var date = $('#date').val() || ''; // Add date parameter
-            
+
             // Enhanced label display using mapping
             var rangeLabel = systemDisplayLabels[range] || range;
             var systemLabel = system === 'all' ? 'All Systems' : system;
 
             console.log('Enhanced AJAX request:', { range, system, search, date, rangeLabel, systemLabel });
-            
+
             $('#loading').show();
             $('#user-table').html('<div class="alert alert-info">Loading...</div>');
 
@@ -550,7 +550,7 @@
                     }
                     $('#system-label').text(systemLabel).toggle(system !== 'all');
                     $('#search-label').text('Search: ' + (search ? decodeURIComponent(search) : '')).toggle(!!search);
-                    
+
                     // Show filter summary if any non-default filters are active
                     var hasActiveFilters = range !== 'last_3_months' || system !== 'all' || !!search || (range === 'custom' && !!date);
                     $('#filter-summary').toggle(hasActiveFilters);
@@ -584,18 +584,18 @@
                         usersData.forEach(function(user) {
                             var userSignIns = user.signIns || [];
                             var uniqueLoginDays = 0;
-                            
+
                             if (userSignIns.length > 0) {
                                 var uniqueDates = userSignIns.map(d => {
                                     return new Date(d.date_utc).toLocaleDateString();
                                 }).filter((d, i, arr) => arr.indexOf(d) === i);
                                 uniqueLoginDays = uniqueDates.length;
                             }
-                            
+
                             var missedDays = Math.max(0, (response.totalDays || 30) - uniqueLoginDays);
                             var rowClass = uniqueLoginDays === 0 ? 'table-danger' : '';
                             var lastLogin = 'Never';
-                            
+
                             if (userSignIns.length > 0) {
                                 try {
                                     lastLogin = new Date(userSignIns[0].date_utc).toLocaleString();
@@ -617,10 +617,10 @@
                                     <td>${missedDays}</td>
                                     <td>${lastLogin}</td>
                                     <td>
-                                        ${userId ? 
+                                        ${userId ?
                                             `<a href="${userShowBaseUrl}${encodeURIComponent(userId)}" class="btn btn-sm btn-primary">
                                                 <i class="fas fa-eye"></i> View
-                                            </a>` : 
+                                            </a>` :
                                             '<span class="text-muted">No ID available</span>'
                                         }
                                     </td>
@@ -639,14 +639,14 @@
                         }
                     } else {
                         // Enhanced no-data message with system-specific context
-                        var noDataMessage = system !== 'all' 
+                        var noDataMessage = system !== 'all'
                             ? `No users found for system "${systemLabel}" in the selected date range.`
                             : 'No users found for the selected filters.';
-                        
+
                         if (range === 'custom' && date) {
                             noDataMessage += ` (Date: ${date})`;
                         }
-                        
+
                         $('#user-table').html(
                             `<div class="alert alert-info">${noDataMessage}</div>`
                         );
@@ -658,7 +658,7 @@
                     $('#total-users').text('0');
                     $('#logged-in-count').text('0');
                     $('#not-logged-in-count').text('0');
-                    
+
                     // Enhanced error message with system context
                     var errorMessage = 'An error occurred while loading data.';
                     if (xhr.status === 404) {
@@ -668,7 +668,7 @@
                     } else if (xhr.status === 422) {
                         errorMessage = 'Invalid filter parameters. Please reset and try again.';
                     }
-                    
+
                     $('#user-table').html(
                         `<div class="alert alert-danger">${errorMessage}</div>`
                     );
@@ -678,12 +678,12 @@
 
         function bindPaginationEvents() {
             cleanupPaginationArrows();
-            
+
             $('#pagination-container a').off('click').on('click', function(e) {
                 e.preventDefault();
                 var url = $(this).attr('href');
                 if (!url || url === '#') return;
-                
+
                 var urlParams = new URLSearchParams(url.split('?')[1]);
                 var page = urlParams.get('page');
 
@@ -732,18 +732,18 @@
                 usersData.forEach(function(user) {
                     var userSignIns = user.signIns || [];
                     var uniqueLoginDays = 0;
-                    
+
                     if (userSignIns.length > 0) {
                         var uniqueDates = userSignIns.map(d => {
                             return new Date(d.date_utc).toLocaleDateString();
                         }).filter((d, i, arr) => arr.indexOf(d) === i);
                         uniqueLoginDays = uniqueDates.length;
                     }
-                    
+
                     var missedDays = Math.max(0, (response.totalDays || 30) - uniqueLoginDays);
                     var rowClass = uniqueLoginDays === 0 ? 'table-danger' : '';
                     var lastLogin = 'Never';
-                    
+
                     if (userSignIns.length > 0) {
                         try {
                             lastLogin = new Date(userSignIns[0].date_utc).toLocaleString();
@@ -764,10 +764,10 @@
                             <td>${missedDays}</td>
                             <td>${lastLogin}</td>
                             <td>
-                                ${userId ? 
+                                ${userId ?
                                     `<a href="${userShowBaseUrl}${encodeURIComponent(userId)}" class="btn btn-sm btn-primary">
                                         <i class="fas fa-eye"></i> View
-                                    </a>` : 
+                                    </a>` :
                                     '<span class="text-muted">No ID available</span>'
                                 }
                             </td>
@@ -789,14 +789,14 @@
                 var range = $('#range').val();
                 var date = $('#date').val();
                 var systemLabel = system === 'all' ? 'All Systems' : system;
-                var noDataMessage = system !== 'all' 
+                var noDataMessage = system !== 'all'
                     ? `No users found for system "${systemLabel}" in the selected date range.`
                     : 'No users found for the selected filters.';
-                
+
                 if (range === 'custom' && date) {
                     noDataMessage += ` (Date: ${date})`;
                 }
-                    
+
                 $('#user-table').html(
                     `<div class="alert alert-info">${noDataMessage}</div>`
                 );
@@ -819,7 +819,7 @@
                 }
             });
         });
-        
+
         // Observe the pagination container for changes
         const paginationContainer = document.getElementById('pagination-container');
         if (paginationContainer) {
@@ -844,11 +844,11 @@
                 responseText: jqXHR.responseText,
                 thrownError: thrownError
             });
-            
+
             // Only handle dashboard-related AJAX errors
             if (ajaxSettings.url && ajaxSettings.url.includes('dashboard')) {
                 $('#loading').hide();
-                
+
                 if (!$('#user-table .alert-danger').length) {
                     $('#user-table').html(
                         '<div class="alert alert-danger">Network error occurred. Please refresh the page and try again.</div>'
@@ -875,7 +875,7 @@
                 updateDashboard();
                 return false;
             }
-            
+
             // Enter key in search field
             if (e.key === 'Enter' && $('#search').is(':focus')) {
                 e.preventDefault();
@@ -896,35 +896,35 @@
             var performanceLog = {
                 dashboardUpdates: 0,
                 totalResponseTime: 0,
-                
+
                 startTimer: function() {
                     this.startTime = performance.now();
                 },
-                
+
                 endTimer: function() {
                     if (this.startTime) {
                         var duration = performance.now() - this.startTime;
                         this.dashboardUpdates++;
                         this.totalResponseTime += duration;
-                        
+
                         console.log('Dashboard Update Performance:', {
                             duration: Math.round(duration) + 'ms',
                             average: Math.round(this.totalResponseTime / this.dashboardUpdates) + 'ms',
                             updates: this.dashboardUpdates
                         });
-                        
+
                         this.startTime = null;
                     }
                 }
             };
-            
+
             // Hook into AJAX calls for performance monitoring
             $(document).ajaxSend(function(event, jqXHR, settings) {
                 if (settings.url.includes('dashboard')) {
                     performanceLog.startTimer();
                 }
             });
-            
+
             $(document).ajaxComplete(function(event, jqXHR, settings) {
                 if (settings.url.includes('dashboard')) {
                     performanceLog.endTimer();

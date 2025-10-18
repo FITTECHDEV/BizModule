@@ -31,7 +31,7 @@
 
         <div class="col-md-3">
             <label for="search" class="form-label">Search:</label>
-            <input type="text" name="search" id="search" class="form-control" 
+            <input type="text" name="search" id="search" class="form-control"
                    placeholder="Name or Email" value="{{ $search }}">
         </div>
 
@@ -43,8 +43,8 @@
 
     {{-- Filter Summary --}}
     <div class="alert alert-info mb-4">
-        <strong>Showing:</strong> Users who logged into 
-        <span class="badge bg-primary">{{ $filters['system'] == 'all' ? 'All Systems' : $filters['system'] }}</span> 
+        <strong>Showing:</strong> Users who logged into
+        <span class="badge bg-primary">{{ $filters['system'] == 'all' ? 'All Systems' : $filters['system'] }}</span>
         during <span class="badge bg-secondary">{{ $filters['rangeLabel'] }}</span>
         @if($search)
             matching <span class="badge bg-warning text-dark">"{{ $search }}"</span>

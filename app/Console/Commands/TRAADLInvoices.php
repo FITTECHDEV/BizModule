@@ -41,7 +41,7 @@ class TRAADLInvoices extends Command
      */
    public function handle()
 {
-    Log::notice("TRA push running");
+    Log::notice("TRA ADL push running");
 
     $invoiceId = $this->argument('invoiceId');
     $pendingInvoices = $this->fetchPendingInvoices($invoiceId);
