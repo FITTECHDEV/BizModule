@@ -99,10 +99,73 @@ class DashboardController extends Controller
    /**
      * IMPROVED: Get available systems from database, excluding unwanted ones
      */
-    private function getAvailableSystems()
-    {
-        return Cache::remember('available_systems_clean_v2', 3600, function () {
-            // Get all unique systems from the database
+    // private function getAvailableSystems()
+    // {
+    //     return Cache::remember('available_systems_clean_v2', 3600, function () {
+    //         // Get all unique systems from the database
+    //         $rawSystems = DB::table('Azure_LoginDetails')
+    //             ->selectRaw('TRIM(system) as clean_system, COUNT(*) as count')
+    //             ->whereNotNull('system')
+    //             ->where('system', '!=', '')
+    //             ->groupBy(DB::raw('TRIM(system)'))
+    //             ->orderByRaw('COUNT(*) DESC')
+    //             ->get();
+
+    //         // Apply systemmap normalization and exclude unwanted systems
+    //         $systems = $rawSystems
+    //             ->map(function($item) {
+    //                 $normalized = $this->normalizeSystemName($item->clean_system);
+    //                 return $normalized;
+    //             })
+    //             ->unique()
+    //             ->filter(function($system) {
+    //                 return !in_array($system, $this->excludedSystems);
+    //             })
+    //             ->values()
+    //             ->toArray();
+
+    //         Log::info('Clean available systems loaded with enhanced filtering', [
+    //             'count' => count($systems),
+    //             'systems' => $systems,
+    //             'excluded' => $this->excludedSystems
+    //         ]);
+
+    //         return $systems;
+    //     });
+    // }
+
+
+
+private function getAvailableSystems()
+{
+    return Cache::remember('available_systems_clean_v3', 3600, function () {
+        try {
+            // Use the new System::getAllOrPopulate() method
+            $systems = \App\Models\Logintracker\System::getAllOrPopulate();
+
+            // Filter out excluded systems and get names
+            $systemNames = $systems
+                ->pluck('name')
+                ->filter(function($systemName) {
+                    return !in_array($systemName, $this->excludedSystems);
+                })
+                ->values()
+                ->toArray();
+
+            Log::info('Systems loaded from System model', [
+                'count' => count($systemNames),
+                'systems' => $systemNames,
+                'excluded' => $this->excludedSystems
+            ]);
+
+            return $systemNames;
+
+        } catch (\Exception $e) {
+            Log::error('Failed to load systems from System model, falling back to database query', [
+                'error' => $e->getMessage()
+            ]);
+
+            // Fallback to direct database query if System model fails
             $rawSystems = DB::table('Azure_LoginDetails')
                 ->selectRaw('TRIM(system) as clean_system, COUNT(*) as count')
                 ->whereNotNull('system')
@@ -111,7 +174,6 @@ class DashboardController extends Controller
                 ->orderByRaw('COUNT(*) DESC')
                 ->get();
 
-            // Apply systemmap normalization and exclude unwanted systems
             $systems = $rawSystems
                 ->map(function($item) {
                     $normalized = $this->normalizeSystemName($item->clean_system);
@@ -124,15 +186,19 @@ class DashboardController extends Controller
                 ->values()
                 ->toArray();
 
-            Log::info('Clean available systems loaded with enhanced filtering', [
+            Log::info('Systems loaded from fallback query', [
                 'count' => count($systems),
-                'systems' => $systems,
-                'excluded' => $this->excludedSystems
+                'systems' => $systems
             ]);
 
             return $systems;
-        });
-    }
+        }
+    });
+}
+
+
+
+
 // private function getAvailableSystems()
 // {
 //     try {

@@ -1,5 +1,5 @@
-@extends('logintracker.layouts.app')
-
+{{-- @extends('logintracker.layouts.app') --}}
+@extends('adminlte::page')
 @section('content')
     <div class="container mt-4">
         <h1 class="mb-4">Login Tracker Dashboard</h1>
