@@ -312,3 +312,208 @@ Route::get('/api/company-details', [ClientPartyController::class, 'getCompanyDet
 Route::post('/client-party/fetch-address-details', [ClientPartyController::class, 'fetchAddressDetails'])->name('client-party.fetch-address-details');
 Route::get('/api/clients', [ClientPartyController::class, 'getClients'])->name('clients');
 Route::post('/create-client-party-scm', [ClientPartyController::class, 'CreateClientPartySCM']) ->middleware('auth:api')->name('client.create-party-scm');
+
+
+
+
+// ============================================================================
+// AZURE MANAGEMENT SYSTEM ROUTES
+// ============================================================================
+
+Route::prefix('azure-management')->name('azure.')->middleware(['auth'])->group(function () {
+    
+    // Root redirect
+    Route::get('/', function () {
+        return redirect()->route('azure.dashboard.index');
+    })->name('home');
+
+    // ============================================================================
+    // DASHBOARD ROUTES
+    // ============================================================================
+
+    Route::prefix('dashboard')->name('dashboard.')->group(function () {
+        Route::get('/', [App\Http\Controllers\AzureDashboardController::class, 'index'])->name('index');
+        Route::get('/stats', [App\Http\Controllers\AzureDashboardController::class, 'getStats'])
+            ->name('stats')
+            ->middleware('throttle:dashboard');
+        Route::get('/reports', [App\Http\Controllers\AzureDashboardController::class, 'reports'])->name('reports');
+        Route::get('/activity', [App\Http\Controllers\AzureDashboardController::class, 'getRecentActivity'])
+            ->name('activity')
+            ->middleware('throttle:dashboard');
+    });
+
+    // ============================================================================
+    // USER MANAGEMENT ROUTES (with rate limiting)
+    // ============================================================================
+
+    Route::prefix('users')->name('users.')->group(function () {
+        // List and create routes
+        Route::get('/', [App\Http\Controllers\AzureUserManagementController::class, 'index'])->name('index');
+        Route::get('/create', [App\Http\Controllers\AzureUserManagementController::class, 'create'])->name('create');
+        
+        // POST: Create user (rate limited - 10 per minute)
+        Route::post('/', [App\Http\Controllers\AzureUserManagementController::class, 'store'])
+            ->name('store')
+            ->middleware('throttle:user_actions');
+        
+        // Stats endpoint (must come before {user} parameter)
+        Route::get('/stats', [App\Http\Controllers\AzureUserManagementController::class, 'stats'])->name('stats');
+        
+        // User-specific action routes (MUST come before generic {user} routes)
+        // These are rate limited to prevent abuse
+        Route::post('/{user}/disable', [App\Http\Controllers\AzureUserManagementController::class, 'disable'])
+            ->name('disable')
+            ->whereNumber('user')
+            ->middleware('throttle:user_actions');
+        
+        Route::post('/{user}/enable', [App\Http\Controllers\AzureUserManagementController::class, 'enable'])
+            ->name('enable')
+            ->whereNumber('user')
+            ->middleware('throttle:user_actions');
+        
+        Route::post('/{user}/retry-modules', [App\Http\Controllers\AzureUserManagementController::class, 'retryModuleAssignments'])
+            ->name('retry-modules')
+            ->whereNumber('user')
+            ->middleware('throttle:user_actions');
+        
+        // Generic CRUD routes (come after specific actions)
+        Route::get('/{user}', [App\Http\Controllers\AzureUserManagementController::class, 'show'])
+            ->name('show')
+            ->whereNumber('user');
+        
+        Route::get('/{user}/edit', [App\Http\Controllers\AzureUserManagementController::class, 'edit'])
+            ->name('edit')
+            ->whereNumber('user');
+        
+        // PUT/PATCH: Update user (rate limited - 10 per minute)
+        Route::put('/{user}', [App\Http\Controllers\AzureUserManagementController::class, 'update'])
+            ->name('update')
+            ->whereNumber('user')
+            ->middleware('throttle:user_actions');
+        
+        Route::patch('/{user}', [App\Http\Controllers\AzureUserManagementController::class, 'update'])
+            ->name('patch')
+            ->whereNumber('user')
+            ->middleware('throttle:user_actions');
+        
+        // DELETE: Remove user (rate limited)
+        Route::delete('/{user}', [App\Http\Controllers\AzureUserManagementController::class, 'destroy'])
+            ->name('destroy')
+            ->whereNumber('user')
+            ->middleware('throttle:user_actions');
+    });
+
+    // ============================================================================
+    // MODULE MANAGEMENT ROUTES
+    // ============================================================================
+
+    Route::prefix('modules')->name('modules.')->group(function () {
+        Route::get('/', function() { 
+            return view('azure-management.modules.index'); 
+        })->name('index');
+        
+        Route::get('/assign', function() { 
+            return view('azure-management.modules.assign'); 
+        })->name('assign');
+    });
+
+    // ============================================================================
+    // REPORTS ROUTES (with rate limiting for exports)
+    // ============================================================================
+
+    Route::prefix('reports')->name('reports.')->group(function () {
+        Route::get('/', [App\Http\Controllers\AzureReportController::class, 'index'])->name('index');
+        Route::get('/users', [App\Http\Controllers\AzureReportController::class, 'users'])->name('users');
+        Route::get('/activity', [App\Http\Controllers\AzureReportController::class, 'activity'])->name('activity');
+        Route::get('/provisioning', [App\Http\Controllers\AzureReportController::class, 'provisioning'])->name('provisioning');
+        
+        // Export is a heavy operation - limit to 5 per minute
+        Route::get('/export/{type}', [App\Http\Controllers\AzureReportController::class, 'export'])
+            ->name('export')
+            ->middleware('throttle:heavy_operations');
+    });
+
+    // ============================================================================
+    // AZURE AUTHENTICATION ROUTES
+    // ============================================================================
+
+    Route::prefix('auth')->name('auth.')->group(function () {
+        Route::get('/', [App\Http\Controllers\AzureAuthController::class, 'redirectToProvider'])->name('redirect');
+        Route::get('/callback', [App\Http\Controllers\AzureAuthController::class, 'handleProviderCallback'])->name('callback');
+        Route::post('/test-connection', [App\Http\Controllers\AzureAuthController::class, 'testConnection'])->name('test');
+        Route::post('/disconnect', [App\Http\Controllers\AzureAuthController::class, 'disconnect'])->name('disconnect');
+    });
+
+    // ============================================================================
+    // API ROUTES (AJAX/JSON endpoints with rate limiting)
+    // ============================================================================
+
+    Route::prefix('api')->name('api.')->group(function () {
+        
+        // Company API
+        Route::get('/companies/{location}', [App\Http\Controllers\Api\AzureCompanyController::class, 'getByLocation'])
+            ->name('companies.by-location')
+            ->middleware('throttle:api');
+        
+        // User Management API (for AJAX operations)
+        Route::prefix('users')->name('users.')->group(function () {
+            Route::post('/{user}/disable', [App\Http\Controllers\AzureUserManagementController::class, 'disable'])
+                ->name('disable')
+                ->whereNumber('user')
+                ->middleware('throttle:user_actions');
+            
+            Route::post('/{user}/enable', [App\Http\Controllers\AzureUserManagementController::class, 'enable'])
+                ->name('enable')
+                ->whereNumber('user')
+                ->middleware('throttle:user_actions');
+            
+            Route::post('/{user}/retry-modules', [App\Http\Controllers\AzureUserManagementController::class, 'retryModuleAssignments'])
+                ->name('retry-modules')
+                ->whereNumber('user')
+                ->middleware('throttle:user_actions');
+            
+            Route::get('/{user}/status', [App\Http\Controllers\AzureUserManagementController::class, 'getStatus'])
+                ->name('status')
+                ->whereNumber('user')
+                ->middleware('throttle:api');
+        });
+        
+        // Dashboard API (rate limited)
+        Route::prefix('dashboard')->name('dashboard.')->group(function () {
+            Route::get('/stats', [App\Http\Controllers\AzureDashboardController::class, 'getStats'])
+                ->name('stats')
+                ->middleware('throttle:dashboard');
+            Route::get('/activity', [App\Http\Controllers\AzureDashboardController::class, 'getRecentActivity'])
+                ->name('activity')
+                ->middleware('throttle:dashboard');
+        });
+    });
+
+    // ============================================================================
+    // PROFILE ROUTES
+    // ============================================================================
+
+    Route::prefix('profile')->name('profile.')->group(function () {
+        Route::get('/', [App\Http\Controllers\AzureProfileController::class, 'edit'])->name('edit');
+        Route::patch('/', [App\Http\Controllers\AzureProfileController::class, 'update'])
+            ->name('update')
+            ->middleware('throttle:user_actions');
+        Route::delete('/', [App\Http\Controllers\AzureProfileController::class, 'destroy'])
+            ->name('destroy')
+            ->middleware('throttle:user_actions');
+    });
+
+    // ============================================================================
+    // HEALTH CHECK
+    // ============================================================================
+
+    Route::get('/health', function () {
+        return response()->json([
+            'status' => 'ok',
+            'system' => 'Azure Management',
+            'timestamp' => now()->toIso8601String(),
+            'environment' => app()->environment(),
+        ]);
+    })->name('health');
+
+});
