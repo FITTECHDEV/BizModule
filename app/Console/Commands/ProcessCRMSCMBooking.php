@@ -16,7 +16,11 @@ class ProcessCRMSCMBooking extends Command
      *
      * @var string
      */
-    protected $signature = 'crmscm:Booking {--debug : Enable debug mode} {--test-auth : Test authentication only} {--booking= : Process specific booking number}';
+    protected $signature = 'crmscm:Booking
+        {--debug : Enable debug mode}
+        {--test-auth : Test authentication only}
+        {--booking= : Process specific booking number}
+        {--skip-delay : Run without 17-minute delay}';
 
     /**
      * The console command description.
@@ -32,6 +36,8 @@ class ProcessCRMSCMBooking extends Command
      * Create a new command instance.
      *
      * @return void
+     *
+     * 
      */
     public function __construct()
     {
@@ -40,50 +46,73 @@ class ProcessCRMSCMBooking extends Command
 
     public function handle()
     {
-        // Add a 17-minute delay (1020 seconds)
-        if ($this->option('debug')) {
-            $this->info("Delaying execution for 17 minutes...");
-        }
-        Log::info("CRMSCM: Delaying execution for 17 minutes");
-        sleep(1020); // 17 minutes * 60 seconds = 1020 seconds
-        Log::info("CRMSCM: Delay completed, proceeding with command execution");
-
+        // === INITIAL SETUP ===
         $this->startTime = now();
         $this->debugMode = $this->option('debug');
 
         Log::info("CRMSCM Command Started at: " . $this->startTime);
+        if ($this->debugMode) {
+            $this->info("Debug Mode is ENABLED");
+        }
 
-        // Test authentication only
+        // === CONDITIONAL DELAY ===
+        if (!$this->option('skip-delay')) {
+            if ($this->debugMode) {
+                $this->info("Delaying execution for 17 minutes...");
+            }
+            Log::info("CRMSCM: Delaying execution for 17 minutes");
+            sleep(1020); // 17 minutes
+            Log::info("CRMSCM: Delay completed, proceeding with command execution");
+        } else {
+            Log::info("CRMSCM: Skip-delay option enabled, running immediately");
+            if ($this->debugMode) {
+                $this->info("⏩ Running without delay (skip-delay enabled)");
+            }
+        }
+
+        // === TEST AUTH MODE SHORT CIRCUIT ===
         if ($this->option('test-auth')) {
+            Log::info("CRMSCM: Running in TEST-AUTH mode");
             return $this->testAuthentication();
         }
 
         try {
+            // === VALIDATE ENVIRONMENT ===
             $this->validateEnvironment();
 
-            // $batchSize = config('crm_scm.batch_size', 100);
-            $batchSize = 10; 
+            // === CONFIGURATION ===
+            $batchSize = 10; // can be configured via config
             $specificBooking = $this->option('booking');
 
-            $records = $this->getRecordsToProcess($batchSize, $specificBooking);
+            Log::info("CRMSCM: Batch size set to {$batchSize}");
+            if ($specificBooking) {
+                Log::info("CRMSCM: Processing specific Booking ID: {$specificBooking}");
+            }
 
+            // === FETCH RECORDS ===
+            $records = $this->getRecordsToProcess($batchSize, $specificBooking);
             $totalRecords = $records->count();
-            Log::info("CRMSCM: Found {$totalRecords} records to process");
+            Log::info("CRMSCM: Found {$totalRecords} record(s) to process");
 
             if ($totalRecords === 0) {
-                Log::info("CRMSCM: No records found to process");
                 $this->info("No records found to process");
+                Log::info("CRMSCM: No records found - ending command");
                 return;
             }
 
+            // === PROCESS RECORDS ===
             $results = $this->processRecords($records);
+
+            // === LOG SUMMARY & OUTPUT ===
             $this->logSummary($this->startTime, $totalRecords, $results);
             $this->displayResults($totalRecords, $results);
-
         } catch (\Exception $e) {
             $this->handleCommandException($e);
         }
+
+        Log::info("CRMSCM Command Completed at: " . now());
     }
+
 
     /**
      * Validate environment configuration
@@ -695,13 +724,17 @@ class ProcessCRMSCMBooking extends Command
     private function checkForAPIErrors($xmlResponse)
     {
         // Check multiple possible error indicators
-        if (isset($xmlResponse['Transaction']['Status']) &&
-            strtolower($xmlResponse['Transaction']['Status']) === 'fail') {
+        if (
+            isset($xmlResponse['Transaction']['Status']) &&
+            strtolower($xmlResponse['Transaction']['Status']) === 'fail'
+        ) {
             return true;
         }
 
-        if (isset($xmlResponse['Status']) &&
-            strtolower($xmlResponse['Status']) === 'error') {
+        if (
+            isset($xmlResponse['Status']) &&
+            strtolower($xmlResponse['Status']) === 'error'
+        ) {
             return true;
         }
 
@@ -793,8 +826,8 @@ class ProcessCRMSCMBooking extends Command
         if (empty($errors)) {
             // Check for status messages
             $status = data_get($xmlResponse, 'Transaction.Status') ??
-                     data_get($xmlResponse, 'Status') ??
-                     'Unknown error occurred';
+                data_get($xmlResponse, 'Status') ??
+                'Unknown error occurred';
             return "API returned failure status: $status";
         }
 
