@@ -4,27 +4,27 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller; 
-use App\Models\User;
-use App\Models\Company;
-use App\Models\Location;
-use App\Models\Module;
-use App\Models\Role;
+use App\Models\AzureUser;
+use App\Models\AzureCompany;
+use App\Models\AzureLocation;
+use App\Models\AzureModule;
+use App\Models\AzureRole;
 use App\Http\Requests\StoreUserRequest;
 use App\Http\Requests\UpdateUserRequest;
-use App\Services\UserProvisioningService;
-use App\Services\ModuleAssignmentService;
+use App\Services\AzureUserProvisioningService;
+use App\Services\AzureModuleAssignmentService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 
 class AzureUserManagementController extends Controller
 {
-    private UserProvisioningService $provisioningService;
-    private ModuleAssignmentService $moduleAssignmentService;
+    private AzureUserProvisioningService $provisioningService;
+    private AzureModuleAssignmentService $moduleAssignmentService;
 
     public function __construct(
-        UserProvisioningService $provisioningService,
-        ModuleAssignmentService $moduleAssignmentService
+        AzureUserProvisioningService $provisioningService,
+        AzureModuleAssignmentService $moduleAssignmentService
     ) {
         $this->provisioningService = $provisioningService;
         $this->moduleAssignmentService = $moduleAssignmentService;
