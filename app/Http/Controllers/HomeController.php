@@ -36,29 +36,57 @@ class HomeController extends Controller
      */
     public function index()
     {
-        $tickets = new Ticket();
-        $ticketStatistics = $tickets->ticketStatistics();
+        try {
+            $tickets = new Ticket();
+            $ticketStatistics = $tickets->ticketStatistics();
 
-        $entities = new ClientParty();
-        $entityStatistics = $entities->entityStats();
+            $entities = new ClientParty();
+            $entityStatistics = $entities->entityStats();
 
-        $tims_stats = new KRABillingHeader();
-        $tims_stats = $tims_stats->timsStats();
+            $tims_stats = new KRABillingHeader();
+            $tims_stats = $tims_stats->timsStats();
 
-        $role = Auth::user()->Role;
+            $role = Auth::user()->Role;
 
-        $efris_stats = DB::select('SET NOCOUNT ON; EXEC EFRIS_InvoiceStatus');
+            try {
+                $efris_stats = DB::select('SET NOCOUNT ON; EXEC EFRIS_InvoiceStatus');
+            } catch (\Exception $e) {
+                \Log::error('EFRIS Stats Error: ' . $e->getMessage());
+                $efris_stats = [];
+            }
 
-        $traStatsTZ = TRABillingHeader::getStatsByOfficeCode(['AR']);
-        $traStatsADL = TRABillingHeader::getStatsByOfficeCode(['TZ']);
+            try {
+                $traStatsTZ = TRABillingHeader::getStatsByOfficeCode(['AR']);
+                $traStatsADL = TRABillingHeader::getStatsByOfficeCode(['TZ']);
+            } catch (\Exception $e) {
+                \Log::error('TRA Stats Error: ' . $e->getMessage());
+                $traStatsTZ = [];
+                $traStatsADL = [];
+            }
 
-        $rra_stats = new RRABillingHeader();
-        $rra_stats =  $rra_stats->rraStats();
+            try {
+                $rra_stats = new RRABillingHeader();
+                $rra_stats = $rra_stats->rraStats();
+            } catch (\Exception $e) {
+                \Log::error('RRA Stats Error: ' . $e->getMessage());
+                $rra_stats = [];
+            }
 
-        return view(
-            'dashboard.ticket',
-            compact('ticketStatistics', 'entityStatistics', 'tims_stats', 'efris_stats', 'traStatsTZ', 'traStatsADL','rra_stats')
-        );
+            // LOG BEFORE RETURNING VIEW
+            \Log::info('About to return view with data', [
+                'ticketStatistics' => $ticketStatistics,
+                'efris_stats' => $efris_stats,
+                'traStatsTZ' => $traStatsTZ,
+            ]);
+
+            return view(
+                'dashboard.ticket',
+                compact('ticketStatistics', 'entityStatistics', 'tims_stats', 'efris_stats', 'traStatsTZ', 'traStatsADL', 'rra_stats')
+            );
+        } catch (\Exception $e) {
+            \Log::error('Home Controller Error: ' . $e->getMessage());
+            return 'Controller Error: ' . $e->getMessage();
+        }
     }
 
     public function archive()
@@ -67,7 +95,7 @@ class HomeController extends Controller
         $priorities = Category::select('ID', 'CategoryCode', 'CategoryName')
             ->where('CategoryType', 'Priority')->orderBy('CategorySeq', 'desc')->get();
 
-        return view('archive.index', compact('priorities')); 
+        return view('archive.index', compact('priorities'));
     }
 
     public function reportsFilter(Request $request)

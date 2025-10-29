@@ -27,7 +27,6 @@ class GenerateJsonReportTZ extends Command
                 $startDate = $backfillStart ? Carbon::parse($backfillStart) : Carbon::parse('2025-03-02');
                 $endDate = Carbon::parse('2025-10-14');
 
-
                 while ($startDate->lte($endDate)) {
                     $dates[] = $startDate->toDateString();
                     $startDate->addDay();
@@ -91,7 +90,7 @@ class GenerateJsonReportTZ extends Command
         $this->info("Calling API for {$zReportDate}");
         Log::info("Calling AR ZReport API", ['date' => $zReportDate]);
 
-            //GET
+        //GET
         // try {
         //     $response = Http::withBasicAuth('admin', '+2#83Indd{Bq')
         //         ->timeout(120)
@@ -110,12 +109,10 @@ class GenerateJsonReportTZ extends Command
         //             'body' => $response->body()
         //         ]);
         //         $this->error("API request failed for {$zReportDate} (Status: $statusCode)");
-
         //     }
 
         //     $jsonData = $response->body();
 
-        //     // Run stored procedure
         //     DB::statement("
         //         EXEC dbo.TRA_JSON_Convertor :reportDate, :officeCode, :json
         //     ", [
@@ -128,13 +125,12 @@ class GenerateJsonReportTZ extends Command
         //     Log::info("AR ZReport processed successfully", ['date' => $zReportDate]);
         // }
 
-
-               //    POST
+        //POST
         try {
             $response = Http::withBasicAuth('admin', '+2#83Indd{Bq')
                 ->timeout(120)
-                ->post($apiUrl, [ // 👈 switched to POST
-                    'date' => $zReportDate // 👈 send date in body (adjust if API expects differently)
+                ->post($apiUrl, [
+                    'date' => $zReportDate
                 ]);
 
             $statusCode = $response->status();
@@ -154,7 +150,6 @@ class GenerateJsonReportTZ extends Command
 
             $jsonData = $response->body() ?: '{}';
 
-            // Run stored procedure
             DB::statement("
             EXEC dbo.TRA_JSON_Convertor :reportDate, :officeCode, :json
              ", [

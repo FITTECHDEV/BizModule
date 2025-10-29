@@ -1,0 +1,64 @@
+{
+    $cacheKey = 'actual_date_range_clean_v3_' . md5($system);
+    
+    return Cache::remember($cacheKey, 1800, function () use ($system) {
+        $query = SigninLog::whereNotIn('system', $this->excludedSystems);
+        
+        // If specific system selected, filter by that system
+        if ($system && $system !== 'all') {
+            $this->applySystemFilter($query, $system);
+        }
+        
+        $dateRange = $query->selectRaw('MIN(date_utc) as min_date, MAX(date_utc) as max_date')
+            ->first();
+
+        $minDate = $dateRange?->min_date ? Carbon::parse($dateRange->min_date) : now()->subYear();
+        $maxDate = $dateRange?->max_date ? Carbon::parse($dateRange->max_date) : now();
+        $hasData = $dateRange?->min_date !== null;
+
+        Log::info('Clean date range calculated v3 (system-aware)', [
+            'system' => $system,
+            'min_date' => $minDate->toDateString(),
+            'max_date' => $maxDate->toDateString(),
+            'has_data' => $hasData,
+            'excluded_systems' => $this->excludedSystems
+        ]);
+
+        return [
+            'min_date' => $minDate,
+            'max_date' => $maxDate,
+            'has_data' => $hasData
+        ];
+    });
+}
+
+
+
+    // OPTIMIZED:
+
+    public function getLoggedInUsersCount($startDate, $endDate, $system)
+    {
+        Log::info('getLoggedInUsersCount called (optimized version)', [
+            'startDate' => $startDate->toDateString(),
+            'endDate' => $endDate->toDateString(),
+            'system' => $system
+        ]);
+
+        // Much simpler query - just count distinct usernames (no complex joins)
+        $sql = "
+        SELECT COUNT(DISTINCT username) as count
+        FROM Azure_LoginDetails
+        WHERE system = ?
+        AND date_utc BETWEEN ? AND ?
+        AND username IS NOT NULL
+        AND username != ''
+    ";
+
+        $params = [
+            $system,
+            $startDate->format('Y-m-d H:i:s'),
+            $endDate->format('Y-m-d H:i:s')
+        ];
+
+        try {
+            $startTime = microtime(true);

@@ -138,6 +138,7 @@ class SyncScmProfitData extends Command
           LIMIT 100 OFFSET 0"
         );
     }
+
     private function processBatch(array $records): void
     {
         DB::connection('sqlsrv')->transaction(function () use ($records) {
@@ -176,6 +177,10 @@ class SyncScmProfitData extends Command
 
         if ($this->option('debug')) {
             $this->info("Processing record: " . json_encode($record));
+            Log::info("🔍 Processing record", [
+                'bookingno' => $bookingNo,
+                'record' => (array) $record,
+            ]);
         }
 
         if (empty($bookingNo)) {
@@ -187,19 +192,51 @@ class SyncScmProfitData extends Command
             ->where('bookingno', $bookingNo)
             ->exists();
 
+        if ($this->option('debug')) {
+            Log::info("🔎 Existence check", [
+                'bookingno' => $bookingNo,
+                'exists' => $existingRecord
+            ]);
+        }
+
         $data = $this->transformRecord($record);
 
         if ($this->isDryRun) {
             $action = $existingRecord ? 'UPDATE' : 'INSERT';
             $this->line("DRY RUN: Would {$action} BookingNo: {$bookingNo}");
+            if ($this->option('debug')) {
+                Log::info("📝 DRY RUN", [
+                    'action' => $action,
+                    'bookingno' => $bookingNo,
+                    'data' => $data
+                ]);
+            }
             return;
         }
 
         if ($existingRecord) {
-            DB::connection('sqlsrv')
+            $affected = DB::connection('sqlsrv')
                 ->table('CRM_SCMprofit_integration')
                 ->where('bookingno', $bookingNo)
                 ->update($data);
+
+            if ($this->option('debug')) {
+                Log::info("✏️ Update result", [
+                    'bookingno' => $bookingNo,
+                    'rows_affected' => $affected,
+                    'data' => $data
+                ]);
+
+                $updatedRow = DB::connection('sqlsrv')
+                    ->table('CRM_SCMprofit_integration')
+                    ->where('bookingno', $bookingNo)
+                    ->first();
+
+                Log::info("📥 Updated row from SQL Server", [
+                    'bookingno' => $bookingNo,
+                    'db_record' => $updatedRow,
+                ]);
+            }
 
             $this->stats['updated']++;
 
@@ -210,6 +247,13 @@ class SyncScmProfitData extends Command
             DB::connection('sqlsrv')
                 ->table('CRM_SCMprofit_integration')
                 ->insert($data);
+
+            if ($this->option('debug')) {
+                Log::info("➕ Inserted record", [
+                    'bookingno' => $bookingNo,
+                    'data' => $data
+                ]);
+            }
 
             $this->stats['inserted']++;
 
@@ -322,13 +366,11 @@ class SyncScmProfitData extends Command
             'TransportMode' => $record->transportmode,
             'ServiceClass' => $record->serviceclass,
             'SalesPersonCode' => $record->salespersoncode,
-            // 🚀 Newly added fields
             'shipmentmode'   => $record->shipmentmode,
             'incoterm'       => $record->incoterm,
             'scopevolume'    => $record->scopevolume,
             'cargovolume'    => $record->cargovolume,
             'containerlist'  => $record->containerlist,
-
         ];
     }
 
@@ -361,7 +403,6 @@ class SyncScmProfitData extends Command
         if ($this->stats['errors'] > 0) {
             $this->error("Errors: {$this->stats['errors']} records");
 
-            // Show error details in summary
             if (!empty($this->stats['error_details'])) {
                 $this->newLine();
                 $this->error("Error Details:");

@@ -3,6 +3,7 @@
 namespace App\Http;
 
 use Illuminate\Foundation\Http\Kernel as HttpKernel;
+use Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful;
 
 class Kernel extends HttpKernel
 {
@@ -21,7 +22,6 @@ class Kernel extends HttpKernel
         \Illuminate\Foundation\Http\Middleware\ValidatePostSize::class,
         \App\Http\Middleware\TrimStrings::class,
         \Illuminate\Foundation\Http\Middleware\ConvertEmptyStringsToNull::class,
-
     ];
 
     /**
@@ -39,20 +39,18 @@ class Kernel extends HttpKernel
             \App\Http\Middleware\VerifyCsrfToken::class,
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
             // ensure users change their passwords
-
-             // opptimizer
-        \RenatoMarinho\LaravelPageSpeed\Middleware\InlineCss::class,
-        \RenatoMarinho\LaravelPageSpeed\Middleware\ElideAttributes::class,
-        \RenatoMarinho\LaravelPageSpeed\Middleware\InsertDNSPrefetch::class,
-        // \RenatoMarinho\LaravelPageSpeed\Middleware\RemoveComments::class,
-        //\RenatoMarinho\LaravelPageSpeed\Middleware\TrimUrls::class,
-        //\RenatoMarinho\LaravelPageSpeed\Middleware\RemoveQuotes::class,
-        // \RenatoMarinho\LaravelPageSpeed\Middleware\CollapseWhitespace::class, // Note: This middleware invokes "RemoveComments::class" before it runs.
-        // \RenatoMarinho\LaravelPageSpeed\Middleware\DeferJavascript::class,
-
+            // opptimizer
+            \RenatoMarinho\LaravelPageSpeed\Middleware\InlineCss::class,
+            \RenatoMarinho\LaravelPageSpeed\Middleware\ElideAttributes::class,
+            \RenatoMarinho\LaravelPageSpeed\Middleware\InsertDNSPrefetch::class,
+            // \RenatoMarinho\LaravelPageSpeed\Middleware\RemoveComments::class,
+            // \RenatoMarinho\LaravelPageSpeed\Middleware\TrimUrls::class,
+            // \RenatoMarinho\LaravelPageSpeed\Middleware\RemoveQuotes::class,
+            // \RenatoMarinho\LaravelPageSpeed\Middleware\CollapseWhitespace::class, // Note: This middleware invokes "RemoveComments::class" before it runs.
+            // \RenatoMarinho\LaravelPageSpeed\Middleware\DeferJavascript::class,
         ],
-
         'api' => [
+            \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
             'throttle:api',
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
         ],
@@ -81,9 +79,11 @@ class Kernel extends HttpKernel
         'permission' => \Spatie\Permission\Middlewares\PermissionMiddleware::class,
         'role_or_permission' => \Spatie\Permission\Middlewares\RoleOrPermissionMiddleware::class,
         //
-        'HtmlMinifier' => '\App\Http\Middleware\HtmlMinifier',
-        //  azure middleware
+        'HtmlMinifier' => \App\Http\Middleware\HtmlMinifier::class,
+        // azure middleware
         // 'azure' => \RootInc\LaravelAzureMiddleware\Azure::class,
         'azure' => \App\Http\Middleware\AppAzure::class,
+        // custom middleware from second Kernel
+        'no-cache' => \App\Http\Middleware\NoCache::class,
     ];
 }

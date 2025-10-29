@@ -335,6 +335,14 @@ return [
             'icon' => 'fa fa-fw fa-dollar',
             'can'  => 'efris-access'
         ],
+
+        [
+            'text' => 'LOGIN TRACKER',
+            'url'  => 'dashboard',
+            'icon' => 'fa fa-fw fa-user',
+            'can'  => 'efris-access'
+        ],
+
         // ['header' => 'account_settings'],
         [
             'text' => 'SETTINGS',
@@ -343,33 +351,33 @@ return [
             'active' => ['settings/*'],
             // 'can'  => 'view-access-settings',
             'submenu' => [
-                    [
-                        'text' => 'change_password',
-                        'route'  => 'user.get_change_password',
-                        'icon' => 'fas fa-fw fa-lock',
-                        'can'  => 'change-user-password',
-                    ],
-                    [
-                        'text' => 'Roles Management',
-                        'url'  => 'roles',
-                        'icon' => 'fas fa-tasks',
-                        'active'  => ['roles/*'],
-                        'can'  => 'roles-list'
-                    ],
-                    [
-                        'text' => 'User Management',
-                        'url'  => 'users',
-                        'icon' => 'fas fa-fw fa-users',
-                        'active'  => ['users/*'],
-                        'can'  => 'users-list'
-                    ],
-                    [
-                        'text' => 'Category Management',
-                        'url'  => 'categories',
-                        'icon' => 'fas fa-fw fa-th',
-                        'active'  => ['categories/*'],
-                        'can'  => 'manage-category'
-                    ],
+                [
+                    'text' => 'change_password',
+                    'route'  => 'user.get_change_password',
+                    'icon' => 'fas fa-fw fa-lock',
+                    'can'  => 'change-user-password',
+                ],
+                [
+                    'text' => 'Roles Management',
+                    'url'  => 'roles',
+                    'icon' => 'fas fa-tasks',
+                    'active'  => ['roles/*'],
+                    'can'  => 'roles-list'
+                ],
+                [
+                    'text' => 'User Management',
+                    'url'  => 'users',
+                    'icon' => 'fas fa-fw fa-users',
+                    'active'  => ['users/*'],
+                    'can'  => 'users-list'
+                ],
+                [
+                    'text' => 'Category Management',
+                    'url'  => 'categories',
+                    'icon' => 'fas fa-fw fa-th',
+                    'active'  => ['categories/*'],
+                    'can'  => 'manage-category'
+                ],
             ],
         ],
     ],
@@ -407,87 +415,87 @@ return [
     | https://github.com/jeroennoten/Laravel-AdminLTE/wiki/Plugins-Configuration
     |
     */
-'plugins' => [
-    'Datatables' => [
-        'active' => true,
-        'files' => [
-            [
-                'type' => 'js',
-                'asset' => true,
-                'location' => '//cdn.datatables.net/1.10.19/js/jquery.dataTables.min.js',
-            ],
-            [
-                'type' => 'js',
-                'asset' => true,
-                'location' => '//cdn.datatables.net/1.10.19/js/dataTables.bootstrap4.min.js',
-            ],
-            [
-                'type' => 'css',
-                'asset' => true,
-                'location' => '//cdn.datatables.net/1.10.19/css/dataTables.bootstrap4.min.css',
-            ],
-        ],
-    ],
-    'DatatablesPlugins' => [
-        'active' => true,
-        'files' => [
-            [
-                'type' => 'js',
-                'asset' => true,
-                'location' => 'vendor/datatables-plugins/buttons/js/dataTables.buttons.min.js',
-            ],
-            [
-                'type' => 'js',
-                'asset' => true,
-                'location' => 'vendor/datatables-plugins/buttons/js/buttons.bootstrap4.min.js',
-            ],
-            [
-                'type' => 'js',
-                'asset' => true,
-                'location' => 'vendor/datatables-plugins/buttons/js/buttons.html5.min.js',
-            ],
-            [
-                'type' => 'js',
-                'asset' => true,
-                'location' => 'vendor/datatables-plugins/buttons/js/buttons.print.min.js',
-            ],
-            [
-                'type' => 'js',
-                'asset' => true,
-                'location' => 'vendor/datatables-plugins/jszip/jszip.min.js',
-            ],
-            [
-                'type' => 'js',
-                'asset' => true,
-                'location' => 'vendor/datatables-plugins/pdfmake/pdfmake.min.js',
-            ],
-            [
-                'type' => 'js',
-                'asset' => true,
-                'location' => 'vendor/datatables-plugins/pdfmake/vfs_fonts.js',
-            ],
-            [
-                'type' => 'css',
-                'asset' => true,
-                'location' => 'vendor/datatables-plugins/buttons/css/buttons.bootstrap4.min.css',
+    'plugins' => [
+        'Datatables' => [
+            'active' => true,
+            'files' => [
+                [
+                    'type' => 'js',
+                    'asset' => true,
+                    'location' => '//cdn.datatables.net/1.10.19/js/jquery.dataTables.min.js',
+                ],
+                [
+                    'type' => 'js',
+                    'asset' => true,
+                    'location' => '//cdn.datatables.net/1.10.19/js/dataTables.bootstrap4.min.js',
+                ],
+                [
+                    'type' => 'css',
+                    'asset' => true,
+                    'location' => '//cdn.datatables.net/1.10.19/css/dataTables.bootstrap4.min.css',
+                ],
             ],
         ],
-    ],
-    'DatatablesResponsive' => [
-        'active' => true,
-        'files' => [
-            [
-                'type' => 'js',
-                'asset' => false, // CDN, not local
-                'location' => '//cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js',
-            ],
-            [
-                'type' => 'css',
-                'asset' => false, // CDN, not local
-                'location' => '//cdn.datatables.net/responsive/2.5.0/css/responsive.dataTables.min.css',
+        'DatatablesPlugins' => [
+            'active' => true,
+            'files' => [
+                [
+                    'type' => 'js',
+                    'asset' => true,
+                    'location' => 'vendor/datatables-plugins/buttons/js/dataTables.buttons.min.js',
+                ],
+                [
+                    'type' => 'js',
+                    'asset' => true,
+                    'location' => 'vendor/datatables-plugins/buttons/js/buttons.bootstrap4.min.js',
+                ],
+                [
+                    'type' => 'js',
+                    'asset' => true,
+                    'location' => 'vendor/datatables-plugins/buttons/js/buttons.html5.min.js',
+                ],
+                [
+                    'type' => 'js',
+                    'asset' => true,
+                    'location' => 'vendor/datatables-plugins/buttons/js/buttons.print.min.js',
+                ],
+                [
+                    'type' => 'js',
+                    'asset' => true,
+                    'location' => 'vendor/datatables-plugins/jszip/jszip.min.js',
+                ],
+                [
+                    'type' => 'js',
+                    'asset' => true,
+                    'location' => 'vendor/datatables-plugins/pdfmake/pdfmake.min.js',
+                ],
+                [
+                    'type' => 'js',
+                    'asset' => true,
+                    'location' => 'vendor/datatables-plugins/pdfmake/vfs_fonts.js',
+                ],
+                [
+                    'type' => 'css',
+                    'asset' => true,
+                    'location' => 'vendor/datatables-plugins/buttons/css/buttons.bootstrap4.min.css',
+                ],
             ],
         ],
-    ],
+        'DatatablesResponsive' => [
+            'active' => true,
+            'files' => [
+                [
+                    'type' => 'js',
+                    'asset' => false, // CDN, not local
+                    'location' => '//cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js',
+                ],
+                [
+                    'type' => 'css',
+                    'asset' => false, // CDN, not local
+                    'location' => '//cdn.datatables.net/responsive/2.5.0/css/responsive.dataTables.min.css',
+                ],
+            ],
+        ],
 
 
         'Select2' => [

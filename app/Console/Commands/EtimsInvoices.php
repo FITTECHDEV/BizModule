@@ -26,10 +26,10 @@ class EtimsInvoices extends Command
         $invoiceId = $this->argument('invoiceId');
         $pendingInvoices = $this->fetchPendingInvoices($invoiceId);
 
-        if ($pendingInvoices->isEmpty()) {
-            Log::info("No pending invoices found.");
-            return 0;
-        }
+        // if ($pendingInvoices->isEmpty()) {
+        //     Log::info("No pending invoices found123.");
+        //     return 0;
+        // }
 
         foreach ($pendingInvoices as $invoice) {
             $jsonData = json_decode($invoice->KRAJsonFile, true);

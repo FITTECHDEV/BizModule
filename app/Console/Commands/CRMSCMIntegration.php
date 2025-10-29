@@ -11,7 +11,7 @@ use Illuminate\Support\Str;
 
 class CRMSCMIntegration extends Command
 {
-    protected $signature = 'int:Integration';
+    protected $signature = 'int:Integration {--booking= : Process specific booking number}';
     protected $description = 'This Command is used to create a booking in SCM';
 
     public function __construct()
@@ -23,24 +23,77 @@ class CRMSCMIntegration extends Command
     {
         // Start time tracking for the entire process
         $startTime = microtime(true);
+        $specificBooking = $this->option('booking');
+
+        // Validate booking number format
+        if ($specificBooking && !preg_match('/^[A-Za-z0-9_-]+$/', $specificBooking)) {
+            $this->error("Invalid booking number format: {$specificBooking}");
+            Log::error('CRMSCM: Invalid booking number format', ['bookingno' => $specificBooking]);
+            return 1;
+        }
 
         // Get count of pending records before processing
-        $pendingCount = DB::table('CRM_SCMprofit_integration')
+        $query = DB::table('CRM_SCMprofit_integration')
             ->whereNull('SCMBookingID')
             ->whereNotNull('SCMBookingXML')
-             ->whereNull('SCMINTStatus')
-            ->count();
+            ->whereRaw('TRIM(SCMBookingXML) != ?', [''])
+            ->whereNull('SCMINTStatus');
+
+        if ($specificBooking) {
+            $query->whereRaw('LOWER(bookingno) = ?', [strtolower($specificBooking)]);
+        }
+
+        $pendingCount = $query->count();
 
         Log::info('Starting CRM-SCM Integration', [
             'pending_records' => $pendingCount,
+            'specific_booking' => $specificBooking ?? 'N/A',
             'start_time' => now()->toDateTimeString()
         ]);
 
-        $records = DB::table('CRM_SCMprofit_integration')
-            ->whereNull('SCMBookingID')
-            ->whereNotNull('SCMBookingXML')
-            ->limit(100)
-            ->get();
+        // Diagnostic logging for specific booking
+        if ($specificBooking) {
+            $exists = DB::table('CRM_SCMprofit_integration')->where('bookingno', $specificBooking)->exists();
+            Log::info('CRMSCM: Checking booking existence', [
+                'bookingno' => $specificBooking,
+                'exists' => $exists
+            ]);
+
+            if ($exists) {
+                $record = DB::table('CRM_SCMprofit_integration')->where('bookingno', $specificBooking)->first();
+                Log::info('CRMSCM: Booking details', [
+                    'bookingno' => $specificBooking,
+                    'SCMBookingID' => $record->SCMBookingID,
+                    'SCMBookingXML' => $record->SCMBookingXML ? substr($record->SCMBookingXML, 0, 50) : null,
+                    'SCMINTStatus' => $record->SCMINTStatus
+                ]);
+            } else {
+                Log::warning('CRMSCM: Booking not found in database', ['bookingno' => $specificBooking]);
+                $this->error("Booking {$specificBooking} not found in database");
+                return 1;
+            }
+        }
+
+        $records = $query->limit($specificBooking ? 1 : 100)->get();
+
+        if ($records->isEmpty()) {
+            $message = $specificBooking ? "No records found for booking {$specificBooking}" : "No unprocessed records found";
+            $this->info($message);
+            Log::info("CRMSCM: {$message}");
+
+            // Diagnostic counts
+            $totalRecords = DB::table('CRM_SCMprofit_integration')->count();
+            $unprocessedRecords = DB::table('CRM_SCMprofit_integration')
+                ->whereNull('SCMBookingID')
+                ->whereNull('SCMINTStatus')
+                ->count();
+            Log::info('CRMSCM: Diagnostic counts', [
+                'total_records_in_table' => $totalRecords,
+                'unprocessed_records' => $unprocessedRecords
+            ]);
+
+            return 0;
+        }
 
         $processedCount = 0;
         $successCount = 0;
@@ -73,6 +126,8 @@ class CRMSCMIntegration extends Command
         $remainingPending = DB::table('CRM_SCMprofit_integration')
             ->whereNull('SCMBookingID')
             ->whereNotNull('SCMBookingXML')
+            ->whereRaw('TRIM(SCMBookingXML) != ?', [''])
+            ->whereNull('SCMINTStatus')
             ->count();
 
         Log::info('Completed CRM-SCM Integration', [
@@ -80,9 +135,12 @@ class CRMSCMIntegration extends Command
             'successful' => $successCount,
             'failed' => $failedCount,
             'remaining_pending' => $remainingPending,
+            'specific_booking' => $specificBooking ?? 'N/A',
             'total_execution_time_seconds' => round($totalExecutionTime, 3),
             'end_time' => now()->toDateTimeString()
         ]);
+
+        $this->info("Processed {$processedCount} records: {$successCount} successful, {$failedCount} failed");
     }
 
     private function getAuthToken()
@@ -92,13 +150,18 @@ class CRMSCMIntegration extends Command
         $username = env('SCM_USERNAME');
         $password = env('SCM_PASSWORD');
 
+        if (!$tokenUrl || !$username || !$password) {
+            Log::error('CRMSCM: Missing authentication configuration');
+            return null;
+        }
+
         $curl = curl_init();
         curl_setopt_array($curl, [
             CURLOPT_URL => $tokenUrl,
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_ENCODING => '',
             CURLOPT_MAXREDIRS => 10,
-            CURLOPT_TIMEOUT => 0,
+            CURLOPT_TIMEOUT => 60,
             CURLOPT_FOLLOWLOCATION => true,
             CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
             CURLOPT_CUSTOMREQUEST => 'POST',
@@ -109,18 +172,23 @@ class CRMSCMIntegration extends Command
             ]),
             CURLOPT_HTTPHEADER => [
                 'Content-Type: application/x-www-form-urlencoded',
+                'Accept: application/json',
+                'User-Agent: Laravel-CRMSCM/1.0'
             ],
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_SSL_VERIFYHOST => 2,
         ]);
 
         $response = curl_exec($curl);
+        $httpCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
         $error = curl_error($curl);
         curl_close($curl);
 
         $executionTime = microtime(true) - $tokenStartTime;
 
-        if ($error) {
+        if ($error || $httpCode !== 200) {
             Log::error('Failed to get auth token', [
-                'error' => $error,
+                'error' => $error ?: 'HTTP ' . $httpCode,
                 'execution_time_seconds' => round($executionTime, 3)
             ]);
             return null;
@@ -147,10 +215,21 @@ class CRMSCMIntegration extends Command
                 'bookingno' => $record->bookingno,
                 'execution_time_seconds' => round(microtime(true) - $startTime, 3)
             ]);
+            DB::table('CRM_SCMprofit_integration')
+                ->where('bookingno', $record->bookingno)
+                ->update(['SCMINTStatus' => 'Auth Failure', 'UpdatedOninSCM' => now()]);
             return;
         }
 
         $apiUrl = env('SCM_BOOKING_URL');
+        if (!$apiUrl) {
+            Log::error('CRMSCM: Missing SCM_BOOKING_URL', ['bookingno' => $record->bookingno]);
+            DB::table('CRM_SCMprofit_integration')
+                ->where('bookingno', $record->bookingno)
+                ->update(['SCMINTStatus' => 'Config Error', 'UpdatedOninSCM' => now()]);
+            return;
+        }
+
         $booking_xml = $record->SCMBookingXML;
 
         // Validate XML
@@ -161,8 +240,9 @@ class CRMSCMIntegration extends Command
             Log::error('Invalid XML format', [
                 'bookingno' => $record->bookingno,
                 'errors' => array_map(function($error) {
-                    return $error->message;
+                    return "Line {$error->line}: {$error->message}";
                 }, $errors),
+                'xml_preview' => substr($booking_xml, 0, 50),
                 'execution_time_seconds' => round(microtime(true) - $startTime, 3)
             ]);
             DB::table('CRM_SCMprofit_integration')
@@ -179,7 +259,7 @@ class CRMSCMIntegration extends Command
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_ENCODING => '',
             CURLOPT_MAXREDIRS => 10,
-            CURLOPT_TIMEOUT => 0,
+            CURLOPT_TIMEOUT => 300,
             CURLOPT_FOLLOWLOCATION => true,
             CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
             CURLOPT_CUSTOMREQUEST => 'POST',
@@ -187,26 +267,44 @@ class CRMSCMIntegration extends Command
             CURLOPT_HTTPHEADER => [
                 'Content-Type: application/xml; charset=utf-8',
                 'Authorization: Bearer ' . $token,
+                'Accept: application/xml',
+                'User-Agent: Laravel-CRMSCM/1.0',
+                'Content-Length: ' . strlen($booking_xml)
             ],
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_SSL_VERIFYHOST => 2,
         ]);
 
         $response = curl_exec($curl);
+        $httpCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
         $error = curl_error($curl);
         curl_close($curl);
 
-        if ($error) {
+        if ($error || $httpCode !== 200) {
             Log::error('SCM API push failed', [
                 'bookingno' => $record->bookingno,
-                'error' => $error,
+                'error' => $error ?: 'HTTP ' . $httpCode,
                 'execution_time_seconds' => round(microtime(true) - $startTime, 3)
             ]);
             DB::table('CRM_SCMprofit_integration')
                 ->where('bookingno', $record->bookingno)
-                ->update(['SCMINTStatus' => 'Failed', 'UpdatedOninSCM' => now()]);
+                ->update(['SCMINTStatus' => 'API Error: ' . ($error ?: 'HTTP ' . $httpCode), 'UpdatedOninSCM' => now()]);
             return;
         }
 
         $xmlResponse = simplexml_load_string($response, null, LIBXML_NOCDATA);
+        if (!$xmlResponse) {
+            Log::error('Failed to parse SCM API response', [
+                'bookingno' => $record->bookingno,
+                'response_preview' => substr($response, 0, 50),
+                'execution_time_seconds' => round(microtime(true) - $startTime, 3)
+            ]);
+            DB::table('CRM_SCMprofit_integration')
+                ->where('bookingno', $record->bookingno)
+                ->update(['SCMINTStatus' => 'Invalid Response', 'UpdatedOninSCM' => now()]);
+            return;
+        }
+
         $jsonResponse = json_encode($xmlResponse);
         $xmlArrayResponse = json_decode($jsonResponse, true);
 
@@ -216,7 +314,7 @@ class CRMSCMIntegration extends Command
             'execution_time_seconds' => round(microtime(true) - $startTime, 3)
         ]);
 
-        if (isset($xmlArrayResponse['Transaction']['Status']) && $xmlArrayResponse['Transaction']['Status'] == 'Fail') {
+        if (isset($xmlArrayResponse['Transaction']['Status']) && $xmlArrayResponse['Transaction']['Status'] === 'Fail') {
             $errors = isset($xmlArrayResponse['Transaction']['Errors']['Error'])
                 ? (is_array($xmlArrayResponse['Transaction']['Errors']['Error'])
                     ? implode(", ", array_column($xmlArrayResponse['Transaction']['Errors']['Error'], 'Description'))
@@ -230,7 +328,7 @@ class CRMSCMIntegration extends Command
             ]);
             DB::table('CRM_SCMprofit_integration')
                 ->where('bookingno', $record->bookingno)
-                ->update(['SCMINTStatus' => 'Failed', 'UpdatedOninSCM' => now()]);
+                ->update(['SCMINTStatus' => 'Failed: ' . $errors, 'UpdatedOninSCM' => now()]);
             return;
         }
 
@@ -245,6 +343,8 @@ class CRMSCMIntegration extends Command
 
         Log::info('Successfully pushed XML to SCM', [
             'bookingno' => $record->bookingno,
+            'SCMBookingID' => $xmlArrayResponse['Transaction']['TransactionId'] ?? null,
+            'SCMBookingNo' => $xmlArrayResponse['Transaction']['ID'] ?? null,
             'execution_time_seconds' => round(microtime(true) - $startTime, 3)
         ]);
     }

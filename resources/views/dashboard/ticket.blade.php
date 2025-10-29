@@ -3,7 +3,6 @@
 @section('title', 'Home-Dashboard')
 
 @section('content_header')
-
 @stop
 
 @section('plugins.Datatables', true)
@@ -62,22 +61,24 @@
         }
 
         /* .service-card h3{
-                          margin-top: 2%;
-                          font-size: 44px;
-                          font-weight: bold;
-                          color: #464646;
-                        } */
+                              margin-top: 2%;
+                              font-size: 44px;
+                              font-weight: bold;
+                              color: #464646;
+                            } */
     </style>
 @stop
+
 @section('content')
-    <div class="p-2">
+    <div class="p-3">
         <div class="row justify-content-center">
-            <div class="col-md-3 mb-2">
+            <!-- Ticketing System -->
+            <div class="col-md-3 col-sm-6 mb-3">
                 <a href="/tickets">
                     <div class="d-flex h-100 flex-column card card-widget widget-user shadow service-card">
                         <div class="widget-user-header bg-info">
                             <h3 class="widget-user-username">TICKETING SYSTEM</h3>
-                            <h5 class="widget-user-desc">Raise A Concern.</h5>
+                            <h5 class="widget-user-desc">Raise A Concern</h5>
                         </div>
                         <div class="widget-user-image">
                             <img class="img-circle elevation-2" src="{{ asset('site_imgs/images.png') }}" alt="Phone Avatar">
@@ -88,7 +89,7 @@
                                     <div class="col-sm-4 border">
                                         <div class="description-block">
                                             <h5 class="description-header"><span
-                                                    class="badge badge-info">{{ $ticketStat->StatusCount }}</span> </h5>
+                                                    class="badge badge-info">{{ $ticketStat->StatusCount }}</span></h5>
                                             <span class="description-text small">{{ $ticketStat->StatusName }}</span>
                                         </div>
                                     </div>
@@ -97,18 +98,19 @@
                         </div>
                     </div>
                 </a>
-
             </div>
-            <div class="col-md-3 mb-2">
+
+            <!-- Client Party System -->
+            <div class="col-md-3 col-sm-6 mb-3">
                 <a href="/client-party?my_request=true">
                     <div class="d-flex h-100 flex-column card card-widget widget-user shadow service-card">
                         <div class="widget-user-header bg-primary">
                             <h3 class="widget-user-username">CLIENT PARTY SYSTEM</h3>
-                            <h5 class="widget-user-desc">Entity Creation & Mapping.</h5>
+                            <h5 class="widget-user-desc">Entity Creation & Mapping</h5>
                         </div>
                         <div class="widget-user-image">
                             <img class="img-circle elevation-2" src="{{ asset('site_imgs/handshake.jpg') }}"
-                                alt="Phone Avatar">
+                                alt="Handshake Avatar">
                         </div>
                         <div class="card-footer">
                             <div class="row justify-content-center">
@@ -126,12 +128,14 @@
                     </div>
                 </a>
             </div>
+
+            <!-- TIMS Integration -->
             @if (Auth::user()->can('tims-access'))
-                <div class="col-md-3 mb-2">
+                <div class="col-md-3 col-sm-6 mb-3">
                     <a href="/tims">
                         <div class="d-flex h-100 flex-column card card-widget widget-user shadow service-card">
                             <div class="widget-user-header bg-maroon">
-                                <h3 class="widget-user-username">TIMS INTERGRATION</h3>
+                                <h3 class="widget-user-username">TIMS INTEGRATION</h3>
                                 <h5 class="widget-user-desc">KRA Dashboard</h5>
                             </div>
                             <div class="widget-user-image">
@@ -156,26 +160,27 @@
                     </a>
                 </div>
             @endif
+
+            <!-- EFRIS Integration -->
             @if (Auth::user()->can('efris-access'))
-                <div class="col-md-3 mb-2">
+                <div class="col-md-3 col-sm-6 mb-3">
                     <a href="/efris">
                         <div class="d-flex h-100 flex-column card card-widget widget-user shadow service-card">
                             <div class="widget-user-header bg-maroon">
-                                <h3 class="widget-user-username">EFRIS INTERGRATION</h3>
+                                <h3 class="widget-user-username">EFRIS INTEGRATION</h3>
                                 <h5 class="widget-user-desc">EFRIS Dashboard</h5>
                             </div>
                             <div class="widget-user-image">
                                 <img class="img-circle elevation-2"
                                     src="{{ asset('site_imgs/Custom-Icon-Design-Round-World-Flags-Uganda.ico') }}"
-                                    alt="Phone Avatar">
+                                    alt="Uganda Flag">
                             </div>
                             <div class="card-footer">
                                 <div class="row justify-content-center">
                                     @foreach ($efris_stats as $entityStats)
                                         <div class="col-sm-4 border">
                                             <div class="description-block">
-                                                <h5 class="description-header">
-                                                    <span
+                                                <h5 class="description-header"><span
                                                         class="badge badge-primary">{{ $entityStats->EfrisStatus }}</span>
                                                 </h5>
                                                 <span class="description-text small">{{ $entityStats->NoOfInvoice }}</span>
@@ -188,52 +193,43 @@
                     </a>
                 </div>
             @endif
-            {{-- TODO: ADD PERMISSIONS --}}
+
+            <!-- Quote Logger -->
             @if (Auth::user()->can('quote-access'))
-                <div class="col-md-3 mb-2">
+                <div class="col-md-3 col-sm-6 mb-3">
                     <a href="{{ URL::signedRoute('quote-logger') }}">
                         <div class="d-flex h-100 flex-column card card-widget widget-user shadow service-card">
                             <div class="widget-user-header bg-teal">
-                                <h3 class="widget-user-username">QUOTE LOGGER</h3>
+                                <h3 class="widget-user-username">QUOTE LOGGErrrrR</h3>
                                 <h5 class="widget-user-desc">Quote-Log System</h5>
                             </div>
                             <div class="widget-user-image">
-
                                 <img class="img-circle elevation-2" src="{{ asset('site_imgs/quotation2.png') }}"
-                                    alt="Phone Avatar">
+                                    alt="Quote Avatar">
                             </div>
                             <div class="card-footer">
                                 <div class="row justify-content-center">
-                                    {{-- @foreach ($efris_stats as $entityStats)
-                            <div class="col-sm-4 border">
-                                <div class="description-block">
-                                    <h5 class="description-header">
-                                        <span class="badge badge-primary">{{ $entityStats->EfrisStatus }}</span>
-                                    </h5>
-                                    <span class="description-text small">{{ $entityStats->NoOfInvoice }}</span>
-                                </div>
-                            </div>
-                            @endforeach --}}
+                                    <!-- Placeholder for future stats -->
                                 </div>
                             </div>
                         </div>
                     </a>
                 </div>
             @endif
-            {{-- TODO: ADD PERMISSIONS --}}
+
+            <!-- TRA Integration (Tanzania) -->
             @if (Auth::user()->can('tra-tz-access'))
-                <div class="col-md-3 mb-2">
+                <div class="col-md-3 col-sm-6 mb-3">
                     <a href="/tra">
                         <div class="d-flex h-100 flex-column card card-widget widget-user shadow service-card">
                             <div class="widget-user-header bg-yellow">
-                                <h3 class="widget-user-username">TRA INTERGRATION</h3>
+                                <h3 class="widget-user-username">TRA INTEGRATION</h3>
                                 <h5 class="widget-user-desc">FIT Tanzania Dashboard</h5>
                             </div>
                             <div class="widget-user-image">
-
                                 <img class="img-circle elevation-2"
                                     src="{{ asset('site_imgs/transparent-flag-of-tanzania-flag.png') }}"
-                                    alt="Phone Avatar">
+                                    alt="Tanzania Flag">
                             </div>
                             <div class="card-footer">
                                 <div class="row justify-content-center">
@@ -253,20 +249,19 @@
                     </a>
                 </div>
             @endif
-            {{-- TODO: ADD PERMISSIONS --}}
-            @if (Auth::user()->can('tra-adl-access'))
 
-                <div class="col-md-3 mb-2">
+            <!-- TRA Integration (ADL) -->
+            @if (Auth::user()->can('tra-adl-access'))
+                <div class="col-md-3 col-sm-6 mb-3">
                     <a href="/traADL">
                         <div class="d-flex h-100 flex-column card card-widget widget-user shadow service-card">
                             <div class="widget-user-header bg-info">
-                                <h3 class="widget-user-username">TRA INTERGRATION</h3>
+                                <h3 class="widget-user-username">TRA INTEGRATION</h3>
                                 <h5 class="widget-user-desc">ADL Dashboard</h5>
                             </div>
                             <div class="widget-user-image">
-
                                 <img class="img-circle elevation-2"
-                                    src="{{ asset('site_imgs/africa_direct_limited_logo.jpeg') }}" alt="Phone Avatar">
+                                    src="{{ asset('site_imgs/africa_direct_limited_logo.jpeg') }}" alt="ADL Logo">
                             </div>
                             <div class="card-footer">
                                 <div class="row justify-content-center">
@@ -287,17 +282,16 @@
                 </div>
             @endif
 
-            {{-- TODO: ADD PERMISSIONS --}}
+            <!-- RRA Integration -->
             @if (Auth::user()->can('rra-access'))
-                <div class="col-md-3 mb-2">
+                <div class="col-md-3 col-sm-6 mb-3">
                     <a href="/rra">
                         <div class="d-flex h-100 flex-column card card-widget widget-user shadow service-card">
                             <div class="widget-user-header bg-green">
-                                <h3 class="widget-user-username">RRA INTERGRATION</h3>
+                                <h3 class="widget-user-username">RRA INTEGRATION</h3>
                                 <h5 class="widget-user-desc">FIT Rwanda Dashboard</h5>
                             </div>
                             <div class="widget-user-image">
-
                                 <img class="img-circle elevation-2" src="{{ asset('site_imgs/rw-circle-01.png') }}"
                                     alt="Rwanda Avatar">
                             </div>
@@ -320,11 +314,32 @@
                 </div>
             @endif
 
+            <!-- Log In Tracker -->
+            @if (Auth::user()->can('approve-all-entity-request'))
+                <div class="col-md-3 col-sm-6 mb-3">
+                    <a href="/dashboard">
+                        <div
+                            class="d-flex h-100 flex-column card card-widget widget-user shadow service-card login-tracker-card">
+                            <div class="widget-user-header bg-blue">
+                                <h3 class="widget-user-username">LOG IN TRACKER</h3>
+                                <h5 class="widget-user-desc">Track User Logins</h5>
+                            </div>
+                            {{-- <div class="widget-user-image">
+                                <i class="fas fa-user-clock fa-sm"></i>
+
+                            </div> --}}
+
+                        </div>
+                    </a>
+                </div>
+            @endif
 
         </div>
     </div>
 @stop
 
 @section('js')
-    <script></script>
+    <script>
+        // Optional: Add JavaScript for additional interactivity if needed
+    </script>
 @stop

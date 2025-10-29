@@ -2,6 +2,11 @@
 
 use Adldap\Laravel\Facades\Adldap;
 use App\Http\Controllers\ClientPartyController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ActivityReportController;
+use App\Http\Controllers\UserController;
+use App\Http\Controllers\ImportController;
+
 use App\Models\Category;
 use App\Models\ClientParty;
 use App\Models\Office;
@@ -9,6 +14,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
+
 
 use Illuminate\Support\Facades\Crypt;
 
@@ -312,3 +318,108 @@ Route::get('/api/company-details', [ClientPartyController::class, 'getCompanyDet
 Route::post('/client-party/fetch-address-details', [ClientPartyController::class, 'fetchAddressDetails'])->name('client-party.fetch-address-details');
 Route::get('/api/clients', [ClientPartyController::class, 'getClients'])->name('clients');
 Route::post('/create-client-party-scm', [ClientPartyController::class, 'CreateClientPartySCM']) ->middleware('auth:api')->name('client.create-party-scm');
+
+Route::get('/', function () {
+    return redirect()->route('home');
+});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// Restrict the {user} parameter (supports email or GUID)
+Route::pattern('user', '[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}|\w{8}-\w{4}-\w{4}-\w{4}-\w{12}');
+
+// ----------------------
+// Authentication routes
+// ----------------------
+// Route::post('/login', [AuthController::class, 'login'])->name('login');
+// Route::get('/auth/azure/callback', [AuthController::class, 'handleAzureCallback'])->name('azure.callback');
+// Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth')->name('logout');
+
+// ----------------------
+// Reporting routes (Login Tracker)
+// ----------------------
+Route::prefix('reporting')->middleware('auth')->group(function () {
+    Route::get('/logged-in-users', [UserController::class, 'loggedInUsers'])
+        ->name('reporting.users.logged-in');
+
+    Route::get('/not-logged-in-users', [UserController::class, 'notLoggedInUsers'])
+        ->name('reporting.users.not-logged-in');
+
+    // Explicit show route (needed for dashboard links)
+    Route::get('/users/{user}', [UserController::class, 'show'])
+        ->name('reporting.users.show');
+
+    // Resource routes except show
+    Route::resource('/users', UserController::class)
+        ->parameters(['users' => 'user'])
+        ->except(['show'])
+        ->names([
+            'index'   => 'reporting.users.index',
+            'create'  => 'reporting.users.create',
+            'store'   => 'reporting.users.store',
+            'edit'    => 'reporting.users.edit',
+            'update'  => 'reporting.users.update',
+            'destroy' => 'reporting.users.destroy',
+        ]);
+});
+
+// ----------------------
+// Dashboard route
+// ----------------------
+Route::get('/dashboard', [DashboardController::class, 'index'])
+    ->middleware('auth')
+    ->name('dashboard');
+
+// ----------------------
+// Imports route
+// ----------------------
+Route::get('/imports', function () {
+    return view('logintracker.imports.index');
+})->middleware('auth')->name('imports.index');
+
+// ----------------------
+// Activity report
+// ----------------------
+Route::get('/activity-report', [ActivityReportController::class, 'userActivityReport'])
+    ->middleware('auth')
+    ->name('activity.report');
+
+// ----------------------
+// CSV import endpoints
+// ----------------------
+Route::post('/import/users', [ImportController::class, 'importUsers'])
+    ->middleware('auth')
+    ->name('imports.users');
+
+Route::post('/import/sign-ins', [ImportController::class, 'importSignIns'])
+    ->middleware('auth')
+    ->name('imports.sign_ins');
+
+
+
+Route::post('/dashboard/clear-cache', [DashboardController::class, 'clearDashboardCache'])
+    ->name('dashboard.clear-cache');
+
+    Route::get('/users/cleanup-empty', [UserController::class, 'cleanupEmptyUsers'])->name('users.cleanup');
+
