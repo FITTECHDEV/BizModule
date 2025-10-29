@@ -1,0 +1,101 @@
+        set_time_limit(300); // 2 minutes
+
+        try {
+            // Add cache busting parameter support
+            if ($request->has('refresh_cache')) {
+                $this->clearDashboardCache();
+            }
+
+            $filters = $this->filterService->parseFilters($request);
+            $range = $filters['range'] ?? 'last_3_months';
+            $system = $this->validateSystemSelection($request->input('system', 'all'));
+            $search = $request->input('search');
+            $date = $request->input('date'); // Add custom date support
+
+            Log::info('Dashboard query with enhanced system filtering v2 and calendar support', [
+                'selected_system' => $system,
+                'range' => $range,
+                'custom_date' => $date,
+                'excluded_systems' => $this->excludedSystems
+            ]);
+
+            // Get actual date range from clean data
+            try {
+                $actualDateRange = $this->getActualDateRange($system);
+            } catch (\Exception $e) {
+                Log::error('Failed to get actual date range', [
+                    'error' => $e->getMessage()
+                ]);
+                $actualDateRange = [
+                    'min_date' => now()->subYear(),
+                    'max_date' => now(),
+                    'has_data' => false
+                ];
+            }
+
+            // Calculate intended date ranges with custom date support
+            if ($range === 'custom' && $date) {
+                // For custom date, use the specific date provided
+                $startDate = Carbon::parse($date)->startOfDay();
+                $endDate = Carbon::parse($date)->endOfDay();
+            } else {
+                // Use predefined ranges
+                $startDate = match ($range) {
+                    'this_month' => now()->startOfMonth(),
+                    'last_month' => now()->subMonth()->startOfMonth(),
+                    'last_3_months' => now()->subMonths(3)->startOfDay(),
+                    'last_6_months' => now()->subMonths(6)->startOfDay(),
+                    'last_year' => now()->subYear()->startOfDay(),
+                    'all_time' => $actualDateRange['min_date'],
+                    default => now()->subMonths(3)->startOfDay(),
+                };
+
+                $endDate = match ($range) {
+                    'this_month' => now()->endOfMonth(),
+                    'last_month' => now()->subMonth()->endOfMonth(),
+                    'last_3_months' => now()->endOfDay(),
+                    'last_6_months' => now()->endOfDay(),
+                    'last_year' => now()->endOfDay(),
+                    'all_time' => $actualDateRange['max_date'],
+                    default => now()->endOfDay(),
+                };
+            }
+
+            // Only constrain dates for 'all_time', not for custom dates
+            if ($range === 'all_time') {
+                $startDate = max($startDate, $actualDateRange['min_date']);
+                $endDate = min($endDate, $actualDateRange['max_date']);
+
+                if ($startDate > $endDate) {
+                    $startDate = $actualDateRange['min_date'];
+                    $endDate = $actualDateRange['max_date'];
+                }
+            }
+
+            // For custom dates, check if the date has data
+          $hasDataInPeriod = !($endDate < $actualDateRange['min_date'] || $startDate > $actualDateRange['max_date']);
+
+            if (!$hasDataInPeriod && $range !== 'all_time' && $range !== 'custom') {
+                Log::info('Selected date range has no data - will show empty results', [
+                    'range' => $range,
+                    'selected_start' => $startDate->toDateString(),
+                    'selected_end' => $endDate->toDateString(),
+                    'actual_data_range' => [
+                        'min' => $actualDateRange['min_date']->toDateString(),
+                        'max' => $actualDateRange['max_date']->toDateString()
+                    ]
+                ]);
+            }
+
+            $totalDays = $startDate && $endDate ? $startDate->diffInDays($endDate) + 1 : 365;
+
+            Log::info('Dashboard using selected date range with calendar support', [
+                'range' => $range,
+                'system' => $system,
+                'custom_date' => $date,
+                'start_date' => $startDate->toDateString(),
+                'end_date' => $endDate->toDateString(),
+                'has_data_in_period' => $hasDataInPeriod,
+                'excluded_systems' => $this->excludedSystems
+            ]);
+

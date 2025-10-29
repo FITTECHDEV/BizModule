@@ -37,7 +37,7 @@ class ProcessCRMSCMBooking extends Command
      *
      * @return void
      *
-     * 
+     *
      */
     public function __construct()
     {
@@ -907,4 +907,48 @@ class ProcessCRMSCMBooking extends Command
 
         return trim($description);
     }
+
+
+public function fixUserIds(Request $request)
+{
+    $usersWithoutId = DB::table('Azure_Users')
+        ->whereNull('id')
+        ->orWhere('id', '')
+        ->count();
+    
+    if ($usersWithoutId === 0) {
+        return response()->json([
+            'status' => 'success',
+            'message' => 'All users already have IDs',
+            'users_checked' => DB::table('Azure_Users')->count()
+        ]);
+    }
+    
+    // Generate UUIDs for users without IDs
+    $fixed = 0;
+    $users = DB::table('Azure_Users')
+        ->whereNull('id')
+        ->orWhere('id', '')
+        ->select('userPrincipalName')
+        ->get();
+    
+    foreach ($users as $user) {
+        $newId = (string) \Illuminate\Support\Str::uuid();
+        DB::table('Azure_Users')
+            ->where('userPrincipalName', $user->userPrincipalName)
+            ->update(['id' => $newId]);
+        $fixed++;
+    }
+    
+    return response()->json([
+        'status' => 'success',
+        'message' => 'User IDs generated successfully',
+        'users_fixed' => $fixed,
+        'total_users' => DB::table('Azure_Users')->count()
+    ]);
+}
+
+
+
+
 }

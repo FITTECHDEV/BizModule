@@ -926,7 +926,7 @@
                     e.preventDefault();
                     updateDashboard();
                     return false;
-                }
+                }     
 
                 // Enter key in search field
                 if (e.key === 'Enter' && $('#search').is(':focus')) {
