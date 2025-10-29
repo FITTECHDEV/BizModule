@@ -826,7 +826,7 @@ private function processRow(array $row, int $batchNumber = 0, int $rowIndex = 0)
     }
    
     $user = $this->getUserFromCacheOrCreate($userPrincipalName, $userDisplayName, $userIdFromCsv);
-    if (!$user || empty($user->id)) { // CRITICAL FIX: Also check for empty ID
+    if (!$user || empty($user->id)) {
         Log::warning('No user found or created for row', [
             'batch' => $batchNumber,
             'row' => $rowIndex,
@@ -840,7 +840,6 @@ private function processRow(array $row, int $batchNumber = 0, int $rowIndex = 0)
     $application = $row['application'] ?? null;
     $system = $this->mapApplicationToSystem($application);
    
-    // CRITICAL FIX: Better date field extraction
     $dateUtc = $this->extractDateUtc($row);
     if (!$dateUtc) {
         Log::warning('No valid date found in row', [
@@ -872,17 +871,16 @@ private function processRow(array $row, int $batchNumber = 0, int $rowIndex = 0)
         return ['signin_log' => null, 'user_system' => null];
     }
    
-    // CRITICAL FIX: Better request ID handling
     $requestId = $row['request_id'] ?? $row['request id'] ?? $row['requestid'] ?? null;
     if (empty($requestId)) {
         $requestId = 'IMPORT-' . uniqid() . '-' . $batchNumber . '-' . $rowIndex;
     }
     
     try {
-        $signinLogData = $this->prepareSigninLogData($row, $user, $system, $parsedDate);
-        $signinLogData['request_id'] = $requestId; // Ensure request_id is set
+        // CRITICAL FIX: Pass userIdFromCsv to prepareSigninLogData
+        $signinLogData = $this->prepareSigninLogData($row, $user, $system, $parsedDate, $userIdFromCsv);
+        $signinLogData['request_id'] = $requestId;
         
-        // CRITICAL FIX: Real-time duplicate check instead of cache-based
         if ($this->isDuplicateInDatabase($signinLogData)) {
             Log::debug('Duplicate signin log detected via database check', [
                 'batch' => $batchNumber,
@@ -895,7 +893,6 @@ private function processRow(array $row, int $batchNumber = 0, int $rowIndex = 0)
             return ['signin_log' => null, 'user_system' => null];
         }
         
-        // CRITICAL FIX: Validate the prepared data
         if (!$this->validateSigninLogData($signinLogData, $batchNumber, $rowIndex)) {
             Log::warning('Signin log data validation failed', [
                 'batch' => $batchNumber,
@@ -1700,71 +1697,84 @@ private function preloadExistingLogs(array $duplicateCheckData)
         ]);
     }
 }
-    private function prepareSigninLogData(array $row, $user, string $system, string $parsedDate): array
-    {
-        return [
-            'date_utc' => $parsedDate,
-            'request_id' => $this->getValueOrDefault($row['request_id'] ?? null, 'IMPORT-' . uniqid()),
-            'user_id' => $user->id,
-            'system' => $system !== 'Unknown' ? $system : 'Import-Unknown',
-            'user_agent' => $this->truncateString($row['user_agent'] ?? null, 'text'),
-            'correlation_id' => $this->truncateString($row['correlation_id'] ?? null, 255),
-            'user' => $this->truncateString($row['user'] ?? null, 255),
-            'username' => $this->truncateString($row['username'] ?? null, 255),
-            'user_type' => $this->truncateString($row['user_type'] ?? null, 255),
-            'cross_tenant_access_type' => $this->truncateString($row['cross_tenant_access_type'] ?? null, 255),
-            'incoming_token_type' => $this->truncateString($row['incoming_token_type'] ?? null, 255),
-            'authentication_protocol' => $this->truncateString($row['authentication_protocol'] ?? null, 255),
-            'unique_token_identifier' => $this->truncateString($row['unique_token_identifier'] ?? null, 255),
-            'original_transfer_method' => $this->truncateString($row['original_transfer_method'] ?? null, 255),
-            'client_credential_type' => $this->truncateString($row['client_credential_type'] ?? null, 255),
-            'token_protection_sign_in_session' => $this->truncateString($row['token_protection_sign_in_session'] ?? null, 255),
-            'token_protection_sign_in_session_status_code' => $this->truncateString($row['token_protection_sign_in_session_status_code'] ?? null, 255),
-            'application' => $this->truncateString($row['application'] ?? null, 255),
-            'application_id' => $this->truncateString($row['application_id'] ?? null, 255),
-            'app_owner_tenant_id' => $this->truncateString($row['app_owner_tenant_id'] ?? null, 255),
-            'resource' => $this->truncateString($row['resource'] ?? null, 255),
-            'resource_id' => $this->truncateString($row['resource_id'] ?? null, 255),
-            'resource_tenant_id' => $this->truncateString($row['resource_tenant_id'] ?? null, 255),
-            'resource_owner_tenant_id' => $this->truncateString($row['resource_owner_tenant_id'] ?? null, 255),
-            'home_tenant_id' => $this->truncateString($row['home_tenant_id'] ?? null, 255),
-            'home_tenant_name' => $this->truncateString($row['home_tenant_name'] ?? null, 255),
-            'ip_address' => $this->truncateString($row['ip_address'] ?? null, 45),
-            'location' => $this->truncateString($row['location'] ?? null, 255),
-            'status' => $this->truncateString($row['status'] ?? null, 255),
-            'sign_in_error_code' => $this->truncateString($row['sign_in_error_code'] ?? null, 255),
-            'failure_reason' => $this->truncateString($row['failure_reason'] ?? null, 'text'),
-            'client_app' => $this->truncateString($row['client_app'] ?? null, 255),
-            'device_id' => $this->truncateString($row['device_id'] ?? null, 255),
-            'browser' => $this->truncateString($row['browser'] ?? null, 255),
-            'operating_system' => $this->truncateString($row['operating_system'] ?? null, 255),
-            'compliant' => $this->convertBitField($row['compliant'] ?? null),
-            'managed' => $this->convertBitField($row['managed'] ?? null),
-            'join_type' => $this->truncateString($row['join_type'] ?? null, 255),
-            'multifactor_authentication_result' => $this->truncateString($row['multifactor_authentication_result'] ?? null, 255),
-            'multifactor_authentication_auth_method' => $this->truncateString($row['multifactor_authentication_auth_method'] ?? null, 255),
-            'multifactor_authentication_auth_detail' => $this->truncateString($row['multifactor_authentication_auth_detail'] ?? null, 255),
-            'authentication_requirement' => $this->truncateString($row['authentication_requirement'] ?? null, 255),
-            'sign_in_identifier' => $this->truncateString($row['sign_in_identifier'] ?? null, 255),
-            'session_id' => $this->truncateString($row['session_id'] ?? null, 255),
-            'ip_address_seen_by_resource' => $this->truncateString($row['ip_address_seen_by_resource'] ?? null, 45),
-            'through_global_secure_access' => $this->convertBitField($row['through_global_secure_access'] ?? null),
-            'global_secure_access_ip_address' => $this->truncateString($row['global_secure_access_ip_address'] ?? null, 45),
-            'autonomous_system_number' => $this->truncateString($row['autonomous_system_number'] ?? null, 255),
-            'flagged_for_review' => $this->convertBitField($row['flagged_for_review'] ?? null),
-            'token_issuer_type' => $this->truncateString($row['token_issuer_type'] ?? null, 255),
-            'incoming_token_type_2' => $this->truncateString($row['incoming_token_type_2'] ?? null, 255),
-            'token_issuer_name' => $this->truncateString($row['token_issuer_name'] ?? null, 255),
-            'latency' => $this->truncateString($row['latency'] ?? null, 255),
-            'conditional_access' => $this->truncateString($row['conditional_access'] ?? null, 255),
-            'managed_identity_type' => $this->truncateString($row['managed_identity_type'] ?? null, 255),
-            'associated_resource_id' => $this->truncateString($row['associated_resource_id'] ?? null, 255),
-            'federated_token_id' => $this->truncateString($row['federated_token_id'] ?? null, 255),
-            'federated_token_issuer' => $this->truncateString($row['federated_token_issuer'] ?? null, 255),
-            'created_at' => now(),
-            'updated_at' => now(),
-        ];
-    }
+   private function prepareSigninLogData(array $row, $user, string $system, string $parsedDate, ?string $userIdFromCsv = null): array
+{
+    // CRITICAL FIX: Use CSV user ID if valid, otherwise fall back to user->id
+    $userIdToStore = (!empty($userIdFromCsv) && $this->isValidUuid($userIdFromCsv)) 
+        ? $userIdFromCsv 
+        : $user->id;
+    
+    Log::debug('Preparing signin log data', [
+        'username' => $row['username'] ?? 'unknown',
+        'user_id_from_csv' => $userIdFromCsv,
+        'user_id_from_model' => $user->id,
+        'user_id_to_store' => $userIdToStore,
+        'used_csv_id' => (!empty($userIdFromCsv) && $this->isValidUuid($userIdFromCsv))
+    ]);
+    
+    return [
+        'date_utc' => $parsedDate,
+        'request_id' => $this->getValueOrDefault($row['request_id'] ?? null, 'IMPORT-' . uniqid()),
+        'user_id' => $userIdToStore,  // FIXED: Now uses CSV user ID when available
+        'system' => $system !== 'Unknown' ? $system : 'Import-Unknown',
+        'user_agent' => $this->truncateString($row['user_agent'] ?? null, 'text'),
+        'correlation_id' => $this->truncateString($row['correlation_id'] ?? null, 255),
+        'user' => $this->truncateString($row['user'] ?? null, 255),
+        'username' => $this->truncateString($row['username'] ?? null, 255),
+        'user_type' => $this->truncateString($row['user_type'] ?? null, 255),
+        'cross_tenant_access_type' => $this->truncateString($row['cross_tenant_access_type'] ?? null, 255),
+        'incoming_token_type' => $this->truncateString($row['incoming_token_type'] ?? null, 255),
+        'authentication_protocol' => $this->truncateString($row['authentication_protocol'] ?? null, 255),
+        'unique_token_identifier' => $this->truncateString($row['unique_token_identifier'] ?? null, 255),
+        'original_transfer_method' => $this->truncateString($row['original_transfer_method'] ?? null, 255),
+        'client_credential_type' => $this->truncateString($row['client_credential_type'] ?? null, 255),
+        'token_protection_sign_in_session' => $this->truncateString($row['token_protection_sign_in_session'] ?? null, 255),
+        'token_protection_sign_in_session_status_code' => $this->truncateString($row['token_protection_sign_in_session_status_code'] ?? null, 255),
+        'application' => $this->truncateString($row['application'] ?? null, 255),
+        'application_id' => $this->truncateString($row['application_id'] ?? null, 255),
+        'app_owner_tenant_id' => $this->truncateString($row['app_owner_tenant_id'] ?? null, 255),
+        'resource' => $this->truncateString($row['resource'] ?? null, 255),
+        'resource_id' => $this->truncateString($row['resource_id'] ?? null, 255),
+        'resource_tenant_id' => $this->truncateString($row['resource_tenant_id'] ?? null, 255),
+        'resource_owner_tenant_id' => $this->truncateString($row['resource_owner_tenant_id'] ?? null, 255),
+        'home_tenant_id' => $this->truncateString($row['home_tenant_id'] ?? null, 255),
+        'home_tenant_name' => $this->truncateString($row['home_tenant_name'] ?? null, 255),
+        'ip_address' => $this->truncateString($row['ip_address'] ?? null, 45),
+        'location' => $this->truncateString($row['location'] ?? null, 255),
+        'status' => $this->truncateString($row['status'] ?? null, 255),
+        'sign_in_error_code' => $this->truncateString($row['sign_in_error_code'] ?? null, 255),
+        'failure_reason' => $this->truncateString($row['failure_reason'] ?? null, 'text'),
+        'client_app' => $this->truncateString($row['client_app'] ?? null, 255),
+        'device_id' => $this->truncateString($row['device_id'] ?? null, 255),
+        'browser' => $this->truncateString($row['browser'] ?? null, 255),
+        'operating_system' => $this->truncateString($row['operating_system'] ?? null, 255),
+        'compliant' => $this->convertBitField($row['compliant'] ?? null),
+        'managed' => $this->convertBitField($row['managed'] ?? null),
+        'join_type' => $this->truncateString($row['join_type'] ?? null, 255),
+        'multifactor_authentication_result' => $this->truncateString($row['multifactor_authentication_result'] ?? null, 255),
+        'multifactor_authentication_auth_method' => $this->truncateString($row['multifactor_authentication_auth_method'] ?? null, 255),
+        'multifactor_authentication_auth_detail' => $this->truncateString($row['multifactor_authentication_auth_detail'] ?? null, 255),
+        'authentication_requirement' => $this->truncateString($row['authentication_requirement'] ?? null, 255),
+        'sign_in_identifier' => $this->truncateString($row['sign_in_identifier'] ?? null, 255),
+        'session_id' => $this->truncateString($row['session_id'] ?? null, 255),
+        'ip_address_seen_by_resource' => $this->truncateString($row['ip_address_seen_by_resource'] ?? null, 45),
+        'through_global_secure_access' => $this->convertBitField($row['through_global_secure_access'] ?? null),
+        'global_secure_access_ip_address' => $this->truncateString($row['global_secure_access_ip_address'] ?? null, 45),
+        'autonomous_system_number' => $this->truncateString($row['autonomous_system_number'] ?? null, 255),
+        'flagged_for_review' => $this->convertBitField($row['flagged_for_review'] ?? null),
+        'token_issuer_type' => $this->truncateString($row['token_issuer_type'] ?? null, 255),
+        'incoming_token_type_2' => $this->truncateString($row['incoming_token_type_2'] ?? null, 255),
+        'token_issuer_name' => $this->truncateString($row['token_issuer_name'] ?? null, 255),
+        'latency' => $this->truncateString($row['latency'] ?? null, 255),
+        'conditional_access' => $this->truncateString($row['conditional_access'] ?? null, 255),
+        'managed_identity_type' => $this->truncateString($row['managed_identity_type'] ?? null, 255),
+        'associated_resource_id' => $this->truncateString($row['associated_resource_id'] ?? null, 255),
+        'federated_token_id' => $this->truncateString($row['federated_token_id'] ?? null, 255),
+        'federated_token_issuer' => $this->truncateString($row['federated_token_issuer'] ?? null, 255),
+        'created_at' => now(),
+        'updated_at' => now(),
+    ];
+}
 
     private function getValueOrDefault($value, $default)
     {
