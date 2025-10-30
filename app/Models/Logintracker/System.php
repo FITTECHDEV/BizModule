@@ -155,35 +155,104 @@ class System extends Model
     }
 
     /**
-     * Populate the database with default systems.
-     *
-     * @return int Number of systems created
-     * @throws \Exception
-     */
-    public static function populateDefaultSystems(): int
-    {
-        $created = 0;
-
-        foreach (static::$defaultSystems as $systemName) {
-            $system = static::firstOrCreate(
-                ['name' => $systemName],
-                [
-                    'name' => $systemName,
-                    'created_at' => now(),
-                    'updated_at' => now()
-                ]
-            );
-
-            if ($system->wasRecentlyCreated) {
-                $created++;
-            }
-        }
-
-        // Clear cache after populating
-        Cache::forget('systems_list');
-
-        return $created;
+ * Normalize system name using systemmap config
+ */
+private static function normalizeSystemName($systemName, $systemMap = null)
+{
+    if (empty($systemName)) {
+        return 'Unknown';
     }
+    
+    $normalized = trim($systemName);
+    
+    if (empty($systemMap)) {
+        $systemMap = config('systemmap', []);
+    }
+    
+    if (empty($systemMap)) {
+        return $normalized;
+    }
+    
+    $lowerNormalized = strtolower($normalized);
+    
+    // Case-insensitive lookup
+    foreach ($systemMap as $rawName => $cleanName) {
+        if (strtolower($rawName) === $lowerNormalized) {
+            return $cleanName;
+        }
+    }
+    
+    return $normalized;
+}
+
+   /**
+ * Populate the database with systems from Azure_LoginDetails.
+ *
+ * @return int Number of systems created
+ * @throws \Exception
+ */
+public static function populateDefaultSystems(): int
+{
+    $systemMap = config('systemmap', []);
+    $excludedSystems = [
+        'Import-Unknown',
+        'Unknown', 
+        'Microsoft Teams',
+        'Office 365',
+        'Windows Authentication',  
+        'IT Infrastructure',       
+        'FITerp UAT',             
+        'Web Browser',           
+        'Mobile/Desktop Client'
+    ];
+    
+    // Get unique systems from Azure_LoginDetails
+    $rawSystems = \DB::table('Azure_LoginDetails')
+        ->selectRaw('DISTINCT TRIM(system) as clean_system')
+        ->whereNotNull('system')
+        ->where('system', '!=', '')
+        ->get();
+    
+    $created = 0;
+    $normalizedSystems = collect();
+    
+    foreach ($rawSystems as $item) {
+        $normalized = self::normalizeSystemName($item->clean_system, $systemMap);
+        
+        // Skip excluded systems
+        if (!in_array($normalized, $excludedSystems)) {
+            $normalizedSystems->push($normalized);
+        }
+    }
+    
+    // Insert unique normalized systems
+    foreach ($normalizedSystems->unique() as $systemName) {
+        // Check if exists (case-insensitive)
+        $existing = \DB::table('Azure_SoftwareMaster')
+            ->whereRaw('LOWER(name) = ?', [strtolower($systemName)])
+            ->first();
+        
+        if (!$existing) {
+            \DB::table('Azure_SoftwareMaster')->insert([
+                'name' => $systemName,
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
+            $created++;
+        }
+    }
+    
+    // Clear cache after populating
+    Cache::forget('systems_list');
+    
+    Log::info('Populated Azure_SoftwareMaster from Azure_LoginDetails', [
+        'created' => $created,
+        'systems' => $normalizedSystems->unique()->toArray()
+    ]);
+    
+    return $created;
+}
+
 
     /**
      * Create fallback in-memory collection when database is unavailable.

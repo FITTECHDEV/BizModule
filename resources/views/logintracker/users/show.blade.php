@@ -133,14 +133,26 @@
                        value="{{ request('search') }}">
             </div>
 
-            {{-- Calendar Date Picker --}}
+            {{-- IMPROVED: Date Range Dropdown --}}
+            <select name="range" id="range" class="form-select form-select-sm w-auto">
+                @php
+                    $selectedRange = request('range', 'this_month');
+                @endphp
+                <option value="this_month" {{ $selectedRange == 'this_month' ? 'selected' : '' }}>This Month</option>
+                <option value="last_month" {{ $selectedRange == 'last_month' ? 'selected' : '' }}>Last Month</option>
+                <option value="last_3_months" {{ $selectedRange == 'last_3_months' ? 'selected' : '' }}>Last 3 Months</option>
+                <option value="custom" {{ $selectedRange == 'custom' ? 'selected' : '' }}>Custom Date</option>
+            </select>
+
+            {{-- IMPROVED: Calendar Date Picker (Hidden by default) --}}
             <input type="date" 
                    name="date" 
                    id="date" 
                    class="form-control form-control-sm w-auto"
+                   style="{{ $selectedRange == 'custom' ? '' : 'display: none;' }}"
                    value="{{ request('date') ?? $selectedDate ?? '' }}">
 
-            {{-- IMPROVED: System Filter with All Systems option --}}
+            {{-- System Filter with All Systems option --}}
             <select name="system" id="system" class="form-select form-select-sm w-auto">
                 <option value="" {{ empty($system) ? 'selected' : '' }}>All Systems</option>
                 @foreach($systems as $systemOption)
@@ -158,7 +170,7 @@
     </div>
 </div>
 
-    {{-- IMPROVED: Enhanced No Data Message --}}
+    {{-- Enhanced No Data Message --}}
     @if ($signIns->isEmpty())
         <div class="alert alert-info">
             <h6>No login history available</h6>
@@ -171,7 +183,7 @@
             @endif
         </div>
     @else
-        {{-- IMPROVED: Enhanced Table with Better Responsive Design --}}
+        {{-- Enhanced Table with Better Responsive Design --}}
         <div class="table-responsive">
             <table class="table table-striped table-hover">
                 <thead class="table-dark">
@@ -221,7 +233,7 @@
             </table>
         </div>
         
-        {{-- IMPROVED: Enhanced Pagination with Info --}}
+        {{-- Enhanced Pagination with Info --}}
         <div class="d-flex justify-content-between align-items-center mt-4" id="pagination-container">
             <div class="text-muted">
                 Showing {{ $signIns->firstItem() ?? 0 }} to {{ $signIns->lastItem() ?? 0 }} 
@@ -243,31 +255,41 @@
 
 </div>
 
-{{-- IMPROVED: Enhanced JavaScript --}}
+{{-- IMPROVED: Enhanced JavaScript with Date Range Functionality --}}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const rangeSelect = document.getElementById('range');
-    const customDateDiv = document.getElementById('customDateDiv');
     const dateInput = document.getElementById('date');
     const filterForm = document.getElementById('filterForm');
     const systemSelect = document.getElementById('system');
     const searchInput = document.getElementById('applicationSearch');
     
-    // Handle range selection change
+    // IMPROVED: Handle range selection change with auto-submit
     if (rangeSelect) {
         rangeSelect.addEventListener('change', function() {
-            if (this.value === 'custom') {
-                if (customDateDiv) {
-                    customDateDiv.style.display = 'block';
-                    dateInput.setAttribute('required', 'required');
-                }
+            const selectedRange = this.value;
+            
+            if (selectedRange === 'custom') {
+                // Show date picker for custom selection
+                dateInput.style.display = 'block';
+                dateInput.setAttribute('required', 'required');
+                // Don't auto-submit, wait for date selection
             } else {
-                if (customDateDiv) {
-                    customDateDiv.style.display = 'none';
-                    dateInput.removeAttribute('required');
-                    dateInput.value = '';
-                }
-                // Auto-submit for non-custom ranges
+                // Hide date picker and clear its value
+                dateInput.style.display = 'none';
+                dateInput.removeAttribute('required');
+                dateInput.value = '';
+                // Auto-submit for predefined ranges
+                filterForm.submit();
+            }
+        });
+    }
+    
+    // IMPROVED: Handle date input change for custom date
+    if (dateInput) {
+        dateInput.addEventListener('change', function() {
+            if (rangeSelect.value === 'custom' && this.value) {
+                // Auto-submit when custom date is selected
                 filterForm.submit();
             }
         });
@@ -284,7 +306,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // IMPROVED: Enhanced search functionality with debouncing
+    // Enhanced search functionality with debouncing
     if (searchInput) {
         let searchTimeout;
         
@@ -359,7 +381,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // IMPROVED: Enhanced scroll position restoration
+    // Enhanced scroll position restoration
     const SCROLL_STORAGE_KEY = 'userShowScrollPosition';
     const savedScrollPos = sessionStorage.getItem(SCROLL_STORAGE_KEY);
     
@@ -379,7 +401,7 @@ document.addEventListener('DOMContentLoaded', function() {
         sessionStorage.setItem(SCROLL_STORAGE_KEY, window.pageYOffset.toString());
     });
     
-    // IMPROVED: Loading states for better UX
+    // Loading states for better UX
     filterForm.addEventListener('submit', function(e) {
         const submitBtn = filterForm.querySelector('button[type="submit"]');
         if (submitBtn) {

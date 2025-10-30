@@ -22,15 +22,15 @@ class UserController extends Controller
  * @var string[]
  */
 protected $excludedSystems = [
-    'Import-Unknown',
-    'Unknown', 
-    'Microsoft Teams',
-    'Office 365',
-    'Windows Authentication',  
-    'IT Infrastructure',       
-    'FITerp UAT',             
-    'Web Browser',           
-    'Mobile/Desktop Client'
+    // 'Import-Unknown',
+    // 'Unknown', 
+    // 'Microsoft Teams',
+    // 'Office 365',
+    // 'Windows Authentication',  
+    // 'IT Infrastructure',       
+    // 'FITerp UAT',             
+    // 'Web Browser',           
+    // 'Mobile/Desktop Client'
     // 'all'
 ];
 
@@ -347,7 +347,10 @@ protected function visibleSystems(): array
 }
 
 
-  public function show(Request $request, $identifier)
+
+
+
+public function show(Request $request, $identifier)
 {
     Log::info('UserController@show called', [
         'identifier'    => $identifier,
@@ -363,17 +366,20 @@ protected function visibleSystems(): array
             abort(404, 'User not found.');
         }
 
-        // Handle date range
-        $range        = $request->input('range', 'this_month');
-        $system       = $request->input('system');
-        $selectedDate = $request->input('date');
+        // IMPROVED: Handle date range with proper precedence
+        $range = $request->input('range', 'this_month');
+        $system = $request->input('system');
+        $customDate = $request->input('date');
+        $selectedDate = null;
 
-        if ($selectedDate && strtotime($selectedDate)) {
-            $date  = Carbon::parse($selectedDate);
+        // IMPROVED: Handle custom date range properly
+        if ($range === 'custom' && $customDate && strtotime($customDate)) {
+            $date = Carbon::parse($customDate);
             $start = $date->copy()->startOfDay();
-            $end   = $date->copy()->endOfDay();
-            $range = 'custom';
+            $end = $date->copy()->endOfDay();
+            $selectedDate = $customDate;
         } else {
+            // Use predefined date ranges
             [$start, $end] = $this->resolveDateRange($range);
         }
 
@@ -382,15 +388,19 @@ protected function visibleSystems(): array
             'end'    => $end->toDateTimeString(),
             'range'  => $range,
             'system' => $system,
+            'customDate' => $customDate,
         ]);
 
-        // IMPROVED: Primary query with excluded systems filtering
+        // IMPROVED: Primary query WITHOUT global exclusion filter
+        // Exclusion only applies when a specific system is selected
         $signInsQuery = $user->signIns()
-            ->whereBetween('date_utc', [$start, $end])
-            ->whereNotIn('system', $this->excludedSystems);
+            ->whereBetween('date_utc', [$start, $end]);
 
-        // IMPROVED: Apply proper system filtering using the same logic as other methods
+        // IMPROVED: Apply exclusion filter and system filtering ONLY when specific system is selected
         if ($system) {
+            // Apply exclusion filter only for specific system queries
+            $signInsQuery->whereNotIn('system', $this->excludedSystems);
+            
             $systemMap = config('systemmap', []);
             $rawSystemNames = collect($systemMap)
                 ->filter(fn($mappedName) => $mappedName === $system)
@@ -416,22 +426,33 @@ protected function visibleSystems(): array
             }
         }
 
+        // IMPROVED: Add search filter support
+        if ($request->has('search') && !empty($request->input('search'))) {
+            $search = $request->input('search');
+            $signInsQuery->where(function ($q) use ($search) {
+                $q->where('application', 'like', '%' . $search . '%')
+                  ->orWhere('system', 'like', '%' . $search . '%');
+            });
+        }
+
         $signIns = $signInsQuery
             ->orderBy('date_utc', 'desc')
             ->paginate($this->perPage)
             ->withQueryString();
 
-        // IMPROVED: Fallback with excluded systems and proper system filtering
+        // IMPROVED: Fallback query with same logic - exclusion only when specific system selected
         if ($signIns->isEmpty() && !empty($user->userPrincipalName)) {
             Log::info('Fallback to username for signIns', [
                 'userPrincipalName' => $user->userPrincipalName,
             ]);
 
             $fallbackQuery = SigninLog::whereRaw('LOWER(username) = ?', [strtolower($user->userPrincipalName)])
-                ->whereBetween('date_utc', [$start, $end])
-                ->whereNotIn('system', $this->excludedSystems);
+                ->whereBetween('date_utc', [$start, $end]);
 
             if ($system) {
+                // Apply exclusion filter only for specific system queries
+                $fallbackQuery->whereNotIn('system', $this->excludedSystems);
+                
                 $systemMap = config('systemmap', []);
                 $rawSystemNames = collect($systemMap)
                     ->filter(fn($mappedName) => $mappedName === $system)
@@ -457,19 +478,28 @@ protected function visibleSystems(): array
                 }
             }
 
+            // IMPROVED: Add search filter support for fallback query
+            if ($request->has('search') && !empty($request->input('search'))) {
+                $search = $request->input('search');
+                $fallbackQuery->where(function ($q) use ($search) {
+                    $q->where('application', 'like', '%' . $search . '%')
+                      ->orWhere('system', 'like', '%' . $search . '%');
+                });
+            }
+
             $signIns = $fallbackQuery
                 ->orderBy('date_utc', 'desc')
                 ->paginate($this->perPage)
                 ->withQueryString();
         }
 
-        // IMPROVED: Recent applications with excluded systems and proper system filtering
+        // IMPROVED: Recent applications WITHOUT exclusion filter - show ALL systems user has used
         $recentApplicationsQuery = SigninLog::where('user_id', $user->id)
             ->whereBetween('date_utc', [$start, $end])
-            ->whereNotIn('system', $this->excludedSystems)
             ->whereNotNull('application')
             ->where('application', '!=', '');
 
+        // If specific system is selected, filter recent applications to that system only
         if ($system) {
             $systemMap = config('systemmap', []);
             $rawSystemNames = collect($systemMap)
@@ -508,9 +538,11 @@ protected function visibleSystems(): array
             ->limit(10)
             ->get();
 
-        // Load all systems for filters
-        $systems    = $this->visibleSystems();
-        $rangeLabel = $this->getRangeLabel($range);
+        // Load all systems for filters (only shows systems in Azure_SoftwareMaster)
+        $systems = $this->visibleSystems();
+        
+        // IMPROVED: Get proper range label
+        $rangeLabel = $this->getRangeLabel($range, $selectedDate);
 
         return view('logintracker.users.show', compact(
             'user',
@@ -533,6 +565,81 @@ protected function visibleSystems(): array
         ]);
         abort(500, 'An unexpected error occurred.');
     }
+}
+
+/**
+ * IMPROVED: Helper method to resolve date range based on selection
+ */
+
+protected function resolveDateRange($input = null)
+{
+    // Handle Request object
+    if ($input instanceof Request) {
+        $range = $input->input('range', 'this_month');
+        $customDate = $input->input('date');
+        
+        // Check for custom date first
+        if ($range === 'custom' && $customDate && strtotime($customDate)) {
+            $date = Carbon::parse($customDate);
+            return [$date->startOfDay(), $date->endOfDay()];
+        }
+        
+        // Otherwise resolve the range string
+        return $this->resolveDateRange($range);
+    }
+    
+    // Handle string input (range type)
+    switch ($input) {
+        case 'this_month':
+            $start = Carbon::now()->startOfMonth();
+            $end = Carbon::now()->endOfMonth();
+            break;
+            
+        case 'last_month':
+            $start = Carbon::now()->subMonth()->startOfMonth();
+            $end = Carbon::now()->subMonth()->endOfMonth();
+            break;
+            
+        case 'last_3_months':
+            $start = Carbon::now()->subMonths(3)->startOfMonth();
+            $end = Carbon::now()->endOfMonth();
+            break;
+            
+        default:
+            // Default to this month if invalid range
+            $start = Carbon::now()->startOfMonth();
+            $end = Carbon::now()->endOfMonth();
+    }
+
+    Log::info('Resolved Date Range', [
+        'input' => $input,
+        'start' => $start->toDateTimeString(),
+        'end' => $end->toDateTimeString(),
+    ]);
+
+    return [$start, $end];
+}
+
+
+/**
+ * IMPROVED: Helper method to get range label for display
+ */
+
+
+private function getRangeLabel($range, $customDate = null)
+{
+    if ($range === 'custom' && $customDate) {
+        return 'Custom Date: ' . Carbon::parse($customDate)->format('M j, Y');
+    }
+    
+    $labels = [
+        'this_month' => 'This Month',
+        'last_month' => 'Last Month',
+        'last_3_months' => 'Last 3 Months',
+        'custom' => 'Custom Range',
+    ];
+    
+    return $labels[$range] ?? 'This Month';
 }
 
 
@@ -773,50 +880,50 @@ public function notLoggedInUsers(Request $request)
 
 
 
-    protected function resolveDateRange($input = null)
-    {
-        if ($input instanceof Request) {
-            if ($input->has('range')) {
-                return $this->resolveDateRange($input->input('range'));
-            } elseif ($input->has('date') && strtotime($input->input('date'))) {
-                $date = Carbon::parse($input->input('date'));
-                return [$date->startOfDay(), $date->endOfDay()];
-            }
-            return [now()->startOfMonth(), now()->endOfDay()];
-        }
+    // protected function resolveDateRange($input = null)
+    // {
+    //     if ($input instanceof Request) {
+    //         if ($input->has('range')) {
+    //             return $this->resolveDateRange($input->input('range'));
+    //         } elseif ($input->has('date') && strtotime($input->input('date'))) {
+    //             $date = Carbon::parse($input->input('date'));
+    //             return [$date->startOfDay(), $date->endOfDay()];
+    //         }
+    //         return [now()->startOfMonth(), now()->endOfDay()];
+    //     }
 
-        switch ($input) {
-            case 'last_month':
-                $start = now()->subMonthNoOverflow()->startOfMonth();
-                $end = now()->subMonthNoOverflow()->endOfMonth();
-                break;
-            case 'last_3_months':
-                $start = now()->subMonthsNoOverflow(3)->startOfMonth();
-                $end = now()->endOfDay();
-                break;
-            default:
-                $start = now()->startOfMonth();
-                $end = now()->endOfDay();
-        }
+    //     switch ($input) {
+    //         case 'last_month':
+    //             $start = now()->subMonthNoOverflow()->startOfMonth();
+    //             $end = now()->subMonthNoOverflow()->endOfMonth();
+    //             break;
+    //         case 'last_3_months':
+    //             $start = now()->subMonthsNoOverflow(3)->startOfMonth();
+    //             $end = now()->endOfDay();
+    //             break;
+    //         default:
+    //             $start = now()->startOfMonth();
+    //             $end = now()->endOfDay();
+    //     }
 
-        Log::info('Resolved Date Range', [
-            'start' => $start->toDateTimeString(),
-            'end' => $end->toDateTimeString(),
-        ]);
+    //     Log::info('Resolved Date Range', [
+    //         'start' => $start->toDateTimeString(),
+    //         'end' => $end->toDateTimeString(),
+    //     ]);
 
-        return [$start, $end];
-    }
+    //     return [$start, $end];
+    // }
 
-    private function getRangeLabel($range)
-    {
-        return match ($range) {
-            'this_month' => 'This Month',
-            'last_month' => 'Last Month',
-            'last_3_months' => 'Last 3 Months',
-            'custom' => 'Custom Range',
-            default => 'This Month',
-        };
-    }
+    // private function getRangeLabel($range)
+    // {
+    //     return match ($range) {
+    //         'this_month' => 'This Month',
+    //         'last_month' => 'Last Month',
+    //         'last_3_months' => 'Last 3 Months',
+    //         'custom' => 'Custom Range',
+    //         default => 'This Month',
+    //     };
+    // }
 
     /**
      * Helper method for SQL Server compatible string aggregation

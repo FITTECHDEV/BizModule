@@ -38,7 +38,8 @@ class DashboardController extends Controller
         'Mobile/Desktop Client'
         // 'all'
     ];
-// Add this method to properly map raw system names to display names
+
+    
 // private function getSystemMapping()
 // {
 //     return [

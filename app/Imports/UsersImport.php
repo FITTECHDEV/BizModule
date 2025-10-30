@@ -222,46 +222,95 @@ public function cleanupEmptyUsers()
     }
 }
 
-    /**
-     * Keep your existing prepareUserData method - it's good
-     */
-    private function prepareUserData($row)
-    {
-        $azureId = $this->generateValidUuid($row['id'] ?? null);
-        $createdDateTime = $this->formatCreatedDateTime($row['createddatetime'] ?? null);
-        
-        return [
-            'azure_id' => $azureId,
-            'displayName' => $this->sanitizeString($row['displayname'] ?? null, 'Unknown User', 255),
-            'surname' => $this->sanitizeString($row['surname'] ?? null, null, 100),
-            'mail' => $this->sanitizeEmail($row['mail'] ?? null),
-            'givenName' => $this->sanitizeString($row['givenname'] ?? null, null, 100),
-            'userType' => $this->sanitizeString($row['usertype'] ?? null, 'Member', 50),
-            'jobTitle' => $this->sanitizeString($row['jobtitle'] ?? null, null, 255),
-            'department' => $this->sanitizeString($row['department'] ?? null, null, 255),
-            'accountEnabled' => $this->processAccountEnabled($row['accountenabled'] ?? null),
-            'usageLocation' => $this->processUsageLocation($row['usagelocation'] ?? null),
-            'streetAddress' => $this->sanitizeString($row['streetaddress'] ?? null, null, 500),
-            'state' => $this->sanitizeString($row['state'] ?? null, null, 100),
-            'country' => $this->sanitizeString($row['country'] ?? null, null, 100),
-            'officeLocation' => $this->sanitizeString($row['officelocation'] ?? null, null, 255),
-            'city' => $this->sanitizeString($row['city'] ?? null, null, 100),
-            'postalCode' => $this->sanitizeString($row['postalcode'] ?? null, null, 20),
-            'telephoneNumber' => $this->sanitizeString($row['telephonenumber'] ?? null, null, 50),
-            'mobilePhone' => $this->sanitizeString($row['mobilephone'] ?? null, null, 50),
-            'alternateEmailAddress' => $this->sanitizeEmail($row['alternateemailaddress'] ?? null),
-            'ageGroup' => $this->sanitizeString($row['agegroup'] ?? null, null, 50),
-            'consentProvidedForMinor' => $this->sanitizeString($row['consentprovidedforminor'] ?? null, null, 50),
-            'legalAgeGroupClassification' => $this->sanitizeString($row['legalagegroupclassification'] ?? null, null, 100),
-            'companyName' => $this->sanitizeString($row['companyname'] ?? null, 'Freight in Time', 255),
-            'creationType' => $this->sanitizeString($row['creationtype'] ?? null, null, 50),
-            'directorySynced' => $this->processDirectorySynced($row['directorysynced'] ?? null),
-            'invitationState' => $this->sanitizeString($row['invitationstate'] ?? null, null, 50),
-            'identityIssuer' => $this->sanitizeString($row['identityissuer'] ?? null, null, 255),
-            'createdDateTime' => $createdDateTime,
-            'updated_at' => now()
-        ];
+ private function prepareUserData($row)
+{
+    $azureId = $this->generateValidUuid($row['id'] ?? null);
+    $createdDateTime = $this->formatCreatedDateTime($row['createddatetime'] ?? null);
+    
+    // FIXED: Handle displayName properly
+    $displayName = $this->sanitizeString($row['displayname'] ?? null, null, 255);
+    $userPrincipalName = trim($row['userprincipalname'] ?? '');
+    
+    // If displayName is empty, generic, or looks problematic, extract from email
+    if ($this->isGenericDisplayName($displayName)) {
+        $displayName = $this->extractDisplayNameFromEmail($userPrincipalName);
+        Log::info("Generated displayName from email", [
+            'userPrincipalName' => $userPrincipalName,
+            'generatedDisplayName' => $displayName
+        ]);
     }
+    
+    return [
+         'id' => $azureId,
+        'azure_id' => $azureId,
+        'displayName' => $displayName,
+        'surname' => $this->sanitizeString($row['surname'] ?? null, null, 100),
+        'mail' => $this->sanitizeEmail($row['mail'] ?? null),
+        'givenName' => $this->sanitizeString($row['givenname'] ?? null, null, 100),
+        'userType' => $this->sanitizeString($row['usertype'] ?? null, 'Member', 50),
+        'jobTitle' => $this->sanitizeString($row['jobtitle'] ?? null, null, 255),
+        'department' => $this->sanitizeString($row['department'] ?? null, null, 255),
+        'accountEnabled' => $this->processAccountEnabled($row['accountenabled'] ?? null),
+        'usageLocation' => $this->processUsageLocation($row['usagelocation'] ?? null),
+        'streetAddress' => $this->sanitizeString($row['streetaddress'] ?? null, null, 500),
+        'state' => $this->sanitizeString($row['state'] ?? null, null, 100),
+        'country' => $this->sanitizeString($row['country'] ?? null, null, 100),
+        'officeLocation' => $this->sanitizeString($row['officelocation'] ?? null, null, 255),
+        'city' => $this->sanitizeString($row['city'] ?? null, null, 100),
+        'postalCode' => $this->sanitizeString($row['postalcode'] ?? null, null, 20),
+        'telephoneNumber' => $this->sanitizeString($row['telephonenumber'] ?? null, null, 50),
+        'mobilePhone' => $this->sanitizeString($row['mobilephone'] ?? null, null, 50),
+        'alternateEmailAddress' => $this->sanitizeEmail($row['alternateemailaddress'] ?? null),
+        'ageGroup' => $this->sanitizeString($row['agegroup'] ?? null, null, 50),
+        'consentProvidedForMinor' => $this->sanitizeString($row['consentprovidedforminor'] ?? null, null, 50),
+        'legalAgeGroupClassification' => $this->sanitizeString($row['legalagegroupclassification'] ?? null, null, 100),
+        'companyName' => $this->sanitizeString($row['companyname'] ?? null, 'Freight in Time', 255),
+        'creationType' => $this->sanitizeString($row['creationtype'] ?? null, null, 50),
+        'directorySynced' => $this->processDirectorySynced($row['directorysynced'] ?? null),
+        'invitationState' => $this->sanitizeString($row['invitationstate'] ?? null, null, 50),
+        'identityIssuer' => $this->sanitizeString($row['identityissuer'] ?? null, null, 255),
+        'createdDateTime' => $createdDateTime,
+        'updated_at' => now()
+    ];
+}
+
+
+
+/**
+ * Check if display name is generic or problematic
+ */
+private function isGenericDisplayName(?string $displayName): bool
+{
+    if (empty($displayName)) {
+        return true;
+    }
+    
+    $genericNames = [
+        // 'Marilign Anawte',
+        'Unknown User',
+        'User',
+        'Guest',
+        'Unknown',
+        'N/A'
+    ];
+    
+    return in_array(trim($displayName), $genericNames);
+}
+
+
+/**
+ * Extract display name from email
+ */
+private function extractDisplayNameFromEmail(string $email): string
+{
+    if (strpos($email, '@') !== false) {
+        $username = explode('@', $email)[0];
+        // Truncate to 255 chars and capitalize first letter
+        return ucfirst(substr($username, 0, 255));
+    }
+    
+    return substr($email, 0, 255);
+}
 
     // Keep all your existing helper methods (generateValidUuid, sanitizeString, etc.)
     private function generateValidUuid($id)

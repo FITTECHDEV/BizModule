@@ -142,6 +142,9 @@
                                     $userId = $user->id ?? $user->userPrincipalName;
                                 @endphp
 
+
+                                
+
                                 <tr @if ($uniqueLoginDays === 0) class="table-danger" @endif>
                                     <td>{{ $user->displayName ?? 'Unknown' }}</td>
                                     <td>{{ $user->userPrincipalName ?? 'N/A' }}</td>
@@ -168,6 +171,9 @@
                         </tbody>
                     </table>
                 </div>
+
+
+               
 
                 {{-- Pagination --}}
                 <div class="mt-3" id="pagination-container">

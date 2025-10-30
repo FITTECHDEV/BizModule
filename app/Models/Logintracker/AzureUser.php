@@ -178,6 +178,63 @@ public static function findByIdentifier(string $identifier): ?self
         return null;
     }
 
+
+    /**
+ * Fix duplicate display names by using email username
+ * 
+ * @param string|null $duplicateName The display name to fix (default: 'Marilign Anawte')
+ * @return int Number of users updated
+ */
+public static function fixDuplicateDisplayNames(?string $duplicateName = 'Marilign Anawte'): int
+{
+    // Find all users with the duplicate display name
+    $affectedUsers = \DB::table('Azure_Users')
+        ->where('displayName', $duplicateName)
+        ->whereNotNull('userPrincipalName')
+        ->get();
+    
+    if ($affectedUsers->isEmpty()) {
+        Log::info('No users found with duplicate display name', ['name' => $duplicateName]);
+        return 0;
+    }
+    
+    $updated = 0;
+    
+    foreach ($affectedUsers as $user) {
+        // Extract username from email (part before @)
+        if (strpos($user->userPrincipalName, '@') !== false) {
+            $emailParts = explode('@', $user->userPrincipalName);
+            $username = $emailParts[0];
+            
+            // Capitalize first letter: a.ali -> A.ali
+            $newDisplayName = ucfirst($username);
+            
+            // Truncate to 23 chars (DB column limit)
+            $newDisplayName = substr($newDisplayName, 0, 23);
+            
+            \DB::table('Azure_Users')
+                ->where('id', $user->id)
+                ->update(['displayName' => $newDisplayName]);
+            
+            $updated++;
+            
+            Log::info('Updated display name', [
+                'id' => $user->id,
+                'old' => $duplicateName,
+                'new' => $newDisplayName,
+                'email' => $user->userPrincipalName
+            ]);
+        }
+    }
+    
+    Log::info('Fixed duplicate display names', [
+        'duplicate_name' => $duplicateName,
+        'updated' => $updated
+    ]);
+    
+    return $updated;
+}
+
     public static function findOrCreateUser(string $userPrincipalName, ?string $displayName = null, ?string $userIdFromCsv = null): ?self
     {
         try {
