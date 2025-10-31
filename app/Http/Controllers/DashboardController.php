@@ -39,7 +39,7 @@ class DashboardController extends Controller
         // 'all'
     ];
 
-    
+
 // private function getSystemMapping()
 // {
 //     return [
@@ -302,251 +302,68 @@ public function index(Request $request)
     set_time_limit(120); // 2 minutes
 
     try {
-        // Add cache busting parameter support
-        if ($request->has('refresh_cache')) {
-            $this->clearDashboardCache();
-        }
+        // Get pagination and search parameters
+        $perPage = $request->input('per_page', 17);
+        $currentPage = $request->input('page', 1);
+        $search = $request->input('search', '');
 
-        $filters = $this->filterService->parseFilters($request);
-        $range = $filters['range'] ?? 'last_3_months';
-        $system = $this->validateSystemSelection($request->input('system', 'all'));
-        $search = $request->input('search');
-        $date = $request->input('date'); // Add custom date support
-
-        Log::info('Dashboard query with enhanced system filtering v2 and calendar support', [
-            'selected_system' => $system,
-            'range' => $range,
-            'custom_date' => $date,
-            'excluded_systems' => $this->excludedSystems
+        Log::info('Dashboard index called', [
+            'per_page' => $perPage,
+            'page' => $currentPage,
+            'search' => $search,
+            'is_ajax' => $request->ajax()
         ]);
 
-        // Get actual date range from clean data
-        try {
-            $actualDateRange = $this->getActualDateRange();
-        } catch (\Exception $e) {
-            Log::error('Failed to get actual date range', [
-                'error' => $e->getMessage()
-            ]);
-            $actualDateRange = [
-                'min_date' => now()->subYear(),
-                'max_date' => now(),
-                'has_data' => false
-            ];
-        }
-
-        // Calculate intended date ranges with custom date support
-        if ($range === 'custom' && $date) {
-            // For custom date, use the specific date provided
-            $startDate = Carbon::parse($date)->startOfDay();
-            $endDate = Carbon::parse($date)->endOfDay();
-        } else {
-            // Use predefined ranges
-            $startDate = match ($range) {
-                'this_month' => now()->startOfMonth(),
-                'last_month' => now()->subMonth()->startOfMonth(),
-                'last_3_months' => now()->subMonths(3)->startOfDay(),
-                'last_6_months' => now()->subMonths(6)->startOfDay(),
-                'last_year' => now()->subYear()->startOfDay(),
-                'all_time' => $actualDateRange['min_date'],
-                default => now()->subMonths(3)->startOfDay(),
-            };
-
-            $endDate = match ($range) {
-                'this_month' => now()->endOfMonth(),
-                'last_month' => now()->subMonth()->endOfMonth(),
-                'last_3_months' => now()->endOfDay(),
-                'last_6_months' => now()->endOfDay(),
-                'last_year' => now()->endOfDay(),
-                'all_time' => $actualDateRange['max_date'],
-                default => now()->endOfDay(),
-            };
-        }
-
-        // Only constrain dates for 'all_time', not for custom dates
-        if ($range === 'all_time') {
-            $startDate = max($startDate, $actualDateRange['min_date']);
-            $endDate = min($endDate, $actualDateRange['max_date']);
-
-            if ($startDate > $endDate) {
-                $startDate = $actualDateRange['min_date'];
-                $endDate = $actualDateRange['max_date'];
-            }
-        }
-
-        // For custom dates, check if the date has data
-        $hasDataInPeriod = $range === 'custom' ?
-            ($startDate >= $actualDateRange['min_date'] && $startDate <= $actualDateRange['max_date']) :
-            ($startDate >= $actualDateRange['min_date'] && $startDate <= $actualDateRange['max_date']);
-
-        if (!$hasDataInPeriod && $range !== 'all_time' && $range !== 'custom') {
-            Log::info('Selected date range has no data - will show empty results', [
-                'range' => $range,
-                'selected_start' => $startDate->toDateString(),
-                'selected_end' => $endDate->toDateString(),
-                'actual_data_range' => [
-                    'min' => $actualDateRange['min_date']->toDateString(),
-                    'max' => $actualDateRange['max_date']->toDateString()
-                ]
+        // Get summary data from stored procedure
+        $summary = $this->getUserSummary();
+        
+        // Get login list from stored procedure
+        $loginList = $this->getLoginViewList();
+        
+        // Apply search filter if provided
+        if (!empty($search)) {
+            $loginList = $loginList->filter(function($user) use ($search) {
+                $searchLower = strtolower($search);
+                return str_contains(strtolower($user['name']), $searchLower) ||
+                       str_contains(strtolower($user['login_id']), $searchLower);
+            })->values();
+            
+            Log::info('Search applied', [
+                'search_term' => $search,
+                'filtered_count' => $loginList->count()
             ]);
         }
-
-        $totalDays = $startDate && $endDate ? $startDate->diffInDays($endDate) + 1 : 365;
-
-        Log::info('Dashboard using selected date range with calendar support', [
-            'range' => $range,
-            'system' => $system,
-            'custom_date' => $date,
-            'start_date' => $startDate->toDateString(),
-            'end_date' => $endDate->toDateString(),
-            'has_data_in_period' => $hasDataInPeriod,
-            'excluded_systems' => $this->excludedSystems
-        ]);
-
-        // FIXED: Enhanced user query with consistent system filtering
-        if ($system && $system !== 'all') {
-            $query = AzureUser::valid()
-                ->select('Azure_Users.id', 'Azure_Users.userPrincipalName', 'Azure_Users.displayName', 'Azure_Users.mail')
-                ->join('Azure_LoginDetails as ald_filter', 'Azure_Users.id', '=', 'ald_filter.user_id')
-                ->whereNotIn('ald_filter.system', $this->excludedSystems);
-
-            // Apply the same system filtering as UserController
-            $this->applySystemFilter($query->where(function($q) use ($system) {
-                // This creates a sub-query for the system filter
-            }), $system);
-
-            $query = $query->groupBy('Azure_Users.id', 'Azure_Users.userPrincipalName', 'Azure_Users.displayName', 'Azure_Users.mail')
-                ->with(['signIns' => function ($q) use ($startDate, $endDate, $system) {
-                    if ($startDate && $endDate) {
-                        $q->whereBetween('date_utc', [$startDate, $endDate]);
-                    }
-                    $this->applySystemFilter($q, $system);
-                    $q->whereNotIn('system', $this->excludedSystems);
-                    $q->orderBy('date_utc', 'desc');
-                }]);
-        } else {
-            // For 'all' systems: show all users but filter sign-ins by date range and excluded systems
-            $query = AzureUser::valid()
-                ->select('Azure_Users.id', 'Azure_Users.userPrincipalName', 'Azure_Users.displayName', 'Azure_Users.mail')
-                ->with(['signIns' => function ($q) use ($startDate, $endDate) {
-                    if ($startDate && $endDate) {
-                        $q->whereBetween('date_utc', [$startDate, $endDate]);
-                    }
-                    $q->whereNotIn('system', $this->excludedSystems);
-                    $q->orderBy('date_utc', 'desc');
-                }]);
-        }
-
-        // Add search functionality
-        if ($search) {
-            $search = trim(strip_tags($search));
-            if (strlen($search) > 255) {
-                $search = substr($search, 0, 255);
-            }
-            $query->where(function ($q) use ($search) {
-                $q->where('Azure_Users.displayName', 'LIKE', "%{$search}%")
-                  ->orWhere('Azure_Users.userPrincipalName', 'LIKE', "%{$search}%")
-                  ->orWhere('Azure_Users.mail', 'LIKE', "%{$search}%");
-            });
-        }
-
-        $perPage = 17;
-        $users = $query->paginate($perPage)->withQueryString();
-
-        // Calculate stats with improved method
-        try {
-            $stats = $this->calculateStats($startDate, $endDate, $system);
-        } catch (\Exception $e) {
-            Log::error('Failed to calculate dashboard stats', [
-                'error' => $e->getMessage(),
-                'system' => $system,
-                'date_range' => [$startDate->toDateString(), $endDate->toDateString()]
-            ]);
-
-            // Provide fallback stats
-            $stats = [
-                'totalUsers' => 0,
-                'loggedInCount' => 0,
-                'notLoggedInCount' => 0,
-                'totalLogins' => 0,
-                'lastLogin' => null,
-                'signIns' => collect(),
-                'error' => true
-            ];
-        }
-
-        // Get clean systems list (excludes unwanted systems)
-        $systems = $this->getAvailableSystems();
-        // array_unshift($systems, 'all');
+        
+        // Paginate the results
+        $total = $loginList->count();
+        $pagedData = $loginList->slice(($currentPage - 1) * $perPage, $perPage)->values();
+        
+        $users = new \Illuminate\Pagination\LengthAwarePaginator(
+            $pagedData,
+            $total,
+            $perPage,
+            $currentPage,
+            ['path' => $request->url(), 'query' => $request->query()]
+        );
 
         if ($request->ajax()) {
             return response()->json([
-                'users' => collect($users->items())->map(function ($user) {
-                    return [
-                        'id' => $user->id ?? $user->userPrincipalName,
-                        'userPrincipalName' => $user->userPrincipalName,
-                        'displayName' => $user->displayName ?? 'Unknown',
-                        'mail' => $user->mail ?? 'N/A',
-                        'signIns' => $user->signIns->map(function ($signIn) {
-                            return [
-                                'id' => $signIn->id,
-                                'system' => $this->normalizeSystemName($signIn->system),
-                                'date_utc' => $signIn->date_utc->toIso8601String(),
-                                'application' => $signIn->application ?? 'N/A',
-                            ];
-                        })->toArray(),
-                    ];
-                })->toArray(),
-                'totalUsers' => $stats['totalUsers'],
-                'loggedInCount' => $stats['loggedInCount'],
-                'notLoggedInCount' => $stats['notLoggedInCount'],
-                'totalLogins' => $stats['totalLogins'],
-                'lastLogin' => $stats['lastLogin'],
-                'signIns' => $stats['signIns']->map(function ($signIn) {
-                    return [
-                        'id' => $signIn->id,
-                        'system' => $this->normalizeSystemName($signIn->system),
-                        'date_utc' => $signIn->date_utc->toIso8601String(),
-                        'application' => $signIn->application ?? 'N/A',
-                    ];
-                })->toArray(),
-                'totalDays' => $totalDays,
-                'rangeInput' => $range,
-                'rangeLabel' => $filters['rangeLabel'] ?? $range,
-                'systemInput' => $system,
-                'systems' => $systems,
-                'pagination' => $users->withQueryString()->links()->toHtml(),
-                'dateRange' => [
-                    'start' => $startDate->toDateString(),
-                    'end' => $endDate->toDateString(),
-                    'data_available' => $hasDataInPeriod
-                ],
-                'selectedDate' => $date, // Include custom date in response
-                'excludedSystems' => $this->excludedSystems
+                'total_users' => $summary['total_users'],
+                'active_this_month' => $summary['active_this_month'],
+                'active_last_month' => $summary['active_last_month'],
+                'inactive_users' => $summary['inactive_users'],
+                'users' => $pagedData->toArray(),
+                'total' => $total,
+                'pagination' => $users->links()->toHtml(),
             ], 200);
         }
 
         return view('logintracker.dashboard', [
+            'total_users' => $summary['total_users'],
+            'active_this_month' => $summary['active_this_month'],
+            'active_last_month' => $summary['active_last_month'],
+            'inactive_users' => $summary['inactive_users'],
             'users' => $users,
-            'totalUsers' => $stats['totalUsers'],
-            'loggedInCount' => $stats['loggedInCount'],
-            'notLoggedInCount' => $stats['notLoggedInCount'],
-            'totalLogins' => $stats['totalLogins'],
-            'lastLogin' => $stats['lastLogin'],
-            'signIns' => $stats['signIns'],
-            'totalDays' => $totalDays,
-            'rangeInput' => $range,
-            'rangeLabel' => $filters['rangeLabel'] ?? $range,
-            'systemInput' => $system,
-            'systems' => $systems,
-            'selectedRange' => $range,
-            'selectedSystem' => $system,
-            'selectedDate' => $date, // Pass custom date to view
-            'actualDateRange' => [
-                'start' => $startDate->toDateString(),
-                'end' => $endDate->toDateString(),
-                'data_available' => $hasDataInPeriod
-            ],
-            'excludedSystems' => $this->excludedSystems
         ]);
 
     } catch (QueryException $e) {
@@ -1334,6 +1151,122 @@ $system = $this->validateSystemSelection($request->input('system', 'SCM'));
             ]);
         }
     }
+/**
+ * Get user summary from stored procedure - FIXED with actual column names
+ */
+private function getUserSummary()
+{
+    try {
+        $pdo = DB::connection()->getPdo();
+        $stmt = $pdo->prepare("SET NOCOUNT ON; EXEC dbo.sp_Azure_UserSummary;");
+        $stmt->execute();
+        
+        $results = $stmt->fetchAll(\PDO::FETCH_OBJ);
+        
+        while ($stmt->nextRowset()) {
+            // Clear buffer
+        }
+        
+        Log::info('SP UserSummary PDO results', [
+            'count' => count($results),
+            'first_result' => !empty($results) ? $results[0] : null,
+        ]);
+        
+        if (!empty($results) && is_object($results[0])) {
+            $firstRow = $results[0];
+            
+            // FIXED: Use actual column names from stored procedure
+            return [
+                'total_users' => $firstRow->Totaluser ?? 0,
+                'active_this_month' => $firstRow->ActiveThisMonth ?? 0,
+                'active_last_month' => $firstRow->ActiveLastMonth ?? 0,
+                'inactive_users' => $firstRow->InActiveUser ?? 0,
+            ];
+        }
+        
+        Log::warning('SP UserSummary returned no data');
+        
+        return [
+            'total_users' => 0,
+            'active_this_month' => 0,
+            'active_last_month' => 0,
+            'inactive_users' => 0,
+        ];
+        
+    } catch (\Exception $e) {
+        Log::error('Failed to get user summary from SP', [
+            'error' => $e->getMessage(),
+            'line' => $e->getLine(),
+            'trace' => substr($e->getTraceAsString(), 0, 500)
+        ]);
+        
+        return [
+            'total_users' => 0,
+            'active_this_month' => 0,
+            'active_last_month' => 0,
+            'inactive_users' => 0,
+        ];
+    }
+}
+
+/**
+ * Get login view list from stored procedure - FIXED with data sanitization
+ */
+private function getLoginViewList()
+{
+    try {
+        $pdo = DB::connection()->getPdo();
+        $stmt = $pdo->prepare("SET NOCOUNT ON; EXEC dbo.sp_Azure_LoginViewList;");
+        $stmt->execute();
+        
+        $results = $stmt->fetchAll(\PDO::FETCH_OBJ);
+        
+        while ($stmt->nextRowset()) {
+            // Clear buffer
+        }
+        
+        Log::info('SP LoginViewList PDO results', [
+            'count' => count($results),
+            'first_result' => !empty($results) ? $results[0] : null,
+        ]);
+        
+        if (empty($results)) {
+            Log::warning('SP LoginViewList returned no data');
+            return collect();
+        }
+        
+        return collect($results)->map(function($item) {
+            // Clean up the last login field
+            $lastLogin = $item->LastLogin ?? null;
+            if ($lastLogin === 'Never Logged In' || $lastLogin === 'Never' || empty($lastLogin)) {
+                $lastLogin = null;
+            }
+            
+            // Clean up logins count
+            $loginsLastMonth = $item->NoofLoginLastMonth ?? 0;
+            if ($loginsLastMonth === 'Never Logged In' || !is_numeric($loginsLastMonth)) {
+                $loginsLastMonth = 0;
+            }
+            
+            return [
+                'name' => $item->Name ?? 'N/A',
+                'login_id' => $item->LoginID ?? 'N/A',
+                'logins_last_month' => $loginsLastMonth,
+                'last_login' => $lastLogin,
+            ];
+        });
+        
+    } catch (\Exception $e) {
+        Log::error('Failed to get login view list from SP', [
+            'error' => $e->getMessage(),
+            'line' => $e->getLine(),
+            'trace' => substr($e->getTraceAsString(), 0, 500)
+        ]);
+        
+        return collect();
+    }
+}
+
     public function debugRelationships(Request $request)
 {
     $system = $request->input('system', 'SCM');
