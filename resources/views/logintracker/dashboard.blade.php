@@ -73,12 +73,11 @@
                     <option value="50" {{ request('per_page') == 50 ? 'selected' : '' }}>50</option>
                     <option value="100" {{ request('per_page') == 100 ? 'selected' : '' }}>100</option>
                 </select>
-                <span class="ms-2 small text-muted">entries</span>
             </div>
 
             <div class="d-flex align-items-center">
-                <input type="text" id="search-input" class="form-control form-control-sm" placeholder="Search users..."
-                       style="width: 200px;" value="{{ request('search', '') }}">
+                <input type="text" id="search-input" class="form-control" placeholder="Search users..."
+                       style="width: 300px;">
                 <div class="spinner-border spinner-border-sm text-primary ms-2 d-none" id="search-spinner"></div>
             </div>
         </div>
@@ -131,12 +130,12 @@
                     </table>
                 </div>
 
-                {{-- Pagination & Info --}}
-                <div class="d-flex flex-wrap justify-content-between align-items-center px-3 py-3">
-                    <div id="table-info" class="small text-muted">
-                        Showing {{ $users->firstItem() ?? 0 }} to {{ $users->lastItem() ?? 0 }} of {{ $users->total() }} entries
+                {{-- Pagination with Info --}}
+                <div class="d-flex justify-content-between align-items-center px-3 py-3 flex-wrap gap-3">
+                    <div id="bottom-table-info" class="small text-muted">
+                        Showing {{ $users->firstItem() ?? 0 }} to {{ $users->lastItem() ?? 0 }} of {{ $users->total() }} results
                     </div>
-                    <div id="pagination-container">
+                    <div id="pagination-container" class="ms-auto">
                         {{ $users->appends(request()->query())->links() }}
                     </div>
                 </div>
@@ -184,77 +183,131 @@
             font-size: 0.8rem;
         }
 
-        /* --- Pagination Styling (Improved) --- */
-        .pagination svg { display: none !important; }
-
-        #pagination-container {
-            display: flex;
-            justify-content: flex-end;
-            align-items: center;
+        /* Hide Laravel's default pagination info text */
+        #pagination-container nav > div:first-child {
+            display: none !important;
+        }
+        
+        #pagination-container nav > div.hidden.sm\\:flex-1 > div:first-child {
+            display: none !important;
         }
 
+        /* Force pagination nav wrapper to align right */
+        #pagination-container nav {
+            width: auto !important;
+            margin-left: auto !important;
+        }
+
+        /* Hide SVG icons from pagination */
+        #pagination-container svg {
+            display: none !important;
+        }
+
+        /* Pagination Container */
+        #pagination-container {
+            display: flex !important;
+            justify-content: flex-end !important;
+            align-items: center !important;
+            flex: 0 0 auto !important;
+            margin-left: auto !important;
+        }
+
+        #pagination-container nav {
+            display: flex !important;
+            justify-content: flex-end !important;
+            width: auto !important;
+        }
+
+        #pagination-container nav > * {
+            margin-left: auto !important;
+        }
+
+        /* Pagination List */
         #pagination-container .pagination {
-            display: flex;
+            display: flex !important;
             align-items: center;
-            gap: 0.35rem;
+            gap: 0.25rem;
+            margin: 0 0 0 auto !important;
+            padding: 0;
+            list-style: none;
+            justify-content: flex-end !important;
+        }
+
+        /* Page Items */
+        #pagination-container .page-item {
+            list-style: none;
             margin: 0;
         }
 
-        #pagination-container .page-item { list-style: none; }
-
+        /* Page Links */
         #pagination-container .page-link {
             display: flex;
             align-items: center;
             justify-content: center;
-            min-width: 38px;
-            height: 38px;
-            padding: 0 12px;
-            font-size: 0.9rem;
+            min-width: 36px;
+            height: 36px;
+            padding: 0 10px;
+            font-size: 0.875rem;
             font-weight: 500;
             color: #495057;
             background-color: #fff;
             border: 1px solid #dee2e6;
             border-radius: 6px;
+            text-decoration: none;
             transition: all 0.2s ease-in-out;
+            cursor: pointer;
         }
 
-        #pagination-container .page-link:hover:not(.disabled),
-        #pagination-container .page-link:focus-visible {
+        /* Hover State */
+        #pagination-container .page-link:hover:not(.disabled) {
             background-color: #f8f9fa;
             border-color: #adb5bd;
             color: #0d6efd;
         }
 
+        /* Focus State */
+        #pagination-container .page-link:focus-visible {
+            outline: 2px solid #0d6efd;
+            outline-offset: 2px;
+            box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+        }
+
+        /* Active Page */
         #pagination-container .page-item.active .page-link {
             background-color: #0d6efd;
             border-color: #0d6efd;
             color: #fff;
             font-weight: 600;
-            box-shadow: 0 2px 6px rgba(13,110,253,0.25);
+            box-shadow: 0 2px 6px rgba(13, 110, 253, 0.3);
+            cursor: default;
         }
 
+        /* Disabled State */
         #pagination-container .page-item.disabled .page-link {
-            color: #adb5bd;
+            color: #6c757d;
+            background-color: #fff;
+            border-color: #dee2e6;
             cursor: not-allowed;
-            background-color: #f8f9fa;
+            opacity: 0.65;
         }
 
+        /* Previous/Next Buttons */
         #pagination-container .page-item:first-child .page-link,
         #pagination-container .page-item:last-child .page-link {
             font-weight: 600;
-            padding: 0 16px;
+            padding: 0 14px;
             min-width: auto;
         }
 
-        #pagination-container .page-item:first-child .page-link {
-            border-top-left-radius: 20px;
-            border-bottom-left-radius: 20px;
-        }
-        #pagination-container .page-item:last-child .page-link {
-            border-top-right-radius: 20px;
-            border-bottom-right-radius: 20px;
+        /* Ellipsis Styling */
+        #pagination-container .page-item.ellipsis .page-link {
+            cursor: default;
+            pointer-events: none;
+            background-color: transparent;
+            border-color: transparent;
         }
 
+        /* Mobile Responsive */
         @media (max-width: 768px) {
             #pagination-container .page-link {
                 min-width: 32px;
@@ -262,6 +315,32 @@
                 font-size: 0.8rem;
                 padding: 0 8px;
             }
+
+            #pagination-container .page-item:first-child .page-link,
+            #pagination-container .page-item:last-child .page-link {
+                padding: 0 10px;
+            }
+
+            /* Stack info and pagination on mobile */
+            .d-flex.justify-content-between.align-items-center.px-3.py-3 {
+                flex-direction: column !important;
+                align-items: flex-start !important;
+            }
+
+            #bottom-table-info {
+                margin-bottom: 1rem;
+            }
+
+            #pagination-container {
+                justify-content: center !important;
+                width: 100%;
+            }
+        }
+
+        /* Loading State */
+        #pagination-container.loading {
+            opacity: 0.6;
+            pointer-events: none;
         }
     </style>
 @endsection
@@ -282,28 +361,188 @@
             let searchTerm = '{{ request('search', '') }}';
             let isLoading = false;
 
+            /**
+             * Update the table information text at the bottom
+             */
             function updateTableInfo(from, to, total) {
-                $('#table-info').text(`Showing ${from} to ${to} of ${total} entries`);
+                const infoText = `Showing ${from} to ${to} of ${total} results`;
+                $('#bottom-table-info').text(infoText);
             }
 
+            /**
+             * Convert Laravel Tailwind pagination to Bootstrap structure and apply improvements
+             */
             function cleanupPagination() {
+                // Remove any SVG icons
                 $('#pagination-container svg').remove();
-                $('#pagination-container .page-link').each(function() {
-                    const text = $(this).text().trim();
-                    if (text === '' || text === '‹' || text === '›') {
-                        const isPrev = $(this).parent().is('.page-item:first-child');
-                        const isNext = $(this).parent().is('.page-item:last-child');
-                        $(this).html(isPrev ? 'Previous' : isNext ? 'Next' : '');
+                
+                const $container = $('#pagination-container');
+                const $nav = $container.find('nav');
+                
+                // Remove the "Showing X to Y of Z results" text
+                $nav.find('div > div:first-child').remove();
+                $nav.find('p.text-sm.text-gray-700').remove();
+                
+                // Remove the "hidden" class that's hiding pagination on mobile
+                $nav.find('div.hidden').removeClass('hidden');
+                
+                // Debug: Log the container structure
+                console.log('Pagination nav HTML:', $nav.html());
+                
+                // Find the Tailwind pagination span container - look in the second div
+                const $paginationSpan = $nav.find('span.relative.z-0.inline-flex').first();
+                
+                if ($paginationSpan.length === 0) {
+                    console.log('No pagination span found');
+                    // Check if we already converted it
+                    if ($nav.find('ul.pagination').length > 0) {
+                        console.log('Pagination already converted');
+                        return;
+                    }
+                    return;
+                }
+                
+                // Get all pagination items (anchors and spans)
+                const $allItems = $paginationSpan.children('a, span');
+                
+                if ($allItems.length === 0) {
+                    console.log('No pagination items found');
+                    return;
+                }
+                
+                console.log('Found', $allItems.length, 'pagination items');
+                
+                // Create Bootstrap pagination structure
+                const $newPagination = $('<ul class="pagination"></ul>');
+                const pageNumbers = [];
+                let activePageNum = 1;
+                
+                $allItems.each(function(index) {
+                    const $this = $(this);
+                    const $li = $('<li class="page-item"></li>');
+                    const $link = $('<a class="page-link"></a>');
+                    
+                    // Get text content
+                    let text = $this.text().trim();
+                    
+                    // Determine if it's a link or disabled element
+                    if ($this.is('a')) {
+                        $link.attr('href', $this.attr('href'));
+                        const rel = $this.attr('rel');
+                        if (rel) $link.attr('rel', rel);
+                    } else {
+                        // It's a span (disabled or current)
+                        $li.addClass('disabled');
+                    }
+                    
+                    // Check for active/current page
+                    if ($this.find('[aria-current="page"]').length > 0 || $this.attr('aria-current') === 'page') {
+                        $li.addClass('active');
+                        const pageNum = parseInt(text);
+                        if (!isNaN(pageNum)) {
+                            activePageNum = pageNum;
+                        }
+                    }
+                    
+                    // Check for disabled state
+                    if ($this.find('[aria-disabled="true"]').length > 0 || $this.attr('aria-disabled') === 'true') {
+                        $li.addClass('disabled');
+                    }
+                    
+                    // Handle Previous button (first item)
+                    if (index === 0) {
+                        text = 'Previous';
+                        if ($li.hasClass('disabled')) {
+                            $li.hide(); // Hide disabled Previous button
+                        }
+                    } 
+                    // Handle Next button (last item)
+                    else if (index === $allItems.length - 1) {
+                        text = 'Next';
+                    }
+                    // Handle page numbers and ellipsis
+                    else {
+                        const pageNum = parseInt(text);
+                        if (!isNaN(pageNum)) {
+                            pageNumbers.push({
+                                num: pageNum,
+                                $li: $li,
+                                $link: $link
+                            });
+                        } else if (text === '...') {
+                            $li.addClass('ellipsis');
+                        }
+                    }
+                    
+                    $link.text(text);
+                    $li.append($link);
+                    $newPagination.append($li);
+                });
+                
+                // Replace old structure with new Bootstrap pagination
+                // Replace the entire wrapper div to simplify structure
+                const $wrapperDiv = $paginationSpan.closest('div.sm\\:flex-1');
+                if ($wrapperDiv.length > 0) {
+                    $wrapperDiv.replaceWith($newPagination);
+                } else {
+                    $paginationSpan.replaceWith($newPagination);
+                }
+                
+                // Ensure the nav is visible
+                $nav.css('display', 'flex');
+                
+                // Apply smart pagination display logic
+                if (pageNumbers.length > 7) {
+                    applySmartPagination(pageNumbers, activePageNum);
+                }
+                
+                console.log('Pagination cleanup complete. Active page:', activePageNum);
+                console.log('New pagination HTML:', $nav.html());
+                console.log('Pagination width after cleanup:', $nav.find('ul.pagination').width());
+            }
+
+            /**
+             * Apply smart pagination logic to show relevant pages
+             * Show: First 2, Last 2, Current, and Adjacent pages
+             */
+            function applySmartPagination(pageNumbers, activePage) {
+                const totalPages = pageNumbers[pageNumbers.length - 1].num;
+                let lastShownPage = 0;
+                
+                pageNumbers.forEach((page, index) => {
+                    const pageNum = page.num;
+                    const isActive = pageNum === activePage;
+                    const isFirst = pageNum <= 2;
+                    const isLast = pageNum > totalPages - 2;
+                    const isAdjacent = Math.abs(pageNum - activePage) <= 1;
+                    
+                    const shouldShow = isFirst || isLast || isActive || isAdjacent;
+                    
+                    if (shouldShow) {
+                        // Show ellipsis if there's a gap
+                        if (lastShownPage > 0 && pageNum > lastShownPage + 1) {
+                            const $ellipsis = $('<li class="page-item ellipsis disabled"><a class="page-link">...</a></li>');
+                            page.$li.before($ellipsis);
+                        }
+                        
+                        page.$li.show();
+                        lastShownPage = pageNum;
+                    } else {
+                        page.$li.hide();
                     }
                 });
             }
 
+            /**
+             * Load data via AJAX
+             */
             function loadData(page = 1) {
                 if (isLoading) return;
 
                 isLoading = true;
                 $('#loading').show();
                 $('#search-spinner').removeClass('d-none');
+                $('#pagination-container').addClass('loading');
 
                 $.ajax({
                     url: '{{ route('dashboard') }}',
@@ -312,7 +551,11 @@
                         'X-Requested-With': 'XMLHttpRequest',
                         'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
                     },
-                    data: { page, per_page: perPage, search: searchTerm },
+                    data: { 
+                        page: page, 
+                        per_page: perPage, 
+                        search: searchTerm 
+                    },
                     success: function(response) {
                         const tbody = $('#user-table-body');
                         tbody.empty();
@@ -327,8 +570,11 @@
                                 const userId = user.id || user.login_id;
                                 const lastLogin = user.last_login 
                                     ? new Date(user.last_login).toLocaleDateString('en-GB', {
-                                        day: 'numeric', month: 'short', year: 'numeric',
-                                        hour: '2-digit', minute: '2-digit'
+                                        day: 'numeric', 
+                                        month: 'short', 
+                                        year: 'numeric',
+                                        hour: '2-digit', 
+                                        minute: '2-digit'
                                       }).replace(',', '')
                                     : '<span class="text-muted">Never</span>';
 
@@ -352,27 +598,40 @@
 
                         updateTableInfo(from, to, totalRecords);
 
+                        // Update pagination
                         if (response.pagination) {
                             $('#pagination-container').html(response.pagination);
-                            setTimeout(cleanupPagination, 50);
+                            setTimeout(cleanupPagination, 100);
                         }
 
                         currentPage = page;
                     },
+                    error: function(xhr, status, error) {
+                        console.error('Error loading data:', error);
+                        const tbody = $('#user-table-body');
+                        tbody.html('<tr><td colspan="5" class="text-center text-danger py-4">Error loading data. Please try again.</td></tr>');
+                    },
                     complete: function() {
                         $('#loading').hide();
                         $('#search-spinner').addClass('d-none');
+                        $('#pagination-container').removeClass('loading');
                         isLoading = false;
                     }
                 });
             }
 
+            /**
+             * Event: Entries per page change
+             */
             $('#entries-select').on('change', function() {
                 perPage = parseInt($(this).val());
                 currentPage = 1;
                 loadData(currentPage);
             });
 
+            /**
+             * Event: Search input with debounce
+             */
             let searchTimeout;
             $('#search-input').on('input', function() {
                 clearTimeout(searchTimeout);
@@ -383,19 +642,38 @@
                 }, 300);
             });
 
+            /**
+             * Event: Pagination click
+             */
             $(document).on('click', '#pagination-container a.page-link', function(e) {
                 e.preventDefault();
+                
                 const href = $(this).attr('href');
-                if (!href || $(this).parent().hasClass('disabled') || $(this).parent().hasClass('active')) return;
+                const $parent = $(this).parent();
+                
+                // Ignore if disabled, active, or ellipsis
+                if (!href || $parent.hasClass('disabled') || $parent.hasClass('active') || $(this).text() === '...') {
+                    return;
+                }
 
-                const url = new URL(href);
-                const newPage = parseInt(url.searchParams.get('page')) || 1;
-                if (newPage !== currentPage) loadData(newPage);
+                try {
+                    const url = new URL(href);
+                    const newPage = parseInt(url.searchParams.get('page')) || 1;
+                    
+                    if (newPage !== currentPage) {
+                        loadData(newPage);
+                    }
+                } catch (error) {
+                    console.error('Error parsing pagination URL:', error);
+                }
             });
 
+            // Initialize form values
             $('#entries-select').val(perPage);
             $('#search-input').val(searchTerm);
-            cleanupPagination();
+            
+            // Run cleanup on initial page load
+            setTimeout(cleanupPagination, 150);
         });
     </script>
 @endsection

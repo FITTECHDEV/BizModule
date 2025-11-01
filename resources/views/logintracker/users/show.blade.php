@@ -1,10 +1,14 @@
-@extends('layouts.app')
+{{-- @extends('layouts.app') --}}
+@extends('adminlte::page')
+
+@section('title', 'Employee Details')
+
+@section('content_header')
+    <h1>Employee Details</h1>
+@stop
 
 @section('content')
-<div class="container mt-5">
-
-    {{-- Page Heading --}}
-    <h2 class="mb-4">Employee Details</h2>
+<div class="container-fluid">
 
     {{-- User Details Card --}}
     <div class="card mb-4">
@@ -162,7 +166,7 @@
         {{-- Recent Applications for Selected Period (Updates with date change) --}}
         @if (isset($recentApplications) && !$recentApplications->isEmpty())
             <div class="mb-4">
-                <h6 class="mb-3" style="color: #6c757d;">Recent Applications Used (Selected Period)</h6>
+                <h6 class="mb-3" style="color: #6c757d;"></h6>
                 <div class="row g-3">
                     @foreach ($recentApplications as $app)
                         <div class="col-md-4">
@@ -193,9 +197,10 @@
                 
                 if (!$hasPivotedData) {
                     // Transform vertical data (ApplicationName/NoofLogins) to horizontal
-                    $headers = ['Summary'];
+                    $headers = ['LoginDate'];
                     $dataRow = new stdClass();
-                    $dataRow->Summary = 'Total Logins';
+                    // Use the start date from the selected range
+                    $dataRow->LoginDate = isset($start) ? $start->format('Y-m-d') : \Carbon\Carbon::now()->format('Y-m-d');
                     
                     foreach($monthlySummary as $row) {
                         $appName = $row->ApplicationName ?? 'Unknown';
@@ -224,7 +229,7 @@
                             <tr style="background-color: #e9ecef;">
                                 @foreach($headers as $header)
                                     <th class="text-center align-middle" 
-                                        style="padding: 12px 8px; font-size: 13px; font-weight: 600; white-space: nowrap; min-width: {{ in_array($header, ['LoginDate', 'Summary']) ? '120px' : '90px' }}; {{ in_array($header, ['LoginDate', 'Summary']) ? 'background-color: #d1d1d1;' : '' }}">
+                                        style="padding: 12px 8px; font-size: 13px; font-weight: 600; white-space: nowrap; min-width: {{ $header === 'LoginDate' ? '120px' : '90px' }}; {{ $header === 'LoginDate' ? 'background-color: #d1d1d1;' : '' }}">
                                         {{ $header === 'LoginDate' ? 'Login Date' : $header }}
                                     </th>
                                 @endforeach
@@ -241,11 +246,6 @@
                                             <td class="text-center align-middle" 
                                                 style="padding: 10px 8px; font-size: 13px; font-weight: 500; background-color: #e9ecef;">
                                                 {{ $cellValue ? \Carbon\Carbon::parse($cellValue)->format('d-M-Y') : '' }}
-                                            </td>
-                                        @elseif($header === 'Summary')
-                                            <td class="text-center align-middle fw-bold" 
-                                                style="padding: 10px 8px; font-size: 13px; background-color: #e9ecef;">
-                                                {{ $cellValue }}
                                             </td>
                                         @else
                                             <td class="text-center align-middle" 
@@ -267,7 +267,7 @@
                     
                     foreach($transformedData as $row) {
                         foreach($headers as $header) {
-                            if (!in_array($header, ['LoginDate', 'Summary'])) {
+                            if ($header !== 'LoginDate') {
                                 $value = $row->$header ?? 0;
                                 if (!isset($systemTotals[$header])) {
                                     $systemTotals[$header] = 0;
@@ -338,7 +338,21 @@
     </div>
 
 </div>
+@stop
 
+@section('css')
+    <style>
+        .card-hover {
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .card-hover:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 15px rgba(0,0,0,0.2) !important;
+        }
+    </style>
+@stop
+
+@section('js')
 {{-- Enhanced JavaScript with date range support --}}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -441,5 +455,4 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 </script>
-
-@endsection
+@stop
