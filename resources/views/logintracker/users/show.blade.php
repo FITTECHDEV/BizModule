@@ -14,8 +14,6 @@
     <div class="card mb-4">
         <div class="card-body">
 
-            <h5 class="card-title mb-4">{{ $user->displayName }}</h5>
-
             <div class="row">
                 <!-- First Column -->
                 <div class="col-md-6">
@@ -69,19 +67,23 @@
         </div>
     </div>
 
-    {{-- Dynamic Current Month Banner (Always shows current month) --}}
+    {{-- Dynamic Date Range Banner --}}
+    @php
+        $displayStart = isset($start) ? $start : \Carbon\Carbon::now()->startOfMonth();
+        $displayEnd = isset($end) ? $end : \Carbon\Carbon::now();
+    @endphp
     <div class="alert mb-4" style="background-color: #17a2b8; color: white; border: none; padding: 10px 15px;">
-        <strong>Showing data for {{ \Carbon\Carbon::now()->format('M j, Y') }}</strong>
+        <strong>Showing data from {{ $displayStart->format('M j, Y') }} to {{ $displayEnd->format('M j, Y') }}</strong>
     </div>
 
-    {{-- Recent Applications Used (ALWAYS CURRENT MONTH DATA) --}}
+    {{-- Recent Applications Used --}}
     <div class="card mb-4">
         <div class="card-header">
             <h5 class="mb-0">Recent Applications Used</h5>
         </div>
         <div class="card-body">
             @if ($currentMonthApplications->isEmpty())
-                <div class="alert alert-info">No recent application usage found for this month.</div>
+                <div class="alert alert-info">No recent application usage found for this period.</div>
             @else
                 <div class="row">
                 @foreach ($currentMonthApplications as $app)
@@ -90,11 +92,7 @@
                             <div class="card-body">
                                 <h5 class="card-title fs-5">{{ $app->application ?? 'Unknown App' }}</h5>
                                 <p class="card-text fs-6">
-                                    @if($app->system && $app->system != $app->application)
-                                        <span class="text-muted">System: {{ $app->system }}</span><br>
-                                    @endif
-                                    <span class="badge bg-info text-dark fs-6">{{ $app->usage_count }} logins</span><br>
-                                    <span class="text-muted">Last used: {{ \Carbon\Carbon::parse($app->last_used)->format('M j, Y g:i A') }}</span>
+                                    <span class="badge bg-info text-dark fs-6">{{ $app->usage_count }} logins</span>
                                 </p>
                             </div>
                         </div>
@@ -115,32 +113,24 @@
                   id="filterForm"
                   class="d-flex gap-2 align-items-center">
 
-                {{-- Date Range Dropdown --}}
-                <select name="range" id="range" class="form-select form-select-sm" style="width: auto;">
-                    @php
-                        $selectedRange = request('range', 'this_month');
-                    @endphp
-                    <option value="this_month" {{ $selectedRange == 'this_month' ? 'selected' : '' }}>This Month</option>
-                    <option value="last_month" {{ $selectedRange == 'last_month' ? 'selected' : '' }}>Last Month</option>
-                    <option value="last_3_months" {{ $selectedRange == 'last_3_months' ? 'selected' : '' }}>Last 3 Months</option>
-                    <option value="custom" {{ $selectedRange == 'custom' ? 'selected' : '' }}>Custom Date</option>
-                </select>
-
                 {{-- Date Range Pickers (From - To) --}}
-                <div id="dateRangeContainer" style="{{ $selectedRange == 'custom' ? '' : 'display: none;' }}" class="d-flex gap-1 align-items-center">
+                <div class="d-flex gap-1 align-items-center">
+                    <label for="start_date" class="me-1 small">From:</label>
                     <input type="date" 
                            name="start_date" 
                            id="start_date" 
                            class="form-control form-control-sm"
                            style="width: 150px;"
-                           value="{{ request('start_date') ?? ($selectedRange == 'custom' && isset($start) ? $start->format('Y-m-d') : '') }}">
-                    <span class="text-muted small">to</span>
+                           value="{{ request('start_date') ?? $displayStart->format('Y-m-d') }}"
+                           required>
+                    <label for="end_date" class="mx-1 small">To:</label>
                     <input type="date" 
                            name="end_date" 
                            id="end_date" 
                            class="form-control form-control-sm"
                            style="width: 150px;"
-                           value="{{ request('end_date') ?? ($selectedRange == 'custom' && isset($end) ? $end->format('Y-m-d') : '') }}">
+                           value="{{ request('end_date') ?? $displayEnd->format('Y-m-d') }}"
+                           required>
                 </div>
 
                 {{-- Buttons --}}
@@ -150,34 +140,16 @@
             </form>
         </div>
 
-        {{-- Date Range Display Banner (Shows selected range) --}}
-        @if(isset($start) && isset($end))
-            <div class="alert mb-3" style="background-color: #17a2b8; color: white; border: none; padding: 10px 15px;">
-                <strong>
-                    @if($selectedRange === 'custom')
-                        Custom Date - {{ $start->format('d-m-Y') }} to {{ $end->format('d-m-Y') }}
-                    @else
-                        {{ $rangeLabel ?? 'Selected Period' }} - {{ $start->format('d-m-Y') }} to {{ $end->format('d-m-Y') }}
-                    @endif
-                </strong>
-            </div>
-        @endif
-
-        {{-- Recent Applications for Selected Period (Updates with date change) --}}
+        {{-- Recent Applications for Selected Period (without last used timestamp) --}}
         @if (isset($recentApplications) && !$recentApplications->isEmpty())
             <div class="mb-4">
-                <h6 class="mb-3" style="color: #6c757d;"></h6>
                 <div class="row g-3">
                     @foreach ($recentApplications as $app)
                         <div class="col-md-4">
                             <div class="card h-100 shadow-sm">
                                 <div class="card-body">
                                     <h6 class="card-title">{{ $app->application ?? 'Unknown App' }}</h6>
-                                    @if($app->system && $app->system != $app->application)
-                                        <p class="text-muted small mb-1">System: {{ $app->system }}</p>
-                                    @endif
                                     <span class="badge bg-info text-dark">{{ $app->usage_count }} logins</span>
-                                    <p class="text-muted small mb-0 mt-2">Last used: {{ \Carbon\Carbon::parse($app->last_used)->format('M j, Y g:i A') }}</p>
                                 </div>
                             </div>
                         </div>
@@ -186,35 +158,17 @@
             </div>
         @endif
 
-        {{-- Login Summary Table - ALWAYS HORIZONTAL LAYOUT --}}
+        {{-- Login Summary Table - Show All 10 Applications --}}
         @if(isset($monthlySummary) && !empty($monthlySummary))
             @php
-                // Check if data is already pivoted (has LoginDate column)
+                // Extract headers from the first row (LoginDate + all application names)
                 $firstRow = (array)$monthlySummary[0];
-                $hasPivotedData = isset($firstRow['LoginDate']);
-                $headers = [];
-                $transformedData = [];
+                $headers = array_keys($firstRow);
                 
-                if (!$hasPivotedData) {
-                    // Transform vertical data (ApplicationName/NoofLogins) to horizontal
-                    $headers = ['LoginDate'];
-                    $dataRow = new stdClass();
-                    // Use the start date from the selected range
-                    $dataRow->LoginDate = isset($start) ? $start->format('Y-m-d') : \Carbon\Carbon::now()->format('Y-m-d');
-                    
-                    foreach($monthlySummary as $row) {
-                        $appName = $row->ApplicationName ?? 'Unknown';
-                        $loginCount = $row->NoofLogins ?? 0;
-                        $headers[] = $appName;
-                        $dataRow->$appName = $loginCount;
-                    }
-                    
-                    // Create a single row summary
-                    $transformedData = [$dataRow];
-                } else {
-                    // Data is already pivoted, use as-is
-                    $headers = array_keys($firstRow);
-                    $transformedData = $monthlySummary;
+                // Ensure LoginDate is first
+                if (($key = array_search('LoginDate', $headers)) !== false) {
+                    unset($headers[$key]);
+                    array_unshift($headers, 'LoginDate');
                 }
             @endphp
 
@@ -236,11 +190,11 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach($transformedData as $row)
+                            @foreach($monthlySummary as $row)
                                 <tr>
                                     @foreach($headers as $header)
                                         @php
-                                            $cellValue = $row->$header ?? '';
+                                            $cellValue = $row->$header ?? 0;
                                         @endphp
                                         @if($header === 'LoginDate')
                                             <td class="text-center align-middle" 
@@ -250,7 +204,7 @@
                                         @else
                                             <td class="text-center align-middle" 
                                                 style="padding: 10px 8px; font-size: 13px;">
-                                                {{ $cellValue && $cellValue > 0 ? $cellValue : '' }}
+                                                {{ $cellValue > 0 ? $cellValue : '0' }}
                                             </td>
                                         @endif
                                     @endforeach
@@ -258,67 +212,6 @@
                             @endforeach
                         </tbody>
                     </table>
-                </div>
-
-                {{-- Summary Stats --}}
-                @php
-                    $totalLogins = 0;
-                    $systemTotals = [];
-                    
-                    foreach($transformedData as $row) {
-                        foreach($headers as $header) {
-                            if ($header !== 'LoginDate') {
-                                $value = $row->$header ?? 0;
-                                if (!isset($systemTotals[$header])) {
-                                    $systemTotals[$header] = 0;
-                                }
-                                $systemTotals[$header] += $value;
-                                $totalLogins += $value;
-                            }
-                        }
-                    }
-                    
-                    // Get top 3 systems
-                    arsort($systemTotals);
-                    $topSystems = array_slice($systemTotals, 0, 3, true);
-                    $activeDays = $hasPivotedData ? count($transformedData) : 1;
-                    $systemCount = count($systemTotals);
-                @endphp
-
-                <div class="row mt-3">
-                    <div class="col-md-3">
-                        <div class="card text-center shadow-sm">
-                            <div class="card-body">
-                                <h6 class="text-muted mb-2 small">Total Logins</h6>
-                                <h3 class="mb-0 text-primary fw-bold">{{ $totalLogins }}</h3>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="card text-center shadow-sm">
-                            <div class="card-body">
-                                <h6 class="text-muted mb-2 small">{{ $hasPivotedData ? 'Active Days' : 'Systems Used' }}</h6>
-                                <h3 class="mb-0 text-success fw-bold">{{ $hasPivotedData ? $activeDays : $systemCount }}</h3>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="card shadow-sm">
-                            <div class="card-body">
-                                <h6 class="text-muted mb-3 small">Most Used Systems</h6>
-                                @if(count($topSystems) > 0)
-                                    @foreach($topSystems as $system => $count)
-                                        <div class="d-flex justify-content-between align-items-center mb-2">
-                                            <span class="small fw-medium">{{ $system }}</span>
-                                            <span class="badge bg-primary rounded-pill">{{ $count }} {{ $count == 1 ? 'login' : 'logins' }}</span>
-                                        </div>
-                                    @endforeach
-                                @else
-                                    <p class="text-muted small mb-0">No data available</p>
-                                @endif
-                            </div>
-                        </div>
-                    </div>
                 </div>
             </div>
         @else
@@ -353,59 +246,30 @@
 @stop
 
 @section('js')
-{{-- Enhanced JavaScript with date range support --}}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const rangeSelect = document.getElementById('range');
-    const dateRangeContainer = document.getElementById('dateRangeContainer');
     const startDateInput = document.getElementById('start_date');
     const endDateInput = document.getElementById('end_date');
     const filterForm = document.getElementById('filterForm');
     
-    // Handle range selection change
-    if (rangeSelect) {
-        rangeSelect.addEventListener('change', function() {
-            const selectedRange = this.value;
+    // Validate that end date is not before start date
+    const validateDates = function() {
+        if (startDateInput.value && endDateInput.value) {
+            const startDate = new Date(startDateInput.value);
+            const endDate = new Date(endDateInput.value);
             
-            if (selectedRange === 'custom') {
-                // Show date range pickers
-                dateRangeContainer.style.display = 'flex';
-                startDateInput.setAttribute('required', 'required');
-                endDateInput.setAttribute('required', 'required');
-            } else {
-                // Hide date pickers and clear values
-                dateRangeContainer.style.display = 'none';
-                startDateInput.removeAttribute('required');
-                endDateInput.removeAttribute('required');
-                startDateInput.value = '';
+            if (endDate < startDate) {
+                alert('End date cannot be before start date');
                 endDateInput.value = '';
-                // Auto-submit for predefined ranges
-                filterForm.submit();
+                return false;
             }
-        });
-    }
+        }
+        return true;
+    };
     
-    // Handle date input changes for custom range
     if (startDateInput && endDateInput) {
-        const validateAndSubmit = function() {
-            if (rangeSelect.value === 'custom' && startDateInput.value && endDateInput.value) {
-                // Validate that end date is not before start date
-                const startDate = new Date(startDateInput.value);
-                const endDate = new Date(endDateInput.value);
-                
-                if (endDate < startDate) {
-                    alert('End date cannot be before start date');
-                    endDateInput.value = '';
-                    return;
-                }
-                
-                // Auto-submit when both dates are selected and valid
-                filterForm.submit();
-            }
-        };
-        
-        startDateInput.addEventListener('change', validateAndSubmit);
-        endDateInput.addEventListener('change', validateAndSubmit);
+        startDateInput.addEventListener('change', validateDates);
+        endDateInput.addEventListener('change', validateDates);
     }
     
     // Enhanced scroll position restoration
@@ -424,12 +288,15 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Store scroll position before form submission
     if (filterForm) {
-        filterForm.addEventListener('submit', function() {
-            sessionStorage.setItem(SCROLL_STORAGE_KEY, window.pageYOffset.toString());
-        });
-        
-        // Loading states for better UX
         filterForm.addEventListener('submit', function(e) {
+            if (!validateDates()) {
+                e.preventDefault();
+                return false;
+            }
+            
+            sessionStorage.setItem(SCROLL_STORAGE_KEY, window.pageYOffset.toString());
+            
+            // Loading states for better UX
             const submitBtn = filterForm.querySelector('button[type="submit"]');
             if (submitBtn) {
                 const originalText = submitBtn.innerHTML;

@@ -34,6 +34,27 @@ protected $excludedSystems = [
     // 'all'
 ];
 
+
+   /**
+     * Specific systems to display in the monthly summary table.
+     * These will be the only columns shown in the Login Activity by System table.
+     *
+     * @var string[]
+     */
+    protected $displaySystems = [
+        'Biz PrO',
+        'Biz UAT',
+        'D365 LIVE',
+        'D365 UAT',
+        'FIT Express',
+        'FIT Express UAT',
+        'Odoo',
+        'OPS',
+        'OPS UAT',
+        'Windows Sign In'
+    ];
+
+
 /**
  * Return visible systems (excludes configured names) — case-insensitive.
  *
@@ -370,38 +391,28 @@ public function show(Request $request, $identifier)
         // ====================================================================
         // 2. RESOLVE DATE RANGE
         // ====================================================================
-        $range = $request->input('range', 'this_month');
-        $system = $request->input('system');
         $startDate = $request->input('start_date');
         $endDate = $request->input('end_date');
 
-        // Handle custom date range
-        if ($range === 'custom') {
-            if ($startDate && $endDate && strtotime($startDate) && strtotime($endDate)) {
-                $start = Carbon::parse($startDate)->startOfDay();
-                $end = Carbon::parse($endDate)->endOfDay();
-                
-                // Validate date range
-                if ($end->lt($start)) {
-                    return redirect()->back()
-                        ->withInput()
-                        ->with('error', 'End date cannot be before start date.');
-                }
-            } else {
+        if ($startDate && $endDate && strtotime($startDate) && strtotime($endDate)) {
+            $start = Carbon::parse($startDate)->startOfDay();
+            $end = Carbon::parse($endDate)->endOfDay();
+            
+            // Validate date range
+            if ($end->lt($start)) {
                 return redirect()->back()
                     ->withInput()
-                    ->with('error', 'Please select both start and end dates for custom range.');
+                    ->with('error', 'End date cannot be before start date.');
             }
         } else {
-            // Use predefined date ranges
-            [$start, $end] = $this->resolveDateRange($range);
+            // Default to current month
+            $start = Carbon::now()->startOfMonth();
+            $end = Carbon::now()->endOfMonth();
         }
 
         Log::info('Date Range Resolved', [
             'start'  => $start->toDateTimeString(),
             'end'    => $end->toDateTimeString(),
-            'range'  => $range,
-            'system' => $system,
         ]);
 
         // ====================================================================
@@ -443,66 +454,7 @@ public function show(Request $request, $identifier)
         };
 
         // ====================================================================
-        // 4. CALL STORED PROCEDURE FOR MONTHLY SUMMARY (FIXED)
-        // ====================================================================
-        $monthlySummary = [];
-        try {
-            $dateRangeParam = $range === 'custom' ? 'Custom Date' : 'This Month';
-            $userIdParam = $user->id;
-            $resultType = 'Summary';
-            $fromDate = $start->format('d/M/Y');
-            $toDate = $end->format('d/M/Y');
-
-            Log::info('Calling Stored Procedure', [
-                'dateRange' => $dateRangeParam,
-                'userId' => $userIdParam,
-                'resultType' => $resultType,
-                'fromDate' => $fromDate,
-                'toDate' => $toDate,
-                'range_input' => $range
-            ]);
-
-            // Use PDO directly to handle SQL Server quirks
-            $pdo = DB::connection()->getPdo();
-            
-            // Prepare with SET NOCOUNT ON to prevent extra result sets
-            $stmt = $pdo->prepare('SET NOCOUNT ON; EXEC dbo.sp_Azure_LoginAnalysis ?, ?, ?, ?, ?');
-            
-            // Execute with parameters
-            $stmt->execute([
-                $dateRangeParam,
-                $userIdParam,
-                $resultType,
-                $fromDate,
-                $toDate
-            ]);
-
-            // Fetch all results as objects
-            $monthlySummary = $stmt->fetchAll(\PDO::FETCH_OBJ);
-            
-            // Close cursor to clear any remaining result sets
-            $stmt->closeCursor();
-
-            Log::info('SP Result Success', [
-                'result_count' => count($monthlySummary),
-                'sample_data' => !empty($monthlySummary) ? (array)$monthlySummary[0] : null,
-                'columns' => !empty($monthlySummary) ? array_keys((array)$monthlySummary[0]) : []
-            ]);
-
-        } catch (\Exception $e) {
-            Log::error('Error calling stored procedure', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'line' => $e->getLine(),
-                'file' => $e->getFile()
-            ]);
-            
-            // Set empty array so page still renders
-            $monthlySummary = [];
-        }
-
-        // ====================================================================
-        // 5. CURRENT MONTH APPLICATIONS (ALWAYS CURRENT MONTH - UNCHANGING)
+        // 4. CURRENT MONTH APPLICATIONS (ALWAYS CURRENT MONTH - UNCHANGING)
         // ====================================================================
         $currentMonthStart = Carbon::now()->startOfMonth();
         $currentMonthEnd = Carbon::now()->endOfMonth();
@@ -514,11 +466,10 @@ public function show(Request $request, $identifier)
             ->whereNotIn(DB::raw('LOWER(system)'), $this->excludedSystems)
             ->select([
                 'application',
-                'system',
                 DB::raw('COUNT(*) as usage_count'),
                 DB::raw('MAX(date_utc) as last_used'),
             ])
-            ->groupBy('application', 'system')
+            ->groupBy('application')
             ->orderBy('last_used', 'desc')
             ->limit(10)
             ->get();
@@ -529,8 +480,10 @@ public function show(Request $request, $identifier)
         ]);
 
         // ====================================================================
-        // 6. RECENT APPLICATIONS FOR SELECTED PERIOD (UPDATES WITH DATE FILTER)
+        // 5. RECENT APPLICATIONS FOR SELECTED PERIOD (UPDATES WITH DATE FILTER)
         // ====================================================================
+        $system = $request->input('system');
+        
         $recentApplicationsQuery = SigninLog::where('user_id', $user->id)
             ->whereBetween('date_utc', [$start, $end])
             ->whereNotNull('application')
@@ -544,11 +497,10 @@ public function show(Request $request, $identifier)
         $recentApplications = $recentApplicationsQuery
             ->select([
                 'application',
-                'system',
                 DB::raw('COUNT(*) as usage_count'),
                 DB::raw('MAX(date_utc) as last_used'),
             ])
-            ->groupBy('application', 'system')
+            ->groupBy('application')
             ->orderBy('last_used', 'desc')
             ->limit(10)
             ->get();
@@ -558,6 +510,135 @@ public function show(Request $request, $identifier)
             'date_range' => [$start->toDateString(), $end->toDateString()],
             'system_filter' => $system ?? 'none'
         ]);
+
+        // ====================================================================
+        // 6. BUILD MONTHLY SUMMARY - SHOW ONLY SPECIFIED SYSTEMS
+        // ====================================================================
+        $monthlySummary = [];
+        try {
+            // First, let's see what applications actually exist for this user
+            $actualApplications = SigninLog::where('user_id', $user->id)
+                ->whereBetween('date_utc', [$start, $end])
+                ->whereNotNull('application')
+                ->where('application', '!=', '')
+                ->whereNotIn(DB::raw('LOWER(system)'), $this->excludedSystems)
+                ->distinct()
+                ->pluck('application')
+                ->toArray();
+
+            Log::info('Actual Applications Found', [
+                'count' => count($actualApplications),
+                'applications' => $actualApplications
+            ]);
+
+            // Use the predefined list of systems to display
+            $systemsUsed = $this->displaySystems;
+
+            Log::info('Systems to Display in Table', [
+                'count' => count($systemsUsed),
+                'systems' => $systemsUsed,
+                'source' => 'predefined_display_systems'
+            ]);
+
+            if (!empty($systemsUsed)) {
+                // Pre-fetch all login data for the date range to optimize queries
+                // Use case-insensitive matching
+                $loginDataRaw = SigninLog::where('user_id', $user->id)
+                    ->whereBetween('date_utc', [$start, $end])
+                    ->whereNotIn(DB::raw('LOWER(system)'), $this->excludedSystems)
+                    ->where(function($q) use ($systemsUsed) {
+                        foreach ($systemsUsed as $system) {
+                            $q->orWhere(DB::raw('LOWER(application)'), strtolower($system));
+                        }
+                    })
+                    ->select([
+                        DB::raw('CAST(date_utc AS DATE) as login_date'),
+                        'application',
+                        DB::raw('COUNT(*) as login_count')
+                    ])
+                    ->groupBy(DB::raw('CAST(date_utc AS DATE)'), 'application')
+                    ->get();
+                
+                Log::info('Login Data Raw Query Results', [
+                    'count' => $loginDataRaw->count(),
+                    'sample' => $loginDataRaw->take(5)->toArray()
+                ]);
+
+                // Group by date for easy lookup
+                $loginData = [];
+                foreach ($loginDataRaw as $record) {
+                    $dateKey = Carbon::parse($record->login_date)->format('Y-m-d');
+                    if (!isset($loginData[$dateKey])) {
+                        $loginData[$dateKey] = [];
+                    }
+                    // Store with original application name as key
+                    $loginData[$dateKey][$record->application] = $record->login_count;
+                }
+
+                Log::info('Login Data Pre-fetched', [
+                    'total_records' => $loginDataRaw->count(),
+                    'unique_dates' => count($loginData),
+                    'sample_date' => !empty($loginData) ? array_key_first($loginData) : null,
+                    'sample_data' => !empty($loginData) ? $loginData[array_key_first($loginData)] : null
+                ]);
+
+                // Generate all dates in the range
+                $dateRange = new \DatePeriod(
+                    $start,
+                    new \DateInterval('P1D'),
+                    $end->copy()->addDay()
+                );
+
+                // Build the summary data structure with ONLY the 10 specified systems
+                foreach ($dateRange as $date) {
+                    $dateStr = $date->format('Y-m-d');
+                    $row = new \stdClass();
+                    $row->LoginDate = $dateStr;
+
+                    // Initialize ONLY the 10 specified systems with 0 by default
+                    foreach ($systemsUsed as $appName) {
+                        $row->$appName = 0;
+                    }
+
+                    // Update with actual counts from pre-fetched data (case-insensitive matching)
+                    if (isset($loginData[$dateStr])) {
+                        foreach ($loginData[$dateStr] as $actualAppName => $count) {
+                            // Find matching system name (case-insensitive)
+                            foreach ($systemsUsed as $displaySystem) {
+                                if (strtolower($actualAppName) === strtolower($displaySystem)) {
+                                    $row->$displaySystem = $count;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    $monthlySummary[] = $row;
+                }
+
+                Log::info('Monthly Summary Built', [
+                    'total_rows' => count($monthlySummary),
+                    'date_range' => [$start->format('Y-m-d'), $end->format('Y-m-d')],
+                    'systems_count' => count($systemsUsed),
+                    'systems_displayed' => $systemsUsed,
+                    'first_row' => !empty($monthlySummary) ? (array)$monthlySummary[0] : null,
+                    'last_row' => !empty($monthlySummary) ? (array)$monthlySummary[count($monthlySummary) - 1] : null
+                ]);
+            } else {
+                Log::warning('Display systems list is empty - monthly summary will be empty');
+            }
+
+        } catch (\Exception $e) {
+            Log::error('Error building monthly summary', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'line' => $e->getLine(),
+                'file' => $e->getFile()
+            ]);
+            
+            // Set empty array so page still renders
+            $monthlySummary = [];
+        }
 
         // ====================================================================
         // 7. SIGN-INS QUERY (UPDATES WITH DATE FILTER)
@@ -614,7 +695,8 @@ public function show(Request $request, $identifier)
         // ====================================================================
         // 10. GENERATE RANGE LABEL FOR DISPLAY
         // ====================================================================
-        $rangeLabel = $this->getRangeLabel($range, $start, $end);
+        $rangeLabel = 'Custom Range';
+        $range = 'custom';
 
         Log::info('UserController@show completed successfully', [
             'user_id' => $user->id,
