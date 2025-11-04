@@ -41,7 +41,7 @@ class DashboardStatsService
         
         return $query->where(function ($q) use ($rawSystemNames, $systemName) {
             // Try direct system field match first
-            $q->where(DB::raw('LOWER(system)'), strtolower($systemName));
+            $q->where(DB::raw('LOWER(application)'), strtolower($systemName));
             
             // If there are raw system mappings, also check application field
             if (!empty($rawSystemNames)) {

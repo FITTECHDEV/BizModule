@@ -360,15 +360,25 @@ Route::pattern('user', '[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}|\w{8}-\w{
 // Reporting routes (Login Tracker)
 // ----------------------
 Route::prefix('reporting')->middleware('auth')->group(function () {
-    Route::get('/logged-in-users', [UserController::class, 'loggedInUsers'])
-        ->name('reporting.users.logged-in');
+    // Route::get('/logged-in-users', [UserController::class, 'loggedInUsers'])
+    //     ->name('reporting.users.logged-in');
 
-    Route::get('/not-logged-in-users', [UserController::class, 'notLoggedInUsers'])
-        ->name('reporting.users.not-logged-in');
+    // Route::get('/not-logged-in-users', [UserController::class, 'notLoggedInUsers'])
+    //     ->name('reporting.users.not-logged-in');
 
     // Explicit show route (needed for dashboard links)
     Route::get('/users/{user}', [UserController::class, 'show'])
-        ->name('reporting.users.show');
+        ->name('reporting.users.show'); 
+
+
+        Route::get('/users/active-this-month', [UserController::class, 'activeThisMonth'])
+        ->name('reporting.users.active-this-month');
+    
+    Route::get('/users/active-last-month', [UserController::class, 'activeLastMonth'])
+        ->name('reporting.users.active-last-month');
+    
+    Route::get('/users/inactive', [UserController::class, 'inactiveUsers'])
+        ->name('reporting.users.inactive');
 
     // Resource routes except show
     Route::resource('/users', UserController::class)

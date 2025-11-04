@@ -20,7 +20,7 @@ class SigninLog extends Model
 
     protected $fillable = [
         'date_utc', 'request_id', 'user_agent', 'correlation_id', 'user_id',
-        'system', 'user', 'username', 'user_type', 'cross_tenant_access_type',
+        'user', 'username', 'user_type', 'cross_tenant_access_type',
         'incoming_token_type', 'authentication_protocol', 'unique_token_identifier',
         'original_transfer_method', 'client_credential_type',
         'token_protection_sign_in_session', 'token_protection_sign_in_session_status_code',

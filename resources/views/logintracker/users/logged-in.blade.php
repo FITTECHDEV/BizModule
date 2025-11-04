@@ -1,4 +1,4 @@
-@extends('logintracker.layouts.app')
+<!-- @extends('logintracker.layouts.app')
 
 @section('content')
 <div class="container mt-4">
@@ -293,4 +293,4 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
-@endsection
+@endsection -->

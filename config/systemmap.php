@@ -1,64 +1,93 @@
 <?php
 return [
-    // EXACT MATCHES from your actual CSV data
-    // These are the precise application names found in your data
+    // ========================================================================
+    // CRITICAL FIX: Corrected BIZ PRO and BIZ UAT mappings
+    // ========================================================================
     
-    // Windows Authentication variations (from your Mark Kariuki data)
-    'Windows Sign In' => 'Windows Authentication',
-    'windows sign in' => 'Windows Authentication',
-    'Windows Sign in' => 'Windows Authentication',
-    'windows signin' => 'Windows Authentication',
-    'Microsoft Authentication Broker' => 'Windows Authentication',
-    'microsoft authentication broker' => 'Windows Authentication',
-    'Microsoft Account Controls v2' => 'Windows Authentication',
-    'microsoft account controls v2' => 'Windows Authentication',
-    'Microsoft Device Registration Client' => 'Windows Authentication',
-    'microsoft device registration client' => 'Windows Authentication',
+    // BIZ PRO - FIXED: All map to 'BIZ PRO' (was 'Biz PRO')
+    'BIZ PRO' => 'BIZ PRO',
+    'biz pro' => 'BIZ PRO',
+    'Biz Pro' => 'BIZ PRO',
+    'BizPro' => 'BIZ PRO',
+    'bizpro' => 'BIZ PRO',
+    'BIZ Pro' => 'BIZ PRO',
+    'biz_pro' => 'BIZ PRO',
+    'biz-pro' => 'BIZ PRO',
     
-    // D365 LIVE variations (case-sensitive matches)
-    'D365 LIVE' => 'D365 Live',
-    'd365 live' => 'D365 Live',
-    'D365 Live' => 'D365 Live',
-    'd365live' => 'D365 Live',
-    'Dynamics 365' => 'D365 Live',
-    'dynamics 365' => 'D365 Live',
-    'dynamics365' => 'D365 Live',
-    'Microsoft Dynamics 365' => 'D365 Live',
-    'microsoft dynamics 365' => 'D365 Live',
+    // ========================================================================
+    // 🔥 CRITICAL FIX: FIT ERP maps to BIZ PRO (was incorrectly mapping to Odoo)
+    // ========================================================================
+    'FIT ERP' => 'BIZ PRO',
+    'fit erp' => 'BIZ PRO',    // ✅ FIXED: This was mapping to Odoo
+    'FitERP' => 'BIZ PRO',
+    'fiterp' => 'BIZ PRO',
+    'fit_erp' => 'BIZ PRO',
+    'fit-erp' => 'BIZ PRO',
     
-    // FIT Express variations (including the space-prefixed version from your data)
-    'FIT Express' => 'Fit Express',
-    'fit express' => 'Fit Express',
-    ' FIT Express' => 'Fit Express', // Leading space version from your data
-    ' fit express' => 'Fit Express',
-    'FitExpress' => 'Fit Express',
-    'fitexpress' => 'Fit Express',
-    'fit_express' => 'Fit Express',
-    'fit-express' => 'Fit Express',
+    // BIZ UAT - FIXED: All map to 'BIZ UAT' (was 'BI UAT')
+    'BIZ UAT' => 'BIZ UAT',
+    'biz uat' => 'BIZ UAT',
+    'Biz UAT' => 'BIZ UAT',
+    'BizUAT' => 'BIZ UAT',
+    'bizuat' => 'BIZ UAT',
+    'BIZ Uat' => 'BIZ UAT',
+    'biz_uat' => 'BIZ UAT',
+    'biz-uat' => 'BIZ UAT',
+    
+    // D365 UAT
+    'D365 UAT' => 'D365 UAT',
+    'd365 uat' => 'D365 UAT',
+    'D365UAT' => 'D365 UAT',
+    'd365uat' => 'D365 UAT',
+    'Dynamics 365 UAT' => 'D365 UAT',
+    'dynamics 365 uat' => 'D365 UAT',
+    'D365 Test' => 'D365 UAT',
+    'd365 test' => 'D365 UAT',
+    
+    // ========================================================================
+    // EXISTING MAPPINGS (unchanged)
+    // ========================================================================
+    
+    // Windows Authentication variations
+    'Windows Sign In' => 'Windows Sign In',
+    'windows sign in' => 'Windows Sign In',
+    'Windows Sign in' => 'Windows Sign In',
+    'windows signin' => 'Windows Sign In',
+    'Microsoft Authentication Broker' => 'Windows Sign In',
+    'microsoft authentication broker' => 'Windows Sign In',
+    'Microsoft Account Controls v2' => 'Windows Sign In',
+    'microsoft account controls v2' => 'Windows Sign In',
+    'Microsoft Device Registration Client' => 'Windows Sign In',
+    'microsoft device registration client' => 'Windows Sign In',
+    
+    // D365 LIVE variations
+    'D365 LIVE' => 'D365 LIVE',
+    'd365 live' => 'D365 LIVE',
+    'D365 Live' => 'D365 LIVE',
+    'd365live' => 'D365 LIVE',
+    'Dynamics 365' => 'D365 LIVE',
+    'dynamics 365' => 'D365 LIVE',
+    'dynamics365' => 'D365 LIVE',
+    'Microsoft Dynamics 365' => 'D365 LIVE',
+    'microsoft dynamics 365' => 'D365 LIVE',
+    
+    // FIT Express variations
+    'FIT Express' => 'FIT Express',
+    'fit express' => 'FIT Express',
+    ' FIT Express' => 'FIT Express',
+    ' fit express' => 'FIT Express',
+    'FitExpress' => 'FIT Express',
+    'fitexpress' => 'FIT Express',
+    'fit_express' => 'FIT Express',
+    'fit-express' => 'FIT Express',
     
     // FIT Express UAT variations
-    'FIT Express UAT' => 'Fit Express UAT',
-    'fit express uat' => 'Fit Express UAT',
-    'FitExpress UAT' => 'Fit Express UAT',
-    'fitexpressuat' => 'Fit Express UAT',
-    'fit express test' => 'Fit Express UAT',
-    'FIT Express Test' => 'Fit Express UAT',
-    
-    // FIT ERP variations
-    'FIT ERP' => 'FIT ERP',
-    'fit erp' => 'FIT ERP',
-    'FitERP' => 'FIT ERP',
-    'fiterp' => 'FIT ERP',
-    'fit_erp' => 'FIT ERP',
-    'fit-erp' => 'FIT ERP',
-    
-    // FITERPUAT (exact as it appears in your data)
-    'FITERPUAT' => 'FITerp UAT',
-    'fiterpuat' => 'FITerp UAT',
-    'FITERP UAT' => 'FITerp UAT',
-    'fiterp uat' => 'FITerp UAT',
-    'FIT ERP UAT' => 'FITerp UAT',
-    'fit erp uat' => 'FITerp UAT',
+    'FIT Express UAT' => 'FIT Express UAT',
+    'fit express uat' => 'FIT Express UAT',
+    'FitExpress UAT' => 'FIT Express UAT',
+    'fitexpressuat' => 'FIT Express UAT',
+    'fit express test' => 'FIT Express UAT',
+    'FIT Express Test' => 'FIT Express UAT',
     
     // OPS variations
     'OPS' => 'OPS',
@@ -74,7 +103,9 @@ return [
     'Operations UAT' => 'OPS UAT',
     'operations uat' => 'OPS UAT',
     
-    // Odoo variations
+    // ========================================================================
+    // Odoo variations - REMOVED FIT ERP mappings (moved to BIZ PRO above)
+    // ========================================================================
     'Odoo' => 'Odoo',
     'odoo' => 'Odoo',
     'ODOO' => 'Odoo',
@@ -85,17 +116,17 @@ return [
     'GENESIS' => 'GeNeSIS',
     'GeneIS' => 'GeNeSIS',
     
-    // SCM (Supply Chain Management) - ADD THESE MAPPINGS
-    'SCM' => 'SCM',
-    'scm' => 'SCM',
-    'Supply Chain Management' => 'SCM',
-    'supply chain management' => 'SCM',
-    'SCM Portal' => 'SCM',
-    'scm portal' => 'SCM',
-    'SCM System' => 'SCM',
-    'scm system' => 'SCM',
-    'Supply Chain' => 'SCM',
-    'supply chain' => 'SCM',
+    // SCM (Supply Chain Management) → Maps to OPS
+    'SCM' => 'OPS',
+    'scm' => 'OPS',
+    'Supply Chain Management' => 'OPS',
+    'supply chain management' => 'OPS',
+    'SCM Portal' => 'OPS',
+    'scm portal' => 'OPS',
+    'SCM System' => 'OPS',
+    'scm system' => 'OPS',
+    'Supply Chain' => 'OPS',
+    'supply chain' => 'OPS',
     
     // Microsoft Office Suite
     'Microsoft 365 Support Service' => 'Office 365',
@@ -164,7 +195,7 @@ return [
     'Not Available' => 'Unknown',
     'not available' => 'Unknown',
     
-    // Common Azure AD entries that might appear
+    // Common Azure AD entries
     'Windows Azure Active Directory' => 'IT Infrastructure',
     'windows azure active directory' => 'IT Infrastructure',
     'Microsoft Entra ID' => 'IT Infrastructure',
@@ -207,4 +238,14 @@ return [
     'onedrive for business' => 'OneDrive',
     'Microsoft OneDrive' => 'OneDrive',
     'microsoft onedrive' => 'OneDrive',
+    
+    // ========================================================================
+    // FITERPUAT → Still maps to Odoo (these are UAT/test instances)
+    // ========================================================================
+    'FITERPUAT' => 'Odoo',
+    'fiterpuat' => 'Odoo',
+    'FITERP UAT' => 'Odoo',
+    'fiterp uat' => 'Odoo',
+    'FIT ERP UAT' => 'Odoo',
+    'fit erp uat' => 'Odoo',
 ];

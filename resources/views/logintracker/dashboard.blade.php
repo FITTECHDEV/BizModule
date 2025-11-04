@@ -29,7 +29,7 @@
             </div>
 
             <div class="col-md-3">
-                <a href="{{ route('reporting.users.logged-in') }}?range=this_month" class="text-decoration-none">
+                <a href="{{ route('reporting.users.active-this-month') }}" class="text-decoration-none">
                     <div class="card bg-success text-white shadow card-hover">
                         <div class="card-body">
                             <h5 class="card-title">Active This Month</h5>
@@ -40,7 +40,7 @@
             </div>
 
             <div class="col-md-3">
-                <a href="{{ route('reporting.users.logged-in') }}?range=last_month" class="text-decoration-none">
+                <a href="{{ route('reporting.users.active-last-month') }}" class="text-decoration-none">
                     <div class="card bg-primary text-white shadow card-hover">
                         <div class="card-body">
                             <h5 class="card-title">Active Last Month</h5>
@@ -51,7 +51,7 @@
             </div>
 
             <div class="col-md-3">
-                <a href="{{ route('reporting.users.not-logged-in') }}" class="text-decoration-none">
+                <a href="{{ route('reporting.users.inactive') }}" class="text-decoration-none">
                     <div class="card bg-danger text-white shadow card-hover">
                         <div class="card-body">
                             <h5 class="card-title">Inactive Users</h5>

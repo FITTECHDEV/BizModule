@@ -67,37 +67,56 @@
         </div>
     </div>
 
-    {{-- Dynamic Date Range Banner --}}
+    {{-- Dynamic Date Range Banner - FIXED --}}
     @php
         $displayStart = isset($start) ? $start : \Carbon\Carbon::now()->startOfMonth();
         $displayEnd = isset($end) ? $end : \Carbon\Carbon::now();
+        
+        // For "Applications Used This Month" - always current month
+        $currentMonthStart = \Carbon\Carbon::now()->startOfMonth();
+        $currentMonthEnd = \Carbon\Carbon::now()->endOfMonth();
     @endphp
-    <div class="alert mb-4" style="background-color: #17a2b8; color: white; border: none; padding: 10px 15px;">
+    <div class="alert mb-4" style="background-color: #483d98; color: white; border: none; padding: 10px 15px;">
         <strong>Showing data from {{ $displayStart->format('M j, Y') }} to {{ $displayEnd->format('M j, Y') }}</strong>
     </div>
 
-    {{-- Recent Applications Used --}}
+    {{-- Recent Applications Used (Current Month - Static) - FIXED --}}
     <div class="card mb-4">
-        <div class="card-header">
-            <h5 class="mb-0">Recent Applications Used</h5>
+        <div class="card-header" style="background-color: #f8f9fa;">
+            <h5 class="mb-0">Applications Used This Month</h5>
+            <small class="text-muted">{{ $currentMonthStart->format('M j, Y') }} to {{ $currentMonthEnd->format('M j, Y') }} (does not change with date filter)</small>
         </div>
         <div class="card-body">
             @if ($currentMonthApplications->isEmpty())
-                <div class="alert alert-info">No recent application usage found for this period.</div>
+                <div class="alert mb-0" style="background-color: #483d98; color: white; border: none;">No application usage found for the current month.</div>
             @else
-                <div class="row">
-                @foreach ($currentMonthApplications as $app)
-                    <div class="col-md-6 col-lg-4 mb-3">
-                        <div class="card h-100 shadow-sm">
-                            <div class="card-body">
-                                <h5 class="card-title fs-5">{{ $app->application ?? 'Unknown App' }}</h5>
-                                <p class="card-text fs-6">
-                                    <span class="badge bg-info text-dark fs-6">{{ $app->usage_count }} logins</span>
-                                </p>
+                <div class="position-relative">
+                    <button class="carousel-control-prev" type="button" onclick="scrollCarousel('currentMonthCarousel', -1)" style="position: absolute; left: -15px; top: 50%; transform: translateY(-50%); z-index: 10; background-color: rgba(72, 61, 152, 0.8); border: none; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+                        <span style="color: white; font-size: 20px; font-weight: bold;">‹</span>
+                    </button>
+                    <div id="currentMonthCarousel" class="carousel-container" style="overflow-x: auto; scroll-behavior: smooth; -ms-overflow-style: none; scrollbar-width: none;">
+                        <div class="row g-3 flex-nowrap" style="min-width: max-content;">
+                        @foreach ($currentMonthApplications as $app)
+                            <div class="col-md-6 col-lg-4 col-xl-3" style="min-width: 250px;">
+                                <div class="card h-100 shadow-sm border-0" style="background-color: #f8f9fa;">
+                                    <div class="card-body text-center py-3">
+                                        <h6 class="card-title mb-2 fw-bold" style="color: #495057;">
+                                            {{ $app->application ?? 'Unknown App' }}
+                                        </h6>
+                                        <p class="card-text mb-0">
+                                            <span class="badge bg-primary" style="font-size: 0.95rem; padding: 0.4rem 0.8rem;">
+                                                {{ $app->usage_count }} {{ $app->usage_count == 1 ? 'login' : 'logins' }}
+                                            </span>
+                                        </p>
+                                    </div>
+                                </div>
                             </div>
+                        @endforeach
                         </div>
                     </div>
-                @endforeach
+                    <button class="carousel-control-next" type="button" onclick="scrollCarousel('currentMonthCarousel', 1)" style="position: absolute; right: -15px; top: 50%; transform: translateY(-50%); z-index: 10; background-color: rgba(72, 61, 152, 0.8); border: none; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+                        <span style="color: white; font-size: 20px; font-weight: bold;">›</span>
+                    </button>
                 </div>
             @endif
         </div>
@@ -105,17 +124,17 @@
 
     {{-- Sign In History Section --}}
     <div class="mb-3">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h4 class="mb-0 fw-semibold">Sign In History</h4>
+        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap">
+            <h4 class="mb-2 mb-md-0 fw-semibold">Sign In History</h4>
             
             <form method="GET" 
                   action="{{ route('reporting.users.show', $user->userPrincipalName ?? $user->id) }}" 
                   id="filterForm"
-                  class="d-flex gap-2 align-items-center">
+                  class="d-flex gap-4 align-items-center flex-wrap">
 
                 {{-- Date Range Pickers (From - To) --}}
-                <div class="d-flex gap-1 align-items-center">
-                    <label for="start_date" class="me-1 small">From:</label>
+                <div class="d-flex gap-2 align-items-center flex-wrap" style="margin-right: 1rem;">
+                    <label for="start_date" class="me-1 small mb-0">From:</label>
                     <input type="date" 
                            name="start_date" 
                            id="start_date" 
@@ -123,7 +142,7 @@
                            style="width: 150px;"
                            value="{{ request('start_date') ?? $displayStart->format('Y-m-d') }}"
                            required>
-                    <label for="end_date" class="mx-1 small">To:</label>
+                    <label for="end_date" class="mx-1 small mb-0">To:</label>
                     <input type="date" 
                            name="end_date" 
                            id="end_date" 
@@ -134,35 +153,65 @@
                 </div>
 
                 {{-- Buttons --}}
-                <button type="submit" class="btn btn-primary btn-sm">Apply</button>
-                <a href="{{ route('reporting.users.show', $user->userPrincipalName ?? $user->id) }}" 
-                   class="btn btn-outline-secondary btn-sm">Reset</a>
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn" style="background-color: #483d98; color: white; padding: 0.5rem 2rem; min-width: 100px; font-size: 0.95rem;">
+                        Apply
+                    </button>
+                    <a href="{{ route('reporting.users.show', $user->userPrincipalName ?? $user->id) }}" 
+                       class="btn btn-outline-secondary" style="padding: 0.5rem 2rem; min-width: 100px; font-size: 0.95rem;">
+                        Reset
+                    </a>
+                </div>
             </form>
         </div>
 
-        {{-- Recent Applications for Selected Period (without last used timestamp) --}}
+        {{-- Recent Applications for Selected Period (Dynamic - Updates with date filter) --}}
         @if (isset($recentApplications) && !$recentApplications->isEmpty())
-            <div class="mb-4">
-                <div class="row g-3">
-                    @foreach ($recentApplications as $app)
-                        <div class="col-md-4">
-                            <div class="card h-100 shadow-sm">
-                                <div class="card-body">
-                                    <h6 class="card-title">{{ $app->application ?? 'Unknown App' }}</h6>
-                                    <span class="badge bg-info text-dark">{{ $app->usage_count }} logins</span>
-                                </div>
+            <div class="card mb-4" style="border-left: 4px solid #483d98;">
+                <div class="card-header" style="background-color: #483d98; color: white;">
+                    <h5 class="mb-0">Applications Used in Selected Period</h5>
+                    <small style="color: rgba(255, 255, 255, 0.8);">{{ $displayStart->format('M j, Y') }} to {{ $displayEnd->format('M j, Y') }}</small>
+                </div>
+                <div class="card-body">
+                    <div class="position-relative">
+                        <button class="carousel-control-prev" type="button" onclick="scrollCarousel('selectedPeriodCarousel', -1)" style="position: absolute; left: -15px; top: 50%; transform: translateY(-50%); z-index: 10; background-color: rgba(72, 61, 152, 0.8); border: none; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+                            <span style="color: white; font-size: 20px; font-weight: bold;">‹</span>
+                        </button>
+                        <div id="selectedPeriodCarousel" class="carousel-container" style="overflow-x: auto; scroll-behavior: smooth; -ms-overflow-style: none; scrollbar-width: none;">
+                            <div class="row g-3 flex-nowrap" style="min-width: max-content;">
+                                @foreach ($recentApplications as $app)
+                                    <div class="col-md-6 col-lg-4 col-xl-3" style="min-width: 250px;">
+                                        <div class="card h-100 shadow-sm border-0" style="background-color: #e7f6f8;">
+                                            <div class="card-body text-center py-3">
+                                                <h6 class="card-title mb-2 fw-bold" style="color: #0c5460;">
+                                                    {{ $app->application ?? 'Unknown App' }}
+                                                </h6>
+                                                <p class="card-text mb-0">
+                                                    <span class="badge bg-info text-dark" style="font-size: 0.95rem; padding: 0.4rem 0.8rem;">
+                                                        {{ $app->usage_count }} {{ $app->usage_count == 1 ? 'login' : 'logins' }}
+                                                    </span>
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endforeach
                             </div>
                         </div>
-                    @endforeach
+                        <button class="carousel-control-next" type="button" onclick="scrollCarousel('selectedPeriodCarousel', 1)" style="position: absolute; right: -15px; top: 50%; transform: translateY(-50%); z-index: 10; background-color: rgba(72, 61, 152, 0.8); border: none; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+                            <span style="color: white; font-size: 20px; font-weight: bold;">›</span>
+                        </button>
+                    </div>
                 </div>
             </div>
         @endif
 
-        {{-- Login Summary Table - Show All 10 Applications --}}
+        {{-- ============================================ --}}
+        {{-- LOGIN SUMMARY TABLE - FIXED SECTION --}}
+        {{-- ============================================ --}}
         @if(isset($monthlySummary) && !empty($monthlySummary))
             @php
                 // Extract headers from the first row (LoginDate + all application names)
-                $firstRow = (array)$monthlySummary[0];
+                $firstRow = $monthlySummary[0];
                 $headers = array_keys($firstRow);
                 
                 // Ensure LoginDate is first
@@ -173,7 +222,7 @@
             @endphp
 
             <div class="mb-4">
-                <div class="alert mb-3" style="background-color: #17a2b8; color: white; border: none; padding: 10px 15px;">
+                <div class="alert mb-3" style="background-color: #483d98; color: white; border: none; padding: 10px 15px;">
                     <strong>Login Activity by System</strong>
                 </div>
                 
@@ -193,18 +242,15 @@
                             @foreach($monthlySummary as $row)
                                 <tr>
                                     @foreach($headers as $header)
-                                        @php
-                                            $cellValue = $row->$header ?? 0;
-                                        @endphp
                                         @if($header === 'LoginDate')
                                             <td class="text-center align-middle" 
                                                 style="padding: 10px 8px; font-size: 13px; font-weight: 500; background-color: #e9ecef;">
-                                                {{ $cellValue ? \Carbon\Carbon::parse($cellValue)->format('d-M-Y') : '' }}
+                                                {{ $row[$header] ?? '' }}
                                             </td>
                                         @else
                                             <td class="text-center align-middle" 
                                                 style="padding: 10px 8px; font-size: 13px;">
-                                                {{ $cellValue > 0 ? $cellValue : '0' }}
+                                                {{ $row[$header] ?? '' }}
                                             </td>
                                         @endif
                                     @endforeach
@@ -242,11 +288,38 @@
             transform: translateY(-2px);
             box-shadow: 0 8px 15px rgba(0,0,0,0.2) !important;
         }
+        
+        /* Hover effect for custom purple button */
+        .btn[style*="#483d98"]:hover {
+            background-color: #3a3179 !important;
+            border-color: #3a3179 !important;
+        }
+        
+        /* Hide scrollbar but keep functionality */
+        .carousel-container::-webkit-scrollbar {
+            display: none;
+        }
+        
+        /* Carousel button hover effects */
+        .carousel-control-prev:hover,
+        .carousel-control-next:hover {
+            background-color: rgba(72, 61, 152, 1) !important;
+        }
     </style>
 @stop
 
 @section('js')
 <script>
+// Carousel scroll function
+function scrollCarousel(carouselId, direction) {
+    const carousel = document.getElementById(carouselId);
+    const scrollAmount = 300; // Adjust scroll distance
+    carousel.scrollBy({
+        left: direction * scrollAmount,
+        behavior: 'smooth'
+    });
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     const startDateInput = document.getElementById('start_date');
     const endDateInput = document.getElementById('end_date');
@@ -321,5 +394,5 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 });
-</script>
+</script> 
 @stop

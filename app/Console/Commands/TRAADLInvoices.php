@@ -6,6 +6,7 @@ use App\Models\TRABillingHeader;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\DB;
 use DateTime;
 
 class TRAADLInvoices extends Command
@@ -99,21 +100,53 @@ protected function isApiAvailable()
      * @param int|null $invoiceId
      * @return \Illuminate\Database\Eloquent\Collection
      */
-    protected function fetchPendingInvoices($invoiceId = null)
-    {
-        $query = TRABillingHeader::nolock()
-            ->where('Docstatus', 'Pending')
-            ->whereNull('TRAInvoiceNo')
-            ->whereNull('TRASerialNo')
-            ->whereNull('TRAQRCode')
-            ->where('OfficeCode', 'TZ');
+    /**
+ * Fetch pending invoices and generate JSON using stored procedure.
+ *
+ * @param int|null $invoiceId
+ * @return \Illuminate\Database\Eloquent\Collection
+ */
+protected function fetchPendingInvoices($invoiceId = null)
+{
+    $query = TRABillingHeader::nolock()
+        ->where('Docstatus', 'Pending')
+        ->whereNull('TRAInvoiceNo')
+        ->whereNull('TRASerialNo')
+        ->whereNull('TRAQRCode')
+        ->where('OfficeCode', 'TZ');
 
-        if ($invoiceId) {
-            $query->where('ID', $invoiceId);
-        }
-
-        return $query->get();
+    if ($invoiceId) {
+        $query->where('ID', $invoiceId);
     }
+
+    $invoices = $query->get();
+
+    foreach ($invoices as $invoice) {
+        try {
+            // Execute with SET NOCOUNT ON
+            $result = DB::select("
+                SET NOCOUNT ON;
+                DECLARE @JsonOutput VARCHAR(MAX);
+                EXEC [dbo].[TRA_VFD] @InvoiceID = ?, @Json = @JsonOutput OUTPUT;
+                SELECT @JsonOutput AS JsonResult;
+            ", [$invoice->ID]);
+
+            $json = $result[0]->JsonResult ?? null;
+
+            if (!empty($json)) {
+                $invoice->TRAJsonFile = $json;
+                $invoice->save();
+            }
+
+            Log::info("Generated JSON for Invoice ID: {$invoice->ID}");
+
+        } catch (\Exception $e) {
+            Log::error("Failed to execute SP for Invoice ID: {$invoice->ID}. Error: " . $e->getMessage());
+        }
+    }
+
+    return $invoices;
+}
 
     /**
      * Submit invoice data to the KRA API.
