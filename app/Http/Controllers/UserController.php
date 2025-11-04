@@ -624,7 +624,7 @@ public function show(Request $request, $identifier)
             ]);
 
             // Build the monthly summary rows using associative arrays
-            $monthlySummary = $this->buildMonthlySummaryRows($processedData);
+            $monthlySummary = $this->buildMonthlySummaryRows($processedData, $start, $end);
             
             // Sort chronologically
             usort($monthlySummary, function($a, $b) {
@@ -832,35 +832,47 @@ private function processLoginData($loginDataRaw, array $cleanToRawMap): array
 
 /**
  * Build monthly summary rows from processed data
+ * NOW INCLUDES ALL DATES IN RANGE, NOT JUST DATES WITH ACTIVITY
  * 
  * @param array $processedData
+ * @param \Carbon\Carbon $start
+ * @param \Carbon\Carbon $end
  * @return array
  */
-private function buildMonthlySummaryRows(array $processedData): array
+private function buildMonthlySummaryRows(array $processedData, \Carbon\Carbon $start, \Carbon\Carbon $end): array
 {
     $monthlySummary = [];
     
-    foreach ($processedData as $dateStr => $systemCounts) {
+    // Generate all dates in the range
+    $currentDate = $start->copy();
+    
+    while ($currentDate <= $end) {
+        $dateStr = $currentDate->format('Y-m-d');
+        
         // Use associative array instead of stdClass for better reliability
-        $row = ['LoginDate' => Carbon::parse($dateStr)->format('d-M-Y')];
+        $row = ['LoginDate' => $currentDate->format('d-M-Y')];
         
         // Initialize ALL display systems with empty string for this date
         foreach ($this->displaySystems as $systemName) {
             $row[$systemName] = '';
         }
         
-        // Now fill in the actual counts for systems active on this date
-        foreach ($systemCounts as $cleanSystem => $count) {
-            if (in_array($cleanSystem, $this->displaySystems, true)) {
-                // Use '1' for any activity (or show actual count if preferred)
-                $row[$cleanSystem] = ($count > 0) ? '1' : '';
-            } else {
-                Log::warning('Clean system not in display systems', [
-                    'date' => $dateStr,
-                    'clean_system' => $cleanSystem,
-                    'count' => $count,
-                    'available_systems' => $this->displaySystems
-                ]);
+        // Now fill in the actual counts for systems active on this date (if any)
+        if (isset($processedData[$dateStr])) {
+            $systemCounts = $processedData[$dateStr];
+            
+            foreach ($systemCounts as $cleanSystem => $count) {
+                if (in_array($cleanSystem, $this->displaySystems, true)) {
+                    // Use '1' for any activity (or show actual count if preferred)
+                    $row[$cleanSystem] = ($count > 0) ? '1' : '';
+                } else {
+                    Log::warning('Clean system not in display systems', [
+                        'date' => $dateStr,
+                        'clean_system' => $cleanSystem,
+                        'count' => $count,
+                        'available_systems' => $this->displaySystems
+                    ]);
+                }
             }
         }
         
@@ -869,11 +881,15 @@ private function buildMonthlySummaryRows(array $processedData): array
         
         Log::debug('Row Created', [
             'date' => $row['LoginDate'],
+            'has_activity' => isset($processedData[$dateStr]),
             'active_systems' => array_keys(array_filter($row, function($v, $k) {
                 return $k !== 'LoginDate' && $v !== '';
             }, ARRAY_FILTER_USE_BOTH)),
             'row_data' => $row
         ]);
+        
+        // Move to next day
+        $currentDate->addDay();
     }
     
     return $monthlySummary;
