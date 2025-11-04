@@ -77,7 +77,7 @@
 
             <div class="d-flex align-items-center">
                 <input type="text" id="search-input" class="form-control" placeholder="Search users..."
-                       style="width: 300px;">
+                    style="width: 300px;">
                 <div class="spinner-border spinner-border-sm text-primary ms-2 d-none" id="search-spinner"></div>
             </div>
         </div>
@@ -118,7 +118,7 @@
                                         <td>
                                             @if ($userId)
                                                 <a href="{{ route('reporting.users.show', ['user' => $userId]) }}"
-                                                   class="btn btn-sm btn-primary">View</a>
+                                                    class="btn btn-sm btn-primary">View</a>
                                             @else
                                                 <span class="text-muted">No ID</span>
                                             @endif
@@ -149,13 +149,13 @@
 
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
-          integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+        integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
 
     <!-- Font Awesome -->
     <link rel="stylesheet"
-          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"
-          integrity="sha512-Kc323vGBEqzTmouAECnVceyQqyqdsSiqLQISBL29aUW4U/M7pSPA/gEUZQqv1cwx4OnYxTxve5UMg5GT6L4JJg=="
-          crossorigin="anonymous">
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"
+        integrity="sha512-Kc323vGBEqzTmouAECnVceyQqyqdsSiqLQISBL29aUW4U/M7pSPA/gEUZQqv1cwx4OnYxTxve5UMg5GT6L4JJg=="
+        crossorigin="anonymous">
 
     <style>
         .card-hover {
@@ -557,6 +557,11 @@
                         search: searchTerm 
                     },
                     success: function(response) {
+                            // UPDATE THE CARDS
+                            $('#total-users').text(response.total_users || 0);
+                            $('#active-this-month').text(response.active_this_month || 0);
+                            $('#active-last-month').text(response.active_last_month || 0);
+                            $('#inactive-users').text(response.inactive_users || 0);
                         const tbody = $('#user-table-body');
                         tbody.empty();
 

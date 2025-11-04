@@ -26,7 +26,7 @@ class DashboardController extends Controller
     }
 
 
- private $excludedSystems = [
+private $excludedSystems = [
         'Import-Unknown',
         'Unknown',
         'Microsoft Teams',
@@ -136,8 +136,8 @@ class DashboardController extends Controller
     // }
 
 
-
-private function getAvailableSystems()
+    
+    private function getAvailableSystems()
 {
     return Cache::remember('available_systems_clean_v3', 3600, function () {
         try {
