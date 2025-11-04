@@ -1161,6 +1161,7 @@ public function activeThisMonth(Request $request)
 {
     try {
         $search = $request->input('search');
+        $perPage = $request->input('per_page', $this->perPage);
         
         // Get current month date range
         $startDate = Carbon::now()->startOfMonth();
@@ -1168,6 +1169,8 @@ public function activeThisMonth(Request $request)
 
         Log::info('UserController@activeThisMonth called', [
             'search' => $search,
+            'per_page' => $perPage,
+            'is_ajax' => $request->ajax(),
             'date_range' => [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')]
         ]);
 
@@ -1201,13 +1204,42 @@ public function activeThisMonth(Request $request)
         }])
         ->orderByDesc('login_count');
 
-        $users = $query->paginate($this->perPage)->withQueryString();
+        $users = $query->paginate($perPage)->withQueryString();
 
         Log::info('Active this month users loaded', [
             'total_count' => $users->total(),
+            'current_page' => $users->currentPage(),
+            'per_page' => $users->perPage(),
             'search' => $search
         ]);
 
+        // Handle AJAX requests
+        if ($request->ajax()) {
+            $mappedUsers = $users->map(function ($user) {
+                return [
+                    'id' => $user->id,
+                    'displayName' => $user->displayName,
+                    'userPrincipalName' => $user->userPrincipalName,
+                    'mail' => $user->mail,
+                    'alternateEmailAddress' => $user->alternateEmailAddress,
+                    'login_count' => $user->login_count ?? 0,
+                    'signIns' => $user->signIns->toArray(),
+                ];
+            });
+
+            return response()->json([
+                'users' => $mappedUsers->values()->toArray(),
+                'total' => $users->total(),
+                'current_page' => $users->currentPage(),
+                'per_page' => $users->perPage(),
+                'last_page' => $users->lastPage(),
+                'from' => $users->firstItem(),
+                'to' => $users->lastItem(),
+                'pagination' => (string) $users->links(),
+            ]);
+        }
+
+        // Handle normal requests
         return view('logintracker.users.active-this-month', compact('users', 'search'));
         
     } catch (\Exception $e) {
@@ -1215,6 +1247,11 @@ public function activeThisMonth(Request $request)
             'error' => $e->getMessage(),
             'trace' => $e->getTraceAsString()
         ]);
+        
+        if ($request->ajax()) {
+            return response()->json(['error' => 'An unexpected error occurred.'], 500);
+        }
+        
         return redirect()->route('dashboard')->with('error', 'An unexpected error occurred.');
     }
 }
@@ -1226,6 +1263,7 @@ public function activeLastMonth(Request $request)
 {
     try {
         $search = $request->input('search');
+        $perPage = $request->input('per_page', $this->perPage);
         
         // Get last month date range
         $startDate = Carbon::now()->subMonth()->startOfMonth();
@@ -1233,6 +1271,8 @@ public function activeLastMonth(Request $request)
 
         Log::info('UserController@activeLastMonth called', [
             'search' => $search,
+            'per_page' => $perPage,
+            'is_ajax' => $request->ajax(),
             'date_range' => [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')]
         ]);
 
@@ -1262,16 +1302,79 @@ public function activeLastMonth(Request $request)
             $q->whereBetween('date_utc', [$startDate, $endDate])
               ->whereNotIn(DB::raw('LOWER(application)'), $this->excludedSystems)
               ->orderByDesc('date_utc')
-              ->limit(5);
+              ->limit(1);
         }])
         ->orderByDesc('login_count');
 
-        $users = $query->paginate($this->perPage)->withQueryString();
+        $users = $query->paginate($perPage)->withQueryString();
 
         Log::info('Active last month users loaded', [
             'total_count' => $users->total(),
+            'current_page' => $users->currentPage(),
+            'per_page' => $users->perPage(),
             'search' => $search
         ]);
+
+        // Handle AJAX requests
+        if ($request->ajax()) {
+            $mappedUsers = $users->map(function ($user) use ($startDate, $endDate) {
+                // Get login count for last month
+                $loginsLastMonth = $user->signIns()
+                    ->whereBetween('date_utc', [$startDate, $endDate])
+                    ->whereNotIn(DB::raw('LOWER(application)'), $this->excludedSystems)
+                    ->count();
+
+                // Get last login date
+                $lastLogin = $user->signIns()
+                    ->whereBetween('date_utc', [$startDate, $endDate])
+                    ->whereNotIn(DB::raw('LOWER(application)'), $this->excludedSystems)
+                    ->orderByDesc('date_utc')
+                    ->first();
+
+                return [
+                    'id' => $user->id,
+                    'name' => $user->displayName,
+                    'login_id' => $user->userPrincipalName,
+                    'logins_last_month' => $loginsLastMonth,
+                    'last_login' => $lastLogin ? $lastLogin->date_utc : null,
+                ];
+            });
+
+            return response()->json([
+                'users' => $mappedUsers->values()->toArray(),
+                'total' => $users->total(),
+                'current_page' => $users->currentPage(),
+                'per_page' => $users->perPage(),
+                'last_page' => $users->lastPage(),
+                'from' => $users->firstItem(),
+                'to' => $users->lastItem(),
+                'pagination' => (string) $users->links(),
+            ]);
+        }
+
+        // Handle normal requests - format data for blade view
+        $formattedUsers = $users->getCollection()->map(function ($user) use ($startDate, $endDate) {
+            $loginsLastMonth = $user->signIns()
+                ->whereBetween('date_utc', [$startDate, $endDate])
+                ->whereNotIn(DB::raw('LOWER(application)'), $this->excludedSystems)
+                ->count();
+
+            $lastLogin = $user->signIns()
+                ->whereBetween('date_utc', [$startDate, $endDate])
+                ->whereNotIn(DB::raw('LOWER(application)'), $this->excludedSystems)
+                ->orderByDesc('date_utc')
+                ->first();
+
+            return [
+                'id' => $user->id,
+                'name' => $user->displayName,
+                'login_id' => $user->userPrincipalName,
+                'logins_last_month' => $loginsLastMonth,
+                'last_login' => $lastLogin ? $lastLogin->date_utc : null,
+            ];
+        });
+
+        $users->setCollection($formattedUsers);
 
         return view('logintracker.users.active-last-month', compact('users', 'search'));
         
@@ -1280,6 +1383,11 @@ public function activeLastMonth(Request $request)
             'error' => $e->getMessage(),
             'trace' => $e->getTraceAsString()
         ]);
+        
+        if ($request->ajax()) {
+            return response()->json(['error' => 'An unexpected error occurred.'], 500);
+        }
+        
         return redirect()->route('dashboard')->with('error', 'An unexpected error occurred.');
     }
 }
@@ -1291,9 +1399,12 @@ public function inactiveUsers(Request $request)
 {
     try {
         $search = $request->input('search');
+        $perPage = $request->input('per_page', $this->perPage);
 
         Log::info('UserController@inactiveUsers called', [
-            'search' => $search
+            'search' => $search,
+            'per_page' => $perPage,
+            'is_ajax' => $request->ajax()
         ]);
 
         // Query users who have never logged in
@@ -1320,13 +1431,41 @@ public function inactiveUsers(Request $request)
         }])
         ->orderBy('displayName');
 
-        $users = $query->paginate($this->perPage)->withQueryString();
+        $users = $query->paginate($perPage)->withQueryString();
 
         Log::info('Inactive users loaded', [
             'total_count' => $users->total(),
+            'current_page' => $users->currentPage(),
+            'per_page' => $users->perPage(),
             'search' => $search
         ]);
 
+        // Handle AJAX requests
+        if ($request->ajax()) {
+            $mappedUsers = $users->map(function ($user) {
+                return [
+                    'id' => $user->id,
+                    'displayName' => $user->displayName,
+                    'userPrincipalName' => $user->userPrincipalName,
+                    'mail' => $user->mail,
+                    'alternateEmailAddress' => $user->alternateEmailAddress,
+                    'signIns' => $user->signIns->toArray(),
+                ];
+            });
+
+            return response()->json([
+                'users' => $mappedUsers->values()->toArray(),
+                'total' => $users->total(),
+                'current_page' => $users->currentPage(),
+                'per_page' => $users->perPage(),
+                'last_page' => $users->lastPage(),
+                'from' => $users->firstItem(),
+                'to' => $users->lastItem(),
+                'pagination' => (string) $users->links(),
+            ]);
+        }
+
+        // Handle normal requests
         return view('logintracker.users.inactive-users', compact('users', 'search'));
         
     } catch (\Exception $e) {
@@ -1334,6 +1473,11 @@ public function inactiveUsers(Request $request)
             'error' => $e->getMessage(),
             'trace' => $e->getTraceAsString()
         ]);
+        
+        if ($request->ajax()) {
+            return response()->json(['error' => 'An unexpected error occurred.'], 500);
+        }
+        
         return redirect()->route('dashboard')->with('error', 'An unexpected error occurred.');
     }
 }

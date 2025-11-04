@@ -36,7 +36,7 @@
 
         <div class="d-flex align-items-center">
             <input type="text" id="search-input" class="form-control" placeholder="Search users..."
-                   style="width: 300px;" value="{{ request('search') }}">
+                    style="width: 300px;" value="{{ request('search') }}">
             <div class="spinner-border spinner-border-sm text-primary ms-2 d-none" id="search-spinner"></div>
         </div>
     </div>
@@ -79,7 +79,7 @@
                                     </td>
                                     <td>
                                         <a href="{{ route('reporting.users.show', $user->userPrincipalName ?? $user->id) }}"
-                                           class="btn btn-sm btn-primary">
+                                            class="btn btn-sm btn-primary">
                                             <i class="fas fa-eye me-1"></i>View
                                         </a>
                                     </td>
@@ -109,13 +109,13 @@
 
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
-          integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+            integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
 
     <!-- Font Awesome -->
     <link rel="stylesheet"
-          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"
-          integrity="sha512-Kc323vGBEqzTmouAECnVceyQqyqdsSiqLQISBL29aUW4U/M7pSPA/gEUZQqv1cwx4OnYxTxve5UMg5GT6L4JJg=="
-          crossorigin="anonymous">
+            href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"
+            integrity="sha512-Kc323vGBEqzTmouAECnVceyQqyqdsSiqLQISBL29aUW4U/M7pSPA/gEUZQqv1cwx4OnYxTxve5UMg5GT6L4JJg=="
+            crossorigin="anonymous">
 
     <style>
         .page-title {
@@ -483,99 +483,109 @@
             }
 
             /**
-             * Load data via AJAX
+            * Load data via AJAX
              */
             function loadData(page = 1) {
                 if (isLoading) return;
 
-                isLoading = true;
-                $('#loading').show();
-                $('#search-spinner').removeClass('d-none');
-                $('#pagination-container').addClass('loading');
+            isLoading = true;
+            $('#loading').show();
+            $('#search-spinner').removeClass('d-none');
+            $('#pagination-container').addClass('loading');
 
-                $.ajax({
-                    url: '{{ route('reporting.users.active-this-month') }}',
-                    method: 'GET',
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-                    },
-                    data: { 
-                        page: page, 
-                        per_page: perPage, 
-                        search: searchTerm 
-                    },
-                    success: function(response) {
-                        const tbody = $('#user-table-body');
-                        tbody.empty();
+            $.ajax({
+                url: '{{ route("reporting.users.active-this-month") }}',
+                method: 'GET',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+        },
+        data: { 
+            page: page, 
+            per_page: perPage, 
+            search: searchTerm 
+        },
+        success: function(response) {
+            console.log('AJAX Response:', response); // Debug log
+            
+            const tbody = $('#user-table-body');
+            tbody.empty();
 
-                        const users = response.users || [];
-                        const totalRecords = response.total || 0;
-                        const from = users.length ? (page - 1) * perPage + 1 : 0;
-                        const to = users.length ? Math.min(from + users.length - 1, totalRecords) : 0;
+            const users = response.users || [];
+            const totalRecords = response.total || 0;
+            const from = response.from || 0;  // Use response.from
+            const to = response.to || 0;      // Use response.to
 
-                        if (users.length > 0) {
-                            users.forEach(user => {
-                                const userId = user.userPrincipalName || user.id;
-                                const displayName = user.displayName || 'N/A';
-                                const userPrincipalName = user.userPrincipalName || 'N/A';
-                                const mail = user.mail || 'N/A';
-                                const loginCount = user.login_count || 0;
-                                
-                                let lastLogin = '<span class="text-muted">Never</span>';
-                                if (user.signIns && user.signIns.length > 0) {
-                                    const loginDate = new Date(user.signIns[0].date_utc);
-                                    lastLogin = loginDate.toLocaleDateString('en-GB', {
-                                        day: 'numeric', 
-                                        month: 'short', 
-                                        year: 'numeric',
-                                        hour: '2-digit', 
-                                        minute: '2-digit'
-                                    }).replace(',', '');
-                                }
-
-                                const viewBtn = userId
-                                    ? `<a href="${userShowBaseUrl}${encodeURIComponent(userId)}" class="btn btn-sm btn-primary"><i class="fas fa-eye me-1"></i>View</a>`
-                                    : '<span class="text-muted">No ID</span>';
-
-                                tbody.append(`
-                                    <tr>
-                                        <td>${displayName}</td>
-                                        <td>${userPrincipalName}</td>
-                                        <td>${mail}</td>
-                                        <td><span class="badge bg-success">${loginCount}</span></td>
-                                        <td>${lastLogin}</td>
-                                        <td>${viewBtn}</td>
-                                    </tr>
-                                `);
-                            });
-                        } else {
-                            tbody.append('<tr><td colspan="6" class="text-center text-muted py-4">No users found.</td></tr>');
-                        }
-
-                        updateTableInfo(from, to, totalRecords);
-
-                        // Update pagination
-                        if (response.pagination) {
-                            $('#pagination-container').html(response.pagination);
-                            setTimeout(cleanupPagination, 100);
-                        }
-
-                        currentPage = page;
-                    },
-                    error: function(xhr, status, error) {
-                        console.error('Error loading data:', error);
-                        const tbody = $('#user-table-body');
-                        tbody.html('<tr><td colspan="6" class="text-center text-danger py-4">Error loading data. Please try again.</td></tr>');
-                    },
-                    complete: function() {
-                        $('#loading').hide();
-                        $('#search-spinner').addClass('d-none');
-                        $('#pagination-container').removeClass('loading');
-                        isLoading = false;
+            if (users.length > 0) {
+                users.forEach(user => {
+                    const userId = user.userPrincipalName || user.id;
+                    const displayName = user.displayName || 'N/A';
+                    const userPrincipalName = user.userPrincipalName || 'N/A';
+                    const mail = user.mail || 'N/A';
+                    const loginCount = user.login_count || 0;
+                    
+                    let lastLogin = '<span class="text-muted">Never</span>';
+                    if (user.signIns && user.signIns.length > 0) {
+                        const loginDate = new Date(user.signIns[0].date_utc);
+                        lastLogin = loginDate.toLocaleDateString('en-GB', {
+                            day: 'numeric', 
+                            month: 'short', 
+                            year: 'numeric',
+                            hour: '2-digit', 
+                            minute: '2-digit'
+                        }).replace(',', '');
                     }
+
+                    const viewBtn = userId
+                        ? `<a href="${userShowBaseUrl}${encodeURIComponent(userId)}" class="btn btn-sm btn-primary"><i class="fas fa-eye me-1"></i>View</a>`
+                        : '<span class="text-muted">No ID</span>';
+
+                    tbody.append(`
+                        <tr>
+                            <td>${displayName}</td>
+                            <td>${userPrincipalName}</td>
+                            <td>${mail}</td>
+                            <td><span class="badge bg-success">${loginCount}</span></td>
+                            <td>${lastLogin}</td>
+                            <td>${viewBtn}</td>
+                        </tr>
+                    `);
                 });
+            } else {
+                tbody.append('<tr><td colspan="6" class="text-center text-muted py-4">No users found.</td></tr>');
             }
+
+            updateTableInfo(from, to, totalRecords);
+
+            // Update pagination
+            if (response.pagination) {
+                $('#pagination-container').html(response.pagination);
+                setTimeout(cleanupPagination, 100);
+            } else {
+                console.warn('No pagination HTML in response');
+            }
+
+            currentPage = page;
+        },
+        error: function(xhr, status, error) {
+            console.error('Error loading data:', {
+                status: xhr.status,
+                statusText: xhr.statusText,
+                error: error,
+                response: xhr.responseText
+            });
+            
+            const tbody = $('#user-table-body');
+            tbody.html('<tr><td colspan="6" class="text-center text-danger py-4">Error loading data. Please try again.</td></tr>');
+        },
+        complete: function() {
+            $('#loading').hide();
+            $('#search-spinner').addClass('d-none');
+            $('#pagination-container').removeClass('loading');
+            isLoading = false;
+        }
+    });
+}
 
             /**
              * Event: Entries per page change
