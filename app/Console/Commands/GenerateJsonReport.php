@@ -91,47 +91,10 @@ class GenerateJsonReport extends Command
         $this->info("Calling API for {$zReportDate}");
         Log::info("Calling TZ ZReport API", ['date' => $zReportDate]);
         //GET
-        // try {
-        //     $response = Http::withBasicAuth('admin', 'aDmiN@2024')
-        //         ->timeout(120)
-        //         ->get($apiUrl);
-
-        //     $statusCode = $response->status();
-        //     Log::info("API response received", [
-        //         'date' => $zReportDate,
-        //         'status_code' => $statusCode
-        //     ]);
-
-        //     if (!$response->ok()) {
-        //         Log::error("Failed to fetch report from API", [
-        //             'date' => $zReportDate,
-        //             'status_code' => $statusCode,
-        //             'body' => $response->body()
-        //         ]);
-        //         $this->error("API request failed for {$zReportDate} (Status: $statusCode)");
-        //     }
-
-        //     $jsonData = $response->body();
-
-        //     DB::statement("
-        //     EXEC dbo.TRA_JSON_Convertor :reportDate, :officeCode, :json
-        //  ", [
-        //         'reportDate' => $zReportDate,
-        //         'officeCode' => $officeCode,
-        //         'json'       => $jsonData
-        //     ]);
-
-        //     $this->info("Report for {$zReportDate} processed successfully.");
-        //     Log::info("TZ ZReport processed successfully", ['date' => $zReportDate]);
-        // }
-
-        //POST
         try {
             $response = Http::withBasicAuth('admin', 'aDmiN@2024')
                 ->timeout(120)
-                ->post($apiUrl, [
-                    'date' => $zReportDate
-                ]);
+                ->get($apiUrl);
 
             $statusCode = $response->status();
             Log::info("API response received", [
@@ -148,19 +111,56 @@ class GenerateJsonReport extends Command
                 $this->error("API request failed for {$zReportDate} (Status: $statusCode)");
             }
 
-            $jsonData = $response->body() ?: '{}';
+            $jsonData = $response->body();
 
             DB::statement("
             EXEC dbo.TRA_JSON_Convertor :reportDate, :officeCode, :json
-             ", [
+         ", [
                 'reportDate' => $zReportDate,
                 'officeCode' => $officeCode,
                 'json'       => $jsonData
             ]);
 
             $this->info("Report for {$zReportDate} processed successfully.");
-            Log::info("TZ Report processed successfully", ['date' => $zReportDate]);
+            Log::info("TZ ZReport processed successfully", ['date' => $zReportDate]);
         }
+
+        //POST
+        // try {
+        //     $response = Http::withBasicAuth('admin', 'aDmiN@2024')
+        //         ->timeout(120)
+        //         ->post($apiUrl, [
+        //             'date' => $zReportDate
+        //         ]);
+
+        //     $statusCode = $response->status();
+        //     Log::info("API response received", [
+        //         'date' => $zReportDate,
+        //         'status_code' => $statusCode
+        //     ]);
+
+        //     if (!$response->ok()) {
+        //         Log::error("Failed to fetch report from API", [
+        //             'date' => $zReportDate,
+        //             'status_code' => $statusCode,
+        //             'body' => $response->body()
+        //         ]);
+        //         $this->error("API request failed for {$zReportDate} (Status: $statusCode)");
+        //     }
+
+        //     $jsonData = $response->body() ?: '{}';
+
+        //     DB::statement("
+        //     EXEC dbo.TRA_JSON_Convertor :reportDate, :officeCode, :json
+        //      ", [
+        //         'reportDate' => $zReportDate,
+        //         'officeCode' => $officeCode,
+        //         'json'       => $jsonData
+        //     ]);
+
+        //     $this->info("Report for {$zReportDate} processed successfully.");
+        //     Log::info("TZ Report processed successfully", ['date' => $zReportDate]);
+        // }
         catch (\Throwable $e) {
             Log::error("API call failed", [
                 'date' => $zReportDate,

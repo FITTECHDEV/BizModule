@@ -23,7 +23,7 @@ class System extends Model
      *
      * @var bool
      */
-    public $timestamps = true;
+    public $timestamps = false; // CHANGED: Disabled timestamps since columns were removed from DB
 
     /**
      * The primary key for the model.
@@ -51,34 +51,18 @@ class System extends Model
      *
      * @var array
      */
-    protected $fillable = ['name', 'created_at', 'updated_at'];
+    protected $fillable = ['name']; // CHANGED: Removed created_at and updated_at
 
     /**
      * The attributes that should be cast.
      *
      * @var array
      */
-    protected $casts = [
-        'created_at' => 'datetime',
-        'updated_at' => 'datetime',
-    ];
+    // REMOVED: Timestamp casts since columns don't exist
 
     /**
-     * Default systems to populate if table is empty.
-     *
-     * @var array
+     * REMOVED: Default systems array - no longer needed as systems are populated from database
      */
-    protected static $defaultSystems = [
-        'SCM',
-        'Odoo',
-        'OPS',
-        'D365 Live',
-        'Fit Express',
-        'FIT ERP',
-        'Fit Express UAT',
-        'FITerp UAT',
-        'OPS UAT'
-    ];
 
     /**
      * Get the users associated with this system through the pivot table.
@@ -141,12 +125,9 @@ class System extends Model
                         'trace' => $e->getTraceAsString()
                     ]);
 
-                    // Fallback: Create in-memory collection
-                    $systems = static::createFallbackCollection();
-
-                    Log::warning('Using fallback in-memory systems collection', [
-                        'count' => $systems->count()
-                    ]);
+                    // CHANGED: Return empty collection instead of fallback with hardcoded systems
+                    Log::warning('Returning empty systems collection - database population failed');
+                    return collect();
                 }
             }
 
@@ -155,56 +136,50 @@ class System extends Model
     }
 
     /**
- * Normalize system name using systemmap config
- */
-private static function normalizeSystemName($systemName, $systemMap = null)
-{
-    if (empty($systemName)) {
-        return 'Unknown';
-    }
-    
-    $normalized = trim($systemName);
-    
-    if (empty($systemMap)) {
-        $systemMap = config('systemmap', []);
-    }
-    
-    if (empty($systemMap)) {
+     * Normalize system name using systemmap config
+     * 
+     * @param string $systemName
+     * @param array|null $systemMap
+     * @return string
+     */
+    private static function normalizeSystemName($systemName, $systemMap = null)
+    {
+        if (empty($systemName)) {
+            return 'Unknown';
+        }
+        
+        $normalized = trim($systemName);
+        
+        if (empty($systemMap)) {
+            $systemMap = config('systemmap', []);
+        }
+        
+        if (empty($systemMap)) {
+            return $normalized;
+        }
+        
+        $lowerNormalized = strtolower($normalized);
+        
+        // Case-insensitive lookup
+        foreach ($systemMap as $rawName => $cleanName) {
+            if (strtolower($rawName) === $lowerNormalized) {
+                return $cleanName;
+            }
+        }
+        
         return $normalized;
     }
-    
-    $lowerNormalized = strtolower($normalized);
-    
-    // Case-insensitive lookup
-    foreach ($systemMap as $rawName => $cleanName) {
-        if (strtolower($rawName) === $lowerNormalized) {
-            return $cleanName;
-        }
-    }
-    
-    return $normalized;
-}
 
-   /**
- * Populate the database with systems from Azure_LoginDetails.
- *
- * @return int Number of systems created
- * @throws \Exception
- */
+    /**
+     * Populate the database with systems from Azure_LoginDetails.
+     *
+     * @return int Number of systems created
+     * @throws \Exception
+     */
+
 public static function populateDefaultSystems(): int
 {
     $systemMap = config('systemmap', []);
-    $excludedSystems = [
-        'Import-Unknown',
-        'Unknown', 
-        'Microsoft Teams',
-        'Office 365',
-        'Windows Authentication',  
-        'IT Infrastructure',       
-        'FITerp UAT',             
-        'Web Browser',           
-        'Mobile/Desktop Client'
-    ];
     
     // Get unique systems from Azure_LoginDetails
     $rawSystems = \DB::table('Azure_LoginDetails')
@@ -218,11 +193,7 @@ public static function populateDefaultSystems(): int
     
     foreach ($rawSystems as $item) {
         $normalized = self::normalizeSystemName($item->clean_system, $systemMap);
-        
-        // Skip excluded systems
-        if (!in_array($normalized, $excludedSystems)) {
-            $normalizedSystems->push($normalized);
-        }
+        $normalizedSystems->push($normalized);
     }
     
     // Insert unique normalized systems
@@ -233,12 +204,19 @@ public static function populateDefaultSystems(): int
             ->first();
         
         if (!$existing) {
+            // ✅ CRITICAL FIX: Generate UUID instead of integer
+            $newId = (string) \Illuminate\Support\Str::uuid();
+            
             \DB::table('Azure_SoftwareMaster')->insert([
-                'name' => $systemName,
-                'created_at' => now(),
-                'updated_at' => now()
+                'Id' => $newId,  // ✅ Now using UUID
+                'name' => $systemName
             ]);
             $created++;
+            
+            \Log::info('Created new system', [
+                'system_name' => $systemName,
+                'system_id' => $newId
+            ]);
         }
     }
     
@@ -253,21 +231,10 @@ public static function populateDefaultSystems(): int
     return $created;
 }
 
-
     /**
-     * Create fallback in-memory collection when database is unavailable.
-     *
-     * @return \Illuminate\Database\Eloquent\Collection
+     * REMOVED: createFallbackCollection() method
+     * No longer needed as we return empty collection on failure
      */
-    protected static function createFallbackCollection(): Collection
-    {
-        return collect(static::$defaultSystems)->map(function ($name) {
-            $system = new static();
-            $system->name = $name;
-            $system->exists = false; // Mark as not persisted
-            return $system;
-        });
-    }
 
     /**
      * Get system by name.

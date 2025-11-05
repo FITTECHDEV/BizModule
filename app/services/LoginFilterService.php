@@ -111,42 +111,42 @@ class LoginFilterService
     /**
      * Get the list of supported systems (for dropdown filtering)
      */
-    public function getSystemList(): array
-    {
-        // Systems to exclude
-        $excluded = ['microsoft teams', 'office 365', 'unknown'];
-
-        // Fetch systems from DB excluding the unwanted ones
-        $systems = System::whereNotIn(\DB::raw('LOWER(name)'), $excluded)
-            ->orderBy('name')
-            ->pluck('name')
-            ->toArray();
-
-        // Fallback to hardcoded list if System model is empty
-        if (empty($systems)) {
-            $systems = [
-                'SCM',
-                'Odoo',
-                'OPS',
-                'D365 Live',
-                'Fit Express',
-                'FIT ERP',
-                'Fit Express UAT',
-                'FITerp UAT',
-                'OPS UAT',
-            ];
-            Log::info('No systems found in System model, using hardcoded list');
-        }
-
-        // Ensure unique + sorted
-        $systems = array_values(array_unique($systems));
-
-        Log::info('System list loaded', [
-            'count' => count($systems),
-            'excluded' => $excluded,
-            'systems' => $systems,
-        ]);
-
-        return $systems;
+  public function getSystemList(): array
+{
+    // Systems to exclude - REMOVED, we want all systems during import
+    $excluded = [];
+    
+    // Fetch all systems from DB (no exclusions)
+    $systems = System::whereNotIn(\DB::raw('LOWER(name)'), $excluded)
+        ->orderBy('name')
+        ->pluck('name')
+        ->toArray();
+    
+    // Fallback to hardcoded list if System model is empty
+    if (empty($systems)) {
+        $systems = [
+            'SCM',
+            'Odoo',
+            'OPS',
+            'D365 Live',
+            'Fit Express',
+            'FIT ERP',
+            'Fit Express UAT',
+            'FITerp UAT',
+            'OPS UAT',
+        ];
+        Log::info('No systems found in System model, using hardcoded list');
     }
+    
+    // Ensure unique + sorted
+    $systems = array_values(array_unique($systems));
+    
+    Log::info('System list loaded', [
+        'count' => count($systems),
+        'excluded' => $excluded,
+        'systems' => $systems,
+    ]);
+    
+    return $systems;
+}
 }

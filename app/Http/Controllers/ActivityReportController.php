@@ -18,16 +18,16 @@ class ActivityReportController extends Controller
      * System names to exclude from reports (same as other controllers)
      */
     private $excludedSystems = [
-        'import-unknown',
-        'unknown',
-        'microsoft teams',
-        'office 365',
-        'windows authentication',
-        'it infrastructure',
-        'fiterp uat',
-        'web browser',
-        'mobile/desktop client',
-        'all'
+    //     'import-unknown',
+    //     'unknown',
+    //     'microsoft teams',
+    //     'office 365',
+    //     'windows authentication',
+    //     'it infrastructure',
+    //     'fiterp uat',
+    //     'web browser',
+    //     'mobile/desktop client',
+    //     'all'
     ];
 
     /**

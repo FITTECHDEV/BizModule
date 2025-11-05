@@ -401,6 +401,9 @@ Route::get('/dashboard', [DashboardController::class, 'index'])
     ->middleware('auth')
     ->name('dashboard');
 
+    Route::get('/dashboard/debug-user-logins', [DashboardController::class, 'debugUserLogins'])
+    ->name('dashboard.debug-user-logins');
+
 // ----------------------
 // Imports route
 // ----------------------

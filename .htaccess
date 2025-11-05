@@ -3,3 +3,21 @@
     RewriteCond %{REQUEST_URI} !^public
     RewriteRule ^(.*)$ public/$1 [L]
 </IfModule>
+
+# PHP Configuration for handling large imports
+<IfModule mod_php7.c>
+    php_value max_execution_time 300
+    php_value max_input_time 300
+    php_value memory_limit 512M
+    php_value post_max_size 100M
+    php_value upload_max_filesize 100M
+</IfModule>
+
+# For PHP 8.x
+<IfModule mod_php8.c>
+    php_value max_execution_time 300
+    php_value max_input_time 300
+    php_value memory_limit 512M
+    php_value post_max_size 100M
+    php_value upload_max_filesize 100M
+</IfModule>

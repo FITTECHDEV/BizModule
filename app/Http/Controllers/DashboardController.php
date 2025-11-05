@@ -27,16 +27,16 @@ class DashboardController extends Controller
 
 
 private $excludedSystems = [
-        'Import-Unknown',
-        'Unknown',
-        'Microsoft Teams',
-        'Office 365',
-        'Windows Authentication',
-        'IT Infrastructure',
-        'FITerp UAT',
-        'Web Browser',
-        'Mobile/Desktop Client'
-        // 'all'
+//         'Import-Unknown',
+//         'Unknown',
+//         'Microsoft Teams',
+//         'Office 365',
+//         'Windows Authentication',
+//         'IT Infrastructure',
+//         'FITerp UAT',
+//         'Web Browser',
+//         'Mobile/Desktop Client'
+//         // 'all'
     ];
 
 
@@ -1210,7 +1210,7 @@ private function getUserSummary()
 }
 
 /**
- * Get login view list from stored procedure - FIXED with data sanitization
+ * Get login view list from stored procedure - FIXED with day-based counting
  */
 private function getLoginViewList()
 {
@@ -1225,11 +1225,6 @@ private function getLoginViewList()
             // Clear buffer
         }
         
-        Log::info('SP LoginViewList PDO results', [
-            'count' => count($results),
-            'first_result' => !empty($results) ? $results[0] : null,
-        ]);
-        
         if (empty($results)) {
             Log::warning('SP LoginViewList returned no data');
             return collect();
@@ -1242,9 +1237,48 @@ private function getLoginViewList()
                 $lastLogin = null;
             }
             
-            // Clean up logins count
+            // FIXED: Handle the asterisk (*) value
             $loginsLastMonth = $item->NoofLoginLastMonth ?? 0;
-            if ($loginsLastMonth === 'Never Logged In' || !is_numeric($loginsLastMonth)) {
+            
+            Log::debug('Processing user from SP', [
+                'name' => $item->Name ?? 'N/A',
+                'login_id' => $item->LoginID ?? 'N/A',
+                'raw_logins_value' => $loginsLastMonth,
+                'type' => gettype($loginsLastMonth),
+                'is_numeric' => is_numeric($loginsLastMonth)
+            ]);
+            
+            // Convert to integer if it's numeric
+            if (is_numeric($loginsLastMonth)) {
+                $loginsLastMonth = (int)$loginsLastMonth;
+            } 
+            // Check for string representations
+            elseif (is_string($loginsLastMonth)) {
+                $trimmed = trim($loginsLastMonth);
+                
+                // Handle the asterisk case - query actual login count (DAYS, not records)
+                if ($trimmed === '*') {
+                    $loginsLastMonth = $this->getActualLoginCount($item->LoginID);
+                    Log::info('Asterisk value replaced with actual day count', [
+                        'user' => $item->Name ?? 'N/A',
+                        'login_id' => $item->LoginID ?? 'N/A',
+                        'actual_days' => $loginsLastMonth
+                    ]);
+                }
+                elseif ($trimmed === 'Never Logged In' || $trimmed === 'Never' || $trimmed === '') {
+                    $loginsLastMonth = 0;
+                } elseif (is_numeric($trimmed)) {
+                    $loginsLastMonth = (int)$trimmed;
+                } else {
+                    Log::warning('Unexpected logins value format', [
+                        'user' => $item->Name ?? 'N/A',
+                        'value' => $loginsLastMonth
+                    ]);
+                    $loginsLastMonth = 0;
+                }
+            }
+            // If null or other type, set to 0
+            else {
                 $loginsLastMonth = 0;
             }
             
@@ -1266,6 +1300,236 @@ private function getLoginViewList()
         return collect();
     }
 }
+
+
+
+/**
+ * Get actual login count for a user when stored procedure returns asterisk
+ * FIXED: Counts unique APPLICATION-DAY combinations
+ * Example: If user accessed "Windows Sign In" 28 times on Oct 1st = counts as 1
+ *          If user accessed "OPS" 5 times on Oct 1st = counts as 1
+ *          Total for Oct 1st = 2 (not 33)
+ */
+private function getActualLoginCount($loginId)
+{
+    try {
+        $lastMonthStart = now()->subMonth()->startOfMonth();
+        $lastMonthEnd = now()->subMonth()->endOfMonth();
+        
+        // Count distinct APPLICATION + DATE combinations
+        // This counts each application once per day, regardless of how many times accessed
+        $count = DB::table('Azure_LoginDetails')
+            ->where('username', $loginId)
+            ->whereBetween('date_utc', [$lastMonthStart, $lastMonthEnd])
+            ->whereNotNull('application')
+            ->where('application', '!=', '')
+            ->selectRaw('COUNT(DISTINCT CONCAT(CAST(date_utc AS DATE), \'|\', application)) as unique_app_days')
+            ->first()
+            ->unique_app_days ?? 0;
+            
+        Log::info('Unique application-day combinations calculated', [
+            'login_id' => $loginId,
+            'unique_app_days' => $count,
+            'date_range' => [$lastMonthStart->toDateString(), $lastMonthEnd->toDateString()],
+            'count_logic' => 'Each application counts once per day'
+        ]);
+            
+        return $count;
+    } catch (\Exception $e) {
+        Log::error('Failed to get actual login count', [
+            'login_id' => $loginId,
+            'error' => $e->getMessage()
+        ]);
+        return 0;
+    }
+}
+
+
+
+
+/**
+ * Debug endpoint to verify login count for a specific user
+ */
+public function debugUserLogins(Request $request)
+{
+    $loginId = $request->input('login_id', 'M.mlyuka@freight-in-time.com');
+    
+    // Define last month date range
+    $lastMonthStart = now()->subMonth()->startOfMonth();
+    $lastMonthEnd = now()->subMonth()->endOfMonth();
+    
+    // Get current month for comparison
+    $currentMonthStart = now()->startOfMonth();
+    $currentMonthEnd = now()->endOfMonth();
+    
+    try {
+        // Count logins last month
+        $lastMonthCount = DB::table('Azure_LoginDetails')
+            ->where('username', $loginId)
+            ->whereBetween('date_utc', [$lastMonthStart, $lastMonthEnd])
+            ->count();
+        
+        // Count logins this month
+        $currentMonthCount = DB::table('Azure_LoginDetails')
+            ->where('username', $loginId)
+            ->whereBetween('date_utc', [$currentMonthStart, $currentMonthEnd])
+            ->count();
+        
+        // Get distinct days logged in last month
+        $distinctDaysLastMonth = DB::table('Azure_LoginDetails')
+            ->where('username', $loginId)
+            ->whereBetween('date_utc', [$lastMonthStart, $lastMonthEnd])
+            ->selectRaw('COUNT(DISTINCT CAST(date_utc AS DATE)) as distinct_days')
+            ->first()
+            ->distinct_days ?? 0;
+        
+        // Get breakdown by application (changed from system)
+        $applicationBreakdown = DB::table('Azure_LoginDetails')
+            ->where('username', $loginId)
+            ->whereBetween('date_utc', [$lastMonthStart, $lastMonthEnd])
+            ->selectRaw('application, COUNT(*) as count')
+            ->groupBy('application')
+            ->orderByDesc('count')
+            ->get();
+        
+        // Get daily breakdown
+        $dailyBreakdown = DB::table('Azure_LoginDetails')
+            ->where('username', $loginId)
+            ->whereBetween('date_utc', [$lastMonthStart, $lastMonthEnd])
+            ->selectRaw('CAST(date_utc AS DATE) as login_date, COUNT(*) as count')
+            ->groupBy(DB::raw('CAST(date_utc AS DATE)'))
+            ->orderBy('login_date')
+            ->get();
+        
+        // Get sample login records (first 10 and last 10)
+        $firstLogins = DB::table('Azure_LoginDetails')
+            ->where('username', $loginId)
+            ->whereBetween('date_utc', [$lastMonthStart, $lastMonthEnd])
+            ->orderBy('date_utc', 'asc')
+            ->limit(10)
+            ->get(['date_utc', 'application', 'ip_address', 'status']);
+        
+        $lastLogins = DB::table('Azure_LoginDetails')
+            ->where('username', $loginId)
+            ->whereBetween('date_utc', [$lastMonthStart, $lastMonthEnd])
+            ->orderBy('date_utc', 'desc')
+            ->limit(10)
+            ->get(['date_utc', 'application', 'ip_address', 'status']);
+        
+        // Check for duplicates/imports (changed from system to application)
+        $duplicateCheck = DB::table('Azure_LoginDetails')
+            ->where('username', $loginId)
+            ->whereBetween('date_utc', [$lastMonthStart, $lastMonthEnd])
+            ->selectRaw('date_utc, application, COUNT(*) as duplicate_count')
+            ->groupBy('date_utc', 'application')
+            ->havingRaw('COUNT(*) > 1')
+            ->orderByDesc('duplicate_count')
+            ->limit(20)
+            ->get();
+        
+        // Get all-time statistics
+        $allTimeCount = DB::table('Azure_LoginDetails')
+            ->where('username', $loginId)
+            ->count();
+        
+        $firstEverLogin = DB::table('Azure_LoginDetails')
+            ->where('username', $loginId)
+            ->orderBy('date_utc', 'asc')
+            ->first(['date_utc', 'application']);
+        
+        $lastEverLogin = DB::table('Azure_LoginDetails')
+            ->where('username', $loginId)
+            ->orderBy('date_utc', 'desc')
+            ->first(['date_utc', 'application']);
+        
+        return response()->json([
+            'user' => $loginId,
+            'date_ranges' => [
+                'last_month' => [
+                    'start' => $lastMonthStart->toDateString(),
+                    'end' => $lastMonthEnd->toDateString(),
+                ],
+                'current_month' => [
+                    'start' => $currentMonthStart->toDateString(),
+                    'end' => $currentMonthEnd->toDateString(),
+                ]
+            ],
+            'summary' => [
+                'last_month_total_logins' => $lastMonthCount,
+                'current_month_total_logins' => $currentMonthCount,
+                'distinct_days_last_month' => $distinctDaysLastMonth,
+                'average_logins_per_day_last_month' => $distinctDaysLastMonth > 0 
+                    ? round($lastMonthCount / $distinctDaysLastMonth, 2) 
+                    : 0,
+                'all_time_logins' => $allTimeCount,
+            ],
+            'analysis' => [
+                'is_count_suspicious' => $lastMonthCount > 500,
+                'has_duplicates' => count($duplicateCheck) > 0,
+                'applications_used' => count($applicationBreakdown),
+                'interpretation' => $this->interpretLoginCount($lastMonthCount, $distinctDaysLastMonth, count($duplicateCheck)),
+            ],
+            'breakdown_by_application' => $applicationBreakdown,
+            'daily_breakdown' => $dailyBreakdown,
+            'duplicate_timestamps' => $duplicateCheck,
+            'sample_logins' => [
+                'first_10_last_month' => $firstLogins,
+                'last_10_last_month' => $lastLogins,
+            ],
+            'historical' => [
+                'first_ever_login' => $firstEverLogin,
+                'last_ever_login' => $lastEverLogin,
+            ],
+        ], 200, [], JSON_PRETTY_PRINT);
+        
+    } catch (\Exception $e) {
+        Log::error('Failed to debug user logins', [
+            'login_id' => $loginId,
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString()
+        ]);
+        
+        return response()->json([
+            'error' => 'Failed to retrieve login data',
+            'message' => $e->getMessage()
+        ], 500);
+    }
+}
+/**
+ * Interpret login count and provide insights
+ */
+private function interpretLoginCount($totalLogins, $distinctDays, $duplicateCount)
+{
+    $insights = [];
+    
+    if ($totalLogins > 1000) {
+        $insights[] = "⚠️ Very high login count (>1000) - May indicate data duplication or automated processes";
+    }
+    
+    if ($distinctDays > 0) {
+        $avgPerDay = $totalLogins / $distinctDays;
+        
+        if ($avgPerDay > 50) {
+            $insights[] = "⚠️ High average logins per day ({$avgPerDay}) - Unusual for manual user activity";
+        } elseif ($avgPerDay > 20) {
+            $insights[] = "ℹ️ Moderate activity ({$avgPerDay} logins/day) - Could be normal for power users";
+        } else {
+            $insights[] = "✅ Normal activity pattern ({$avgPerDay} logins/day)";
+        }
+    }
+    
+    if ($duplicateCount > 0) {
+        $insights[] = "⚠️ Duplicate timestamps detected - May indicate data import issues";
+    }
+    
+    if (empty($insights)) {
+        $insights[] = "✅ Login count appears normal";
+    }
+    
+    return $insights;
+}
+
+
 
     public function debugRelationships(Request $request)
 {

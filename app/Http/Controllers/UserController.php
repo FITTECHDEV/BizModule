@@ -414,6 +414,62 @@ public function show(Request $request, $identifier)
             'end'    => $end->toDateTimeString(),
         ]);
 
+        // ====================================================================
+        // DEBUG: CHECK DATABASE FOR OCTOBER DATA
+        // ====================================================================
+        $allOctoberDates = SigninLog::where('user_id', $user->id)
+            ->whereBetween('date_utc', [
+                Carbon::parse('2025-10-01')->startOfDay(),
+                Carbon::parse('2025-10-31')->endOfDay()
+            ])
+            ->select(DB::raw('CONVERT(DATE, date_utc) as login_date'))
+            ->distinct()
+            ->orderBy('login_date')
+            ->pluck('login_date')
+            ->toArray();
+
+        Log::info('🔍 DEBUG: All October Dates in Database', [
+            'user_email' => $user->userPrincipalName,
+            'user_id' => $user->id,
+            'dates_with_activity' => $allOctoberDates,
+            'total_dates' => count($allOctoberDates)
+        ]);
+
+        // Check specifically for Oct 27
+        $oct27Count = SigninLog::where('user_id', $user->id)
+            ->whereDate('date_utc', '2025-10-27')
+            ->count();
+
+        $oct27Apps = SigninLog::where('user_id', $user->id)
+            ->whereDate('date_utc', '2025-10-27')
+            ->pluck('application')
+            ->unique()
+            ->toArray();
+
+        Log::info('🔍 DEBUG: October 27th Specific Check', [
+            'user_email' => $user->userPrincipalName,
+            'records_found' => $oct27Count,
+            'applications' => $oct27Apps
+        ]);
+
+        // Check the selected date range
+        $selectedRangeDates = SigninLog::where('user_id', $user->id)
+            ->whereBetween('date_utc', [$start, $end])
+            ->select(DB::raw('CONVERT(DATE, date_utc) as login_date'))
+            ->distinct()
+            ->orderBy('login_date')
+            ->pluck('login_date')
+            ->toArray();
+
+        Log::info('🔍 DEBUG: Dates in Selected Range', [
+            'selected_range' => [$start->toDateString(), $end->toDateString()],
+            'dates_found' => $selectedRangeDates,
+            'count' => count($selectedRangeDates)
+        ]);
+        // ====================================================================
+        // END DEBUG
+        // ====================================================================
+
         // Load system map once for reuse
         $systemMap = config('systemmap', []);
         
@@ -423,6 +479,7 @@ public function show(Request $request, $identifier)
 
         // ====================================================================
         // 3. CURRENT MONTH APPLICATIONS - COUNT DAYS (ALWAYS CURRENT MONTH)
+        // INCLUDES ALL APPLICATIONS (MATCHED + UNMATCHED)
         // ====================================================================
         $currentMonthStart = Carbon::now()->startOfMonth();
         $currentMonthEnd = Carbon::now()->endOfMonth();
@@ -440,18 +497,21 @@ public function show(Request $request, $identifier)
             ->groupBy('application', DB::raw('CONVERT(DATE, date_utc)'))
             ->get();
 
-        // Map and count unique days per clean system name
+        // Map and count unique days per application (clean name OR original if unmapped)
         $mappedCurrentMonth = [];
 
         foreach ($currentMonthApplicationsRaw as $app) {
             $rawAppLower = strtolower(trim($app->application));
+            
+            // Try to get clean name from systemMap, fallback to original name
             $cleanName = $systemMap[$rawAppLower] ?? $systemMap[$app->application] ?? $app->application;
             
             if (!isset($mappedCurrentMonth[$cleanName])) {
                 $mappedCurrentMonth[$cleanName] = [
                     'application' => $cleanName,
                     'dates' => [],
-                    'last_used' => $app->last_used
+                    'last_used' => $app->last_used,
+                    'is_mapped' => isset($systemMap[$rawAppLower]) || isset($systemMap[$app->application])
                 ];
             }
             
@@ -472,24 +532,30 @@ public function show(Request $request, $identifier)
                 return (object)[
                     'application' => $item['application'],
                     'usage_count' => count($item['dates']), // Number of days used
-                    'last_used' => $item['last_used']
+                    'last_used' => $item['last_used'],
+                    'is_mapped' => $item['is_mapped']
                 ];
             })
             ->sortByDesc('last_used')
             ->take(10)
             ->values();
 
-        Log::info('Current Month Applications - DAYS COUNT', [
+        Log::info('Current Month Applications - ALL APPS INCLUDING UNMATCHED', [
             'count' => $currentMonthApplications->count(),
             'month' => Carbon::now()->format('F Y'),
             'date_range' => [$currentMonthStart->toDateString(), $currentMonthEnd->toDateString()],
             'details' => $currentMonthApplications->map(function($app) {
-                return ['name' => $app->application, 'days_used' => $app->usage_count];
+                return [
+                    'name' => $app->application, 
+                    'days_used' => $app->usage_count,
+                    'is_mapped' => $app->is_mapped
+                ];
             })->toArray()
         ]);
 
         // ====================================================================
         // 4. RECENT APPLICATIONS FOR SELECTED PERIOD - COUNT DAYS (DYNAMIC)
+        // INCLUDES ALL APPLICATIONS (MATCHED + UNMATCHED)
         // ====================================================================
 
         // Get raw data grouped by date and application for SELECTED PERIOD
@@ -505,18 +571,21 @@ public function show(Request $request, $identifier)
             ->groupBy('application', DB::raw('CONVERT(DATE, date_utc)'))
             ->get();
 
-        // Map and count unique days per clean system name
+        // Map and count unique days per application (clean name OR original if unmapped)
         $mappedRecent = [];
 
         foreach ($recentApplicationsRaw as $app) {
             $rawAppLower = strtolower(trim($app->application));
+            
+            // Try to get clean name from systemMap, fallback to original name
             $cleanName = $systemMap[$rawAppLower] ?? $systemMap[$app->application] ?? $app->application;
             
             if (!isset($mappedRecent[$cleanName])) {
                 $mappedRecent[$cleanName] = [
                     'application' => $cleanName,
                     'dates' => [],
-                    'last_used' => $app->last_used
+                    'last_used' => $app->last_used,
+                    'is_mapped' => isset($systemMap[$rawAppLower]) || isset($systemMap[$app->application])
                 ];
             }
             
@@ -537,23 +606,29 @@ public function show(Request $request, $identifier)
                 return (object)[
                     'application' => $item['application'],
                     'usage_count' => count($item['dates']), // Number of days used
-                    'last_used' => $item['last_used']
+                    'last_used' => $item['last_used'],
+                    'is_mapped' => $item['is_mapped']
                 ];
             })
             ->sortByDesc('last_used')
             ->take(10)
             ->values();
 
-        Log::info('Recent Applications (Filtered Period) - DAYS COUNT', [
+        Log::info('Recent Applications (Filtered Period) - ALL APPS INCLUDING UNMATCHED', [
             'count' => $recentApplications->count(),
             'date_range' => [$start->toDateString(), $end->toDateString()],
             'details' => $recentApplications->map(function($app) {
-                return ['name' => $app->application, 'days_used' => $app->usage_count];
+                return [
+                    'name' => $app->application, 
+                    'days_used' => $app->usage_count,
+                    'is_mapped' => $app->is_mapped
+                ];
             })->toArray()
         ]);
 
         // ====================================================================
         // 5. BUILD MONTHLY SUMMARY - OPTIMIZED AND FIXED
+        // (Only shows displaySystems in table)
         // ====================================================================
         $monthlySummary = [];
         
@@ -593,7 +668,8 @@ public function show(Request $request, $identifier)
                 'date_range' => [
                     $loginDataRaw->min('login_date') ?? 'N/A',
                     $loginDataRaw->max('login_date') ?? 'N/A'
-                ]
+                ],
+                'all_dates_in_raw_data' => $loginDataRaw->pluck('login_date')->unique()->sort()->values()->toArray()
             ]);
 
             // Build optimized reverse lookup: clean system name => array of lowercase raw variations
@@ -614,6 +690,7 @@ public function show(Request $request, $identifier)
 
             Log::info('Processed Data Structure', [
                 'dates_with_activity' => count($processedData),
+                'dates_list' => array_keys($processedData),
                 'total_logins_mapped' => array_sum(array_map(function($systems) {
                     return array_sum($systems);
                 }, $processedData)),
@@ -640,6 +717,11 @@ public function show(Request $request, $identifier)
                 'total_rows' => count($monthlySummary),
                 'date_range' => [$start->format('d/M/Y'), $end->format('d/M/Y')],
                 'systems_with_data' => $systemsWithData,
+                'rows_with_activity' => count(array_filter($monthlySummary, function($row) {
+                    return count(array_filter($row, function($v, $k) {
+                        return $k !== 'LoginDate' && $v !== '';
+                    }, ARRAY_FILTER_USE_BOTH)) > 0;
+                })),
                 'first_3_rows' => array_slice(array_map(function($row) {
                     return [
                         'date' => $row['LoginDate'],
@@ -704,7 +786,9 @@ public function show(Request $request, $identifier)
             'date_range' => [$start->toDateString(), $end->toDateString()],
             'sign_ins_count' => $signIns->total(),
             'unique_apps' => $uniqueAppsCount,
-            'monthly_summary_rows' => count($monthlySummary)
+            'monthly_summary_rows' => count($monthlySummary),
+            'current_month_apps' => $currentMonthApplications->count(),
+            'recent_apps' => $recentApplications->count()
         ]);
 
         // ====================================================================

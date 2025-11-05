@@ -556,7 +556,7 @@
                         per_page: perPage, 
                         search: searchTerm 
                     },
-                    success: function(response) {
+                        success: function(response) {
                             // UPDATE THE CARDS
                             $('#total-users').text(response.total_users || 0);
                             $('#active-this-month').text(response.active_this_month || 0);
@@ -580,7 +580,7 @@
                                         year: 'numeric',
                                         hour: '2-digit', 
                                         minute: '2-digit'
-                                      }).replace(',', '')
+                                    }).replace(',', '')
                                     : '<span class="text-muted">Never</span>';
 
                                 const viewBtn = userId
