@@ -67,12 +67,13 @@
         </div>
     </div>
 
-    {{-- Dynamic Date Range Banner --}}
+    {{-- Static Date Range Banner (Always shows current month) --}}
     @php
+        // For filtering sign-in history (dynamic)
         $displayStart = isset($start) ? $start : \Carbon\Carbon::now()->startOfMonth();
         $displayEnd = isset($end) ? $end : \Carbon\Carbon::now();
         
-        // For "Applications Used This Month" - always current month
+        // For "Applications Used This Month" and top banner - always current month
         $currentMonthStart = \Carbon\Carbon::now()->startOfMonth();
         $currentMonthEnd = \Carbon\Carbon::now()->endOfMonth();
         
@@ -80,7 +81,7 @@
         $colorClasses = ['bg-primary', 'bg-success', 'bg-info', 'bg-warning', 'bg-danger', 'bg-secondary'];
     @endphp
     <div class="alert mb-4" style="background-color: #513D6C; color: white; border: none; padding: 12px 20px;">
-        <strong style="font-size: 1.1rem;">Showing data from {{ $displayStart->format('M j, Y') }} to {{ $displayEnd->format('M j, Y') }}</strong>
+        <strong style="font-size: 1.1rem;">Showing data from {{ $currentMonthStart->format('M j, Y') }} to {{ $currentMonthEnd->format('M j, Y') }}</strong>
     </div>
 
     {{-- Recent Applications Used (Current Month - Static) --}}
