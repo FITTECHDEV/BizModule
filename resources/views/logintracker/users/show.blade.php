@@ -138,44 +138,54 @@
             <h4 class="mb-2 mb-md-0 fw-semibold">Sign In History</h4>
             
             <form method="GET" 
-                  action="{{ route('reporting.users.show', $user->userPrincipalName ?? $user->id) }}" 
-                  id="filterForm"
-                  class="d-flex gap-3 align-items-center flex-wrap">
+            action="{{ route('reporting.users.show', $user->userPrincipalName ?? $user->id) }}" 
+            id="filterForm"
+            class="d-flex align-items-center flex-wrap"
+            style="gap: 1.5rem;">
 
-                {{-- Date Range Pickers (From - To) --}}
-                <div class="d-flex gap-2 align-items-center flex-wrap" style="margin-right: 1rem;">
-                    <label for="start_date" class="me-1 mb-0" style="font-size: 0.95rem;">From:</label>
-                    <input type="date" 
-                           name="start_date" 
-                           id="start_date" 
-                           class="form-control"
-                           style="width: 160px; font-size: 0.95rem;"
-                           value="{{ request('start_date') ?? $displayStart->format('Y-m-d') }}"
-                           required>
-                    <label for="end_date" class="mx-1 mb-0" style="font-size: 0.95rem;">To:</label>
-                    <input type="date" 
-                           name="end_date" 
-                           id="end_date" 
-                           class="form-control"
-                           style="width: 160px; font-size: 0.95rem;"
-                           value="{{ request('end_date') ?? $displayEnd->format('Y-m-d') }}"
-                           required>
-                </div>
+    {{-- Date Range Dropdown --}}
+    <div class="d-flex align-items-center" style="gap: 0.75rem;">
+        <label for="date_preset" class="mb-0" style="font-size: 0.95rem; white-space: nowrap;">Date Range:</label>
+        <select name="date_preset" id="date_preset" class="form-select" style="width: 180px; font-size: 0.95rem;">
+            <option value="this-month" {{ (request('date_preset', 'this-month') == 'this-month') ? 'selected' : '' }}>This Month</option>
+            <option value="last-month" {{ (request('date_preset') == 'last-month') ? 'selected' : '' }}>Last Month</option>
+            <option value="last-3-months" {{ (request('date_preset') == 'last-3-months') ? 'selected' : '' }}>Last 3 Months</option>
+            <option value="custom" {{ (request('date_preset') == 'custom') ? 'selected' : '' }}>Custom Range</option>
+        </select>
+    </div>
 
-                {{-- Buttons --}}
-                <div class="d-flex gap-2">
-                    <button type="submit" class="btn" style="background-color: #513D6C; color: white; padding: 0.6rem 2rem; min-width: 100px; font-size: 1rem;">
-                        Apply
-                    </button>
-                    <a href="{{ route('reporting.users.show', $user->userPrincipalName ?? $user->id) }}" 
-                       class="btn btn-outline-secondary" style="padding: 0.6rem 2rem; min-width: 100px; font-size: 1rem;">
-                        Reset
-                    </a>
-                </div>
-            </form>
+    {{-- Custom Date Range Pickers (Hidden by default) --}}
+    <div id="customDateInputs" class="align-items-center flex-wrap" style="display: none; gap: 0.75rem;">
+        <label for="start_date" class="mb-0" style="font-size: 0.95rem; white-space: nowrap;">From:</label>
+        <input type="date" 
+               name="start_date" 
+               id="start_date" 
+               class="form-control"
+               style="width: 160px; font-size: 0.95rem;"
+               value="{{ request('start_date') ?? $displayStart->format('Y-m-d') }}">
+        <label for="end_date" class="mb-0" style="font-size: 0.95rem; white-space: nowrap;">To:</label>
+        <input type="date" 
+               name="end_date" 
+               id="end_date" 
+               class="form-control"
+               style="width: 160px; font-size: 0.95rem;"
+               value="{{ request('end_date') ?? $displayEnd->format('Y-m-d') }}">
+    </div>
+
+    {{-- Buttons --}}
+    <div class="d-flex" style="gap: 0.75rem;">
+        <button type="submit" class="btn" style="background-color: #513D6C; color: white; padding: 0.6rem 2rem; min-width: 100px; font-size: 1rem;">
+            Apply
+        </button>
+        <a href="{{ route('reporting.users.show', $user->userPrincipalName ?? $user->id) }}" 
+           class="btn btn-outline-secondary" style="padding: 0.6rem 2rem; min-width: 100px; font-size: 1rem;">
+            Reset
+        </a>
+    </div>
+</form>
         </div>
 
-        {{-- Recent Applications for Selected Period (Dynamic - Updates with date filter) --}}
+        {{-- Recent Applications for Selected Period (Dynamic - Updates with ALL date filters) --}}
         @if (isset($recentApplications) && !$recentApplications->isEmpty())
             <div class="card mb-4" style="border-left: 4px solid #513D6C;">
                 <div class="card-header" style="background-color: #513D6C; color: white;">
@@ -358,6 +368,22 @@
             background-color: rgba(81, 61, 108, 1) !important;
         }
         
+        /* Custom dropdown styling - Remove default arrow since browser adds one */
+        #date_preset {
+            border: 1px solid #ced4da;
+            border-radius: 0.25rem;
+            padding: 0.6rem 0.75rem;
+            appearance: auto;
+            -webkit-appearance: menulist;
+            -moz-appearance: menulist;
+        }
+        
+        #date_preset:focus {
+            border-color: #513D6C;
+            outline: 0;
+            box-shadow: 0 0 0 0.2rem rgba(81, 61, 108, 0.25);
+        }
+        
         /* Responsive improvements */
         @media (max-width: 768px) {
             .card-body {
@@ -386,6 +412,11 @@
                 width: 35px;
                 height: 35px;
             }
+            
+            .form-select {
+                width: 150px !important;
+                font-size: 0.9rem !important;
+            }
         }
         
         @media (max-width: 576px) {
@@ -403,6 +434,8 @@
                 font-size: 0.9rem !important;
                 min-width: 80px !important;
             }
+
+            
         }
     </style>
 @stop
@@ -412,7 +445,7 @@
 // Carousel scroll function
 function scrollCarousel(carouselId, direction) {
     const carousel = document.getElementById(carouselId);
-    const scrollAmount = 300; // Adjust scroll distance
+    const scrollAmount = 300;
     carousel.scrollBy({
         left: direction * scrollAmount,
         behavior: 'smooth'
@@ -423,6 +456,75 @@ document.addEventListener('DOMContentLoaded', function() {
     const startDateInput = document.getElementById('start_date');
     const endDateInput = document.getElementById('end_date');
     const filterForm = document.getElementById('filterForm');
+    const customDateInputs = document.getElementById('customDateInputs');
+    const datePresetSelect = document.getElementById('date_preset');
+    
+    // Function to calculate date ranges
+    function getDateRange(preset) {
+        const today = new Date();
+        let startDate, endDate;
+        
+        switch(preset) {
+            case 'this-month':
+                startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+                endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+                break;
+            case 'last-month':
+                startDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+                endDate = new Date(today.getFullYear(), today.getMonth(), 0);
+                break;
+            case 'last-3-months':
+                startDate = new Date(today.getFullYear(), today.getMonth() - 3, 1);
+                endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+                break;
+            default:
+                return null;
+        }
+        
+        return {
+            start: startDate.toISOString().split('T')[0],
+            end: endDate.toISOString().split('T')[0]
+        };
+    }
+    
+    // Function to toggle custom date inputs visibility
+    function toggleCustomDateInputs() {
+        const selectedPreset = datePresetSelect.value;
+        
+        if (selectedPreset === 'custom') {
+            // Show custom date inputs
+            customDateInputs.classList.add('d-flex');
+            customDateInputs.style.display = '';
+            startDateInput.required = true;
+            endDateInput.required = true;
+        } else {
+            // Hide custom date inputs
+            customDateInputs.classList.remove('d-flex');
+            customDateInputs.style.display = 'none';
+            startDateInput.required = false;
+            endDateInput.required = false;
+            
+            // Auto-fill dates for preset ranges
+            const dateRange = getDateRange(selectedPreset);
+            if (dateRange) {
+                startDateInput.value = dateRange.start;
+                endDateInput.value = dateRange.end;
+            }
+        }
+    }
+    
+    // Handle dropdown change
+    datePresetSelect.addEventListener('change', function() {
+        toggleCustomDateInputs();
+        
+        // Auto-submit for preset ranges (not custom)
+        if (this.value !== 'custom') {
+            filterForm.submit();
+        }
+    });
+    
+    // Initialize on page load
+    toggleCustomDateInputs();
     
     // Validate that end date is not before start date
     const validateDates = function() {
@@ -461,7 +563,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Store scroll position before form submission
     if (filterForm) {
         filterForm.addEventListener('submit', function(e) {
-            if (!validateDates()) {
+            if (datePresetSelect.value === 'custom' && !validateDates()) {
                 e.preventDefault();
                 return false;
             }

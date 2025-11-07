@@ -390,26 +390,83 @@ public function show(Request $request, $identifier)
         }
 
         // ====================================================================
-        // 2. RESOLVE DATE RANGE
+        // 2. RESOLVE DATE RANGE WITH PRESET SUPPORT
         // ====================================================================
+        $preset = $request->input('date_preset', 'custom');
         $startDate = $request->input('start_date');
         $endDate = $request->input('end_date');
 
-        if ($startDate && $endDate && strtotime($startDate) && strtotime($endDate)) {
-            $start = Carbon::parse($startDate)->startOfDay();
-            $end = Carbon::parse($endDate)->endOfDay();
+        // Handle preset date ranges
+        if ($preset !== 'custom') {
+            $now = Carbon::now();
             
-            if ($end->lt($start)) {
-                return redirect()->back()
-                    ->withInput()
-                    ->with('error', 'End date cannot be before start date.');
+            switch($preset) {
+                case 'this-month':
+                    $start = $now->copy()->startOfMonth();
+                    $end = $now->copy()->endOfMonth();
+                    Log::info('Date preset: This Month', [
+                        'start' => $start->toDateString(),
+                        'end' => $end->toDateString()
+                    ]);
+                    break;
+                    
+                case 'last-month':
+                    $start = $now->copy()->subMonth()->startOfMonth();
+                    $end = $now->copy()->subMonth()->endOfMonth();
+                    Log::info('Date preset: Last Month', [
+                        'start' => $start->toDateString(),
+                        'end' => $end->toDateString()
+                    ]);
+                    break;
+                    
+                case 'last-3-months':
+                    $start = $now->copy()->subMonths(3)->startOfMonth();
+                    $end = $now->copy()->endOfMonth();
+                    Log::info('Date preset: Last 3 Months', [
+                        'start' => $start->toDateString(),
+                        'end' => $end->toDateString()
+                    ]);
+                    break;
+                    
+                default:
+                    // Fallback to current month if invalid preset
+                    $start = $now->copy()->startOfMonth();
+                    $end = $now->copy()->endOfMonth();
+                    Log::warning('Invalid date preset, using current month', [
+                        'preset' => $preset
+                    ]);
             }
-        } else {
-            $start = Carbon::now()->startOfMonth();
-            $end = Carbon::now()->endOfMonth();
+        } 
+        // Handle custom date range
+        else {
+            if ($startDate && $endDate && strtotime($startDate) && strtotime($endDate)) {
+                $start = Carbon::parse($startDate)->startOfDay();
+                $end = Carbon::parse($endDate)->endOfDay();
+                
+                if ($end->lt($start)) {
+                    return redirect()->back()
+                        ->withInput()
+                        ->with('error', 'End date cannot be before start date.');
+                }
+                
+                Log::info('Custom date range selected', [
+                    'start' => $start->toDateString(),
+                    'end' => $end->toDateString()
+                ]);
+            } else {
+                // Default to current month if no valid dates provided
+                $start = Carbon::now()->startOfMonth();
+                $end = Carbon::now()->endOfMonth();
+                
+                Log::info('No valid custom dates, defaulting to current month', [
+                    'start' => $start->toDateString(),
+                    'end' => $end->toDateString()
+                ]);
+            }
         }
 
         Log::info('Date Range Resolved', [
+            'preset' => $preset,
             'start'  => $start->toDateTimeString(),
             'end'    => $end->toDateTimeString(),
         ]);
@@ -556,6 +613,7 @@ public function show(Request $request, $identifier)
         // ====================================================================
         // 4. RECENT APPLICATIONS FOR SELECTED PERIOD - COUNT DAYS (DYNAMIC)
         // INCLUDES ALL APPLICATIONS (MATCHED + UNMATCHED)
+        // THIS IS WHAT THE DATE PRESETS CONTROL
         // ====================================================================
 
         // Get raw data grouped by date and application for SELECTED PERIOD
@@ -617,6 +675,7 @@ public function show(Request $request, $identifier)
         Log::info('Recent Applications (Filtered Period) - ALL APPS INCLUDING UNMATCHED', [
             'count' => $recentApplications->count(),
             'date_range' => [$start->toDateString(), $end->toDateString()],
+            'preset_used' => $preset,
             'details' => $recentApplications->map(function($app) {
                 return [
                     'name' => $app->application, 
@@ -780,10 +839,30 @@ public function show(Request $request, $identifier)
         // ====================================================================
         $rangeLabel = 'Custom Range';
         $range = 'custom';
+        
+        // Update range label based on preset
+        if ($preset !== 'custom') {
+            switch($preset) {
+                case 'this-month':
+                    $rangeLabel = 'This Month';
+                    $range = 'this-month';
+                    break;
+                case 'last-month':
+                    $rangeLabel = 'Last Month';
+                    $range = 'last-month';
+                    break;
+                case 'last-3-months':
+                    $rangeLabel = 'Last 3 Months';
+                    $range = 'last-3-months';
+                    break;
+            }
+        }
 
         Log::info('UserController@show completed successfully', [
             'user_id' => $user->id,
             'date_range' => [$start->toDateString(), $end->toDateString()],
+            'date_preset' => $preset,
+            'range_label' => $rangeLabel,
             'sign_ins_count' => $signIns->total(),
             'unique_apps' => $uniqueAppsCount,
             'monthly_summary_rows' => count($monthlySummary),
