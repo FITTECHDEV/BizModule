@@ -894,8 +894,8 @@ private function processRow(array $row, int $batchNumber = 0, int $rowIndex = 0)
         return ['signin_log' => null, 'user_system' => null];
     }
    
-    $application = $row['application'] ?? $row['app'] ?? null;
-    $system = $this->mapApplicationToSystem($application);
+    // $application = $row['application'] ?? $row['app'] ?? null;
+    // $system = $this->mapApplicationToSystem($application);
    
     // CRITICAL FIX 5: More flexible date extraction
     $dateUtc = $this->extractDateUtc($row);
@@ -940,7 +940,7 @@ private function processRow(array $row, int $batchNumber = 0, int $rowIndex = 0)
     }
     
     try {
-        $signinLogData = $this->prepareSigninLogData($row, $user, $system, $parsedDate, $userIdFromCsv);
+        $signinLogData = $this->prepareSigninLogData($row, $user, null, $parsedDate, $userIdFromCsv);
         $signinLogData['request_id'] = $requestId;
         
         // CRITICAL FIX 7: Log successful preparation
@@ -1771,16 +1771,16 @@ private function executeSingleRowInserts(array $signinLogs, int $batchNumber): i
                     }
                 }
                 
-                $application = $row['application'] ?? null;
-                $system = $this->mapApplicationToSystem($application);
-                if ($system !== 'Unknown') {
-                    $systems[] = $system;
-                }
+                // $application = $row['application'] ?? null;
+                // $system = $this->mapApplicationToSystem($application);
+                // if ($system !== 'Unknown') {
+                //     $systems[] = $system;
+                // }
             }
         }
         
         $this->preloadUsers(array_unique($usernames));
-        $this->preloadSystems(array_unique($systems));
+        // $this->preloadSystems(array_unique($systems));
         $this->preloadExistingLogs($duplicateCheckData);
     }
 
@@ -2167,7 +2167,7 @@ private function preloadExistingLogs(array $duplicateCheckData)
         ]);
     }
 }
-private function prepareSigninLogData(array $row, $user, string $system, string $parsedDate, ?string $userIdFromCsv = null): array
+private function prepareSigninLogData(array $row, $user, ?string $system, string $parsedDate, ?string $userIdFromCsv = null): array
 {
     // CRITICAL FIX: Use CSV user ID if valid, otherwise fall back to user->id
     $userIdToStore = (!empty($userIdFromCsv) && $this->isValidUuid($userIdFromCsv)) 
@@ -2285,27 +2285,27 @@ private function prepareSigninLogData(array $row, $user, string $system, string 
         return strlen($stringValue) > $maxLength ? substr($stringValue, 0, $maxLength) : $stringValue;
     }
 
-    private function mapApplicationToSystem($application)
-    {
-        if (empty($application)) {
-            return 'Unknown';
-        }
+    // private function mapApplicationToSystem($application)
+    // {
+    //     if (empty($application)) {
+    //         return 'Unknown';
+    //     }
         
-        $normalizedApp = strtolower(trim($application));
-        $systemMapping = config('systemmap', []);
-        $system = $systemMapping[$normalizedApp] ?? null;
+    //     $normalizedApp = strtolower(trim($application));
+    //     $systemMapping = config('systemmap', []);
+    //     $system = $systemMapping[$normalizedApp] ?? null;
         
-        if (!$system) {
-            foreach ($systemMapping as $appKey => $systemName) {
-                if (strpos($normalizedApp, $appKey) !== false || strpos($appKey, $normalizedApp) !== false) {
-                    $system = $systemName;
-                    break;
-                }
-            }
-        }
+    //     if (!$system) {
+    //         foreach ($systemMapping as $appKey => $systemName) {
+    //             if (strpos($normalizedApp, $appKey) !== false || strpos($appKey, $normalizedApp) !== false) {
+    //                 $system = $systemName;
+    //                 break;
+    //             }
+    //         }
+    //     }
         
-        return $system ?? 'Unknown';
-    }
+    //     return $system ?? 'Unknown';
+    // }
 
     private function convertBitField($value)
     {
