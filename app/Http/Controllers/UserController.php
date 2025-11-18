@@ -60,14 +60,18 @@ protected $excludedSystems = [
  *
  * @return array
  */
-// protected function visibleSystems(): array
-// {
-//     // Use LOWER(name) so matching is case-insensitive
-//     return System::whereNotIn(DB::raw('LOWER(name)'), $this->excludedSystems)
-//         ->orderBy('name')
-//         ->pluck('name')
-//         ->toArray();
-// }
+protected function visibleSystems(): array
+{
+    // Get unique applications from signin logs, exclude unwanted ones
+    return SigninLog::select('application')
+        ->distinct()
+        ->whereNotNull('application')
+        ->where('application', '!=', '')
+        ->whereNotIn(DB::raw('LOWER(application)'), $this->excludedSystems)
+        ->orderBy('application')
+        ->pluck('application')
+        ->toArray();
+}
 
     protected $perPage = 17;
 
@@ -502,6 +506,7 @@ public function show(Request $request, $identifier)
             ->pluck('application')
             ->unique()
             ->toArray();
+            
 
         Log::info('🔍 DEBUG: October 27th Specific Check', [
             'user_email' => $user->userPrincipalName,
@@ -771,6 +776,67 @@ public function show(Request $request, $identifier)
 
             // Collect all systems that have data across all rows
             $systemsWithData = $this->getSystemsWithData($monthlySummary);
+
+                Log::info('🔍 MONTHLY SUMMARY DEBUG', [
+        'total_rows' => count($monthlySummary),
+        'first_5_rows' => array_slice($monthlySummary, 0, 5),
+        'display_systems' => $this->displaySystems,
+        'systems_with_data' => $systemsWithData,
+        'sample_processed_data' => array_slice($processedData, 0, 2, true)
+    ]);
+
+
+    if (stripos($user->userPrincipalName, 'amay') !== false || 
+    stripos($user->displayName ?? '', 'amay') !== false) {
+    
+    Log::info('🔍 AMAY SPECIFIC DEBUG - Raw Database Query', [
+        'user_email' => $user->userPrincipalName,
+        'user_id' => $user->id,
+        'searching_for_dates' => ['2025-10-10', '2025-10-23']
+    ]);
+    
+    // Check what's actually in the database for Oct 10 and 23
+    $amayOct10Data = SigninLog::where('user_id', $user->id)
+        ->whereDate('date_utc', '2025-10-10')
+        ->select('date_utc', 'application', 'username')
+        ->get()
+        ->toArray();
+    
+    $amayOct23Data = SigninLog::where('user_id', $user->id)
+        ->whereDate('date_utc', '2025-10-23')
+        ->select('date_utc', 'application', 'username')
+        ->get()
+        ->toArray();
+    
+    Log::info('🔍 AMAY - October 10 Raw Data', [
+        'record_count' => count($amayOct10Data),
+        'records' => $amayOct10Data
+    ]);
+    
+    Log::info('🔍 AMAY - October 23 Raw Data', [
+        'record_count' => count($amayOct23Data),
+        'records' => $amayOct23Data
+    ]);
+    
+    // Check what applications are on those dates
+    $oct10Apps = SigninLog::where('user_id', $user->id)
+        ->whereDate('date_utc', '2025-10-10')
+        ->distinct()
+        ->pluck('application')
+        ->toArray();
+    
+    $oct23Apps = SigninLog::where('user_id', $user->id)
+        ->whereDate('date_utc', '2025-10-23')
+        ->distinct()
+        ->pluck('application')
+        ->toArray();
+    
+    Log::info('🔍 AMAY - Applications Used', [
+        'oct_10_apps' => $oct10Apps,
+        'oct_23_apps' => $oct23Apps,
+        'system_map_sample' => array_slice(config('systemmap', []), 0, 10, true)
+    ]);
+}
 
             Log::info('Monthly Summary Built Successfully', [
                 'total_rows' => count($monthlySummary),

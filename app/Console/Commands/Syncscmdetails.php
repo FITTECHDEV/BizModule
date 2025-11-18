@@ -9,11 +9,9 @@ use Carbon\Carbon;
 
 class SyncScmDetails extends Command
 {
-    protected $signature = 'sync:scmdetails
-                        {date? : Date to sync in YYYY-MM-DD format (ignored if --all is used)}
-                        {--all : Sync all records without filtering by date}';
+   protected $signature = 'sync:scmdetails {date? : Date in YYYY-MM-DD format} {--all : Sync all records}';
 
-    protected $description = 'Copy rows from SQL Server CRM_UpdateSCMDetails into Odoo scmdetails table';
+protected $description = 'Copy rows from SQL Server CRM_UpdateSCMDetails into Odoo scmdetails table';
 
     public function handle()
     {

@@ -13,23 +13,26 @@ class TRABillingHeader extends Model
 
     protected $table = 'TRA_BillingHeader';
 
-    // protected $guarded = [];
-    protected $fillable = [
-        'Docstatus',
-        'TRAInvoiceNo',
-        'TRASerialNo',
-        'TRAQRCode',
-        'TRAInternalData',
-        'TRASignature',
-        'TRAScuReceiptDate',
-        'TRAScuReceiptNo',
-        'SubmissionStatus'
-    ];
+protected $fillable = [
+    'Docstatus',
+    'TRAInvoiceNo',
+    'TRASerialNo',
+    'TRAQRCode',
+    'TRASubmissionOn',
+    'TRAInternalData',
+    'TRASignature',
+    'TRAScuReceiptDate',
+    'TRAScuReceiptNo',
+    'SubmissionStatus'
+];
 
-    const CREATED_AT = 'CreatedOn';
-    const UPDATED_AT = 'LastModifiedOn';
-    const DELETED_AT = 'DeletedOn';
+protected $casts = [
+    'TRASubmissionOn' => 'datetime',
+];
 
+const CREATED_AT = 'CreatedOn';
+const UPDATED_AT = 'LastModifiedOn';
+const DELETED_AT = 'DeletedOn';
     public function details()
     {
         return $this->hasMany(TRABillingDetail::class, 'DocumentHeaderId', 'ID');

@@ -436,3 +436,65 @@ Route::post('/dashboard/clear-cache', [DashboardController::class, 'clearDashboa
 
     Route::get('/users/cleanup-empty', [UserController::class, 'cleanupEmptyUsers'])->name('users.cleanup');
 
+Route::get('/debug-import-data', function() {
+    $dates = ['2025-10-10', '2025-10-23'];
+    
+    // Get all data for those dates
+    $data = DB::table('Azure_LoginDetails')
+        ->selectRaw('CONVERT(DATE, date_utc) as login_date')
+        ->selectRaw('application')
+        ->selectRaw('username')
+        ->selectRaw('user_id')  // ADD THIS - helps identify users
+        ->selectRaw('COUNT(*) as count')
+        ->whereRaw('CONVERT(DATE, date_utc) IN (?, ?)', $dates)
+        ->groupBy(DB::raw('CONVERT(DATE, date_utc)'), 'application', 'username', 'user_id')
+        ->orderBy('login_date')
+        ->orderBy('username')
+        ->get();
+    
+    // Get unique applications found
+    $uniqueApps = $data->pluck('application')->unique()->values();
+    
+    // Get system map to check which are mapped
+    $systemMap = config('systemmap', []);
+    
+    // Check mapping status for each app
+    $appMappingStatus = [];
+    foreach ($uniqueApps as $app) {
+        $appLower = strtolower(trim($app));
+        $isMapped = isset($systemMap[$appLower]) || isset($systemMap[$app]);
+        $mappedTo = $systemMap[$appLower] ?? $systemMap[$app] ?? 'UNMAPPED';
+        
+        $appMappingStatus[$app] = [
+            'is_mapped' => $isMapped,
+            'maps_to' => $mappedTo,
+            'in_display_systems' => in_array($mappedTo, [
+                'BIZ PRO', 'BIZ UAT', 'D365 LIVE', 'D365 UAT',
+                'FIT Express', 'FIT Express UAT', 'Odoo',
+                'OPS', 'OPS UAT', 'Windows Sign In'
+            ])
+        ];
+    }
+    
+    // Get Amay's specific data
+    $amayData = $data->filter(function($record) {
+        return stripos($record->username, 'amay') !== false;
+    })->values();
+    
+    return response()->json([
+        'dates_checked' => $dates,
+        'total_records' => $data->count(),
+        'unique_applications' => $uniqueApps,
+        'application_mapping_status' => $appMappingStatus,
+        'amay_records' => [
+            'count' => $amayData->count(),
+            'data' => $amayData
+        ],
+        'all_records' => $data->toArray(),
+        'display_systems' => [
+            'BIZ PRO', 'BIZ UAT', 'D365 LIVE', 'D365 UAT',
+            'FIT Express', 'FIT Express UAT', 'Odoo',
+            'OPS', 'OPS UAT', 'Windows Sign In'
+        ]
+    ]);
+})->middleware('auth');

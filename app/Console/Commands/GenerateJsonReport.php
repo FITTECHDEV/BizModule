@@ -25,7 +25,7 @@ class GenerateJsonReport extends Command
             if ($backfillStart !== null) {
                 // Backfill mode
                 $startDate = $backfillStart ? Carbon::parse($backfillStart) : Carbon::parse('2025-03-02');
-                $endDate = Carbon::parse('2025-10-14');
+                $endDate = Carbon::parse('2025-11-13');
 
                 while ($startDate->lte($endDate)) {
                     $dates[] = $startDate->toDateString();

@@ -7,7 +7,7 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\DB;
-
+use DateTime;
 class TRATZInvoices extends Command
 {
     protected $signature = 'tra_tz:invoices {invoiceId?} {--list : List pending invoices}';
@@ -37,7 +37,7 @@ class TRATZInvoices extends Command
         }
 
         foreach ($pendingInvoices as $invoice) {
-            $jsonData = json_decode($invoice->TRAJsonFile, false);
+            $jsonData = json_decode($invoice->TRAJsonFile, true);
 
             if ($jsonData) {
                 // Log the JSON data to Laravel log file
@@ -247,27 +247,40 @@ protected function fetchPendingInvoices($invoiceId = null)
 
 
     protected function handleSuccessfulSubmission($invoice, $responseData)
-    {
-        TRABillingHeader::where('ID', $invoice->ID)->update([
-            'DocStatus' => 'Submitted',
-            'TRAInvoiceNo' => $responseData['data']['receipVerificationNo'] ?? null,
-            'TRAQRCode' => $responseData['data']['invoiceVerificationUrl'] ?? null,
-            'SubmissionStatus' => $responseData['message'] ?? 'Success',
-        ]);
-
-        Log::info("Invoice ID: {$invoice->ID} submitted successfully.");
+{
+    // Parse the dateTime from response
+    $traDateTime = null;
+    if (isset($responseData['data']['dateTime'])) {
+        try {
+            $traDateTime = new DateTime($responseData['data']['dateTime']);
+        } catch (\Exception $e) {
+            Log::warning("Failed to parse TRA dateTime for Invoice {$invoice->DocNo}: " . $e->getMessage());
+        }
     }
+
+    TRABillingHeader::where('ID', $invoice->ID)->update([
+        'DocStatus' => 'Submitted',
+        'TRAInvoiceNo' => $responseData['data']['receipVerificationNo'] ?? null,
+        'TRAQRCode' => $responseData['data']['invoiceVerificationUrl'] ?? null,
+        'TRASubmissionOn' => $traDateTime,
+        'SubmissionStatus' => $responseData['message'] ?? 'Success',
+        'ResponseJson' => json_encode($responseData),
+    ]);
+
+    Log::info("Invoice ID: {$invoice->ID} submitted successfully.");
+}
 
     protected function handleFailedSubmission($invoice, $responseData, $errorMessage)
-    {
-        // Use only the error message, avoid full HTTP response
-        $submissionStatus = !empty($errorMessage) ? $errorMessage : 'Unknown error';
+{
+    // Use only the error message, avoid full HTTP response
+    $submissionStatus = !empty($errorMessage) ? $errorMessage : 'Unknown error';
 
-        TRABillingHeader::where('ID', $invoice->ID)->update([
-            'DocStatus' => 'Failed', // Standardized to 'Failed'
-            'SubmissionStatus' => $submissionStatus,
-        ]);
+    TRABillingHeader::where('ID', $invoice->ID)->update([
+        'DocStatus' => 'Failed', // Standardized to 'Failed'
+        'SubmissionStatus' => $submissionStatus,
+        'ResponseJson' => $responseData ? json_encode($responseData) : null,
+    ]);
 
-        Log::error("Failed to submit invoice ID: {$invoice->ID}. Error: " . $submissionStatus);
-    }
+    Log::error("Failed to submit invoice ID: {$invoice->ID}. Error: " . $submissionStatus);
+}
 }

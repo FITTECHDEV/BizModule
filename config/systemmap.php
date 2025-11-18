@@ -145,6 +145,22 @@ return [
     'office online core sso' => 'Office 365',
     'Microsoft App Access Panel' => 'Office 365',
     'microsoft app access panel' => 'Office 365',
+
+
+
+    // Microsoft Office 365 Portal variations
+'Microsoft Office 365 Portal' => 'Office 365',
+'microsoft office 365 portal' => 'Office 365',
+'Office 365 Portal' => 'Office 365',
+'office 365 portal' => 'Office 365',
+
+// Microsoft AAD App Registration
+'Microsoft_AAD_RegisteredApps' => 'IT Infrastructure',
+'microsoft_aad_registeredapps' => 'IT Infrastructure',
+'Microsoft AAD RegisteredApps' => 'IT Infrastructure',
+'microsoft aad registeredapps' => 'IT Infrastructure',
+'Azure AD App Registration' => 'IT Infrastructure',
+'azure ad app registration' => 'IT Infrastructure',
     
     // Microsoft Teams variations
     'Microsoft Teams' => 'Microsoft Teams',
