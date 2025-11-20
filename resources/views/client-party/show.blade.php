@@ -486,7 +486,7 @@
                                                                             <div class="col-md-4 text-right">
                                                                                 <div class="file-actions">
                                                                                     {{-- Preview/Download Button --}}
-                                                                                    <a href="{{ route('client-party.preview', [$attachment->CustEntityID]) }}"
+                                                                                    <a href="{{ route('client-party.preview', [$attachment->ID]) }}"
                                                                                         class="btn btn-sm btn-outline-primary mr-1"
                                                                                         target="_blank"
                                                                                         data-toggle="tooltip"
@@ -1041,8 +1041,8 @@
 
         @section('css')
             <!-- ============================================
-                                                                                                                         EXTERNAL STYLESHEETS
-                                                                                                                    ============================================ -->
+                                                                                                                                     EXTERNAL STYLESHEETS
+                                                                                                                                ============================================ -->
             <!-- Bootstrap Stepper -->
             <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bs-stepper/dist/css/bs-stepper.min.css">
 
@@ -1054,8 +1054,8 @@
 
             <style>
                 /* ============================================
-                                                                                                                           CSS VARIABLES (Custom Properties)
-                                                                                                                        ============================================ */
+                                                                                                                                       CSS VARIABLES (Custom Properties)
+                                                                                                                                    ============================================ */
                 :root {
                     --primary-color: #007bff;
                     --primary-hover: #0056b3;
@@ -1077,8 +1077,8 @@
                 }
 
                 /* ============================================
-                                                                                                                           CARD COMPONENTS
-                                                                                                                        ============================================ */
+                                                                                                                                       CARD COMPONENTS
+                                                                                                                                    ============================================ */
                 .card {
                     border: none;
                     border-radius: var(--border-radius-md);
@@ -1099,8 +1099,8 @@
                 }
 
                 /* ============================================
-                                                                                                                           ENHANCED FILE DISPLAY STYLES
-                                                                                                                        ============================================ */
+                                                                                                                                       ENHANCED FILE DISPLAY STYLES
+                                                                                                                                    ============================================ */
                 .file-item {
                     background: #f8f9fa;
                     transition: all 0.3s ease;
@@ -1219,8 +1219,8 @@
                 }
 
                 /* ============================================
-                                                                                                                           BADGE SYSTEM
-                                                                                                                        ============================================ */
+                                                                                                                                       BADGE SYSTEM
+                                                                                                                                    ============================================ */
                 .badge {
                     font-size: 0.9rem;
                     padding: 0.5em 1em;
@@ -1296,8 +1296,8 @@
                 }
 
                 /* ============================================
-                                                                                                                           TYPOGRAPHY
-                                                                                                                        ============================================ */
+                                                                                                                                       TYPOGRAPHY
+                                                                                                                                    ============================================ */
                 .text-muted {
                     font-size: 0.95rem;
                     color: var(--muted-color) !important;
@@ -1318,8 +1318,8 @@
                 }
 
                 /* ============================================
-                                                                                                                           FIELDSET & LEGEND STYLING
-                                                                                                                        ============================================ */
+                                                                                                                                       FIELDSET & LEGEND STYLING
+                                                                                                                                    ============================================ */
                 fieldset {
                     border: 2px solid var(--border-color);
                     border-radius: var(--border-radius-md);
@@ -1359,8 +1359,8 @@
                 }
 
                 /* ============================================
-                                                                                                                           FORM ELEMENTS
-                                                                                                                        ============================================ */
+                                                                                                                                       FORM ELEMENTS
+                                                                                                                                    ============================================ */
                 .form-control:focus {
                     border-color: var(--primary-color);
                     box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
@@ -1388,8 +1388,8 @@
                 }
 
                 /* ============================================
-                                                                                                                           DISABLED STATES
-                                                                                                                        ============================================ */
+                                                                                                                                       DISABLED STATES
+                                                                                                                                    ============================================ */
                 .disabled {
                     opacity: 0.6;
                     cursor: not-allowed;
@@ -1414,8 +1414,8 @@
                 }
 
                 /* ============================================
-                                                                                                                           TOOLTIP ENHANCEMENTS
-                                                                                                                        ============================================ */
+                                                                                                                                       TOOLTIP ENHANCEMENTS
+                                                                                                                                    ============================================ */
                 .tooltip-inner {
                     background: linear-gradient(135deg, var(--dark-color) 0%, #495057 100%);
                     color: white;
@@ -1430,8 +1430,8 @@
                 }
 
                 /* ============================================
-                                                                                                                           LOADING & PRELOADER
-                                                                                                                        ============================================ */
+                                                                                                                                       LOADING & PRELOADER
+                                                                                                                                    ============================================ */
                 #loader {
                     display: none;
                     position: fixed;
@@ -1522,8 +1522,8 @@
                 }
 
                 /* ============================================
-                                                                                                                           BUTTON ENHANCEMENTS
-                                                                                                                        ============================================ */
+                                                                                                                                       BUTTON ENHANCEMENTS
+                                                                                                                                    ============================================ */
                 .btn {
                     border-radius: var(--border-radius-sm);
                     font-weight: 500;
@@ -1563,8 +1563,8 @@
                 }
 
                 /* ============================================
-                                                                                                                           RESPONSIVE DESIGN
-                                                                                                                        ============================================ */
+                     RESPONSIVE DESIGN
+                    ============================================ */
                 @media (max-width: 768px) {
                     .card {
                         margin-bottom: 1rem;
@@ -1600,8 +1600,8 @@
                 }
 
                 /* ============================================
-                                                                                                                           UTILITY CLASSES
-                                                                                                                        ============================================ */
+                     UTILITY CLASSES
+                   ============================================ */
                 .shadow-soft {
                     box-shadow: var(--shadow-light);
                 }
@@ -1635,8 +1635,8 @@
                 }
 
                 /* ============================================
-                                                                                                                           PRINT STYLES
-                                                                                                                        ============================================ */
+                    PRINT STYLES
+                    ============================================ */
                 @media print {
 
                     .btn,
@@ -1654,6 +1654,33 @@
                     fieldset {
                         break-inside: avoid;
                     }
+                }
+
+                /* Enhanced Read-Only Styling */
+                .readonly-field {
+                    background-color: #e9ecef !important;
+                    cursor: not-allowed !important;
+                    opacity: 0.8 !important;
+                    border-color: #ced4da !important;
+                }
+
+                .readonly-alert {
+                    border-left: 4px solid #6c757d;
+                    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+                    margin-bottom: 1rem;
+                }
+
+                #basic-details fieldset::after,
+                #office-details fieldset::after {
+                    content: '';
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    bottom: 0;
+                    background: rgba(248, 249, 250, 0.3);
+                    pointer-events: none;
+                    z-index: 5;
                 }
             </style>
         @stop
@@ -1749,6 +1776,95 @@
 
                 //New Code
                 $(document).ready(function() {
+
+
+
+                    // ====================================================================
+                    // COMPREHENSIVE READ-ONLY ENFORCEMENT FOR TABS 1 & 2
+                    // ====================================================================
+
+                    function enforceReadOnlyTabs() {
+                        console.log('🔒 Enforcing read-only mode on Basic & Office Details tabs...');
+
+                        // Define all selectors for tabs 1 & 2
+                        const tab1Selectors = '#basic-details input, #basic-details textarea, #basic-details select';
+                        const tab2Selectors =
+                            '#office-details input:not([type="button"]):not([type="submit"]):not([name="next"]):not([name="previous"]), #office-details textarea, #office-details select';
+
+                        // Apply read-only properties
+                        $(`${tab1Selectors}, ${tab2Selectors}`).each(function() {
+                            $(this)
+                                .prop('readonly', true)
+                                .prop('disabled', true)
+                                .addClass('readonly-field')
+                                .attr('title', 'This field is read-only and cannot be edited');
+                        });
+
+                        // Disable action buttons but keep navigation
+                        $('#basic-details button:not([name="next"]):not([name="previous"]), #office-details button:not([name="next"]):not([name="previous"]):not([name="createBtn"]):not([name="submitBtn"]):not([name="approveBtn"]):not([name="rejectBtn"])')
+                            .each(function() {
+                                $(this).prop('disabled', true).addClass('disabled').hide();
+                            });
+
+                        // Hide file operation buttons
+                        $('.addAttachment, .deleteFile, .remove-attachment').prop('disabled', true).addClass('disabled')
+                            .css('display', 'none');
+
+                        // Add visual indicators
+                        if (!$('#basic-details .readonly-alert').length) {
+                            $('#basic-details').prepend(
+                                '<div class="alert alert-secondary readonly-alert" role="alert">' +
+                                '<i class="fa fa-eye"></i> <strong>View Only:</strong> These fields are for viewing purposes only.' +
+                                '</div>'
+                            );
+                        }
+
+                        if (!$('#office-details .readonly-alert').length) {
+                            $('#office-details').prepend(
+                                '<div class="alert alert-secondary readonly-alert" role="alert">' +
+                                '<i class="fa fa-eye"></i> <strong>View Only:</strong> These fields are for viewing purposes only.' +
+                                '</div>'
+                            );
+                        }
+
+                        // Apply visual styling
+                        $('#basic-details fieldset, #office-details fieldset').css({
+                            'position': 'relative',
+                            'background-color': '#f8f9fa'
+                        });
+
+                        // Prevent any click interactions
+                        $('#basic-details, #office-details').on('click',
+                            'input, textarea, select, button:not([name="next"]):not([name="previous"])',
+                            function(e) {
+                                const allowedButtons = ['next', 'previous', 'createBtn', 'submitBtn', 'approveBtn',
+                                    'rejectBtn'
+                                ];
+                                const buttonName = $(this).attr('name');
+
+                                if (!allowedButtons.includes(buttonName)) {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    return false;
+                                }
+                            });
+
+                        console.log('✅ Read-only mode successfully enforced');
+                    }
+
+                    // Execute immediately on page load
+                    enforceReadOnlyTabs();
+
+                    // Re-enforce after stepper navigation
+                    $('button[onclick*="stepper"]').on('click', function() {
+                        setTimeout(enforceReadOnlyTabs, 150);
+                    });
+
+                    // Re-enforce on window focus (prevents dev tools manipulation)
+                    $(window).on('focus', enforceReadOnlyTabs);
+
+
+
                     // Enhanced File Handling Functions
                     function validateFile(fileInput) {
                         const file = fileInput.files[0];
@@ -1947,29 +2063,29 @@
                         $('#vendorType').val(vendor_val).trigger('change');
                     }
 
-                    // Make all form fields read-only or disabled, EXCLUDING the <fieldset> inputs
-                    // Selects (excluding those in the <fieldset>)
-                    $('select[name="partyEntityType"], select[name="legalEntityType"], select[name="countryID"], select[name="officeCountry"], select[name="billingCurrency"], select[name="licenceTypeID"], #level')
-                        .prop('readonly', true);
+                    // // Make all form fields read-only or disabled, EXCLUDING the <fieldset> inputs
+                    // // Selects (excluding those in the <fieldset>)
+                    // $('select[name="partyEntityType"], select[name="legalEntityType"], select[name="countryID"], select[name="officeCountry"], select[name="billingCurrency"], select[name="licenceTypeID"], #level')
+                    //     .prop('readonly', true);
 
-                    // Checkboxes (excluding those in the <fieldset>)
-                    $('input[name="otherCheck"]:not(.border.p-2 input), input[name="debtorCheck"]:not(.border.p-2 input), input[name="vendorCheck"]:not(.border.p-2 input)')
-                        .prop('readonly', true);
+                    // // Checkboxes (excluding those in the <fieldset>)
+                    // $('input[name="otherCheck"]:not(.border.p-2 input), input[name="debtorCheck"]:not(.border.p-2 input), input[name="vendorCheck"]:not(.border.p-2 input)')
+                    //     .prop('readonly', true);
 
-                    // Text inputs and textareas (excluding those in the <fieldset>)
-                    $('input[name="companyName"], input[name="provinceName"], input[name="zipCode"], input[name="cityName"], input[name="firstName"], input[name="lastName"], input[name="department"], input[name="phoneNo"], input[name="contractEmail"], textarea[name="addressLine1"], textarea[name="addressLine2"], input[name="attachmentDescription[]"], input[name="creditDays"], input[name="maxCreditLimit"], input[name="baseCurrency"], input[name="licenceTypeValue"]')
-                        .prop('readonly', true);
+                    // // Text inputs and textareas (excluding those in the <fieldset>)
+                    // $('input[name="companyName"], input[name="provinceName"], input[name="zipCode"], input[name="cityName"], input[name="firstName"], input[name="lastName"], input[name="department"], input[name="phoneNo"], input[name="contractEmail"], textarea[name="addressLine1"], textarea[name="addressLine2"], input[name="attachmentDescription[]"], input[name="creditDays"], input[name="maxCreditLimit"], input[name="baseCurrency"], input[name="licenceTypeValue"]')
+                    //     .prop('readonly', true);
 
-                    // File inputs
-                    $('input[name="attachmentNames[]"]').prop('disabled', true);
+                    // // File inputs
+                    // $('input[name="attachmentNames[]"]').prop('disabled', true);
 
-                    // Buttons - EXCLUDE approve and reject buttons
-                    $('.addAttachment, .deleteFile').prop('disabled', true).addClass('disabled');
+                    // // Buttons - EXCLUDE approve and reject buttons
+                    // $('.addAttachment, .deleteFile').prop('disabled', true).addClass('disabled');
 
-                    // Enable the specific inputs in the <fieldset> explicitly (optional, for clarity)
-                    $('fieldset.border.p-2 input[type="text"], fieldset.border.p-2 input[type="checkbox"], fieldset.border.p-2 input[type="hidden"]')
-                        .prop('readonly', false)
-                        .prop('disabled', false);
+                    // // Enable the specific inputs in the <fieldset> explicitly (optional, for clarity)
+                    // $('fieldset.border.p-2 input[type="text"], fieldset.border.p-2 input[type="checkbox"], fieldset.border.p-2 input[type="hidden"]')
+                    //     .prop('readonly', false)
+                    //     .prop('disabled', false);
 
                     // ===== UPDATED CODE: Only disable Admin Details if status is "Created" =====
                     let currentStatus = '{{ $clientParty->Status }}';
@@ -2454,10 +2570,18 @@
 
                             console.log(response);
 
-                            // 🎯 SweetAlert2 success
-                            await SwalUtils.success('Rejected!', 'Entity has been rejected successfully.',
-                                2000);
-                            location.reload();
+                            // Close the modal first
+                            $('#cancelModal').modal('hide');
+
+                            // 🎯 SweetAlert2 success with redirect
+                            await SwalUtils.success('Rejected!',
+                                'Entity has been rejected successfully.', 2000);
+
+                            // ✅ Redirect to dashboard instead of reload
+                            setTimeout(() => {
+                                window.location.href = '{{ route('client-party.index') }}';
+                            }, 2000);
+
                         } catch (xhr) {
                             // 🎯 SweetAlert2 error
                             await SwalUtils.error('Rejection Failed', xhr.responseJSON?.message ||

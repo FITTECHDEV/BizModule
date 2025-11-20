@@ -31,101 +31,146 @@
 
         <!-- Info Boxes -->
         <div class="row">
-            <div class="col-12 col-sm-6 col-md-3 col-lg-2 mb-3">
+            {{-- 1. Not Submitted --}}
+            <div class="col-12 col-sm-6 col-md-4 col-lg-auto mb-3">
                 <a href="#" id="notSubmitted" class="info-box-link">
                     <div class="info-box bg-gradient-secondary shadow-sm hover-scale">
                         <span class="info-box-icon"><i class="fas fa-save"></i></span>
                         <div class="info-box-content">
-                            <span class="info-box-text">Not Submitted</span>
-                            <span
-                                class="info-box-number">{{ $clientParty->clientPartyCount('Status', 'Not Submitted') }}</span>
-                            <span class="info-box-description text-xs">Last 3 months</span>
+                            <span class="info-box-text" data-short="Draft" data-full="Not Submitted">Draft</span>
+                            <span class="info-box-number">
+                                {{ $clientParty->clientPartyCount('Status', 'Not Submitted') }}
+                            </span>
+                            <span class="info-box-description text-xs">Last 3 mo</span>
                         </div>
                     </div>
                 </a>
             </div>
-            <div class="col-12 col-sm-6 col-md-3 col-lg-2 mb-3">
+
+            {{-- 2. Country Approval --}}
+            <div class="col-12 col-sm-6 col-md-4 col-lg-auto mb-3">
                 <a href="#" id="pendingCountry" class="info-box-link">
                     <div class="info-box bg-gradient-primary shadow-sm hover-scale">
                         <span class="info-box-icon"><i class="fas fa-hourglass-half"></i></span>
                         <div class="info-box-content">
-                            <span class="info-box-text">Country Approval</span>
-                            <span
-                                class="info-box-number">{{ $clientParty->clientPartyCount('Status', 'PendingCountryLevelApproval') }}</span>
-                            <span class="info-box-description text-xs">Last 3 months</span>
+                            <span class="info-box-text" data-short="Country" data-full="Country Approval">Country</span>
+                            <span class="info-box-number">
+                                {{ $clientParty->clientPartyCount('Status', 'PendingCountryLevelApproval') }}
+                            </span>
+                            <span class="info-box-description text-xs">Last 3 mo</span>
                         </div>
                     </div>
                 </a>
             </div>
-            <div class="col-12 col-sm-6 col-md-3 col-lg-2 mb-3">
+
+            {{-- 3. Group Approval --}}
+            <div class="col-12 col-sm-6 col-md-4 col-lg-auto mb-3">
                 <a href="#" id="pendingGroup" class="info-box-link">
                     <div class="info-box bg-gradient-info shadow-sm hover-scale">
                         <span class="info-box-icon"><i class="fas fa-hourglass-half"></i></span>
                         <div class="info-box-content">
-                            <span class="info-box-text">Group Approval</span>
-                            <span
-                                class="info-box-number">{{ $clientParty->clientPartyCount('Status', 'PendingGroupLevelApproval') }}</span>
-                            <span class="info-box-description text-xs">Last 3 months</span>
+                            <span class="info-box-text" data-short="Group" data-full="Group Approval">Group</span>
+                            <span class="info-box-number">
+                                {{ $clientParty->clientPartyCount('Status', 'PendingGroupLevelApproval') }}
+                            </span>
+                            <span class="info-box-description text-xs">Last 3 mo</span>
                         </div>
                     </div>
                 </a>
             </div>
-            <div class="col-12 col-sm-6 col-md-3 col-lg-2 mb-3">
+
+            {{-- 4. Submitted --}}
+            <div class="col-12 col-sm-6 col-md-4 col-lg-auto mb-3">
                 <a href="#" id="submitted" class="info-box-link">
                     <div class="info-box bg-gradient-warning shadow-sm hover-scale">
                         <span class="info-box-icon"><i class="fas fa-paper-plane"></i></span>
                         <div class="info-box-content">
-                            <span class="info-box-text">Submitted</span>
-                            <span class="info-box-number">{{ $clientParty->clientPartyCount('Status', 'Submitted') }}</span>
-                            <span class="info-box-description text-xs">Last 3 months</span>
+                            <span class="info-box-text" data-short="Submitted" data-full="Submitted">Submitted</span>
+                            <span class="info-box-number">
+                                {{ $clientParty->clientPartyCount('Status', 'Submitted') }}
+                            </span>
+                            <span class="info-box-description text-xs">Last 3 mo</span>
                         </div>
                     </div>
                 </a>
             </div>
-            <div class="col-12 col-sm-6 col-md-3 col-lg-2 mb-3">
+
+            {{-- 5. Pending IT Verification --}}
+            <div class="col-12 col-sm-6 col-md-4 col-lg-auto mb-3">
+                <a href="#" id="pendingITVerification" class="info-box-link">
+                    <div class="info-box bg-gradient-purple shadow-sm hover-scale">
+                        <span class="info-box-icon"><i class="fas fa-laptop-code"></i></span>
+                        <div class="info-box-content">
+                            <span class="info-box-text" data-short="IT Verify" data-full="Pending IT Verification">IT
+                                Verify</span>
+                            <span class="info-box-number">
+                                {{ $clientParty->clientPartyCount('Status', 'PendingITVerification') }}
+                            </span>
+                            <span class="info-box-description text-xs">Last 3 mo</span>
+                        </div>
+                    </div>
+                </a>
+            </div>
+
+            {{-- 6. Created --}}
+            <div class="col-12 col-sm-6 col-md-4 col-lg-auto mb-3">
                 <a href="#" id="created" class="info-box-link">
                     <div class="info-box bg-gradient-success shadow-sm hover-scale">
                         <span class="info-box-icon"><i class="fas fa-check-circle"></i></span>
                         <div class="info-box-content">
-                            <span class="info-box-text">Created</span>
-                            <span class="info-box-number">{{ $clientParty->clientPartyCount('Status', 'Created') }}</span>
-                            <span class="info-box-description text-xs">Last 3 months</span>
+                            <span class="info-box-text" data-short="Created" data-full="Created">Created</span>
+                            <span class="info-box-number">
+                                {{ $clientParty->clientPartyCount('Status', 'Created') }}
+                            </span>
+                            <span class="info-box-description text-xs">Last 3 mo</span>
                         </div>
                     </div>
                 </a>
             </div>
-            <div class="col-12 col-sm-6 col-md-3 col-lg-2 mb-3">
+
+            {{-- 7. Rejected --}}
+            <div class="col-12 col-sm-6 col-md-4 col-lg-auto mb-3">
                 <a href="#" id="rejected" class="info-box-link">
                     <div class="info-box bg-gradient-danger shadow-sm hover-scale">
                         <span class="info-box-icon"><i class="fas fa-times-circle"></i></span>
                         <div class="info-box-content">
-                            <span class="info-box-text">Rejected</span>
-                            <span class="info-box-number">{{ $clientParty->clientPartyCount('Status', 'Rejected') }}</span>
-                            <span class="info-box-description text-xs">Last 3 months</span>
+                            <span class="info-box-text" data-short="Rejected" data-full="Rejected">Rejected</span>
+                            <span class="info-box-number">
+                                {{ $clientParty->clientPartyCount('Status', 'Rejected') }}
+                            </span>
+                            <span class="info-box-description text-xs">Last 3 mo</span>
                         </div>
                     </div>
                 </a>
             </div>
-            <div class="col-12 col-sm-6 col-md-3 col-lg-2 mb-3">
+
+            {{-- 8. Review --}}
+            <div class="col-12 col-sm-6 col-md-4 col-lg-auto mb-3">
                 <a href="#" id="review" class="info-box-link">
                     <div class="info-box bg-gradient-info shadow-sm hover-scale">
                         <span class="info-box-icon"><i class="fas fa-sync-alt"></i></span>
                         <div class="info-box-content">
-                            <span class="info-box-text">Review</span>
-                            <span class="info-box-number">{{ $clientParty->clientPartyCount('Status', 'Review') }}</span>
-                            <span class="info-box-description text-xs">Last 3 months</span>
+                            <span class="info-box-text" data-short="Review" data-full="Review">Review</span>
+                            <span class="info-box-number">
+                                {{ $clientParty->clientPartyCount('Status', 'Review') }}
+                            </span>
+                            <span class="info-box-description text-xs">Last 3 mo</span>
                         </div>
                     </div>
                 </a>
             </div>
-            <div class="col-12 col-sm-6 col-md-3 col-lg-2 mb-3">
+
+            {{-- 9. All Requests --}}
+            <div class="col-12 col-sm-6 col-md-4 col-lg-auto mb-3">
                 <a href="#" id="allEntityRequests" class="info-box-link">
                     <div class="info-box bg-gradient-dark shadow-sm hover-scale">
                         <span class="info-box-icon"><i class="fas fa-list"></i></span>
                         <div class="info-box-content">
-                            <span class="info-box-text">All Requests</span>
-                            <span class="info-box-number">{{ $clientParty->clientPartyCount('Status', '*') }}</span>
-                            <span class="info-box-description text-xs">Last 3 months</span>
+                            <span class="info-box-text" data-short="All" data-full="All Requests">All</span>
+                            <span class="info-box-number">
+                                {{ $clientParty->clientPartyCount('Status', '*') }}
+                            </span>
+                            <span class="info-box-description text-xs">Last 3 mo</span>
                         </div>
                     </div>
                 </a>
@@ -267,49 +312,20 @@
             font-family: 'Roboto', Arial, sans-serif !important;
         }
 
-        /* Enhanced Info Box Styling */
+        /* Enhanced Info Box Styling with Hover Expansion */
         .info-box {
-            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
             border-radius: 12px;
             overflow: hidden;
             border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-
-        .info-box:hover {
-            transform: translateY(-8px) scale(1.02);
-            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1), 0 5px 15px rgba(0, 0, 0, 0.05) !important;
         }
 
         .info-box-icon {
             display: flex;
             align-items: center;
             justify-content: center;
-            width: 60px;
-            font-size: 1.8rem;
             background: rgba(255, 255, 255, 0.2);
-        }
-
-        .info-box-content {
-            padding: 15px;
-        }
-
-        .info-box-text {
-            font-size: 0.9rem;
-            font-weight: 500;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .info-box-number {
-            font-size: 1.8rem;
-            font-weight: 700;
-            margin: 5px 0;
-        }
-
-        .info-box-description {
-            font-size: 0.75rem;
-            opacity: 0.9;
-            font-style: italic;
+            transition: all 0.3s ease;
         }
 
         .info-box-link {
@@ -317,14 +333,148 @@
             color: inherit;
         }
 
-        /* Enhanced DataTable Styling */
+  /* Base styles for cards in a row */
+    @media (min-width: 992px) {
+    .row {
+        display: flex;
+        flex-wrap: nowrap;
+        gap: 8px;
+        margin-bottom: 1.5rem;
+        align-items: stretch;
+    }
+
+    .row > [class*='col-lg-'] {
+        flex: 0 0 calc(11.11% - 8px);
+        max-width: calc(11.11% - 8px);
+        transition: flex 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+                    max-width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* When hovering over the row, shrink all cards slightly */
+    .row:hover > [class*='col-lg-'] {
+        flex: 0 0 calc(10.5% - 8px);
+        max-width: calc(10.5% - 8px);
+    }
+
+    /* Then expand the hovered card */
+    .row > [class*='col-lg-']:hover {
+        flex: 0 0 calc(16% - 8px) !important;
+        max-width: calc(16% - 8px) !important;
+        z-index: 10;
+    }
+
+    .info-box {
+        height: 95px;
+        display: flex;
+        align-items: center;
+        position: relative;
+    }
+
+    .info-box:hover {
+        transform: scale(1.02);
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15), 0 10px 20px rgba(0, 0, 0, 0.1) !important;
+    }
+
+    .info-box-content {
+        padding: 8px 6px;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        overflow: hidden;
+    }
+
+    .info-box-text {
+        font-size: 0.7rem;
+        line-height: 1.2;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    /* Show full text on hover */
+    .info-box:hover .info-box-text {
+        font-size: 0.75rem;
+        white-space: normal;
+        word-break: break-word;
+    }
+
+    .info-box-number {
+        font-size: 1.6rem;
+        margin: 4px 0;
+        font-weight: 700;
+        line-height: 1;
+        transition: all 0.3s ease;
+    }
+
+    .info-box:hover .info-box-number {
+        font-size: 1.75rem;
+    }
+
+    .info-box-description {
+        font-size: 0.6rem;
+        opacity: 0.9;
+        font-style: italic;
+        white-space: nowrap;
+        transition: all 0.3s ease;
+    }
+
+    .info-box:hover .info-box-description {
+        font-size: 0.65rem;
+        opacity: 1;
+    }
+
+    .info-box-icon {
+        width: 45px;
+        font-size: 1.4rem;
+        flex-shrink: 0;
+        transition: all 0.3s ease;
+    }
+
+    .info-box:hover .info-box-icon {
+        font-size: 1.5rem;
+        width: 48px;
+    }
+    }
+
+/* Extra large screens */
+    @media (min-width: 1400px) {
+    .row:hover > [class*='col-lg-'] {
+        flex: 0 0 calc(10.2% - 8px);
+        max-width: calc(10.2% - 8px);
+    }
+
+    .row > [class*='col-lg-']:hover {
+        flex: 0 0 calc(18% - 8px) !important;
+        max-width: calc(18% - 8px) !important;
+    }
+
+    .info-box-text {
+        font-size: 0.75rem;
+    }
+
+    .info-box:hover .info-box-text {
+        font-size: 0.8rem;
+    }
+
+    .info-box-number {
+        font-size: 1.7rem;
+    }
+
+    .info-box:hover .info-box-number {
+        font-size: 1.85rem;
+    }
+}     /* Enhanced DataTable Styling */
         #client-party-table {
             font-size: 0.9rem;
             font-weight: 400;
         }
 
         #client-party-table th {
-            /* background: gray; */
             color: #333;
             font-weight: 600;
             text-transform: uppercase;
@@ -787,6 +937,8 @@
             $('#pendingGroup').on('click', createFilterHandler('PendingGroupLevelApproval',
                 'Pending Group Approval'));
             $('#submitted').on('click', createFilterHandler('Submitted', 'Submitted'));
+            $('#pendingITVerification').on('click', createFilterHandler('PendingITVerification',
+                'Pending IT Verification')); // ← ADD THIS
             $('#created').on('click', createFilterHandler('Created', 'Created'));
             $('#rejected').on('click', createFilterHandler('Rejected', 'Rejected'));
             $('#review').on('click', createFilterHandler('Review', 'Review'));
@@ -951,6 +1103,25 @@
                 $('.info-box').removeClass('border border-primary');
                 $(this).find('.info-box').addClass('border border-primary');
             });
+            // Text expansion on hover
+            $('.info-box').hover(
+                function() {
+                    // On mouse enter - show full text
+                    const $text = $(this).find('.info-box-text');
+                    const fullText = $text.attr('data-full');
+                    if (fullText) {
+                        $text.text(fullText);
+                    }
+                },
+                function() {
+                    // On mouse leave - show short text
+                    const $text = $(this).find('.info-box-text');
+                    const shortText = $text.attr('data-short');
+                    if (shortText) {
+                        $text.text(shortText);
+                    }
+                }
+            );
         });
     </script>
 

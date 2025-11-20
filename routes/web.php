@@ -368,15 +368,15 @@ Route::prefix('reporting')->middleware('auth')->group(function () {
 
     // Explicit show route (needed for dashboard links)
     Route::get('/users/{user}', [UserController::class, 'show'])
-        ->name('reporting.users.show'); 
+        ->name('reporting.users.show');
 
 
         Route::get('/users/active-this-month', [UserController::class, 'activeThisMonth'])
         ->name('reporting.users.active-this-month');
-    
+
     Route::get('/users/active-last-month', [UserController::class, 'activeLastMonth'])
         ->name('reporting.users.active-last-month');
-    
+
     Route::get('/users/inactive', [UserController::class, 'inactiveUsers'])
         ->name('reporting.users.inactive');
 
@@ -435,4 +435,6 @@ Route::post('/dashboard/clear-cache', [DashboardController::class, 'clearDashboa
     ->name('dashboard.clear-cache');
 
     Route::get('/users/cleanup-empty', [UserController::class, 'cleanupEmptyUsers'])->name('users.cleanup');
-
+Route::get('/client-party/preview/{attachmentId}', [ClientPartyController::class, 'preview'])
+    ->name('client-party.preview')
+    ->middleware(['auth']);

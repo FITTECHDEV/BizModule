@@ -107,7 +107,7 @@ class ClientPartyController extends Controller
         $licenceTypes = $this->getLicenceType();
         $tarrifs = $this->getTarrif();
         $incoterms = $this->getIncoTerms();
-        
+
 
         $payTerms = [];
         $user = Auth::user();
@@ -1287,16 +1287,87 @@ class ClientPartyController extends Controller
         }
     }
 
-    public function preview(ClientParty $path)
-    {
-        $attachment = $path->attachments;
-        $filePath = $attachment[0]->FilePath;
+    // public function preview(ClientParty $path)
+    // {
+    //     $attachment = $path->attachments;
+    //     $filePath = $attachment[0]->FilePath;
 
-        return Storage::disk('azure')->download($filePath, basename($attachment[0]->FilePath), [
-            'Content-Type' => 'application/octet-stream',
-            'Content-Disposition' => 'inline; filename="' . basename($attachment[0]->FilePath) . '"'
+    //     return Storage::disk('azure')->download($filePath, basename($attachment[0]->FilePath), [
+    //         'Content-Type' => 'application/octet-stream',
+    //         'Content-Disposition' => 'inline; filename="' . basename($attachment[0]->FilePath) . '"'
+    //     ]);
+    // }
+
+    /**
+ * Preview/Download a specific attachment file
+ *
+ * @param string $attachmentId - The unique ID of the attachment
+ * @return \Illuminate\Http\Response
+ */
+public function preview($attachmentId)
+{
+    try {
+        // Fetch the specific attachment by its ID (not entity ID)
+        $attachment = ClientPartyAttahment::where('ID', $attachmentId)->firstOrFail();
+
+        Log::info('Preview attachment request:', [
+            'attachmentId' => $attachmentId,
+            'fileName' => $attachment->FileName,
+            'filePath' => $attachment->FilePath,
+            'entityId' => $attachment->CustEntityID
         ]);
+
+        // Check if file exists in Azure storage
+        if (!Storage::disk('azure')->exists($attachment->FilePath)) {
+            Log::error('File not found in Azure storage:', [
+                'filePath' => $attachment->FilePath,
+                'attachmentId' => $attachmentId
+            ]);
+            abort(404, 'File not found in storage');
+        }
+
+        // Get file extension to determine content type
+        $extension = pathinfo($attachment->FileName, PATHINFO_EXTENSION);
+        $mimeType = $extension === 'pdf' ? 'application/pdf' : 'application/octet-stream';
+
+        Log::info('File retrieved successfully:', [
+            'attachmentId' => $attachmentId,
+            'fileName' => $attachment->FileName,
+            'mimeType' => $mimeType
+        ]);
+
+        // Download file from Azure and return as inline (for preview)
+        return Storage::disk('azure')->download(
+            $attachment->FilePath,
+            $attachment->FileName,
+            [
+                'Content-Type' => $mimeType,
+                'Content-Disposition' => 'inline; filename="' . $attachment->FileName . '"'
+            ]
+        );
+
+    } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+        Log::error('Attachment not found in database:', [
+            'attachmentId' => $attachmentId,
+            'error' => $e->getMessage()
+        ]);
+
+        return response()->json([
+            'error' => 'Attachment not found'
+        ], 404);
+
+    } catch (\Exception $e) {
+        Log::error('Preview failed with exception:', [
+            'attachmentId' => $attachmentId,
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString()
+        ]);
+
+        return response()->json([
+            'error' => 'Error retrieving file: ' . $e->getMessage()
+        ], 500);
     }
+}
 
     public function createLegalEntityType(string $type, array $post_data)
     {
@@ -3089,4 +3160,12 @@ class ClientPartyController extends Controller
             return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
         }
     }
+
+    /**
+ * Preview/Download attachment file
+ *
+ * @param string $attachmentId
+ * @return \Illuminate\Http\Response
+ */
+
 }

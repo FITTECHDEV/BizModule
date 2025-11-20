@@ -195,7 +195,7 @@
             @endif
 
             <!-- Quote Logger -->
-            @if (Auth::user()->can('quote-access'))
+            {{-- @if (Auth::user()->can('quote-access'))
                 <div class="col-md-3 col-sm-6 mb-3">
                     <a href="{{ URL::signedRoute('quote-logger') }}">
                         <div class="d-flex h-100 flex-column card card-widget widget-user shadow service-card">
@@ -215,7 +215,7 @@
                         </div>
                     </a>
                 </div>
-            @endif
+            @endif --}}
 
             <!-- TRA Integration (Tanzania) -->
             @if (Auth::user()->can('tra-tz-access'))

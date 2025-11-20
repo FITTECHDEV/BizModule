@@ -563,7 +563,7 @@
                                                                     <label for="maxCreditLimit"
                                                                         class="col-form-label col-form-label-sm">Credit
                                                                         Limit <span style="color: red;">*</span></label>
-                                                                    <input type="number"
+                                                                    <input type="text"
                                                                         class="form-control form-control-sm number_input"
                                                                         value="{{ old('maxCreditLimit') }}"
                                                                         name="maxCreditLimit" id="maxCreditLimit"
@@ -1295,6 +1295,47 @@
             background: rgba(0, 0, 0, 0.75) url('{{ asset('site_imgs/loading2.gif') }}') no-repeat center center;
             z-index: 10000;
         }
+
+        /* License validation styles */
+#licenceTypeValue.is-invalid {
+    border-color: #dc3545;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='none' stroke='%23dc3545' viewBox='0 0 12 12'%3e%3ccircle cx='6' cy='6' r='4.5'/%3e%3cpath stroke-linejoin='round' d='M5.8 3.6h.4L6 6.5z'/%3e%3ccircle cx='6' cy='8.2' r='.6' fill='%23dc3545' stroke='none'/%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right calc(0.375em + 0.1875rem) center;
+    background-size: calc(0.75em + 0.375rem) calc(0.75em + 0.375rem);
+}
+
+#licenceTypeValue.is-valid {
+    border-color: #28a745;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 8 8'%3e%3cpath fill='%2328a745' d='M2.3 6.73L.6 4.53c-.4-1.04.46-1.4 1.1-.8l1.1 1.4 3.4-3.8c.6-.63 1.6-.27 1.2.7l-4 4.6c-.43.5-.8.4-1.1.1z'/%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right calc(0.375em + 0.1875rem) center;
+    background-size: calc(0.75em + 0.375rem) calc(0.75em + 0.375rem);
+}
+
+.license-checking {
+    display: inline-block;
+    color: #17a2b8;
+    font-size: 0.875rem;
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+#licenseError {
+    color: #dc3545;
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+}
+
+#licenseSuccess {
+    color: #28a745;
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+}
     </style>
 @stop
 
@@ -2318,7 +2359,7 @@
                     licenceTypeValue
                         .prop('readonly', true) // Use readonly instead of disabled
                         .prop('disabled', false) // Ensure it's not disabled so it submits
-                        .val('NILL')
+                        .val('NIL')
                         .removeClass('is-invalid')
                         .removeAttr('required')
                         .addClass('overseas-readonly'); // Add visual class for styling
@@ -2371,6 +2412,247 @@
                     updateLicenseCode();
                 }, 50);
             }
+            // ============================================
+// LICENSE DUPLICATE CHECK FUNCTION
+// ============================================
+let licenseCheckTimeout;
+let lastCheckedLicense = '';
+
+async function checkLicenseDuplicate() {
+    const licenceTypeValue = $('#licenceTypeValue').val()?.trim();
+    const licenceTypeID = $('#licenceTypeID').val();
+    const officeCode = $('#officeCountry').find('option:selected').attr('code') ||
+                       $('input[name="officeCode"]').val();
+    const legalEntityType = $('#legalEntityType').val();
+
+    // Clear previous states
+    $('#licenseError').hide().text('');
+    $('#licenseSuccess').hide().text('');
+    $('#licenceTypeValue').removeClass('is-invalid is-valid');
+
+    // Don't check if overseas entity or operational mode
+    const isOverseas = $('#overseasEntity').is(':checked');
+    const requestType = new URLSearchParams(window.location.search).get('type');
+
+    if (isOverseas || requestType === 'operational' || licenceTypeValue === 'NIL') {
+        console.log('License check skipped: Overseas entity or operational mode');
+        return true; // Return true since no validation needed
+    }
+
+    // Validate required fields
+    if (!licenceTypeValue || !licenceTypeID || !officeCode) {
+        console.log('License check skipped: Missing required fields', {
+            licenceTypeValue,
+            licenceTypeID,
+            officeCode
+        });
+        return true; // Return true if fields not ready yet
+    }
+
+    // Don't check if same value as last time (unless it was invalid)
+    if (licenceTypeValue === lastCheckedLicense && $('#licenceTypeValue').hasClass('is-valid')) {
+        console.log('License check skipped: Already validated');
+        return true;
+    }
+
+    // Determine party type based on legal entity type
+    let partyType = 'Debtor'; // Default
+    if (legalEntityType) {
+        if (legalEntityType.includes('Vendor') && !legalEntityType.includes('Debtor')) {
+            partyType = 'Vendor';
+        } else if (legalEntityType.includes('Debtor')) {
+            partyType = 'Debtor';
+        }
+    }
+
+    console.log('🔍 Checking license for duplicate:', {
+        licenceTypeValue,
+        licenceTypeID,
+        officeCode,
+        partyType,
+        legalEntityType
+    });
+
+    // Show loading indicator
+    $('#licenceTypeValue').after('<span class="license-checking ml-2"><i class="fa fa-spinner fa-spin"></i> Checking...</span>');
+
+    try {
+        const response = await $.ajax({
+            url: '{{ route('client-party.check-license') }}',
+            type: 'POST',
+            dataType: 'json',
+            data: {
+                licenseNo: licenceTypeValue,
+                partyType: partyType,
+                officeCode: officeCode,
+                _token: '{{ csrf_token() }}'
+            }
+        });
+
+        console.log('✅ License check response:', response);
+
+        // Remove loading indicator
+        $('.license-checking').remove();
+
+        // 🔥 FIXED: Better response handling with explicit boolean check
+        const isDuplicate = response.isDuplicate === true ||
+                          response.isDuplicate === 1 ||
+                          response.isDuplicate === "1" ||
+                          response.status === 'Duplicate' ||
+                          response.status === 'Error';
+
+        console.log('🔍 isDuplicate evaluation:', {
+            raw: response.isDuplicate,
+            type: typeof response.isDuplicate,
+            status: response.status,
+            evaluated: isDuplicate
+        });
+
+        if (isDuplicate) {
+            // ❌ DUPLICATE FOUND
+            console.log('❌ Duplicate license detected');
+
+            $('#licenseError')
+                .html(`<i class="fa fa-exclamation-triangle"></i> ${response.remark || 'This license number already exists!'}`)
+                .show();
+
+            $('#licenceTypeValue')
+                .addClass('is-invalid')
+                .removeClass('is-valid');
+
+            // Disable submit buttons
+            $('button[type="submit"], button[name="createBtn"], button[name="submitBtn"]')
+                .prop('disabled', true)
+                .addClass('disabled')
+                .attr('title', 'Cannot submit: Duplicate license number');
+
+            lastCheckedLicense = licenceTypeValue;
+            return false;
+
+        } else {
+            // ✅ NO DUPLICATE - LICENSE IS AVAILABLE
+            console.log('✅ License is available');
+
+            $('#licenseSuccess')
+                .html(`<i class="fa fa-check-circle"></i> ${response.remark || 'License number is available'}`)
+                .show();
+
+            $('#licenceTypeValue')
+                .addClass('is-valid')
+                .removeClass('is-invalid');
+
+            // Enable submit buttons
+            $('button[type="submit"], button[name="createBtn"], button[name="submitBtn"]')
+                .prop('disabled', false)
+                .removeClass('disabled')
+                .removeAttr('title');
+
+            lastCheckedLicense = licenceTypeValue;
+            return true;
+        }
+
+    } catch (xhr) {
+        console.error('❌ License check AJAX error:', xhr);
+        $('.license-checking').remove();
+
+        // Show error message
+        $('#licenseError')
+            .html(`<i class="fa fa-exclamation-circle"></i> Error checking license: ${xhr.responseJSON?.error || xhr.statusText || 'Unknown error'}`)
+            .show();
+
+        $('#licenceTypeValue')
+            .addClass('is-invalid')
+            .removeClass('is-valid');
+
+        lastCheckedLicense = licenceTypeValue;
+        return false;
+    }
+}
+
+// ============================================
+// LICENSE DUPLICATE CHECK EVENT HANDLERS
+// ============================================
+$(document).ready(function() {
+    // ... your existing code ...
+
+    // Real-time license check on input (with debounce)
+    $('#licenceTypeValue').on('input', function() {
+        clearTimeout(licenseCheckTimeout);
+
+        const value = $(this).val()?.trim();
+
+        // Clear previous validation states
+        $('#licenseError').hide();
+        $('#licenseSuccess').hide();
+        $(this).removeClass('is-invalid is-valid');
+
+        // Only check if not overseas and not NIL
+        const isOverseas = $('#overseasEntity').is(':checked');
+        const requestType = new URLSearchParams(window.location.search).get('type');
+
+        if (!isOverseas && requestType !== 'operational' && value && value !== 'NIL') {
+            // Debounce: wait 1 second after user stops typing
+            licenseCheckTimeout = setTimeout(() => {
+                checkLicenseDuplicate();
+            }, 1000);
+        }
+    });
+
+    // Check on blur (when user leaves the field)
+    $('#licenceTypeValue').on('blur', function() {
+        const value = $(this).val()?.trim();
+        const isOverseas = $('#overseasEntity').is(':checked');
+        const requestType = new URLSearchParams(window.location.search).get('type');
+
+        if (!isOverseas && requestType !== 'operational' && value && value !== 'NIL') {
+            checkLicenseDuplicate();
+        }
+    });
+
+    // Re-check when legal entity type changes (party type might change)
+    $('#legalEntityType').on('change', function() {
+        const licenceTypeValue = $('#licenceTypeValue').val()?.trim();
+        const isOverseas = $('#overseasEntity').is(':checked');
+
+        if (!isOverseas && licenceTypeValue && licenceTypeValue !== 'NIL') {
+            // Reset last checked to force re-check with new party type
+            lastCheckedLicense = '';
+            setTimeout(() => {
+                checkLicenseDuplicate();
+            }, 500);
+        }
+    });
+
+    // Re-check when office changes
+    $('#officeCountry').on('change', function() {
+        const licenceTypeValue = $('#licenceTypeValue').val()?.trim();
+        const isOverseas = $('#overseasEntity').is(':checked');
+
+        if (!isOverseas && licenceTypeValue && licenceTypeValue !== 'NIL') {
+            // Reset last checked to force re-check with new office
+            lastCheckedLicense = '';
+            setTimeout(() => {
+                checkLicenseDuplicate();
+            }, 500);
+        }
+    });
+
+    // Clear license check when overseas entity is checked
+    $('#overseasEntity').on('change', function() {
+        if ($(this).is(':checked')) {
+            $('#licenseError').hide();
+            $('#licenseSuccess').hide();
+            $('#licenceTypeValue').removeClass('is-invalid is-valid');
+            $('.license-checking').remove();
+
+            // Re-enable submit buttons
+            $('button[type="submit"], button[name="createBtn"], button[name="submitBtn"]')
+                .prop('disabled', false)
+                .removeClass('disabled')
+                .removeAttr('title');
+        }
+    });
+});
 
             function toggleAccountingFields() {
                 if (requestType === 'operational') {
@@ -2399,7 +2681,7 @@
                         .prop('readonly', true)
                         .removeAttr('required')
                         .removeClass('is-invalid')
-                        .val('NILL')
+                        .val('NIL')
                         .addClass('overseas-readonly');
                     licenceTypeID
                         .prop('disabled', false)
@@ -2653,14 +2935,15 @@
                 }
             });
 
-            // Initialize maxCreditLimit input
-            $("#maxCreditLimit").on("input", function() {
-                let maxCreditLimit = $(this).val();
-                if (!$(this).prop('readonly') && maxCreditLimit.startsWith("0")) {
-                    $(this).val("1" + maxCreditLimit.slice(1));
-                }
-            });
-
+            // // Initialize maxCreditLimit input
+            // $("#maxCreditLimit").on("input", function() {
+            //     let maxCreditLimit = $(this).val();
+            //     if (!$(this).prop('readonly') && maxCreditLimit.startsWith("0")) {
+            //         $(this).val("1" + maxCreditLimit.slice(1));
+            //     }
+            // });
+            // Credit Limit formatting is now handled at the bottom of $(document).ready()
+            // See comprehensive implementation starting around line 2020
             // FIXED: Bind overseas entity event and initialize
             overseasEntityCheckbox.on('change', function() {
                 console.log('Overseas entity checkbox changed:', $(this).is(':checked'));
@@ -2677,7 +2960,7 @@
                         .removeClass('is-invalid')
                         .prop('readonly', true)
                         .prop('disabled', false) // Keep enabled for form submission
-                        .val('NILL')
+                        .val('NIL')
                         .addClass('overseas-readonly');
 
                     licenceTypeID
@@ -2688,7 +2971,7 @@
                         .attr('readonly', true)
                         .css('pointer-events', 'none');
 
-                    console.log('Global override: Set licence fields for overseas entity with NILL value');
+                    console.log('Global override: Set licence fields for overseas entity with NIL value');
                 } else {
                     // Reset fields when unchecked
                     licenceTypeValue
@@ -3132,13 +3415,13 @@
                         .prop('disabled', true)
                         .val('');
 
-                    // For license fields in operational mode - always NILL
+                    // For license fields in operational mode - always NIL
                     licenceTypeValue
                         .removeAttr('required')
                         .removeClass('is-invalid')
                         .prop('disabled', false) // Keep enabled for submission
                         .prop('readonly', true)
-                        .val('NILL');
+                        .val('NIL');
 
                     licenceTypeID
                         .removeAttr('required')
@@ -3148,7 +3431,7 @@
                         .removeAttr('readonly')
                         .css('pointer-events', 'auto');
 
-                    console.log('Form submit: operational mode, ensured license fields submit with NILL');
+                    console.log('Form submit: operational mode, ensured license fields submit with NIL');
 
                 } else if (overseasEntityCheckbox.is(':checked')) {
                     // For accounting mode with overseas entity
@@ -3157,7 +3440,7 @@
                         .removeClass('is-invalid')
                         .prop('readonly', true)
                         .prop('disabled', false) // Keep enabled for submission
-                        .val('NILL');
+                        .val('NIL');
 
                     licenceTypeID
                         .removeAttr('required')
@@ -3168,7 +3451,7 @@
                         .css('pointer-events', 'auto');
 
                     console.log(
-                        'Form submit: overseas entity checked, license fields will submit with NILL');
+                        'Form submit: overseas entity checked, license fields will submit with NIL');
                 }
 
                 // Log submission data
@@ -3223,6 +3506,7 @@
                 $('#clientPartyForm').addClass('was-validated');
                 console.log('All validations passed, form submitting...');
             });
+
             setTimeout(function() {
                 if (requestType === 'accounting') {
                     // Check if we have old values (form was submitted with errors and returned)
@@ -3327,7 +3611,7 @@
                                     $(mutation.target).removeAttr('required').removeClass(
                                         'is-invalid');
                                     if (mutation.target.id === 'licenceTypeValue') {
-                                        $(mutation.target).val('NILL').prop('readonly', true).prop(
+                                        $(mutation.target).val('NIL').prop('readonly', true).prop(
                                             'disabled', false); // Keep enabled for submission
                                     } else if (mutation.target.id === 'licenceTypeID') {
                                         $(mutation.target).prop('disabled', false).addClass(
@@ -3418,7 +3702,7 @@
                         .removeClass('is-invalid')
                         .prop('readonly', true)
                         .prop('disabled', false) // Keep enabled for submission
-                        .val('NILL')
+                        .val('NIL')
                         .addClass('overseas-readonly');
                     licenceTypeID
                         .removeAttr('required')
@@ -3550,29 +3834,106 @@
 
             // Add CSS for overseas readonly styling
             const overseaStyles = `
-        .overseas-readonly {
+          .overseas-readonly {
             background-color: #f8f9fa !important;
             color: #6c757d !important;
             cursor: not-allowed !important;
             border-color: #ced4da !important;
-        }
+             }
 
-        .overseas-readonly:focus {
+          .overseas-readonly:focus {
             background-color: #f8f9fa !important;
             border-color: #ced4da !important;
             box-shadow: none !important;
-        }
+         }
 
-        .overseas-readonly::placeholder {
+            .overseas-readonly::placeholder {
             color: #6c757d !important;
             opacity: 0.8 !important;
-        }
-    `;
+         }
+         `;
 
             // Append styles to head if not already present
             if (!$('head').find('style[data-overseas-styles]').length) {
                 $('<style>').attr('data-overseas-styles', 'true').text(overseaStyles).appendTo('head');
             }
+            /* --------------------------------------------------------------
+       MAX CREDIT LIMIT – comma separator (any length, no errors)
+       -------------------------------------------------------------- */
+            function fmtNum(n) {
+                return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+            }
+
+            function stripNum(s) {
+                return s.replace(/,/g, '').replace(/[^0-9]/g, '');
+            }
+
+            /* ---- change the input type once (only if it is still number) ---- */
+            $('#maxCreditLimit').attr('type', 'text'); // <-- critical
+
+            /* ---- real-time formatting while typing ---- */
+            $(document).on('input', '#maxCreditLimit', function() {
+                if ($(this).prop('readonly') || $(this).prop('disabled')) return;
+
+                const $el = $(this);
+                const cur = $el[0].selectionStart; // cursor pos
+                const old = $el.val();
+                const clean = stripNum(old); // only digits
+                const num = clean === '' ? '' : (clean.replace(/^0+/, '') || '0');
+                const formatted = num === '' ? '' : fmtNum(num);
+
+                if (formatted !== old) {
+                    $el.val(formatted);
+
+                    /* ---- restore cursor (count commas before the original position) ---- */
+                    const commasBeforeOld = (old.slice(0, cur).match(/,/g) || []).length;
+                    const commasBeforeNew = (formatted.slice(0, cur).match(/,/g) || []).length;
+                    const newPos = cur + (commasBeforeNew - commasBeforeOld);
+                    const safePos = Math.max(0, Math.min(newPos, formatted.length));
+
+                    setTimeout(() => $el[0].setSelectionRange(safePos, safePos), 0);
+                }
+            });
+
+            /* ---- on blur – enforce minimum 1 (except CASHCUSTOM) ---- */
+            $(document).on('blur', '#maxCreditLimit', function() {
+                const $el = $(this);
+                let raw = stripNum($el.val()) || '0';
+                let n = parseInt(raw, 10);
+
+                if ($('#debtorType').val() === 'CASHCUSTOM') {
+                    $el.val('0');
+                    return;
+                }
+
+                if (isNaN(n) || n < 1) n = 1;
+                $el.val(fmtNum(n));
+            });
+
+            /* ---- before submit – send clean integer ---- */
+            $('#clientPartyForm').on('submit', function() {
+                const $el = $('#maxCreditLimit');
+                if (!$el.length) return;
+
+                let clean = stripNum($el.val());
+                if (clean === '' || clean === '0') {
+                    clean = $('#debtorType').val() === 'CASHCUSTOM' ? '0' : '1';
+                }
+                $el.val(clean); // plain number for the backend
+                console.log('Submitted maxCreditLimit (clean):', clean);
+            });
+
+            /* ---- initialise any value that may already be in the field ---- */
+            $(function() {
+                setTimeout(() => {
+                    const $el = $('#maxCreditLimit');
+                    const raw = stripNum($el.val());
+                    if (raw && !isNaN(parseInt(raw, 10))) {
+                        $el.val(fmtNum(parseInt(raw, 10)));
+                    }
+                }, 300);
+            });
+
         });
 
         // ================================
@@ -3625,6 +3986,7 @@
                 requestType: new URLSearchParams(window.location.search).get('type')
             });
         };
+
 
         // NEW: Global debug function for Other fields
         window.debugOtherFields = function() {
