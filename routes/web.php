@@ -368,15 +368,15 @@ Route::prefix('reporting')->middleware('auth')->group(function () {
 
     // Explicit show route (needed for dashboard links)
     Route::get('/users/{user}', [UserController::class, 'show'])
-        ->name('reporting.users.show'); 
+        ->name('reporting.users.show');
 
 
         Route::get('/users/active-this-month', [UserController::class, 'activeThisMonth'])
         ->name('reporting.users.active-this-month');
-    
+
     Route::get('/users/active-last-month', [UserController::class, 'activeLastMonth'])
         ->name('reporting.users.active-last-month');
-    
+
     Route::get('/users/inactive', [UserController::class, 'inactiveUsers'])
         ->name('reporting.users.inactive');
 
@@ -438,7 +438,7 @@ Route::post('/dashboard/clear-cache', [DashboardController::class, 'clearDashboa
 
 Route::get('/debug-import-data', function() {
     $dates = ['2025-10-10', '2025-10-23'];
-    
+
     // Get all data for those dates
     $data = DB::table('Azure_LoginDetails')
         ->selectRaw('CONVERT(DATE, date_utc) as login_date')
@@ -451,20 +451,20 @@ Route::get('/debug-import-data', function() {
         ->orderBy('login_date')
         ->orderBy('username')
         ->get();
-    
+
     // Get unique applications found
     $uniqueApps = $data->pluck('application')->unique()->values();
-    
+
     // Get system map to check which are mapped
     $systemMap = config('systemmap', []);
-    
+
     // Check mapping status for each app
     $appMappingStatus = [];
     foreach ($uniqueApps as $app) {
         $appLower = strtolower(trim($app));
         $isMapped = isset($systemMap[$appLower]) || isset($systemMap[$app]);
         $mappedTo = $systemMap[$appLower] ?? $systemMap[$app] ?? 'UNMAPPED';
-        
+
         $appMappingStatus[$app] = [
             'is_mapped' => $isMapped,
             'maps_to' => $mappedTo,
@@ -475,12 +475,12 @@ Route::get('/debug-import-data', function() {
             ])
         ];
     }
-    
+
     // Get Amay's specific data
     $amayData = $data->filter(function($record) {
         return stripos($record->username, 'amay') !== false;
     })->values();
-    
+
     return response()->json([
         'dates_checked' => $dates,
         'total_records' => $data->count(),

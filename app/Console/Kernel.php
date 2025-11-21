@@ -36,63 +36,83 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule)
     {
-        // Ensure logs directory exists
-        $this->ensureLogDirectoryExists();
+        // // Ensure logs directory exists
+        // $this->ensureLogDirectoryExists();
 
-        // $schedule->command('inspire')->hourly();
-        $schedule->command('TIMS:UploadExpInvAzure')
-            ->everyMinute()
-            ->withoutOverlapping();
+        // // $schedule->command('inspire')->hourly();
+        // $schedule->command('TIMS:UploadExpInvAzure')
+        //     ->everyMinute()
+        //     ->withoutOverlapping();
 
-        // $schedule->command('remind:assigned')->everyMinute()->between('8:00', '17:00');
-        $schedule->job('App\Jobs\RemindAssignedTickets')
-            ->between('8:30', '17:00')
-            ->everyFourHours()
-            ->withoutOverlapping();
+        // // $schedule->command('remind:assigned')->everyMinute()->between('8:00', '17:00');
+        // $schedule->job('App\Jobs\RemindAssignedTickets')
+        //     ->between('8:30', '17:00')
+        //     ->everyFourHours()
+        //     ->withoutOverlapping();
 
-        $schedule->command('emails:sendApprovalReminder')
-            ->between('8:30', '17:00')
-            ->withoutOverlapping();
+        // $schedule->command('emails:sendApprovalReminder')
+        //     ->between('8:30', '17:00')
+        //     ->withoutOverlapping();
 
-        $schedule->command('generate:invoice')->everyFiveMinutes()->withoutOverlapping();
-        $schedule->command('tra_adl:invoices')
-            ->everyFiveMinutes()
-            ->withoutOverlapping();
+        // $schedule->command('generate:invoice'
+        // )->everyFiveMinutes()->withoutOverlapping();
 
-        $schedule->command('tra_tz:invoices')
-            ->everyFiveMinutes()
-            ->withoutOverlapping();
+        // $schedule->command('tra_adl:invoices')
+        //     ->everyFiveMinutes()
+        //     ->withoutOverlapping();
 
-        $schedule->command('sync:scmprofit')
-            ->everyTenMinutes()
-            ->withoutOverlapping()
-            ->appendOutputTo(storage_path('logs/scm-sync.log'))
-            ->emailOutputOnFailure('admin@yourcompany.com'); // Optional: add your email
+        // $schedule->command('tra_tz:invoices')
+        //     ->everyFiveMinutes()
+        //     ->withoutOverlapping();
 
-        $schedule->command('crmscm:Booking')
-            ->everyThirtyMinutes()
-            ->withoutOverlapping()
-            ->appendOutputTo(storage_path('logs/crmscm.log'))
-            ->onSuccess(function () {
-                Log::info('CRMSCM: Scheduled task completed successfully');
-            })
-            ->onFailure(function () {
-                Log::error('CRMSCM: Scheduled task failed');
-            });
+        // $schedule->command('sync:scmprofit')
+        //     ->everyTenMinutes()
+        //     ->withoutOverlapping()
+        //     ->appendOutputTo(storage_path('logs/scm-sync.log'))
+        //     ->emailOutputOnFailure('admin@yourcompany.com'); // Optional: add your email
+
+        // $schedule->command('crmscm:Booking')
+        //     ->everyThirtyMinutes()
+        //     ->withoutOverlapping()
+        //     ->appendOutputTo(storage_path('logs/crmscm.log'))
+        //     ->onSuccess(function () {
+        //         Log::info('CRMSCM: Scheduled task completed successfully');
+        //     })
+        //     ->onFailure(function () {
+        //         Log::error('CRMSCM: Scheduled task failed');
+        //     });
 
 
 
-        // ->emailOutputOnFailure('admin@yourcompany.com'); // Optional: add your email
+        // // ->emailOutputOnFailure('admin@yourcompany.com'); // Optional: add your email
 
+        // $schedule->command('z_report_json_tz')
+        //  ->dailyAt('11:00')
+        //  ->withoutOverlapping()
+        //  ->runInBackground()
+        //
         $schedule->command('z_report_json_tz')
-         ->dailyAt('10:00')
-         ->withoutOverlapping()
-         ->runInBackground();
+    ->dailyAt('11:00')
+    ->timezone('Africa/Nairobi')
+    ->withoutOverlapping()
+    ->onSuccess(function () {
+        Log::info('TZ ZReport scheduled task completed successfully at ' . now());
+    })
+    ->onFailure(function () {
+        Log::error('TZ ZReport scheduled task failed at ' . now());
+    });;
 
-          $schedule->command('z_report_json_ar')
-         ->dailyAt('10:00')
-         ->withoutOverlapping()
-         ->runInBackground();
+
+$schedule->command('z_report_json_ar')
+    ->dailyAt('11:00')
+    ->timezone('Africa/Nairobi')
+    ->withoutOverlapping()
+    ->onSuccess(function () {
+        Log::info('AR ZReport scheduled task completed successfully at ' . now());
+    })
+    ->onFailure(function () {
+        Log::error('AR ZReport scheduled task failed at ' . now());
+    });
 
     }
 

@@ -300,44 +300,50 @@ private function getRawSystemNames($cleanSystemName)
 public function index(Request $request)
 {
     set_time_limit(120); // 2 minutes
-
     try {
         // Get pagination and search parameters
         $perPage = $request->input('per_page', 17);
         $currentPage = $request->input('page', 1);
         $search = $request->input('search', '');
-
+        
         Log::info('Dashboard index called', [
             'per_page' => $perPage,
             'page' => $currentPage,
             'search' => $search,
             'is_ajax' => $request->ajax()
         ]);
-
+        
         // Get summary data from stored procedure
         $summary = $this->getUserSummary();
-
+        
         // Get login list from stored procedure
         $loginList = $this->getLoginViewList();
-
+        
         // Apply search filter if provided
         if (!empty($search)) {
-            $loginList = $loginList->filter(function($user) use ($search) {
-                $searchLower = strtolower($search);
+            $searchLower = strtolower(trim($search));
+            
+            $loginList = $loginList->filter(function($user) use ($searchLower) {
+                // Check if searching for users who never logged in
+                if ($searchLower === 'never') {
+                    return empty($user['last_login']) || is_null($user['last_login']);
+                }
+                
+                // Regular search in name and login_id
                 return str_contains(strtolower($user['name']), $searchLower) ||
-                       str_contains(strtolower($user['login_id']), $searchLower);
+                        str_contains(strtolower($user['login_id']), $searchLower);
             })->values();
-
+            
             Log::info('Search applied', [
                 'search_term' => $search,
                 'filtered_count' => $loginList->count()
             ]);
         }
-
+        
         // Paginate the results
         $total = $loginList->count();
         $pagedData = $loginList->slice(($currentPage - 1) * $perPage, $perPage)->values();
-
+        
         $users = new \Illuminate\Pagination\LengthAwarePaginator(
             $pagedData,
             $total,
@@ -345,7 +351,7 @@ public function index(Request $request)
             $currentPage,
             ['path' => $request->url(), 'query' => $request->query()]
         );
-
+        
         if ($request->ajax()) {
             return response()->json([
                 'total_users' => $summary['total_users'],
@@ -357,7 +363,7 @@ public function index(Request $request)
                 'pagination' => $users->links()->toHtml(),
             ], 200);
         }
-
+        
         return view('logintracker.dashboard', [
             'total_users' => $summary['total_users'],
             'active_this_month' => $summary['active_this_month'],
@@ -365,28 +371,29 @@ public function index(Request $request)
             'inactive_users' => $summary['inactive_users'],
             'users' => $users,
         ]);
-
+        
     } catch (QueryException $e) {
         Log::error('Database query failed in DashboardController', [
             'error' => $e->getMessage(),
             'stack' => $e->getTraceAsString(),
         ]);
-
+        
         if ($request->ajax()) {
             return response()->json(['error' => 'Database error occurred'], 500);
         }
-
+        
         return response()->view('errors.500', [], 500);
+        
     } catch (\Exception $e) {
         Log::error('Unexpected error in DashboardController', [
             'error' => $e->getMessage(),
             'stack' => $e->getTraceAsString(),
         ]);
-
+        
         if ($request->ajax()) {
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         }
-
+        
         return response()->view('errors.500', [], 500);
     }
 }

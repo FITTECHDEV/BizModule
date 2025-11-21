@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Yajra\DataTables\Facades\DataTables;
 
+
 class HomeController extends Controller
 {
     /**
@@ -72,12 +73,12 @@ class HomeController extends Controller
                 $rra_stats = [];
             }
 
-            // LOG BEFORE RETURNING VIEW
-            \Log::info('About to return view with data', [
-                'ticketStatistics' => $ticketStatistics,
-                'efris_stats' => $efris_stats,
-                'traStatsTZ' => $traStatsTZ,
-            ]);
+            // // LOG BEFORE RETURNING VIEW
+            // \Log::info('About to return view with data', [
+            //     'ticketStatistics' => $ticketStatistics,
+            //     'efris_stats' => $efris_stats,
+            //     'traStatsTZ' => $traStatsTZ,
+            // ]);
 
             return view(
                 'dashboard.ticket',

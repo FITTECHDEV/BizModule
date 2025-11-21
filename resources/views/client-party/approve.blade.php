@@ -829,7 +829,7 @@
                 $('#submitted').on('click', createFilterHandler('Submitted', 'Submitted'));
                 $('#allPending').on('click', createFilterHandler(
                     'PendingCountryLevelApproval|PendingGroupLevelApproval|Submitted', 'All Pending',
-                    true));
+                    false));
 
                 function searchTable(param, regex = false) {
                     $('#table-loader').removeClass('d-none');

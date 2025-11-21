@@ -107,7 +107,7 @@ class ClientPartyController extends Controller
         $licenceTypes = $this->getLicenceType();
         $tarrifs = $this->getTarrif();
         $incoterms = $this->getIncoTerms();
-        
+
 
         $payTerms = [];
         $user = Auth::user();
@@ -2782,40 +2782,50 @@ class ClientPartyController extends Controller
             return $status === 'Submitted' ? 'Entity submitted successfully' : 'Entity created successfully';
         }
     }
-    public function approvals(Request $request)
-    {
-        $user = Auth::user();
 
-        if (!$user->can('approve-entity-request')) {
-            Alert::warning('Warning!', 'You are not authorised to view this page. Contact Admin')->showConfirmButton();
-            return redirect()->route('home');
-        }
+   public function approvals(Request $request)
+{
+    $user = Auth::user();
 
-        // Calculate counts for info boxes
-        $counts = [
-            'not_submitted' => ClientParty::where('Status', 'Not Submitted')
-                ->when(!$user->can('approve-all-entity-request'), fn($q) => $q->where('OfficeCode', $user->OfficeCode))
-                ->count(),
-            'pending_country' => ClientParty::where('Status', 'PendingCountryLevelApproval')
-                ->when(!$user->can('approve-all-entity-request'), fn($q) => $q->where('OfficeCode', $user->OfficeCode))
-                ->count(),
-            'pending_group' => ClientParty::where('Status', 'PendingGroupLevelApproval')
-                ->when(!$user->can('approve-all-entity-request'), fn($q) => $q->where('OfficeCode', $user->OfficeCode))
-                ->count(),
-            'submitted' => ClientParty::where('Status', 'Submitted')
-                ->when(!$user->can('approve-all-entity-request'), fn($q) => $q->where('OfficeCode', $user->OfficeCode))
-                ->count(),
-            'all_pending' => ClientParty::whereIn('Status', [
-                'Not Submitted',
-                'Submitted',
-                'PendingCountryLevelApproval',
-                'PendingGroupLevelApproval'
-            ])
-                ->when(!$user->can('approve-all-entity-request'), fn($q) => $q->where('OfficeCode', $user->OfficeCode))
-                ->count(),
-        ];
-        return view('client-party.approve', compact('counts'));
+    if (!$user->can('approve-entity-request')) {
+        Alert::warning('Warning!', 'You are not authorised to view this page. Contact Admin')->showConfirmButton();
+        return redirect()->route('home');
     }
+
+    // Get the same 3-month filter used in DataTables
+    $threeMonthsAgo = Carbon::now()->subMonths(3);
+
+    // Calculate counts for info boxes with 3-month filter
+    $counts = [
+        'not_submitted' => ClientParty::where('Status', 'Not Submitted')
+            ->where('CreatedOn', '>=', $threeMonthsAgo) // Add 3-month filter
+            ->when(!$user->can('approve-all-entity-request'), fn($q) => $q->where('OfficeCode', $user->OfficeCode))
+            ->count(),
+        'pending_country' => ClientParty::where('Status', 'PendingCountryLevelApproval')
+            ->where('CreatedOn', '>=', $threeMonthsAgo) // Add 3-month filter
+            ->when(!$user->can('approve-all-entity-request'), fn($q) => $q->where('OfficeCode', $user->OfficeCode))
+            ->count(),
+        'pending_group' => ClientParty::where('Status', 'PendingGroupLevelApproval')
+            ->where('CreatedOn', '>=', $threeMonthsAgo) // Add 3-month filter
+            ->when(!$user->can('approve-all-entity-request'), fn($q) => $q->where('OfficeCode', $user->OfficeCode))
+            ->count(),
+        'submitted' => ClientParty::where('Status', 'Submitted')
+            ->where('CreatedOn', '>=', $threeMonthsAgo) // Add 3-month filter
+            ->when(!$user->can('approve-all-entity-request'), fn($q) => $q->where('OfficeCode', $user->OfficeCode))
+            ->count(),
+        'all_pending' => ClientParty::whereIn('Status', [
+            'Not Submitted',
+            'Submitted',
+            'PendingCountryLevelApproval',
+            'PendingGroupLevelApproval'
+        ])
+            ->where('CreatedOn', '>=', $threeMonthsAgo) // Add 3-month filter
+            ->when(!$user->can('approve-all-entity-request'), fn($q) => $q->where('OfficeCode', $user->OfficeCode))
+            ->count(),
+    ];
+
+    return view('client-party.approve', compact('counts'));
+}
 
     public function deleteFile($id)
     {
