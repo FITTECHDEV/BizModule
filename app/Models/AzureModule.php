@@ -16,12 +16,12 @@ class AzureModule extends Model
     /**
      * The database connection to use
      */
-    protected $connection = 'azure_management';
+    // protected $connection = 'azure_management';
 
     /**
      * The table associated with the model.
      */
-    protected $table = 'modules';
+    // protected $table = 'modules';
 
     protected $fillable = [
         'name',

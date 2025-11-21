@@ -29,9 +29,12 @@ class AzureDashboardController extends Controller
             // Simple user list - no pagination for now
             $users = User::orderBy('created_at', 'desc')->limit(10)->get();
             
-            return view('dashboard.index', compact('stats', 'users'));
+            // FIXED: Changed view path to match your folder structure
+            return view('azure-management.dashboard.index', compact('stats', 'users'));
             
         } catch (\Exception $e) {
+            Log::error('Azure Dashboard Error: ' . $e->getMessage());
+            
             // If there are no users yet, create empty data
             $stats = [
                 'total' => 0,
@@ -42,7 +45,8 @@ class AzureDashboardController extends Controller
             
             $users = collect([]); // Empty collection
             
-            return view('dashboard.index', compact('stats', 'users'));
+            // FIXED: Changed view path here too
+            return view('azure-management.dashboard.index', compact('stats', 'users'));
         }
     }
 
@@ -62,12 +66,14 @@ class AzureDashboardController extends Controller
             return response()->json($stats);
             
         } catch (\Exception $e) {
+            Log::error('Azure Dashboard Stats Error: ' . $e->getMessage());
+            
             return response()->json([
                 'total' => 0,
                 'active' => 0,
                 'pending' => 0,
                 'inactive' => 0,
-            ]);
+            ], 500);
         }
     }
 
@@ -93,10 +99,12 @@ class AzureDashboardController extends Controller
             ]);
             
         } catch (\Exception $e) {
+            Log::error('Azure Dashboard Reports Error: ' . $e->getMessage());
+            
             return response()->json([
                 'users_by_location' => [],
                 'users_by_status' => [],
-            ]);
+            ], 500);
         }
     }
 
@@ -122,6 +130,8 @@ class AzureDashboardController extends Controller
             return response()->json($recentUsers);
             
         } catch (\Exception $e) {
+            Log::error('Azure Dashboard Activity Error: ' . $e->getMessage());
+            
             return response()->json([]);
         }
     }

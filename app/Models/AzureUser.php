@@ -17,12 +17,12 @@ class AzureUser extends Authenticatable
     /**
      * The database connection to use
      */
-    protected $connection = 'azure_management';
+    // protected $connection = 'azure_management';
 
     /**
      * The table associated with the model.
      */
-    protected $table = 'users';
+    protected $table = 'Azure_Users';
 
     /**
      * The attributes that are mass assignable.

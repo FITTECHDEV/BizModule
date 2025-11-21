@@ -320,8 +320,7 @@ Route::post('/create-client-party-scm', [ClientPartyController::class, 'CreateCl
 // AZURE MANAGEMENT SYSTEM ROUTES
 // ============================================================================
 
-Route::prefix('azure-management')->name('azure.')->middleware(['auth'])->group(function () {
-    
+Route::prefix('azure')->name('azure.')->middleware(['auth'])->group(function () {    
     // Root redirect
     Route::get('/', function () {
         return redirect()->route('azure.dashboard.index');

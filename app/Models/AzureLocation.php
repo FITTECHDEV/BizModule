@@ -13,12 +13,12 @@ class AzureLocation extends Model
     /**
      * The database connection to use
      */
-    protected $connection = 'azure_management';
+    // protected $connection = 'azure_management';
 
     /**
      * The table associated with the model.
      */
-    protected $table = 'locations';
+protected $table = 'azure_locations'; 
 
     protected $fillable = [
         'name',

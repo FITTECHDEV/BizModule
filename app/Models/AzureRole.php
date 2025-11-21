@@ -13,12 +13,12 @@ class AzureRole extends Model
     /**
      * The database connection to use
      */
-    protected $connection = 'azure_management';
+    // protected $connection = 'azure_management';
 
     /**
      * The table associated with the model.
      */
-    protected $table = 'roles';
+    protected $table = 'azure_roles';
 
     protected $fillable = [
         'name',

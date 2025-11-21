@@ -9,7 +9,7 @@ class AzureModuleRolePivot extends Model
     /**
      * The database connection to use
      */
-    protected $connection = 'azure_management';
+    // protected $connection = 'azure_management';
 
     /**
      * The table associated with the model.

@@ -321,33 +321,36 @@
             @endif
 
                    <!-- @if (Auth::user()->can('azure-access')) -->
-    <div class="col-md-3 mb-2">
-        <a href="/azure">
-            <div class="d-flex h-100 flex-column card card-widget widget-user shadow service-card">
-                <div class="widget-user-header bg-purple">
-                    <h3 class="widget-user-username">AZURE MANAGEMENT</h3>
-                    <h5 class="widget-user-desc">Azure Dashboard</h5>
-                </div>
-                <div class="widget-user-image">
-                    <img class="img-circle elevation-2" 
-                         src="{{ asset('site_imgs/azure_logo.png') }}" 
-                         alt="Azure Logo">
-                </div>
-                <div class="card-footer">
-                    <div class="row justify-content-center">
-                        <div class="col-sm-12 text-center">
-                            <div class="description-block">
-                                <h5 class="description-header">
-                                    <span class="badge badge-info">Active</span>
-                                </h5>
-                                <span class="description-text small">System Status</span>
-                            </div>
+
+<!-- Azure Management Card - Simple Click Solution -->
+<div class="col-md-3 mb-2">
+    <a href="{{ route('azure.dashboard.index') }}" style="text-decoration: none; color: inherit;">
+        <div class="d-flex h-100 flex-column card card-widget widget-user shadow service-card" 
+             style="cursor: pointer;">
+            <div class="widget-user-header bg-purple">
+                <h3 class="widget-user-username">AZURE MANAGEMENT</h3>
+                <h5 class="widget-user-desc">Azure Dashboard</h5>
+            </div>
+            <div class="widget-user-image">
+                <img class="img-circle elevation-2" 
+                        src="{{ asset('site_imgs/azure_logo.png') }}" 
+                        alt="Azure Logo">
+            </div>
+            <div class="card-footer">
+                <div class="row justify-content-center">
+                    <div class="col-sm-12 text-center">
+                        <div class="description-block">
+                            <h5 class="description-header">
+                                <span class="badge badge-info">Active</span>
+                            </h5>
+                            <span class="description-text small">System Status</span>
                         </div>
                     </div>
                 </div>
             </div>
-        </a>
-    </div>
+        </div>
+    </a>
+</div>
 <!-- @endif -->
 
 
