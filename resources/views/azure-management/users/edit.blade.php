@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="csrf-token" content="{{ csrf_token() }}" />
 
-    <title>Edit User - Azure Management</title>
+    <title>Edit User</title>
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.bunny.net">
@@ -28,7 +28,7 @@
             --primary-color: #0b66ff;
             --primary-contrast: #ffffff;
             --secondary-color: #0ea5a4;
-            --bg: #e9edf2;
+            --bg: #e9edf2;          /* softer background */
             --surface: #ffffff;
             --muted: #6b7280;
             --text: #0f172a;
@@ -160,6 +160,8 @@
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
             margin-bottom: 30px;
         }
+
+        
 
         .form-section {
             margin-bottom: 30px;
@@ -323,7 +325,7 @@
             gap: 15px;
             margin-bottom: 15px;
         }
-
+        
         .assignment-card {
             background: #e9ecef;
             border-radius: 10px;
@@ -334,14 +336,14 @@
             transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
             cursor: pointer;
         }
-
+        
         .assignment-card:hover {
             background: #dfe3e7;
             border-color: #adb5bd;
             transform: translateY(-3px);
             box-shadow: var(--shadow-md);
         }
-
+        
         .assignment-card-header {
             display: flex;
             align-items: center;
@@ -353,13 +355,13 @@
             padding-bottom: 8px;
             color: #2c3e50;
         }
-
+        
         .assignment-card-body {
             display: flex;
             flex-direction: column;
             gap: 8px;
         }
-
+        
         .assignment-detail {
             display: flex;
             align-items: center;
@@ -367,31 +369,31 @@
             font-size: 0.9em;
             color: #495057;
         }
-
+        
+        
         .assignment-item {
             margin-bottom: 12px;
         }
-
+        
         .assignment-item:last-child {
             margin-bottom: 0;
         }
-
+        
         .assignment-divider {
             border: 0;
             border-top: 1px solid #ced4da;
             margin: 12px 0;
             opacity: 0.5;
         }
-
+        
         .assignment-card-body .assignment-detail {
             margin-bottom: 4px;
         }
-
+        
         .assignment-detail i {
             color: #6c757d;
             width: 16px;
         }
-
         .empty-state {
             text-align: center;
             padding: 40px 20px;
@@ -532,18 +534,14 @@
                 <div class="page-title">
                     <i class="fas fa-folder-open" style="color:var(--primary-color);"></i>
                     <div>
-                        <div>Edit User - Azure Management</div>
+                        <div>Edit User</div>
                     </div>
                 </div>
-                <a href="{{ route('azure.dashboard.index') }}" class="btn btn-ghost">
-                    <i class="fas fa-arrow-left"></i>
-                    Back to Dashboard
-                </a>
             </header>
 
             <section>
                 <div class="edit-form-container">
-                    <form id="editUserForm" action="{{ route('azure.users.update', $user) }}" method="POST">
+                    <form id="editUserForm" action="{{ route('users.update', $user) }}" method="POST">
                         @csrf
                         @method('PUT')
 
@@ -665,7 +663,7 @@
                                                 {{ $company->name }}
                                             </option>
                                         @endforeach
-                                    </select>
+                                    </select transparently
                                     @error('company_id')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
@@ -685,61 +683,61 @@
                             </div>
                         </div>
 
-                        <!-- Module Assignments Section -->
-                        <div class="form-section">
-                            <div class="form-section-title">
-                                <i class="fas fa-th-large"></i>
-                                Module Assignments
-                            </div>
+                    <!-- Module Assignments Section -->
+                    <div class="form-section">
+                        <div class="form-section-title">
+                            <i class="fas fa-th-large"></i>
+                            Module Assignments
+                        </div>
 
-                            <!-- Summary Cards View (Default) -->
-                            <div id="assignmentsSummary">
-                                @if($userModuleAssignments && $userModuleAssignments->count() > 0)
-                                    @php
-                                        // Group assignments by module
-                                        $groupedAssignments = $userModuleAssignments->groupBy('module_name');
-                                    @endphp
-                                    
-                                    <div class="assignments-grid">
-                                        @foreach($groupedAssignments as $moduleName => $assignments)
-                                            <div class="assignment-card" onclick="showModuleDetails('{{ addslashes($moduleName) }}', {{ json_encode($assignments) }})">
-                                                <div class="assignment-card-header">
-                                                    <i class="fas fa-cube"></i>
-                                                    <strong>{{ $moduleName }}</strong>
+                    <!-- Summary Cards View (Default) -->
+                    <div id="assignmentsSummary">
+                        @if($userModuleAssignments && $userModuleAssignments->count() > 0)
+                            @php
+                                // Group assignments by module
+                                $groupedAssignments = $userModuleAssignments->groupBy('module_name');
+                            @endphp
+                            
+                            <div class="assignments-grid">
+                                @foreach($groupedAssignments as $moduleName => $assignments)
+                                    <div class="assignment-card" onclick="showModuleDetails('{{ addslashes($moduleName) }}', {{ json_encode($assignments) }})">
+                                        <div class="assignment-card-header">
+                                            <i class="fas fa-cube"></i>
+                                            <strong>{{ $moduleName }}</strong>
+                                        </div>
+                                        <div class="assignment-card-body">
+                                            @foreach($assignments as $assignment)
+                                                <div class="assignment-item">
+                                                    <div class="assignment-detail">
+                                                        <i class="fas fa-map-marker-alt"></i>
+                                                        <span>{{ $assignment['location_name'] }}</span>
+                                                    </div>
+                                                    <div class="assignment-detail">
+                                                        <i class="fas fa-user-tag"></i>
+                                                        <span>{{ $assignment['role_name'] }}</span>
+                                                    </div>
+                                                    @if(!$loop->last)
+                                                        <hr class="assignment-divider">
+                                                    @endif
                                                 </div>
-                                                <div class="assignment-card-body">
-                                                    @foreach($assignments as $assignment)
-                                                        <div class="assignment-item">
-                                                            <div class="assignment-detail">
-                                                                <i class="fas fa-map-marker-alt"></i>
-                                                                <span>{{ $assignment['location_name'] }}</span>
-                                                            </div>
-                                                            <div class="assignment-detail">
-                                                                <i class="fas fa-user-tag"></i>
-                                                                <span>{{ $assignment['role_name'] }}</span>
-                                                            </div>
-                                                            @if(!$loop->last)
-                                                                <hr class="assignment-divider">
-                                                            @endif
-                                                        </div>
-                                                    @endforeach
-                                                </div>
-                                            </div>
-                                        @endforeach
+                                            @endforeach
+                                        </div>
                                     </div>
-                                @else
-                                    <div class="empty-state">
-                                        <i class="fas fa-inbox"></i>
-                                        <p>No module assignments yet</p>
-                                    </div>
-                                @endif
-                                
-                                <div class="mt-3">
-                                    <button type="button" class="btn btn-sm btn-primary" onclick="toggleEditMode()">
-                                        <i class="fas fa-edit"></i> Edit Assignments
-                                    </button>
-                                </div>
+                                @endforeach
                             </div>
+                        @else
+                            <div class="empty-state">
+                                <i class="fas fa-inbox"></i>
+                                <p>No module assignments yet</p>
+                            </div>
+                        @endif
+                        
+                        <div class="mt-3">
+                            <button type="button" class="btn btn-sm btn-primary" onclick="toggleEditMode()">
+                                <i class="fas fa-edit"></i> Edit Assignments
+                            </button>
+                        </div>
+                    </div>
 
                             <!-- Edit Form (Hidden by default) -->
                             <div id="assignmentsEditForm" style="display: none;">
@@ -758,6 +756,7 @@
                                 </div>
 
                                 <div id="modulesTableContainer" class="table-responsive">
+
                                     <table class="table table-bordered align-middle" id="modulesTable">
                                         <thead class="table-light">
                                             <tr>
@@ -769,6 +768,7 @@
                                         </thead>
                                         <tbody>
                                             @forelse ($user->modules as $assignmentIndex => $assignment)
+                                            
                                                 <tr>
                                                     <td>
                                                         <div class="checkbox-group">
@@ -778,7 +778,7 @@
                                                             </label>
                                                             @foreach($locations as $location)
                                                                 <label>
-                                                                    <input type="checkbox" name="modules[{{ $assignmentIndex }}][location][]" value="{{ $location->code }}" {{ $assignment->pivot->location == $location->code ? 'checked' : '' }} onchange="validateCheckboxes(this, 'location', {{ $assignmentIndex }})">
+                                                                    <input type="checkbox" name="modules[{{ $assignmentIndex }}][location][]" value="{{ $location->code }}" {{ (string)$assignment->pivot->location === (string)$location->code ? 'checked' : '' }} onchange="validateCheckboxes(this, 'location', {{ $assignmentIndex }})">
                                                                     {{ $location->name }}
                                                                 </label>
                                                             @endforeach
@@ -826,14 +826,34 @@
                                 </div>
                             </div>
                         </div>
-
                         <!-- Form Actions -->
                         <div class="form-section">
-                            <div style="display: flex; gap: 15px; justify-content: flex-end;">
-                                <button type="submit" class="btn btn-primary">
-                                    <i class="fas fa-save"></i>
-                                    Update User
-                                </button>
+                            <div style="display: flex; gap: 15px; justify-content: space-between; align-items: center;">
+                                <!-- Left side - Disable/Enable button -->
+                                <div>
+                                    @if($user->status === 'inactive')
+                                        <button type="button" class="btn btn-success" onclick="toggleUserStatus('{{ $user->id }}', 'enable')">
+                                            <i class="fas fa-user-check"></i>
+                                            Enable User
+                                        </button>
+                                    @else
+                                        <button type="button" class="btn btn-danger" onclick="toggleUserStatus('{{ $user->id }}', 'disable')">
+                                            <i class="fas fa-user-slash"></i>
+                                            Disable User
+                                        </button>
+                                    @endif
+                                </div>
+                                <!-- Right side - Save and Cancel buttons -->
+                                <div style="display: flex; gap: 15px;">
+                                    <a href="{{ route('dashboard.index') }}" class="btn btn-ghost">
+                                        <i class="fas fa-times"></i>
+                                        Cancel
+                                    </a>
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-save"></i>
+                                        Update User
+                                    </button>
+                                </div>
                             </div>
                         </div> 
                     </form>
@@ -870,389 +890,670 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js" defer></script>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Axios defaults
-            if (window.axios) {
-                axios.defaults.headers.common['X-CSRF-TOKEN'] = document.querySelector('meta[name="csrf-token"]').content;
-                axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
-            }
+<script>
+// ============= GLOBAL VARIABLES =============
+let rowIndex = {{ count($user->modules ?? []) }};
 
-            // Loading helpers
-            window.showLoading = () => {
-                const el = document.getElementById('loadingSpinner');
-                if (el) {
-                    el.setAttribute('aria-hidden', 'false');
-                    el.style.display = 'block';
-                }
-            };
-            window.hideLoading = () => {
-                const el = document.getElementById('loadingSpinner');
-                if (el) {
-                    el.setAttribute('aria-hidden', 'true');
-                    el.style.display = 'none';
-                }
-            };
+// ============= UTILITY FUNCTIONS =============
 
-            // SweetAlert helpers
-            window.showAlert = (type, title, message) => {
-                if (window.Swal) {
-                    Swal.fire({ 
-                        icon: type, 
-                        title, 
-                        text: message, 
-                        toast: true, 
-                        position: 'top-end', 
-                        showConfirmButton: false, 
-                        timer: 3000 
-                    });
-                } else {
-                    alert(title + "\n\n" + message);
-                }
-            };
-            
-            window.confirmAction = (title, text, callback) => {
-                if (window.Swal) {
-                    Swal.fire({
-                        title, 
-                        text, 
-                        icon: 'warning',
-                        showCancelButton: true,
-                        confirmButtonColor: getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim(),
-                        cancelButtonColor: '#6b7280',
-                        confirmButtonText: 'Yes, proceed!'
-                    }).then(result => {
-                        if (result.isConfirmed && typeof callback === 'function') {
-                            callback();
-                        }
-                    });
-                } else if (confirm(title + "\n\n" + text)) {
-                    if (typeof callback === 'function') {
-                        callback();
-                    }
-                }
-            };
+/**
+ * Show loading spinner
+ */
+window.showLoading = () => {
+    const el = document.getElementById('loadingSpinner');
+    if (el) {
+        el.setAttribute('aria-hidden', 'false');
+        el.style.display = 'block';
+    }
+};
 
-            // Laravel flash + validation messages
-            @if ($errors->any())
-                if (window.Swal) {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Validation Error',
-                        html: `<ul style="text-align:left;">@foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul>`
-                    });
-                }
-            @endif
-            @if (session('success'))
-                showAlert('success', 'Success', '{{ session("success") }}');
-            @endif
-            @if (session('error'))
-                showAlert('error', 'Error', '{{ session("error") }}');
-            @endif
+/**
+ * Hide loading spinner
+ */
+window.hideLoading = () => {
+    const el = document.getElementById('loadingSpinner');
+    if (el) {
+        el.setAttribute('aria-hidden', 'true');
+        el.style.display = 'none';
+    }
+};
+
+/**
+ * Show alert message
+ */
+window.showAlert = (type, title, message) => {
+    if (window.Swal) {
+        Swal.fire({ 
+            icon: type, 
+            title, 
+            text: message, 
+            toast: true, 
+            position: 'top-end', 
+            showConfirmButton: false, 
+            timer: 3000
         });
+    } else {
+        alert(title + "\n\n" + message);
+    }
+};
 
-        let rowIndex = {{ count($user->modules ?? []) }};
-
-        function addModuleRow() {
-            const tableBody = document.querySelector('#modulesTable tbody');
-            const newRow = document.createElement('tr');
-            newRow.innerHTML = `
-                <td>
-                    <div class="checkbox-group">
-                        <label>
-                            <input type="checkbox" name="modules[${rowIndex}][location][]" value="all" onchange="toggleAllCheckboxes(this, 'location', ${rowIndex})">
-                            All Locations
-                        </label>
-                        @foreach($locations as $location)
-                            <label>
-                                <input type="checkbox" name="modules[${rowIndex}][location][]" value="{{ $location->code }}" onchange="validateCheckboxes(this, 'location', ${rowIndex})">
-                                {{ $location->name }}
-                            </label>
-                        @endforeach
-                    </div>
-                </td>
-                <td>
-                    <div class="checkbox-group">
-                        <label>
-                            <input type="checkbox" name="modules[${rowIndex}][module_id][]" value="all" onchange="toggleAllCheckboxes(this, 'module_id', ${rowIndex})">
-                            All Modules
-                        </label>
-                        @foreach($modules as $module)
-                            <label>
-                                <input type="checkbox" name="modules[${rowIndex}][module_id][]" value="{{ $module->id }}" onchange="validateCheckboxes(this, 'module_id', ${rowIndex})">
-                                {{ $module->name }}
-                            </label>
-                        @endforeach
-                    </div>
-                </td>
-                <td>
-                    <div class="checkbox-group">
-                        <label>
-                            <input type="checkbox" name="modules[${rowIndex}][role_id][]" value="all" onchange="toggleAllCheckboxes(this, 'role_id', ${rowIndex})">
-                            All Roles
-                        </label>
-                        @foreach($roles as $role)
-                            <label>
-                                <input type="checkbox" name="modules[${rowIndex}][role_id][]" value="{{ $role->id }}" onchange="validateCheckboxes(this, 'role_id', ${rowIndex})">
-                                {{ $role->name }}
-                            </label>
-                        @endforeach
-                    </div>
-                </td>
-                <td class="text-center">
-                    <button type="button" class="btn btn-sm btn-danger" onclick="removeRow(this)">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </td>
-            `;
-            tableBody.appendChild(newRow);
-            rowIndex++;
-        }
-
-        function removeRow(button) {
-            const row = button.closest('tr');
-            if (row) {
-                row.remove();
-            }
-        }
-
-        function toggleAllCheckboxes(allCheckbox, field, index) {
-            const checkboxGroup = allCheckbox.closest('.checkbox-group');
-            if (!checkboxGroup) return;
-            
-            const checkboxes = checkboxGroup.querySelectorAll(`input[name^="modules[${index}][${field}][]"]:not([value="all"])`);
-            checkboxes.forEach(checkbox => {
-                checkbox.checked = allCheckbox.checked;
-                checkbox.disabled = allCheckbox.checked;
-            });
-        }
-
-        function validateCheckboxes(checkbox, field, index) {
-            const checkboxGroup = checkbox.closest('.checkbox-group');
-            if (!checkboxGroup) return;
-            
-            const allCheckbox = checkboxGroup.querySelector(`input[name="modules[${index}][${field}][]"][value="all"]`);
-            const individualCheckboxes = checkboxGroup.querySelectorAll(`input[name^="modules[${index}][${field}][]"]:not([value="all"])`);
-            
-            if (checkbox.value !== 'all' && checkbox.checked) {
-                if (allCheckbox) {
-                    allCheckbox.checked = false;
-                }
-                individualCheckboxes.forEach(cb => cb.disabled = false);
-            } else if (!checkbox.checked) {
-                const anyChecked = Array.from(individualCheckboxes).some(cb => cb.checked);
-                if (!anyChecked && allCheckbox) {
-                    allCheckbox.checked = false;
-                    individualCheckboxes.forEach(cb => cb.disabled = false);
-                }
-            }
-        }
-
-        function toggleEditMode() {
-            const summary = document.getElementById('assignmentsSummary');
-            const editForm = document.getElementById('assignmentsEditForm');
-            
-            if (summary && editForm) {
-                if (summary.style.display === 'none') {
-                    summary.style.display = 'block';
-                    editForm.style.display = 'none';
-                } else {
-                    summary.style.display = 'none';
-                    editForm.style.display = 'block';
-                }
-            }
-        }
-
-        // Modal functions
-        function showModuleDetails(moduleName, assignments) {
-            const modal = document.getElementById('moduleModal');
-            const modalTitle = document.getElementById('modalModuleName');
-            const modalBody = document.getElementById('modalBody');
-            
-            // Set module name
-            modalTitle.textContent = moduleName;
-            
-            // Clear previous content
-            modalBody.innerHTML = '';
-            
-            // Create details for each assignment
-            assignments.forEach((assignment, index) => {
-                const detailsCard = document.createElement('div');
-                detailsCard.className = 'assignment-details-card';
-                
-                detailsCard.innerHTML = `
-                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 15px; font-weight: 600; color: var(--primary-color);">
-                        <i class="fas fa-list-ul"></i>
-                        <span>Assignment ${index + 1}</span>
-                    </div>
-                    <div class="detail-row">
-                        <div class="detail-label">
-                            <i class="fas fa-map-marker-alt"></i>
-                            Location:
-                        </div>
-                        <div class="detail-value">${assignment.location_name}</div>
-                    </div>
-                    <div class="detail-row">
-                        <div class="detail-label">
-                            <i class="fas fa-user-tag"></i>
-                            Role:
-                        </div>
-                        <div class="detail-value">${assignment.role_name}</div>
-                    </div>
-                    <div class="detail-row">
-                        <div class="detail-label">
-                            <i class="fas fa-cube"></i>
-                            Module:
-                        </div>
-                        <div class="detail-value">${moduleName}</div>
-                    </div>
-                `;
-                
-                modalBody.appendChild(detailsCard);
-            });
-            
-            // Show modal
-            modal.classList.add('active');
-            document.body.style.overflow = 'hidden';
-        }
-        
-        function closeModuleModal() {
-            const modal = document.getElementById('moduleModal');
-            modal.classList.remove('active');
-            document.body.style.overflow = '';
-        }
-        
-        function closeModalOnOutsideClick(event) {
-            if (event.target.id === 'moduleModal') {
-                closeModuleModal();
-            }
-        }
-        
-        // Close modal on Escape key
-        document.addEventListener('keydown', function(event) {
-            if (event.key === 'Escape') {
-                closeModuleModal();
+/**
+ * Confirm action dialog
+ */
+window.confirmAction = (title, text, callback) => {
+    if (window.Swal) {
+        Swal.fire({
+            title, 
+            text, 
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim(),
+            cancelButtonColor: '#6b7280',
+            confirmButtonText: 'Yes, proceed!'
+        }).then(result => {
+            if (result.isConfirmed && typeof callback === 'function') {
+                callback();
             }
         });
+    } else if (confirm(title + "\n\n" + text)) {
+        if (typeof callback === 'function') {
+            callback();
+        }
+    }
+};
 
-        document.getElementById('editUserForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const submitBtn = this.querySelector('button[type="submit"]');
-            const originalText = submitBtn ? submitBtn.innerHTML : '';
-            
-            // Validate that each row has at least one selection in each category
-            const rows = document.querySelectorAll('#modulesTable tbody tr');
-            let isValid = true;
-            
-            rows.forEach((row, index) => {
-                ['location', 'module_id', 'role_id'].forEach(field => {
-                    const checkboxes = row.querySelectorAll(`input[name^="modules[${index}][${field}][]"]`);
-                    const anyChecked = Array.from(checkboxes).some(cb => cb.checked);
-                    if (!anyChecked) {
-                        isValid = false;
-                        showAlert('error', 'Validation Error', `Please select at least one ${field.replace('_id', '')} in row ${index + 1}`);
-                    }
-                });
-            });
+// ============= CHECKBOX MANAGEMENT FUNCTIONS =============
 
-            if (!isValid) {
-                return;
-            }
-
-            showLoading();
-            if (submitBtn) {
-                submitBtn.disabled = true;
-                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Updating...';
-            }
+/**
+ * Initialize "All" checkboxes based on current state
+ * CRITICAL: This ensures "All" checkboxes reflect the actual selected items
+ */
+function initializeAllCheckboxes() {
+    console.log('=== Initializing All Checkboxes ===');
+    const rows = document.querySelectorAll('#modulesTable tbody tr');
+    
+    rows.forEach((row, rowIndex) => {
+        ['location', 'module_id', 'role_id'].forEach(field => {
+            const checkboxGroup = row.querySelector(
+                `.checkbox-group:has(input[name^="modules[${rowIndex}][${field}][]"])`
+            );
+            if (!checkboxGroup) return;
             
-            // Expand checkbox arrays into individual combinations
-            const formData = new FormData();
+            const allCheckbox = checkboxGroup.querySelector(`input[value="all"]`);
+            const individualCheckboxes = Array.from(
+                checkboxGroup.querySelectorAll(
+                    `input[name^="modules[${rowIndex}][${field}][]"]:not([value="all"])`
+                )
+            );
             
-            // Add CSRF token and method
-            const csrfToken = document.querySelector('input[name="_token"]');
-            if (csrfToken) {
-                formData.append('_token', csrfToken.value);
-            }
-            formData.append('_method', 'PUT');
-            
-            // Add basic fields
-            const addFieldIfExists = (fieldId, fieldName) => {
-                const field = document.getElementById(fieldId);
-                if (field) {
-                    formData.append(fieldName, field.value);
+            if (individualCheckboxes.length > 0 && allCheckbox) {
+                const checkedCount = individualCheckboxes.filter(cb => cb.checked).length;
+                const totalCount = individualCheckboxes.length;
+                
+                if (checkedCount === totalCount) {
+                    // All individual items are checked
+                    allCheckbox.checked = true;
+                    allCheckbox.indeterminate = false;
+                    console.log(`✓ All ${field} selected in row ${rowIndex} (${checkedCount}/${totalCount})`);
+                } else if (checkedCount === 0) {
+                    // No items are checked
+                    allCheckbox.checked = false;
+                    allCheckbox.indeterminate = false;
+                    console.log(`✗ No ${field} selected in row ${rowIndex}`);
+                } else {
+                    // Some items are checked (partial selection)
+                    allCheckbox.checked = false;
+                    allCheckbox.indeterminate = true;
+                    console.log(`◐ ${checkedCount}/${totalCount} ${field} selected in row ${rowIndex}`);
                 }
-            };
+            }
+        });
+    });
+    console.log('=== Initialization Complete ===');
+}
+
+/**
+ * Toggle all checkboxes when "All" is clicked
+ * FIXED: Properly handles the "All" checkbox behavior
+ */
+window.toggleAllCheckboxes = function(allCheckbox, field, index) {
+    const checkboxGroup = allCheckbox.closest('.checkbox-group');
+    if (!checkboxGroup) return;
+    
+    const checkboxes = checkboxGroup.querySelectorAll(
+        `input[name^="modules[${index}][${field}][]"]:not([value="all"])`
+    );
+    
+    if (allCheckbox.checked) {
+        // Check all individual checkboxes
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = true;
+        });
+        allCheckbox.indeterminate = false;
+        console.log(`✓ Checked all ${field} for row ${index} (${checkboxes.length} items)`);
+    } else {
+        // Uncheck all individual checkboxes
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = false;
+        });
+        allCheckbox.indeterminate = false;
+        console.log(`✗ Unchecked all ${field} for row ${index}`);
+    }
+};
+
+/**
+ * Validate checkboxes and sync with "All" checkbox
+ * FIXED: Properly syncs individual checkboxes with "All" checkbox
+ */
+window.validateCheckboxes = function(checkbox, field, index) {
+    const checkboxGroup = checkbox.closest('.checkbox-group');
+    if (!checkboxGroup) return;
+    
+    const allCheckbox = checkboxGroup.querySelector(
+        `input[name="modules[${index}][${field}][]"][value="all"]`
+    );
+    const individualCheckboxes = Array.from(
+        checkboxGroup.querySelectorAll(
+            `input[name^="modules[${index}][${field}][]"]:not([value="all"])`
+        )
+    );
+    
+    if (checkbox.value !== 'all' && allCheckbox && individualCheckboxes.length > 0) {
+        const checkedCount = individualCheckboxes.filter(cb => cb.checked).length;
+        const totalCount = individualCheckboxes.length;
+        
+        if (checkedCount === totalCount) {
+            // All items are now checked
+            allCheckbox.checked = true;
+            allCheckbox.indeterminate = false;
+            console.log(`✓ All ${field} now selected in row ${index}`);
+        } else if (checkedCount === 0) {
+            // No items are checked
+            allCheckbox.checked = false;
+            allCheckbox.indeterminate = false;
+            console.log(`✗ No ${field} selected in row ${index}`);
+        } else {
+            // Some items are checked (partial)
+            allCheckbox.checked = false;
+            allCheckbox.indeterminate = true;
+            console.log(`◐ ${checkedCount}/${totalCount} ${field} selected in row ${index}`);
+        }
+    }
+};
+
+// ============= UI TOGGLE FUNCTIONS =============
+
+/**
+ * Toggle between summary and edit mode
+ * FIXED: Always re-initialize checkboxes when entering edit mode
+ */
+window.toggleEditMode = function() {
+    const summary = document.getElementById('assignmentsSummary');
+    const editForm = document.getElementById('assignmentsEditForm');
+    
+    if (summary && editForm) {
+        if (summary.style.display === 'none') {
+            // Switch back to summary view
+            summary.style.display = 'block';
+            editForm.style.display = 'none';
+        } else {
+            // Switch to edit mode
+            summary.style.display = 'none';
+            editForm.style.display = 'block';
             
-            addFieldIfExists('name', 'name');
-            addFieldIfExists('employee_id', 'employee_id');
-            addFieldIfExists('email', 'email');
-            addFieldIfExists('phone', 'phone');
-            addFieldIfExists('location', 'location');
-            addFieldIfExists('company_id', 'company_id');
+            // 🔥 CRITICAL: Always initialize checkboxes when entering edit mode
+            setTimeout(() => {
+                console.log('Entering edit mode - initializing checkboxes');
+                initializeAllCheckboxes();
+            }, 100);
+        }
+    }
+};
+
+/**
+ * Add a new module assignment row
+ */
+window.addModuleRow = function() {
+    const tableBody = document.querySelector('#modulesTable tbody');
+    const newRow = document.createElement('tr');
+    newRow.innerHTML = `
+        <td>
+            <div class="checkbox-group">
+                <label>
+                    <input type="checkbox" name="modules[${rowIndex}][location][]" value="all" onchange="toggleAllCheckboxes(this, 'location', ${rowIndex})">
+                    All Locations
+                </label>
+                @foreach($locations as $location)
+                    <label>
+                        <input type="checkbox" name="modules[${rowIndex}][location][]" value="{{ $location->code }}" onchange="validateCheckboxes(this, 'location', ${rowIndex})">
+                        {{ $location->name }}
+                    </label>
+                @endforeach
+            </div>
+        </td>
+        <td>
+            <div class="checkbox-group">
+                <label>
+                    <input type="checkbox" name="modules[${rowIndex}][module_id][]" value="all" onchange="toggleAllCheckboxes(this, 'module_id', ${rowIndex})">
+                    All Modules
+                </label>
+                @foreach($modules as $module)
+                    <label>
+                        <input type="checkbox" name="modules[${rowIndex}][module_id][]" value="{{ $module->id }}" onchange="validateCheckboxes(this, 'module_id', ${rowIndex})">
+                        {{ $module->name }}
+                    </label>
+                @endforeach
+            </div>
+        </td>
+        <td>
+            <div class="checkbox-group">
+                <label>
+                    <input type="checkbox" name="modules[${rowIndex}][role_id][]" value="all" onchange="toggleAllCheckboxes(this, 'role_id', ${rowIndex})">
+                    All Roles
+                </label>
+                @foreach($roles as $role)
+                    <label>
+                        <input type="checkbox" name="modules[${rowIndex}][role_id][]" value="{{ $role->id }}" onchange="validateCheckboxes(this, 'role_id', ${rowIndex})">
+                        {{ $role->name }}
+                    </label>
+                @endforeach
+            </div>
+        </td>
+        <td class="text-center">
+            <button type="button" class="btn btn-sm btn-danger" onclick="removeRow(this)">
+                <i class="fas fa-trash"></i>
+            </button>
+        </td>
+    `;
+    tableBody.appendChild(newRow);
+    rowIndex++;
+};
+
+/**
+ * Remove a table row
+ */
+window.removeRow = function(button) {
+    const row = button.closest('tr');
+    if (row) {
+        row.remove();
+    }
+};
+
+// ============= USER STATUS FUNCTIONS =============
+
+/**
+ * Toggle user status (enable/disable)
+ */
+window.toggleUserStatus = function(userId, action) {
+    const actionText = action === 'enable' ? 'enable' : 'disable';
+    const actionTitle = action === 'enable' ? 'Enable User' : 'Disable User';
+    const actionMessage = action === 'enable'
+        ? 'Are you sure you want to enable this user? This will restore access to all systems.'
+        : 'Are you sure you want to disable this user? This will revoke access to all systems.';
+    
+    confirmAction(actionTitle, actionMessage, function() {
+        showLoading();
+        const csrfToken = document.querySelector('meta[name="csrf-token"]');
+        if (!csrfToken) {
+            showAlert('error', 'Error', 'CSRF token not found. Please refresh the page.');
+            hideLoading();
+            return;
+        }
+    
+        axios.post(`/api/users/${userId}/${actionText}`, {}, {
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': csrfToken.content,
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => {
+            if (response.data.success) {
+                const statusMessage = action === 'enable' 
+                    ? 'User has been enabled successfully' 
+                    : 'User has been disabled successfully';
+                showAlert('success', action === 'enable' ? 'User Enabled' : 'User Disabled', response.data.message || statusMessage);
             
-            // Expand module assignments
-            let expandedIndex = 0;
-            
-            rows.forEach((row, rowIndex) => {
-                // Get all checked values (excluding "all")
-                const locations = Array.from(row.querySelectorAll(`input[name^="modules[${rowIndex}][location][]"]:checked`))
-                    .map(cb => cb.value)
-                    .filter(v => v !== 'all');
-                
-                const moduleIds = Array.from(row.querySelectorAll(`input[name^="modules[${rowIndex}][module_id][]"]:checked`))
-                    .map(cb => cb.value)
-                    .filter(v => v !== 'all');
-                
-                const roleIds = Array.from(row.querySelectorAll(`input[name^="modules[${rowIndex}][role_id][]"]:checked`))
-                    .map(cb => cb.value)
-                    .filter(v => v !== 'all');
-                
-                // Create a combination for each selected location, module, and role
-                locations.forEach(location => {
-                    moduleIds.forEach(moduleId => {
-                        roleIds.forEach(roleId => {
-                            formData.append(`modules[${expandedIndex}][location]`, location);
-                            formData.append(`modules[${expandedIndex}][module_id]`, moduleId);
-                            formData.append(`modules[${expandedIndex}][role_id]`, roleId);
-                            expandedIndex++;
-                        });
-                    });
-                });
-            });
-            
-            console.log(`Expanded ${rows.length} rows into ${expandedIndex} module assignments`);
-            
-            // Submit
-            if (window.axios) {
-                axios.post(this.action, formData)
-                    .then(response => {
-                        showAlert('success', 'Success', 'User updated successfully');
-                        if (submitBtn) {
-                            submitBtn.disabled = false;
-                            submitBtn.innerHTML = originalText;
-                        }
-                        hideLoading();
-                        
-                        // Switch back to summary view after successful save
-                        setTimeout(() => {
-                            window.location.reload();
-                        }, 1500);
-                    })
-                    .catch(error => {
-                        console.error('Update error:', error);
-                        showAlert('error', 'Error', error.response?.data?.message || 'Failed to update user');
-                        if (submitBtn) {
-                            submitBtn.disabled = false;
-                            submitBtn.innerHTML = originalText;
-                        }
-                        hideLoading();
-                    });
+                const statusBadge = document.querySelector('.current-status');
+                if (statusBadge) {
+                    const newStatus = action === 'enable' ? 'active' : 'inactive';
+                    statusBadge.className = `current-status status-${newStatus}`;
+                    statusBadge.innerHTML = `
+                        <i class="fas fa-circle"></i>
+                        ${newStatus.charAt(0).toUpperCase() + newStatus.slice(1)}
+                    `;
+                }
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
             } else {
-                // Fallback if axios not available
-                this.submit();
+                showAlert('error', 'Error', response.data.message || `Failed to ${actionText} user`);
+            }
+            hideLoading();
+        })
+        .catch(error => {
+            console.error(`Error ${actionText}ing user:`, error);
+            hideLoading();
+            const errorMessage = error.response?.data?.message || `Failed to ${actionText} user: ` + error.message;
+            showAlert('error', 'Error', errorMessage);
+        });
+    });
+};
+
+/**
+ * Provision user to Azure AD
+ */
+window.provisionUserToAzure = function(userId) {
+    confirmAction('Provision to Azure', 'This will create an Azure AD account for this user. Continue?', function() {
+        showLoading();
+        axios.post(`/users/${userId}/provision-azure`)
+            .then(response => {
+                if (response.data.success) {
+                    showAlert('success', 'Success', response.data.message);
+                    setTimeout(() => window.location.reload(), 1500);
+                } else {
+                    showAlert('error', 'Error', response.data.message);
+                }
+                hideLoading();
+            })
+            .catch(error => {
+                console.error('Provision error:', error);
+                hideLoading();
+                showAlert('error', 'Error', error.response?.data?.message || 'Failed to provision user');
+            });
+    });
+};
+
+// ============= MODAL FUNCTIONS =============
+
+/**
+ * Show module details modal
+ */
+window.showModuleDetails = function(moduleName, assignments) {
+    const modal = document.getElementById('moduleModal');
+    const modalTitle = document.getElementById('modalModuleName');
+    const modalBody = document.getElementById('modalBody');
+    
+    modalTitle.textContent = moduleName;
+    modalBody.innerHTML = '';
+    
+    assignments.forEach((assignment, index) => {
+        const detailsCard = document.createElement('div');
+        detailsCard.className = 'assignment-details-card';
+        
+        detailsCard.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 15px; font-weight: 600; color: var(--primary-color);">
+                <i class="fas fa-list-ul"></i>
+                <span>Assignment ${index + 1}</span>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">
+                    <i class="fas fa-map-marker-alt"></i>
+                    Location:
+                </div>
+                <div class="detail-value">${assignment.location_name}</div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">
+                    <i class="fas fa-user-tag"></i>
+                    Role:
+                </div>
+                <div class="detail-value">${assignment.role_name}</div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">
+                    <i class="fas fa-cube"></i>
+                    Module:
+                </div>
+                <div class="detail-value">${moduleName}</div>
+            </div>
+        `;
+        
+        modalBody.appendChild(detailsCard);
+    });
+    
+    modal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+};
+
+/**
+ * Close module details modal
+ */
+window.closeModuleModal = function() {
+    const modal = document.getElementById('moduleModal');
+    modal.classList.remove('active');
+    document.body.style.overflow = '';
+};
+
+/**
+ * Close modal when clicking outside
+ */
+window.closeModalOnOutsideClick = function(event) {
+    if (event.target.id === 'moduleModal') {
+        closeModuleModal();
+    }
+};
+
+// ============= FORM SUBMISSION =============
+
+/**
+ * Handle form submission
+ * CRITICAL FIX: Excludes "all" values and only sends actual IDs
+ */
+document.getElementById('editUserForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const submitBtn = this.querySelector('button[type="submit"]');
+    const originalText = submitBtn ? submitBtn.innerHTML : '';
+    
+    const rows = document.querySelectorAll('#modulesTable tbody tr');
+    let isValid = true;
+    let validationErrors = [];
+    
+    // Validate that each row has at least one selection in each column
+    rows.forEach((row, index) => {
+        ['location', 'module_id', 'role_id'].forEach(field => {
+            // Check ONLY non-"all" checkboxes
+            const checkboxes = row.querySelectorAll(`input[name^="modules[${index}][${field}][]"]:not([value="all"])`);
+            const anyChecked = Array.from(checkboxes).some(cb => cb.checked);
+            if (!anyChecked) {
+                isValid = false;
+                const fieldName = field.replace('_id', '').replace('_', ' ');
+                validationErrors.push(`Row ${index + 1}: Select at least one ${fieldName}`);
             }
         });
-    </script>
+    });
+    
+    if (!isValid) {
+        showAlert('error', 'Validation Error', validationErrors.join('\n'));
+        return;
+    }
+    
+    console.log(`Validating ${rows.length} rows...`);
+    
+    // Show loading state
+    showLoading();
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Updating...';
+    }
+    
+    // Build FormData
+    const formData = new FormData();
+    
+    const csrfToken = document.querySelector('input[name="_token"]');
+    if (csrfToken) {
+        formData.append('_token', csrfToken.value);
+    }
+    formData.append('_method', 'PUT');
+    
+    // Helper function to add field ONLY if it exists AND is not readonly
+    const addFieldIfEditable = (fieldId, fieldName) => {
+        const field = document.getElementById(fieldId);
+        if (field && !field.hasAttribute('readonly') && !field.disabled) {
+            formData.append(fieldName, field.value);
+            console.log(`Added editable field: ${fieldName} = ${field.value}`);
+        } else if (field && (field.hasAttribute('readonly') || field.disabled)) {
+            console.log(`Skipped readonly/disabled field: ${fieldName}`);
+        }
+    };
+    
+    // Only add editable fields (phone, location, company_id)
+    addFieldIfEditable('phone', 'phone');
+    addFieldIfEditable('location', 'location');
+    addFieldIfEditable('company_id', 'company_id');
+    
+    // ===== CRITICAL FIX: Process module assignments and EXCLUDE "all" =====
+    console.log('=== Processing Module Assignments ===');
+    
+    rows.forEach((row, rowIndex) => {
+        // Get all checked checkboxes that are NOT "all"
+        const locationCheckboxes = Array.from(
+            row.querySelectorAll(`input[name^="modules[${rowIndex}][location][]"]:checked`)
+        ).filter(cb => cb.value !== 'all');  // CRITICAL: Filter out "all"
+        
+        const moduleCheckboxes = Array.from(
+            row.querySelectorAll(`input[name^="modules[${rowIndex}][module_id][]"]:checked`)
+        ).filter(cb => cb.value !== 'all');  // CRITICAL: Filter out "all"
+        
+        const roleCheckboxes = Array.from(
+            row.querySelectorAll(`input[name^="modules[${rowIndex}][role_id][]"]:checked`)
+        ).filter(cb => cb.value !== 'all');  // CRITICAL: Filter out "all"
+        
+        console.log(`Row ${rowIndex}:`, {
+            locations: locationCheckboxes.map(cb => cb.value),
+            modules: moduleCheckboxes.map(cb => cb.value),
+            roles: roleCheckboxes.map(cb => cb.value)
+        });
+        
+        // Only add if we have actual values (not "all")
+        if (locationCheckboxes.length > 0 && moduleCheckboxes.length > 0 && roleCheckboxes.length > 0) {
+            locationCheckboxes.forEach(checkbox => {
+                formData.append(`modules[${rowIndex}][location][]`, checkbox.value);
+            });
+            
+            moduleCheckboxes.forEach(checkbox => {
+                formData.append(`modules[${rowIndex}][module_id][]`, checkbox.value);
+            });
+            
+            roleCheckboxes.forEach(checkbox => {
+                formData.append(`modules[${rowIndex}][role_id][]`, checkbox.value);
+            });
+        }
+    });
+
+    // Debug logging
+    console.log('=== FormData Contents (Only Real Values) ===');
+    for (let pair of formData.entries()) {
+        console.log(pair[0] + ': ' + pair[1]);
+    }
+    console.log('=========================');
+
+    // Submit form
+    axios.post(this.action, formData, {
+        headers: {
+            'Content-Type': 'multipart/form-data',
+        }
+    })
+    .then(response => {
+        console.log('Success response:', response.data);
+        showAlert('success', 'Success', 'User updated successfully');
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
+        }
+        hideLoading();
+        
+        setTimeout(() => {
+            window.location.href = '{{ route("dashboard.index") }}';
+        }, 1500);
+    })
+    .catch(error => {
+        console.error('Update error:', error);
+        console.error('Error response:', error.response?.data);
+        
+        let errorMessage = 'Failed to update user';
+        if (error.response?.data?.errors) {
+            const errors = error.response.data.errors;
+            const errorList = Object.entries(errors)
+                .map(([field, messages]) => `${field}: ${messages.join(', ')}`)
+                .join('\n');
+            errorMessage = errorList;
+            console.error('Validation errors:', errors);
+        } else if (error.response?.data?.message) {
+            errorMessage = error.response.data.message;
+        }
+        
+        showAlert('error', 'Validation Error', errorMessage);
+        
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
+        }
+        hideLoading();
+    });
+});
+
+// ============= EVENT LISTENERS =============
+
+/**
+ * Escape key to close modal
+ */
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape') {
+        closeModuleModal();
+    }
+});
+
+/**
+ * DOM Content Loaded - Initialize everything
+ * FIXED: Always initialize "All" checkboxes on page load
+ */
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM Content Loaded - Initializing...');
+    
+    // Setup Axios defaults
+    if (window.axios) {
+        const csrfToken = document.querySelector('meta[name="csrf-token"]');
+        if (csrfToken) {
+            axios.defaults.headers.common['X-CSRF-TOKEN'] = csrfToken.content;
+            axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
+        }
+    }
+
+    // Show validation errors from server
+    @if ($errors->any())
+        Swal.fire({
+            icon: 'error',
+            title: 'Validation Error',
+            html: `<ul style="text-align:left;">@foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul>`
+        });
+    @endif
+    
+    // Show success message
+    @if (session('success'))
+        showAlert('success', 'Success', '{{ session("success") }}');
+    @endif
+    
+    // Show error message
+    @if (session('error'))
+        showAlert('error', 'Error', '{{ session("error") }}');
+    @endif
+
+    // 🔥 CRITICAL FIX: Initialize "All" checkboxes whenever rows exist
+    // This ensures "All" checkboxes reflect the actual state of checked items
+    const moduleTable = document.getElementById('modulesTable');
+    if (moduleTable) {
+        const rows = moduleTable.querySelectorAll('tbody tr');
+        if (rows.length > 0) {
+            console.log(`Found ${rows.length} existing module rows - initializing checkboxes`);
+            setTimeout(() => {
+                initializeAllCheckboxes();
+            }, 100);
+        }
+    }
+});
+</script>
 </body>
 </html>
