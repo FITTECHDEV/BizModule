@@ -137,7 +137,7 @@ class AzureUser extends Authenticatable
     public function scopeActive($query)
     {
         return $query->where('status', 'active')
-                     ->where('is_active', true);
+                        ->where('is_active', true);
     }
 
     /**
