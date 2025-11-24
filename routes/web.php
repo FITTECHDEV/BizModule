@@ -516,3 +516,7 @@ Route::prefix('azure')->name('azure.')->middleware(['auth'])->group(function () 
     })->name('health');
 
 });
+
+
+Route::get('/sync-odoo-users', [App\Http\Controllers\OdooSyncController::class, 'syncUsers']);
+Route::get('/test-odoo-columns', [App\Http\Controllers\OdooSyncController::class, 'testColumns']);

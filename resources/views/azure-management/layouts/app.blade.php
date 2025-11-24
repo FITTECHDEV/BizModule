@@ -66,8 +66,7 @@
 
         /* ---------- Main Content ---------- */
         .main {
-            padding: 28px;
-            max-width: var(--max-width);
+            padding: 0 28px 28px 28px;             max-width: var(--max-width);
             margin: 0 auto;
             width: 100%;
             display: flex;
@@ -144,7 +143,7 @@
 
         /* ---------- Responsive ---------- */
         @media (max-width: 991px) {
-            .main { padding: 18px; }
+            .main { padding: 0 18px 18px 18px; }       
         }
 
         .sr-only {
@@ -163,15 +162,7 @@
         <!-- Main -->
         <main class="main" role="main">
             <header class="page-header">
-                <div class="page-title">
-                    <i class="fas fa-folder-open" style="color:var(--primary-color);"></i>
-                    <div>
-                        <div>@yield('page-title', 'Azure User Management System')</div>
-                        @hasSection('page-subtitle')
-                            <div class="muted">@yield('page-subtitle')</div>
-                        @endif
-                    </div>
-                </div>
+            
                 <div>@yield('header-actions')</div>
             </header>
 

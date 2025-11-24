@@ -1,1559 +1,1148 @@
-<!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
-<head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="csrf-token" content="{{ csrf_token() }}" />
+@extends('azure-management.layouts.app')
 
-    <title>Edit User</title>
+@section('title', 'Edit User')
 
-    <!-- Fonts -->
-    <link rel="preconnect" href="https://fonts.bunny.net">
-    <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+@section('page-title', 'Edit User')
 
-    <!-- Font Awesome -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/js/all.min.js" defer></script>
+@push('styles')
+<style>
+    /* ---------- Edit Form Styles ---------- */
+    .edit-form-container {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(10px);
+        border-radius: 15px;
+        padding: 30px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        margin-bottom: 30px;
+    }
 
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    .form-section {
+        margin-bottom: 30px;
+        padding-bottom: 25px;
+        border-bottom: 2px solid #e1e8ed;
+    }
 
-    <!-- SweetAlert2 -->
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11" defer></script>
+    .form-section:last-child {
+        border-bottom: none;
+        margin-bottom: 0;
+    }
 
-    <!-- Styles -->
-    <style>
-        /* ---------- Theme Variables ---------- */
-        :root {
-            --primary-color: #0b66ff;
-            --primary-contrast: #ffffff;
-            --secondary-color: #0ea5a4;
-            --bg: #e9edf2;          /* softer background */
-            --surface: #ffffff;
-            --muted: #6b7280;
-            --text: #0f172a;
-            --danger: #ef4444;
-            --success: #10b981;
-            --radius: 10px;
-            --shadow-sm: 0 2px 8px rgba(15, 23, 42, 0.06);
-            --shadow-md: 0 8px 30px rgba(15, 23, 42, 0.08);
-            --focus-ring: 3px rgba(11, 102, 255, 0.15);
-            --max-width: 1320px;
+    .form-section-title {
+        font-size: 1.3em;
+        font-weight: 600;
+        color: #2c3e50;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .form-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 20px;
+        margin-bottom: 20px;
+    }
+
+    .form-group {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .form-label {
+        font-weight: 600;
+        color: #2c3e50;
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
+
+    .form-control {
+        padding: 12px 15px;
+        border: 2px solid #e1e8ed;
+        border-radius: 8px;
+        font-size: 14px;
+        transition: all 0.3s ease;
+        background: white;
+        width: 100%;
+    }
+
+    .form-control:focus {
+        outline: none;
+        border-color: #3498db;
+        box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+    }
+
+    .form-control.is-invalid {
+        border-color: #e74c3c;
+        box-shadow: 0 0 0 3px rgba(231, 76, 60, 0.1);
+    }
+
+    .form-control:read-only,
+    .form-control[readonly] {
+        background-color: #f8f9fa;
+        color: #6c757d;
+        cursor: not-allowed;
+        border-color: #ced4da;
+    }
+
+    .invalid-feedback {
+        color: #e74c3c;
+        font-size: 0.875em;
+        margin-top: 5px;
+        display: block;
+    }
+
+    .current-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        border-radius: 20px;
+        font-size: 0.9em;
+        font-weight: 500;
+    }
+
+    .status-active {
+        background: #d4edda;
+        color: #155724;
+    }
+
+    .status-pending {
+        background: #fff3cd;
+        color: #856404;
+    }
+
+    .status-inactive {
+        background: #f8d7da;
+        color: #721c24;
+    }
+
+    /* Module Cards Grid */
+    .modules-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 20px;
+        margin-bottom: 20px;
+    }
+
+    .module-card {
+        background: white;
+        border: 2px solid #e1e8ed;
+        border-radius: 12px;
+        padding: 24px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: var(--shadow-sm);
+        text-align: center;
+        min-height: 140px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .module-card:hover {
+        border-color: var(--primary-color);
+        transform: translateY(-4px);
+        box-shadow: var(--shadow-md);
+    }
+
+    .module-card.new-module {
+        border-color: var(--success);
+        border-style: dashed;
+        background: #f0fff4;
+    }
+
+    .card-icon {
+        font-size: 2.5em;
+        color: var(--primary-color);
+        margin-bottom: 8px;
+    }
+
+    .module-card.new-module .card-icon {
+        color: var(--success);
+    }
+
+    .card-title {
+        font-size: 1.1em;
+        font-weight: 600;
+        color: var(--text);
+        margin-bottom: 4px;
+    }
+
+    .assignment-count {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 12px;
+        background: #e8f0ff;
+        color: var(--primary-color);
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 0.85em;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 40px 20px;
+        color: var(--muted);
+    }
+
+    .empty-state i {
+        font-size: 3em;
+        margin-bottom: 15px;
+        opacity: 0.3;
+    }
+
+    .empty-grid {
+        grid-column: 1/-1;
+        text-align: center;
+        padding: 60px 20px;
+        color: var(--muted);
+    }
+
+    .empty-grid i {
+        font-size: 3em;
+        opacity: 0.3;
+        margin-bottom: 15px;
+        display: block;
+    }
+
+    /* Modal Styles */
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+        backdrop-filter: blur(4px);
+    }
+
+    .modal-overlay.active {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 20px;
+    }
+
+    .modal-content {
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        max-width: 900px;
+        width: 100%;
+        max-height: 90vh;
+        overflow-y: auto;
+        animation: modalSlideIn 0.3s ease;
+    }
+
+    @keyframes modalSlideIn {
+        from {
+            opacity: 0;
+            transform: translateY(-20px) scale(0.95);
         }
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    }
 
-        /* ---------- Reset + Defaults ---------- */
-        * { box-sizing: border-box; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
-        html, body { height: 100%; margin: 0; }
-        body {
-            font-family: "Inter", "Figtree", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
-            background: var(--bg);
-            color: var(--text);
-            font-size: 16px;
-            line-height: 1.45;
-        }
+    .modal-header {
+        padding: 24px 30px;
+        border-bottom: 2px solid #e1e8ed;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
 
-        /* ---------- Layout ---------- */
-        .app-shell {
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-        }
+    .modal-title {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-size: 1.4em;
+        font-weight: 600;
+    }
 
-        /* ---------- Main Content ---------- */
-        .main {
-            padding: 28px;
-            max-width: var(--max-width);
-            margin: 0 auto;
-            width: 100%;
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-        }
-        .page-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 16px;
-        }
-        .page-title {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            font-size: 1.25rem;
-            font-weight: 700;
-            color: var(--text);
-        }
+    .modal-close {
+        background: none;
+        border: none;
+        font-size: 1.5em;
+        color: var(--muted);
+        cursor: pointer;
+        padding: 4px 8px;
+        transition: all 0.2s;
+    }
 
-        /* ---------- Buttons ---------- */
-        .btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 8px 14px;
-            border-radius: 8px;
-            font-weight: 600;
-            border: none;
-            cursor: pointer;
-            transition: transform .08s ease, box-shadow .12s ease;
-        }
-        .btn:focus-visible { outline: none; box-shadow: 0 0 0 4px var(--focus-ring); }
-        .btn-primary { background: var(--primary-color); color: var(--primary-contrast); box-shadow: var(--shadow-sm); }
-        .btn-primary:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
-        .btn-secondary { background: var(--secondary-color); color: var(--primary-contrast); }
-        .btn-ghost { background: transparent; color: var(--text); border: 1px solid rgba(15,23,42,0.06); }
-        .btn-danger { background: var(--danger); color: var(--primary-contrast); }
-        .btn-success { background: var(--success); color: var(--primary-contrast); }
-        .btn-sm { padding: 6px 10px; font-size: 0.875rem; }
+    .modal-close:hover {
+        color: var(--text);
+        transform: rotate(90deg);
+    }
 
-        /* ---------- Cards ---------- */
-        .card-surface {
-            background: var(--surface);
-            border-radius: var(--radius);
-            padding: 18px;
-            box-shadow: var(--shadow-sm);
-            border: 1px solid rgba(15,23,42,0.04);
-        }
+    .modal-body {
+        padding: 30px;
+    }
 
-        /* ---------- Loading Spinner ---------- */
-        .loading-spinner {
-            display: none;
-            position: fixed;
-            z-index: 9999;
-            left: 50%;
-            top: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(255,255,255,0.98);
-            padding: 16px 18px;
-            border-radius: 10px;
-            box-shadow: var(--shadow-md);
-            text-align: center;
-            min-width: 160px;
-        }
-        .loading-spinner[aria-hidden="false"] { display: block; }
-        .spinner {
-            width: 36px; height: 36px;
-            border-radius: 50%;
-            border: 4px solid rgba(15,23,42,0.06);
-            border-top-color: var(--primary-color);
-            margin: 0 auto 10px;
-            animation: spin 0.9s linear infinite;
-        }
-        @keyframes spin { to { transform: rotate(360deg); } }
+    .modal-footer {
+        padding: 20px 30px;
+        border-top: 2px solid #e1e8ed;
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+        background: #f8f9fa;
+        border-radius: 0 0 16px 16px;
+    }
 
-        /* ---------- Responsive ---------- */
-        @media (max-width: 991px) {
-            .main { padding: 18px; }
-        }
+    .modal-footer.hidden {
+        display: none;
+    }
 
-        .sr-only {
-            position: absolute; width: 1px; height: 1px;
-            padding: 0; margin: -1px; overflow: hidden;
-            clip: rect(0,0,0,0); white-space: nowrap; border: 0;
-        }
+    .assignment-item {
+        background: #fafbfc;
+        border: 1px solid #e9ecef;
+        border-radius: 8px;
+        padding: 18px;
+        margin-bottom: 12px;
+        transition: all 0.2s ease;
+    }
 
-        /* ---------- Edit Form Styles ---------- */
-        .edit-form-container {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border-radius: 15px;
-            padding: 30px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-            margin-bottom: 30px;
-        }
+    .assignment-item:hover {
+        border-color: #dee2e6;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    }
 
-        
+    .assignment-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+    }
 
-        .form-section {
-            margin-bottom: 30px;
-            padding-bottom: 25px;
-            border-bottom: 2px solid #e1e8ed;
-        }
+    .assignment-info {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 15px;
+    }
 
-        .form-section:last-child {
-            border-bottom: none;
-            margin-bottom: 0;
-        }
+    .info-field {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
 
-        .form-section-title {
-            font-size: 1.3em;
-            font-weight: 600;
-            color: #2c3e50;
-            margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
+    .field-label {
+        font-size: 0.85em;
+        color: var(--muted);
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
 
+    .radio-group {
+        margin-bottom: 12px;
+    }
+
+    .radio-option {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        background: white;
+        border: 2px solid #e1e8ed;
+        border-radius: 6px;
+        margin-bottom: 8px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .radio-option:hover {
+        border-color: var(--primary-color);
+        background: #f8faff;
+    }
+
+    .radio-option input[type="radio"] {
+        cursor: pointer;
+    }
+
+    .radio-option label {
+        cursor: pointer;
+        font-weight: 500;
+        margin: 0;
+        flex: 1;
+    }
+
+    .radio-option input[type="radio"]:disabled {
+        cursor: not-allowed;
+    }
+
+    .radio-option.disabled {
+        opacity: 0.6;
+        background: #f8f9fa;
+        cursor: not-allowed;
+    }
+
+    .radio-option.disabled:hover {
+        border-color: #e1e8ed;
+        background: #f8f9fa;
+    }
+
+    .checkboxes-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 8px;
+        margin-top: 10px;
+        padding: 12px;
+        background: #f8f9fa;
+        border-radius: 6px;
+    }
+
+    .checkbox-option {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 10px;
+        background: white;
+        border: 1px solid #e1e8ed;
+        border-radius: 4px;
+        transition: all 0.2s;
+    }
+
+    .checkbox-option:hover {
+        border-color: var(--primary-color);
+    }
+
+    .checkbox-option input[type="checkbox"] {
+        cursor: pointer;
+    }
+
+    .checkbox-option label {
+        cursor: pointer;
+        margin: 0;
+        font-size: 0.9em;
+        flex: 1;
+    }
+
+    .checkbox-option input[type="checkbox"]:disabled {
+        cursor: not-allowed;
+    }
+
+    .checkbox-option.disabled {
+        opacity: 0.6;
+        background: #f1f3f5;
+    }
+
+    .empty-assignments {
+        text-align: center;
+        padding: 40px 20px;
+        color: var(--muted);
+    }
+
+    .empty-assignments i {
+        font-size: 2.5em;
+        opacity: 0.3;
+        margin-bottom: 10px;
+    }
+
+    /* Module Selector Styles for SweetAlert */
+    .module-selector-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        gap: 15px;
+        padding: 10px;
+        max-height: 400px;
+        overflow-y: auto;
+    }
+
+    .module-selector-card {
+        background: white;
+        border: 2px solid #e1e8ed;
+        border-radius: 10px;
+        padding: 20px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+        min-height: 120px;
+        justify-content: center;
+    }
+
+    .module-selector-card:hover {
+        border-color: var(--primary-color);
+        background: #f8faff;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(11, 102, 255, 0.15);
+    }
+
+    .module-selector-card i {
+        font-size: 2em;
+        color: var(--primary-color);
+        margin-bottom: 5px;
+    }
+
+    .module-selector-card .module-name {
+        font-weight: 600;
+        font-size: 0.95em;
+        color: var(--text);
+    }
+
+    /* View Mode Styles */
+    .view-mode-banner {
+        background: #e8f0ff;
+        border: 2px solid var(--primary-color);
+        border-radius: 8px;
+        padding: 12px 16px;
+        margin-bottom: 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .view-mode-banner .info {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: var(--primary-color);
+        font-weight: 600;
+    }
+
+    .btn-danger {
+        background: var(--danger);
+        color: var(--primary-contrast);
+    }
+
+    .btn-success {
+        background: var(--success);
+        color: var(--primary-contrast);
+    }
+
+    .btn-sm {
+        padding: 6px 10px;
+        font-size: 0.875rem;
+    }
+
+    @media (max-width: 768px) {
         .form-row {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px;
-            margin-bottom: 20px;
+            grid-template-columns: 1fr;
         }
 
-        .form-group {
-            display: flex;
-            flex-direction: column;
+        .edit-form-container {
+            padding: 20px;
         }
 
-        .form-label {
-            font-weight: 600;
-            color: #2c3e50;
-            margin-bottom: 8px;
-            display: flex;
-            align-items: center;
-            gap: 5px;
+        .assignment-info {
+            grid-template-columns: 1fr;
         }
+    }
+</style>
+@endpush
 
-        .form-control {
-            padding: 12px 15px;
-            border: 2px solid #e1e8ed;
-            border-radius: 8px;
-            font-size: 14px;
-            transition: all 0.3s ease;
-            background: white;
-        }
+@section('content')
+<div class="edit-form-container">
+    <form id="editUserForm" action="{{ route('users.update', $user) }}" method="POST">
+        @csrf
+        @method('PUT')
 
-        .form-control:focus {
-            outline: none;
-            border-color: #3498db;
-            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
-        }
+        <!-- Basic Information Section -->
+        <div class="form-section">
+            <div class="form-section-title">
+                <i class="fas fa-user"></i>
+                Basic Information
+            </div>
 
-        .form-control.is-invalid {
-            border-color: #e74c3c;
-            box-shadow: 0 0 0 3px rgba(231, 76, 60, 0.1);
-        }
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="name" class="form-label">
+                        Full Name <span style="color: var(--danger);">*</span>
+                    </label>
+                    <input type="text" 
+                        id="name" 
+                        name="name" 
+                        class="form-control @error('name') is-invalid @enderror" 
+                        value="{{ old('name', $user->name) }}" 
+                        readonly>
+                    @error('name')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
+                </div>
 
-        .form-control:read-only,
-        .form-control[readonly] {
-            background-color: #f8f9fa;
-            color: #6c757d;
-            cursor: not-allowed;
-            border-color: #ced4da;
-        }
+                <div class="form-group">
+                    <label for="employee_id" class="form-label">
+                        Employee ID <span style="color: var(--danger);">*</span>
+                    </label>
+                    <input type="text" 
+                        id="employee_id" 
+                        name="employee_id" 
+                        class="form-control @error('employee_id') is-invalid @enderror" 
+                        value="{{ old('employee_id', $user->employee_id) }}" 
+                        readonly>
+                    @error('employee_id')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
+                </div>
+            </div>
 
-        .form-control:read-only:focus,
-        .form-control[readonly]:focus {
-            border-color: #ced4da;
-            box-shadow: none;
-        }
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="email" class="form-label">
+                        Email Address <span style="color: var(--danger);">*</span>
+                    </label>
+                    <input type="email" 
+                        id="email" 
+                        name="email" 
+                        class="form-control @error('email') is-invalid @enderror" 
+                        value="{{ old('email', $user->email) }}" 
+                        readonly>
+                    @error('email')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
+                </div>
 
-        select.form-control[disabled] {
-            background-color: #f8f9fa;
-            color: #6c757d;
-            cursor: not-allowed;
-            border-color: #ced4da;
-        }
+                <div class="form-group">
+                    <label for="phone" class="form-label">
+                        Phone Number
+                    </label>
+                    <input type="tel" 
+                        id="phone" 
+                        name="phone" 
+                        class="form-control @error('phone') is-invalid @enderror" 
+                        value="{{ old('phone', $user->phone) }}"
+                        readonly>
+                    @error('phone')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
+                </div>
+            </div>
+        </div>
 
-        .invalid-feedback {
-            color: #e74c3c;
-            font-size: 0.875em;
-            margin-top: 5px;
-        }
+        <!-- Location and Company Section -->
+        <div class="form-section">
+            <div class="form-section-title">
+                <i class="fas fa-map-marker-alt"></i>
+                Location & Company
+            </div>
 
-        .current-status {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 8px 12px;
-            border-radius: 20px;
-            font-size: 0.9em;
-            font-weight: 500;
-        }
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="location" class="form-label">
+                        Location
+                    </label>
+                    @php
+                        $userLocationCode = old('location', $user->location ?? '');
+                        $userLocationDisplay = '';
+                        if ($userLocationCode) {
+                            $locationObj = $locations->firstWhere('code', $userLocationCode);
+                            if ($locationObj) {
+                                $userLocationDisplay = $locationObj->name . ' (' . $locationObj->code . ')';
+                            }
+                        }
+                    @endphp
+                    <input type="text" 
+                        id="location" 
+                        name="location" 
+                        class="form-control @error('location') is-invalid @enderror" 
+                        value="{{ $userLocationDisplay }}" 
+                        readonly>
+                    @error('location')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
+                </div>
 
-        .status-active {
-            background: #d4edda;
-            color: #155724;
-        }
+                <div class="form-group">
+                    <label for="company_id" class="form-label">
+                        Company
+                    </label>
+                    @php
+                        $userCompanyId = old('company_id', $user->company_id ?? '');
+                        $userCompanyDisplay = '';
+                        if ($userCompanyId) {
+                            $companyObj = $companies->firstWhere('id', $userCompanyId);
+                            if ($companyObj) {
+                                $userCompanyDisplay = $companyObj->name;
+                            }
+                        }
+                    @endphp
+                    <input type="text" 
+                        id="company_id" 
+                        name="company_id" 
+                        class="form-control @error('company_id') is-invalid @enderror" 
+                        value="{{ $userCompanyDisplay }}" 
+                        readonly>
+                    @error('company_id')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
+                </div>
+            </div>
 
-        .status-pending {
-            background: #fff3cd;
-            color: #856404;
-        }
-
-        .status-inactive {
-            background: #f8d7da;
-            color: #721c24;
-        }
-
-        .required {
-            color: #e74c3c;
-        }
-
-        #modulesTableContainer {
-            display: block;
-        }
-
-        .checkbox-group {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            max-height: 200px;
-            overflow-y: auto;
-            padding: 10px;
-            border: 1px solid #e1e8ed;
-            border-radius: 8px;
-        }
-
-        .checkbox-group label {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 14px;
-        }
-
-        .checkbox-group input[type="checkbox"] {
-            width: 16px;
-            height: 16px;
-        }
-
-        @media (max-width: 768px) {
-            .form-row {
-                grid-template-columns: 1fr;
-            }
-            
-            .edit-form-container {
-                padding: 20px;
-            }
-        }
-
-        /* Assignment Cards */
-        .assignments-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 15px;
-            margin-bottom: 15px;
-        }
-        
-        .assignment-card {
-            background: #e9ecef;
-            border-radius: 10px;
-            padding: 16px;
-            color: #2c3e50;
-            box-shadow: var(--shadow-sm);
-            border: 2px solid #dee2e6;
-            transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
-            cursor: pointer;
-        }
-        
-        .assignment-card:hover {
-            background: #dfe3e7;
-            border-color: #adb5bd;
-            transform: translateY(-3px);
-            box-shadow: var(--shadow-md);
-        }
-        
-        .assignment-card-header {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 12px;
-            font-size: 1.1em;
-            font-weight: 600;
-            border-bottom: 2px solid #ced4da;
-            padding-bottom: 8px;
-            color: #2c3e50;
-        }
-        
-        .assignment-card-body {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-        
-        .assignment-detail {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 0.9em;
-            color: #495057;
-        }
-        
-        
-        .assignment-item {
-            margin-bottom: 12px;
-        }
-        
-        .assignment-item:last-child {
-            margin-bottom: 0;
-        }
-        
-        .assignment-divider {
-            border: 0;
-            border-top: 1px solid #ced4da;
-            margin: 12px 0;
-            opacity: 0.5;
-        }
-        
-        .assignment-card-body .assignment-detail {
-            margin-bottom: 4px;
-        }
-        
-        .assignment-detail i {
-            color: #6c757d;
-            width: 16px;
-        }
-        .empty-state {
-            text-align: center;
-            padding: 40px 20px;
-            color: var(--muted);
-        }
-
-        .empty-state i {
-            font-size: 3em;
-            margin-bottom: 15px;
-            opacity: 0.3;
-        }
-
-        .empty-state p {
-            font-size: 1.1em;
-            margin: 0;
-        }
-
-        /* Modal Styles */
-        .modal-overlay {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.5);
-            z-index: 1000;
-            backdrop-filter: blur(4px);
-        }
-
-        .modal-overlay.active {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .modal-content {
-            background: white;
-            border-radius: 15px;
-            padding: 30px;
-            max-width: 600px;
-            width: 90%;
-            max-height: 80vh;
-            overflow-y: auto;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            animation: modalSlideIn 0.3s ease;
-        }
-
-        @keyframes modalSlideIn {
-            from {
-                opacity: 0;
-                transform: translateY(-20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .modal-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 20px;
-            padding-bottom: 15px;
-            border-bottom: 2px solid #e1e8ed;
-        }
-
-        .modal-title {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-size: 1.4em;
-            font-weight: 600;
-            color: #2c3e50;
-        }
-
-        .modal-close {
-            background: none;
-            border: none;
-            font-size: 1.5em;
-            color: #6c757d;
-            cursor: pointer;
-            padding: 5px 10px;
-            border-radius: 5px;
-            transition: background 0.2s ease;
-        }
-
-        .modal-close:hover {
-            background: #f8f9fa;
-            color: #2c3e50;
-        }
-
-        .modal-body {
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-        }
-
-        .assignment-details-card {
-            background: #f8f9fa;
-            border-radius: 10px;
-            padding: 15px;
-            border-left: 4px solid var(--primary-color);
-        }
-
-        .detail-row {
-            display: flex;
-            align-items: flex-start;
-            gap: 10px;
-            margin-bottom: 10px;
-        }
-
-        .detail-row:last-child {
-            margin-bottom: 0;
-        }
-
-        .detail-label {
-            font-weight: 600;
-            color: #2c3e50;
-            min-width: 100px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .detail-value {
-            color: #495057;
-            flex: 1;
-        }
-    </style>
-</head>
-<body>
-    <div class="app-shell" role="application">
-        <!-- Main -->
-        <main class="main" role="main">
-            <header class="page-header">
-                <div class="page-title">
-                    <i class="fas fa-folder-open" style="color:var(--primary-color);"></i>
-                    <div>
-                        <div>Edit User</div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Current Status</label>
+                    <div class="current-status status-{{ $user->status }}">
+                        <i class="fas fa-circle"></i>
+                        {{ ucfirst($user->status) }}
                     </div>
                 </div>
-            </header>
+            </div>
+        </div>
 
-            <section>
-                <div class="edit-form-container">
-                    <form id="editUserForm" action="{{ route('users.update', $user) }}" method="POST">
-                        @csrf
-                        @method('PUT')
+        <!-- Module Assignments Section -->
+        <div class="form-section">
+            <div class="form-section-title" style="display: flex; justify-content: space-between; align-items: center;">
+                <div><i class="fas fa-th-large"></i> Module Assignments</div>
+                <button type="button" class="btn btn-sm btn-success" onclick="addNewModule()">
+                    <i class="fas fa-plus"></i> Add New Assignment
+                </button>
+            </div>
+            <div id="modulesGrid" class="modules-grid"></div>
+        </div>
 
-                        <!-- Basic Information Section -->
-                        <div class="form-section">
-                            <div class="form-section-title">
-                                <i class="fas fa-user"></i>
-                                Basic Information
-                            </div>
-                            
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label for="name" class="form-label">
-                                        Full Name <span class="required">*</span>
-                                    </label>
-                                    <input type="text" 
-                                        id="name" 
-                                        name="name" 
-                                        class="form-control @error('name') is-invalid @enderror" 
-                                        value="{{ old('name', $user->name) }}" 
-                                        readonly>
-                                    @error('name')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                </div>
+        <div id="hiddenInputsContainer"></div>
 
-                                <div class="form-group">
-                                    <label for="employee_id" class="form-label">
-                                        Employee ID <span class="required">*</span>
-                                    </label>
-                                    <input type="text" 
-                                        id="employee_id" 
-                                        name="employee_id" 
-                                        class="form-control @error('employee_id') is-invalid @enderror" 
-                                        value="{{ old('employee_id', $user->employee_id) }}" 
-                                        readonly>
-                                    @error('employee_id')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                </div>
-                            </div>
+        <!-- Form Actions -->
+        <div class="form-section">
+            <div style="display: flex; gap: 15px; justify-content: flex-end; align-items: center;">
+                <a href="{{ route('azure.dashboard.index') }}" class="btn btn-ghost">
+                    <i class="fas fa-times"></i>
+                    Cancel
+                </a>
+                <button type="button" class="btn btn-primary" onclick="updateUser()">
+                    <i class="fas fa-save"></i>
+                    Update User
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
 
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label for="email" class="form-label">
-                                        Email Address <span class="required">*</span>
-                                    </label>
-                                    <input type="email" 
-                                        id="email" 
-                                        name="email" 
-                                        class="form-control @error('email') is-invalid @enderror" 
-                                        value="{{ old('email', $user->email) }}" 
-                                        readonly>
-                                    @error('email')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                </div>
+<!-- Modal for Module Details -->
+<div id="moduleModal" class="modal-overlay" onclick="closeModalOnOverlay(event)">
+    <div class="modal-content" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <div class="modal-title">
+                <i class="fas fa-cube" style="color: var(--primary-color)"></i>
+                <span id="modalModuleName">Module Name</span>
+            </div>
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div id="viewModeBanner" class="view-mode-banner" style="display: none;">
+                <div class="info">
+                    <i class="fas fa-eye"></i>
+                    <span>View Mode - Click Edit to make changes</span>
+                </div>
+                <button type="button" class="btn btn-sm btn-primary" onclick="enableEditMode()">
+                    <i class="fas fa-edit"></i> Edit
+                </button>
+            </div>
+            <div id="modalAssignmentsContainer"></div>
+        </div>
+        <div class="modal-footer" id="modalFooter">
+            <button type="button" class="btn btn-ghost" onclick="cancelModal()">
+                <i class="fas fa-times"></i> Cancel
+            </button>
+            <button type="button" class="btn btn-primary" onclick="saveModalChanges()">
+                <i class="fas fa-save"></i> Save Changes
+            </button>
+        </div>
+    </div>
+</div>
+@endsection
 
-                                <div class="form-group">
-                                    <label for="phone" class="form-label">
-                                        Phone Number
-                                    </label>
-                                    <input type="tel" 
-                                        id="phone" 
-                                        name="phone" 
-                                        class="form-control @error('phone') is-invalid @enderror" 
-                                        value="{{ old('phone', $user->phone) }}"
-                                        readonly>
-                                    @error('phone')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                </div>
-                            </div>
-                        </div>
+@push('scripts')
+<script>
+    // Data from Laravel
+    const modulesData = @json($modules);
+    const locationsData = @json($locations);
+    const rolesData = @json($roles);
+    const existingModules = @json($userModuleAssignments ?? []);
+    const updateRoute = "{{ route('users.update', $user) }}";
+    const csrfToken = "{{ csrf_token() }}";
 
-                        <!-- Location and Company Section -->
-                        <div class="form-section">
-                            <div class="form-section-title">
-                                <i class="fas fa-map-marker-alt"></i>
-                                Location & Company
-                            </div>
+    let moduleCards = {};
+    let cardIdCounter = 0;
+    let currentModalCardId = null;
+    let isEditMode = false;
+    let originalCardState = null;
 
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label for="location" class="form-label">
-                                        Location <span class="required">*</span>
-                                    </label>
-                                    <select id="location" 
-                                            name="location" 
-                                            class="form-control @error('location') is-invalid @enderror" 
-                                            required>
-                                        <option value="">Select Location</option>
-                                        @foreach($locations as $location)
-                                            <option value="{{ $location->code }}" 
-                                                    {{ (old('location', $user->location) == $location->code) ? 'selected' : '' }}>
-                                                {{ $location->name }} ({{ $location->code }})
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                    @error('location')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                    
-                                    <small class="text-muted">Current value: {{ $user->location ?? 'null' }}</small>
-                                </div>
+    function deepClone(obj) {
+        return JSON.parse(JSON.stringify(obj));
+    }
 
-                                <div class="form-group">
-                                    <label for="company_id" class="form-label">
-                                        Company <span class="required">*</span>
-                                    </label>
-                                    <select id="company_id" 
-                                            name="company_id" 
-                                            class="form-control @error('company_id') is-invalid @enderror" 
-                                            required>
-                                        <option value="">Select Company</option>
-                                        @foreach($companies as $company)
-                                            <option value="{{ $company->id }}" 
-                                                    {{ (old('company_id', $user->company_id) == $company->id) ? 'selected' : '' }}>
-                                                {{ $company->name }}
-                                            </option>
-                                        @endforeach
-                                    </select transparently
-                                    @error('company_id')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                    
-                                    <small class="text-muted">Current value: {{ $user->company_id ?? 'null' }}</small>
-                                </div>
-                            </div>
+    function initializeModules() {
+        const grouped = {};
+        existingModules.forEach(m => {
+            const moduleId = m.module_id;
+            if (!grouped[moduleId]) {
+                grouped[moduleId] = {
+                    module_id: moduleId,
+                    module_name: m.module_name,
+                    assignments: []
+                };
+            }
+            grouped[moduleId].assignments.push({
+                id: `assign_${cardIdCounter++}`,
+                location: m.location,
+                role_id: m.role_id
+            });
+        });
 
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label class="form-label">Current Status</label>
-                                    <div class="current-status status-{{ $user->status }}">
-                                        <i class="fas fa-circle"></i>
-                                        {{ ucfirst($user->status) }}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+        Object.values(grouped).forEach(data => {
+            const cardId = `card_${cardIdCounter++}`;
+            moduleCards[cardId] = { id: cardId, isNew: false, ...data };
+        });
 
-                    <!-- Module Assignments Section -->
-                    <div class="form-section">
-                        <div class="form-section-title">
-                            <i class="fas fa-th-large"></i>
-                            Module Assignments
-                        </div>
+        renderAllCards();
+    }
 
-                    <!-- Summary Cards View (Default) -->
-                    <div id="assignmentsSummary">
-                        @if($userModuleAssignments && $userModuleAssignments->count() > 0)
-                            @php
-                                // Group assignments by module
-                                $groupedAssignments = $userModuleAssignments->groupBy('module_name');
-                            @endphp
-                            
-                            <div class="assignments-grid">
-                                @foreach($groupedAssignments as $moduleName => $assignments)
-                                    <div class="assignment-card" onclick="showModuleDetails('{{ addslashes($moduleName) }}', {{ json_encode($assignments) }})">
-                                        <div class="assignment-card-header">
-                                            <i class="fas fa-cube"></i>
-                                            <strong>{{ $moduleName }}</strong>
-                                        </div>
-                                        <div class="assignment-card-body">
-                                            @foreach($assignments as $assignment)
-                                                <div class="assignment-item">
-                                                    <div class="assignment-detail">
-                                                        <i class="fas fa-map-marker-alt"></i>
-                                                        <span>{{ $assignment['location_name'] }}</span>
-                                                    </div>
-                                                    <div class="assignment-detail">
-                                                        <i class="fas fa-user-tag"></i>
-                                                        <span>{{ $assignment['role_name'] }}</span>
-                                                    </div>
-                                                    @if(!$loop->last)
-                                                        <hr class="assignment-divider">
-                                                    @endif
-                                                </div>
-                                            @endforeach
-                                        </div>
-                                    </div>
-                                @endforeach
-                            </div>
-                        @else
-                            <div class="empty-state">
-                                <i class="fas fa-inbox"></i>
-                                <p>No module assignments yet</p>
-                            </div>
-                        @endif
-                        
-                        <div class="mt-3">
-                            <button type="button" class="btn btn-sm btn-primary" onclick="toggleEditMode()">
-                                <i class="fas fa-edit"></i> Edit Assignments
+    function renderAllCards() {
+        const grid = document.getElementById('modulesGrid');
+        grid.innerHTML = '';
+        Object.values(moduleCards).forEach(card => {
+            grid.appendChild(createModuleCard(card));
+        });
+        if (Object.keys(moduleCards).length === 0) {
+            grid.innerHTML = '<div class="empty-grid"><i class="fas fa-inbox"></i><p>No modules assigned yet. Click "Add New Assignment" to get started.</p></div>';
+        }
+        updateHiddenInputs();
+    }
+
+    function createModuleCard(card) {
+        const div = document.createElement('div');
+        div.className = `module-card ${card.isNew ? 'new-module' : ''}`;
+        div.id = card.id;
+        div.onclick = () => openModal(card.id);
+        const assignmentCount = card.assignments ? card.assignments.length : 0;
+        div.innerHTML = `
+            <i class="fas ${card.isNew ? 'fa-plus-circle' : 'fa-cube'} card-icon"></i>
+            <div class="card-title">${card.module_name}</div>
+            <span class="assignment-count">
+                <i class="fas fa-list"></i>
+                ${assignmentCount} assignment${assignmentCount !== 1 ? 's' : ''}
+            </span>
+        `;
+        return div;
+    }
+
+    window.openModal = (cardId) => {
+        currentModalCardId = cardId;
+        const card = moduleCards[cardId];
+        originalCardState = deepClone(card);
+        isEditMode = card.isNew;
+        document.getElementById('modalModuleName').textContent = card.module_name;
+        renderModalAssignments();
+        updateModalViewState();
+        document.getElementById('moduleModal').classList.add('active');
+    };
+
+    function updateModalViewState() {
+        const viewBanner = document.getElementById('viewModeBanner');
+        const footer = document.getElementById('modalFooter');
+        if (isEditMode) {
+            viewBanner.style.display = 'none';
+            footer.classList.remove('hidden');
+        } else {
+            viewBanner.style.display = 'flex';
+            footer.classList.add('hidden');
+        }
+    }
+
+    window.enableEditMode = () => {
+        isEditMode = true;
+        renderModalAssignments();
+        updateModalViewState();
+    };
+
+    window.closeModal = () => {
+        if (originalCardState && currentModalCardId) {
+            moduleCards[currentModalCardId] = deepClone(originalCardState);
+        }
+        document.getElementById('moduleModal').classList.remove('active');
+        currentModalCardId = null;
+        isEditMode = false;
+        originalCardState = null;
+        renderAllCards();
+    };
+
+    window.cancelModal = () => {
+        if (originalCardState && originalCardState.isNew && currentModalCardId) {
+            delete moduleCards[currentModalCardId];
+        } else if (originalCardState && currentModalCardId) {
+            moduleCards[currentModalCardId] = deepClone(originalCardState);
+        }
+        document.getElementById('moduleModal').classList.remove('active');
+        currentModalCardId = null;
+        isEditMode = false;
+        originalCardState = null;
+        renderAllCards();
+    };
+
+    window.closeModalOnOverlay = (event) => {
+        if (event.target.id === 'moduleModal') {
+            cancelModal();
+        }
+    };
+
+    window.saveModalChanges = () => {
+        if (!isEditMode) return;
+        originalCardState = null;
+        if (currentModalCardId && moduleCards[currentModalCardId]) {
+            moduleCards[currentModalCardId].isNew = false;
+        }
+        document.getElementById('moduleModal').classList.remove('active');
+        currentModalCardId = null;
+        isEditMode = false;
+        renderAllCards();
+        showAlert('success', 'Saved', 'Changes saved. Click "Update User" to save to database.');
+    };
+
+    function renderModalAssignments() {
+        const card = moduleCards[currentModalCardId];
+        const container = document.getElementById('modalAssignmentsContainer');
+        if (!card.assignments || card.assignments.length === 0) {
+            container.innerHTML = '<div class="empty-assignments"><i class="fas fa-clipboard-list"></i><p>No assignments yet.</p></div>';
+            return;
+        }
+        container.innerHTML = card.assignments.map(a => {
+            const isAllLocations = a.location === 'ALL';
+            const isAllRoles = a.role_id === 'ALL';
+            const disabled = !isEditMode ? 'disabled' : '';
+            const disabledClass = !isEditMode ? 'disabled' : '';
+
+            return `
+                <div class="assignment-item" id="${a.id}">
+                    <div class="assignment-header">
+                        <span style="font-weight: 600; color: var(--muted); font-size: 0.9em;">Assignment</span>
+                        <div style="display: flex; gap: 8px; ${!isEditMode ? 'display: none;' : ''}">
+                            <button type="button" class="btn btn-sm btn-ghost" style="color: var(--danger);" onclick="deleteAssignment('${a.id}')">
+                                <i class="fas fa-trash"></i>
                             </button>
                         </div>
                     </div>
-
-                            <!-- Edit Form (Hidden by default) -->
-                            <div id="assignmentsEditForm" style="display: none;">
-                                <div class="alert alert-info mb-3">
-                                    <i class="fas fa-info-circle"></i>
-                                    Make your changes below and click "Update User" to save.
+                    <div class="assignment-info">
+                        <div class="info-field">
+                            <div class="field-label"><i class="fas fa-map-marker-alt"></i> Office</div>
+                            <div class="radio-group">
+                                <div class="radio-option ${disabledClass}">
+                                    <input type="radio" id="${a.id}_all_locations" name="${a.id}_location_type" class="all-locations-radio" ${isAllLocations ? 'checked' : ''} ${disabled} onchange="handleLocationRadioChange('${a.id}')">
+                                    <label for="${a.id}_all_locations">All Locations</label>
                                 </div>
-                                
-                                <div class="mb-3">
-                                    <button type="button" class="btn btn-sm btn-success" onclick="addModuleRow()">
-                                        <i class="fas fa-plus"></i> Add New Assignment
-                                    </button>
-                                    <button type="button" class="btn btn-sm btn-secondary" onclick="toggleEditMode()">
-                                        <i class="fas fa-times"></i> Cancel
-                                    </button>
+                                <div class="radio-option ${disabledClass}">
+                                    <input type="radio" id="${a.id}_specific_locations" name="${a.id}_location_type" class="specific-locations-radio" ${!isAllLocations ? 'checked' : ''} ${disabled} onchange="handleLocationRadioChange('${a.id}')">
+                                    <label for="${a.id}_specific_locations">Specific Location</label>
                                 </div>
-
-                                <div id="modulesTableContainer" class="table-responsive">
-
-                                    <table class="table table-bordered align-middle" id="modulesTable">
-                                        <thead class="table-light">
-                                            <tr>
-                                                <th style="width: 25%">Office</th>
-                                                <th style="width: 25%">Module</th>
-                                                <th style="width: 25%">Role</th>
-                                                <th style="width: 15%">Action</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            @forelse ($user->modules as $assignmentIndex => $assignment)
-                                            
-                                                <tr>
-                                                    <td>
-                                                        <div class="checkbox-group">
-                                                            <label>
-                                                                <input type="checkbox" name="modules[{{ $assignmentIndex }}][location][]" value="all" onchange="toggleAllCheckboxes(this, 'location', {{ $assignmentIndex }})">
-                                                                All Locations
-                                                            </label>
-                                                            @foreach($locations as $location)
-                                                                <label>
-                                                                    <input type="checkbox" name="modules[{{ $assignmentIndex }}][location][]" value="{{ $location->code }}" {{ (string)$assignment->pivot->location === (string)$location->code ? 'checked' : '' }} onchange="validateCheckboxes(this, 'location', {{ $assignmentIndex }})">
-                                                                    {{ $location->name }}
-                                                                </label>
-                                                            @endforeach
-                                                        </div>
-                                                    </td>
-                                                    <td>
-                                                        <div class="checkbox-group">
-                                                            <label>
-                                                                <input type="checkbox" name="modules[{{ $assignmentIndex }}][module_id][]" value="all" onchange="toggleAllCheckboxes(this, 'module_id', {{ $assignmentIndex }})">
-                                                                All Modules
-                                                            </label>
-                                                            @foreach($modules as $module)
-                                                                <label>
-                                                                    <input type="checkbox" name="modules[{{ $assignmentIndex }}][module_id][]" value="{{ $module->id }}" {{ $assignment->id == $module->id ? 'checked' : '' }} onchange="validateCheckboxes(this, 'module_id', {{ $assignmentIndex }})">
-                                                                    {{ $module->name }}
-                                                                </label>
-                                                            @endforeach
-                                                        </div>
-                                                    </td>
-                                                    <td>
-                                                        <div class="checkbox-group">
-                                                            <label>
-                                                                <input type="checkbox" name="modules[{{ $assignmentIndex }}][role_id][]" value="all" onchange="toggleAllCheckboxes(this, 'role_id', {{ $assignmentIndex }})">
-                                                                All Roles
-                                                            </label>
-                                                            @foreach($roles as $role)
-                                                                <label>
-                                                                    <input type="checkbox" name="modules[{{ $assignmentIndex }}][role_id][]" value="{{ $role->id }}" {{ $assignment->pivot->role_id == $role->id ? 'checked' : '' }} onchange="validateCheckboxes(this, 'role_id', {{ $assignmentIndex }})">
-                                                                    {{ $role->name }}
-                                                                </label>
-                                                            @endforeach
-                                                        </div>
-                                                    </td>
-                                                    <td class="text-center">
-                                                        <button type="button" class="btn btn-sm btn-danger" onclick="removeRow(this)">
-                                                            <i class="fas fa-trash"></i>
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                            @empty
-                                                <!-- No existing assignments -->
-                                            @endforelse
-                                        </tbody>
-                                    </table>
-                                </div>
+                            </div>
+                            <div class="checkboxes-grid">
+                                ${locationsData.map(l => `
+                                    <div class="checkbox-option ${isAllLocations || !isEditMode ? 'disabled' : ''}">
+                                        <input type="checkbox" id="${a.id}_loc_${l.code}" class="location-checkbox" value="${l.code}" ${a.location === l.code || isAllLocations ? 'checked' : ''} ${isAllLocations || !isEditMode ? 'disabled' : ''} onchange="handleLocationCheckboxChange('${a.id}', this)">
+                                        <label for="${a.id}_loc_${l.code}">${l.name}</label>
+                                    </div>
+                                `).join('')}
                             </div>
                         </div>
-                        <!-- Form Actions -->
-                        <div class="form-section">
-                            <div style="display: flex; gap: 15px; justify-content: space-between; align-items: center;">
-                                <!-- Left side - Disable/Enable button -->
-                                <div>
-                                    @if($user->status === 'inactive')
-                                        <button type="button" class="btn btn-success" onclick="toggleUserStatus('{{ $user->id }}', 'enable')">
-                                            <i class="fas fa-user-check"></i>
-                                            Enable User
-                                        </button>
-                                    @else
-                                        <button type="button" class="btn btn-danger" onclick="toggleUserStatus('{{ $user->id }}', 'disable')">
-                                            <i class="fas fa-user-slash"></i>
-                                            Disable User
-                                        </button>
-                                    @endif
+                        <div class="info-field">
+                            <div class="field-label"><i class="fas fa-user-tag"></i> Role</div>
+                            <div class="radio-group">
+                                <div class="radio-option ${disabledClass}">
+                                    <input type="radio" id="${a.id}_all_roles" name="${a.id}_role_type" class="all-roles-radio" ${isAllRoles ? 'checked' : ''} ${disabled} onchange="handleRoleRadioChange('${a.id}')">
+                                    <label for="${a.id}_all_roles">All Roles</label>
                                 </div>
-                                <!-- Right side - Save and Cancel buttons -->
-                                <div style="display: flex; gap: 15px;">
-                                    <a href="{{ route('dashboard.index') }}" class="btn btn-ghost">
-                                        <i class="fas fa-times"></i>
-                                        Cancel
-                                    </a>
-                                    <button type="submit" class="btn btn-primary">
-                                        <i class="fas fa-save"></i>
-                                        Update User
-                                    </button>
+                                <div class="radio-option ${disabledClass}">
+                                    <input type="radio" id="${a.id}_specific_roles" name="${a.id}_role_type" class="specific-roles-radio" ${!isAllRoles ? 'checked' : ''} ${disabled} onchange="handleRoleRadioChange('${a.id}')">
+                                    <label for="${a.id}_specific_roles">Specific Role</label>
                                 </div>
                             </div>
-                        </div> 
-                    </form>
+                            <div class="checkboxes-grid">
+                                ${rolesData.map(r => `
+                                    <div class="checkbox-option ${isAllRoles || !isEditMode ? 'disabled' : ''}">
+                                        <input type="checkbox" id="${a.id}_role_${r.id}" class="role-checkbox" value="${r.id}" ${a.role_id == r.id || isAllRoles ? 'checked' : ''} ${isAllRoles || !isEditMode ? 'disabled' : ''} onchange="handleRoleCheckboxChange('${a.id}', this)">
+                                        <label for="${a.id}_role_${r.id}">${r.name}</label>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
                 </div>
-            </section>
-        </main>
-    </div>
-
-    <!-- Loading Spinner -->
-    <div id="loadingSpinner" class="loading-spinner" aria-hidden="true">
-        <div class="spinner"></div>
-        <div id="loadingText">Processing…</div>
-    </div>
-
-    <!-- Modal for Module Details -->
-    <div id="moduleModal" class="modal-overlay" onclick="closeModalOnOutsideClick(event)">
-        <div class="modal-content" onclick="event.stopPropagation()">
-            <div class="modal-header">
-                <div class="modal-title">
-                    <i class="fas fa-cube"></i>
-                    <span id="modalModuleName"></span>
-                </div>
-                <button class="modal-close" onclick="closeModuleModal()">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <div class="modal-body" id="modalBody">
-                <!-- Details will be inserted here -->
-            </div>
-        </div>
-    </div>
-
-    <!-- Scripts -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" defer></script>
-    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js" defer></script>
-
-<script>
-// ============= GLOBAL VARIABLES =============
-let rowIndex = {{ count($user->modules ?? []) }};
-
-// ============= UTILITY FUNCTIONS =============
-
-/**
- * Show loading spinner
- */
-window.showLoading = () => {
-    const el = document.getElementById('loadingSpinner');
-    if (el) {
-        el.setAttribute('aria-hidden', 'false');
-        el.style.display = 'block';
+            `;
+        }).join('');
     }
-};
 
-/**
- * Hide loading spinner
- */
-window.hideLoading = () => {
-    const el = document.getElementById('loadingSpinner');
-    if (el) {
-        el.setAttribute('aria-hidden', 'true');
-        el.style.display = 'none';
-    }
-};
-
-/**
- * Show alert message
- */
-window.showAlert = (type, title, message) => {
-    if (window.Swal) {
-        Swal.fire({ 
-            icon: type, 
-            title, 
-            text: message, 
-            toast: true, 
-            position: 'top-end', 
-            showConfirmButton: false, 
-            timer: 3000
-        });
-    } else {
-        alert(title + "\n\n" + message);
-    }
-};
-
-/**
- * Confirm action dialog
- */
-window.confirmAction = (title, text, callback) => {
-    if (window.Swal) {
-        Swal.fire({
-            title, 
-            text, 
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim(),
-            cancelButtonColor: '#6b7280',
-            confirmButtonText: 'Yes, proceed!'
-        }).then(result => {
-            if (result.isConfirmed && typeof callback === 'function') {
-                callback();
-            }
-        });
-    } else if (confirm(title + "\n\n" + text)) {
-        if (typeof callback === 'function') {
-            callback();
-        }
-    }
-};
-
-// ============= CHECKBOX MANAGEMENT FUNCTIONS =============
-
-/**
- * Initialize "All" checkboxes based on current state
- * CRITICAL: This ensures "All" checkboxes reflect the actual selected items
- */
-function initializeAllCheckboxes() {
-    console.log('=== Initializing All Checkboxes ===');
-    const rows = document.querySelectorAll('#modulesTable tbody tr');
-    
-    rows.forEach((row, rowIndex) => {
-        ['location', 'module_id', 'role_id'].forEach(field => {
-            const checkboxGroup = row.querySelector(
-                `.checkbox-group:has(input[name^="modules[${rowIndex}][${field}][]"])`
-            );
-            if (!checkboxGroup) return;
-            
-            const allCheckbox = checkboxGroup.querySelector(`input[value="all"]`);
-            const individualCheckboxes = Array.from(
-                checkboxGroup.querySelectorAll(
-                    `input[name^="modules[${rowIndex}][${field}][]"]:not([value="all"])`
-                )
-            );
-            
-            if (individualCheckboxes.length > 0 && allCheckbox) {
-                const checkedCount = individualCheckboxes.filter(cb => cb.checked).length;
-                const totalCount = individualCheckboxes.length;
-                
-                if (checkedCount === totalCount) {
-                    // All individual items are checked
-                    allCheckbox.checked = true;
-                    allCheckbox.indeterminate = false;
-                    console.log(`✓ All ${field} selected in row ${rowIndex} (${checkedCount}/${totalCount})`);
-                } else if (checkedCount === 0) {
-                    // No items are checked
-                    allCheckbox.checked = false;
-                    allCheckbox.indeterminate = false;
-                    console.log(`✗ No ${field} selected in row ${rowIndex}`);
-                } else {
-                    // Some items are checked (partial selection)
-                    allCheckbox.checked = false;
-                    allCheckbox.indeterminate = true;
-                    console.log(`◐ ${checkedCount}/${totalCount} ${field} selected in row ${rowIndex}`);
-                }
-            }
-        });
-    });
-    console.log('=== Initialization Complete ===');
-}
-
-/**
- * Toggle all checkboxes when "All" is clicked
- * FIXED: Properly handles the "All" checkbox behavior
- */
-window.toggleAllCheckboxes = function(allCheckbox, field, index) {
-    const checkboxGroup = allCheckbox.closest('.checkbox-group');
-    if (!checkboxGroup) return;
-    
-    const checkboxes = checkboxGroup.querySelectorAll(
-        `input[name^="modules[${index}][${field}][]"]:not([value="all"])`
-    );
-    
-    if (allCheckbox.checked) {
-        // Check all individual checkboxes
-        checkboxes.forEach(checkbox => {
-            checkbox.checked = true;
-        });
-        allCheckbox.indeterminate = false;
-        console.log(`✓ Checked all ${field} for row ${index} (${checkboxes.length} items)`);
-    } else {
-        // Uncheck all individual checkboxes
-        checkboxes.forEach(checkbox => {
-            checkbox.checked = false;
-        });
-        allCheckbox.indeterminate = false;
-        console.log(`✗ Unchecked all ${field} for row ${index}`);
-    }
-};
-
-/**
- * Validate checkboxes and sync with "All" checkbox
- * FIXED: Properly syncs individual checkboxes with "All" checkbox
- */
-window.validateCheckboxes = function(checkbox, field, index) {
-    const checkboxGroup = checkbox.closest('.checkbox-group');
-    if (!checkboxGroup) return;
-    
-    const allCheckbox = checkboxGroup.querySelector(
-        `input[name="modules[${index}][${field}][]"][value="all"]`
-    );
-    const individualCheckboxes = Array.from(
-        checkboxGroup.querySelectorAll(
-            `input[name^="modules[${index}][${field}][]"]:not([value="all"])`
-        )
-    );
-    
-    if (checkbox.value !== 'all' && allCheckbox && individualCheckboxes.length > 0) {
-        const checkedCount = individualCheckboxes.filter(cb => cb.checked).length;
-        const totalCount = individualCheckboxes.length;
-        
-        if (checkedCount === totalCount) {
-            // All items are now checked
-            allCheckbox.checked = true;
-            allCheckbox.indeterminate = false;
-            console.log(`✓ All ${field} now selected in row ${index}`);
-        } else if (checkedCount === 0) {
-            // No items are checked
-            allCheckbox.checked = false;
-            allCheckbox.indeterminate = false;
-            console.log(`✗ No ${field} selected in row ${index}`);
+    window.handleLocationRadioChange = (assignId) => {
+        if (!isEditMode) return;
+        const container = document.getElementById(assignId);
+        if (!container) return;
+        const allRadio = container.querySelector('.all-locations-radio');
+        const checkboxes = container.querySelectorAll('.location-checkbox');
+        const checkboxOptions = container.querySelectorAll('.info-field:first-child .checkbox-option');
+        const card = moduleCards[currentModalCardId];
+        const assignment = card.assignments.find(a => a.id === assignId);
+        if (allRadio && allRadio.checked) {
+            checkboxes.forEach(cb => { cb.checked = true; cb.disabled = true; });
+            checkboxOptions.forEach(opt => opt.classList.add('disabled'));
+            if (assignment) assignment.location = 'ALL';
         } else {
-            // Some items are checked (partial)
-            allCheckbox.checked = false;
-            allCheckbox.indeterminate = true;
-            console.log(`◐ ${checkedCount}/${totalCount} ${field} selected in row ${index}`);
-        }
-    }
-};
-
-// ============= UI TOGGLE FUNCTIONS =============
-
-/**
- * Toggle between summary and edit mode
- * FIXED: Always re-initialize checkboxes when entering edit mode
- */
-window.toggleEditMode = function() {
-    const summary = document.getElementById('assignmentsSummary');
-    const editForm = document.getElementById('assignmentsEditForm');
-    
-    if (summary && editForm) {
-        if (summary.style.display === 'none') {
-            // Switch back to summary view
-            summary.style.display = 'block';
-            editForm.style.display = 'none';
-        } else {
-            // Switch to edit mode
-            summary.style.display = 'none';
-            editForm.style.display = 'block';
-            
-            // 🔥 CRITICAL: Always initialize checkboxes when entering edit mode
-            setTimeout(() => {
-                console.log('Entering edit mode - initializing checkboxes');
-                initializeAllCheckboxes();
-            }, 100);
-        }
-    }
-};
-
-/**
- * Add a new module assignment row
- */
-window.addModuleRow = function() {
-    const tableBody = document.querySelector('#modulesTable tbody');
-    const newRow = document.createElement('tr');
-    newRow.innerHTML = `
-        <td>
-            <div class="checkbox-group">
-                <label>
-                    <input type="checkbox" name="modules[${rowIndex}][location][]" value="all" onchange="toggleAllCheckboxes(this, 'location', ${rowIndex})">
-                    All Locations
-                </label>
-                @foreach($locations as $location)
-                    <label>
-                        <input type="checkbox" name="modules[${rowIndex}][location][]" value="{{ $location->code }}" onchange="validateCheckboxes(this, 'location', ${rowIndex})">
-                        {{ $location->name }}
-                    </label>
-                @endforeach
-            </div>
-        </td>
-        <td>
-            <div class="checkbox-group">
-                <label>
-                    <input type="checkbox" name="modules[${rowIndex}][module_id][]" value="all" onchange="toggleAllCheckboxes(this, 'module_id', ${rowIndex})">
-                    All Modules
-                </label>
-                @foreach($modules as $module)
-                    <label>
-                        <input type="checkbox" name="modules[${rowIndex}][module_id][]" value="{{ $module->id }}" onchange="validateCheckboxes(this, 'module_id', ${rowIndex})">
-                        {{ $module->name }}
-                    </label>
-                @endforeach
-            </div>
-        </td>
-        <td>
-            <div class="checkbox-group">
-                <label>
-                    <input type="checkbox" name="modules[${rowIndex}][role_id][]" value="all" onchange="toggleAllCheckboxes(this, 'role_id', ${rowIndex})">
-                    All Roles
-                </label>
-                @foreach($roles as $role)
-                    <label>
-                        <input type="checkbox" name="modules[${rowIndex}][role_id][]" value="{{ $role->id }}" onchange="validateCheckboxes(this, 'role_id', ${rowIndex})">
-                        {{ $role->name }}
-                    </label>
-                @endforeach
-            </div>
-        </td>
-        <td class="text-center">
-            <button type="button" class="btn btn-sm btn-danger" onclick="removeRow(this)">
-                <i class="fas fa-trash"></i>
-            </button>
-        </td>
-    `;
-    tableBody.appendChild(newRow);
-    rowIndex++;
-};
-
-/**
- * Remove a table row
- */
-window.removeRow = function(button) {
-    const row = button.closest('tr');
-    if (row) {
-        row.remove();
-    }
-};
-
-// ============= USER STATUS FUNCTIONS =============
-
-/**
- * Toggle user status (enable/disable)
- */
-window.toggleUserStatus = function(userId, action) {
-    const actionText = action === 'enable' ? 'enable' : 'disable';
-    const actionTitle = action === 'enable' ? 'Enable User' : 'Disable User';
-    const actionMessage = action === 'enable'
-        ? 'Are you sure you want to enable this user? This will restore access to all systems.'
-        : 'Are you sure you want to disable this user? This will revoke access to all systems.';
-    
-    confirmAction(actionTitle, actionMessage, function() {
-        showLoading();
-        const csrfToken = document.querySelector('meta[name="csrf-token"]');
-        if (!csrfToken) {
-            showAlert('error', 'Error', 'CSRF token not found. Please refresh the page.');
-            hideLoading();
-            return;
-        }
-    
-        axios.post(`/api/users/${userId}/${actionText}`, {}, {
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-                'X-CSRF-TOKEN': csrfToken.content,
-                'X-Requested-With': 'XMLHttpRequest'
-            }
-        })
-        .then(response => {
-            if (response.data.success) {
-                const statusMessage = action === 'enable' 
-                    ? 'User has been enabled successfully' 
-                    : 'User has been disabled successfully';
-                showAlert('success', action === 'enable' ? 'User Enabled' : 'User Disabled', response.data.message || statusMessage);
-            
-                const statusBadge = document.querySelector('.current-status');
-                if (statusBadge) {
-                    const newStatus = action === 'enable' ? 'active' : 'inactive';
-                    statusBadge.className = `current-status status-${newStatus}`;
-                    statusBadge.innerHTML = `
-                        <i class="fas fa-circle"></i>
-                        ${newStatus.charAt(0).toUpperCase() + newStatus.slice(1)}
-                    `;
-                }
-                setTimeout(() => {
-                    window.location.reload();
-                }, 1500);
-            } else {
-                showAlert('error', 'Error', response.data.message || `Failed to ${actionText} user`);
-            }
-            hideLoading();
-        })
-        .catch(error => {
-            console.error(`Error ${actionText}ing user:`, error);
-            hideLoading();
-            const errorMessage = error.response?.data?.message || `Failed to ${actionText} user: ` + error.message;
-            showAlert('error', 'Error', errorMessage);
-        });
-    });
-};
-
-/**
- * Provision user to Azure AD
- */
-window.provisionUserToAzure = function(userId) {
-    confirmAction('Provision to Azure', 'This will create an Azure AD account for this user. Continue?', function() {
-        showLoading();
-        axios.post(`/users/${userId}/provision-azure`)
-            .then(response => {
-                if (response.data.success) {
-                    showAlert('success', 'Success', response.data.message);
-                    setTimeout(() => window.location.reload(), 1500);
-                } else {
-                    showAlert('error', 'Error', response.data.message);
-                }
-                hideLoading();
-            })
-            .catch(error => {
-                console.error('Provision error:', error);
-                hideLoading();
-                showAlert('error', 'Error', error.response?.data?.message || 'Failed to provision user');
-            });
-    });
-};
-
-// ============= MODAL FUNCTIONS =============
-
-/**
- * Show module details modal
- */
-window.showModuleDetails = function(moduleName, assignments) {
-    const modal = document.getElementById('moduleModal');
-    const modalTitle = document.getElementById('modalModuleName');
-    const modalBody = document.getElementById('modalBody');
-    
-    modalTitle.textContent = moduleName;
-    modalBody.innerHTML = '';
-    
-    assignments.forEach((assignment, index) => {
-        const detailsCard = document.createElement('div');
-        detailsCard.className = 'assignment-details-card';
-        
-        detailsCard.innerHTML = `
-            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 15px; font-weight: 600; color: var(--primary-color);">
-                <i class="fas fa-list-ul"></i>
-                <span>Assignment ${index + 1}</span>
-            </div>
-            <div class="detail-row">
-                <div class="detail-label">
-                    <i class="fas fa-map-marker-alt"></i>
-                    Location:
-                </div>
-                <div class="detail-value">${assignment.location_name}</div>
-            </div>
-            <div class="detail-row">
-                <div class="detail-label">
-                    <i class="fas fa-user-tag"></i>
-                    Role:
-                </div>
-                <div class="detail-value">${assignment.role_name}</div>
-            </div>
-            <div class="detail-row">
-                <div class="detail-label">
-                    <i class="fas fa-cube"></i>
-                    Module:
-                </div>
-                <div class="detail-value">${moduleName}</div>
-            </div>
-        `;
-        
-        modalBody.appendChild(detailsCard);
-    });
-    
-    modal.classList.add('active');
-    document.body.style.overflow = 'hidden';
-};
-
-/**
- * Close module details modal
- */
-window.closeModuleModal = function() {
-    const modal = document.getElementById('moduleModal');
-    modal.classList.remove('active');
-    document.body.style.overflow = '';
-};
-
-/**
- * Close modal when clicking outside
- */
-window.closeModalOnOutsideClick = function(event) {
-    if (event.target.id === 'moduleModal') {
-        closeModuleModal();
-    }
-};
-
-// ============= FORM SUBMISSION =============
-
-/**
- * Handle form submission
- * CRITICAL FIX: Excludes "all" values and only sends actual IDs
- */
-document.getElementById('editUserForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-    
-    const submitBtn = this.querySelector('button[type="submit"]');
-    const originalText = submitBtn ? submitBtn.innerHTML : '';
-    
-    const rows = document.querySelectorAll('#modulesTable tbody tr');
-    let isValid = true;
-    let validationErrors = [];
-    
-    // Validate that each row has at least one selection in each column
-    rows.forEach((row, index) => {
-        ['location', 'module_id', 'role_id'].forEach(field => {
-            // Check ONLY non-"all" checkboxes
-            const checkboxes = row.querySelectorAll(`input[name^="modules[${index}][${field}][]"]:not([value="all"])`);
-            const anyChecked = Array.from(checkboxes).some(cb => cb.checked);
-            if (!anyChecked) {
-                isValid = false;
-                const fieldName = field.replace('_id', '').replace('_', ' ');
-                validationErrors.push(`Row ${index + 1}: Select at least one ${fieldName}`);
-            }
-        });
-    });
-    
-    if (!isValid) {
-        showAlert('error', 'Validation Error', validationErrors.join('\n'));
-        return;
-    }
-    
-    console.log(`Validating ${rows.length} rows...`);
-    
-    // Show loading state
-    showLoading();
-    if (submitBtn) {
-        submitBtn.disabled = true;
-        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Updating...';
-    }
-    
-    // Build FormData
-    const formData = new FormData();
-    
-    const csrfToken = document.querySelector('input[name="_token"]');
-    if (csrfToken) {
-        formData.append('_token', csrfToken.value);
-    }
-    formData.append('_method', 'PUT');
-    
-    // Helper function to add field ONLY if it exists AND is not readonly
-    const addFieldIfEditable = (fieldId, fieldName) => {
-        const field = document.getElementById(fieldId);
-        if (field && !field.hasAttribute('readonly') && !field.disabled) {
-            formData.append(fieldName, field.value);
-            console.log(`Added editable field: ${fieldName} = ${field.value}`);
-        } else if (field && (field.hasAttribute('readonly') || field.disabled)) {
-            console.log(`Skipped readonly/disabled field: ${fieldName}`);
+            checkboxes.forEach(cb => { cb.disabled = false; cb.checked = false; });
+            checkboxOptions.forEach(opt => opt.classList.remove('disabled'));
+            if (assignment) assignment.location = '';
         }
     };
-    
-    // Only add editable fields (phone, location, company_id)
-    addFieldIfEditable('phone', 'phone');
-    addFieldIfEditable('location', 'location');
-    addFieldIfEditable('company_id', 'company_id');
-    
-    // ===== CRITICAL FIX: Process module assignments and EXCLUDE "all" =====
-    console.log('=== Processing Module Assignments ===');
-    
-    rows.forEach((row, rowIndex) => {
-        // Get all checked checkboxes that are NOT "all"
-        const locationCheckboxes = Array.from(
-            row.querySelectorAll(`input[name^="modules[${rowIndex}][location][]"]:checked`)
-        ).filter(cb => cb.value !== 'all');  // CRITICAL: Filter out "all"
-        
-        const moduleCheckboxes = Array.from(
-            row.querySelectorAll(`input[name^="modules[${rowIndex}][module_id][]"]:checked`)
-        ).filter(cb => cb.value !== 'all');  // CRITICAL: Filter out "all"
-        
-        const roleCheckboxes = Array.from(
-            row.querySelectorAll(`input[name^="modules[${rowIndex}][role_id][]"]:checked`)
-        ).filter(cb => cb.value !== 'all');  // CRITICAL: Filter out "all"
-        
-        console.log(`Row ${rowIndex}:`, {
-            locations: locationCheckboxes.map(cb => cb.value),
-            modules: moduleCheckboxes.map(cb => cb.value),
-            roles: roleCheckboxes.map(cb => cb.value)
-        });
-        
-        // Only add if we have actual values (not "all")
-        if (locationCheckboxes.length > 0 && moduleCheckboxes.length > 0 && roleCheckboxes.length > 0) {
-            locationCheckboxes.forEach(checkbox => {
-                formData.append(`modules[${rowIndex}][location][]`, checkbox.value);
-            });
-            
-            moduleCheckboxes.forEach(checkbox => {
-                formData.append(`modules[${rowIndex}][module_id][]`, checkbox.value);
-            });
-            
-            roleCheckboxes.forEach(checkbox => {
-                formData.append(`modules[${rowIndex}][role_id][]`, checkbox.value);
-            });
-        }
-    });
 
-    // Debug logging
-    console.log('=== FormData Contents (Only Real Values) ===');
-    for (let pair of formData.entries()) {
-        console.log(pair[0] + ': ' + pair[1]);
-    }
-    console.log('=========================');
-
-    // Submit form
-    axios.post(this.action, formData, {
-        headers: {
-            'Content-Type': 'multipart/form-data',
+    window.handleRoleRadioChange = (assignId) => {
+        if (!isEditMode) return;
+        const container = document.getElementById(assignId);
+        if (!container) return;
+        const allRadio = container.querySelector('.all-roles-radio');
+        const checkboxes = container.querySelectorAll('.role-checkbox');
+        const checkboxOptions = container.querySelectorAll('.info-field:last-child .checkbox-option');
+        const card = moduleCards[currentModalCardId];
+        const assignment = card.assignments.find(a => a.id === assignId);
+        if (allRadio && allRadio.checked) {
+            checkboxes.forEach(cb => { cb.checked = true; cb.disabled = true; });
+            checkboxOptions.forEach(opt => opt.classList.add('disabled'));
+            if (assignment) assignment.role_id = 'ALL';
+        } else {
+            checkboxes.forEach(cb => { cb.disabled = false; cb.checked = false; });
+            checkboxOptions.forEach(opt => opt.classList.remove('disabled'));
+            if (assignment) assignment.role_id = '';
         }
-    })
-    .then(response => {
-        console.log('Success response:', response.data);
-        showAlert('success', 'Success', 'User updated successfully');
-        if (submitBtn) {
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = originalText;
-        }
-        hideLoading();
-        
-        setTimeout(() => {
-            window.location.href = '{{ route("dashboard.index") }}';
-        }, 1500);
-    })
-    .catch(error => {
-        console.error('Update error:', error);
-        console.error('Error response:', error.response?.data);
-        
-        let errorMessage = 'Failed to update user';
-        if (error.response?.data?.errors) {
-            const errors = error.response.data.errors;
-            const errorList = Object.entries(errors)
-                .map(([field, messages]) => `${field}: ${messages.join(', ')}`)
-                .join('\n');
-            errorMessage = errorList;
-            console.error('Validation errors:', errors);
-        } else if (error.response?.data?.message) {
-            errorMessage = error.response.data.message;
-        }
-        
-        showAlert('error', 'Validation Error', errorMessage);
-        
-        if (submitBtn) {
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = originalText;
-        }
-        hideLoading();
-    });
-});
+    };
 
-// ============= EVENT LISTENERS =============
+    window.handleLocationCheckboxChange = (assignId, checkbox) => {
+        if (!isEditMode) return;
+        const card = moduleCards[currentModalCardId];
+        const assignment = card.assignments.find(a => a.id === assignId);
+        if (assignment) assignment.location = checkbox.value;
+    };
 
-/**
- * Escape key to close modal
- */
-document.addEventListener('keydown', function(event) {
-    if (event.key === 'Escape') {
-        closeModuleModal();
-    }
-});
+    window.handleRoleCheckboxChange = (assignId, checkbox) => {
+        if (!isEditMode) return;
+        const card = moduleCards[currentModalCardId];
+        const assignment = card.assignments.find(a => a.id === assignId);
+        if (assignment) assignment.role_id = checkbox.value;
+    };
 
-/**
- * DOM Content Loaded - Initialize everything
- * FIXED: Always initialize "All" checkboxes on page load
- */
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('DOM Content Loaded - Initializing...');
-    
-    // Setup Axios defaults
-    if (window.axios) {
-        const csrfToken = document.querySelector('meta[name="csrf-token"]');
-        if (csrfToken) {
-            axios.defaults.headers.common['X-CSRF-TOKEN'] = csrfToken.content;
-            axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
-        }
-    }
-
-    // Show validation errors from server
-    @if ($errors->any())
+    window.addNewModule = () => {
+        const moduleSelectorHTML = `
+            <div class="module-selector-grid">
+                ${modulesData.map(m => `
+                    <div class="module-selector-card" onclick="selectModule(${m.id})">
+                        <i class="fas fa-cube"></i>
+                        <div class="module-name">${m.name}</div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
         Swal.fire({
-            icon: 'error',
-            title: 'Validation Error',
-            html: `<ul style="text-align:left;">@foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul>`
+            title: 'Select Module',
+            html: moduleSelectorHTML,
+            showCancelButton: true,
+            showConfirmButton: false,
+            cancelButtonText: 'Close',
+            width: '700px'
         });
-    @endif
-    
-    // Show success message
-    @if (session('success'))
-        showAlert('success', 'Success', '{{ session("success") }}');
-    @endif
-    
-    // Show error message
-    @if (session('error'))
-        showAlert('error', 'Error', '{{ session("error") }}');
-    @endif
+    };
 
-    // 🔥 CRITICAL FIX: Initialize "All" checkboxes whenever rows exist
-    // This ensures "All" checkboxes reflect the actual state of checked items
-    const moduleTable = document.getElementById('modulesTable');
-    if (moduleTable) {
-        const rows = moduleTable.querySelectorAll('tbody tr');
-        if (rows.length > 0) {
-            console.log(`Found ${rows.length} existing module rows - initializing checkboxes`);
-            setTimeout(() => {
-                initializeAllCheckboxes();
-            }, 100);
-        }
+    window.selectModule = (moduleId) => {
+        Swal.close();
+        const module = modulesData.find(m => m.id == moduleId);
+        const cardId = `card_${cardIdCounter++}`;
+        const assignId = `assign_${cardIdCounter++}`;
+        moduleCards[cardId] = {
+            id: cardId, isNew: true, module_id: moduleId, module_name: module.name,
+            assignments: [{id: assignId, location: '', role_id: ''}]
+        };
+        renderAllCards();
+        openModal(cardId);
+    };
+
+    window.deleteAssignment = (assignId) => {
+        if (!isEditMode) return;
+        Swal.fire({
+            title: 'Delete Assignment?',
+            text: 'This action cannot be undone',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444',
+            confirmButtonText: 'Yes, delete it'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                const card = moduleCards[currentModalCardId];
+                card.assignments = card.assignments.filter(a => a.id !== assignId);
+                if (card.assignments.length === 0 && card.isNew) {
+                    delete moduleCards[currentModalCardId];
+                    closeModal();
+                } else {
+                    renderModalAssignments();
+                }
+                showAlert('success', 'Deleted', 'Assignment removed');
+            }
+        });
+    };
+
+    function updateHiddenInputs() {
+        const container = document.getElementById('hiddenInputsContainer');
+        container.innerHTML = '';
+        let index = 0;
+        Object.values(moduleCards).forEach(card => {
+            if (card.module_id && card.assignments) {
+                card.assignments.forEach(a => {
+                    if (a.location && a.role_id) {
+                        container.innerHTML += `
+                            <input type="hidden" name="modules[${index}][module_id]" value="${card.module_id}">
+                            <input type="hidden" name="modules[${index}][location]" value="${a.location}">
+                            <input type="hidden" name="modules[${index}][role_id]" value="${a.role_id}">
+                        `;
+                        index++;
+                    }
+                });
+            }
+        });
     }
-});
+
+    window.updateUser = () => {
+        updateHiddenInputs();
+        const formData = new FormData();
+        formData.append('_token', csrfToken);
+        formData.append('_method', 'PUT');
+        document.querySelectorAll('#hiddenInputsContainer input').forEach(input => {
+            formData.append(input.name, input.value);
+        });
+        showLoading();
+        fetch(updateRoute, {
+            method: 'POST',
+            body: formData,
+            headers: { 'X-CSRF-TOKEN': csrfToken, 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(response => response.json())
+        .then(data => {
+            hideLoading();
+            if (data.success) {
+                showAlert('success', 'Success', 'User updated successfully!');
+                setTimeout(() => { window.location.href = "{{ route('azure.dashboard.index') }}"; }, 1500);
+            } else {
+                showAlert('error', 'Error', data.message || 'Failed to update user');
+            }
+        })
+        .catch(error => {
+            hideLoading();
+            console.error('Error:', error);
+            showAlert('error', 'Error', 'An error occurred while updating the user');
+        });
+    };
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && currentModalCardId) cancelModal();
+    });
+
+    // Initialize on page load
+    initializeModules();
 </script>
-</body>
-</html>
+@endpush
