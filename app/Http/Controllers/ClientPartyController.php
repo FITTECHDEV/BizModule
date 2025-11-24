@@ -2525,62 +2525,122 @@ public function preview($attachmentId)
         }
     }
 
+    // public function reject()
+    // {
+    //     $user = Auth::user();
+
+    //     if (!$user->can('approve-entity-request') && !$user->can('create-client-party')) {
+    //         alert()->warning('Warning !', 'Unauthorised.')->showConfirmButton();
+    //         return response()->json(['false', 312]);
+    //     }
+
+    //     $id = \request()->get('id');
+    //     $level = \request()->get('level');
+    //     $reason = \request()->get('reason');
+
+    //     $clientParty = DB::table('Cust_entity')->where('Id', $id)->first();
+
+    //     $history = [
+    //         'ID' => guid(),
+    //         'CustEntityID' => $id,
+    //         'RequestNo' => $clientParty->Code,
+    //         'Role' => $user->Role,
+    //         'ReasonID' => '84d62970-a1ce-47d3-9428-36e4647811f9',
+    //         'Comment' => $reason,
+    //         'Type' => 'Entity',
+    //         'PreviousValue' => $clientParty->Status,
+    //         'NewValue' => $level,
+    //         'CreatedBy' => $user->ID,
+    //         'CreatedOn' => Carbon::now(),
+    //         'LastModifiedBy' => $user->ID,
+    //         'LastModifiedOn' => Carbon::now()
+    //     ];
+
+    //     EntityHistory::create($history);
+
+    //     try {
+    //         $userEmail = User::where('LoginID', $clientParty->CreatedBy)->select('Email')->first();
+    //         Mail::to($userEmail->Email)->send(new RejectEntity($clientParty));
+    //     } catch (Exception $th) {
+    //         alert()->warning('Entity Notify Email', $th);
+    //         return response()->json(['false', 500]);
+    //     }
+
+    //     try {
+    //         DB::table('Cust_entity')->where('Id', $id)->update([
+    //             'RejectedBy' => Auth::user()->full_name,
+    //             'RejectedOn' => date('Y-m-d H:i:s'),
+    //             'RejectedReason' => $reason,
+    //             'Status' => $level,
+    //         ]);
+    //     } catch (Exception $e) {
+    //         alert()->warning('Entity', $e);
+    //         return response()->json(['false', 500]);
+    //     }
+
+    //     alert()->success('Entity', 'Entity Rejected at ' . $level)->showConfirmButton();
+    //     return response()->json(['ok', 200]);
+    // }
     public function reject()
-    {
-        $user = Auth::user();
+{
+    $user = Auth::user();
 
-        if (!$user->can('approve-entity-request') && !$user->can('create-client-party')) {
-            alert()->warning('Warning !', 'Unauthorised.')->showConfirmButton();
-            return response()->json(['false', 312]);
-        }
-
-        $id = \request()->get('id');
-        $level = \request()->get('level');
-        $reason = \request()->get('reason');
-
-        $clientParty = DB::table('Cust_entity')->where('Id', $id)->first();
-
-        $history = [
-            'ID' => guid(),
-            'CustEntityID' => $id,
-            'RequestNo' => $clientParty->Code,
-            'Role' => $user->Role,
-            'ReasonID' => '84d62970-a1ce-47d3-9428-36e4647811f9',
-            'Comment' => $reason,
-            'Type' => 'Entity',
-            'PreviousValue' => $clientParty->Status,
-            'NewValue' => $level,
-            'CreatedBy' => $user->ID,
-            'CreatedOn' => Carbon::now(),
-            'LastModifiedBy' => $user->ID,
-            'LastModifiedOn' => Carbon::now()
-        ];
-
-        EntityHistory::create($history);
-
-        try {
-            $userEmail = User::where('LoginID', $clientParty->CreatedBy)->select('Email')->first();
-            Mail::to($userEmail->Email)->send(new RejectEntity($clientParty));
-        } catch (Exception $th) {
-            alert()->warning('Entity Notify Email', $th);
-            return response()->json(['false', 500]);
-        }
-
-        try {
-            DB::table('Cust_entity')->where('Id', $id)->update([
-                'RejectedBy' => Auth::user()->full_name,
-                'RejectedOn' => date('Y-m-d H:i:s'),
-                'RejectedReason' => $reason,
-                'Status' => $level,
-            ]);
-        } catch (Exception $e) {
-            alert()->warning('Entity', $e);
-            return response()->json(['false', 500]);
-        }
-
-        alert()->success('Entity', 'Entity Rejected at ' . $level)->showConfirmButton();
-        return response()->json(['ok', 200]);
+    if (!$user->can('approve-entity-request') && !$user->can('create-client-party')) {
+        alert()->warning('Warning !', 'Unauthorised.')->showConfirmButton();
+        return response()->json(['false', 312]);
     }
+
+    $id = \request()->get('id');
+    $level = \request()->get('level');
+    $reason = \request()->get('reason');
+
+    $clientParty = DB::table('Cust_entity')->where('Id', $id)->first();
+
+    $history = [
+        'ID' => guid(),
+        'CustEntityID' => $id,
+        'RequestNo' => $clientParty->Code,
+        'Role' => $user->Role,
+        'ReasonID' => '84d62970-a1ce-47d3-9428-36e4647811f9',
+        'Comment' => $reason,
+        'Type' => 'Entity',
+        'PreviousValue' => $clientParty->Status,
+        'NewValue' => $level,
+        'CreatedBy' => $user->ID,
+        'CreatedOn' => Carbon::now(),
+        'LastModifiedBy' => $user->ID,
+        'LastModifiedOn' => Carbon::now()
+    ];
+
+    EntityHistory::create($history);
+
+    // Update the status FIRST before attempting to send email
+    try {
+        DB::table('Cust_entity')->where('Id', $id)->update([
+            'RejectedBy' => Auth::user()->full_name,
+            'RejectedOn' => date('Y-m-d H:i:s'),
+            'RejectedReason' => $reason,
+            'Status' => $level,
+        ]);
+    } catch (Exception $e) {
+        alert()->warning('Entity', $e);
+        return response()->json(['false', 500]);
+    }
+
+    // Try to send email, but don't fail if it doesn't work
+    try {
+        $userEmail = User::where('LoginID', $clientParty->CreatedBy)->select('Email')->first();
+        if ($userEmail && $userEmail->Email) {
+            Mail::to($userEmail->Email)->send(new RejectEntity($clientParty));
+        }
+    } catch (Exception $th) {
+        // Log the error but don't stop the process
+        Log::warning('Failed to send rejection email: ' . $th->getMessage());
+    }
+
+    alert()->success('Entity', 'Entity Rejected at ' . $level)->showConfirmButton();
+    return response()->json(['ok', 200]);
+}
 
 
 

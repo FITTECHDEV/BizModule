@@ -72,7 +72,7 @@
 @section('content')
     <div class="p-3">
         <div class="row justify-content-center">
-            <!-- Ticketing System -->
+            {{-- <!-- Ticketing System -->
             <div class="col-md-3 col-sm-6 mb-3">
                 <a href="/tickets">
                     <div class="d-flex h-100 flex-column card card-widget widget-user shadow service-card">
@@ -98,7 +98,7 @@
                         </div>
                     </div>
                 </a>
-            </div>
+            </div> --}}
 
             <!-- Client Party System -->
             <div class="col-md-3 col-sm-6 mb-3">
