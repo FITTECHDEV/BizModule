@@ -45,7 +45,8 @@ class OdooSyncController extends Controller
         echo "<div class='stat-box'>";
         echo "<strong>Start Time:</strong> " . $startTime->format('Y-m-d H:i:s') . "<br>";
         echo "<strong>Source:</strong> PostgreSQL (Odoo) - vw_getuserdetails<br>";
-        echo "<strong>Destination:</strong> SQL Server - Azure_Users";
+        echo "<strong>Destination:</strong> SQL Server - Azure_Users_new";
+
         echo "</div>";
         echo "<hr>";
 
@@ -79,7 +80,7 @@ class OdooSyncController extends Controller
                 try {
                     // Check if user already exists in SQL Server
                     $existingUser = DB::connection('sqlsrv')
-                        ->select("SELECT Id FROM Azure_Users WHERE userPrincipalName = ?", 
+                        ->select("SELECT Id FROM Azure_Users_new WHERE userPrincipalName = ?", 
                                 [$user->userprincipalname]);
 
                     if (empty($existingUser)) {
@@ -189,7 +190,7 @@ class OdooSyncController extends Controller
         }
 
         DB::connection('sqlsrv')->insert("
-            INSERT INTO Azure_Users (
+            INSERT INTO Azure_Users_new (
                 Id, userPrincipalName, displayName, surname, mail, givenName,
                 AzureId, userType, jobTitle, department, accountEnabled,
                 usageLocation, streetAddress, state, country, officeLocation,
@@ -263,7 +264,7 @@ class OdooSyncController extends Controller
         }
 
         DB::connection('sqlsrv')->update("
-            UPDATE Azure_Users
+            UPDATE Azure_Users_new
             SET 
                 displayName = ?,
                 surname = ?,
