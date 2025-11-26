@@ -688,8 +688,8 @@
                         name: 'Office'
                     },
                     {
-                        data: 'OperatioEntityType',
-                        name: 'OperatioEntityType'
+                        data: 'OperationalEntityType',
+                        name: 'OperationalEntityType'
                     },
                     {
                         data: 'LegalEntityType',

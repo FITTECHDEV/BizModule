@@ -58,33 +58,33 @@
                                                     <select class="col-sm-9 col-lg-8 col-md-8 form-control form-control-sm pr-3 pl-3"
                                                             id="partyEntityType" name="partyEntityType" required
                                                             {{ $clientParty->Status === 'PendingManagerApproval' ? '' : 'disabled' }}>
-                                                        <option value="" disabled {{ old('partyEntityType', $clientParty->OperatioEntityType) ? '' : 'selected' }}></option>
+                                                        <option value="" disabled {{ old('partyEntityType', $clientParty->OperationalEntityType) ? '' : 'selected' }}></option>
                                                         <option value="Client + Shipper + Consignee"
-                                                                {{ old('partyEntityType', $clientParty->OperatioEntityType) == 'Client + Shipper + Consignee' ? 'selected' : '' }}>
+                                                                {{ old('partyEntityType', $clientParty->OperationalEntityType) == 'Client + Shipper + Consignee' ? 'selected' : '' }}>
                                                             Client + Shipper + Consignee</option>
                                                         <option value="Shipper + Consignee"
-                                                                {{ old('partyEntityType', $clientParty->OperatioEntityType) == 'Shipper + Consignee' ? 'selected' : '' }}>
+                                                                {{ old('partyEntityType', $clientParty->OperationalEntityType) == 'Shipper + Consignee' ? 'selected' : '' }}>
                                                             Shipper + Consignee</option>
                                                         <option value="Shipper Only"
-                                                                {{ old('partyEntityType', $clientParty->OperatioEntityType) == 'Shipper Only' ? 'selected' : '' }}>
+                                                                {{ old('partyEntityType', $clientParty->OperationalEntityType) == 'Shipper Only' ? 'selected' : '' }}>
                                                             Shipper Only</option>
                                                         <option value="Consignee Only"
-                                                                {{ old('partyEntityType', $clientParty->OperatioEntityType) == 'Consignee Only' ? 'selected' : '' }}>
+                                                                {{ old('partyEntityType', $clientParty->OperationalEntityType) == 'Consignee Only' ? 'selected' : '' }}>
                                                             Consignee Only</option>
                                                         <option value="Agent / Forwarder"
-                                                                {{ old('partyEntityType', $clientParty->OperatioEntityType) == 'Agent / Forwarder' ? 'selected' : '' }}>
+                                                                {{ old('partyEntityType', $clientParty->OperationalEntityType) == 'Agent / Forwarder' ? 'selected' : '' }}>
                                                             Agent / Forwarder</option>
                                                         <option value="Airline"
-                                                                {{ old('partyEntityType', $clientParty->OperatioEntityType) == 'Airline' ? 'selected' : '' }}>
+                                                                {{ old('partyEntityType', $clientParty->OperationalEntityType) == 'Airline' ? 'selected' : '' }}>
                                                             Airline</option>
                                                         <option value="Shipplingline"
-                                                                {{ old('partyEntityType', $clientParty->OperatioEntityType) == 'Shipplingline' ? 'selected' : '' }}>
+                                                                {{ old('partyEntityType', $clientParty->OperationalEntityType) == 'Shipplingline' ? 'selected' : '' }}>
                                                             Shipplingline</option>
                                                         <option value="Trucker / Transportor"
-                                                                {{ old('partyEntityType', $clientParty->OperatioEntityType) == 'Trucker / Transporter' ? 'selected' : '' }}>
+                                                                {{ old('partyEntityType', $clientParty->OperationalEntityType) == 'Trucker / Transporter' ? 'selected' : '' }}>
                                                             Trucker / Transporter</option>
                                                         <option value="NoSCMIntergration"
-                                                                {{ old('partyEntityType', $clientParty->OperatioEntityType) == 'NoSCMIntergration' ? 'selected' : '' }}>
+                                                                {{ old('partyEntityType', $clientParty->OperationalEntityType) == 'NoSCMIntergration' ? 'selected' : '' }}>
                                                             Debtor/Vendor In D365</option>
                                                     </select>
                                                     @error('partyEntityType')

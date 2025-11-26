@@ -83,22 +83,22 @@
                                                         <select class="form-control form-control-sm" id="partyEntityType"
                                                             name="partyEntityType" required>
                                                             <option value="Client"
-                                                                @if (old('partyEntityType', $clientParty->OperatioEntityType) == 'Client') selected @endif>Client
+                                                                @if (old('partyEntityType', $clientParty->OperationalEntityType) == 'Client') selected @endif>Client
                                                             </option>
                                                             <option value="Create only in D365"
                                                                 @if (old('partyEntityType') == 'Create only in D365') selected @endif>
                                                                 Create only in D365</option>
                                                             <option value="Agent / Forwarder"
-                                                                @if (old('partyEntityType', $clientParty->OperatioEntityType) == 'Agent / Forwarder') selected @endif>Agent /
+                                                                @if (old('partyEntityType', $clientParty->OperationalEntityType) == 'Agent / Forwarder') selected @endif>Agent /
                                                                 Forwarder</option>
                                                             <option value="Airline"
-                                                                @if (old('partyEntityType', $clientParty->OperatioEntityType) == 'Airline') selected @endif>Airline
+                                                                @if (old('partyEntityType', $clientParty->OperationalEntityType) == 'Airline') selected @endif>Airline
                                                             </option>
                                                             <option value="Shipping Line"
-                                                                @if (old('partyEntityType', $clientParty->OperatioEntityType) == 'Shipping Line') selected @endif>Shipping
+                                                                @if (old('partyEntityType', $clientParty->OperationalEntityType) == 'Shipping Line') selected @endif>Shipping
                                                                 Line</option>
                                                             <option value="Trucker / Transporter"
-                                                                @if (old('partyEntityType', $clientParty->OperatioEntityType) == 'Trucker / Transporter') selected @endif>Trucker /
+                                                                @if (old('partyEntityType', $clientParty->OperationalEntityType) == 'Trucker / Transporter') selected @endif>Trucker /
                                                                 Transporter</option>
                                                         </select>
                                                     </div>
@@ -2180,7 +2180,7 @@
                             value: 'Shipping Line'
                         }
                     };
-                    const serverPartyType = '{{ $clientParty->OperatioEntityType }}';
+                    const serverPartyType = '{{ $clientParty->OperationalEntityType }}';
                     const config = typeConfig[serverPartyType] || {
                         display: serverPartyType,
                         value: serverPartyType
@@ -2285,7 +2285,7 @@
                             id: '{{ $clientParty->Id }}',
                             status: targetStatus,
                             partyEntityType: $('#partyEntityType').val() ||
-                                '{{ $clientParty->OperatioEntityType ?? '' }}',
+                                '{{ $clientParty->OperationalEntityType ?? '' }}',
                             debtorType: $('input[name="debtorType"]').val() || null,
                             vendorType: $('input[name="vendorType"]').val() || null,
                             type: isAccounting ? 'accounting' : 'operational',

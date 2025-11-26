@@ -45,8 +45,7 @@ class OdooSyncController extends Controller
         echo "<div class='stat-box'>";
         echo "<strong>Start Time:</strong> " . $startTime->format('Y-m-d H:i:s') . "<br>";
         echo "<strong>Source:</strong> PostgreSQL (Odoo) - vw_getuserdetails<br>";
-        echo "<strong>Destination:</strong> SQL Server - Azure_Users_new";
-
+        echo "<strong>Destination:</strong> SQL Server - Azure_Users";
         echo "</div>";
         echo "<hr>";
 
@@ -70,7 +69,7 @@ class OdooSyncController extends Controller
             // STEP 2: Process each user
             echo "<p class='info'>⚙️ <strong>Step 2:</strong> Processing users...</p>";
             echo "<table>";
-            echo "<tr><th>#</th><th>User Principal Name</th><th>Action</th><th>Status</th></tr>";
+            echo "<tr><th>#</th><th>User Principal Name</th><th>User Type</th><th>Action</th><th>Status</th></tr>";
             flush();
 
             foreach ($odooUsers as $index => $user) {
@@ -80,8 +79,10 @@ class OdooSyncController extends Controller
                 try {
                     // Check if user already exists in SQL Server
                     $existingUser = DB::connection('sqlsrv')
-                        ->select("SELECT Id FROM Azure_Users_new WHERE userPrincipalName = ?", 
+                        ->select("SELECT Id FROM Azure_Users WHERE userPrincipalName = ?", 
                                 [$user->userprincipalname]);
+
+                    $userType = $user->odoologintype ?? 'Unknown';
 
                     if (empty($existingUser)) {
                         // USER DOES NOT EXIST - INSERT
@@ -91,6 +92,7 @@ class OdooSyncController extends Controller
                         echo "<tr>";
                         echo "<td>{$rowNumber}</td>";
                         echo "<td>{$user->userprincipalname}</td>";
+                        echo "<td>{$userType}</td>";
                         echo "<td><span class='success'>INSERT</span></td>";
                         echo "<td><span class='success'>✅ Success</span></td>";
                         echo "</tr>";
@@ -102,6 +104,7 @@ class OdooSyncController extends Controller
                         echo "<tr>";
                         echo "<td>{$rowNumber}</td>";
                         echo "<td>{$user->userprincipalname}</td>";
+                        echo "<td>{$userType}</td>";
                         echo "<td><span class='info'>UPDATE</span></td>";
                         echo "<td><span class='success'>✅ Success</span></td>";
                         echo "</tr>";
@@ -120,6 +123,7 @@ class OdooSyncController extends Controller
                     echo "<tr>";
                     echo "<td>{$rowNumber}</td>";
                     echo "<td>" . ($user->userprincipalname ?? 'Unknown') . "</td>";
+                    echo "<td>" . ($user->odoologintype ?? 'Unknown') . "</td>";
                     echo "<td><span class='error'>FAILED</span></td>";
                     echo "<td><span class='error'>❌ " . substr($e->getMessage(), 0, 50) . "...</span></td>";
                     echo "</tr>";
@@ -175,7 +179,7 @@ class OdooSyncController extends Controller
 
     /**
      * Insert a new user into Azure_Users table
-     * Only using columns that exist in PostgreSQL view
+     * Includes OdooLoginType to track Internal vs Portal users
      */
     private function insertUser($user)
     {
@@ -190,7 +194,7 @@ class OdooSyncController extends Controller
         }
 
         DB::connection('sqlsrv')->insert("
-            INSERT INTO Azure_Users_new (
+            INSERT INTO Azure_Users (
                 Id, userPrincipalName, displayName, surname, mail, givenName,
                 AzureId, userType, jobTitle, department, accountEnabled,
                 usageLocation, streetAddress, state, country, officeLocation,
@@ -198,7 +202,7 @@ class OdooSyncController extends Controller
                 ageGroup, consentProvidedForMinor, legalAgeGroupClassification,
                 companyName, creationType, directorySynced, invitationState,
                 identityIssuer, OdooUserId, OdooEmployeeId,
-                OdooLoginId, OdooCreatedOn, EmployeCode
+                OdooLoginId, OdooCreatedOn, EmployeCode, OdooLoginType
             )
             VALUES (
                 NEWID(), ?, ?, ?, ?, ?,
@@ -208,7 +212,7 @@ class OdooSyncController extends Controller
                 ?, ?, ?,
                 ?, ?, ?, ?,
                 ?, ?, ?,
-                ?, ?, ?
+                ?, ?, ?, ?
             )
         ", [
             $user->userprincipalname,
@@ -242,14 +246,15 @@ class OdooSyncController extends Controller
             $user->odoouserid,
             $user->odooemployeeid,
             $user->odoologinid,
-            $odooCreatedOn, // Using converted date
-            $user->employecode
+            $odooCreatedOn,
+            $user->employecode,
+            $user->odoologintype ?? 'Internal'  // NEW: Internal or Portal
         ]);
     }
 
     /**
      * Update an existing user in Azure_Users table
-     * Only using columns that exist in PostgreSQL view
+     * Updates all fields including OdooLoginType
      */
     private function updateUser($user)
     {
@@ -264,7 +269,7 @@ class OdooSyncController extends Controller
         }
 
         DB::connection('sqlsrv')->update("
-            UPDATE Azure_Users_new
+            UPDATE Azure_Users
             SET 
                 displayName = ?,
                 surname = ?,
@@ -297,7 +302,8 @@ class OdooSyncController extends Controller
                 OdooEmployeeId = ?,
                 OdooLoginId = ?,
                 OdooCreatedOn = ?,
-                EmployeCode = ?
+                EmployeCode = ?,
+                OdooLoginType = ?
             WHERE userPrincipalName = ?
         ", [
             $user->displayname,
@@ -330,8 +336,9 @@ class OdooSyncController extends Controller
             $user->odoouserid,
             $user->odooemployeeid,
             $user->odoologinid,
-            $odooCreatedOn, // Using converted date
+            $odooCreatedOn,
             $user->employecode,
+            $user->odoologintype ?? 'Internal',  // NEW: Internal or Portal
             $user->userprincipalname
         ]);
     }
@@ -388,4 +395,104 @@ class OdooSyncController extends Controller
             echo "<p>" . $e->getMessage() . "</p>";
         }
     }
+
+
+    /**
+ * Test PostgreSQL connection
+ * 
+ * Access via: /test-pgsql-connection
+ */
+public function testConnection()
+{
+    echo "<html><head><title>PostgreSQL Connection Test</title></head><body>";
+    echo "<h2>Testing PostgreSQL Connection</h2>";
+    
+    try {
+        // Test 1: Can we connect?
+        echo "<p>🔍 <strong>Test 1:</strong> Testing connection...</p>";
+        $connection = DB::connection('pgsql');
+        echo "<p class='success'>✅ Connection established!</p>";
+        
+        // Test 2: Can we query the database?
+        echo "<p>🔍 <strong>Test 2:</strong> Testing database query...</p>";
+        $result = $connection->select('SELECT 1 as test');
+        echo "<p class='success'>✅ Database query works! Result: " . $result[0]->test . "</p>";
+        
+        // Test 3: Does the view exist?
+        echo "<p>🔍 <strong>Test 3:</strong> Checking if vw_getuserdetails exists...</p>";
+        $viewExists = $connection->select("
+            SELECT COUNT(*) as count 
+            FROM information_schema.tables 
+            WHERE table_name = 'vw_getuserdetails'
+        ");
+        
+        if ($viewExists[0]->count > 0) {
+            echo "<p class='success'>✅ View exists!</p>";
+            
+            // Test 4: Try to count records
+            echo "<p>🔍 <strong>Test 4:</strong> Counting records in view...</p>";
+            $count = $connection->select('SELECT COUNT(*) as total FROM vw_getuserdetails');
+            echo "<p class='info'>📊 Total records in view: <strong>" . $count[0]->total . "</strong></p>";
+            
+            // Test 5: Try to fetch one record
+            if ($count[0]->total > 0) {
+                echo "<p>🔍 <strong>Test 5:</strong> Fetching sample record...</p>";
+                $sample = $connection->select('SELECT * FROM vw_getuserdetails LIMIT 1');
+                echo "<p class='success'>✅ Sample record retrieved!</p>";
+                echo "<pre>" . print_r($sample[0], true) . "</pre>";
+            } else {
+                echo "<p class='error'>⚠️ View is empty - no records found!</p>";
+            }
+            
+        } else {
+            echo "<p class='error'>❌ View does NOT exist!</p>";
+        }
+        
+    } catch (Exception $e) {
+        echo "<p class='error'>❌ <strong>Error:</strong> " . $e->getMessage() . "</p>";
+        echo "<p><strong>File:</strong> " . $e->getFile() . "</p>";
+        echo "<p><strong>Line:</strong> " . $e->getLine() . "</p>";
+    }
+    
+    echo "</body></html>";
+}
+
+
+/**
+ * Check view definition
+ * 
+ * Access via: /check-view-definition
+ */
+public function checkViewDefinition()
+{
+    echo "<html><head><title>View Definition Check</title></head><body>";
+    echo "<h2>vw_getuserdetails - View Analysis</h2>";
+    
+    try {
+        $connection = DB::connection('pgsql');
+        
+        // Get view definition
+        echo "<h3>View Definition:</h3>";
+        $viewDef = $connection->select("
+            SELECT pg_get_viewdef('vw_getuserdetails', true) as definition
+        ");
+        echo "<pre>" . htmlspecialchars($viewDef[0]->definition) . "</pre>";
+        
+        // Count users in base res_users table
+        echo "<h3>Base Tables Check:</h3>";
+        
+        echo "<p>Checking res_users table...</p>";
+        $resUsersCount = $connection->select("SELECT COUNT(*) as count FROM res_users");
+        echo "<p>📊 <strong>res_users table:</strong> {$resUsersCount[0]->count} users</p>";
+        
+        echo "<p>Checking res_partner table...</p>";
+        $resPartnerCount = $connection->select("SELECT COUNT(*) as count FROM res_partner");
+        echo "<p>📊 <strong>res_partner table:</strong> {$resPartnerCount[0]->count} partners</p>";
+        
+    } catch (Exception $e) {
+        echo "<p class='error'>❌ Error: " . $e->getMessage() . "</p>";
+    }
+    
+    echo "</body></html>";
+}
 }

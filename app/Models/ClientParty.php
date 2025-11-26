@@ -212,7 +212,7 @@ class ClientParty extends Model
         'RejectedBy',
         'RejectedOn',
         'RejectedReason',
-        'OperatioEntityType',
+        'OperationalEntityType',
         'LegalEntityType',
         'SpecialInstructions',
         'Status',

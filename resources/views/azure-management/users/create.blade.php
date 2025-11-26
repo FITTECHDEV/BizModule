@@ -109,7 +109,7 @@
     /* Module Cards Grid */
     .modules-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        grid-template-columns: repeat(auto-fill, minmin(280px, 1fr));
         gap: 20px;
         margin-bottom: 20px;
     }
@@ -450,6 +450,57 @@
         color: var(--text);
     }
 
+    /* Location Selector Styles */
+    .location-selector-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 15px;
+        padding: 10px;
+        max-height: 400px;
+        overflow-y: auto;
+    }
+
+    .location-selector-card {
+        background: white;
+        border: 2px solid #e1e8ed;
+        border-radius: 10px;
+        padding: 20px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+        min-height: 100px;
+        justify-content: center;
+    }
+
+    .location-selector-card:hover {
+        border-color: var(--primary-color);
+        background: #f8faff;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(11, 102, 255, 0.15);
+    }
+
+    .location-selector-card i {
+        font-size: 2em;
+        color: var(--primary-color);
+        margin-bottom: 5px;
+    }
+
+    .location-selector-card .location-name {
+        font-weight: 600;
+        font-size: 0.95em;
+        color: var(--text);
+    }
+
+    .location-selector-card .location-code {
+        font-size: 0.85em;
+        color: var(--muted);
+        font-weight: 500;
+    }
+
     .action-buttons {
         display: flex;
         gap: 15px;
@@ -550,7 +601,7 @@
 @section('content')
 <div class="main-content">
     <div class="user-form-panel">
-        <form id="userForm" method="POST" action="{{ route('users.store') }}">
+        <form id="userForm" method="POST" action="{{ route('azure.users.store') }}">
             @csrf
             
             <!-- Basic Information Section -->
@@ -583,25 +634,24 @@
                         @enderror
                     </div>
 
-                    <div class="form-group">
-    <label for="company_id">
-        Company <span style="color: var(--danger);">*</span>
-    </label>
-    <select id="company_id" 
-            name="company_id" 
-            required
-            class="@error('company_id') is-invalid @enderror">
-        <option value="">Select Company</option>
-        @foreach($companies as $company)
-            <option value="{{ $company->id }}" {{ old('company_id') == $company->id ? 'selected' : '' }}>
-                {{ $company->name }}
-            </option>
-        @endforeach
-    </select>
-    @error('company_id')
-        <div class="invalid-feedback">{{ $message }}</div>
-    @enderror
-</div>
+                    <div class="form-group" style="display: none;">
+                        <label for="company_id">
+                            Company
+                        </label>
+                        <select id="company_id" 
+                                name="company_id"
+                                class="@error('company_id') is-invalid @enderror">
+                            <option value="">Select Company</option>
+                            @foreach($companies as $company)
+                                <option value="{{ $company->id }}" {{ old('company_id') == $company->id ? 'selected' : '' }}>
+                                    {{ $company->name }}
+                                </option>
+                            @endforeach
+                        </select>
+                        @error('company_id')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
 
                     <!-- Employee ID -->
                     <div class="form-group">
@@ -673,15 +723,15 @@
             </div>
 
             <!-- Module Assignments Section -->
-<div class="form-section">
-    <div class="section-title" style="display: flex; justify-content: space-between; align-items: center;">
-        <div><i class="fas fa-th-large"></i> Module Assignments</div>
-        <button type="button" class="btn btn-sm btn-success" onclick="addNewModule()">
-            <i class="fas fa-plus"></i> Add Module
-        </button>
-    </div>
-    <div id="modulesGrid" class="modules-grid"></div>
-</div>
+            <div class="form-section">
+                <div class="section-title" style="display: flex; justify-content: space-between; align-items: center;">
+                    <div><i class="fas fa-th-large"></i> Module Assignments</div>
+                    <button type="button" class="btn btn-sm btn-success" onclick="addNewModule()">
+                        <i class="fas fa-plus"></i> Add Module
+                    </button>
+                </div>
+                <div id="modulesGrid" class="modules-grid"></div>
+            </div>
 
             <div id="hiddenInputsContainer"></div>
 
@@ -733,13 +783,169 @@
     const rolesData = @json($roles);
     const csrfToken = "{{ csrf_token() }}";
 
+    // Debug: Log initial data
+    console.log('=== INITIAL DATA ===');
+    console.log('Modules:', modulesData);
+    console.log('Locations:', locationsData);
+    console.log('Roles:', rolesData);
+
     let moduleCards = {};
     let cardIdCounter = 0;
     let currentModalCardId = null;
     let originalCardState = null;
+    let selectedModuleForLocation = null;
+    let scmFunctionsCache = null; // Cache for SCM functions
+    let rolesCache = {}; // Cache for roles by application code
+
+    // Helper function to escape HTML
+    function escapeHtml(text) {
+        if (!text) return '';
+        const map = {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#039;'
+        };
+        return String(text).replace(/[&<>"']/g, m => map[m]);
+    }
 
     function deepClone(obj) {
         return JSON.parse(JSON.stringify(obj));
+    }
+
+    // Check if module is SCM (OPS or OPSUAT) - check by module name since ApplicationId is GUID
+    function isSCMModule(applicationId) {
+        return applicationId === 'OPS' || applicationId === '39CDA123-65A3-46C8-B7FD-7380979DD92B';
+    }
+    
+    // Helper to get the application code for stored procedure
+    function getApplicationCodeForSP(module) {
+        const moduleNameLower = module.name.toLowerCase();
+        
+        if (moduleNameLower.includes('ops') && !moduleNameLower.includes('uat')) {
+            return 'OPS';
+        } else if (moduleNameLower.includes('ops') && moduleNameLower.includes('uat')) {
+            return 'OPSUAT';
+        } else if (moduleNameLower.includes('erp')) {
+            return 'ERP';
+        } else if (moduleNameLower.includes('crm')) {
+            return 'CRM';
+        } else if (moduleNameLower.includes('d365')) {
+            return 'D365';
+        } else {
+            return module.name.toUpperCase().replace(/\s+/g, '');
+        }
+    }
+
+    // Fetch functions for SCM modules
+    async function fetchSCMFunctions() {
+        if (scmFunctionsCache) {
+            console.log('Returning cached SCM functions');
+            return scmFunctionsCache;
+        }
+
+        try {
+            console.log('Fetching SCM functions from /azure/modules/scm-functions');
+            const response = await fetch('/azure/modules/scm-functions', {
+                headers: {
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/json'
+                }
+            });
+            
+            const result = await response.json();
+            console.log('SCM Functions response:', result);
+            
+            if (result.success) {
+                scmFunctionsCache = result.data;
+                console.log('Cached', result.data.length, 'SCM functions');
+                return result.data;
+            } else {
+                console.error('Failed to fetch SCM functions:', result.message);
+                return [];
+            }
+        } catch (error) {
+            console.error('Error fetching SCM functions:', error);
+            return [];
+        }
+    }
+
+    // Fetch roles based on application code
+    async function fetchRolesByApplicationCode(applicationCode, filter = null) {
+        const cacheKey = `${applicationCode}_${filter || 'all'}`;
+        
+        console.log('=== FETCH ROLES DEBUG ===');
+        console.log('Application Code:', applicationCode);
+        console.log('Filter:', filter);
+        console.log('Cache Key:', cacheKey);
+        console.log('Already Cached?:', !!rolesCache[cacheKey]);
+        
+        if (rolesCache[cacheKey]) {
+            console.log('Returning from cache:', rolesCache[cacheKey].length, 'roles');
+            return rolesCache[cacheKey];
+        }
+
+        try {
+            let url = `/azure/modules/roles?application_code=${encodeURIComponent(applicationCode)}`;
+            if (filter) {
+                url += `&filter=${encodeURIComponent(filter)}`;
+            }
+
+            console.log('Fetching from URL:', url);
+
+            const response = await fetch(url, {
+                headers: {
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/json'
+                }
+            });
+            
+            console.log('Response Status:', response.status);
+            console.log('Response OK?:', response.ok);
+            
+            const result = await response.json();
+            
+            console.log('=== API RESPONSE ===');
+            console.log('Success flag:', result.success);
+            console.log('Data:', result.data);
+            console.log('Data length:', result.data?.length);
+            console.log('First item:', result.data?.[0]);
+            
+            if (result.success && result.data && result.data.length > 0) {
+                // FILTER OUT ERROR MESSAGES FROM STORED PROCEDURE
+                const validRoles = result.data.filter(role => {
+                    // Check if any value contains error messages
+                    const hasError = Object.values(role).some(val => 
+                        typeof val === 'string' && (
+                            val.toLowerCase().includes('failed') || 
+                            val.toLowerCase().includes('does not exist') ||
+                            val.toLowerCase().includes('error')
+                        )
+                    );
+                    return !hasError; // Only keep valid roles
+                });
+                
+                console.log('✅ Valid roles after filtering:', validRoles.length, validRoles);
+                
+                if (validRoles.length === 0) {
+                    console.warn(`⚠️ No valid roles found for "${applicationCode}". The stored procedure may not support this application code.`);
+                    console.warn('Supported application codes: OPS, OPSUAT');
+                }
+                
+                rolesCache[cacheKey] = validRoles;
+                return validRoles;
+            } else {
+                console.error('API returned success=false or no data:', result.message);
+                rolesCache[cacheKey] = [];
+                return [];
+            }
+        } catch (error) {
+            console.error('EXCEPTION in fetchRolesByApplicationCode:', error);
+            console.error('Error stack:', error.stack);
+            rolesCache[cacheKey] = [];
+            return [];
+        }
     }
 
     function renderAllCards() {
@@ -822,27 +1028,82 @@
     function renderModalAssignments() {
         const card = moduleCards[currentModalCardId];
         const container = document.getElementById('modalAssignmentsContainer');
+        
+        console.log('=== RENDER MODAL ASSIGNMENTS ===');
+        console.log('Current card:', card);
+        
         if (!card.assignments || card.assignments.length === 0) {
             container.innerHTML = '<div class="empty-assignments"><i class="fas fa-clipboard-list"></i><p>No assignments yet.</p></div>';
             return;
         }
+        
+        // Get the module details
+        const module = modulesData.find(m => m.id == card.module_id);
+        console.log('Found module:', module);
+        
+        if (!module) {
+            container.innerHTML = '<div class="empty-assignments"><i class="fas fa-exclamation-triangle"></i><p>Module not found.</p></div>';
+            return;
+        }
+        
+        // Get the application code for stored procedures
+        const applicationCode = getApplicationCodeForSP(module);
+        console.log('Application Code:', applicationCode);
+        
+        const isSCM = applicationCode === 'OPS' || applicationCode === 'OPSUAT';
+        const cacheKey = applicationCode + '_all';
+        
+        console.log('Is SCM?:', isSCM);
+        console.log('Cache key:', cacheKey);
+        console.log('Roles cached?:', !!rolesCache[cacheKey]);
+        
+        // Check if we need to load roles for this application
+        if (!rolesCache[cacheKey]) {
+            container.innerHTML = '<div class="empty-assignments"><i class="fas fa-spinner fa-spin"></i><p>Loading roles for ' + escapeHtml(applicationCode) + '...</p></div>';
+            fetchRolesByApplicationCode(applicationCode).then(() => renderModalAssignments());
+            return;
+        }
+        
+        // If SCM module, also check if functions are loaded
+        if (isSCM && !scmFunctionsCache) {
+            container.innerHTML = '<div class="empty-assignments"><i class="fas fa-spinner fa-spin"></i><p>Loading SCM functions...</p></div>';
+            fetchSCMFunctions().then(() => renderModalAssignments());
+            return;
+        }
+        
+        // Get the data
+        const availableRoles = rolesCache[cacheKey] || [];
+        const availableFunctions = isSCM ? (scmFunctionsCache || []) : [];
+        
+        console.log('Available Roles:', availableRoles.length, availableRoles);
+        console.log('Available Functions:', availableFunctions.length, availableFunctions);
+        
+        // Check if we have roles
+        if (availableRoles.length === 0) {
+            console.warn('⚠️ No roles found for application code:', applicationCode);
+        }
+        
         container.innerHTML = card.assignments.map(a => {
             const isAllLocations = a.location === 'ALL';
             const isAllRoles = a.role_id === 'ALL';
+            const isAllFunctions = a.function_id === 'ALL';
 
             return `
                 <div class="assignment-item" id="${a.id}">
                     <div class="assignment-header">
-                        <span style="font-weight: 600; color: var(--muted); font-size: 0.9em;">Assignment</span>
+                        <span style="font-weight: 600; color: var(--muted); font-size: 0.9em;">
+                            Assignment for ${escapeHtml(module.name)} (${escapeHtml(applicationCode)})
+                        </span>
                         <div style="display: flex; gap: 8px;">
                             <button type="button" class="btn btn-sm btn-ghost" style="color: var(--danger);" onclick="deleteAssignment('${a.id}')">
                                 <i class="fas fa-trash"></i>
                             </button>
                         </div>
                     </div>
-                    <div class="assignment-info">
+                    <div class="assignment-info" style="grid-template-columns: ${isSCM ? '1fr 1fr 1fr' : '1fr 1fr'};">
+                        <!-- OFFICE LOCATION -->
                         <div class="info-field">
-                            <div class="field-label"><i class="fas fa-map-marker-alt"></i> Office</div>
+                            <div class="field-label"><i class="fas fa-map-marker-alt"></i> Office Location</div>
                             <div class="radio-group">
                                 <div class="radio-option">
                                     <input type="radio" id="${a.id}_all_locations" name="${a.id}_location_type" class="all-locations-radio" ${isAllLocations ? 'checked' : ''} onchange="handleLocationRadioChange('${a.id}')">
@@ -856,12 +1117,39 @@
                             <div class="checkboxes-grid">
                                 ${locationsData.map(l => `
                                     <div class="checkbox-option ${isAllLocations ? 'disabled' : ''}">
-                                        <input type="checkbox" id="${a.id}_loc_${l.code}" class="location-checkbox" value="${l.code}" ${a.location === l.code || isAllLocations ? 'checked' : ''} ${isAllLocations ? 'disabled' : ''} onchange="handleLocationCheckboxChange('${a.id}', this)">
-                                        <label for="${a.id}_loc_${l.code}">${l.name}</label>
+                                        <input type="checkbox" id="${a.id}_loc_${l.code.trim()}" class="location-checkbox" value="${l.code.trim()}" ${a.location === l.code.trim() || isAllLocations ? 'checked' : ''} ${isAllLocations ? 'disabled' : ''} onchange="handleLocationCheckboxChange('${a.id}', this)">
+                                        <label for="${a.id}_loc_${l.code.trim()}">${escapeHtml(l.name)}</label>
                                     </div>
                                 `).join('')}
                             </div>
                         </div>
+                        
+                        <!-- SCM FUNCTIONS (Only for OPS/OPSUAT) -->
+                        ${isSCM ? `
+                        <div class="info-field">
+                            <div class="field-label"><i class="fas fa-cog"></i> Function (SCM)</div>
+                            <div class="radio-group">
+                                <div class="radio-option">
+                                    <input type="radio" id="${a.id}_all_functions" name="${a.id}_function_type" class="all-functions-radio" ${isAllFunctions ? 'checked' : ''} onchange="handleFunctionRadioChange('${a.id}')">
+                                    <label for="${a.id}_all_functions">All Functions</label>
+                                </div>
+                                <div class="radio-option">
+                                    <input type="radio" id="${a.id}_specific_functions" name="${a.id}_function_type" class="specific-functions-radio" ${!isAllFunctions ? 'checked' : ''} onchange="handleFunctionRadioChange('${a.id}')">
+                                    <label for="${a.id}_specific_functions">Specific Function</label>
+                                </div>
+                            </div>
+                            <div class="checkboxes-grid">
+                                ${availableFunctions.length > 0 ? availableFunctions.map(f => `
+                                    <div class="checkbox-option ${isAllFunctions ? 'disabled' : ''}">
+                                        <input type="checkbox" id="${a.id}_func_${f.ID || f.Id || f.id}" class="function-checkbox" value="${f.ID || f.Id || f.id}" ${a.function_id == (f.ID || f.Id || f.id) || isAllFunctions ? 'checked' : ''} ${isAllFunctions ? 'disabled' : ''} onchange="handleFunctionCheckboxChange('${a.id}', this)">
+                                        <label for="${a.id}_func_${f.ID || f.Id || f.id}">${escapeHtml(f.Name || f.name)}</label>
+                                    </div>
+                                `).join('') : '<p style="padding: 10px; color: #666;">No functions available</p>'}
+                            </div>
+                        </div>
+                        ` : ''}
+                        
+                        <!-- ROLES (Based on Application Code) -->
                         <div class="info-field">
                             <div class="field-label"><i class="fas fa-user-tag"></i> Role</div>
                             <div class="radio-group">
@@ -875,18 +1163,20 @@
                                 </div>
                             </div>
                             <div class="checkboxes-grid">
-                                ${rolesData.map(r => `
+                                ${availableRoles.length > 0 ? availableRoles.map(r => `
                                     <div class="checkbox-option ${isAllRoles ? 'disabled' : ''}">
-                                        <input type="checkbox" id="${a.id}_role_${r.id}" class="role-checkbox" value="${r.id}" ${a.role_id == r.id || isAllRoles ? 'checked' : ''} ${isAllRoles ? 'disabled' : ''} onchange="handleRoleCheckboxChange('${a.id}', this)">
-                                        <label for="${a.id}_role_${r.id}">${r.name}</label>
+                                        <input type="checkbox" id="${a.id}_role_${r.RoleId || r.Id || r.id}" class="role-checkbox" value="${r.RoleId || r.Id || r.id}" ${a.role_id == (r.RoleId || r.Id || r.id) || isAllRoles ? 'checked' : ''} ${isAllRoles ? 'disabled' : ''} onchange="handleRoleCheckboxChange('${a.id}', this)">
+                                        <label for="${a.id}_role_${r.RoleId || r.Id || r.id}">${escapeHtml(r.Role || r.Name || r.name)}</label>
                                     </div>
-                                `).join('')}
+                                `).join('') : '<p style="padding: 10px; color: #666;">No roles available for ' + escapeHtml(applicationCode) + '</p>'}
                             </div>
                         </div>
                     </div>
                 </div>
             `;
         }).join('');
+        
+        console.log('=== MODAL RENDERED ===');
     }
 
     window.handleLocationRadioChange = (assignId) => {
@@ -905,6 +1195,25 @@
             checkboxes.forEach(cb => { cb.disabled = false; cb.checked = false; });
             checkboxOptions.forEach(opt => opt.classList.remove('disabled'));
             if (assignment) assignment.location = '';
+        }
+    };
+
+    window.handleFunctionRadioChange = (assignId) => {
+        const container = document.getElementById(assignId);
+        if (!container) return;
+        const allRadio = container.querySelector('.all-functions-radio');
+        const checkboxes = container.querySelectorAll('.function-checkbox');
+        const checkboxOptions = container.querySelectorAll('.info-field:nth-child(2) .checkbox-option');
+        const card = moduleCards[currentModalCardId];
+        const assignment = card.assignments.find(a => a.id === assignId);
+        if (allRadio && allRadio.checked) {
+            checkboxes.forEach(cb => { cb.checked = true; cb.disabled = true; });
+            checkboxOptions.forEach(opt => opt.classList.add('disabled'));
+            if (assignment) assignment.function_id = 'ALL';
+        } else {
+            checkboxes.forEach(cb => { cb.disabled = false; cb.checked = false; });
+            checkboxOptions.forEach(opt => opt.classList.remove('disabled'));
+            if (assignment) assignment.function_id = '';
         }
     };
 
@@ -933,19 +1242,26 @@
         if (assignment) assignment.location = checkbox.value;
     };
 
+    window.handleFunctionCheckboxChange = (assignId, checkbox) => {
+        const card = moduleCards[currentModalCardId];
+        const assignment = card.assignments.find(a => a.id === assignId);
+        if (assignment) assignment.function_id = checkbox.value;
+    };
+
     window.handleRoleCheckboxChange = (assignId, checkbox) => {
         const card = moduleCards[currentModalCardId];
         const assignment = card.assignments.find(a => a.id === assignId);
         if (assignment) assignment.role_id = checkbox.value;
     };
 
-    window.addNewModule = () => {
+    // Step 1: Show module selector
+    function addNewModule() {
         const moduleSelectorHTML = `
             <div class="module-selector-grid">
                 ${modulesData.map(m => `
-                    <div class="module-selector-card" onclick="selectModule(${m.id})">
+                    <div class="module-selector-card" data-module-id="${escapeHtml(String(m.id))}">
                         <i class="fas fa-cube"></i>
-                        <div class="module-name">${m.name}</div>
+                        <div class="module-name">${escapeHtml(m.name)}</div>
                     </div>
                 `).join('')}
             </div>
@@ -956,22 +1272,126 @@
             showCancelButton: true,
             showConfirmButton: false,
             cancelButtonText: 'Close',
-            width: '700px'
+            width: '700px',
+            didOpen: () => {
+                // Attach click handlers after modal opens
+                document.querySelectorAll('.module-selector-card').forEach(card => {
+                    card.addEventListener('click', function() {
+                        // Don't use parseInt - module IDs are GUIDs (strings)
+                        const moduleId = this.getAttribute('data-module-id');
+                        console.log('Module clicked, ID:', moduleId);
+                        selectModule(moduleId);
+                    });
+                });
+            }
         });
-    };
+    }
+    window.addNewModule = addNewModule;
 
-    window.selectModule = (moduleId) => {
+    // Step 2: After module selection, show location selector
+    function selectModule(moduleId) {
+        console.log('=== SELECT MODULE ===');
+        console.log('Module ID:', moduleId);
+        console.log('Module ID type:', typeof moduleId);
+        
         Swal.close();
-        const module = modulesData.find(m => m.id == moduleId);
+        selectedModuleForLocation = moduleId;
+        
+        const locationSelectorHTML = `
+            <div class="location-selector-grid">
+                ${locationsData.map(l => `
+                    <div class="location-selector-card" data-location-code="${escapeHtml(l.code.trim())}">
+                        <i class="fas fa-map-marker-alt"></i>
+                        <div class="location-name">${escapeHtml(l.name)}</div>
+                        <div class="location-code">${escapeHtml(l.code.trim())}</div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+        
+        Swal.fire({
+            title: 'Select Location',
+            html: locationSelectorHTML,
+            showCancelButton: true,
+            showConfirmButton: false,
+            cancelButtonText: 'Back',
+            width: '700px',
+            didOpen: () => {
+                // Attach click handlers after modal opens
+                document.querySelectorAll('.location-selector-card').forEach(card => {
+                    card.addEventListener('click', function() {
+                        const locationCode = this.getAttribute('data-location-code');
+                        console.log('Location clicked, code:', locationCode);
+                        selectLocation(locationCode);
+                    });
+                });
+            }
+        }).then((result) => {
+            // If user clicks Back, return to module selection
+            if (result.dismiss === Swal.DismissReason.cancel) {
+                selectedModuleForLocation = null;
+                addNewModule();
+            }
+        });
+    }
+    window.selectModule = selectModule;
+
+    // Step 3: After location selection, create the module card and open modal
+    function selectLocation(locationCode) {
+        console.log('=== SELECT LOCATION ===');
+        console.log('Location code:', locationCode);
+        console.log('Selected module ID:', selectedModuleForLocation);
+        
+        Swal.close();
+        
+        if (!selectedModuleForLocation) {
+            console.error('No module selected!');
+            return;
+        }
+        
+        const module = modulesData.find(m => m.id == selectedModuleForLocation);
+        console.log('Found module:', module);
+        
+        if (!module) {
+            console.error('Module not found for ID:', selectedModuleForLocation);
+            showAlert('error', 'Error', 'Module not found');
+            return;
+        }
+        
         const cardId = `card_${cardIdCounter++}`;
         const assignId = `assign_${cardIdCounter++}`;
+        
+        const applicationCode = getApplicationCodeForSP(module);
+        const isSCM = applicationCode === 'OPS' || applicationCode === 'OPSUAT';
+        
+        console.log('Creating card:', {
+            cardId,
+            assignId,
+            moduleId: selectedModuleForLocation,
+            moduleName: module.name,
+            applicationCode,
+            isSCM,
+            locationCode
+        });
+        
         moduleCards[cardId] = {
-            id: cardId, isNew: true, module_id: moduleId, module_name: module.name,
-            assignments: [{id: assignId, location: '', role_id: ''}]
+            id: cardId, 
+            isNew: true, 
+            module_id: selectedModuleForLocation, 
+            module_name: module.name,
+            assignments: [{
+                id: assignId, 
+                location: locationCode, 
+                role_id: '',
+                function_id: isSCM ? '' : undefined
+            }]
         };
+        
+        selectedModuleForLocation = null;
         renderAllCards();
         openModal(cardId);
-    };
+    }
+    window.selectLocation = selectLocation;
 
     window.deleteAssignment = (assignId) => {
         Swal.fire({
@@ -1009,13 +1429,20 @@
                             <input type="hidden" name="modules[${index}][location]" value="${a.location}">
                             <input type="hidden" name="modules[${index}][role_id]" value="${a.role_id}">
                         `;
+                        
+                        // Add function_id only if it exists (for SCM modules)
+                        if (a.function_id !== undefined && a.function_id !== '') {
+                            container.innerHTML += `
+                                <input type="hidden" name="modules[${index}][function_id]" value="${a.function_id}">
+                            `;
+                        }
+                        
                         index++;
                     }
                 });
             }
         });
     }
-
 
     function cancelForm() {
         confirmAction(
@@ -1047,7 +1474,7 @@
 
     function validateForm() {
         let isValid = true;
-        const requiredFields = ['name', 'employee_id', 'email', 'phone', 'company_id'];
+        const requiredFields = ['name', 'employee_id', 'email', 'phone'];
         
         document.querySelectorAll('.is-invalid').forEach(el => {
             el.classList.remove('is-invalid');
@@ -1122,6 +1549,58 @@
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && currentModalCardId) cancelModal();
     });
+
+    // Helper functions for alerts and notifications
+    function showAlert(type, title, message) {
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                icon: type,
+                title: title,
+                text: message,
+                confirmButtonColor: '#3498db'
+            });
+        } else {
+            alert(title + ': ' + message);
+        }
+    }
+
+    function confirmAction(title, message, callback) {
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                title: title,
+                text: message,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#3498db',
+                cancelButtonColor: '#e74c3c',
+                confirmButtonText: 'Yes, proceed',
+                cancelButtonText: 'Cancel'
+            }).then((result) => {
+                if (result.isConfirmed && callback) {
+                    callback();
+                }
+            });
+        } else {
+            if (confirm(message) && callback) {
+                callback();
+            }
+        }
+    }
+
+    function showLoading() {
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                title: 'Processing...',
+                text: 'Please wait while we create the user',
+                allowOutsideClick: false,
+                allowEscapeKey: false,
+                showConfirmButton: false,
+                willOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+        }
+    }
 
     // Initialize on page load
     document.addEventListener('DOMContentLoaded', function() {

@@ -71,28 +71,79 @@ class AzureUserManagementController extends Controller
      */
 public function create()
 {
-    // Provide empty collections with proper structure
-    $locations = collect([]);
-    $companies = collect([]);
-    $modules = collect([]);
-    $roles = collect([]);
-    $rolePermissions = [];
+    try {
+        // Fetch modules from SQL Server Azure_SoftwareMaster
+        $modulesRaw = DB::connection('sqlsrv')
+            ->select("SELECT Id, Name, ApplicationId 
+                     FROM Azure_SoftwareMaster 
+                     WHERE IsActive = 1 AND IsDeleted = 0 
+                     ORDER BY Name");
+        
+        // Convert to Laravel collection with proper structure
+        $modules = collect($modulesRaw)->map(function ($module) {
+            return (object)[
+                'id' => $module->Id,
+                'name' => $module->Name,
+                'application_id' => $module->ApplicationId
+            ];
+        });
 
-    return view('azure-management.users.create', compact(
-        'locations', 
-        'companies', 
-        'modules', 
-        'roles',
-        'rolePermissions'
-    ));
+        // Fetch locations from Cust_Office table
+        $locationsRaw = DB::connection('sqlsrv')
+            ->select("SELECT Id, Name, code 
+                     FROM Cust_Office 
+                     WHERE IsActive = 1 AND IsDeleted = 0 
+                     ORDER BY Name");
+        
+        // Convert to Laravel collection
+        $locations = collect($locationsRaw)->map(function ($location) {
+            return (object)[
+                'id' => $location->Id,
+                'name' => $location->Name,
+                'code' => $location->code
+            ];
+        });
+
+        // Empty collections for now (we'll add these later if needed)
+        $companies = collect([]);
+        $roles = collect([]);
+        $rolePermissions = [];
+
+        return view('azure-management.users.create', compact(
+            'locations', 
+            'companies', 
+            'modules', 
+            'roles',
+            'rolePermissions'
+        ));
+        
+    } catch (\Exception $e) {
+        Log::error('Error loading create form', [
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString()
+        ]);
+        
+        return redirect()->route('azure.dashboard.index')
+            ->withErrors(['error' => 'Failed to load form: ' . $e->getMessage()]);
+    }
 }
 
     /**
      * Store a newly created user (with Azure provisioning)
      */
-public function store(StoreUserRequest $request)
+public function store(Request $request)
 {
     try {
+        // Validate required fields - location is now part of module assignments
+        $request->validate([
+            'name' => 'required|string|max:100',
+            'email' => 'required|email|max:255',
+            'employee_id' => 'required|string|max:50',
+            'phone' => 'required|string|max:30',
+        ]);
+
+        DB::connection('sqlsrv')->beginTransaction();
+
         // Split name into first and last name
         $nameParts = explode(' ', trim($request->name), 2);
         $givenName = $nameParts[0];
@@ -101,35 +152,138 @@ public function store(StoreUserRequest $request)
         // Generate userPrincipalName from email
         $userPrincipalName = $request->email;
         
-        // Create user with the actual azure_users table columns
-        $user = AzureUser::create([
-            'displayName' => $request->name,
-            'givenName' => $givenName,
-            'surname' => $surname,
-            'mail' => $request->email,
-            'userPrincipalName' => $userPrincipalName,
-            'telephoneNumber' => $request->phone,
-            'mobilePhone' => $request->mobile_phone,
-            'jobTitle' => $request->job_title,
-            'department' => $request->department,
-            'officeLocation' => $request->location,
-            'companyName' => $request->company_id,
-            'accountEnabled' => true,
-            'userType' => 'Member',
-            'usageLocation' => 'KE',
-            'country' => 'Kenya',
+        // Generate new GUID for user ID
+        $userId = DB::connection('sqlsrv')
+            ->selectOne("SELECT NEWID() as newId")->newId;
+
+        // Get primary location from first module assignment (if any)
+        $primaryLocation = 'KE'; // Default
+        if ($request->has('modules') && is_array($request->modules) && count($request->modules) > 0) {
+            $firstModule = $request->modules[0];
+            if (isset($firstModule['location']) && $firstModule['location'] !== 'ALL') {
+                $primaryLocation = $firstModule['location'];
+            }
+        }
+
+        // Insert into Azure_Users with Status = 'Pending'
+        DB::connection('sqlsrv')->insert("
+            INSERT INTO Azure_Users (
+                Id, userPrincipalName, displayName, surname, mail, givenName,
+                telephoneNumber, mobilePhone, jobTitle, department, 
+                officeLocation, accountEnabled, userType, usageLocation, country,
+                createdDateTime, Status, EmployeCode, companyName
+            )
+            VALUES (
+                ?, ?, ?, ?, ?, ?,
+                ?, ?, ?, ?,
+                ?, ?, ?, ?, ?,
+                GETDATE(), ?, ?, ?
+            )
+        ", [
+            $userId,
+            $userPrincipalName,
+            $request->name,
+            $surname,
+            $request->email,
+            $givenName,
+            $request->phone,
+            $request->mobile_phone,
+            $request->job_title,
+            $request->department,
+            $primaryLocation, // Office location code from first module assignment
+            1, // accountEnabled = true
+            'Member',
+            'KE',
+            'Kenya',
+            'Pending', // Status
+            $request->employee_id, // EmployeCode
+            $request->company_id
         ]);
 
-        Log::info('User created successfully', [
-            'user_id' => $user->id,
-            'email' => $user->mail,
+        // Process module assignments (if any)
+        if ($request->has('modules') && is_array($request->modules)) {
+            foreach ($request->modules as $moduleData) {
+                if (isset($moduleData['module_id']) && isset($moduleData['location']) && isset($moduleData['role_id'])) {
+                    
+                    // Get the module details including ApplicationId
+                    $module = DB::connection('sqlsrv')
+                        ->selectOne("SELECT Id, Name, ApplicationId FROM Azure_SoftwareMaster WHERE Id = ?", 
+                                   [$moduleData['module_id']]);
+                    
+                    if ($module) {
+                        // Determine if this is an SCM module
+                        $isSCM = in_array($module->ApplicationId, ['OPS', 'OPSUAT']);
+                        
+                        // For SCM modules, insert with function_id if provided
+                        if ($isSCM && isset($moduleData['function_id'])) {
+                            // Insert into Azure_Application_UserMapping with function
+                            DB::connection('sqlsrv')->insert("
+                                INSERT INTO Azure_Application_UserMapping (
+                                    user_id, 
+                                    application_id, 
+                                    location_code, 
+                                    role_id, 
+                                    function_id,
+                                    created_at
+                                )
+                                VALUES (?, ?, ?, ?, ?, GETDATE())
+                            ", [
+                                $userPrincipalName,
+                                $module->ApplicationId,
+                                $moduleData['location'],
+                                $moduleData['role_id'],
+                                $moduleData['function_id']
+                            ]);
+                        } else {
+                            // Insert without function_id for non-SCM modules
+                            DB::connection('sqlsrv')->insert("
+                                INSERT INTO Azure_Application_UserMapping (
+                                    user_id, 
+                                    application_id, 
+                                    location_code, 
+                                    role_id,
+                                    created_at
+                                )
+                                VALUES (?, ?, ?, ?, GETDATE())
+                            ", [
+                                $userPrincipalName,
+                                $module->ApplicationId,
+                                $moduleData['location'],
+                                $moduleData['role_id']
+                            ]);
+                        }
+                        
+                        Log::info('Module assignment created', [
+                            'user' => $userPrincipalName,
+                            'module' => $module->Name,
+                            'application_id' => $module->ApplicationId,
+                            'location' => $moduleData['location'],
+                            'role_id' => $moduleData['role_id'],
+                            'function_id' => $moduleData['function_id'] ?? null,
+                            'is_scm' => $isSCM
+                        ]);
+                    }
+                }
+            }
+        }
+
+        DB::connection('sqlsrv')->commit();
+
+        Log::info('User created successfully in SQL Server', [
+            'user_id' => $userId,
+            'email' => $request->email,
+            'primary_location' => $primaryLocation,
+            'status' => 'Pending',
+            'modules_count' => count($request->modules ?? []),
             'created_by' => Auth::id()
         ]);
 
         return redirect()->route('azure.dashboard.index')
-            ->with('success', 'User created successfully!');
+            ->with('success', 'User created successfully! Status: Pending. Module assignments have been configured.');
 
     } catch (\Exception $e) {
+        DB::connection('sqlsrv')->rollBack();
+        
         Log::error('User creation failed', [
             'error' => $e->getMessage(),
             'trace' => $e->getTraceAsString(),
@@ -534,4 +688,98 @@ public function store(StoreUserRequest $request)
             'performed_by' => Auth::id(),
         ]);
     }
+
+
+    /**
+ * Get functions for SCM modules (OPS/OPSUAT) using sp_UserCreation_Resourcefunction
+ * API endpoint: GET /api/azure/modules/scm-functions
+ */
+public function getSCMFunctions()
+{
+    try {
+        $functions = DB::connection('sqlsrv')
+            ->select('EXEC sp_UserCreation_Resourcefunction');
+        
+        return response()->json([
+            'success' => true,
+            'data' => $functions
+        ]);
+        
+    } catch (\Exception $e) {
+        Log::error('Failed to fetch SCM functions', [
+            'error' => $e->getMessage()
+        ]);
+        
+        return response()->json([
+            'success' => false,
+            'message' => 'Failed to fetch functions: ' . $e->getMessage()
+        ], 500);
+    }
+}
+
+/**
+ * Get roles based on Application Code using sp_UserCreation_ResourceRole
+ * API endpoint: GET /api/azure/modules/roles?application_code=XXX&filter=YYY
+ */
+public function getModuleRolesByCode(Request $request)
+{
+    try {
+        $applicationCode = $request->query('application_code');
+        $filter = $request->query('filter', null);
+        
+        if (!$applicationCode) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Application code is required'
+            ], 400);
+        }
+
+        // Map the application code using database table
+        $mappedCode = DB::connection('sqlsrv')
+            ->selectOne("
+                SELECT MappedApplicationCode 
+                FROM Azure_Module_Mapping 
+                WHERE ModuleName = ? AND IsActive = 1
+            ", [$applicationCode]);
+        
+        // Use mapped code if exists, otherwise use original
+        $finalCode = $mappedCode ? $mappedCode->MappedApplicationCode : $applicationCode;
+
+        Log::info('Fetching roles with mapping', [
+            'original_code' => $applicationCode,
+            'mapped_code' => $finalCode,
+            'filter' => $filter
+        ]);
+
+        // Call stored procedure with mapped code
+        if ($filter) {
+            $roles = DB::connection('sqlsrv')
+                ->select('EXEC sp_UserCreation_ResourceRole @ApplicationCode = ?, @Filter = ?', 
+                        [$finalCode, $filter]);
+        } else {
+            $roles = DB::connection('sqlsrv')
+                ->select('EXEC sp_UserCreation_ResourceRole @ApplicationCode = ?', 
+                        [$finalCode]);
+        }
+        
+        return response()->json([
+            'success' => true,
+            'data' => $roles,
+            'application_code_used' => $finalCode
+        ]);
+        
+    } catch (\Exception $e) {
+        Log::error('Failed to fetch module roles', [
+            'application_code' => $request->query('application_code'),
+            'filter' => $request->query('filter'),
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString()
+        ]);
+        
+        return response()->json([
+            'success' => false,
+            'message' => 'Failed to fetch roles: ' . $e->getMessage()
+        ], 500);
+    }
+}
 }
