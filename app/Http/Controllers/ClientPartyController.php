@@ -369,14 +369,14 @@ class ClientPartyController extends Controller
     public function autocompleteClient(Request $request)
     {
         $search = \request()->all()['query'];
-        $results = ClientParty::where('OperatioEntityType', "Client without Debtor or Vendor")
+        $results = ClientParty::where('OperationalEntityType', "Client without Debtor or Vendor")
             ->where('Name', 'LIKE', "%{$search}%")->pluck('Name');
         return response()->json($results);
     }
 
     public function fetchClientDetails($companyName)
     {
-        $client = ClientParty::where('OperatioEntityType', "Client without Debtor or Vendor")->where('Name', $companyName)->first();
+        $client = ClientParty::where('OperationalEntityType', "Client without Debtor or Vendor")->where('Name', $companyName)->first();
         if ($client) {
             $clientData = $client->only(['Name', 'Address_Line1', 'Address_CountryId', 'Address_CountryCode', 'Cont_Bch_PersonName_FirstName', 'Cont_Bch_PersonName_LastName', 'Cont_Bch_PhoneNumbers', 'Office', 'SalesMgrOfficeFunMapName', 'AccountMgrOfficeFunMapName', 'CreditLimitCurrencyCode', 'CreditDays', 'CreditLimit', 'LicenceTypeValue', 'LicenceTypeID']);
             return response()->json($clientData);
@@ -409,7 +409,7 @@ class ClientPartyController extends Controller
             }
         } else if ($type == "local") {
             $results = ClientParty::select('name', 'Id', 'code')
-                ->where('OperatioEntityType', "Client + Shipper + Consignee")
+                ->where('OperationalEntityType', "Client + Shipper + Consignee")
                 ->where('Name', 'LIKE', '%' . $query . '%')->get();
             if (count($results) > 0) {
                 foreach ($results as $resp) {
@@ -952,7 +952,7 @@ class ClientPartyController extends Controller
             $data = [
                 'Id' => $client_party_id,
                 'Code' => $code,
-                'OperatioEntityType' => $partyEntityType,
+                'OperationalEntityType' => $partyEntityType,
                 'LegalEntityType' => $request->legalEntityType,
                 'Name' => $request->companyName,
                 'Address_Line1' => $addressLine1,
@@ -1508,7 +1508,7 @@ public function preview($attachmentId)
                 'lastName' => $clientParty->Cont_Bch_PersonName_LastName,
                 'status' => $clientParty->Status,
                 'clientID' => $clientParty->ClientID,
-                'operatioEntityType' => $clientParty->OperatioEntityType
+                'OperationalEntityType' => $clientParty->OperationalEntityType
             ]);
 
             return view('client-party.edit', [
@@ -1730,7 +1730,7 @@ public function preview($attachmentId)
             DB::beginTransaction();
 
             $updateData = [
-                'OperatioEntityType' => $partyEntityType,
+                'OperationalEntityType' => $partyEntityType,
                 'LegalEntityType' => $request->legalEntityType,
                 'Name' => $request->companyName,
                 'Address_Line1' => $request->addressLine1,
@@ -2439,18 +2439,18 @@ public function preview($attachmentId)
             return ['success' => false, 'error' => 'Invalid Request ID format'];
         }
 
-        // Check permissions and OperatioEntityType
+        // Check permissions and OperationalEntityType
         $entity = DB::table('Cust_entity')->where('Id', $requestID)->first();
         if (!$entity) {
             Log::warning('Entity not found:', ['RequestID' => $requestID]);
             return ['success' => false, 'error' => 'Entity not found'];
         }
 
-        if (!Auth::user()->can('create-client-party-SCM') && $entity->OperatioEntityType !== 'Client without Debtor or Vendor') {
+        if (!Auth::user()->can('create-client-party-SCM') && $entity->OperationalEntityType !== 'Client without Debtor or Vendor') {
             Log::warning('SCM Permission Denied:', [
                 'UserID' => Auth::user()->Id,
                 'Permissions' => Auth::user()->getAllPermissions()->pluck('name')->toArray(),
-                'OperatioEntityType' => $entity->OperatioEntityType
+                'OperationalEntityType' => $entity->OperationalEntityType
             ]);
             return ['success' => false, 'error' => 'Unauthorized SCM Access'];
         }
@@ -2482,7 +2482,7 @@ public function preview($attachmentId)
                 Log::info('SCM Creation Success:', [
                     'RequestID' => $requestID,
                     'Result' => $result,
-                    'OperatioEntityType' => $entity->OperatioEntityType
+                    'OperationalEntityType' => $entity->OperationalEntityType
                 ]);
 
                 // Check stored procedure status
@@ -2492,7 +2492,7 @@ public function preview($attachmentId)
                     Log::warning('Stored Procedure Failed:', [
                         'RequestID' => $requestID,
                         'Remark' => $result['Remark'],
-                        'OperatioEntityType' => $entity->OperatioEntityType
+                        'OperationalEntityType' => $entity->OperationalEntityType
                     ]);
                     return ['success' => false, 'error' => $result['Remark']];
                 }
@@ -2504,7 +2504,7 @@ public function preview($attachmentId)
             Log::error('Error executing Sp_OperationEntityCreation:', [
                 'RequestID' => $requestID,
                 'Error' => $e->getMessage(),
-                'OperatioEntityType' => $entity->OperatioEntityType
+                'OperationalEntityType' => $entity->OperationalEntityType
             ]);
             return ['success' => false, 'error' => 'Entity Creation Failed: ' . $e->getMessage()];
         }
@@ -2698,7 +2698,7 @@ public function preview($attachmentId)
                 'OtherPartyName' => $validated['otherInput'] ?? $clientParty->OtherPartyName,
                 'OtherPartyID' => $validated['otherID'] ?? $clientParty->OtherPartyID,
                 'OtherPartyCode' => $validated['otherCode'] ?? $clientParty->OtherPartyCode,
-                'OperatioEntityType' => $validated['partyEntityType'] ?? $clientParty->OperatioEntityType,
+                'OperationalEntityType' => $validated['partyEntityType'] ?? $clientParty->OperationalEntityType,
                 'DebtorType' => $validated['debtorType'] ?? $clientParty->DebtorType,
                 'VendorType' => $validated['vendorType'] ?? $clientParty->VendorType,
             ];
