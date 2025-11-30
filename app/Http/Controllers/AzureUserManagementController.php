@@ -723,35 +723,66 @@ public function getSCMFunctions()
  */
 public function getModuleRolesByCode(Request $request)
 {
+    // Enable debug mode from config
+    $debugMode = config('azure_modules.debug', false);
+    
     try {
+        // Step 1: Get parameters from request
         $applicationCode = $request->query('application_code');
         $filter = $request->query('filter', null);
         
+        if ($debugMode) {
+            Log::info('🔍 [AZURE ROLES] Request received', [
+                'application_code' => $applicationCode,
+                'filter' => $filter,
+                'request_url' => $request->fullUrl(),
+                'timestamp' => now()->toDateTimeString()
+            ]);
+        }
+        
+        // Step 2: Validate application code
         if (!$applicationCode) {
+            Log::warning('⚠️ [AZURE ROLES] Missing application code');
+            
             return response()->json([
                 'success' => false,
                 'message' => 'Application code is required'
             ], 400);
         }
 
-        // Map the application code using database table
-        $mappedCode = DB::connection('sqlsrv')
-            ->selectOne("
-                SELECT MappedApplicationCode 
-                FROM Azure_Module_Mapping 
-                WHERE ModuleName = ? AND IsActive = 1
-            ", [$applicationCode]);
+        // Step 3: Get mapping from config file
+        $mapping = config('azure_modules.module_mapping', []);
         
-        // Use mapped code if exists, otherwise use original
-        $finalCode = $mappedCode ? $mappedCode->MappedApplicationCode : $applicationCode;
+        if ($debugMode) {
+            Log::info('📋 [AZURE ROLES] Config mapping loaded', [
+                'total_mappings' => count($mapping),
+                'available_modules' => array_keys($mapping)
+            ]);
+        }
 
-        Log::info('Fetching roles with mapping', [
+        // Step 4: Map the application code
+        $finalCode = $mapping[$applicationCode] ?? $applicationCode;
+        
+        $wasMapped = isset($mapping[$applicationCode]);
+        
+        Log::info('🔄 [AZURE ROLES] Application code mapping', [
             'original_code' => $applicationCode,
             'mapped_code' => $finalCode,
-            'filter' => $filter
+            'was_mapped' => $wasMapped,
+            'mapping_source' => $wasMapped ? 'config file' : 'direct (no mapping found)'
         ]);
 
-        // Call stored procedure with mapped code
+        // Step 5: Call stored procedure
+        if ($debugMode) {
+            Log::info('🎯 [AZURE ROLES] Calling stored procedure', [
+                'procedure' => 'sp_UserCreation_ResourceRole',
+                'parameters' => [
+                    'ApplicationCode' => $finalCode,
+                    'Filter' => $filter
+                ]
+            ]);
+        }
+
         if ($filter) {
             $roles = DB::connection('sqlsrv')
                 ->select('EXEC sp_UserCreation_ResourceRole @ApplicationCode = ?, @Filter = ?', 
@@ -762,23 +793,56 @@ public function getModuleRolesByCode(Request $request)
                         [$finalCode]);
         }
         
+        // Step 6: Process results
+        $roleCount = count($roles);
+        
+        Log::info('✅ [AZURE ROLES] Roles fetched successfully', [
+            'application_code' => $applicationCode,
+            'mapped_to' => $finalCode,
+            'role_count' => $roleCount,
+            'filter_applied' => $filter ? true : false
+        ]);
+
+        if ($debugMode && $roleCount > 0) {
+            Log::info('📊 [AZURE ROLES] Sample roles', [
+                'first_role' => $roles[0] ?? null,
+                'total_count' => $roleCount
+            ]);
+        }
+
+        // Step 7: Return response
         return response()->json([
             'success' => true,
             'data' => $roles,
-            'application_code_used' => $finalCode
+            'meta' => [
+                'application_code_requested' => $applicationCode,
+                'application_code_used' => $finalCode,
+                'was_mapped' => $wasMapped,
+                'role_count' => $roleCount,
+                'filter' => $filter
+            ]
         ]);
         
     } catch (\Exception $e) {
-        Log::error('Failed to fetch module roles', [
+        // Step 8: Error handling
+        Log::error('❌ [AZURE ROLES] Failed to fetch module roles', [
             'application_code' => $request->query('application_code'),
             'filter' => $request->query('filter'),
-            'error' => $e->getMessage(),
+            'error_message' => $e->getMessage(),
+            'error_code' => $e->getCode(),
+            'error_file' => $e->getFile(),
+            'error_line' => $e->getLine(),
             'trace' => $e->getTraceAsString()
         ]);
         
         return response()->json([
             'success' => false,
-            'message' => 'Failed to fetch roles: ' . $e->getMessage()
+            'message' => 'Failed to fetch roles: ' . $e->getMessage(),
+            'error_details' => config('app.debug') ? [
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ] : null
         ], 500);
     }
 }
