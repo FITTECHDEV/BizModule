@@ -18,6 +18,8 @@
 
     <!-- Styles -->
     <link href="{{ asset('css/app.css') }}" rel="stylesheet">
+
+    @yield('styles')  {{-- ← ADD THIS LINE --}}
 </head>
 <body data-type="{{ $type ?? ''}}">
     <div id="app">
@@ -79,5 +81,7 @@
             @yield('content')
         </main>
     </div>
+
+    @yield('scripts')  {{-- ← ADD THIS TOO (for JavaScript sections) --}}
 </body>
 </html>

@@ -1,0 +1,1168 @@
+@extends('adminlte::page')
+
+@section('title', 'GPS Trip Tracking')
+
+@section('content_header')
+    <h1>Truck Tracking</h1>
+@stop
+
+@section('css')
+    <link rel="stylesheet" href="{{ asset('css/tracker/tracker.css') }}">
+@stop
+
+@section('content')
+    <div class="container-fluid">
+        <!-- Status Cards Row -->
+        <div class="row justify-content-start">
+
+            <div class="col-md-3 col-lg-3 col-xl-auto p-1 m-0 flex-fill">
+                <div class="card bg-created order-card mb-1" id="createdCard" style="cursor: pointer;">
+                    <div class="card-block">
+                        <h6 class="m-b-20">Created</h6>
+                        <h2 class="text-right">
+                            <i class="fa fa-plus-circle f-left"></i>
+                            <span>{{ $stats->created ?? 0 }}</span>
+                        </h2>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3 col-lg-3 col-xl-auto p-1 m-0 flex-fill">
+                <div class="card bg-transit order-card mb-1" id="inProgressCard" style="cursor: pointer;">
+                    <div class="card-block">
+                        <h6 class="m-b-20">In Progress</h6>
+                        <h2 class="text-right">
+                            <i class="fa fa-truck f-left"></i>
+                            <span>{{ $stats->in_progress ?? 0 }}</span>
+                        </h2>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3 col-lg-3 col-xl-auto p-1 m-0 flex-fill">
+                <div class="card bg-complete order-card mb-1" id="completedCard" style="cursor: pointer;">
+                    <div class="card-block">
+                        <h6 class="m-b-20">Completed</h6>
+                        <h2 class="text-right">
+                            <i class="fa fa-check-circle f-left"></i>
+                            <span>{{ $stats->completed ?? 0 }}</span>
+                        </h2>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3 col-lg-3 col-xl-auto p-1 m-0 flex-fill">
+                <div class="card bg-total order-card mb-1" id="totalCard" style="cursor: pointer;">
+                    <div class="card-block">
+                        <h6 class="m-b-20">Total Trips</h6>
+                        <h2 class="text-right">
+                            <i class="fa fa-list f-left"></i>
+                            <span>{{ $stats->total ?? 0 }}</span>
+                        </h2>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Trips Table -->
+        <div class="container-fluid mt-3">
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover table-sm w-100" id="tripsTable">
+                    <thead>
+                        <tr>
+                            <th>Trip No</th>
+                            <th>Vehicle</th>
+                            <th>Driver</th>
+                            <th>Start Date</th>
+                            <th>End Date</th>
+                            <th>Duration</th>
+                            <th>Mileage (km)</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                </table>
+            </div>
+
+            <!-- View Trip Modal -->
+            <div class="modal fade" id="viewTripModal" tabindex="-1" data-backdrop="static" role="dialog">
+                <div class="modal-dialog modal-lg" role="document">
+                    <div class="modal-content">
+                        <div class="modal-header bg-primary text-white">
+                            <h5 class="modal-title">
+                                <i class="fa fa-map"></i> Trip Details
+                            </h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                                aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+
+                            <!-- Trip Summary -->
+                            <div class="row mb-3">
+                                <div class="col-md-3">
+                                    <small class="text-muted">Trip No</small><br>
+                                    <strong><span id="viewTripNo">-</span></strong>
+                                </div>
+                                <div class="col-md-3">
+                                    <small class="text-muted">Vehicle</small><br>
+                                    <strong><span id="viewVehicle">-</span></strong>
+                                </div>
+                                <div class="col-md-3">
+                                    <small class="text-muted">Driver</small><br>
+                                    <strong><span id="viewDriver">-</span></strong>
+                                </div>
+                                <div class="col-md-3 text-center">
+                                    <span id="viewStatusBadge" class="badge badge-lg"
+                                        style="font-size: 0.95rem; padding: 8px 16px;">
+                                        <span id="viewStatus">-</span>
+                                    </span>
+                                </div>
+                            </div>
+
+                            <!-- Timeline -->
+                            <div class="mb-3">
+                                <h6 class="font-weight-bold text-uppercase mb-2"
+                                    style="color: #0d47a1; border-bottom: 2px solid #0d47a1; padding-bottom: 4px;">
+                                    Trip Timeline
+                                </h6>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <small class="text-muted">Start:</small> <strong><span
+                                                id="viewStartDate">-</span></strong>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <small class="text-muted">End:</small> <strong><span
+                                                id="viewEndDate">-</span></strong>
+                                    </div>
+                                </div>
+                                <div class="row mt-2">
+                                    <div class="col-md-6">
+                                        <small class="text-muted">Duration:</small> <strong><span
+                                                id="viewDuration">-</span></strong>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <small class="text-muted">Mileage:</small> <strong><span
+                                                id="viewMileage">-</span></strong>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Allocated Jobs -->
+                            <div class="mb-3">
+                                <h6 class="font-weight-bold text-uppercase mb-2"
+                                    style="color: #0d47a1; border-bottom: 2px solid #0d47a1; padding-bottom: 4px;">
+                                    Allocated Jobs (<span id="jobsCount">0</span>)
+                                </h6>
+                                <div id="allocatedJobsContainer">
+                                    <div class="text-center text-muted py-3">
+                                        <i class="fa fa-spinner fa-spin"></i> Loading...
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Speed Stats -->
+                            <div class="mb-3">
+                                <h6 class="font-weight-bold text-uppercase mb-2"
+                                    style="color: #0d47a1; border-bottom: 2px solid #0d47a1; padding-bottom: 4px;">
+                                    Speed & Movement
+                                </h6>
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <small class="text-muted">Avg Speed</small><br>
+                                        <strong><span id="viewAvgSpeed">-</span> km/h</strong>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <small class="text-muted">Max Speed</small><br>
+                                        <strong><span id="viewMaxSpeed">-</span> km/h</strong>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <small class="text-muted">GPS Points</small><br>
+                                        <strong><span id="viewGpsPoints">-</span></strong>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Close</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal fade" id="createTripModal" tabindex="-1" data-backdrop="static" role="dialog">
+                <div class="modal-dialog modal-md" role="document">
+                    <div class="modal-content">
+                        <div class="modal-header bg-primary text-white">
+                            <h5 class="modal-title"><i class="fa fa-plus-circle"></i> Create New Trip</h5>
+                            <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
+                        </div>
+                        <form id="createTripForm">
+                            <div class="modal-body">
+
+                                <!-- Vehicle Selection -->
+                                <div class="form-group">
+                                    <label>Vehicle <span class="text-danger">*</span></label>
+                                    <select class="form-control" id="tripVehicle" name="imei" required>
+                                        <option value="">Loading vehicles...</option>
+                                    </select>
+                                    <input type="hidden" id="tripVehicleNo" name="vehicle_no">
+                                </div>
+
+                                <!-- Start Location -->
+                                <div class="form-group">
+                                    <label>Start Location <span class="text-danger">*</span></label>
+                                    <select class="form-control" id="tripStartLocation" name="start_location_code"
+                                        required>
+                                        <option value="">Loading locations...</option>
+                                    </select>
+                                    <small class="text-muted">Where the trip begins</small>
+                                </div>
+
+                                <!-- End Location -->
+                                <div class="form-group">
+                                    <label>End Location <span class="text-danger">*</span></label>
+                                    <select class="form-control" id="tripEndLocation" name="end_location_code" required>
+                                        <option value="">Loading locations...</option>
+                                    </select>
+                                    <small class="text-muted">Final destination</small>
+                                </div>
+
+                                <!-- Driver Details -->
+                                <div class="form-group">
+                                    <label>Driver Name</label>
+                                    <input type="text" class="form-control" id="driverName" name="driver_name"
+                                        placeholder="Enter driver name">
+                                </div>
+
+                                <div class="form-group">
+                                    <label>Driver Phone</label>
+                                    <input type="tel" class="form-control" id="driverPhone" name="driver_phone"
+                                        placeholder="0712345678">
+                                </div>
+
+                                <div class="alert alert-info">
+                                    <i class="fa fa-info-circle"></i> <strong>Note:</strong> Trip will be created with
+                                    "Created" status.
+                                    You can add jobs later using the "Add Jobs" button.
+                                </div>
+
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                                <button type="submit" class="btn btn-primary" id="submitCreateTrip">
+                                    <i class="fa fa-check"></i> Create Trip
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Add Jobs Modal - FIXED WITH SCROLLING -->
+            <div class="modal fade" id="addJobsModal" tabindex="-1" data-backdrop="static" role="dialog">
+                <div class="modal-dialog modal-lg modal-dialog-scrollable" role="document">
+                    <div class="modal-content">
+                        <div class="modal-header bg-warning text-white">
+                            <h5 class="modal-title"><i class="fa fa-plus"></i> Add Job to Trip</h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                                aria-label="Close"></button>
+                        </div>
+                        <form id="addJobsForm">
+                            <div class="modal-body" style="max-height: calc(100vh - 200px); overflow-y: auto;">
+                                <input type="hidden" id="addJobsTripId" name="trip_id">
+
+                                <!-- Trip Info - Compact -->
+                                <div class="alert alert-info mb-3" style="padding: 10px;">
+                                    <div class="row">
+                                        <div class="col-6">
+                                            <small><strong>Trip:</strong> <span id="addJobsTripNo">-</span></small><br>
+                                            <small><strong>Vehicle:</strong> <span id="addJobsVehicle">-</span></small>
+                                        </div>
+                                        <div class="col-6">
+                                            <small><strong>Status:</strong> <span id="addJobsStatus">-</span></small><br>
+                                            <small><strong>Driver:</strong> <span id="addJobsDriver">-</span></small>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Job Type Selection -->
+                                <div class="form-group">
+                                    <label>Job Type <span class="text-danger">*</span></label>
+                                    <select class="form-control" id="addJobType" name="job_type" required>
+                                        <option value="">Select Job Type</option>
+                                        <option value="internal">Internal Job (Pickup goods)</option>
+                                        <option value="customer_delivery">Customer Delivery</option>
+                                    </select>
+                                    <small class="text-muted d-block mt-1">
+                                        <strong>Internal:</strong> Going to pick up goods |
+                                        <strong>Customer:</strong> Delivering to customer
+                                    </small>
+                                </div>
+
+                                <!-- INTERNAL JOB SECTION -->
+                                <div id="internalJobFields" style="display: none;">
+                                    <div class="alert alert-success mb-3" style="padding: 10px;">
+                                        <i class="fa fa-truck"></i> <strong>Internal Job</strong> - Configure pickup
+                                        details
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="form-group">
+                                                <label>Start Location <span class="text-danger">*</span></label>
+                                                <select class="form-control form-control-sm" id="jobStartLocation"
+                                                    name="start_location">
+                                                    <option value="">Select Start Location</option>
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <div class="col-md-6">
+                                            <div class="form-group">
+                                                <label>End Location <span class="text-danger">*</span></label>
+                                                <select class="form-control form-control-sm" id="jobEndLocation"
+                                                    name="end_location">
+                                                    <option value="">Select End Location</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label>Job Description</label>
+                                        <textarea class="form-control form-control-sm" id="jobDescription" name="description" rows="2"
+                                            placeholder="E.g., Pick up 50 cartons of electronics"></textarea>
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="form-group">
+                                                <label>Contact Person</label>
+                                                <input type="text" class="form-control form-control-sm"
+                                                    id="jobContactPerson" name="contact_person"
+                                                    placeholder="Person at pickup location">
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="form-group mb-0">
+                                                <label>Contact Phone</label>
+                                                <input type="tel" class="form-control form-control-sm"
+                                                    id="jobContactPhone" name="contact_phone" placeholder="0712345678">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- CUSTOMER DELIVERY SECTION -->
+                                <div id="customerDeliveryFields" style="display: none;">
+                                    <div class="alert alert-primary mb-3" style="padding: 10px;">
+                                        <i class="fa fa-gift"></i> <strong>Customer Delivery</strong> - Select existing
+                                        customer job
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label>Select Customer Job <span class="text-danger">*</span></label>
+                                        <select class="form-control" id="customerJobSelect" name="customer_job_id">
+                                            <option value="">Loading jobs...</option>
+                                        </select>
+                                    </div>
+
+                                    <!-- Job Details Preview -->
+                                    <div id="customerJobDetails" style="display: none;">
+                                        <div class="card">
+                                            <div class="card-header bg-light" style="padding: 8px 12px;">
+                                                <strong>Job Details</strong>
+                                            </div>
+                                            <div class="card-body" style="padding: 12px;">
+                                                <div class="row">
+                                                    <div class="col-6">
+                                                        <small><strong>Customer:</strong> <span
+                                                                id="previewCustomer">-</span></small><br>
+                                                        <small><strong>Pickup:</strong> <span
+                                                                id="previewPickup">-</span></small>
+                                                    </div>
+                                                    <div class="col-6">
+                                                        <small><strong>Phone:</strong> <span
+                                                                id="previewPhone">-</span></small><br>
+                                                        <small><strong>Delivery:</strong> <span
+                                                                id="previewDelivery">-</span></small>
+                                                    </div>
+                                                </div>
+                                                <small class="d-block mt-2"><strong>Description:</strong> <span
+                                                        id="previewDescription">-</span></small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </div>
+                            <div class="modal-footer" style="padding: 10px 15px;">
+                                <button type="button" class="btn btn-secondary btn-sm"
+                                    data-dismiss="modal">Cancel</button>
+                                <button type="submit" class="btn btn-warning btn-sm" id="submitAddJob">
+                                    <i class="fa fa-check"></i> Add Job to Trip
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    @endsection
+
+    @section('js')
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
+
+        <script>
+            $(document).ready(function() {
+                let currentFilter = 'all';
+
+                // Initialize DataTable
+                let tripsTable = $('#tripsTable').DataTable({
+                    processing: true,
+                    responsive: true,
+                    autoWidth: false,
+                    order: [
+                        [3, 'desc']
+                    ],
+                    ajax: {
+                        url: '/tracker/trips/get/' + currentFilter,
+                        type: 'GET',
+                        dataSrc: 'data',
+                        error: function(xhr) {
+                            console.error('DataTable error:', xhr);
+                            swal('Error', 'Failed to load trips', 'error');
+                        }
+                    },
+                    columns: [{
+                            data: 'trip_no'
+                        },
+                        {
+                            data: 'vehicle_no'
+                        },
+                        {
+                            data: 'driver_name',
+                            render: data => data || '-'
+                        },
+                        {
+                            data: 'start_date',
+                            render: data => data ? moment(data).format('DD/MM/YY HH:mm') : '-'
+                        },
+                        {
+                            data: 'end_date',
+                            render: data => data ? moment(data).format('DD/MM/YY HH:mm') : 'Ongoing'
+                        },
+                        {
+                            data: null,
+                            render: function(data, type, row) {
+                                if (!row.start_date) return '-';
+                                let start = moment(row.start_date);
+                                let end = row.end_date ? moment(row.end_date) : moment();
+                                let duration = moment.duration(end.diff(start));
+                                return `${Math.floor(duration.asHours())}h ${duration.minutes()}m`;
+                            }
+                        },
+                        {
+                            data: 'total_mileage',
+                            render: data => data ? parseFloat(data).toFixed(2) + ' km' : '0.00 km'
+                        },
+                        {
+                            data: 'status',
+                            render: function(data) {
+                                const badges = {
+                                    'Created': 'info',
+                                    'In Progress': 'warning',
+                                    'Completed': 'success'
+                                };
+                                return `<span class="badge badge-${badges[data] || 'secondary'}">${data}</span>`;
+                            }
+                        },
+                        {
+                            data: null,
+                            orderable: false,
+                            className: 'text-center',
+                            render: function(data, type, row) {
+                                let buttons =
+                                    `<button class="btn btn-sm btn-info viewTrip" data-trip-id="${row.id}" title="View"><i class="fa fa-eye"></i></button> `;
+
+                                if (row.status === 'Created') {
+                                    buttons +=
+                                        `<button class="btn btn-sm btn-success startTrip" data-trip-id="${row.id}" title="Start Trip"><i class="fa fa-play"></i></button> `;
+                                }
+
+                                if (row.status === 'In Progress') {
+                                    buttons +=
+                                        `<button class="btn btn-sm btn-danger endTrip" data-trip-id="${row.id}" title="End Trip"><i class="fa fa-stop"></i></button> `;
+                                }
+
+                                if (row.status === 'Created' || row.status === 'In Progress') {
+                                    buttons +=
+                                        `<button class="btn btn-sm btn-warning addJobsBtn" data-trip-id="${row.id}" title="Add Jobs"><i class="fa fa-plus"></i></button>`;
+                                }
+
+                                return buttons;
+                            }
+                        }
+                    ],
+                    initComplete: function() {
+                        $("#tripsTable_filter").append(
+                            `<button type="button" class="btn btn-primary btn-sm ml-2" id="createTripBtn">
+                        <i class="fa fa-plus"></i> Create Trip
+                    </button>`
+                        );
+                    },
+                    drawCallback: function() {
+                        $('#tripsTable thead th').css({
+                            'background-color': '#0d47a1',
+                            'color': '#fff',
+                            'font-weight': '600',
+                            'padding': '10px',
+                            'font-size': '0.85rem'
+                        });
+                    }
+                });
+
+                // Card Filters
+                $('#createdCard').click(() => {
+                    currentFilter = 'created';
+                    tripsTable.ajax.url('/tracker/trips/get/created').load();
+                });
+
+                $('#inProgressCard').click(() => {
+                    currentFilter = 'in-progress';
+                    tripsTable.ajax.url('/tracker/trips/get/in-progress').load();
+                });
+
+                $('#completedCard').click(() => {
+                    currentFilter = 'completed';
+                    tripsTable.ajax.url('/tracker/trips/get/completed').load();
+                });
+
+                $('#totalCard').click(() => {
+                    currentFilter = 'all';
+                    tripsTable.ajax.url('/tracker/trips/get/all').load();
+                });
+
+                // ========================================
+                // CREATE TRIP MODAL - WITH LOCATIONS
+                // ========================================
+
+                // Load locations from sp_LocationList
+                function loadTripLocations() {
+                    $.get('/tracker/locations', {
+                        type: 'Road',
+                        include_country: 1,
+                        country_code: 'KE'
+                    }, function(res) {
+                        if (res.success && res.data.length > 0) {
+                            let options = '<option value="">Select Location</option>';
+                            res.data.forEach(location => {
+                                options += `<option value="${location.code}">${location.name}</option>`;
+                            });
+                            $('#tripStartLocation').html(options);
+                            $('#tripEndLocation').html(options);
+                        } else {
+                            $('#tripStartLocation').html('<option value="">No locations available</option>');
+                            $('#tripEndLocation').html('<option value="">No locations available</option>');
+                        }
+                    }).fail(function() {
+                        $('#tripStartLocation').html('<option value="">Failed to load locations</option>');
+                        $('#tripEndLocation').html('<option value="">Failed to load locations</option>');
+                    });
+                }
+
+                // === CREATE TRIP - Load Vehicles (FIXED) ===
+                $(document).on('click', '#createTripBtn', function() {
+                    // Load vehicles
+                    $.get('/tracker/vehicles/list', function(res) {
+                        if (res.success) {
+                            let options = '<option value="">Select Vehicle</option>';
+                            res.data.forEach(v => {
+                                // Use display_name for UI, but store full vehicle_no in data attribute
+                                options +=
+                                    `<option value="${v.imei}" data-vehicle="${v.vehicle_no}">${v.display_name}</option>`;
+                            });
+                            $('#tripVehicle').html(options);
+                        }
+                    });
+
+                    // Load locations from stored procedure
+                    loadTripLocations();
+
+                    // Reset form
+                    $('#createTripForm')[0].reset();
+
+                    $('#createTripModal').modal('show');
+                });
+
+                // Update vehicle_no when vehicle selected (stores FULL vehicle number)
+                $('#tripVehicle').change(function() {
+                    $('#tripVehicleNo').val($(this).find(':selected').data('vehicle'));
+                });
+
+                // ✅ SIMPLIFIED DEBUG VERSION - Replace your $('#createTripForm').submit() with this:
+
+                $('#createTripForm').submit(function(e) {
+                    e.preventDefault();
+
+                    console.log('=== FORM SUBMITTED ===');
+
+                    const formData = {
+                        vehicle_no: $('#tripVehicleNo').val(),
+                        imei: $('#tripVehicle').val(),
+                        start_location_code: $('#tripStartLocation').val(),
+                        end_location_code: $('#tripEndLocation').val(),
+                        driver_name: $('#driverName').val(),
+                        driver_phone: $('#driverPhone').val()
+                    };
+
+                    console.log('Form Data:', formData);
+
+                    // Validation
+                    if (!formData.imei) {
+                        return swal('Warning', 'Please select a vehicle', 'warning');
+                    }
+
+                    if (!formData.start_location_code) {
+                        return swal('Warning', 'Please select a start location', 'warning');
+                    }
+
+                    if (!formData.end_location_code) {
+                        return swal('Warning', 'Please select an end location', 'warning');
+                    }
+
+                    if (formData.start_location_code === formData.end_location_code) {
+                        return swal('Warning', 'Start and end locations cannot be the same', 'warning');
+                    }
+
+                    $('#submitCreateTrip').prop('disabled', true).html(
+                        '<i class="fa fa-spinner fa-spin"></i> Creating...');
+
+                    $.ajax({
+                        url: '/tracker/trips/create',
+                        type: 'POST',
+                        data: formData,
+                        headers: {
+                            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                        },
+                        success: function(res) {
+                            console.log('=== SUCCESS HANDLER CALLED ===');
+                            console.log('Full Response:', res);
+                            console.log('res.success:', res.success);
+                            console.log('Type of res.success:', typeof res.success);
+
+                            // Force it to work even if res.success is string "true"
+                            if (res.success === true || res.success === 'true' || res.success ===
+                                1) {
+                                console.log('✅ SUCCESS CONDITION MET');
+
+                                // Close modal
+                                console.log('Closing modal...');
+                                $('#createTripModal').modal('hide');
+
+                                // Show alert
+                                console.log('Showing swal...');
+                                alert('Trip created! Trip No: ' + res
+                                    .trip_no); // Simple alert first
+
+                                // Reload table
+                                console.log('Reloading table...');
+                                tripsTable.ajax.reload();
+
+                                // Reset form
+                                console.log('Resetting form...');
+                                $('#createTripForm')[0].reset();
+
+                            } else {
+                                console.log('❌ SUCCESS CONDITION NOT MET');
+                                console.log('Response:', res);
+
+                                let errorText = 'Failed to create trip:\n\n';
+                                if (Array.isArray(res.errors)) {
+                                    res.errors.forEach(err => {
+                                        errorText += '• ' + (err.Remark || err) + '\n';
+                                    });
+                                } else {
+                                    errorText += res.message || 'Unknown error occurred';
+                                }
+                                alert(errorText); // Simple alert
+                            }
+                        },
+                        error: function(xhr, status, error) {
+                            console.log('=== ERROR HANDLER CALLED ===');
+                            console.log('XHR:', xhr);
+                            console.log('Status:', status);
+                            console.log('Error:', error);
+                            console.log('Response:', xhr.responseJSON);
+
+                            alert('AJAX Error: ' + (xhr.responseJSON?.message || error));
+                        },
+                        complete: function() {
+                            console.log('=== COMPLETE HANDLER CALLED ===');
+                            $('#submitCreateTrip').prop('disabled', false).html(
+                                '<i class="fa fa-check"></i> Create Trip');
+                        }
+                    });
+                });
+
+                // ========================================
+                // ADD JOBS MODAL - WITH JOB TYPES
+                // ========================================
+
+                // Load locations for internal jobs from sp_LocationList
+                function loadJobLocations() {
+                    $.get('/tracker/locations', {
+                        type: 'Road',
+                        include_country: 1,
+                        country_code: 'KE'
+                    }, function(res) {
+                        if (res.success && res.data.length > 0) {
+                            let startOptions = '<option value="">Select Start Location</option>';
+                            let endOptions = '<option value="">Select End Location</option>';
+
+                            res.data.forEach(location => {
+                                startOptions +=
+                                    `<option value="${location.code}">${location.name}</option>`;
+                                endOptions +=
+                                    `<option value="${location.code}">${location.name}</option>`;
+                            });
+
+                            $('#jobStartLocation').html(startOptions);
+                            $('#jobEndLocation').html(endOptions);
+                        } else {
+                            $('#jobStartLocation').html('<option value="">No locations available</option>');
+                            $('#jobEndLocation').html('<option value="">No locations available</option>');
+                        }
+                    }).fail(function() {
+                        $('#jobStartLocation').html('<option value="">Failed to load locations</option>');
+                        $('#jobEndLocation').html('<option value="">Failed to load locations</option>');
+                    });
+                }
+
+                // Job Type Change Handler
+                $('#addJobType').change(function() {
+                    const jobType = $(this).val();
+
+                    if (jobType === 'internal') {
+                        $('#internalJobFields').slideDown();
+                        $('#customerDeliveryFields').slideUp();
+
+                        $('#jobStartLocation').prop('required', true);
+                        $('#jobEndLocation').prop('required', true);
+                        $('#customerJobSelect').prop('required', false);
+
+                        loadJobLocations();
+
+                    } else if (jobType === 'customer_delivery') {
+                        $('#customerDeliveryFields').slideDown();
+                        $('#internalJobFields').slideUp();
+
+                        $('#customerJobSelect').prop('required', true);
+                        $('#jobStartLocation').prop('required', false);
+                        $('#jobEndLocation').prop('required', false);
+
+                        loadCustomerJobs();
+
+                    } else {
+                        $('#internalJobFields').hide();
+                        $('#customerDeliveryFields').hide();
+                    }
+                });
+
+                // Load Customer Jobs
+                // ✅ UPDATED: Load Customer Jobs - passes vehicle_no to SP
+                function loadCustomerJobs() {
+                    const vehicleNo = $('#addJobsVehicle').text();
+
+                    if (!vehicleNo || vehicleNo === '-' || vehicleNo === 'N/A') {
+                        $('#customerJobSelect').html('<option value="">Vehicle not assigned to trip</option>');
+                        return;
+                    }
+
+                    $('#customerJobSelect').html('<option value="">Loading jobs for ' + vehicleNo + '...</option>');
+
+                    $.get('/tracker/jobs/available', {
+                        vehicle_no: vehicleNo
+                    }, function(res) {
+                        if (res.success && res.data.length > 0) {
+                            let options = '<option value="">Select Customer Job</option>';
+                            res.data.forEach(job => {
+                                options += `<option value="${job.id}"
+                            data-customer="${job.customer_name}"
+                            data-phone="${job.customer_phone || 'N/A'}"
+                            data-pickup="${job.pickup_location}"
+                            data-pickup-code="${job.pickup_location_code}"
+                            data-delivery="${job.delivery_location}"
+                            data-delivery-code="${job.delivery_location_code}"
+                            data-description="${job.description || 'No description'}">
+                        ${job.job_number} - ${job.pickup_location} → ${job.delivery_location}
+                    </option>`;
+                            });
+                            $('#customerJobSelect').html(options);
+                        } else {
+                            $('#customerJobSelect').html(
+                                '<option value="">No jobs available for this vehicle</option>');
+                        }
+                    }).fail((xhr) => {
+                        let errorMsg = xhr.responseJSON?.message || 'Failed to load jobs';
+                        $('#customerJobSelect').html(`<option value="">${errorMsg}</option>`);
+                    });
+                }
+
+
+                // Customer Job Selection Preview
+                $('#customerJobSelect').change(function() {
+                    if ($(this).val()) {
+                        const selected = $(this).find(':selected');
+                        $('#previewCustomer').text(selected.data('customer'));
+                        $('#previewPhone').text(selected.data('phone'));
+                        $('#previewPickup').text(selected.data('pickup'));
+                        $('#previewDelivery').text(selected.data('delivery'));
+                        $('#previewDescription').text(selected.data('description'));
+                        $('#customerJobDetails').slideDown();
+                    } else {
+                        $('#customerJobDetails').slideUp();
+                    }
+                });
+
+                // Open Add Jobs Modal
+                $(document).on('click', '.addJobsBtn', function() {
+                    const tripId = $(this).data('trip-id');
+                    $('#addJobsTripId').val(tripId);
+
+                    $.get(`/tracker/trips/${tripId}`, function(res) {
+                        if (res.success) {
+                            const trip = res.data;
+                            $('#addJobsTripNo').text(trip.trip_no || 'N/A');
+                            $('#addJobsVehicle').text(trip.vehicle_no || 'N/A');
+                            $('#addJobsStatus').text(trip.status || 'N/A');
+                            $('#addJobsDriver').text(trip.driver_name || 'Not assigned');
+                        }
+                    });
+
+                    $('#addJobsForm')[0].reset();
+                    $('#internalJobFields').hide();
+                    $('#customerDeliveryFields').hide();
+                    $('#customerJobDetails').hide();
+
+                    $('#addJobsModal').modal('show');
+                });
+
+                // ✅ FIXED: Submit Add Job Form with proper modal handling
+                $('#addJobsForm').submit(function(e) {
+                    e.preventDefault();
+
+                    console.log('=== ADD JOBS FORM SUBMITTED ===');
+
+                    const jobType = $('#addJobType').val();
+
+                    if (!jobType) {
+                        return swal('Warning', 'Please select a job type', 'warning');
+                    }
+
+                    // Prepare jobs array (SP expects array of jobs)
+                    let jobs = [];
+
+                    if (jobType === 'internal') {
+                        const startLocationCode = $('#jobStartLocation').val();
+                        const endLocationCode = $('#jobEndLocation').val();
+
+                        if (!startLocationCode || !endLocationCode) {
+                            return swal('Warning', 'Please select start and end locations', 'warning');
+                        }
+
+                        if (startLocationCode === endLocationCode) {
+                            return swal('Warning', 'Start and end locations cannot be the same', 'warning');
+                        }
+
+                        // Add internal job to jobs array
+                        jobs.push({
+                            job_type: 'Internal Job', // ← Must match SP: "Internal Job"
+                            job_no: '', // Empty for internal jobs (SP will generate)
+                            start_location_code: startLocationCode,
+                            end_location_code: endLocationCode
+                        });
+
+                    } else if (jobType === 'customer_delivery') {
+                        const selectedJob = $('#customerJobSelect').val();
+
+                        if (!selectedJob) {
+                            return swal('Warning', 'Please select a customer job', 'warning');
+                        }
+
+                        const selectedOption = $('#customerJobSelect option:selected');
+
+                        // Add customer delivery job to jobs array
+                        jobs.push({
+                            job_type: 'Customer Delivery', // ← Must match SP: "Customer Delivery"
+                            job_no: selectedOption.text().split(' - ')[
+                                0], // Extract ProcessNumber (e.g., "BKG001")
+                            start_location_code: selectedOption.data('pickup-code'),
+                            end_location_code: selectedOption.data('delivery-code')
+                        });
+                    }
+
+                    const formData = {
+                        trip_id: $('#addJobsTripId').val(),
+                        jobs: jobs // ← Array of jobs
+                    };
+
+                    console.log('Jobs Data:', formData);
+
+                    $('#submitAddJob').prop('disabled', true).html(
+                        '<i class="fa fa-spinner fa-spin"></i> Adding...');
+
+                    $.ajax({
+                        url: `/tracker/trips/${formData.trip_id}/jobs/add`,
+                        type: 'POST',
+                        data: JSON.stringify(formData),
+                        contentType: 'application/json', // ← Important for array handling
+                        headers: {
+                            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                        },
+                        success: function(res) {
+                            console.log('=== ADD JOBS SUCCESS ===');
+                            console.log('Response:', res);
+
+                            if (res.success === true || res.success === 'true' || res.success ===
+                                1) {
+                                console.log('✅ Jobs added successfully');
+
+                                // Close modal
+                                $('#addJobsModal').modal('hide');
+
+                                // Show success with simple alert
+                                alert(
+                                    `Success!\n\n${res.message}\nTrip No: ${res.trip_no}\nJobs Added: ${res.jobs_added}`
+                                );
+
+                                // Reset form
+                                $('#addJobsForm')[0].reset();
+                                $('#internalJobFields').hide();
+                                $('#customerDeliveryFields').hide();
+                                $('#customerJobDetails').hide();
+
+                            } else {
+                                console.log('❌ Jobs addition failed');
+
+                                let errorText = 'Failed to add jobs:\n\n';
+                                if (Array.isArray(res.errors)) {
+                                    res.errors.forEach(err => {
+                                        errorText += '• ' + (err.Remark || err) + '\n';
+                                    });
+                                } else {
+                                    errorText += res.message || 'Unknown error occurred';
+                                }
+                                alert(errorText);
+                            }
+                        },
+                        error: function(xhr, status, error) {
+                            console.log('=== ADD JOBS ERROR ===');
+                            console.log('XHR:', xhr);
+                            console.log('Status:', status);
+                            console.log('Error:', error);
+
+                            let errorText = 'Failed to add jobs';
+
+                            if (xhr.responseJSON) {
+                                if (xhr.responseJSON.errors) {
+                                    errorText += ':\n\n';
+                                    const errors = xhr.responseJSON.errors;
+
+                                    if (Array.isArray(errors)) {
+                                        errors.forEach(err => {
+                                            errorText += '• ' + (err.Remark || err) + '\n';
+                                        });
+                                    } else {
+                                        Object.keys(errors).forEach(key => {
+                                            errorText += '• ' + errors[key][0] + '\n';
+                                        });
+                                    }
+                                } else if (xhr.responseJSON.message) {
+                                    errorText += ':\n' + xhr.responseJSON.message;
+                                }
+                            }
+
+                            alert(errorText);
+                        },
+                        complete: () => {
+                            console.log('=== ADD JOBS COMPLETE ===');
+                            $('#submitAddJob').prop('disabled', false).html(
+                                '<i class="fa fa-check"></i> Add Job to Trip');
+                        }
+                    });
+                });
+                // ========================================
+                // START TRIP
+                // ========================================
+                $(document).on('click', '.startTrip', function() {
+                    const tripId = $(this).data('trip-id');
+
+                    swal({
+                        title: 'Start Trip?',
+                        text: 'This will activate GPS tracking and start the first job.',
+                        icon: 'warning',
+                        buttons: ['Cancel', 'Start Trip']
+                    }).then((confirm) => {
+                        if (confirm) {
+                            $.ajax({
+                                url: `/tracker/trips/${tripId}/start`,
+                                type: 'POST',
+                                headers: {
+                                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                                },
+                                success: function(res) {
+                                    if (res.success) {
+                                        swal('Started!', res.message, 'success');
+                                        tripsTable.ajax.reload(null, false);
+                                    }
+                                },
+                                error: function() {
+                                    swal('Error', 'Failed to start trip', 'error');
+                                }
+                            });
+                        }
+                    });
+                });
+
+                // ========================================
+                // END TRIP
+                // ========================================
+                $(document).on('click', '.endTrip', function() {
+                    const tripId = $(this).data('trip-id');
+
+                    swal({
+                        title: 'End Trip?',
+                        text: 'This will complete the trip and fetch final mileage.',
+                        icon: 'warning',
+                        buttons: ['Cancel', 'End Trip'],
+                        dangerMode: true
+                    }).then((confirm) => {
+                        if (confirm) {
+                            $.ajax({
+                                url: `/tracker/trips/${tripId}/end`,
+                                type: 'POST',
+                                headers: {
+                                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                                },
+                                success: function(res) {
+                                    if (res.success) {
+                                        swal('Completed!',
+                                            `Distance: ${res.total_distance || '0'} km`,
+                                            'success');
+                                        tripsTable.ajax.reload(null, false);
+                                    }
+                                },
+                                error: function() {
+                                    swal('Error', 'Failed to end trip', 'error');
+                                }
+                            });
+                        }
+                    });
+                });
+
+                // ========================================
+                // VIEW TRIP
+                // ========================================
+                // ✅ UPDATED: View Trip Modal - Shows Job Types
+
+                $(document).on('click', '.viewTrip', function() {
+                    const tripId = $(this).data('trip-id');
+
+                    $.get(`/tracker/trips/${tripId}`, function(res) {
+                        if (!res.success) return swal('Error', 'Failed to load trip', 'error');
+
+                        const trip = res.data;
+
+                        $('#viewTripNo').text(trip.trip_no || 'N/A');
+                        $('#viewVehicle').text(trip.vehicle_no || 'N/A');
+                        $('#viewDriver').text(trip.driver_name || 'Not assigned');
+                        $('#viewStatus').text(trip.status || 'Unknown');
+
+                        $('#viewStartDate').text(trip.start_date ? moment(trip.start_date).format(
+                            'DD/MM/YY HH:mm') : '-');
+                        $('#viewEndDate').text(trip.end_date ? moment(trip.end_date).format(
+                            'DD/MM/YY HH:mm') : 'Ongoing');
+
+                        if (trip.start_date) {
+                            const duration = moment.duration(moment(trip.end_date || undefined).diff(
+                                moment(trip.start_date)));
+                            $('#viewDuration').text(
+                                `${Math.floor(duration.asHours())}h ${duration.minutes()}m`);
+                        } else {
+                            $('#viewDuration').text('-');
+                        }
+
+                        $('#viewMileage').text(trip.total_distance ? parseFloat(trip.total_distance)
+                            .toFixed(2) + ' km' : '0.00 km');
+                        $('#viewAvgSpeed').text('N/A');
+                        $('#viewMaxSpeed').text('N/A');
+                        $('#viewGpsPoints').text('N/A');
+
+                        const badge = $('#viewStatusBadge').removeClass(
+                            'badge-info badge-warning badge-success');
+                        if (trip.status === 'Created') badge.addClass('badge-info');
+                        else if (trip.status === 'In Progress') badge.addClass('badge-warning');
+                        else if (trip.status === 'Completed') badge.addClass('badge-success');
+
+                        const jobs = Array.isArray(trip.jobs) ? trip.jobs : [];
+                        $('#jobsCount').text(jobs.length);
+
+                        if (jobs.length === 0) {
+                            $('#allocatedJobsContainer').html(
+                                '<div class="text-center text-muted py-3"><i class="fa fa-briefcase fa-2x mb-2"></i><p>No jobs allocated</p></div>'
+                            );
+                        } else {
+                            // ✅ UPDATED: Show Job Type column
+                            let html = `
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered">
+                        <thead class="bg-primary text-white">
+                            <tr>
+                                <th>Job No</th>
+                                <th>Type</th>
+                                <th>Route</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>`;
+
+                            jobs.forEach(job => {
+                                // Badge color based on job type
+                                const typeBadge = job.job_type === 'Internal Job' ? 'info' :
+                                    'primary';
+                                const statusBadge = job.status === 'Completed' ? 'success' :
+                                    job.status === 'In Progress' ? 'warning' : 'secondary';
+
+                                html += `<tr>
+                    <td><strong>${job.job_number}</strong></td>
+                    <td><span class="badge badge-${typeBadge}">${job.job_type}</span></td>
+                    <td><small>${job.pickup_location} → ${job.delivery_location}</small></td>
+                    <td><span class="badge badge-${statusBadge}">${job.status}</span></td>
+                </tr>`;
+                            });
+
+                            html += `
+                        </tbody>
+                    </table>
+                </div>`;
+
+                            $('#allocatedJobsContainer').html(html);
+                        }
+
+                        $('#viewTripModal').modal('show');
+                    });
+                });
+
+                // ========================================
+                // MODAL CLEANUP
+                // ========================================
+                $('.modal').on('hidden.bs.modal', function() {
+                    $(this).find('form')[0]?.reset();
+                });
+            });
+        </script>
+    @endsection

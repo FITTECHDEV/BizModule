@@ -61,11 +61,11 @@
         }
 
         /* .service-card h3{
-                              margin-top: 2%;
-                              font-size: 44px;
-                              font-weight: bold;
-                              color: #464646;
-                            } */
+                                  margin-top: 2%;
+                                  font-size: 44px;
+                                  font-weight: bold;
+                                  color: #464646;
+                                } */
     </style>
 @stop
 
@@ -334,6 +334,50 @@
                 </div>
             @endif
 
+          <!-- GPS Tracker Card -->
+@if (Auth::user()->can('view-rate-calculator'))
+    <div class="col-md-3 col-sm-6 mb-3">
+        <a href="{{ route('tracker.dashboard') }}">
+            <div class="d-flex h-100 flex-column card card-widget widget-user shadow service-card">
+                <div class="widget-user-header bg-primary">
+                    <h3 class="widget-user-username">GPS TRACKER</h3>
+                    <h5 class="widget-user-desc">Track Vehicle Trips</h5>
+                </div>
+                <div class="widget-user-image">
+                    <i class="fas fa-truck fa-3x text-white"></i>
+                </div>
+                <div class="card-footer">
+                    <div class="row justify-content-center">
+                        <div class="col-sm-4 border-right">
+                            <div class="description-block">
+                                <h5 class="description-header">
+                                    <span class="badge badge-info">{{ $tracker_stats->created ?? 0 }}</span>
+                                </h5>
+                                <span class="description-text small">Created</span>
+                            </div>
+                        </div>
+                        <div class="col-sm-4 border-right">
+                            <div class="description-block">
+                                <h5 class="description-header">
+                                    <span class="badge badge-warning">{{ $tracker_stats->transit ?? 0 }}</span>
+                                </h5>
+                                <span class="description-text small">In Transit</span>
+                            </div>
+                        </div>
+                        <div class="col-sm-4">
+                            <div class="description-block">
+                                <h5 class="description-header">
+                                    <span class="badge badge-success">{{ $tracker_stats->complete ?? 0 }}</span>
+                                </h5>
+                                <span class="description-text small">Complete</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </a>
+    </div>
+@endif
         </div>
     </div>
 @stop
