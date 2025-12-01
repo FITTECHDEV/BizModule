@@ -443,27 +443,22 @@ Route::get('/client-party/preview/{attachmentId}', [ClientPartyController::class
 
 Route::middleware(['auth'])->prefix('tracker')->name('tracker.')->group(function () {
 
-    // Dashboard
     Route::get('/dashboard', [TrackerController::class, 'dashboard'])->name('dashboard');
-
-    // Get trips
     Route::get('/trips/get/{filter?}', [TrackerController::class, 'getTrips']);
     Route::get('/trips/{id}', [TrackerController::class, 'getTripDetails']);
 
-    // NEW ROUTES ⬇️
     Route::get('/vehicles/list', [TrackerController::class, 'getVehicles']);
     Route::get('/jobs/available', [TrackerController::class, 'getAvailableJobs']);
+    Route::get('/locations', [TrackerController::class, 'getLocations']);
+
     Route::post('/trips/create', [TrackerController::class, 'createTrip']);
     Route::post('/trips/{tripId}/start', [TrackerController::class, 'startTrip']);
     Route::post('/trips/{tripId}/end', [TrackerController::class, 'endTrip']);
     Route::post('/trips/{tripId}/jobs/add', [TrackerController::class, 'addJobToTrip']);
+
+    // Correct job actions — require both tripId and jobId
     Route::post('/trips/{tripId}/jobs/{jobId}/start', [TrackerController::class, 'startJob']);
     Route::post('/trips/{tripId}/jobs/{jobId}/complete', [TrackerController::class, 'completeJob']);
-    Route::post('/trips/{tripId}/sync-gps', [TrackerController::class, 'syncGPSData']);
-    Route::get('/locations', [TrackerController::class, 'getLocations']);
-    // Old routes (keeping for compatibility)
-    Route::post('/trips/sync', [TrackerController::class, 'syncTrips']);
-    Route::post('/trips/allocate-job', [TrackerController::class, 'allocateJob']);
 });
 
 

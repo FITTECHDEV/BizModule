@@ -1,17 +1,44 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <title>Jimi API Test</title>
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css">
     <style>
-        body { padding: 20px; }
-        .test-section { margin-bottom: 30px; border: 1px solid #ddd; padding: 20px; border-radius: 5px; }
-        .result { background: #f8f9fa; padding: 15px; border-radius: 5px; margin-top: 10px; }
-        pre { background: #2d2d2d; color: #f8f8f2; padding: 15px; border-radius: 5px; max-height: 400px; overflow-y: auto; }
-        .badge { font-size: 0.9rem; }
+        body {
+            padding: 20px;
+        }
+
+        .test-section {
+            margin-bottom: 30px;
+            border: 1px solid #ddd;
+            padding: 20px;
+            border-radius: 5px;
+        }
+
+        .result {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+
+        pre {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 15px;
+            border-radius: 5px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .badge {
+            font-size: 0.9rem;
+        }
     </style>
 </head>
+
 <body>
     <div class="container">
         <h1>🚗 Jimi IoT API Test Dashboard</h1>
@@ -41,12 +68,18 @@
             <div class="form-group">
                 <label>Select Vehicle IMEI:</label>
                 <select id="locationImei" class="form-control" style="max-width: 400px;">
+                    <option value="865784055081171">KDN 124Z - 865784055081171</option>
+                    <option value="865784055077419">KDN 209Y - 865784055077419</option>
+                    <option value="865784055074523">KDN 331Y - 865784055074523</option>
                     <option value="865784055073301">KDN 345Y - 865784055073301</option>
-                    <option value="865784055073302">KDN 352Y - 865784055073302</option>
+                    <option value="865784055081189">KDN 346Y - 865784055081189</option>
+                    <option value="865784055076759">KDN 347Y - 865784055076759</option>
+                    <option value="865784055073996">KDN 348Y - 865784055073996</option>
+                    <option value="865784055074077">KDN 349Y - 865784055074077</option>
                     <option value="865784055073303">KDN 351Y - 865784055073303</option>
-                    <option value="865784055073304">KDN 349Y - 865784055073304</option>
-                    <option value="865784055073305">KDN 124Z - 865784055073305</option>
+                    <option value="865784055082542">KDN 352Y - 865784055082542</option>
                 </select>
+
             </div>
             <button class="btn btn-info" onclick="getCurrentLocation()">Get Location</button>
             <div id="locationResult" class="result" style="display: none;"></div>
@@ -142,7 +175,8 @@
                     `);
                 }
             }).fail(function() {
-                $('#connectionResult').html('<span class="badge badge-danger">❌ ERROR</span><p>Connection failed</p>');
+                $('#connectionResult').html(
+                    '<span class="badge badge-danger">❌ ERROR</span><p>Connection failed</p>');
             });
         }
 
@@ -150,7 +184,8 @@
             $('#vehiclesResult').html('⏳ Loading...').show();
 
             $.get('/jimi-test/vehicles', function(res) {
-                let html = `<span class="badge badge-success">✅ ${res.count} Vehicles Found</span><pre>${JSON.stringify(res.data, null, 2)}</pre>`;
+                let html =
+                    `<span class="badge badge-success">✅ ${res.count} Vehicles Found</span><pre>${JSON.stringify(res.data, null, 2)}</pre>`;
                 $('#vehiclesResult').html(html);
             }).fail(function() {
                 $('#vehiclesResult').html('<span class="badge badge-danger">❌ ERROR</span>');
@@ -163,7 +198,8 @@
 
             $.get('/jimi-test/location/' + imei, function(res) {
                 if (res.success) {
-                    let html = `<span class="badge badge-success">✅ Location Found</span><pre>${JSON.stringify(res.data, null, 2)}</pre>`;
+                    let html =
+                        `<span class="badge badge-success">✅ Location Found</span><pre>${JSON.stringify(res.data, null, 2)}</pre>`;
                     $('#locationResult').html(html);
                 } else {
                     $('#locationResult').html(`<span class="badge badge-warning">⚠️ ${res.message}</span>`);
@@ -213,7 +249,8 @@
                 start_time: startTime,
                 end_time: endTime
             }, function(res) {
-                let html = `<span class="badge badge-success">✅ ${res.count} GPS Points</span><pre>${JSON.stringify(res.data.slice(0, 10), null, 2)}</pre>`;
+                let html =
+                    `<span class="badge badge-success">✅ ${res.count} GPS Points</span><pre>${JSON.stringify(res.data.slice(0, 10), null, 2)}</pre>`;
                 if (res.count > 10) {
                     html += `<p class="text-muted">Showing first 10 of ${res.count} points</p>`;
                 }
@@ -233,11 +270,12 @@
 
         function formatDateTime(date) {
             return date.getFullYear() + '-' +
-                   String(date.getMonth() + 1).padStart(2, '0') + '-' +
-                   String(date.getDate()).padStart(2, '0') + 'T' +
-                   String(date.getHours()).padStart(2, '0') + ':' +
-                   String(date.getMinutes()).padStart(2, '0');
+                String(date.getMonth() + 1).padStart(2, '0') + '-' +
+                String(date.getDate()).padStart(2, '0') + 'T' +
+                String(date.getHours()).padStart(2, '0') + ':' +
+                String(date.getMinutes()).padStart(2, '0');
         }
     </script>
 </body>
+
 </html>

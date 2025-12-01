@@ -86,9 +86,11 @@
             </div>
 
             <!-- View Trip Modal -->
+            <!-- View Trip Modal -->
             <div class="modal fade" id="viewTripModal" tabindex="-1" data-backdrop="static" role="dialog">
                 <div class="modal-dialog modal-lg" role="document">
                     <div class="modal-content">
+                        <!-- HEADER -->
                         <div class="modal-header bg-primary text-white">
                             <h5 class="modal-title">
                                 <i class="fa fa-map"></i> Trip Details
@@ -96,8 +98,8 @@
                             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
                                 aria-label="Close"></button>
                         </div>
-                        <div class="modal-body">
 
+                        <div class="modal-body">
                             <!-- Trip Summary -->
                             <div class="row mb-3">
                                 <div class="col-md-3">
@@ -128,22 +130,22 @@
                                 </h6>
                                 <div class="row">
                                     <div class="col-md-6">
-                                        <small class="text-muted">Start:</small> <strong><span
-                                                id="viewStartDate">-</span></strong>
+                                        <small class="text-muted">Start:</small>
+                                        <strong><span id="viewStartDate">-</span></strong>
                                     </div>
                                     <div class="col-md-6">
-                                        <small class="text-muted">End:</small> <strong><span
-                                                id="viewEndDate">-</span></strong>
+                                        <small class="text-muted">End:</small>
+                                        <strong><span id="viewEndDate">-</span></strong>
                                     </div>
                                 </div>
                                 <div class="row mt-2">
                                     <div class="col-md-6">
-                                        <small class="text-muted">Duration:</small> <strong><span
-                                                id="viewDuration">-</span></strong>
+                                        <small class="text-muted">Duration:</small>
+                                        <strong><span id="viewDuration">-</span></strong>
                                     </div>
                                     <div class="col-md-6">
-                                        <small class="text-muted">Mileage:</small> <strong><span
-                                                id="viewMileage">-</span></strong>
+                                        <small class="text-muted">Mileage:</small>
+                                        <strong><span id="viewMileage">-</span></strong>
                                     </div>
                                 </div>
                             </div>
@@ -161,7 +163,7 @@
                                 </div>
                             </div>
 
-                            <!-- Speed Stats -->
+                            <!-- Speed & Movement Stats -->
                             <div class="mb-3">
                                 <h6 class="font-weight-bold text-uppercase mb-2"
                                     style="color: #0d47a1; border-bottom: 2px solid #0d47a1; padding-bottom: 4px;">
@@ -183,14 +185,62 @@
                                 </div>
                             </div>
 
+                            <!-- LIVE GPS TRACKING - ONLY SHOWS WHEN IN PROGRESS -->
+                            <!-- LIVE TRACKING SECTION — BEAUTIFUL & PULSING GREEN WHEN ONLINE -->
+                            <div id="liveTrackingSection"
+                                style="display: none; margin-top: 25px; padding: 20px; border-radius: 12px; border-left: 6px solid #4caf50; background: #e8f5e9; box-shadow: 0 4px 12px rgba(0,0,0,0.1); transition: all 0.4s ease;">
+                                <h6 class="font-weight-bold text-uppercase mb-3" style="color: #2e7d32;">
+                                    <i class="fa fa-satellite-dish"></i> Live GPS Tracking
+                                    <span id="liveBadge"
+                                        class="badge badge-success animate__animated animate__pulse animate__infinite ml-2"
+                                        style="font-size: 1rem; padding: 6px 12px;">
+                                        LIVE
+                                    </span>
+                                </h6>
+
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <small class="text-muted">Current Location (Lat, Lng)</small><br>
+                                        <strong style="font-size: 1.2rem; color: #1b5e20;">
+                                            <span id="liveLat">-</span>, <span id="liveLng">-</span>
+                                        </strong>
+                                    </div>
+                                    <div class="col-md-6 text-right">
+                                        <small class="text-muted">Current Speed</small><br>
+                                        <strong id="liveSpeed"
+                                            style="font-size: 2.4rem; color: #2e7d32; font-weight: bold;">
+                                            0 <small style="font-size: 1rem;">km/h</small>
+                                        </strong>
+                                    </div>
+                                </div>
+
+                                <div class="mt-3">
+                                    <small class="text-muted">
+                                        <i class="fa fa-clock"></i> Last Updated:
+                                    </small>
+                                    <span id="liveLastUpdate" style="color: #2e7d32; font-weight: bold;">-</span>
+                                </div>
+
+                                <div class="text-center mt-4">
+                                    <a href="#" id="openGoogleMaps" target="_blank"
+                                        class="btn btn-success btn-lg shadow">
+                                        <i class="fa fa-map-marker-alt"></i> Open in Google Maps
+                                    </a>
+                                </div>
+                            </div>
                         </div>
+
+                        <!-- FOOTER -->
                         <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Close</button>
+                            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">
+                                <i class="fa fa-times"></i> Close
+                            </button>
                         </div>
                     </div>
                 </div>
             </div>
 
+            {{-- New trip --}}
             <div class="modal fade" id="createTripModal" tabindex="-1" data-backdrop="static" role="dialog">
                 <div class="modal-dialog modal-md" role="document">
                     <div class="modal-content">
@@ -415,7 +465,24 @@
 
     @section('js')
         <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
+        <script>
+            // Global IMEI map from Laravel
+            window.VEHICLE_IMEI_MAP = @json($finalMap ?? []);
 
+            // Convert any vehicle format → real IMEI
+            function getRealImei(vehicleNo) {
+                if (!vehicleNo || !window.VEHICLE_IMEI_MAP) return null;
+
+                // Try exact match first
+                if (window.VEHICLE_IMEI_MAP[vehicleNo]) {
+                    return window.VEHICLE_IMEI_MAP[vehicleNo];
+                }
+
+                // Fallback: clean plate
+                const clean = vehicleNo.split(' - ')[0].trim();
+                return window.VEHICLE_IMEI_MAP[clean] || null;
+            }
+        </script>
         <script>
             $(document).ready(function() {
                 let currentFilter = 'all';
@@ -458,11 +525,20 @@
                         {
                             data: null,
                             render: function(data, type, row) {
-                                if (!row.start_date) return '-';
+                                if (!row.start_date)
+                                    return '<small class="text-muted">Not started</small>';
+                                if (!row.end_date)
+                                    return '<small class="text-warning">In Progress...</small>';
+
+                                // Only calculate if both start and end exist
                                 let start = moment(row.start_date);
-                                let end = row.end_date ? moment(row.end_date) : moment();
+                                let end = moment(row.end_date);
                                 let duration = moment.duration(end.diff(start));
-                                return `${Math.floor(duration.asHours())}h ${duration.minutes()}m`;
+
+                                let hours = Math.floor(duration.asHours());
+                                let minutes = duration.minutes();
+
+                                return `<strong>${hours}h ${minutes}m</strong>`;
                             }
                         },
                         {
@@ -471,13 +547,15 @@
                         },
                         {
                             data: 'status',
-                            render: function(data) {
-                                const badges = {
-                                    'Created': 'info',
-                                    'In Progress': 'warning',
-                                    'Completed': 'success'
-                                };
-                                return `<span class="badge badge-${badges[data] || 'secondary'}">${data}</span>`;
+                            render: function(data, type, row) {
+                                // Use exact status from backend (Created / In Progress / Completed)
+                                const badgeClass = {
+                                    'Created': 'badge-info',
+                                    'In Progress': 'badge-warning',
+                                    'Completed': 'badge-success'
+                                } [data] || 'badge-secondary';
+
+                                return `<span class="badge ${badgeClass}">${data}</span>`;
                             }
                         },
                         {
@@ -1065,95 +1143,378 @@
                 });
 
                 // ========================================
-                // VIEW TRIP
+                // VIEW TRIP - WITH START AND STOP BUTTONS
                 // ========================================
-                // ✅ UPDATED: View Trip Modal - Shows Job Types
-
                 $(document).on('click', '.viewTrip', function() {
                     const tripId = $(this).data('trip-id');
 
+                    // Clear any previous live tracking
+                    if (window.liveTrackingInterval) {
+                        clearInterval(window.liveTrackingInterval);
+                        window.liveTrackingInterval = null;
+                    }
+
                     $.get(`/tracker/trips/${tripId}`, function(res) {
-                        if (!res.success) return swal('Error', 'Failed to load trip', 'error');
+                        if (!res.success) {
+                            swal('Error', 'Failed to load trip details', 'error');
+                            return;
+                        }
 
                         const trip = res.data;
 
+                        // === BASIC INFO ===
                         $('#viewTripNo').text(trip.trip_no || 'N/A');
                         $('#viewVehicle').text(trip.vehicle_no || 'N/A');
                         $('#viewDriver').text(trip.driver_name || 'Not assigned');
-                        $('#viewStatus').text(trip.status || 'Unknown');
 
+                        // === TIMELINE ===
                         $('#viewStartDate').text(trip.start_date ? moment(trip.start_date).format(
                             'DD/MM/YY HH:mm') : '-');
                         $('#viewEndDate').text(trip.end_date ? moment(trip.end_date).format(
                             'DD/MM/YY HH:mm') : 'Ongoing');
 
-                        if (trip.start_date) {
-                            const duration = moment.duration(moment(trip.end_date || undefined).diff(
-                                moment(trip.start_date)));
-                            $('#viewDuration').text(
-                                `${Math.floor(duration.asHours())}h ${duration.minutes()}m`);
+                        // Duration
+                        if (trip.start_date && trip.end_date) {
+                            const duration = moment.duration(moment(trip.end_date).diff(moment(trip
+                                .start_date)));
+                            $('#viewDuration').html(
+                                `<strong>${Math.floor(duration.asHours())}h ${duration.minutes()}m</strong>`
+                            );
+                        } else if (trip.start_date && !trip.end_date) {
+                            $('#viewDuration').html(
+                                '<small class="text-warning"><i class="fa fa-clock"></i> Running...</small>'
+                            );
                         } else {
                             $('#viewDuration').text('-');
                         }
 
+                        // Mileage
                         $('#viewMileage').text(trip.total_distance ? parseFloat(trip.total_distance)
                             .toFixed(2) + ' km' : '0.00 km');
-                        $('#viewAvgSpeed').text('N/A');
-                        $('#viewMaxSpeed').text('N/A');
-                        $('#viewGpsPoints').text('N/A');
 
-                        const badge = $('#viewStatusBadge').removeClass(
-                            'badge-info badge-warning badge-success');
-                        if (trip.status === 'Created') badge.addClass('badge-info');
-                        else if (trip.status === 'In Progress') badge.addClass('badge-warning');
-                        else if (trip.status === 'Completed') badge.addClass('badge-success');
+                        // Speed Stats (from DB - final values when completed)
+                        $('#viewAvgSpeed').text(trip.avg_speed ? parseFloat(trip.avg_speed).toFixed(1) :
+                            'N/A');
+                        $('#viewMaxSpeed').text(trip.max_speed ? parseFloat(trip.max_speed).toFixed(0) :
+                            'N/A');
+                        $('#viewGpsPoints').text(trip.gps_points || 'N/A');
 
+                        // Status Badge
+                        const statusMap = {
+                            'Created': {
+                                text: 'Created',
+                                class: 'badge-info'
+                            },
+                            'In Progress': {
+                                text: 'In Progress',
+                                class: 'badge-warning'
+                            },
+                            'Completed': {
+                                text: 'Completed',
+                                class: 'badge-success'
+                            }
+                        };
+                        const status = trip.status || (trip.start_date ? (trip.end_date ? 'Completed' :
+                            'In Progress') : 'Created');
+                        const badge = statusMap[status] || {
+                            text: status,
+                            class: 'badge-secondary'
+                        };
+
+                        $('#viewStatus').text(badge.text);
+                        $('#viewStatusBadge')
+                            .removeClass('badge-info badge-warning badge-success badge-secondary')
+                            .addClass(badge.class);
+
+                        // === JOBS TABLE ===
                         const jobs = Array.isArray(trip.jobs) ? trip.jobs : [];
                         $('#jobsCount').text(jobs.length);
 
                         if (jobs.length === 0) {
                             $('#allocatedJobsContainer').html(
-                                '<div class="text-center text-muted py-3"><i class="fa fa-briefcase fa-2x mb-2"></i><p>No jobs allocated</p></div>'
+                                '<div class="text-center text-muted py-4"><i class="fa fa-briefcase fa-2x mb-2"></i><p>No jobs allocated</p></div>'
                             );
                         } else {
-                            // ✅ UPDATED: Show Job Type column
-                            let html = `
-                <div class="table-responsive">
-                    <table class="table table-sm table-bordered">
-                        <thead class="bg-primary text-white">
-                            <tr>
-                                <th>Job No</th>
-                                <th>Type</th>
-                                <th>Route</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>`;
+                            let html = `<div class="table-responsive"><table class="table table-sm table-bordered">
+                <thead class="bg-primary text-white"><tr>
+                    <th>Job No</th><th>Type</th><th>Route</th><th>Status</th><th class="text-center">Action</th>
+                </tr></thead><tbody>`;
 
                             jobs.forEach(job => {
-                                // Badge color based on job type
                                 const typeBadge = job.job_type === 'Internal Job' ? 'info' :
                                     'primary';
                                 const statusBadge = job.status === 'Completed' ? 'success' :
                                     job.status === 'In Progress' ? 'warning' : 'secondary';
 
+                                let actionBtn = '-';
+                                if (job.status === 'Allocated') {
+                                    actionBtn = `<button class="btn btn-sm btn-success startJobBtn"
+                                   data-job-id="${job.job_id}" data-job-no="${job.job_number}"
+                                   data-trip-id="${tripId}">
+                                   <i class="fa fa-play"></i> Start
+                                 </button>`;
+                                } else if (job.status === 'In Progress') {
+                                    actionBtn = `<button class="btn btn-sm btn-danger stopJobBtn"
+                                   data-job-id="${job.job_id}" data-job-no="${job.job_number}"
+                                   data-trip-id="${tripId}">
+                                   <i class="fa fa-stop"></i> Stop
+                                 </button>`;
+                                }
+
                                 html += `<tr>
-                    <td><strong>${job.job_number}</strong></td>
+                    <td><strong>${job.job_number || 'Internal'}</strong></td>
                     <td><span class="badge badge-${typeBadge}">${job.job_type}</span></td>
                     <td><small>${job.pickup_location} → ${job.delivery_location}</small></td>
                     <td><span class="badge badge-${statusBadge}">${job.status}</span></td>
+                    <td class="text-center">${actionBtn}</td>
                 </tr>`;
                             });
-
-                            html += `
-                        </tbody>
-                    </table>
-                </div>`;
-
+                            html += '</tbody></table></div>';
                             $('#allocatedJobsContainer').html(html);
                         }
 
+                        // === LIVE TRACKING: NOW WORKS WITH CORRECT IMEI (even in Created state!) ===
+                        const vehicleNo = trip.vehicle_no || trip.vehicle_imei || 'Unknown';
+                        const realImei = getRealImei(vehicleNo);
+
+                        if (realImei) {
+                            $('#liveTrackingSection').show();
+                            console.log('Starting live tracking for IMEI:', realImei);
+
+                            if (window.liveTrackingInterval) clearInterval(window.liveTrackingInterval);
+
+                            const updateLiveData = () => {
+                                $.get(`/jimi-test/location/${realImei}`, function(res) {
+                                    console.log('GPS Update:', res);
+
+                                    if (res.success && res.data && res.data.lat && res.data
+                                        .lng) {
+                                        const l = res.data;
+
+                                        // ONLINE — GREEN & PULSING
+                                        $('#liveTrackingSection')
+                                            .css({
+                                                'background': '#e8f5e9',
+                                                'border-left-color': '#4caf50'
+                                            });
+
+                                        $('#liveBadge')
+                                            .removeClass('badge-danger badge-warning')
+                                            .addClass(
+                                                'badge-success animate__animated animate__pulse animate__infinite'
+                                                );
+
+                                        $('#liveLat').text(parseFloat(l.lat).toFixed(6));
+                                        $('#liveLng').text(parseFloat(l.lng).toFixed(6));
+                                        $('#liveSpeed').html(`
+                <strong style="color:#2e7d32; font-size:2.8rem;">
+                    ${l.speed || 0} <small style="font-size:1.2rem;">km/h</small>
+                </strong>
+            `);
+                                        $('#liveLastUpdate').html(`
+                <span style="color:#2e7d32; font-weight:bold;">
+                    Updated: ${moment().format('DD/MM HH:mm:ss')}
+                </span>
+            `);
+                                        $('#openGoogleMaps')
+                                            .attr('href',
+                                                `https://www.google.com/maps?q=${l.lat},${l.lng}`
+                                                )
+                                            .removeClass('btn-danger btn-warning')
+                                            .addClass('btn-success')
+                                            .html(
+                                                '<i class="fa fa-map-marker-alt"></i> Open in Google Maps'
+                                                )
+                                            .show();
+
+                                    } else {
+                                        // OFFLINE — RED
+                                        $('#liveTrackingSection')
+                                            .css({
+                                                'background': '#ffebee',
+                                                'border-left-color': '#d32f2f'
+                                            });
+
+                                        $('#liveBadge')
+                                            .removeClass(
+                                                'badge-success animate__pulse animate__infinite'
+                                                )
+                                            .addClass('badge-danger');
+
+                                        $('#liveSpeed').html(
+                                            '<strong style="color:#c62828; font-size:2rem;">Offline</strong>'
+                                            );
+                                        $('#liveLastUpdate').html(
+                                            '<span style="color:#c62828;">No signal</span>'
+                                            );
+                                        $('#openGoogleMaps').hide();
+                                    }
+                                }).fail(() => {
+                                    // ERROR — ORANGE
+                                    $('#liveTrackingSection')
+                                        .css({
+                                            'background': '#fff3e0',
+                                            'border-left-color': '#ff9800'
+                                        });
+
+                                    $('#liveBadge')
+                                        .removeClass(
+                                            'badge-success animate__pulse animate__infinite'
+                                            )
+                                        .addClass('badge-warning');
+
+                                    $('#liveSpeed').html(
+                                        '<strong style="color:#e65100;">Error</strong>');
+                                    $('#liveLastUpdate').html(
+                                        '<span style="color:#e65100;">Connection failed</span>'
+                                        );
+                                    $('#openGoogleMaps').hide();
+                                });
+                            };
+
+                            updateLiveData();
+                            window.liveTrackingInterval = setInterval(updateLiveData, 15000);
+                        } else {
+                            $('#liveTrackingSection').hide();
+                            $('#liveSpeed').text('No IMEI');
+                            $('#liveLastUpdate').text('Vehicle not mapped');
+                            $('#openGoogleMaps').hide();
+                        }
+
+                        // === SHOW MODAL ===
                         $('#viewTripModal').modal('show');
+
+                    }).fail(function() {
+                        swal('Error', 'Failed to connect to server', 'error');
+                    });
+                });
+
+                // Stop live tracking when modal is closed
+                $('#viewTripModal').on('hidden.bs.modal', function() {
+                    if (window.liveTrackingInterval) {
+                        clearInterval(window.liveTrackingInterval);
+                        window.liveTrackingInterval = null;
+                    }
+                    $('#liveTrackingSection').hide();
+                });
+
+                // ========================================
+                // START JOB BUTTON
+                // ========================================
+                $(document).on('click', '.startJobBtn', function() {
+                    const jobId = $(this).data('job-id');
+                    const jobNo = $(this).data('job-no');
+                    const tripId = $(this).data('trip-id');
+
+                    if (!confirm(`Start job ${jobNo}?\n\nLive GPS tracking will begin immediately.`)) {
+                        return;
+                    }
+
+                    const $btn = $(this);
+                    $btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Starting...');
+
+                    $.ajax({
+                        url: `/tracker/trips/${tripId}/jobs/${jobId}/start`,
+                        type: 'POST',
+                        headers: {
+                            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                        },
+                        success: function(res) {
+                            // EVEN IF SP returns nothing — we FORCE live tracking ON
+                            alert(`Job start requested!\nLive GPS is now active.`);
+
+                            // FORCE refresh modal to show live section
+                            $('#viewTripModal').modal('hide');
+                            setTimeout(() => {
+                                $(`.viewTrip[data-trip-id="${tripId}"]`).trigger('click');
+                            }, 500);
+
+                            tripsTable.ajax.reload(null, false);
+
+                            // OPTIONAL: Force live tracking even if status still "Created"
+                            // This runs immediately — no waiting for DB
+                            forceStartLiveTracking(tripId);
+                        },
+                        error: function() {
+                            alert('Request sent — tracking may still activate');
+                            $btn.prop('disabled', false).html('<i class="fa fa-play"></i> Start');
+                            forceStartLiveTracking(tripId);
+                        }
+                    });
+                });
+
+                // NEW FUNCTION: Force live tracking regardless of DB status
+                function forceStartLiveTracking(tripId) {
+                    $.get(`/tracker/trips/${tripId}`, function(res) {
+                        if (!res.success || !res.data.vehicle_imei) return;
+
+                        const imei = res.data.vehicle_imei;
+
+                        // Force show live section
+                        $('#liveTrackingSection').show();
+
+                        if (window.liveTrackingInterval) clearInterval(window.liveTrackingInterval);
+
+                        const updateLive = () => {
+                            $.get(`/jimi-test/location/${imei}`, function(locRes) {
+                                if (locRes.success && locRes.location) {
+                                    const l = locRes.location;
+                                    $('#liveLat').text((l.lat || 0).toFixed(6));
+                                    $('#liveLng').text((l.lng || 0).toFixed(6));
+                                    $('#liveSpeed').text((l.speed || 0) + ' km/h');
+                                    $('#liveLastUpdate').text(moment().format('DD/MM HH:mm:ss'));
+                                    $('#openGoogleMaps').attr('href',
+                                            `https://www.google.com/maps?q=${l.lat},${l.lng}`)
+                                        .show();
+                                }
+                            });
+                        };
+
+                        updateLive();
+                        window.liveTrackingInterval = setInterval(updateLive, 15000);
+                    });
+                }
+
+                // ========================================
+                // STOP JOB BUTTON
+                // ========================================
+                $(document).on('click', '.stopJobBtn', function() {
+                    const jobId = $(this).data('job-id');
+                    const jobNo = $(this).data('job-no');
+                    const tripId = $(this).data('trip-id');
+
+                    if (!confirm(`Complete job ${jobNo}?\n\nGPS mileage will be fetched and saved.`)) return;
+
+                    const $btn = $(this);
+                    $btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Completing...');
+
+                    $.ajax({
+                        url: `/tracker/trips/${tripId}/jobs/${jobId}/complete`, // or /end
+                        type: 'POST',
+                        headers: {
+                            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                        },
+                        success: function(res) {
+                            if (res.success) {
+                                alert(`Job completed!\nDistance: ${res.total_distance || '0'} km`);
+                                $('#viewTripModal').modal('hide');
+                                setTimeout(() => {
+                                    $(`.viewTrip[data-trip-id="${tripId}"]`).trigger(
+                                        'click');
+                                }, 400);
+                                if (typeof tripsTable !== 'undefined') {
+                                    tripsTable.ajax.reload(null, false);
+                                }
+                            } else {
+                                alert('Failed: ' + (res.message || 'Unknown error'));
+                                $btn.prop('disabled', false).html(
+                                    '<i class="fa fa-stop"></i> Stop');
+                            }
+                        },
+                        error: function() {
+                            alert('Server error');
+                            $btn.prop('disabled', false).html('<i class="fa fa-stop"></i> Stop');
+                        }
                     });
                 });
 
