@@ -12,6 +12,35 @@
         padding: 20px;
     }
 
+    /* Back Button Styles */
+    .back-to-dashboard {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 20px;
+        background: #6c757d;
+        color: white;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+
+    .back-to-dashboard:hover {
+        background: #5a6268;
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(108, 117, 125, 0.3);
+        color: white;
+        text-decoration: none;
+    }
+
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+
     .user-form-panel {
         background: rgba(255, 255, 255, 0.95);
         backdrop-filter: blur(10px);
@@ -109,7 +138,7 @@
     /* Module Cards Grid */
     .modules-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmin(280px, 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
         gap: 20px;
         margin-bottom: 20px;
     }
@@ -450,57 +479,6 @@
         color: var(--text);
     }
 
-    /* Location Selector Styles */
-    .location-selector-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-        gap: 15px;
-        padding: 10px;
-        max-height: 400px;
-        overflow-y: auto;
-    }
-
-    .location-selector-card {
-        background: white;
-        border: 2px solid #e1e8ed;
-        border-radius: 10px;
-        padding: 20px;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        text-align: center;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 10px;
-        min-height: 100px;
-        justify-content: center;
-    }
-
-    .location-selector-card:hover {
-        border-color: var(--primary-color);
-        background: #f8faff;
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(11, 102, 255, 0.15);
-    }
-
-    .location-selector-card i {
-        font-size: 2em;
-        color: var(--primary-color);
-        margin-bottom: 5px;
-    }
-
-    .location-selector-card .location-name {
-        font-weight: 600;
-        font-size: 0.95em;
-        color: var(--text);
-    }
-
-    .location-selector-card .location-code {
-        font-size: 0.85em;
-        color: var(--muted);
-        font-weight: 500;
-    }
-
     .action-buttons {
         display: flex;
         gap: 15px;
@@ -606,9 +584,15 @@
             
             <!-- Basic Information Section -->
             <div class="form-section">
-                <div class="section-title">
-                    <i class="fas fa-user-plus"></i>
-                    Create User Data
+                <div class="page-header">
+                    <div class="section-title" style="margin-bottom: 0;">
+                        <i class="fas fa-user-plus"></i>
+                        Create User Data
+                    </div>
+                    <a href="{{ route('azure.dashboard.index') }}" class="back-to-dashboard">
+                        <i class="fas fa-arrow-left"></i>
+                        Back to Dashboard
+                    </a>
                 </div>
 
                 <div class="info-note">
@@ -793,9 +777,8 @@
     let cardIdCounter = 0;
     let currentModalCardId = null;
     let originalCardState = null;
-    let selectedModuleForLocation = null;
-    let scmFunctionsCache = null; // Cache for SCM functions
-    let rolesCache = {}; // Cache for roles by application code
+    let scmFunctionsCache = null;
+    let rolesCache = {};
 
     // Helper function to escape HTML
     function escapeHtml(text) {
@@ -814,12 +797,10 @@
         return JSON.parse(JSON.stringify(obj));
     }
 
-    // Check if module is SCM (OPS or OPSUAT) - check by module name since ApplicationId is GUID
     function isSCMModule(applicationId) {
         return applicationId === 'OPS' || applicationId === '39CDA123-65A3-46C8-B7FD-7380979DD92B';
     }
     
-    // Helper to get the application code for stored procedure
     function getApplicationCodeForSP(module) {
         const moduleNameLower = module.name.toLowerCase();
         
@@ -838,7 +819,6 @@
         }
     }
 
-    // Fetch functions for SCM modules
     async function fetchSCMFunctions() {
         if (scmFunctionsCache) {
             console.log('Returning cached SCM functions');
@@ -871,7 +851,6 @@
         }
     }
 
-    // Fetch roles based on application code
     async function fetchRolesByApplicationCode(applicationCode, filter = null) {
         const cacheKey = `${applicationCode}_${filter || 'all'}`;
         
@@ -913,9 +892,7 @@
             console.log('First item:', result.data?.[0]);
             
             if (result.success && result.data && result.data.length > 0) {
-                // FILTER OUT ERROR MESSAGES FROM STORED PROCEDURE
                 const validRoles = result.data.filter(role => {
-                    // Check if any value contains error messages
                     const hasError = Object.values(role).some(val => 
                         typeof val === 'string' && (
                             val.toLowerCase().includes('failed') || 
@@ -923,7 +900,7 @@
                             val.toLowerCase().includes('error')
                         )
                     );
-                    return !hasError; // Only keep valid roles
+                    return !hasError;
                 });
                 
                 console.log('✅ Valid roles after filtering:', validRoles.length, validRoles);
@@ -1037,7 +1014,6 @@
             return;
         }
         
-        // Get the module details
         const module = modulesData.find(m => m.id == card.module_id);
         console.log('Found module:', module);
         
@@ -1046,7 +1022,6 @@
             return;
         }
         
-        // Get the application code for stored procedures
         const applicationCode = getApplicationCodeForSP(module);
         console.log('Application Code:', applicationCode);
         
@@ -1057,28 +1032,24 @@
         console.log('Cache key:', cacheKey);
         console.log('Roles cached?:', !!rolesCache[cacheKey]);
         
-        // Check if we need to load roles for this application
         if (!rolesCache[cacheKey]) {
             container.innerHTML = '<div class="empty-assignments"><i class="fas fa-spinner fa-spin"></i><p>Loading roles for ' + escapeHtml(applicationCode) + '...</p></div>';
             fetchRolesByApplicationCode(applicationCode).then(() => renderModalAssignments());
             return;
         }
         
-        // If SCM module, also check if functions are loaded
         if (isSCM && !scmFunctionsCache) {
             container.innerHTML = '<div class="empty-assignments"><i class="fas fa-spinner fa-spin"></i><p>Loading SCM functions...</p></div>';
             fetchSCMFunctions().then(() => renderModalAssignments());
             return;
         }
         
-        // Get the data
         const availableRoles = rolesCache[cacheKey] || [];
         const availableFunctions = isSCM ? (scmFunctionsCache || []) : [];
         
         console.log('Available Roles:', availableRoles.length, availableRoles);
         console.log('Available Functions:', availableFunctions.length, availableFunctions);
         
-        // Check if we have roles
         if (availableRoles.length === 0) {
             console.warn('⚠️ No roles found for application code:', applicationCode);
         }
@@ -1117,7 +1088,7 @@
                             <div class="checkboxes-grid">
                                 ${locationsData.map(l => `
                                     <div class="checkbox-option ${isAllLocations ? 'disabled' : ''}">
-                                        <input type="checkbox" id="${a.id}_loc_${l.code.trim()}" class="location-checkbox" value="${l.code.trim()}" ${a.location === l.code.trim() || isAllLocations ? 'checked' : ''} ${isAllLocations ? 'disabled' : ''} onchange="handleLocationCheckboxChange('${a.id}', this)">
+                                        <input type="checkbox" id="${a.id}_loc_${l.code.trim()}" class="location-checkbox" value="${l.code.trim()}" ${a.locations && a.locations.includes(l.code.trim()) ? 'checked' : ''} ${isAllLocations ? 'disabled' : ''} onchange="handleLocationCheckboxChange('${a.id}')">
                                         <label for="${a.id}_loc_${l.code.trim()}">${escapeHtml(l.name)}</label>
                                     </div>
                                 `).join('')}
@@ -1141,7 +1112,7 @@
                             <div class="checkboxes-grid">
                                 ${availableFunctions.length > 0 ? availableFunctions.map(f => `
                                     <div class="checkbox-option ${isAllFunctions ? 'disabled' : ''}">
-                                        <input type="checkbox" id="${a.id}_func_${f.ID || f.Id || f.id}" class="function-checkbox" value="${f.ID || f.Id || f.id}" ${a.function_id == (f.ID || f.Id || f.id) || isAllFunctions ? 'checked' : ''} ${isAllFunctions ? 'disabled' : ''} onchange="handleFunctionCheckboxChange('${a.id}', this)">
+                                        <input type="checkbox" id="${a.id}_func_${f.ID || f.Id || f.id}" class="function-checkbox" value="${f.ID || f.Id || f.id}" ${a.functions && a.functions.includes(String(f.ID || f.Id || f.id)) ? 'checked' : ''} ${isAllFunctions ? 'disabled' : ''} onchange="handleFunctionCheckboxChange('${a.id}')">
                                         <label for="${a.id}_func_${f.ID || f.Id || f.id}">${escapeHtml(f.Name || f.name)}</label>
                                     </div>
                                 `).join('') : '<p style="padding: 10px; color: #666;">No functions available</p>'}
@@ -1165,7 +1136,7 @@
                             <div class="checkboxes-grid">
                                 ${availableRoles.length > 0 ? availableRoles.map(r => `
                                     <div class="checkbox-option ${isAllRoles ? 'disabled' : ''}">
-                                        <input type="checkbox" id="${a.id}_role_${r.RoleId || r.Id || r.id}" class="role-checkbox" value="${r.RoleId || r.Id || r.id}" ${a.role_id == (r.RoleId || r.Id || r.id) || isAllRoles ? 'checked' : ''} ${isAllRoles ? 'disabled' : ''} onchange="handleRoleCheckboxChange('${a.id}', this)">
+                                        <input type="checkbox" id="${a.id}_role_${r.RoleId || r.Id || r.id}" class="role-checkbox" value="${r.RoleId || r.Id || r.id}" ${a.roles && a.roles.includes(String(r.RoleId || r.Id || r.id)) ? 'checked' : ''} ${isAllRoles ? 'disabled' : ''} onchange="handleRoleCheckboxChange('${a.id}')">
                                         <label for="${a.id}_role_${r.RoleId || r.Id || r.id}">${escapeHtml(r.Role || r.Name || r.name)}</label>
                                     </div>
                                 `).join('') : '<p style="padding: 10px; color: #666;">No roles available for ' + escapeHtml(applicationCode) + '</p>'}
@@ -1190,11 +1161,17 @@
         if (allRadio && allRadio.checked) {
             checkboxes.forEach(cb => { cb.checked = true; cb.disabled = true; });
             checkboxOptions.forEach(opt => opt.classList.add('disabled'));
-            if (assignment) assignment.location = 'ALL';
+            if (assignment) {
+                assignment.location = 'ALL';
+                assignment.locations = ['ALL'];
+            }
         } else {
             checkboxes.forEach(cb => { cb.disabled = false; cb.checked = false; });
             checkboxOptions.forEach(opt => opt.classList.remove('disabled'));
-            if (assignment) assignment.location = '';
+            if (assignment) {
+                assignment.location = '';
+                assignment.locations = [];
+            }
         }
     };
 
@@ -1209,11 +1186,17 @@
         if (allRadio && allRadio.checked) {
             checkboxes.forEach(cb => { cb.checked = true; cb.disabled = true; });
             checkboxOptions.forEach(opt => opt.classList.add('disabled'));
-            if (assignment) assignment.function_id = 'ALL';
+            if (assignment) {
+                assignment.function_id = 'ALL';
+                assignment.functions = ['ALL'];
+            }
         } else {
             checkboxes.forEach(cb => { cb.disabled = false; cb.checked = false; });
             checkboxOptions.forEach(opt => opt.classList.remove('disabled'));
-            if (assignment) assignment.function_id = '';
+            if (assignment) {
+                assignment.function_id = '';
+                assignment.functions = [];
+            }
         }
     };
 
@@ -1228,33 +1211,56 @@
         if (allRadio && allRadio.checked) {
             checkboxes.forEach(cb => { cb.checked = true; cb.disabled = true; });
             checkboxOptions.forEach(opt => opt.classList.add('disabled'));
-            if (assignment) assignment.role_id = 'ALL';
+            if (assignment) {
+                assignment.role_id = 'ALL';
+                assignment.roles = ['ALL'];
+            }
         } else {
             checkboxes.forEach(cb => { cb.disabled = false; cb.checked = false; });
             checkboxOptions.forEach(opt => opt.classList.remove('disabled'));
-            if (assignment) assignment.role_id = '';
+            if (assignment) {
+                assignment.role_id = '';
+                assignment.roles = [];
+            }
         }
     };
 
-    window.handleLocationCheckboxChange = (assignId, checkbox) => {
+    window.handleLocationCheckboxChange = (assignId) => {
+        const container = document.getElementById(assignId);
+        if (!container) return;
+        const checkboxes = container.querySelectorAll('.location-checkbox:checked:not(:disabled)');
         const card = moduleCards[currentModalCardId];
         const assignment = card.assignments.find(a => a.id === assignId);
-        if (assignment) assignment.location = checkbox.value;
+        if (assignment) {
+            assignment.locations = Array.from(checkboxes).map(cb => cb.value);
+            assignment.location = assignment.locations.length > 0 ? assignment.locations[0] : '';
+        }
     };
 
-    window.handleFunctionCheckboxChange = (assignId, checkbox) => {
+    window.handleFunctionCheckboxChange = (assignId) => {
+        const container = document.getElementById(assignId);
+        if (!container) return;
+        const checkboxes = container.querySelectorAll('.function-checkbox:checked:not(:disabled)');
         const card = moduleCards[currentModalCardId];
         const assignment = card.assignments.find(a => a.id === assignId);
-        if (assignment) assignment.function_id = checkbox.value;
+        if (assignment) {
+            assignment.functions = Array.from(checkboxes).map(cb => cb.value);
+            assignment.function_id = assignment.functions.length > 0 ? assignment.functions[0] : '';
+        }
     };
 
-    window.handleRoleCheckboxChange = (assignId, checkbox) => {
+    window.handleRoleCheckboxChange = (assignId) => {
+        const container = document.getElementById(assignId);
+        if (!container) return;
+        const checkboxes = container.querySelectorAll('.role-checkbox:checked:not(:disabled)');
         const card = moduleCards[currentModalCardId];
         const assignment = card.assignments.find(a => a.id === assignId);
-        if (assignment) assignment.role_id = checkbox.value;
+        if (assignment) {
+            assignment.roles = Array.from(checkboxes).map(cb => cb.value);
+            assignment.role_id = assignment.roles.length > 0 ? assignment.roles[0] : '';
+        }
     };
 
-    // Step 1: Show module selector
     function addNewModule() {
         const moduleSelectorHTML = `
             <div class="module-selector-grid">
@@ -1274,13 +1280,11 @@
             cancelButtonText: 'Close',
             width: '700px',
             didOpen: () => {
-                // Attach click handlers after modal opens
                 document.querySelectorAll('.module-selector-card').forEach(card => {
                     card.addEventListener('click', function() {
-                        // Don't use parseInt - module IDs are GUIDs (strings)
                         const moduleId = this.getAttribute('data-module-id');
                         console.log('Module clicked, ID:', moduleId);
-                        selectModule(moduleId);
+                        selectModuleDirectly(moduleId);
                     });
                 });
             }
@@ -1288,72 +1292,17 @@
     }
     window.addNewModule = addNewModule;
 
-    // Step 2: After module selection, show location selector
-    function selectModule(moduleId) {
-        console.log('=== SELECT MODULE ===');
+    function selectModuleDirectly(moduleId) {
+        console.log('=== SELECT MODULE DIRECTLY ===');
         console.log('Module ID:', moduleId);
-        console.log('Module ID type:', typeof moduleId);
-        
-        Swal.close();
-        selectedModuleForLocation = moduleId;
-        
-        const locationSelectorHTML = `
-            <div class="location-selector-grid">
-                ${locationsData.map(l => `
-                    <div class="location-selector-card" data-location-code="${escapeHtml(l.code.trim())}">
-                        <i class="fas fa-map-marker-alt"></i>
-                        <div class="location-name">${escapeHtml(l.name)}</div>
-                        <div class="location-code">${escapeHtml(l.code.trim())}</div>
-                    </div>
-                `).join('')}
-            </div>
-        `;
-        
-        Swal.fire({
-            title: 'Select Location',
-            html: locationSelectorHTML,
-            showCancelButton: true,
-            showConfirmButton: false,
-            cancelButtonText: 'Back',
-            width: '700px',
-            didOpen: () => {
-                // Attach click handlers after modal opens
-                document.querySelectorAll('.location-selector-card').forEach(card => {
-                    card.addEventListener('click', function() {
-                        const locationCode = this.getAttribute('data-location-code');
-                        console.log('Location clicked, code:', locationCode);
-                        selectLocation(locationCode);
-                    });
-                });
-            }
-        }).then((result) => {
-            // If user clicks Back, return to module selection
-            if (result.dismiss === Swal.DismissReason.cancel) {
-                selectedModuleForLocation = null;
-                addNewModule();
-            }
-        });
-    }
-    window.selectModule = selectModule;
-
-    // Step 3: After location selection, create the module card and open modal
-    function selectLocation(locationCode) {
-        console.log('=== SELECT LOCATION ===');
-        console.log('Location code:', locationCode);
-        console.log('Selected module ID:', selectedModuleForLocation);
         
         Swal.close();
         
-        if (!selectedModuleForLocation) {
-            console.error('No module selected!');
-            return;
-        }
-        
-        const module = modulesData.find(m => m.id == selectedModuleForLocation);
+        const module = modulesData.find(m => m.id == moduleId);
         console.log('Found module:', module);
         
         if (!module) {
-            console.error('Module not found for ID:', selectedModuleForLocation);
+            console.error('Module not found for ID:', moduleId);
             showAlert('error', 'Error', 'Module not found');
             return;
         }
@@ -1367,31 +1316,32 @@
         console.log('Creating card:', {
             cardId,
             assignId,
-            moduleId: selectedModuleForLocation,
+            moduleId: moduleId,
             moduleName: module.name,
             applicationCode,
-            isSCM,
-            locationCode
+            isSCM
         });
         
         moduleCards[cardId] = {
             id: cardId, 
             isNew: true, 
-            module_id: selectedModuleForLocation, 
+            module_id: moduleId, 
             module_name: module.name,
             assignments: [{
                 id: assignId, 
-                location: locationCode, 
+                location: '',
+                locations: [],
                 role_id: '',
-                function_id: isSCM ? '' : undefined
+                roles: [],
+                function_id: isSCM ? '' : undefined,
+                functions: isSCM ? [] : undefined
             }]
         };
         
-        selectedModuleForLocation = null;
         renderAllCards();
         openModal(cardId);
     }
-    window.selectLocation = selectLocation;
+    window.selectModuleDirectly = selectModuleDirectly;
 
     window.deleteAssignment = (assignId) => {
         Swal.fire({
@@ -1423,21 +1373,36 @@
         Object.values(moduleCards).forEach(card => {
             if (card.module_id && card.assignments) {
                 card.assignments.forEach(a => {
-                    if (a.location && a.role_id) {
-                        container.innerHTML += `
-                            <input type="hidden" name="modules[${index}][module_id]" value="${card.module_id}">
-                            <input type="hidden" name="modules[${index}][location]" value="${a.location}">
-                            <input type="hidden" name="modules[${index}][role_id]" value="${a.role_id}">
-                        `;
+                    const hasLocations = (a.locations && a.locations.length > 0) || a.location === 'ALL';
+                    const hasRoles = (a.roles && a.roles.length > 0) || a.role_id === 'ALL';
+                    
+                    if (hasLocations && hasRoles) {
+                        const locations = a.location === 'ALL' ? ['ALL'] : (a.locations || [a.location]);
+                        const roles = a.role_id === 'ALL' ? ['ALL'] : (a.roles || [a.role_id]);
+                        const functions = a.function_id === 'ALL' ? ['ALL'] : (a.functions || [a.function_id]);
                         
-                        // Add function_id only if it exists (for SCM modules)
-                        if (a.function_id !== undefined && a.function_id !== '') {
-                            container.innerHTML += `
-                                <input type="hidden" name="modules[${index}][function_id]" value="${a.function_id}">
-                            `;
-                        }
-                        
-                        index++;
+                        locations.forEach(loc => {
+                            roles.forEach(role => {
+                                if (functions && functions.length > 0 && a.function_id !== undefined) {
+                                    functions.forEach(func => {
+                                        container.innerHTML += `
+                                            <input type="hidden" name="modules[${index}][module_id]" value="${card.module_id}">
+                                            <input type="hidden" name="modules[${index}][location]" value="${loc}">
+                                            <input type="hidden" name="modules[${index}][role_id]" value="${role}">
+                                            <input type="hidden" name="modules[${index}][function_id]" value="${func}">
+                                        `;
+                                        index++;
+                                    });
+                                } else {
+                                    container.innerHTML += `
+                                        <input type="hidden" name="modules[${index}][module_id]" value="${card.module_id}">
+                                        <input type="hidden" name="modules[${index}][location]" value="${loc}">
+                                        <input type="hidden" name="modules[${index}][role_id]" value="${role}">
+                                    `;
+                                    index++;
+                                }
+                            });
+                        });
                     }
                 });
             }
@@ -1454,7 +1419,6 @@
         );
     }
 
-    // Form submission
     document.getElementById('userForm').addEventListener('submit', function(e) {
         e.preventDefault();
         
@@ -1524,7 +1488,6 @@
         return isValid;
     }
 
-    // Real-time validation
     document.getElementById('email').addEventListener('blur', function() {
         const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (this.value.trim() && !emailPattern.test(this.value)) {
@@ -1550,7 +1513,6 @@
         if (e.key === 'Escape' && currentModalCardId) cancelModal();
     });
 
-    // Helper functions for alerts and notifications
     function showAlert(type, title, message) {
         if (typeof Swal !== 'undefined') {
             Swal.fire({
@@ -1602,9 +1564,8 @@
         }
     }
 
-    // Initialize on page load
     document.addEventListener('DOMContentLoaded', function() {
-        renderAllCards(); // Render initial empty state
+        renderAllCards();
     });
 </script>
 @endpush
