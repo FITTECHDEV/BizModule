@@ -150,12 +150,17 @@
                                 </div>
                             </div>
 
-                            <!-- Allocated Jobs -->
                             <div class="mb-3">
-                                <h6 class="font-weight-bold text-uppercase mb-2"
-                                    style="color: #0d47a1; border-bottom: 2px solid #0d47a1; padding-bottom: 4px;">
-                                    Allocated Jobs (<span id="jobsCount">0</span>)
-                                </h6>
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <h6 class="font-weight-bold text-uppercase mb-0"
+                                        style="color: #0d47a1; border-bottom: 2px solid #0d47a1; padding-bottom: 4px; flex-grow: 1;">
+                                        Allocated Jobs (<span id="jobsCount">0</span>)
+                                    </h6>
+                                    <!-- ✅ NEW BUTTON -->
+                                    <button type="button" class="btn btn-info btn-sm ml-2" id="addManualJobBtn">
+                                        <i class="fa fa-calendar-plus"></i> Add Historical Job
+                                    </button>
+                                </div>
                                 <div id="allocatedJobsContainer">
                                     <div class="text-center text-muted py-3">
                                         <i class="fa fa-spinner fa-spin"></i> Loading...
@@ -460,6 +465,154 @@
                 </div>
 
             </div>
+            <!-- ✅ NEW MODAL STARTS HERE -->
+            <div class="modal fade" id="manualJobModal" tabindex="-1" data-backdrop="static" role="dialog">
+                <div class="modal-dialog modal-lg" role="document">
+                    <div class="modal-content">
+                        <div class="modal-header bg-info text-white">
+                            <h5 class="modal-title">
+                                <i class="fa fa-calendar-plus"></i> Add Historical Job Entry
+                            </h5>
+                            <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
+                        </div>
+                        <form id="manualJobForm">
+                            <div class="modal-body">
+                                <input type="hidden" id="manualJobTripId" name="trip_id">
+
+                                <!-- Trip Info Display -->
+                                <div class="alert alert-info mb-3" style="padding: 10px;">
+                                    <div class="row">
+                                        <div class="col-6">
+                                            <small><strong>Trip:</strong> <span id="manualJobTripNo">-</span></small><br>
+                                            <small><strong>Vehicle:</strong> <span id="manualJobVehicle">-</span></small>
+                                        </div>
+                                        <div class="col-6">
+                                            <small><strong>Status:</strong> <span id="manualJobStatus">-</span></small><br>
+                                            <small><strong>Driver:</strong> <span id="manualJobDriver">-</span></small>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="alert alert-warning">
+                                    <i class="fa fa-exclamation-triangle"></i> <strong>Historical Entry:</strong>
+                                    Use this to record jobs that have already been completed. GPS data will be fetched for
+                                    the specified date range.
+                                </div>
+
+                                <!-- Job Type -->
+                                <div class="form-group">
+                                    <label>Job Type <span class="text-danger">*</span></label>
+                                    <select class="form-control" id="manualJobType" name="job_type" required>
+                                        <option value="">Select Job Type</option>
+                                        <option value="internal">Internal Job (Pickup goods)</option>
+                                        <option value="customer_delivery">Customer Delivery</option>
+                                    </select>
+                                </div>
+
+                                <!-- Date & Time Section -->
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label>Start Date & Time <span class="text-danger">*</span></label>
+                                            <input type="datetime-local" class="form-control" id="manualStartDate"
+                                                name="start_date" required>
+                                            <small class="text-muted">When the job started</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label>End Date & Time <span class="text-danger">*</span></label>
+                                            <input type="datetime-local" class="form-control" id="manualEndDate"
+                                                name="end_date" required>
+                                            <small class="text-muted">When the job was completed</small>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Internal Job Fields -->
+                                <div id="manualInternalFields" style="display: none;">
+                                    <div class="alert alert-success mb-3" style="padding: 10px;">
+                                        <i class="fa fa-truck"></i> <strong>Internal Job</strong> - Pickup details
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="form-group">
+                                                <label>Start Location <span class="text-danger">*</span></label>
+                                                <select class="form-control" id="manualStartLocation"
+                                                    name="start_location">
+                                                    <option value="">Select Start Location</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="form-group">
+                                                <label>End Location <span class="text-danger">*</span></label>
+                                                <select class="form-control" id="manualEndLocation" name="end_location">
+                                                    <option value="">Select End Location</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label>Job Description</label>
+                                        <textarea class="form-control" id="manualDescription" name="description" rows="2"
+                                            placeholder="E.g., Picked up cargo from warehouse"></textarea>
+                                    </div>
+                                </div>
+
+                                <!-- Customer Delivery Fields -->
+                                <div id="manualCustomerFields" style="display: none;">
+                                    <div class="alert alert-primary mb-3" style="padding: 10px;">
+                                        <i class="fa fa-gift"></i> <strong>Customer Delivery</strong> - Select job
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label>Select Customer Job <span class="text-danger">*</span></label>
+                                        <select class="form-control" id="manualCustomerJob" name="customer_job_id">
+                                            <option value="">Loading jobs...</option>
+                                        </select>
+                                    </div>
+
+                                    <!-- Job Preview -->
+                                    <div id="manualJobPreview" style="display: none;">
+                                        <div class="card">
+                                            <div class="card-header bg-light" style="padding: 8px 12px;">
+                                                <strong>Job Details</strong>
+                                            </div>
+                                            <div class="card-body" style="padding: 12px;">
+                                                <div class="row">
+                                                    <div class="col-6">
+                                                        <small><strong>Customer:</strong> <span
+                                                                id="manualPreviewCustomer">-</span></small><br>
+                                                        <small><strong>Pickup:</strong> <span
+                                                                id="manualPreviewPickup">-</span></small>
+                                                    </div>
+                                                    <div class="col-6">
+                                                        <small><strong>Phone:</strong> <span
+                                                                id="manualPreviewPhone">-</span></small><br>
+                                                        <small><strong>Delivery:</strong> <span
+                                                                id="manualPreviewDelivery">-</span></small>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                                <button type="submit" class="btn btn-info" id="submitManualJob">
+                                    <i class="fa fa-save"></i> Save Historical Job
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
         </div>
     @endsection
 
@@ -1162,6 +1315,9 @@
 
                         const trip = res.data;
 
+                        // ✅ ADD THIS LINE - Store the GUID in the modal
+                        $('#viewTripModal').data('trip-id', tripId);
+
                         // === BASIC INFO ===
                         $('#viewTripNo').text(trip.trip_no || 'N/A');
                         $('#viewVehicle').text(trip.vehicle_no || 'N/A');
@@ -1302,7 +1458,7 @@
                                             .removeClass('badge-danger badge-warning')
                                             .addClass(
                                                 'badge-success animate__animated animate__pulse animate__infinite'
-                                                );
+                                            );
 
                                         $('#liveLat').text(parseFloat(l.lat).toFixed(6));
                                         $('#liveLng').text(parseFloat(l.lng).toFixed(6));
@@ -1319,12 +1475,12 @@
                                         $('#openGoogleMaps')
                                             .attr('href',
                                                 `https://www.google.com/maps?q=${l.lat},${l.lng}`
-                                                )
+                                            )
                                             .removeClass('btn-danger btn-warning')
                                             .addClass('btn-success')
                                             .html(
                                                 '<i class="fa fa-map-marker-alt"></i> Open in Google Maps'
-                                                )
+                                            )
                                             .show();
 
                                     } else {
@@ -1338,15 +1494,15 @@
                                         $('#liveBadge')
                                             .removeClass(
                                                 'badge-success animate__pulse animate__infinite'
-                                                )
+                                            )
                                             .addClass('badge-danger');
 
                                         $('#liveSpeed').html(
                                             '<strong style="color:#c62828; font-size:2rem;">Offline</strong>'
-                                            );
+                                        );
                                         $('#liveLastUpdate').html(
                                             '<span style="color:#c62828;">No signal</span>'
-                                            );
+                                        );
                                         $('#openGoogleMaps').hide();
                                     }
                                 }).fail(() => {
@@ -1360,14 +1516,14 @@
                                     $('#liveBadge')
                                         .removeClass(
                                             'badge-success animate__pulse animate__infinite'
-                                            )
+                                        )
                                         .addClass('badge-warning');
 
                                     $('#liveSpeed').html(
                                         '<strong style="color:#e65100;">Error</strong>');
                                     $('#liveLastUpdate').html(
                                         '<span style="color:#e65100;">Connection failed</span>'
-                                        );
+                                    );
                                     $('#openGoogleMaps').hide();
                                 });
                             };
@@ -1399,38 +1555,42 @@
                 });
 
                 // ========================================
-// START JOB BUTTON - PROPERLY CHANGES TO STOP
-// ========================================
-$(document).on('click', '.startJobBtn', function(e) {
-    e.preventDefault(); // Prevent any default action
+                // START JOB BUTTON - PROPERLY CHANGES TO STOP
+                // ========================================
+                $(document).on('click', '.startJobBtn', function(e) {
+                    e.preventDefault(); // Prevent any default action
 
-    const jobId = $(this).data('job-id');
-    const jobNo = $(this).data('job-no');
-    const tripId = $(this).data('trip-id');
+                    const jobId = $(this).data('job-id');
+                    const jobNo = $(this).data('job-no');
+                    const tripId = $(this).data('trip-id');
 
-    console.log('Starting job:', {jobId, jobNo, tripId});
+                    console.log('Starting job:', {
+                        jobId,
+                        jobNo,
+                        tripId
+                    });
 
-    if (!confirm(`Start job ${jobNo}?\n\nLive GPS tracking will begin immediately.`)) {
-        return;
-    }
+                    if (!confirm(`Start job ${jobNo}?\n\nLive GPS tracking will begin immediately.`)) {
+                        return;
+                    }
 
-    const $btn = $(this);
-    const $row = $btn.closest('tr');
-    const $actionCell = $btn.parent(); // Get the TD containing the button
+                    const $btn = $(this);
+                    const $row = $btn.closest('tr');
+                    const $actionCell = $btn.parent(); // Get the TD containing the button
 
-    $btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Starting...');
+                    $btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Starting...');
 
-    $.ajax({
-        url: `/tracker/trips/${tripId}/jobs/${jobId}/start`,
-        type: 'POST',
-        headers: {
-            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-        },
-        success: function(res) {
-            console.log('✅ Start Job Success:', res);
+                    $.ajax({
+                        url: `/tracker/trips/${tripId}/jobs/${jobId}/start`,
+                        type: 'POST',
+                        headers: {
+                            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                        },
+                        success: function(res) {
+                            console.log('✅ Start Job Success:', res);
 
-            // ✅ SOLUTION: Completely replace the button HTML (not just modify classes)
-            const newStopButton = `
+                            // ✅ SOLUTION: Completely replace the button HTML (not just modify classes)
+                            const newStopButton = `
                 <button class="btn btn-sm btn-danger stopJobBtn"
                         data-job-id="${jobId}"
                         data-job-no="${jobNo}"
@@ -1439,41 +1599,42 @@ $(document).on('click', '.startJobBtn', function(e) {
                 </button>
             `;
 
-            // Replace the entire action cell content
-            $actionCell.html(newStopButton);
+                            // Replace the entire action cell content
+                            $actionCell.html(newStopButton);
 
-            // ✅ Update status badge in the same row
-            $row.find('.badge')
-                .removeClass('badge-secondary badge-success badge-info')
-                .addClass('badge-warning')
-                .text('In Progress');
+                            // ✅ Update status badge in the same row
+                            $row.find('.badge')
+                                .removeClass('badge-secondary badge-success badge-info')
+                                .addClass('badge-warning')
+                                .text('In Progress');
 
-            // ✅ Show success message
-            swal('Started!', `Job ${jobNo} is now active.\nGPS tracking enabled.`, 'success');
+                            // ✅ Show success message
+                            swal('Started!', `Job ${jobNo} is now active.\nGPS tracking enabled.`,
+                                'success');
 
-            // ✅ Reload trips table (background update)
-            if (typeof tripsTable !== 'undefined') {
-                tripsTable.ajax.reload(null, false);
-            }
+                            // ✅ Reload trips table (background update)
+                            if (typeof tripsTable !== 'undefined') {
+                                tripsTable.ajax.reload(null, false);
+                            }
 
-            // ✅ Start live tracking
-            if (typeof forceStartLiveTracking === 'function') {
-                forceStartLiveTracking(tripId);
-            }
-        },
-        error: function(xhr) {
-            console.error('❌ Start Job Error:', xhr);
+                            // ✅ Start live tracking
+                            if (typeof forceStartLiveTracking === 'function') {
+                                forceStartLiveTracking(tripId);
+                            }
+                        },
+                        error: function(xhr) {
+                            console.error('❌ Start Job Error:', xhr);
 
-            let errorMsg = 'Failed to start job';
-            if (xhr.responseJSON?.message) {
-                errorMsg = xhr.responseJSON.message;
-            }
+                            let errorMsg = 'Failed to start job';
+                            if (xhr.responseJSON?.message) {
+                                errorMsg = xhr.responseJSON.message;
+                            }
 
-            swal('Error', errorMsg, 'error');
-            $btn.prop('disabled', false).html('<i class="fa fa-play"></i> Start');
-        }
-    });
-});
+                            swal('Error', errorMsg, 'error');
+                            $btn.prop('disabled', false).html('<i class="fa fa-play"></i> Start');
+                        }
+                    });
+                });
 
                 // NEW FUNCTION: Force live tracking regardless of DB status
                 function forceStartLiveTracking(tripId) {
@@ -1556,6 +1717,302 @@ $(document).on('click', '.startJobBtn', function(e) {
                 $('.modal').on('hidden.bs.modal', function() {
                     $(this).find('form')[0]?.reset();
                 });
+            });
+            // ========================================
+            // MANUAL JOB ENTRY
+            // ========================================
+
+            // Load locations for manual job
+            function loadManualJobLocations() {
+                $.get('/tracker/locations', {
+                    type: 'Road',
+                    include_country: 1,
+                    country_code: 'KE'
+                }, function(res) {
+                    if (res.success && res.data.length > 0) {
+                        let options = '<option value="">Select Location</option>';
+                        res.data.forEach(location => {
+                            options += `<option value="${location.code}">${location.name}</option>`;
+                        });
+                        $('#manualStartLocation').html(options);
+                        $('#manualEndLocation').html(options);
+                    }
+                });
+            }
+
+            // Load customer jobs
+            function loadManualCustomerJobs() {
+                const vehicleNo = $('#manualJobVehicle').text();
+
+                if (!vehicleNo || vehicleNo === '-') {
+                    $('#manualCustomerJob').html('<option value="">Vehicle not assigned</option>');
+                    return;
+                }
+
+                $.get('/tracker/jobs/available', {
+                    vehicle_no: vehicleNo
+                }, function(res) {
+                    if (res.success && res.data.length > 0) {
+                        let options = '<option value="">Select Customer Job</option>';
+                        res.data.forEach(job => {
+                            options += `<option value="${job.id}"
+                    data-customer="${job.customer_name}"
+                    data-phone="${job.customer_phone}"
+                    data-pickup="${job.pickup_location}"
+                    data-pickup-code="${job.pickup_location_code}"
+                    data-delivery="${job.delivery_location}"
+                    data-delivery-code="${job.delivery_location_code}">
+                    ${job.job_number} - ${job.pickup_location} → ${job.delivery_location}
+                </option>`;
+                        });
+                        $('#manualCustomerJob').html(options);
+                    }
+                });
+            }
+
+            // Open manual job modal
+            $(document).on('click', '#addManualJobBtn', function() {
+                const tripId = $('#viewTripModal').data('trip-id');
+
+                // ✅ DEBUG
+                console.log('=== MANUAL JOB MODAL OPENING ===');
+                console.log('Trip ID from modal:', tripId);
+                console.log('Type:', typeof tripId);
+                console.log('Is GUID?', /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(tripId));
+
+                if (!tripId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(tripId)) {
+                    alert('ERROR: Trip ID is not valid! Got: ' + tripId);
+                    return;
+                }
+
+                $('#manualJobTripId').val(tripId);
+                $('#manualJobTripNo').text($('#viewTripNo').text());
+                $('#manualJobVehicle').text($('#viewVehicle').text());
+                $('#manualJobStatus').text($('#viewStatus').text());
+                $('#manualJobDriver').text($('#viewDriver').text());
+
+                $('#manualJobForm')[0].reset();
+                $('#manualInternalFields').hide();
+                $('#manualCustomerFields').hide();
+                $('#manualJobPreview').hide();
+
+                // Set default dates (yesterday to now)
+                const now = new Date();
+                const yesterday = new Date(now);
+                yesterday.setDate(yesterday.getDate() - 1);
+
+                $('#manualStartDate').val(yesterday.toISOString().slice(0, 16));
+                $('#manualEndDate').val(now.toISOString().slice(0, 16));
+
+                $('#viewTripModal').modal('hide');
+                setTimeout(() => {
+                    $('#manualJobModal').modal('show');
+                }, 300);
+            });
+
+            // Job type change
+            $('#manualJobType').change(function() {
+                const jobType = $(this).val();
+
+                if (jobType === 'internal') {
+                    $('#manualInternalFields').slideDown();
+                    $('#manualCustomerFields').slideUp();
+                    $('#manualStartLocation').prop('required', true);
+                    $('#manualEndLocation').prop('required', true);
+                    $('#manualCustomerJob').prop('required', false);
+                    loadManualJobLocations();
+
+                } else if (jobType === 'customer_delivery') {
+                    $('#manualCustomerFields').slideDown();
+                    $('#manualInternalFields').slideUp();
+                    $('#manualCustomerJob').prop('required', true);
+                    $('#manualStartLocation').prop('required', false);
+                    $('#manualEndLocation').prop('required', false);
+                    loadManualCustomerJobs();
+
+                } else {
+                    $('#manualInternalFields').hide();
+                    $('#manualCustomerFields').hide();
+                }
+            });
+
+            // Customer job preview
+            $('#manualCustomerJob').change(function() {
+                if ($(this).val()) {
+                    const selected = $(this).find(':selected');
+                    $('#manualPreviewCustomer').text(selected.data('customer'));
+                    $('#manualPreviewPhone').text(selected.data('phone'));
+                    $('#manualPreviewPickup').text(selected.data('pickup'));
+                    $('#manualPreviewDelivery').text(selected.data('delivery'));
+                    $('#manualJobPreview').slideDown();
+                } else {
+                    $('#manualJobPreview').slideUp();
+                }
+            });
+
+            // Submit manual job
+            $('#manualJobForm').submit(function(e) {
+                e.preventDefault();
+
+                console.log('=== MANUAL JOB SUBMISSION ===');
+
+                const jobType = $('#manualJobType').val();
+                const startDate = $('#manualStartDate').val();
+                const endDate = $('#manualEndDate').val();
+                const tripId = $('#manualJobTripId').val();
+
+                console.log('Job Type:', jobType);
+                console.log('Start Date:', startDate);
+                console.log('End Date:', endDate);
+                console.log('Trip ID:', tripId);
+
+                if (!jobType || !startDate || !endDate) {
+                    return swal('Warning', 'Please fill all required fields', 'warning');
+                }
+
+                if (new Date(endDate) <= new Date(startDate)) {
+                    return swal('Warning', 'End date must be after start date', 'warning');
+                }
+
+                let jobs = [];
+
+                if (jobType === 'internal') {
+                    const startLoc = $('#manualStartLocation').val();
+                    const endLoc = $('#manualEndLocation').val();
+
+                    if (!startLoc || !endLoc) {
+                        return swal('Warning', 'Please select locations', 'warning');
+                    }
+
+                    jobs.push({
+                        job_type: 'Internal Job',
+                        job_no: '',
+                        start_location_code: startLoc,
+                        end_location_code: endLoc
+                    });
+
+                } else if (jobType === 'customer_delivery') {
+                    const selectedJob = $('#manualCustomerJob').val();
+                    if (!selectedJob) {
+                        return swal('Warning', 'Please select a customer job', 'warning');
+                    }
+
+                    const selectedOption = $('#manualCustomerJob option:selected');
+                    jobs.push({
+                        job_type: 'Customer Delivery',
+                        job_no: selectedOption.text().split(' - ')[0],
+                        start_location_code: selectedOption.data('pickup-code'),
+                        end_location_code: selectedOption.data('delivery-code')
+                    });
+                }
+
+                $('#submitManualJob').prop('disabled', true).html(
+                '<i class="fa fa-spinner fa-spin"></i> Processing...');
+
+                // ✅ STEP 1: Add the job to the trip
+                $.ajax({
+                    url: `/tracker/trips/${tripId}/jobs/add`,
+                    type: 'POST',
+                    data: JSON.stringify({
+                        trip_id: tripId,
+                        jobs: jobs
+                    }),
+                    contentType: 'application/json',
+                    headers: {
+                        'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                    },
+                    success: function(addResponse) {
+                        console.log('✅ Job added:', addResponse);
+
+                        if (!addResponse.success) {
+                            $('#submitManualJob').prop('disabled', false).html(
+                                '<i class="fa fa-save"></i> Save Historical Job');
+                            return swal('Failed', addResponse.message, 'error');
+                        }
+
+                        // ✅ STEP 2: Get the newly created job ID
+                        $.get(`/tracker/trips/${tripId}`, function(tripDetails) {
+                            if (!tripDetails.success) {
+                                $('#submitManualJob').prop('disabled', false).html(
+                                    '<i class="fa fa-save"></i> Save Historical Job');
+                                return swal('Failed', 'Could not retrieve job details', 'error');
+                            }
+
+                            // Find the newest job (no dates set)
+                            const newJob = tripDetails.data.jobs
+                                .filter(j => !j.start_date && !j.end_date)
+                                .sort((a, b) => b.job_id - a.job_id)[0];
+
+                            if (!newJob) {
+                                $('#submitManualJob').prop('disabled', false).html(
+                                    '<i class="fa fa-save"></i> Save Historical Job');
+                                return swal('Failed', 'Could not find newly created job', 'error');
+                            }
+
+                            console.log('✅ New job found:', newJob);
+
+                            // ✅ STEP 3: Complete job directly with BOTH custom dates
+                            $.ajax({
+                                url: `/tracker/trips/${tripId}/jobs/${newJob.job_id}/complete`,
+                                type: 'POST',
+                                data: JSON.stringify({
+                                    is_historical: true,
+                                    custom_start_date: startDate, // ← Both dates sent
+                                    custom_end_date: endDate
+                                }),
+                                contentType: 'application/json',
+                                headers: {
+                                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr(
+                                        'content')
+                                },
+                                success: function(res) {
+                                    console.log('✅ Job completed:', res);
+
+                                    if (res.success) {
+                                        $('#manualJobModal').modal('hide');
+
+                                        swal({
+                                            title: 'Success!',
+                                            text: `Historical job added!\n\nJob: ${res.job_no}\nDistance: ${res.total_distance} km\nDuration: ${res.duration_hours} hours\nAvg Speed: ${res.avg_speed} km/h`,
+                                            icon: 'success'
+                                        });
+
+                                        // Refresh trip details
+                                        setTimeout(() => {
+                                            $(`.viewTrip[data-trip-id="${tripId}"]`)
+                                                .trigger('click');
+                                        }, 500);
+
+                                    } else {
+                                        swal('Failed', res.message, 'error');
+                                    }
+                                },
+                                error: function(xhr) {
+                                    console.error('❌ Complete job error:', xhr);
+                                    swal('Error', xhr.responseJSON?.message ||
+                                        'Failed to complete job', 'error');
+                                },
+                                complete: () => {
+                                    $('#submitManualJob').prop('disabled', false).html(
+                                        '<i class="fa fa-save"></i> Save Historical Job'
+                                        );
+                                }
+                            });
+                        });
+                    },
+                    error: function(xhr) {
+                        console.error('❌ Add job error:', xhr);
+                        swal('Error', xhr.responseJSON?.message || 'Failed to add job', 'error');
+                        $('#submitManualJob').prop('disabled', false).html(
+                            '<i class="fa fa-save"></i> Save Historical Job');
+                    }
+                });
+            });
+
+            // Store trip ID when view modal opens
+            $('#viewTripModal').on('shown.bs.modal', function() {
+                // Trip ID was already set when opening the modal - don't overwrite it!
+                // Or if you need to set it, get it from the button that opened the modal
             });
         </script>
     @endsection
