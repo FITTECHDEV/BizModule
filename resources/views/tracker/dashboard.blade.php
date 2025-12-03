@@ -1399,49 +1399,81 @@
                 });
 
                 // ========================================
-                // START JOB BUTTON
-                // ========================================
-                $(document).on('click', '.startJobBtn', function() {
-                    const jobId = $(this).data('job-id');
-                    const jobNo = $(this).data('job-no');
-                    const tripId = $(this).data('trip-id');
+// START JOB BUTTON - PROPERLY CHANGES TO STOP
+// ========================================
+$(document).on('click', '.startJobBtn', function(e) {
+    e.preventDefault(); // Prevent any default action
 
-                    if (!confirm(`Start job ${jobNo}?\n\nLive GPS tracking will begin immediately.`)) {
-                        return;
-                    }
+    const jobId = $(this).data('job-id');
+    const jobNo = $(this).data('job-no');
+    const tripId = $(this).data('trip-id');
 
-                    const $btn = $(this);
-                    $btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Starting...');
+    console.log('Starting job:', {jobId, jobNo, tripId});
 
-                    $.ajax({
-                        url: `/tracker/trips/${tripId}/jobs/${jobId}/start`,
-                        type: 'POST',
-                        headers: {
-                            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-                        },
-                        success: function(res) {
-                            // EVEN IF SP returns nothing — we FORCE live tracking ON
-                            alert(`Job start requested!\nLive GPS is now active.`);
+    if (!confirm(`Start job ${jobNo}?\n\nLive GPS tracking will begin immediately.`)) {
+        return;
+    }
 
-                            // FORCE refresh modal to show live section
-                            $('#viewTripModal').modal('hide');
-                            setTimeout(() => {
-                                $(`.viewTrip[data-trip-id="${tripId}"]`).trigger('click');
-                            }, 500);
+    const $btn = $(this);
+    const $row = $btn.closest('tr');
+    const $actionCell = $btn.parent(); // Get the TD containing the button
 
-                            tripsTable.ajax.reload(null, false);
+    $btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Starting...');
 
-                            // OPTIONAL: Force live tracking even if status still "Created"
-                            // This runs immediately — no waiting for DB
-                            forceStartLiveTracking(tripId);
-                        },
-                        error: function() {
-                            alert('Request sent — tracking may still activate');
-                            $btn.prop('disabled', false).html('<i class="fa fa-play"></i> Start');
-                            forceStartLiveTracking(tripId);
-                        }
-                    });
-                });
+    $.ajax({
+        url: `/tracker/trips/${tripId}/jobs/${jobId}/start`,
+        type: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+        },
+        success: function(res) {
+            console.log('✅ Start Job Success:', res);
+
+            // ✅ SOLUTION: Completely replace the button HTML (not just modify classes)
+            const newStopButton = `
+                <button class="btn btn-sm btn-danger stopJobBtn"
+                        data-job-id="${jobId}"
+                        data-job-no="${jobNo}"
+                        data-trip-id="${tripId}">
+                    <i class="fa fa-stop"></i> Stop
+                </button>
+            `;
+
+            // Replace the entire action cell content
+            $actionCell.html(newStopButton);
+
+            // ✅ Update status badge in the same row
+            $row.find('.badge')
+                .removeClass('badge-secondary badge-success badge-info')
+                .addClass('badge-warning')
+                .text('In Progress');
+
+            // ✅ Show success message
+            swal('Started!', `Job ${jobNo} is now active.\nGPS tracking enabled.`, 'success');
+
+            // ✅ Reload trips table (background update)
+            if (typeof tripsTable !== 'undefined') {
+                tripsTable.ajax.reload(null, false);
+            }
+
+            // ✅ Start live tracking
+            if (typeof forceStartLiveTracking === 'function') {
+                forceStartLiveTracking(tripId);
+            }
+        },
+        error: function(xhr) {
+            console.error('❌ Start Job Error:', xhr);
+
+            let errorMsg = 'Failed to start job';
+            if (xhr.responseJSON?.message) {
+                errorMsg = xhr.responseJSON.message;
+            }
+
+            swal('Error', errorMsg, 'error');
+            $btn.prop('disabled', false).html('<i class="fa fa-play"></i> Start');
+        }
+    });
+});
 
                 // NEW FUNCTION: Force live tracking regardless of DB status
                 function forceStartLiveTracking(tripId) {
