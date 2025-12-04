@@ -134,7 +134,27 @@ public function create()
 public function store(Request $request)
 {
     try {
-        // Validate required fields - location is now part of module assignments
+        // === DEBUG: Show what data we're receiving ===
+        dd([
+            'all_request_data' => $request->all(),
+            'modules' => $request->modules,
+            'modules_count' => $request->has('modules') ? count($request->modules) : 0,
+            'first_module' => $request->has('modules') && count($request->modules) > 0 ? $request->modules[0] : 'NO MODULES',
+            'sample_module_structure' => $request->has('modules') && count($request->modules) > 0 ? 
+                [
+                    'module_id' => $request->modules[0]['module_id'] ?? 'missing',
+                    'application_id' => $request->modules[0]['application_id'] ?? 'missing',
+                    'location_id' => $request->modules[0]['location_id'] ?? 'missing',
+                    'location_code' => $request->modules[0]['location_code'] ?? 'missing',
+                    'role_id' => $request->modules[0]['role_id'] ?? 'missing',
+                    'role_code' => $request->modules[0]['role_code'] ?? 'missing',
+                    'function_id' => $request->modules[0]['function_id'] ?? 'not present',
+                    'function_code' => $request->modules[0]['function_code'] ?? 'not present',
+                ] : 'NO MODULES'
+        ]);
+        // === END DEBUG ===
+
+        // Validate required fields
         $request->validate([
             'name' => 'required|string|max:100',
             'email' => 'required|email|max:255',
@@ -160,8 +180,8 @@ public function store(Request $request)
         $primaryLocation = 'KE'; // Default
         if ($request->has('modules') && is_array($request->modules) && count($request->modules) > 0) {
             $firstModule = $request->modules[0];
-            if (isset($firstModule['location']) && $firstModule['location'] !== 'ALL') {
-                $primaryLocation = $firstModule['location'];
+            if (isset($firstModule['location_code']) && $firstModule['location_code'] !== 'ALL') {
+                $primaryLocation = $firstModule['location_code'];
             }
         }
 
@@ -190,80 +210,98 @@ public function store(Request $request)
             $request->mobile_phone,
             $request->job_title,
             $request->department,
-            $primaryLocation, // Office location code from first module assignment
+            $primaryLocation,
             1, // accountEnabled = true
             'Member',
             'KE',
             'Kenya',
             'Pending', // Status
-            $request->employee_id, // EmployeCode
+            $request->employee_id,
             $request->company_id
         ]);
 
         // Process module assignments (if any)
         if ($request->has('modules') && is_array($request->modules)) {
             foreach ($request->modules as $moduleData) {
-                if (isset($moduleData['module_id']) && isset($moduleData['location']) && isset($moduleData['role_id'])) {
-                    
-                    // Get the module details including ApplicationId
-                    $module = DB::connection('sqlsrv')
-                        ->selectOne("SELECT Id, Name, ApplicationId FROM Azure_SoftwareMaster WHERE Id = ?", 
-                                   [$moduleData['module_id']]);
-                    
-                    if ($module) {
-                        // Determine if this is an SCM module
-                        $isSCM = in_array($module->ApplicationId, ['OPS', 'OPSUAT']);
-                        
-                        // For SCM modules, insert with function_id if provided
-                        if ($isSCM && isset($moduleData['function_id'])) {
-                            // Insert into Azure_Application_UserMapping with function
-                            DB::connection('sqlsrv')->insert("
-                                INSERT INTO Azure_Application_UserMapping (
-                                    user_id, 
-                                    application_id, 
-                                    location_code, 
-                                    role_id, 
-                                    function_id,
-                                    created_at
-                                )
-                                VALUES (?, ?, ?, ?, ?, GETDATE())
-                            ", [
-                                $userPrincipalName,
-                                $module->ApplicationId,
-                                $moduleData['location'],
-                                $moduleData['role_id'],
-                                $moduleData['function_id']
-                            ]);
-                        } else {
-                            // Insert without function_id for non-SCM modules
-                            DB::connection('sqlsrv')->insert("
-                                INSERT INTO Azure_Application_UserMapping (
-                                    user_id, 
-                                    application_id, 
-                                    location_code, 
-                                    role_id,
-                                    created_at
-                                )
-                                VALUES (?, ?, ?, ?, GETDATE())
-                            ", [
-                                $userPrincipalName,
-                                $module->ApplicationId,
-                                $moduleData['location'],
-                                $moduleData['role_id']
-                            ]);
-                        }
-                        
-                        Log::info('Module assignment created', [
-                            'user' => $userPrincipalName,
-                            'module' => $module->Name,
-                            'application_id' => $module->ApplicationId,
-                            'location' => $moduleData['location'],
-                            'role_id' => $moduleData['role_id'],
-                            'function_id' => $moduleData['function_id'] ?? null,
-                            'is_scm' => $isSCM
-                        ]);
-                    }
+                // Check for required fields
+                if (!isset($moduleData['module_id']) || 
+                    !isset($moduleData['application_id']) ||
+                    !isset($moduleData['location_code']) || 
+                    !isset($moduleData['role_id'])) {
+                    continue; // Skip incomplete assignments
                 }
+                
+                // Get the module details
+                $module = DB::connection('sqlsrv')
+                    ->selectOne("SELECT Id, Name, ApplicationId FROM Azure_SoftwareMaster WHERE Id = ?", 
+                               [$moduleData['module_id']]);
+                
+                if (!$module) {
+                    Log::warning('Module not found', ['module_id' => $moduleData['module_id']]);
+                    continue;
+                }
+                
+                // Generate new GUID for this mapping
+                $mappingId = DB::connection('sqlsrv')
+                    ->selectOne("SELECT NEWID() as newId")->newId;
+                
+                // Determine if this is an SCM module
+                $applicationId = $moduleData['application_id'];
+                $isSCM = in_array($applicationId, ['OPS', 'OPSUAT']);
+                
+                // Prepare insert data
+                $insertData = [
+                    $mappingId,                          // Id
+                    $userPrincipalName,                  // user_id
+                    $applicationId,                      // application_id
+                    $request->name,                      // Username
+                    $module->Name,                       // ApplicationName
+                    $moduleData['function_code'] ?? null, // FunctionCode
+                    $moduleData['function_id'] ?? null,   // FunctionID
+                    $moduleData['role_code'] ?? null,     // RoleCode
+                    $moduleData['role_id'] ?? null,       // RoleID
+                    $moduleData['location_code'] ?? null, // OfficeCode
+                    $moduleData['location_id'] ?? null,   // OfficeID
+                    1,                                    // IsActive
+                    0,                                    // IsDelete
+                    Auth::id() ?? 'system',              // CreatedBy
+                    // CreatedOn will be GETDATE()
+                ];
+                
+                // Insert into Azure_Application_UserMapping
+                DB::connection('sqlsrv')->insert("
+                    INSERT INTO Azure_Application_UserMapping (
+                        Id,
+                        user_id,
+                        application_id,
+                        Username,
+                        ApplicationName,
+                        FunctionCode,
+                        FunctionID,
+                        RoleCode,
+                        RoleID,
+                        OfficeCode,
+                        OfficeID,
+                        IsActive,
+                        IsDelete,
+                        CreatedBy,
+                        CreatedOn
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, GETDATE())
+                ", $insertData);
+                
+                Log::info('Module assignment created', [
+                    'user' => $userPrincipalName,
+                    'module' => $module->Name,
+                    'application_id' => $applicationId,
+                    'location_code' => $moduleData['location_code'],
+                    'location_id' => $moduleData['location_id'],
+                    'role_code' => $moduleData['role_code'],
+                    'role_id' => $moduleData['role_id'],
+                    'function_code' => $moduleData['function_code'] ?? null,
+                    'function_id' => $moduleData['function_id'] ?? null,
+                    'is_scm' => $isSCM
+                ]);
             }
         }
 

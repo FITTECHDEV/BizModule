@@ -764,21 +764,29 @@
     // Data from Laravel
     const modulesData = @json($modules);
     const locationsData = @json($locations);
-    const rolesData = @json($roles);
     const csrfToken = "{{ csrf_token() }}";
 
-    // Debug: Log initial data
-    console.log('=== INITIAL DATA ===');
-    console.log('Modules:', modulesData);
-    console.log('Locations:', locationsData);
-    console.log('Roles:', rolesData);
-
+    // Global state
     let moduleCards = {};
     let cardIdCounter = 0;
     let currentModalCardId = null;
     let originalCardState = null;
     let scmFunctionsCache = null;
     let rolesCache = {};
+    let locationsCache = {}; // NEW: Cache for location details
+
+    // Initialize locations cache
+    locationsData.forEach(loc => {
+        locationsCache[loc.code.trim()] = {
+            id: loc.id,
+            code: loc.code.trim(),
+            name: loc.name
+        };
+    });
+
+    console.log('=== INITIAL DATA ===');
+    console.log('Modules:', modulesData);
+    console.log('Locations Cache:', locationsCache);
 
     // Helper function to escape HTML
     function escapeHtml(text) {
@@ -797,10 +805,6 @@
         return JSON.parse(JSON.stringify(obj));
     }
 
-    function isSCMModule(applicationId) {
-        return applicationId === 'OPS' || applicationId === '39CDA123-65A3-46C8-B7FD-7380979DD92B';
-    }
-    
     function getApplicationCodeForSP(module) {
         const moduleNameLower = module.name.toLowerCase();
         
@@ -819,14 +823,13 @@
         }
     }
 
+    // Fetch SCM Functions (returns array of {ID, Code, Name})
     async function fetchSCMFunctions() {
         if (scmFunctionsCache) {
-            console.log('Returning cached SCM functions');
             return scmFunctionsCache;
         }
 
         try {
-            console.log('Fetching SCM functions from /azure/modules/scm-functions');
             const response = await fetch('/azure/modules/scm-functions', {
                 headers: {
                     'X-CSRF-TOKEN': csrfToken,
@@ -835,12 +838,16 @@
             });
             
             const result = await response.json();
-            console.log('SCM Functions response:', result);
             
-            if (result.success) {
-                scmFunctionsCache = result.data;
-                console.log('Cached', result.data.length, 'SCM functions');
-                return result.data;
+            if (result.success && result.data) {
+                // Transform to consistent structure
+                scmFunctionsCache = result.data.map(f => ({
+                    id: f.ID || f.Id || f.id,
+                    code: f.Code || f.code,
+                    name: f.Name || f.name
+                }));
+                console.log('✅ Cached', scmFunctionsCache.length, 'SCM functions');
+                return scmFunctionsCache;
             } else {
                 console.error('Failed to fetch SCM functions:', result.message);
                 return [];
@@ -851,28 +858,17 @@
         }
     }
 
-    async function fetchRolesByApplicationCode(applicationCode, filter = null) {
-        const cacheKey = `${applicationCode}_${filter || 'all'}`;
-        
-        console.log('=== FETCH ROLES DEBUG ===');
-        console.log('Application Code:', applicationCode);
-        console.log('Filter:', filter);
-        console.log('Cache Key:', cacheKey);
-        console.log('Already Cached?:', !!rolesCache[cacheKey]);
+    // Fetch Roles by Application Code (returns array of {RoleId, RoleCode, Role})
+    async function fetchRolesByApplicationCode(applicationCode) {
+        const cacheKey = `${applicationCode}_all`;
         
         if (rolesCache[cacheKey]) {
-            console.log('Returning from cache:', rolesCache[cacheKey].length, 'roles');
             return rolesCache[cacheKey];
         }
 
         try {
-            let url = `/azure/modules/roles?application_code=${encodeURIComponent(applicationCode)}`;
-            if (filter) {
-                url += `&filter=${encodeURIComponent(filter)}`;
-            }
-
-            console.log('Fetching from URL:', url);
-
+            const url = `/azure/modules/roles?application_code=${encodeURIComponent(applicationCode)}`;
+            
             const response = await fetch(url, {
                 headers: {
                     'X-CSRF-TOKEN': csrfToken,
@@ -880,18 +876,10 @@
                 }
             });
             
-            console.log('Response Status:', response.status);
-            console.log('Response OK?:', response.ok);
-            
             const result = await response.json();
             
-            console.log('=== API RESPONSE ===');
-            console.log('Success flag:', result.success);
-            console.log('Data:', result.data);
-            console.log('Data length:', result.data?.length);
-            console.log('First item:', result.data?.[0]);
-            
             if (result.success && result.data && result.data.length > 0) {
+                // Filter out error responses
                 const validRoles = result.data.filter(role => {
                     const hasError = Object.values(role).some(val => 
                         typeof val === 'string' && (
@@ -903,66 +891,92 @@
                     return !hasError;
                 });
                 
-                console.log('✅ Valid roles after filtering:', validRoles.length, validRoles);
+                // Transform to consistent structure
+                rolesCache[cacheKey] = validRoles.map(r => ({
+                    id: r.RoleId || r.Id || r.id,
+                    code: r.RoleCode || r.Code || r.code,
+                    name: r.Role || r.Name || r.name
+                }));
                 
-                if (validRoles.length === 0) {
-                    console.warn(`⚠️ No valid roles found for "${applicationCode}". The stored procedure may not support this application code.`);
-                    console.warn('Supported application codes: OPS, OPSUAT');
-                }
-                
-                rolesCache[cacheKey] = validRoles;
-                return validRoles;
+                console.log('✅ Cached', rolesCache[cacheKey].length, 'roles for', applicationCode);
+                return rolesCache[cacheKey];
             } else {
-                console.error('API returned success=false or no data:', result.message);
+                console.warn('⚠️ No roles found for:', applicationCode);
                 rolesCache[cacheKey] = [];
                 return [];
             }
         } catch (error) {
-            console.error('EXCEPTION in fetchRolesByApplicationCode:', error);
-            console.error('Error stack:', error.stack);
+            console.error('❌ Error fetching roles:', error);
             rolesCache[cacheKey] = [];
             return [];
         }
     }
 
+    // Render all module cards
     function renderAllCards() {
         const grid = document.getElementById('modulesGrid');
         grid.innerHTML = '';
+        
         Object.values(moduleCards).forEach(card => {
             grid.appendChild(createModuleCard(card));
         });
+        
         if (Object.keys(moduleCards).length === 0) {
             grid.innerHTML = '<div class="empty-grid"><i class="fas fa-inbox"></i><p>No modules assigned yet. Click "Add Module" to get started.</p></div>';
         }
+        
         updateHiddenInputs();
     }
 
+    // Create a module card element
     function createModuleCard(card) {
         const div = document.createElement('div');
         div.className = `module-card ${card.isNew ? 'new-module' : ''}`;
         div.id = card.id;
         div.onclick = () => openModal(card.id);
+        
         const assignmentCount = card.assignments ? card.assignments.length : 0;
+        
         div.innerHTML = `
             <i class="fas ${card.isNew ? 'fa-plus-circle' : 'fa-cube'} card-icon"></i>
-            <div class="card-title">${card.module_name}</div>
+            <div class="card-title">${escapeHtml(card.module_name)}</div>
             <span class="assignment-count">
                 <i class="fas fa-list"></i>
                 ${assignmentCount} assignment${assignmentCount !== 1 ? 's' : ''}
             </span>
         `;
+        
         return div;
     }
 
-    window.openModal = (cardId) => {
+    // Open modal for editing module assignments
+    window.openModal = async (cardId) => {
         currentModalCardId = cardId;
         const card = moduleCards[cardId];
         originalCardState = deepClone(card);
+        
         document.getElementById('modalModuleName').textContent = card.module_name;
+        
+        // Pre-fetch data if needed
+        const module = modulesData.find(m => m.id == card.module_id);
+        if (module) {
+            const applicationCode = getApplicationCodeForSP(module);
+            const isSCM = applicationCode === 'OPS' || applicationCode === 'OPSUAT';
+            
+            // Fetch roles and functions concurrently
+            const promises = [fetchRolesByApplicationCode(applicationCode)];
+            if (isSCM) {
+                promises.push(fetchSCMFunctions());
+            }
+            
+            await Promise.all(promises);
+        }
+        
         renderModalAssignments();
         document.getElementById('moduleModal').classList.add('active');
     };
 
+    // Close modal (restore original state)
     window.closeModal = () => {
         if (originalCardState && currentModalCardId) {
             moduleCards[currentModalCardId] = deepClone(originalCardState);
@@ -973,6 +987,7 @@
         renderAllCards();
     };
 
+    // Cancel modal (delete if new, restore if existing)
     window.cancelModal = () => {
         if (originalCardState && originalCardState.isNew && currentModalCardId) {
             delete moduleCards[currentModalCardId];
@@ -985,12 +1000,14 @@
         renderAllCards();
     };
 
+    // Close modal when clicking overlay
     window.closeModalOnOverlay = (event) => {
         if (event.target.id === 'moduleModal') {
             cancelModal();
         }
     };
 
+    // Save modal changes
     window.saveModalChanges = () => {
         originalCardState = null;
         if (currentModalCardId && moduleCards[currentModalCardId]) {
@@ -1002,12 +1019,10 @@
         showAlert('success', 'Saved', 'Module assignment saved. Click "Create User" to save everything.');
     };
 
+    // Render modal assignments
     function renderModalAssignments() {
         const card = moduleCards[currentModalCardId];
         const container = document.getElementById('modalAssignmentsContainer');
-        
-        console.log('=== RENDER MODAL ASSIGNMENTS ===');
-        console.log('Current card:', card);
         
         if (!card.assignments || card.assignments.length === 0) {
             container.innerHTML = '<div class="empty-assignments"><i class="fas fa-clipboard-list"></i><p>No assignments yet.</p></div>';
@@ -1015,7 +1030,6 @@
         }
         
         const module = modulesData.find(m => m.id == card.module_id);
-        console.log('Found module:', module);
         
         if (!module) {
             container.innerHTML = '<div class="empty-assignments"><i class="fas fa-exclamation-triangle"></i><p>Module not found.</p></div>';
@@ -1023,36 +1037,22 @@
         }
         
         const applicationCode = getApplicationCodeForSP(module);
-        console.log('Application Code:', applicationCode);
-        
         const isSCM = applicationCode === 'OPS' || applicationCode === 'OPSUAT';
-        const cacheKey = applicationCode + '_all';
+        const cacheKey = `${applicationCode}_all`;
         
-        console.log('Is SCM?:', isSCM);
-        console.log('Cache key:', cacheKey);
-        console.log('Roles cached?:', !!rolesCache[cacheKey]);
-        
+        // Check if data is loaded
         if (!rolesCache[cacheKey]) {
-            container.innerHTML = '<div class="empty-assignments"><i class="fas fa-spinner fa-spin"></i><p>Loading roles for ' + escapeHtml(applicationCode) + '...</p></div>';
-            fetchRolesByApplicationCode(applicationCode).then(() => renderModalAssignments());
+            container.innerHTML = '<div class="empty-assignments"><i class="fas fa-spinner fa-spin"></i><p>Loading roles...</p></div>';
             return;
         }
         
         if (isSCM && !scmFunctionsCache) {
-            container.innerHTML = '<div class="empty-assignments"><i class="fas fa-spinner fa-spin"></i><p>Loading SCM functions...</p></div>';
-            fetchSCMFunctions().then(() => renderModalAssignments());
+            container.innerHTML = '<div class="empty-assignments"><i class="fas fa-spinner fa-spin"></i><p>Loading functions...</p></div>';
             return;
         }
         
         const availableRoles = rolesCache[cacheKey] || [];
         const availableFunctions = isSCM ? (scmFunctionsCache || []) : [];
-        
-        console.log('Available Roles:', availableRoles.length, availableRoles);
-        console.log('Available Functions:', availableFunctions.length, availableFunctions);
-        
-        if (availableRoles.length === 0) {
-            console.warn('⚠️ No roles found for application code:', applicationCode);
-        }
         
         container.innerHTML = card.assignments.map(a => {
             const isAllLocations = a.location === 'ALL';
@@ -1065,11 +1065,9 @@
                         <span style="font-weight: 600; color: var(--muted); font-size: 0.9em;">
                             Assignment for ${escapeHtml(module.name)} (${escapeHtml(applicationCode)})
                         </span>
-                        <div style="display: flex; gap: 8px;">
-                            <button type="button" class="btn btn-sm btn-ghost" style="color: var(--danger);" onclick="deleteAssignment('${a.id}')">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </div>
+                        <button type="button" class="btn btn-sm btn-ghost" style="color: var(--danger);" onclick="deleteAssignment('${a.id}')">
+                            <i class="fas fa-trash"></i>
+                        </button>
                     </div>
                     <div class="assignment-info" style="grid-template-columns: ${isSCM ? '1fr 1fr 1fr' : '1fr 1fr'};">
                         <!-- OFFICE LOCATION -->
@@ -1086,12 +1084,25 @@
                                 </div>
                             </div>
                             <div class="checkboxes-grid">
-                                ${locationsData.map(l => `
-                                    <div class="checkbox-option ${isAllLocations ? 'disabled' : ''}">
-                                        <input type="checkbox" id="${a.id}_loc_${l.code.trim()}" class="location-checkbox" value="${l.code.trim()}" ${a.locations && a.locations.includes(l.code.trim()) ? 'checked' : ''} ${isAllLocations ? 'disabled' : ''} onchange="handleLocationCheckboxChange('${a.id}')">
-                                        <label for="${a.id}_loc_${l.code.trim()}">${escapeHtml(l.name)}</label>
-                                    </div>
-                                `).join('')}
+                                ${locationsData.map(l => {
+                                    const locCode = l.code.trim();
+                                    const isChecked = a.locationCodes && a.locationCodes.includes(locCode);
+                                    return `
+                                        <div class="checkbox-option ${isAllLocations ? 'disabled' : ''}">
+                                            <input type="checkbox" 
+                                                   id="${a.id}_loc_${locCode}" 
+                                                   class="location-checkbox" 
+                                                   data-location-id="${l.id}"
+                                                   data-location-code="${locCode}"
+                                                   data-location-name="${escapeHtml(l.name)}"
+                                                   value="${locCode}" 
+                                                   ${isChecked ? 'checked' : ''} 
+                                                   ${isAllLocations ? 'disabled' : ''} 
+                                                   onchange="handleLocationCheckboxChange('${a.id}')">
+                                            <label for="${a.id}_loc_${locCode}">${escapeHtml(l.name)}</label>
+                                        </div>
+                                    `;
+                                }).join('')}
                             </div>
                         </div>
                         
@@ -1110,17 +1121,28 @@
                                 </div>
                             </div>
                             <div class="checkboxes-grid">
-                                ${availableFunctions.length > 0 ? availableFunctions.map(f => `
-                                    <div class="checkbox-option ${isAllFunctions ? 'disabled' : ''}">
-                                        <input type="checkbox" id="${a.id}_func_${f.ID || f.Id || f.id}" class="function-checkbox" value="${f.ID || f.Id || f.id}" ${a.functions && a.functions.includes(String(f.ID || f.Id || f.id)) ? 'checked' : ''} ${isAllFunctions ? 'disabled' : ''} onchange="handleFunctionCheckboxChange('${a.id}')">
-                                        <label for="${a.id}_func_${f.ID || f.Id || f.id}">${escapeHtml(f.Name || f.name)}</label>
-                                    </div>
-                                `).join('') : '<p style="padding: 10px; color: #666;">No functions available</p>'}
+                                ${availableFunctions.length > 0 ? availableFunctions.map(f => {
+                                    const isChecked = a.functionIds && a.functionIds.includes(String(f.id));
+                                    return `
+                                        <div class="checkbox-option ${isAllFunctions ? 'disabled' : ''}">
+                                            <input type="checkbox" 
+                                                   id="${a.id}_func_${f.id}" 
+                                                   class="function-checkbox" 
+                                                   data-function-id="${f.id}"
+                                                   data-function-code="${escapeHtml(f.code)}"
+                                                   value="${f.id}" 
+                                                   ${isChecked ? 'checked' : ''} 
+                                                   ${isAllFunctions ? 'disabled' : ''} 
+                                                   onchange="handleFunctionCheckboxChange('${a.id}')">
+                                            <label for="${a.id}_func_${f.id}">${escapeHtml(f.name)}</label>
+                                        </div>
+                                    `;
+                                }).join('') : '<p style="padding: 10px; color: #666;">No functions available</p>'}
                             </div>
                         </div>
                         ` : ''}
                         
-                        <!-- ROLES (Based on Application Code) -->
+                        <!-- ROLES -->
                         <div class="info-field">
                             <div class="field-label"><i class="fas fa-user-tag"></i> Role</div>
                             <div class="radio-group">
@@ -1134,133 +1156,223 @@
                                 </div>
                             </div>
                             <div class="checkboxes-grid">
-                                ${availableRoles.length > 0 ? availableRoles.map(r => `
-                                    <div class="checkbox-option ${isAllRoles ? 'disabled' : ''}">
-                                        <input type="checkbox" id="${a.id}_role_${r.RoleId || r.Id || r.id}" class="role-checkbox" value="${r.RoleId || r.Id || r.id}" ${a.roles && a.roles.includes(String(r.RoleId || r.Id || r.id)) ? 'checked' : ''} ${isAllRoles ? 'disabled' : ''} onchange="handleRoleCheckboxChange('${a.id}')">
-                                        <label for="${a.id}_role_${r.RoleId || r.Id || r.id}">${escapeHtml(r.Role || r.Name || r.name)}</label>
-                                    </div>
-                                `).join('') : '<p style="padding: 10px; color: #666;">No roles available for ' + escapeHtml(applicationCode) + '</p>'}
+                                ${availableRoles.length > 0 ? availableRoles.map(r => {
+                                    const isChecked = a.roleIds && a.roleIds.includes(String(r.id));
+                                    return `
+                                        <div class="checkbox-option ${isAllRoles ? 'disabled' : ''}">
+                                            <input type="checkbox" 
+                                                   id="${a.id}_role_${r.id}" 
+                                                   class="role-checkbox" 
+                                                   data-role-id="${r.id}"
+                                                   data-role-code="${escapeHtml(r.code)}"
+                                                   value="${r.id}" 
+                                                   ${isChecked ? 'checked' : ''} 
+                                                   ${isAllRoles ? 'disabled' : ''} 
+                                                   onchange="handleRoleCheckboxChange('${a.id}')">
+                                            <label for="${a.id}_role_${r.id}">${escapeHtml(r.name)}</label>
+                                        </div>
+                                    `;
+                                }).join('') : '<p style="padding: 10px; color: #666;">No roles available for ' + escapeHtml(applicationCode) + '</p>'}
                             </div>
                         </div>
                     </div>
                 </div>
             `;
         }).join('');
-        
-        console.log('=== MODAL RENDERED ===');
     }
 
+    // Handle location radio change (All vs Specific)
     window.handleLocationRadioChange = (assignId) => {
         const container = document.getElementById(assignId);
         if (!container) return;
+        
         const allRadio = container.querySelector('.all-locations-radio');
         const checkboxes = container.querySelectorAll('.location-checkbox');
         const checkboxOptions = container.querySelectorAll('.info-field:first-child .checkbox-option');
         const card = moduleCards[currentModalCardId];
         const assignment = card.assignments.find(a => a.id === assignId);
+        
         if (allRadio && allRadio.checked) {
-            checkboxes.forEach(cb => { cb.checked = true; cb.disabled = true; });
+            // All locations selected
+            checkboxes.forEach(cb => { 
+                cb.checked = true; 
+                cb.disabled = true; 
+            });
             checkboxOptions.forEach(opt => opt.classList.add('disabled'));
+            
             if (assignment) {
                 assignment.location = 'ALL';
-                assignment.locations = ['ALL'];
+                assignment.locationIds = ['ALL'];
+                assignment.locationCodes = ['ALL'];
             }
         } else {
-            checkboxes.forEach(cb => { cb.disabled = false; cb.checked = false; });
+            // Specific locations
+            checkboxes.forEach(cb => { 
+                cb.disabled = false; 
+                cb.checked = false; 
+            });
             checkboxOptions.forEach(opt => opt.classList.remove('disabled'));
+            
             if (assignment) {
                 assignment.location = '';
-                assignment.locations = [];
+                assignment.locationIds = [];
+                assignment.locationCodes = [];
             }
         }
     };
 
+    // Handle location checkbox change
+    window.handleLocationCheckboxChange = (assignId) => {
+        const container = document.getElementById(assignId);
+        if (!container) return;
+        
+        const checkboxes = container.querySelectorAll('.location-checkbox:checked:not(:disabled)');
+        const card = moduleCards[currentModalCardId];
+        const assignment = card.assignments.find(a => a.id === assignId);
+        
+        if (assignment) {
+            assignment.locationIds = [];
+            assignment.locationCodes = [];
+            
+            checkboxes.forEach(cb => {
+                const locId = cb.getAttribute('data-location-id');
+                const locCode = cb.getAttribute('data-location-code');
+                
+                assignment.locationIds.push(locId);
+                assignment.locationCodes.push(locCode);
+            });
+            
+            assignment.location = assignment.locationCodes.length > 0 ? assignment.locationCodes[0] : '';
+        }
+    };
+
+    // Handle function radio change (All vs Specific)
     window.handleFunctionRadioChange = (assignId) => {
         const container = document.getElementById(assignId);
         if (!container) return;
+        
         const allRadio = container.querySelector('.all-functions-radio');
         const checkboxes = container.querySelectorAll('.function-checkbox');
         const checkboxOptions = container.querySelectorAll('.info-field:nth-child(2) .checkbox-option');
         const card = moduleCards[currentModalCardId];
         const assignment = card.assignments.find(a => a.id === assignId);
+        
         if (allRadio && allRadio.checked) {
-            checkboxes.forEach(cb => { cb.checked = true; cb.disabled = true; });
+            checkboxes.forEach(cb => { 
+                cb.checked = true; 
+                cb.disabled = true; 
+            });
             checkboxOptions.forEach(opt => opt.classList.add('disabled'));
+            
             if (assignment) {
                 assignment.function_id = 'ALL';
-                assignment.functions = ['ALL'];
+                assignment.functionIds = ['ALL'];
+                assignment.functionCodes = ['ALL'];
             }
         } else {
-            checkboxes.forEach(cb => { cb.disabled = false; cb.checked = false; });
+            checkboxes.forEach(cb => { 
+                cb.disabled = false; 
+                cb.checked = false; 
+            });
             checkboxOptions.forEach(opt => opt.classList.remove('disabled'));
+            
             if (assignment) {
                 assignment.function_id = '';
-                assignment.functions = [];
+                assignment.functionIds = [];
+                assignment.functionCodes = [];
             }
         }
     };
 
+    // Handle function checkbox change
+    window.handleFunctionCheckboxChange = (assignId) => {
+        const container = document.getElementById(assignId);
+        if (!container) return;
+        
+        const checkboxes = container.querySelectorAll('.function-checkbox:checked:not(:disabled)');
+        const card = moduleCards[currentModalCardId];
+        const assignment = card.assignments.find(a => a.id === assignId);
+        
+        if (assignment) {
+            assignment.functionIds = [];
+            assignment.functionCodes = [];
+            
+            checkboxes.forEach(cb => {
+                const funcId = cb.getAttribute('data-function-id');
+                const funcCode = cb.getAttribute('data-function-code');
+                
+                assignment.functionIds.push(funcId);
+                assignment.functionCodes.push(funcCode);
+            });
+            
+            assignment.function_id = assignment.functionIds.length > 0 ? assignment.functionIds[0] : '';
+        }
+    };
+
+    // Handle role radio change (All vs Specific)
     window.handleRoleRadioChange = (assignId) => {
         const container = document.getElementById(assignId);
         if (!container) return;
+        
         const allRadio = container.querySelector('.all-roles-radio');
         const checkboxes = container.querySelectorAll('.role-checkbox');
         const checkboxOptions = container.querySelectorAll('.info-field:last-child .checkbox-option');
         const card = moduleCards[currentModalCardId];
         const assignment = card.assignments.find(a => a.id === assignId);
+        
         if (allRadio && allRadio.checked) {
-            checkboxes.forEach(cb => { cb.checked = true; cb.disabled = true; });
+            checkboxes.forEach(cb => { 
+                cb.checked = true; 
+                cb.disabled = true; 
+            });
             checkboxOptions.forEach(opt => opt.classList.add('disabled'));
+            
             if (assignment) {
                 assignment.role_id = 'ALL';
-                assignment.roles = ['ALL'];
+                assignment.roleIds = ['ALL'];
+                assignment.roleCodes = ['ALL'];
             }
         } else {
-            checkboxes.forEach(cb => { cb.disabled = false; cb.checked = false; });
+            checkboxes.forEach(cb => { 
+                cb.disabled = false; 
+                cb.checked = false; 
+            });
             checkboxOptions.forEach(opt => opt.classList.remove('disabled'));
+            
             if (assignment) {
                 assignment.role_id = '';
-                assignment.roles = [];
+                assignment.roleIds = [];
+                assignment.roleCodes = [];
             }
         }
     };
 
-    window.handleLocationCheckboxChange = (assignId) => {
-        const container = document.getElementById(assignId);
-        if (!container) return;
-        const checkboxes = container.querySelectorAll('.location-checkbox:checked:not(:disabled)');
-        const card = moduleCards[currentModalCardId];
-        const assignment = card.assignments.find(a => a.id === assignId);
-        if (assignment) {
-            assignment.locations = Array.from(checkboxes).map(cb => cb.value);
-            assignment.location = assignment.locations.length > 0 ? assignment.locations[0] : '';
-        }
-    };
-
-    window.handleFunctionCheckboxChange = (assignId) => {
-        const container = document.getElementById(assignId);
-        if (!container) return;
-        const checkboxes = container.querySelectorAll('.function-checkbox:checked:not(:disabled)');
-        const card = moduleCards[currentModalCardId];
-        const assignment = card.assignments.find(a => a.id === assignId);
-        if (assignment) {
-            assignment.functions = Array.from(checkboxes).map(cb => cb.value);
-            assignment.function_id = assignment.functions.length > 0 ? assignment.functions[0] : '';
-        }
-    };
-
+    // Handle role checkbox change
     window.handleRoleCheckboxChange = (assignId) => {
         const container = document.getElementById(assignId);
         if (!container) return;
+        
         const checkboxes = container.querySelectorAll('.role-checkbox:checked:not(:disabled)');
         const card = moduleCards[currentModalCardId];
         const assignment = card.assignments.find(a => a.id === assignId);
+        
         if (assignment) {
-            assignment.roles = Array.from(checkboxes).map(cb => cb.value);
-            assignment.role_id = assignment.roles.length > 0 ? assignment.roles[0] : '';
+            assignment.roleIds = [];
+            assignment.roleCodes = [];
+            
+            checkboxes.forEach(cb => {
+                const roleId = cb.getAttribute('data-role-id');
+                const roleCode = cb.getAttribute('data-role-code');
+                
+                assignment.roleIds.push(roleId);
+                assignment.roleCodes.push(roleCode);
+            });
+            
+            assignment.role_id = assignment.roleIds.length > 0 ? assignment.roleIds[0] : '';
         }
     };
 
+    // Add new module
     function addNewModule() {
         const moduleSelectorHTML = `
             <div class="module-selector-grid">
@@ -1272,6 +1384,7 @@
                 `).join('')}
             </div>
         `;
+        
         Swal.fire({
             title: 'Select Module',
             html: moduleSelectorHTML,
@@ -1283,7 +1396,6 @@
                 document.querySelectorAll('.module-selector-card').forEach(card => {
                     card.addEventListener('click', function() {
                         const moduleId = this.getAttribute('data-module-id');
-                        console.log('Module clicked, ID:', moduleId);
                         selectModuleDirectly(moduleId);
                     });
                 });
@@ -1292,17 +1404,13 @@
     }
     window.addNewModule = addNewModule;
 
+    // Select module and create card
     function selectModuleDirectly(moduleId) {
-        console.log('=== SELECT MODULE DIRECTLY ===');
-        console.log('Module ID:', moduleId);
-        
         Swal.close();
         
         const module = modulesData.find(m => m.id == moduleId);
-        console.log('Found module:', module);
         
         if (!module) {
-            console.error('Module not found for ID:', moduleId);
             showAlert('error', 'Error', 'Module not found');
             return;
         }
@@ -1313,28 +1421,23 @@
         const applicationCode = getApplicationCodeForSP(module);
         const isSCM = applicationCode === 'OPS' || applicationCode === 'OPSUAT';
         
-        console.log('Creating card:', {
-            cardId,
-            assignId,
-            moduleId: moduleId,
-            moduleName: module.name,
-            applicationCode,
-            isSCM
-        });
-        
         moduleCards[cardId] = {
-            id: cardId, 
-            isNew: true, 
-            module_id: moduleId, 
+            id: cardId,
+            isNew: true,
+            module_id: moduleId,
             module_name: module.name,
+            application_id: module.application_id,
             assignments: [{
-                id: assignId, 
+                id: assignId,
                 location: '',
-                locations: [],
+                locationIds: [],
+                locationCodes: [],
                 role_id: '',
-                roles: [],
+                roleIds: [],
+                roleCodes: [],
                 function_id: isSCM ? '' : undefined,
-                functions: isSCM ? [] : undefined
+                functionIds: isSCM ? [] : undefined,
+                functionCodes: isSCM ? [] : undefined
             }]
         };
         
@@ -1343,6 +1446,7 @@
     }
     window.selectModuleDirectly = selectModuleDirectly;
 
+    // Delete assignment
     window.deleteAssignment = (assignId) => {
         Swal.fire({
             title: 'Delete Assignment?',
@@ -1355,87 +1459,107 @@
             if (result.isConfirmed) {
                 const card = moduleCards[currentModalCardId];
                 card.assignments = card.assignments.filter(a => a.id !== assignId);
+                
                 if (card.assignments.length === 0 && card.isNew) {
                     delete moduleCards[currentModalCardId];
                     closeModal();
                 } else {
                     renderModalAssignments();
                 }
+                
                 showAlert('success', 'Deleted', 'Assignment removed');
             }
         });
     };
 
+    // Update hidden inputs for form submission
     function updateHiddenInputs() {
         const container = document.getElementById('hiddenInputsContainer');
         container.innerHTML = '';
         let index = 0;
+        
         Object.values(moduleCards).forEach(card => {
-            if (card.module_id && card.assignments) {
-                card.assignments.forEach(a => {
-                    const hasLocations = (a.locations && a.locations.length > 0) || a.location === 'ALL';
-                    const hasRoles = (a.roles && a.roles.length > 0) || a.role_id === 'ALL';
-                    
-                    if (hasLocations && hasRoles) {
-                        const locations = a.location === 'ALL' ? ['ALL'] : (a.locations || [a.location]);
-                        const roles = a.role_id === 'ALL' ? ['ALL'] : (a.roles || [a.role_id]);
-                        const functions = a.function_id === 'ALL' ? ['ALL'] : (a.functions || [a.function_id]);
-                        
-                        locations.forEach(loc => {
-                            roles.forEach(role => {
-                                if (functions && functions.length > 0 && a.function_id !== undefined) {
-                                    functions.forEach(func => {
-                                        container.innerHTML += `
-                                            <input type="hidden" name="modules[${index}][module_id]" value="${card.module_id}">
-                                            <input type="hidden" name="modules[${index}][location]" value="${loc}">
-                                            <input type="hidden" name="modules[${index}][role_id]" value="${role}">
-                                            <input type="hidden" name="modules[${index}][function_id]" value="${func}">
-                                        `;
-                                        index++;
-                                    });
-                                } else {
+            if (!card.module_id || !card.assignments) return;
+            
+            const module = modulesData.find(m => m.id == card.module_id);
+            if (!module) return;
+            
+            const applicationCode = getApplicationCodeForSP(module);
+            const isSCM = applicationCode === 'OPS' || applicationCode === 'OPSUAT';
+            
+            card.assignments.forEach(a => {
+                // Determine what to expand
+                const locations = a.location === 'ALL' ? 
+                    locationsData.map(l => ({
+                        id: l.id,
+                        code: l.code.trim()
+                    })) : 
+                    (a.locationCodes || []).map(code => ({
+                        id: locationsCache[code]?.id || '',
+                        code: code
+                    }));
+                
+                const roles = a.role_id === 'ALL' ? 
+                    (rolesCache[`${applicationCode}_all`] || []).map(r => ({
+                        id: r.id,
+                        code: r.code
+                    })) : 
+                    (a.roleIds || []).map((id, idx) => ({
+                        id: id,
+                        code: a.roleCodes[idx] || ''
+                    }));
+                
+                const functions = isSCM ? (
+                    a.function_id === 'ALL' ? 
+                        (scmFunctionsCache || []).map(f => ({
+                            id: f.id,
+                            code: f.code
+                        })) : 
+                        (a.functionIds || []).map((id, idx) => ({
+                            id: id,
+                            code: a.functionCodes[idx] || ''
+                        }))
+                ) : [];
+                
+                // Create combinations
+                if (locations.length > 0 && roles.length > 0) {
+                    locations.forEach(loc => {
+                        roles.forEach(role => {
+                            if (isSCM && functions.length > 0) {
+                                functions.forEach(func => {
                                     container.innerHTML += `
                                         <input type="hidden" name="modules[${index}][module_id]" value="${card.module_id}">
-                                        <input type="hidden" name="modules[${index}][location]" value="${loc}">
-                                        <input type="hidden" name="modules[${index}][role_id]" value="${role}">
+                                        <input type="hidden" name="modules[${index}][application_id]" value="${module.application_id}">
+                                        <input type="hidden" name="modules[${index}][location_id]" value="${loc.id}">
+                                        <input type="hidden" name="modules[${index}][location_code]" value="${loc.code}">
+                                        <input type="hidden" name="modules[${index}][role_id]" value="${role.id}">
+                                        <input type="hidden" name="modules[${index}][role_code]" value="${role.code}">
+                                        <input type="hidden" name="modules[${index}][function_id]" value="${func.id}">
+                                        <input type="hidden" name="modules[${index}][function_code]" value="${func.code}">
                                     `;
                                     index++;
-                                }
-                            });
+                                });
+                            } else {
+                                container.innerHTML += `
+                                    <input type="hidden" name="modules[${index}][module_id]" value="${card.module_id}">
+                                    <input type="hidden" name="modules[${index}][application_id]" value="${module.application_id}">
+                                    <input type="hidden" name="modules[${index}][location_id]" value="${loc.id}">
+                                    <input type="hidden" name="modules[${index}][location_code]" value="${loc.code}">
+                                    <input type="hidden" name="modules[${index}][role_id]" value="${role.id}">
+                                    <input type="hidden" name="modules[${index}][role_code]" value="${role.code}">
+                                `;
+                                index++;
+                            }
                         });
-                    }
-                });
-            }
+                    });
+                }
+            });
         });
+        
+        console.log('✅ Created', index, 'hidden inputs for', Object.keys(moduleCards).length, 'module cards');
     }
 
-    function cancelForm() {
-        confirmAction(
-            'Cancel Form',
-            'Are you sure you want to cancel? All unsaved changes will be lost.',
-            function() {
-                window.location.href = '{{ route("azure.dashboard.index") }}';
-            }
-        );
-    }
-
-    document.getElementById('userForm').addEventListener('submit', function(e) {
-        e.preventDefault();
-        
-        if (!validateForm()) {
-            return;
-        }
-
-        updateHiddenInputs();
-        showLoading();
-        
-        const submitBtn = document.getElementById('submitBtn');
-        submitBtn.disabled = true;
-        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating...';
-        
-        this.submit();
-    });
-
+    // Form validation
     function validateForm() {
         let isValid = true;
         const requiredFields = ['name', 'employee_id', 'email', 'phone'];
@@ -1488,6 +1612,42 @@
         return isValid;
     }
 
+    // Cancel form
+    function cancelForm() {
+        confirmAction(
+            'Cancel Form',
+            'Are you sure you want to cancel? All unsaved changes will be lost.',
+            function() {
+                window.location.href = '{{ route("azure.dashboard.index") }}';
+            }
+        );
+    }
+
+    // Form submission
+    document.getElementById('userForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        if (!validateForm()) {
+            return;
+        }
+
+        updateHiddenInputs();
+        
+        // Debug: show what we're submitting
+        console.log('=== FORM SUBMISSION ===');
+        console.log('Module Cards:', moduleCards);
+        console.log('Hidden Inputs Count:', document.querySelectorAll('#hiddenInputsContainer input').length);
+        
+        showLoading();
+        
+        const submitBtn = document.getElementById('submitBtn');
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating...';
+        
+        this.submit();
+    });
+
+    // Email validation on blur
     document.getElementById('email').addEventListener('blur', function() {
         const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (this.value.trim() && !emailPattern.test(this.value)) {
@@ -1497,6 +1657,7 @@
         }
     });
 
+    // Remove validation errors on input
     document.querySelectorAll('input').forEach(input => {
         input.addEventListener('input', function() {
             if (this.classList.contains('is-invalid')) {
@@ -1509,10 +1670,14 @@
         });
     });
 
+    // ESC key to close modal
     document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && currentModalCardId) cancelModal();
+        if (e.key === 'Escape' && currentModalCardId) {
+            cancelModal();
+        }
     });
 
+    // Helper functions
     function showAlert(type, title, message) {
         if (typeof Swal !== 'undefined') {
             Swal.fire({
@@ -1564,6 +1729,7 @@
         }
     }
 
+    // Initialize on page load
     document.addEventListener('DOMContentLoaded', function() {
         renderAllCards();
     });
