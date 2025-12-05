@@ -976,56 +976,65 @@
                     </tr>
                 </thead>
                 <tbody id="usersTableBody">
-                    @forelse($users as $user)
-                        <tr>
-                            <td>
-                                <div class="user-info">
-                                    <div class="user-avatar">{{ substr($user->displayName ?? 'N/A', 0, 2) }}</div>
-                                    <div class="user-details">
-                                        <div class="user-name">{{ $user->displayName ?? 'N/A' }}</div>
-                                    </div>
-                                </div>
-                            </td>
-                            <td>{{ $user->mail ?? 'N/A' }}</td>
-                            <td>{{ $user->userPrincipalName ?? 'N/A' }}</td>
-                            <td>{{ $user->id ?? 'N/A' }}</td>
-                            <td>{{ $user->department ?? 'N/A' }}</td>
-                            <td>
-                                <span class="status-badge status-{{ $user->accountEnabled ? 'active' : 'inactive' }}">
-                                    {{ $user->accountEnabled ? 'Active' : 'Inactive' }}
-                                </span>
-                            </td>
-                            <td class="actions-cell">
-                                <button class="btn btn-sm btn-primary" onclick="viewUser('{{ $user->id }}')" 
-                                        title="View User" aria-label="View user {{ $user->displayName }}">
-                                    <i class="fas fa-eye"></i>
-                                </button>
-                                <button class="btn btn-sm btn-warning" onclick="editUser('{{ $user->id }}')" 
-                                        title="Edit User" aria-label="Edit user {{ $user->displayName }}">
-                                    <i class="fas fa-edit"></i>
-                                </button>
-                                @if($user->accountEnabled)
-                                    <button class="btn btn-sm btn-danger" onclick="toggleUserStatus('{{ $user->id }}', 'disable')" 
-                                            title="Disable User" aria-label="Disable user {{ $user->displayName }}">
-                                        <i class="fas fa-user-slash"></i>
-                                    </button>
-                                @else
-                                    <button class="btn btn-sm btn-success" onclick="toggleUserStatus('{{ $user->id }}', 'enable')" 
-                                            title="Enable User" aria-label="Enable user {{ $user->displayName }}">
-                                        <i class="fas fa-user-check"></i>
-                                    </button>
-                                @endif
-                            </td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="7" class="empty-state">
-                                <i class="fas fa-users"></i>
-                                <div>No users found</div>
-                            </td>
-                        </tr>
-                    @endforelse
-                </tbody>
+    @forelse($users as $user)
+        <tr>
+            <td>
+                <div class="user-info">
+                    <div class="user-avatar">{{ strtoupper(substr($user->displayName ?? 'NA', 0, 2)) }}</div>
+                    <div class="user-details">
+                        <div class="user-name">{{ $user->displayName ?? 'N/A' }}</div>
+                    </div>
+                </div>
+            </td>
+            <td>{{ $user->mail ?? $user->userPrincipalName ?? 'N/A' }}</td>
+            <td>{{ $user->userPrincipalName ?? 'N/A' }}</td>
+            <td>{{ $user->EmployeCode ?? 'N/A' }}</td>
+            <td>{{ $user->department ?? $user->companyName ?? 'N/A' }}</td>
+            <td>
+                @php
+                    $status = $user->Status ?? 'Unknown';
+                    $badgeClass = match(strtolower($status)) {
+                        'active' => 'status-active',
+                        'pending' => 'status-pending',
+                        'inactive' => 'status-inactive',
+                        default => 'status-inactive'
+                    };
+                @endphp
+                <span class="status-badge {{ $badgeClass }}">
+                    {{ $status }}
+                </span>
+            </td>
+            <td class="actions-cell">
+                <button class="btn btn-sm btn-primary" onclick="viewUser('{{ $user->Id }}')" 
+                        title="View User">
+                    <i class="fas fa-eye"></i>
+                </button>
+                <button class="btn btn-sm btn-warning" onclick="editUser('{{ $user->Id }}')" 
+                        title="Edit User">
+                    <i class="fas fa-edit"></i>
+                </button>
+                @if($user->Status === 'Active')
+                    <button class="btn btn-sm btn-danger" onclick="disableUser('{{ $user->Id }}')" 
+                            title="Disable User">
+                        <i class="fas fa-user-slash"></i>
+                    </button>
+                @else
+                    <button class="btn btn-sm btn-success" onclick="enableUser('{{ $user->Id }}')" 
+                            title="Enable User">
+                        <i class="fas fa-user-check"></i>
+                    </button>
+                @endif
+            </td>
+        </tr>
+    @empty
+        <tr>
+            <td colspan="7" class="empty-state">
+                <i class="fas fa-users"></i>
+                <div>No users found</div>
+            </td>
+        </tr>
+    @endforelse
+</tbody>
             </table>
         </div>
 
@@ -1099,7 +1108,7 @@
     };
 
     document.addEventListener('DOMContentLoaded', function() {
-        loadUsers();
+        // loadUsers();
         setupEventListeners();
         setupAccessibility();
     });

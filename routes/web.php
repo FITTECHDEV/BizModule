@@ -791,3 +791,14 @@ Route::get('/test-stored-procedures', function () {
         echo "</div>";
     }
 });
+
+
+
+
+Route::get('/test-azure-users', function() {
+    dd([
+        'raw_count' => DB::connection('sqlsrv')->table('Azure_Users')->count(),
+        'model_count' => App\Models\AzureUser::count(),
+        'first_user' => App\Models\AzureUser::first(),
+    ]);
+});

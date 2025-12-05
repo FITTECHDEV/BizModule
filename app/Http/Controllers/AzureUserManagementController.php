@@ -33,24 +33,32 @@ class AzureUserManagementController extends Controller
     /**
      * Display a listing of users with statistics
      */
-   public function index()
+/**
+ * Display a listing of users with statistics
+ */
+public function index()
 {
     try {
-        $users = AzureUser::orderBy('createdDateTime', 'desc')->paginate(15);
-
+        // Order by Id instead of createdDateTime (which is NULL for most users)
+        $users = AzureUser::orderBy('Id', 'desc')->paginate(15);
+        
+        // Calculate stats - handle NULL Status values
         $stats = [
             'total' => AzureUser::count(),
-            'active' => AzureUser::where('accountEnabled', true)->count(),
-            'pending' => AzureUser::where('accountEnabled', false)->count(),
-            'inactive' => AzureUser::where('accountEnabled', false)->count(),
+            'active' => AzureUser::where('Status', 'Active')->count(),
+            'pending' => AzureUser::where('Status', 'Pending')->count(),
+            'inactive' => AzureUser::whereIn('Status', ['Inactive', null])->count(),
         ];
-
+        
         return view('azure-management.users.index', compact('users', 'stats'));
+        
     } catch (\Exception $e) {
-        dd('Error loading users:', $e->getMessage());
+        Log::error('Azure Dashboard Error: ' . $e->getMessage());
+        
+        return redirect()->back()
+            ->withErrors(['error' => 'Failed to load dashboard: ' . $e->getMessage()]);
     }
 }
-
     /**
      * Get user statistics for dashboard (API endpoint)
      */
@@ -58,7 +66,7 @@ class AzureUserManagementController extends Controller
     {
         $stats = [
             'total' => AzureUser::count(),
-            'active' => AzureUser::where('status', 'active')->count(),
+            'active' => AzureUser::where('Status', 'Active')->count(),  
             'pending' => AzureUser::where('status', 'pending')->count(),
             'inactive' => AzureUser::where('status', 'inactive')->count(),
         ];
@@ -134,25 +142,6 @@ public function create()
 public function store(Request $request)
 {
     try {
-        // === DEBUG: Show what data we're receiving ===
-        dd([
-            'all_request_data' => $request->all(),
-            'modules' => $request->modules,
-            'modules_count' => $request->has('modules') ? count($request->modules) : 0,
-            'first_module' => $request->has('modules') && count($request->modules) > 0 ? $request->modules[0] : 'NO MODULES',
-            'sample_module_structure' => $request->has('modules') && count($request->modules) > 0 ? 
-                [
-                    'module_id' => $request->modules[0]['module_id'] ?? 'missing',
-                    'application_id' => $request->modules[0]['application_id'] ?? 'missing',
-                    'location_id' => $request->modules[0]['location_id'] ?? 'missing',
-                    'location_code' => $request->modules[0]['location_code'] ?? 'missing',
-                    'role_id' => $request->modules[0]['role_id'] ?? 'missing',
-                    'role_code' => $request->modules[0]['role_code'] ?? 'missing',
-                    'function_id' => $request->modules[0]['function_id'] ?? 'not present',
-                    'function_code' => $request->modules[0]['function_code'] ?? 'not present',
-                ] : 'NO MODULES'
-        ]);
-        // === END DEBUG ===
 
         // Validate required fields
         $request->validate([

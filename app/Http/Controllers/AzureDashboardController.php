@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Models\User;
+use App\Models\AzureUser;  // FIXED: Changed from User to AzureUser
 use App\Models\Company;
 use App\Models\Module;
 use App\Models\Location;
@@ -18,35 +18,26 @@ class AzureDashboardController extends Controller
     public function index()
     {
         try {
-            // Simple user statistics
+            // Calculate stats - handle NULL Status values
             $stats = [
-                'total' => User::count(),
-                'active' => User::where('status', 'active')->count(),
-                'pending' => User::where('status', 'pending')->count(),
-                'inactive' => User::where('status', 'inactive')->count(),
+                'total' => AzureUser::count(),
+                'active' => AzureUser::where('Status', 'Active')->count(),
+                'pending' => AzureUser::where('Status', 'Pending')->count(),
+                'inactive' => AzureUser::where('Status', 'Inactive')->count(),
             ];
             
-            // Simple user list - no pagination for now
-            $users = User::orderBy('created_at', 'desc')->limit(10)->get();
+            // Get users ordered by Id (since createdDateTime is NULL for most)
+            $users = AzureUser::orderBy('Id', 'desc')->paginate(15);
             
-            // FIXED: Changed view path to match your folder structure
             return view('azure-management.dashboard.index', compact('stats', 'users'));
             
         } catch (\Exception $e) {
-            Log::error('Azure Dashboard Error: ' . $e->getMessage());
+            Log::error('Azure Dashboard Error: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString()
+            ]);
             
-            // If there are no users yet, create empty data
-            $stats = [
-                'total' => 0,
-                'active' => 0,
-                'pending' => 0,
-                'inactive' => 0,
-            ];
-            
-            $users = collect([]); // Empty collection
-            
-            // FIXED: Changed view path here too
-            return view('azure-management.dashboard.index', compact('stats', 'users'));
+            return redirect()->back()
+                ->withErrors(['error' => 'Failed to load dashboard: ' . $e->getMessage()]);
         }
     }
 
@@ -57,10 +48,10 @@ class AzureDashboardController extends Controller
     {
         try {
             $stats = [
-                'total' => User::count(),
-                'active' => User::where('status', 'active')->count(),
-                'pending' => User::where('status', 'pending')->count(),
-                'inactive' => User::where('status', 'inactive')->count(),
+                'total' => AzureUser::count(),
+                'active' => AzureUser::where('Status', 'Active')->count(),
+                'pending' => AzureUser::where('Status', 'Pending')->count(),
+                'inactive' => AzureUser::where('Status', 'Inactive')->count(),
             ];
             
             return response()->json($stats);
@@ -84,13 +75,14 @@ class AzureDashboardController extends Controller
     {
         try {
             // Users by location
-            $usersByLocation = User::selectRaw('location, count(*) as count')
-                ->groupBy('location')
+            $usersByLocation = AzureUser::selectRaw('officeLocation, count(*) as count')
+                ->whereNotNull('officeLocation')
+                ->groupBy('officeLocation')
                 ->get();
 
             // Users by status
-            $usersByStatus = User::selectRaw('status, count(*) as count')
-                ->groupBy('status')
+            $usersByStatus = AzureUser::selectRaw('Status, count(*) as count')
+                ->groupBy('Status')
                 ->get();
 
             return response()->json([
@@ -114,16 +106,17 @@ class AzureDashboardController extends Controller
     public function getRecentActivity()
     {
         try {
-            $recentUsers = User::orderBy('created_at', 'desc')
+            $recentUsers = AzureUser::whereNotNull('createdDateTime')
+                ->orderBy('createdDateTime', 'desc')
                 ->limit(5)
                 ->get()
                 ->map(function ($user) {
                     return [
                         'type' => 'user_created',
-                        'message' => "New user {$user->name} was created",
-                        'timestamp' => $user->created_at->diffForHumans(),
-                        'user' => $user->name,
-                        'status' => $user->status ?? 'pending',
+                        'message' => "New user {$user->displayName} was created",
+                        'timestamp' => $user->createdDateTime ? $user->createdDateTime->diffForHumans() : 'Unknown',
+                        'user' => $user->displayName,
+                        'status' => $user->Status ?? 'pending',
                     ];
                 });
 

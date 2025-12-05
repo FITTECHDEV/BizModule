@@ -2,13 +2,11 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\DB;
 
 class AzureUser extends Authenticatable
 {
@@ -17,12 +15,32 @@ class AzureUser extends Authenticatable
     /**
      * The database connection to use
      */
-    // protected $connection = 'azure_management';
+    protected $connection = 'sqlsrv';
 
     /**
      * The table associated with the model.
      */
     protected $table = 'Azure_Users';
+    
+    /**
+     * The primary key for the model.
+     */
+    protected $primaryKey = 'Id';
+    
+    /**
+     * Indicates if the IDs are auto-incrementing.
+     */
+    public $incrementing = false;
+    
+    /**
+     * The "type" of the primary key ID.
+     */
+    protected $keyType = 'string';
+    
+    /**
+     * Indicates if the model should be timestamped.
+     */
+    public $timestamps = false;
 
     /**
      * The attributes that are mass assignable.
@@ -30,27 +48,31 @@ class AzureUser extends Authenticatable
      * @var array<int, string>
      */
     protected $fillable = [
-        'name',
-        'email',
-        'password',
-        'employee_id',
-        'phone',
-        'location',
-        'company_id',
-        'status',
-        'azure_id',
-        'azure_upn',
-        'azure_display_name',
-        'last_login_at',
-        'disabled_at',
-        'is_active',
-        'deactivated_at',
+        'Id',
+        'userPrincipalName',
+        'displayName',
+        'surname',
+        'mail',
+        'givenName',
+        'telephoneNumber',
+        'mobilePhone',
+        'jobTitle',
+        'department',
+        'officeLocation',
+        'accountEnabled',
+        'userType',
+        'usageLocation',
+        'country',
+        'Status',
+        'EmployeCode',
+        'companyName',
+        'createdDateTime',
+        'LastModifiedBy',
+        'LastModifiedOn',
     ];
 
     /**
      * The attributes that should be hidden for serialization.
-     *
-     * @var array<int, string>
      */
     protected $hidden = [
         'password',
@@ -59,16 +81,11 @@ class AzureUser extends Authenticatable
 
     /**
      * The attributes that should be cast.
-     *
-     * @var array<string, string>
      */
     protected $casts = [
-        'email_verified_at' => 'datetime',
-        'password' => 'hashed',
-        'last_login_at' => 'datetime',
-        'disabled_at' => 'datetime',
-        'deactivated_at' => 'datetime',
-        'is_active' => 'boolean',
+        'createdDateTime' => 'datetime',
+        'LastModifiedOn' => 'datetime',
+        'accountEnabled' => 'boolean',
     ];
 
     // =================================================================
@@ -76,55 +93,22 @@ class AzureUser extends Authenticatable
     // =================================================================
 
     /**
-     * Get the company that the user belongs to.
+     * Get all module assignments for this user
      */
-    public function company(): BelongsTo
+    public function moduleAssignments(): HasMany
     {
-        return $this->belongsTo(AzureCompany::class, 'company_id');
+        return $this->hasMany(AzureApplicationUserMapping::class, 'user_id', 'userPrincipalName');
     }
 
     /**
-     * The modules that belong to the user.
+     * Get modules assigned to this user (distinct list)
      */
-    public function modules(): BelongsToMany
+    public function getModulesAttribute()
     {
-        return $this->belongsToMany(AzureModule::class, 'user_modules')
-                    ->withPivot('role_id', 'location', 'azure_group_id', 'provisioned_at', 'external_sync_status')
-                    ->withTimestamps();
-    }
-
-    /**
-     * The roles that belong to the user.
-     */
-    public function roles(): BelongsToMany
-    {
-        return $this->belongsToMany(AzureRole::class, 'user_roles')
-                    ->withPivot('assigned_at')
-                    ->withTimestamps();
-    }
-
-    /**
-     * Get audit logs where this user was the subject (acted upon)
-     */
-    public function auditLogs(): HasMany
-    {
-        return $this->hasMany(AzureAuditLog::class, 'user_id');
-    }
-
-    /**
-     * Get audit logs where this user performed the action
-     */
-    public function performedAudits(): HasMany
-    {
-        return $this->hasMany(AzureAuditLog::class, 'performed_by');
-    }
-
-    /**
-     * Get the procedures related to the user.
-     */
-    public function procedures(): HasMany
-    {
-        return $this->hasMany(AzureProcedure::class, 'user_id');
+        return $this->moduleAssignments()
+            ->select('ApplicationName', 'application_id')
+            ->distinct()
+            ->get();
     }
 
     // =================================================================
@@ -136,35 +120,44 @@ class AzureUser extends Authenticatable
      */
     public function scopeActive($query)
     {
-        return $query->where('status', 'active')
-                        ->where('is_active', true);
+        return $query->where('Status', 'Active')
+                     ->where('accountEnabled', true);
     }
 
     /**
-     * Scope a query to only include inactive/deactivated users.
+     * Scope a query to only include pending users.
+     */
+    public function scopePending($query)
+    {
+        return $query->where('Status', 'Pending');
+    }
+
+    /**
+     * Scope a query to only include inactive users.
      */
     public function scopeInactive($query)
     {
-        return $query->where('is_active', false);
+        return $query->where('Status', 'Inactive');
     }
 
     /**
-     * Scope a query to only include users by location.
+     * Scope a query by location
      */
     public function scopeByLocation($query, $location)
     {
-        return $query->where('location', $location);
+        return $query->where('officeLocation', $location);
     }
 
     /**
-     * Scope a query to search users by name, email, or employee_id.
+     * Scope a query to search users by name, email, or employee code.
      */
     public function scopeSearch($query, $term)
     {
         return $query->where(function ($q) use ($term) {
-            $q->where('name', 'LIKE', "%{$term}%")
-                ->orWhere('email', 'LIKE', "%{$term}%")
-                ->orWhere('employee_id', 'LIKE', "%{$term}%");
+            $q->where('displayName', 'LIKE', "%{$term}%")
+              ->orWhere('mail', 'LIKE', "%{$term}%")
+              ->orWhere('userPrincipalName', 'LIKE', "%{$term}%")
+              ->orWhere('EmployeCode', 'LIKE', "%{$term}%");
         });
     }
 
@@ -177,10 +170,17 @@ class AzureUser extends Authenticatable
      */
     public function getInitialsAttribute()
     {
-        $names = explode(' ', $this->name);
-        return count($names) >= 2 
-            ? strtoupper($names[0][0] . $names[1][0])
-            : strtoupper(substr($this->name, 0, 2));
+        if (empty($this->displayName)) {
+            return 'U';
+        }
+        
+        $names = explode(' ', trim($this->displayName));
+        
+        if (count($names) >= 2) {
+            return strtoupper($names[0][0] . $names[1][0]);
+        }
+        
+        return strtoupper(substr($this->displayName, 0, 2));
     }
 
     /**
@@ -188,192 +188,32 @@ class AzureUser extends Authenticatable
      */
     public function getStatusBadgeClassAttribute()
     {
-        if (!$this->is_active) {
-            return 'badge-danger';
-        }
-
-        return match ($this->status) {
-            'active' => 'badge-success',
-            'pending' => 'badge-warning',
-            'inactive' => 'badge-danger',
+        return match ($this->Status) {
+            'Active' => 'badge-success',
+            'Pending' => 'badge-warning',
+            'Inactive' => 'badge-danger',
             default => 'badge-secondary'
         };
     }
 
     /**
-     * Get provisioning status attribute
+     * Get formatted email (fallback to userPrincipalName)
      */
-    public function getProvisioningStatusAttribute(): string
+    public function getEmailAttribute()
     {
-        if (!$this->is_active) {
-            return 'deactivated';
-        }
+        return $this->mail ?? $this->userPrincipalName;
+    }
 
-        if ($this->status === 'inactive') {
-            return 'disabled';
-        }
-        
-        if (empty($this->azure_id)) {
-            return 'not_provisioned';
-        }
-        
-        if ($this->status === 'pending') {
-            return 'provisioning';
-        }
-        
-        if ($this->status === 'active') {
-            return 'active';
-        }
-        
-        return 'unknown';
+    /**
+     * Get formatted name (fallback to email)
+     */
+    public function getNameAttribute()
+    {
+        return $this->displayName ?? $this->email;
     }
 
     // =================================================================
-    // MODULE & ROLE CHECKS
-    // =================================================================
-
-    /**
-     * Check if user has a specific module.
-     */
-    public function hasModule($moduleCode)
-    {
-        return $this->modules()->where('code', $moduleCode)->exists();
-    }
-
-    /**
-     * Check if user has a specific role in a module.
-     */
-    public function hasRoleInModule($moduleCode, $roleName)
-    {
-        return $this->modules()
-                    ->where('code', $moduleCode)
-                    ->whereHas('roles', function ($q) use ($roleName) {
-                        $q->where('name', $roleName);
-                    })
-                    ->exists();
-    }
-
-    /**
-     * Get user's permissions based on assigned modules and roles.
-     */
-    public function getPermissions()
-    {
-        $permissions = [];
-        
-        foreach ($this->modules as $module) {
-            if (isset($module->pivot->role_id)) {
-                $role = AzureRole::find($module->pivot->role_id);
-                if ($role) {
-                    $permissions[$module->code] = [
-                        'module' => $module->name,
-                        'role' => $role->name,
-                        'permissions' => $role->permissions ?? []
-                    ];
-                }
-            }
-        }
-        
-        return $permissions;
-    }
-
-    // =================================================================
-    // AZURE PROVISIONING METHODS
-    // =================================================================
-
-    /**
-     * Check if user is provisioned to Azure AD
-     */
-    public function isProvisionedToAzure(): bool
-    {
-        return !empty($this->azure_id) && !empty($this->azure_upn);
-    }
-
-    /**
-     * Check if user provisioning is complete (all modules assigned successfully)
-     */
-    public function isFullyProvisioned(): bool
-    {
-        if (!$this->isProvisionedToAzure()) {
-            return false;
-        }
-
-        return $this->status === 'active' && $this->is_active;
-    }
-
-    /**
-     * Check if user has partial provisioning (Azure created but some modules failed)
-     */
-    public function isPartiallyProvisioned(): bool
-    {
-        return $this->isProvisionedToAzure() && $this->status === 'partial';
-    }
-
-    /**
-     * Get modules with failed provisioning
-     * Returns collection of modules where external sync failed
-     */
-    public function getFailedModuleAssignments()
-    {
-        return $this->modules()
-            ->wherePivot('external_sync_status', 'failed')
-            ->get();
-    }
-
-    /**
-     * Get provisioning status summary
-     */
-    public function getProvisioningStatus(): array
-    {
-        $totalModules = $this->modules()->count();
-        $syncedModules = $this->modules()
-            ->wherePivot('external_sync_status', 'synced')
-            ->count();
-        $failedModules = $this->modules()
-            ->wherePivot('external_sync_status', 'failed')
-            ->count();
-        $pendingModules = $this->modules()
-            ->wherePivot('external_sync_status', 'pending')
-            ->count();
-
-        return [
-            'azure_provisioned' => $this->isProvisionedToAzure(),
-            'is_active' => $this->is_active,
-            'status' => $this->status,
-            'total_modules' => $totalModules,
-            'synced_modules' => $syncedModules,
-            'failed_modules' => $failedModules,
-            'pending_modules' => $pendingModules,
-            'completion_percentage' => $totalModules > 0 
-                ? round(($syncedModules / $totalModules) * 100, 2) 
-                : 0,
-        ];
-    }
-
-    /**
-     * Check if user can be deleted from Azure AD
-     * (Only if status is inactive/disabled)
-     */
-    public function canDeleteFromAzure(): bool
-    {
-        return $this->isProvisionedToAzure() 
-            && in_array($this->status, ['inactive', 'disabled']);
-    }
-
-    /**
-     * Get Azure profile URL (for admin reference)
-     */
-    public function getAzureProfileUrl(): ?string
-    {
-        if (!$this->azure_id) {
-            return null;
-        }
-
-        $tenantId = config('azure.tenant_id');
-        return "https://portal.azure.com/#view/Microsoft_AAD_UsersAndTenants/UserProfileMenuBlade/~/overview/userId/{$this->azure_id}/tenantId/{$tenantId}";
-    }
-
-    // =================================================================
-    // DEACTIVATION METHODS (NEW)
+    // STATUS CHECKS
     // =================================================================
 
     /**
@@ -381,45 +221,149 @@ class AzureUser extends Authenticatable
      */
     public function isActive(): bool
     {
-        return $this->is_active === true;
+        return $this->Status === 'Active' && $this->accountEnabled;
     }
 
     /**
-     * Check if user is deactivated
+     * Check if user is pending
      */
-    public function isDeactivated(): bool
+    public function isPending(): bool
     {
-        return $this->is_active === false;
+        return $this->Status === 'Pending';
     }
 
     /**
-     * Check if user can be deactivated
+     * Check if user is inactive
      */
-    public function canBeDeactivated(): bool
+    public function isInactive(): bool
     {
-        return $this->is_active && $this->isProvisionedToAzure();
+        return $this->Status === 'Inactive';
     }
 
     /**
-     * Check if user can be reactivated
+     * Check if user account is enabled
      */
-    public function canBeReactivated(): bool
+    public function isEnabled(): bool
     {
-        return !$this->is_active && $this->isProvisionedToAzure();
+        return (bool) $this->accountEnabled;
     }
 
     // =================================================================
-    // AUDIT & ACTIVITY METHODS
+    // MODULE ASSIGNMENT HELPERS
     // =================================================================
 
     /**
-     * Get recent activity for this user
+     * Get count of assigned modules
      */
-    public function recentActivity($days = 7)
+    public function getModuleCountAttribute(): int
     {
-        return $this->auditLogs()
-            ->where('created_at', '>=', now()->subDays($days))
-            ->orderBy('created_at', 'desc')
-            ->get();
+        return $this->moduleAssignments()
+            ->select('ApplicationName')
+            ->distinct()
+            ->count();
+    }
+
+    /**
+     * Check if user has a specific module assigned
+     */
+    public function hasModule(string $moduleName): bool
+    {
+        return $this->moduleAssignments()
+            ->where('ApplicationName', $moduleName)
+            ->exists();
+    }
+
+    /**
+     * Get all roles for a specific module
+     */
+    public function getRolesForModule(string $moduleName): array
+    {
+        return $this->moduleAssignments()
+            ->where('ApplicationName', $moduleName)
+            ->pluck('RoleCode')
+            ->unique()
+            ->toArray();
+    }
+
+    /**
+     * Get all locations for a specific module
+     */
+    public function getLocationsForModule(string $moduleName): array
+    {
+        return $this->moduleAssignments()
+            ->where('ApplicationName', $moduleName)
+            ->pluck('OfficeCode')
+            ->unique()
+            ->toArray();
+    }
+
+    // =================================================================
+    // UTILITY METHODS
+    // =================================================================
+
+    /**
+     * Get user's full profile information
+     */
+    public function getProfileSummary(): array
+    {
+        return [
+            'id' => $this->Id,
+            'name' => $this->name,
+            'email' => $this->email,
+            'employee_code' => $this->EmployeCode,
+            'phone' => $this->telephoneNumber,
+            'mobile' => $this->mobilePhone,
+            'job_title' => $this->jobTitle,
+            'department' => $this->department,
+            'location' => $this->officeLocation,
+            'status' => $this->Status,
+            'account_enabled' => $this->accountEnabled,
+            'module_count' => $this->module_count,
+            'created_at' => $this->createdDateTime,
+        ];
+    }
+
+    /**
+     * Update user status
+     */
+    public function updateStatus(string $status, ?string $updatedBy = null): bool
+    {
+        return DB::connection('sqlsrv')->update("
+            UPDATE Azure_Users 
+            SET Status = ?, 
+                LastModifiedBy = ?, 
+                LastModifiedOn = GETDATE()
+            WHERE Id = ?
+        ", [$status, $updatedBy ?? 'system', $this->Id]) > 0;
+    }
+
+    /**
+     * Disable user account
+     */
+    public function disable(?string $updatedBy = null): bool
+    {
+        return DB::connection('sqlsrv')->update("
+            UPDATE Azure_Users 
+            SET accountEnabled = 0,
+                Status = 'Inactive',
+                LastModifiedBy = ?, 
+                LastModifiedOn = GETDATE()
+            WHERE Id = ?
+        ", [$updatedBy ?? 'system', $this->Id]) > 0;
+    }
+
+    /**
+     * Enable user account
+     */
+    public function enable(?string $updatedBy = null): bool
+    {
+        return DB::connection('sqlsrv')->update("
+            UPDATE Azure_Users 
+            SET accountEnabled = 1,
+                Status = 'Active',
+                LastModifiedBy = ?, 
+                LastModifiedOn = GETDATE()
+            WHERE Id = ?
+        ", [$updatedBy ?? 'system', $this->Id]) > 0;
     }
 }

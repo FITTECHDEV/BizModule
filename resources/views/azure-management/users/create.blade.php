@@ -806,22 +806,8 @@
     }
 
     function getApplicationCodeForSP(module) {
-        const moduleNameLower = module.name.toLowerCase();
-        
-        if (moduleNameLower.includes('ops') && !moduleNameLower.includes('uat')) {
-            return 'OPS';
-        } else if (moduleNameLower.includes('ops') && moduleNameLower.includes('uat')) {
-            return 'OPSUAT';
-        } else if (moduleNameLower.includes('erp')) {
-            return 'ERP';
-        } else if (moduleNameLower.includes('crm')) {
-            return 'CRM';
-        } else if (moduleNameLower.includes('d365')) {
-            return 'D365';
-        } else {
-            return module.name.toUpperCase().replace(/\s+/g, '');
-        }
-    }
+    return module.name; 
+}
 
     // Fetch SCM Functions (returns array of {ID, Code, Name})
     async function fetchSCMFunctions() {
@@ -961,7 +947,7 @@
         const module = modulesData.find(m => m.id == card.module_id);
         if (module) {
             const applicationCode = getApplicationCodeForSP(module);
-            const isSCM = applicationCode === 'OPS' || applicationCode === 'OPSUAT';
+            const isSCM = applicationCode === 'OPS' || applicationCode === 'OPS UAT';
             
             // Fetch roles and functions concurrently
             const promises = [fetchRolesByApplicationCode(applicationCode)];
@@ -1037,7 +1023,7 @@
         }
         
         const applicationCode = getApplicationCodeForSP(module);
-        const isSCM = applicationCode === 'OPS' || applicationCode === 'OPSUAT';
+        const isSCM = applicationCode === 'OPS' || applicationCode === 'OPS UAT';
         const cacheKey = `${applicationCode}_all`;
         
         // Check if data is loaded
@@ -1419,7 +1405,7 @@
         const assignId = `assign_${cardIdCounter++}`;
         
         const applicationCode = getApplicationCodeForSP(module);
-        const isSCM = applicationCode === 'OPS' || applicationCode === 'OPSUAT';
+        const isSCM = applicationCode === 'OPS' || applicationCode === 'OPS UAT';
         
         moduleCards[cardId] = {
             id: cardId,
@@ -1485,7 +1471,7 @@
             if (!module) return;
             
             const applicationCode = getApplicationCodeForSP(module);
-            const isSCM = applicationCode === 'OPS' || applicationCode === 'OPSUAT';
+            const isSCM = applicationCode === 'OPS' || applicationCode === 'OPS UAT';
             
             card.assignments.forEach(a => {
                 // Determine what to expand
