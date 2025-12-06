@@ -15,31 +15,53 @@ class AzureDashboardController extends Controller
     /**
      * Display the dashboard with statistics and users
      */
-    public function index()
-    {
-        try {
-            // Calculate stats - handle NULL Status values
-            $stats = [
-                'total' => AzureUser::count(),
-                'active' => AzureUser::where('Status', 'Active')->count(),
-                'pending' => AzureUser::where('Status', 'Pending')->count(),
-                'inactive' => AzureUser::where('Status', 'Inactive')->count(),
-            ];
-            
-            // Get users ordered by Id (since createdDateTime is NULL for most)
-            $users = AzureUser::orderBy('Id', 'desc')->paginate(15);
-            
-            return view('azure-management.dashboard.index', compact('stats', 'users'));
-            
-        } catch (\Exception $e) {
-            Log::error('Azure Dashboard Error: ' . $e->getMessage(), [
-                'trace' => $e->getTraceAsString()
-            ]);
-            
-            return redirect()->back()
-                ->withErrors(['error' => 'Failed to load dashboard: ' . $e->getMessage()]);
+public function index()
+{
+    try {
+        // Get filter parameters from request
+        $search = request('search', '');
+        $status = request('status', '');
+        
+        // Build query
+        $query = AzureUser::query();
+        
+        // Apply search filter
+        if ($search) {
+            $query->where(function($q) use ($search) {
+                $q->where('displayName', 'LIKE', "%{$search}%")
+                  ->orWhere('mail', 'LIKE', "%{$search}%")
+                  ->orWhere('userPrincipalName', 'LIKE', "%{$search}%")
+                  ->orWhere('EmployeCode', 'LIKE', "%{$search}%");
+            });
         }
+        
+        // Apply status filter (case-insensitive)
+        if ($status) {
+            $query->where('Status', ucfirst(strtolower($status)));
+        }
+        
+        // Get paginated users
+        $users = $query->orderBy('Id', 'desc')->paginate(15);
+        
+        // Calculate stats - handle NULL Status values
+        $stats = [
+            'total' => AzureUser::count(),
+            'active' => AzureUser::where('Status', 'Active')->count(),
+            'pending' => AzureUser::where('Status', 'Pending')->count(),
+            'inactive' => AzureUser::where('Status', 'Inactive')->count(),
+        ];
+        
+        return view('azure-management.dashboard.index', compact('stats', 'users'));
+        
+    } catch (\Exception $e) {
+        Log::error('Azure Dashboard Error: ' . $e->getMessage(), [
+            'trace' => $e->getTraceAsString()
+        ]);
+        
+        return redirect()->back()
+            ->withErrors(['error' => 'Failed to load dashboard: ' . $e->getMessage()]);
     }
+}
 
     /**
      * Get dashboard statistics for AJAX requests

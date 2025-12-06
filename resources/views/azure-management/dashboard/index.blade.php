@@ -911,6 +911,13 @@ body {
             width: 95%;
         }
     }
+
+    .pagination-btn.disabled,
+.pagination-btn[disabled] {
+    opacity: 0.4;
+    cursor: not-allowed;
+    pointer-events: none;
+}
 </style>
 @endpush
 
@@ -1080,34 +1087,77 @@ body {
             </table>
         </div>
 
-        <!-- Pagination -->
-        <div class="pagination">
-            <button class="pagination-btn" id="firstPageBtn" onclick="goToPage(1)" aria-label="First page">
+<!-- Pagination -->
+<div class="pagination">
+    @if ($users->hasPages())
+        {{-- First Page --}}
+        @if ($users->onFirstPage())
+            <button class="pagination-btn" disabled>
                 <i class="fas fa-angle-double-left"></i>
                 <span class="btn-text">First</span>
             </button>
-            <button class="pagination-btn" id="prevPageBtn" onclick="goToPage(currentPage - 1)" aria-label="Previous page">
+        @else
+            <a href="{{ $users->appends(request()->except('page'))->url(1) }}" class="pagination-btn">
+                <i class="fas fa-angle-double-left"></i>
+                <span class="btn-text">First</span>
+            </a>
+        @endif
+        
+        {{-- Previous Page --}}
+        @if ($users->onFirstPage())
+            <button class="pagination-btn" disabled>
                 <i class="fas fa-angle-left"></i>
                 <span class="btn-text">Previous</span>
             </button>
-            
-            <div class="pagination-numbers" id="paginationNumbers">
-                <!-- Page numbers will be inserted here -->
-            </div>
-
-            <button class="pagination-btn" id="nextPageBtn" onclick="goToPage(currentPage + 1)" aria-label="Next page">
+        @else
+            <a href="{{ $users->appends(request()->except('page'))->previousPageUrl() }}" class="pagination-btn">
+                <i class="fas fa-angle-left"></i>
+                <span class="btn-text">Previous</span>
+            </a>
+        @endif
+        
+        {{-- Page Numbers --}}
+        <div class="pagination-numbers">
+            @foreach ($users->getUrlRange(1, $users->lastPage()) as $page => $url)
+                @if ($page == $users->currentPage())
+                    <span class="page-number active">{{ $page }}</span>
+                @else
+                    <a href="{{ $users->appends(request()->except('page'))->url($page) }}" class="page-number">{{ $page }}</a>
+                @endif
+            @endforeach
+        </div>
+        
+        {{-- Next Page --}}
+        @if ($users->hasMorePages())
+            <a href="{{ $users->appends(request()->except('page'))->nextPageUrl() }}" class="pagination-btn">
+                <span class="btn-text">Next</span>
+                <i class="fas fa-angle-right"></i>
+            </a>
+        @else
+            <button class="pagination-btn" disabled>
                 <span class="btn-text">Next</span>
                 <i class="fas fa-angle-right"></i>
             </button>
-            <button class="pagination-btn" id="lastPageBtn" onclick="goToPage(totalPages)" aria-label="Last page">
+        @endif
+        
+        {{-- Last Page --}}
+        @if ($users->currentPage() == $users->lastPage())
+            <button class="pagination-btn" disabled>
                 <span class="btn-text">Last</span>
                 <i class="fas fa-angle-double-right"></i>
             </button>
-
-            <div class="pagination-info" id="paginationInfo">
-                Showing 0 - 0 of 0 users
-            </div>
-        </div>
+        @else
+            <a href="{{ $users->appends(request()->except('page'))->url($users->lastPage()) }}" class="pagination-btn">
+                <span class="btn-text">Last</span>
+                <i class="fas fa-angle-double-right"></i>
+            </a>
+        @endif
+    @endif
+    
+    <div class="pagination-info">
+        Showing {{ $users->firstItem() ?? 0 }} - {{ $users->lastItem() ?? 0 }} of {{ $users->total() }} users
+    </div>
+</div>
     </div>
 </div>
 
@@ -1140,473 +1190,195 @@ body {
 
 @push('scripts')
 <script>
-    let currentPage = 1;
-    let totalPages = 1;
-    let perPage = 10;
-    let totalUsers = 0;
-    let filters = {
-        search: '',
-        status: ''
-    };
+document.addEventListener('DOMContentLoaded', function() {
+    setupEventListeners();
+    setupAccessibility();
+});
 
-    document.addEventListener('DOMContentLoaded', function() {
-        // loadUsers();
-        setupEventListeners();
-        setupAccessibility();
+function setupEventListeners() {
+    // Search functionality with debounce
+    const searchInput = document.getElementById('searchUsers');
+    searchInput.addEventListener('input', debounce(function(e) {
+        performSearch();
+    }, 500));
+
+    // Clear search on Escape
+    searchInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            e.target.value = '';
+            performSearch();
+        }
     });
 
-    function setupEventListeners() {
-        const searchInput = document.getElementById('searchUsers');
-        searchInput.addEventListener('input', debounce(function(e) {
-            filters.search = e.target.value.trim();
-            currentPage = 1;
-            loadUsers();
-        }, 300));
-
-        searchInput.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') {
-                e.target.value = '';
-                filters.search = '';
-                currentPage = 1;
-                loadUsers();
-            }
+    // Status filter
+    const statusFilter = document.getElementById('statusFilter');
+    if (statusFilter) {
+        statusFilter.addEventListener('change', function(e) {
+            performSearch();
         });
+    }
 
-        const statusFilter = document.getElementById('statusFilter');
-        if (statusFilter) {
-            statusFilter.addEventListener('change', function(e) {
-                filters.status = e.target.value;
-                currentPage = 1;
-                loadUsers();
+    // Modal close on outside click
+    window.addEventListener('click', function(e) {
+        if (e.target.classList.contains('modal')) {
+            closeModal(e.target.id);
+        }
+    });
+
+    // Modal close on Escape key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            const openModals = document.querySelectorAll('.modal[style*="block"]');
+            openModals.forEach(modal => {
+                closeModal(modal.id);
             });
         }
+    });
+}
 
-        window.addEventListener('click', function(e) {
-            if (e.target.classList.contains('modal')) {
-                closeModal(e.target.id);
-            }
-        });
+function performSearch() {
+    const search = document.getElementById('searchUsers').value;
+    const status = document.getElementById('statusFilter').value;
+    
+    // Build URL with query parameters
+    const url = new URL(window.location.href);
+    url.searchParams.set('search', search);
+    url.searchParams.set('status', status);
+    url.searchParams.delete('page'); // Reset to first page on new search
+    
+    // Show loading state
+    showLoading();
+    
+    // Redirect with filters
+    window.location.href = url.toString();
+}
 
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') {
-                const openModals = document.querySelectorAll('.modal[style*="block"]');
-                openModals.forEach(modal => {
-                    closeModal(modal.id);
-                });
-            }
-        });
+function setupAccessibility() {
+    const liveRegion = document.createElement('div');
+    liveRegion.setAttribute('aria-live', 'polite');
+    liveRegion.setAttribute('aria-atomic', 'true');
+    liveRegion.style.position = 'absolute';
+    liveRegion.style.left = '-10000px';
+    liveRegion.style.width = '1px';
+    liveRegion.style.height = '1px';
+    liveRegion.style.overflow = 'hidden';
+    liveRegion.id = 'liveRegion';
+    document.body.appendChild(liveRegion);
+}
+
+function announceToScreenReader(message) {
+    const liveRegion = document.getElementById('liveRegion');
+    if (liveRegion) {
+        liveRegion.textContent = message;
     }
+}
 
-    function setupAccessibility() {
-        const liveRegion = document.createElement('div');
-        liveRegion.setAttribute('aria-live', 'polite');
-        liveRegion.setAttribute('aria-atomic', 'true');
-        liveRegion.style.position = 'absolute';
-        liveRegion.style.left = '-10000px';
-        liveRegion.style.width = '1px';
-        liveRegion.style.height = '1px';
-        liveRegion.style.overflow = 'hidden';
-        liveRegion.id = 'liveRegion';
-        document.body.appendChild(liveRegion);
+function toggleUserStatus(userId, action) {
+    const actionText = action === 'enable' ? 'enable' : 'disable';
+    const actionTitle = action === 'enable' ? 'Enable User' : 'Disable User';
+    const actionMessage = action === 'enable'
+        ? 'Are you sure you want to enable this user? This will restore access to all systems.'
+        : 'Are you sure you want to disable this user? This will revoke access to all systems.';
+    
+    if (!confirm(`${actionTitle}\n\n${actionMessage}`)) {
+        return;
     }
-
-    function announceToScreenReader(message) {
-        const liveRegion = document.getElementById('liveRegion');
-        if (liveRegion) {
-            liveRegion.textContent = message;
+    
+    showLoading();
+    
+    fetch(`/azure/users/${userId}/${actionText}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
         }
-    }
-
-    function loadUsers() {
-        showLoading();
-        
-        const params = new URLSearchParams({
-            page: currentPage,
-            per_page: perPage,
-            search: filters.search,
-            status: filters.status
-        });
-
-        fetch(`/api/users?${params}`, {
-            method: 'GET',
-            headers: {
-                'Accept': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest'
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            totalPages = data.last_page;
-            totalUsers = data.total;
-
-            updateUsersTable(data.data);
-            updatePagination({
-                from: ((data.current_page - 1) * data.per_page) + 1,
-                to: Math.min(data.current_page * data.per_page, data.total),
-                total: data.total,
-                current_page: data.current_page,
-                last_page: data.last_page
-            });
-            
-            updateStats(data.stats || {});
-            
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message || `User has been ${actionText}d successfully`);
+            window.location.reload();
+        } else {
+            alert(data.message || `Failed to ${actionText} user`);
             hideLoading();
-            announceToScreenReader('Users table loaded successfully');
-        })
-        .catch(error => {
-            handleError(error);
-        });
-    }
-
-    function updateStats(stats) {
-        if (stats.active !== undefined) {
-            document.getElementById('activeUsers').textContent = stats.active;
         }
-        if (stats.inactive !== undefined) {
-            document.getElementById('inactiveUsers').textContent = stats.inactive;
-        }
-        if (stats.pending !== undefined) {
-            document.getElementById('pendingUsers').textContent = stats.pending;
-        }
-        if (stats.total !== undefined) {
-            document.getElementById('totalUsers').textContent = stats.total;
-        }
-    }
-
-    function updatePagination(response) {
-        const from = response.from || 0;
-        const to = response.to || 0;
-        const total = response.total || 0;
-        document.getElementById('paginationInfo').textContent = 
-            `Showing ${from} - ${to} of ${total} users`;
-
-        const firstBtn = document.getElementById('firstPageBtn');
-        const prevBtn = document.getElementById('prevPageBtn');
-        const nextBtn = document.getElementById('nextPageBtn');
-        const lastBtn = document.getElementById('lastPageBtn');
-
-        firstBtn.disabled = currentPage === 1;
-        prevBtn.disabled = currentPage === 1;
-        nextBtn.disabled = currentPage === totalPages;
-        lastBtn.disabled = currentPage === totalPages;
-
-        renderPageNumbers();
-    }
-
-    function renderPageNumbers() {
-        const paginationNumbers = document.getElementById('paginationNumbers');
-        paginationNumbers.innerHTML = '';
-
-        const maxVisiblePages = window.innerWidth < 768 ? 3 : 5;
-        let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
-        let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
-
-        if (endPage - startPage < maxVisiblePages - 1) {
-            startPage = Math.max(1, endPage - maxVisiblePages + 1);
-        }
-
-        if (startPage > 1) {
-            addPageNumber(1);
-            if (startPage > 2) {
-                addEllipsis();
-            }
-        }
-
-        for (let i = startPage; i <= endPage; i++) {
-            addPageNumber(i);
-        }
-
-        if (endPage < totalPages) {
-            if (endPage < totalPages - 1) {
-                addEllipsis();
-            }
-            addPageNumber(totalPages);
-        }
-    }
-
-    function addPageNumber(pageNum) {
-        const paginationNumbers = document.getElementById('paginationNumbers');
-        const button = document.createElement('button');
-        button.className = 'page-number' + (pageNum === currentPage ? ' active' : '');
-        button.textContent = pageNum;
-        button.onclick = () => goToPage(pageNum);
-        button.setAttribute('aria-label', `Go to page ${pageNum}`);
-        button.setAttribute('aria-current', pageNum === currentPage ? 'page' : 'false');
-        paginationNumbers.appendChild(button);
-    }
-
-    function addEllipsis() {
-        const paginationNumbers = document.getElementById('paginationNumbers');
-        const span = document.createElement('span');
-        span.className = 'page-ellipsis';
-        span.textContent = '...';
-        span.setAttribute('aria-hidden', 'true');
-        paginationNumbers.appendChild(span);
-    }
-
-    function goToPage(page) {
-        if (page < 1 || page > totalPages || page === currentPage) {
-            return;
-        }
-        currentPage = page;
-        loadUsers();
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-        announceToScreenReader(`Navigated to page ${page}`);
-    }
-
-    function updateUsersTable(users) {
-        const tbody = document.getElementById('usersTableBody');
-       
-        if (!users || users.length === 0) {
-            tbody.innerHTML = `
-                <tr>
-                    <td colspan="7" class="empty-state">
-                        <i class="fas fa-users"></i>
-                        <div>No users found</div>
-                    </td>
-                </tr>
-            `;
-            return;
-        }
-        tbody.innerHTML = users.map(user => {
-            const statusButton = user.status === 'active' 
-                ? `<button class="btn btn-sm btn-danger" onclick="toggleUserStatus('${user.id}', 'disable')"
-                        title="Disable User" aria-label="Disable user ${escapeHtml(user.name)}">
-                        <i class="fas fa-user-slash"></i>
-                    </button>`
-                : `<button class="btn btn-sm btn-success" onclick="toggleUserStatus('${user.id}', 'enable')"
-                        title="Enable User" aria-label="Enable user ${escapeHtml(user.name)}">
-                        <i class="fas fa-user-check"></i>
-                    </button>`;
-
-            return `
-                <tr>
-                    <td>
-                        <div class="user-info">
-                            <div class="user-avatar" title="${user.name}">${user.name.substring(0, 2).toUpperCase()}</div>
-                            <div class="user-details">
-                                <div class="user-name">${escapeHtml(user.name)}</div>
-                            </div>
-                        </div>
-                    </td>
-                    <td title="${user.email || 'N/A'}">${escapeHtml(user.email || 'N/A')}</td>
-                    <td>${escapeHtml(user.login_id || 'N/A')}</td>
-                    <td>${escapeHtml(user.employee_id)}</td>
-                    <td>${escapeHtml(user.group || 'N/A')}</td>
-                    <td>
-                        <span class="status-badge status-${user.status}" title="Status: ${user.status}">
-                            ${user.status.charAt(0).toUpperCase() + user.status.slice(1)}
-                        </span>
-                    </td>
-                    <td class="actions-cell">
-                        <button class="btn btn-sm btn-primary" onclick="viewUser('${user.id}')"
-                                title="View User" aria-label="View user ${escapeHtml(user.name)}">
-                            <i class="fas fa-eye"></i>
-                        </button>
-                        <button class="btn btn-sm btn-warning" onclick="editUser('${user.id}')"
-                                title="Edit User" aria-label="Edit user ${escapeHtml(user.name)}">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                        ${statusButton}
-                    </td>
-                </tr>
-            `;
-        }).join('');
-    }
-
-    function toggleUserStatus(userId, action) {
-        const actionText = action === 'enable' ? 'enable' : 'disable';
-        const actionTitle = action === 'enable' ? 'Enable User' : 'Disable User';
-        const actionMessage = action === 'enable'
-            ? 'Are you sure you want to enable this user? This will restore access to all systems.'
-            : 'Are you sure you want to disable this user? This will revoke access to all systems.';
-        
-        confirmAction(actionTitle, actionMessage, function() {
-            showLoading();
-            
-            axios.post(`/api/users/${userId}/${actionText}`, {}, {
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json'
-                }
-            })
-            .then(response => {
-                if (response.data.success) {
-                    const statusMessage = action === 'enable' 
-                        ? 'User has been enabled successfully' 
-                        : 'User has been disabled successfully';
-                    showAlert('success', action === 'enable' ? 'User Enabled' : 'User Disabled', response.data.message || statusMessage);
-                    
-                    setTimeout(() => {
-                        loadUsers();
-                    }, 1000);
-                } else {
-                    showAlert('error', 'Error', response.data.message || `Failed to ${actionText} user`);
-                }
-                hideLoading();
-            })
-            .catch(error => {
-                console.error(`Error ${actionText}ing user:`, error);
-                hideLoading();
-                const errorMessage = error.response?.data?.message || `Failed to ${actionText} user: ` + error.message;
-                showAlert('error', 'Error', errorMessage);
-            });
-        });
-    }
-
-    function viewUser(userId) {
-        showLoading();
-        
-        setTimeout(() => {
-            try {
-                const mockUser = {
-                    id: userId,
-                    name: 'John Doe',
-                    email: 'john.doe@example.com',
-                    login_id: 'jdoe',
-                    employee_id: 'EMP001',
-                    group: 'Administrators',
-                    status: 'active',
-                    created_at: new Date().toISOString(),
-                    last_login: new Date().toISOString(),
-                    department: 'IT',
-                    role: 'Developer'
-                };
-
-                displayUserDetails(mockUser);
-                hideLoading();
-            } catch (error) {
-                handleError(error);
-            }
-        }, 300);
-    }
-
-    function displayUserDetails(user) {
-        const content = `
-            <div class="user-details-grid">
-                <div class="detail-item">
-                    <div class="detail-label">Name</div>
-                    <div class="detail-value">${escapeHtml(user.name)}</div>
-                </div>
-                <div class="detail-item">
-                    <div class="detail-label">Email</div>
-                    <div class="detail-value">${escapeHtml(user.email)}</div>
-                </div>
-                <div class="detail-item">
-                    <div class="detail-label">Login ID</div>
-                    <div class="detail-value">${escapeHtml(user.login_id || 'N/A')}</div>
-                </div>
-                <div class="detail-item">
-                    <div class="detail-label">Employee ID</div>
-                    <div class="detail-value">${escapeHtml(user.employee_id)}</div>
-                </div>
-                <div class="detail-item">
-                    <div class="detail-label">Group</div>
-                    <div class="detail-value">${escapeHtml(user.group || 'N/A')}</div>
-                </div>
-                <div class="detail-item">
-                    <div class="detail-label">Department</div>
-                    <div class="detail-value">${escapeHtml(user.department || 'N/A')}</div>
-                </div>
-                <div class="detail-item">
-                    <div class="detail-label">Role</div>
-                    <div class="detail-value">${escapeHtml(user.role || 'N/A')}</div>
-                </div>
-                <div class="detail-item">
-                    <div class="detail-label">Last Login</div>
-                    <div class="detail-value">${user.last_login ? new Date(user.last_login).toLocaleDateString('en-US', { 
-                        year: 'numeric', 
-                        month: 'long', 
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                    }) : 'Never'}</div>
-                </div>
-                <div class="detail-item">
-                    <div class="detail-label">Status</div>
-                    <div class="detail-value">
-                        <span class="status-badge status-${user.status}">
-                            ${user.status.charAt(0).toUpperCase() + user.status.slice(1)}
-                        </span>
-                    </div>
-                </div>
-            </div>
-        `;
-        
-        document.getElementById('userDetailsContent').innerHTML = content;
-        openModal('viewUserModal');
-        announceToScreenReader(`User details loaded for ${user.name}`);
-    }
-
-    function editUser(userId) {
-        window.location.href = `azure/users/${userId}/edit`;
-    }
-
-    function openModal(modalId) {
-        const modal = document.getElementById(modalId);
-        if (modal) {
-            modal.style.display = 'block';
-            modal.setAttribute('aria-hidden', 'false');
-            
-            const firstFocusable = modal.querySelector('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
-            if (firstFocusable) {
-                firstFocusable.focus();
-            }
-            
-            document.body.style.overflow = 'hidden';
-        }
-    }
-
-    function closeModal(modalId) {
-        const modal = document.getElementById(modalId);
-        if (modal) {
-            modal.style.display = 'none';
-            modal.setAttribute('aria-hidden', 'true');
-            document.body.style.overflow = '';
-            
-            const searchInput = document.getElementById('searchUsers');
-            if (searchInput) {
-                searchInput.focus();
-            }
-        }
-    }
-
-    function handleError(error) {
-        console.error('Error:', error);
+    })
+    .catch(error => {
+        console.error(`Error ${actionText}ing user:`, error);
+        alert(`Failed to ${actionText} user: ` + error.message);
         hideLoading();
-        showAlert('error', 'Error', error.message || 'An unexpected error occurred');
-        announceToScreenReader('An error occurred. Please try again.');
-    }
+    });
+}
 
-    function debounce(func, wait) {
-        let timeout;
-        return function executedFunction(...args) {
-            const later = () => {
-                clearTimeout(timeout);
-                func(...args);
-            };
+function viewUser(userId) {
+    // Redirect to user details page or implement modal view
+    window.location.href = `/azure/users/${userId}`;
+}
+
+function editUser(userId) {
+    window.location.href = `/azure/users/${userId}/edit`;
+}
+
+function openModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.style.display = 'block';
+        modal.setAttribute('aria-hidden', 'false');
+        document.body.style.overflow = 'hidden';
+    }
+}
+
+function closeModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.style.display = 'none';
+        modal.setAttribute('aria-hidden', 'true');
+        document.body.style.overflow = '';
+    }
+}
+
+function showLoading() {
+    // Add your loading indicator logic here
+    const body = document.body;
+    if (!document.getElementById('loadingOverlay')) {
+        const overlay = document.createElement('div');
+        overlay.id = 'loadingOverlay';
+        overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:9999;';
+        overlay.innerHTML = '<div style="background:white;padding:20px;border-radius:8px;"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
+        body.appendChild(overlay);
+    }
+}
+
+function hideLoading() {
+    const overlay = document.getElementById('loadingOverlay');
+    if (overlay) {
+        overlay.remove();
+    }
+}
+
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
             clearTimeout(timeout);
-            timeout = setTimeout(later, wait);
+            func(...args);
         };
-    }
-
-    function escapeHtml(text) {
-        const map = {
-            '&': '&amp;',
-            '<': '&lt;',
-            '>': '&gt;',
-            '"': '&quot;',
-            "'": '&#039;'
-        };
-        return String(text || '').replace(/[&<>"']/g, function(m) { return map[m]; });
-    }
-
-    window.UserDashboard = {
-        loadUsers,
-        viewUser,
-        editUser,
-        goToPage,
-        toggleUserStatus
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
     };
+}
+
+function escapeHtml(text) {
+    const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    };
+    return String(text || '').replace(/[&<>"']/g, function(m) { return map[m]; });
+}
 </script>
+@endpush
 @endpush
