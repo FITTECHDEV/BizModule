@@ -127,24 +127,17 @@ class SyncScmProfitData extends Command
         )->total;
     }
 
-    private function getRecordsBatch(array $dates, int $offset, int $limit): array
-    {
-        return DB::connection('pgsql')->select(
-            "
-          SELECT * FROM vw_scmprofit_integration
-          WHERE CAST(CreatedOn AS date) = CURRENT_DATE
-          OR CAST(UpdatedOn AS date) = CURRENT_DATE
-          ORDER BY bookingno
-          LIMIT 100 OFFSET 0"
-        return DB::connection('pgsql')->select(
-            "
-          SELECT * FROM vw_scmprofit_integration
-          WHERE CAST(CreatedOn AS date) = CURRENT_DATE
-          OR CAST(UpdatedOn AS date) = CURRENT_DATE
-          ORDER BY bookingno
-          LIMIT 100 OFFSET 0"
-        );
-    }
+   private function getRecordsBatch(array $dates, int $offset, int $limit): array
+{
+    return DB::connection('pgsql')->select("
+        SELECT * FROM vw_scmprofit_integration
+        WHERE CAST(CreatedOn AS date) = CURRENT_DATE
+        OR CAST(UpdatedOn AS date) = CURRENT_DATE
+        ORDER BY bookingno
+        LIMIT {$limit} OFFSET {$offset}
+    ");
+}
+
 
   private function processBatch(array $records): void
     {
