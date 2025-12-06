@@ -139,7 +139,7 @@ class SyncScmProfitData extends Command
         );
     }
 
-    private function processBatch(array $records): void
+  private function processBatch(array $records): void
     {
         DB::connection('sqlsrv')->transaction(function () use ($records) {
             foreach ($records as $record) {
