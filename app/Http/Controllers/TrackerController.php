@@ -1646,7 +1646,6 @@ public function endTrip(Request $request, $tripId)
 
         // For backdated trips, ensure trip end is AFTER the last job completion
         if ($isBackdated) {
-            // Get the last completed job for this trip
             $lastCompletedJob = DB::table('Trip_TripJobMapping')
                 ->where('TripInfoID', $tripId)
                 ->where('IsDeleted', false)
@@ -1658,7 +1657,6 @@ public function endTrip(Request $request, $tripId)
                 $lastJobEndTime = Carbon::parse($lastCompletedJob->EndDate);
                 $proposedTripEndTime = Carbon::parse($customEndDate);
 
-                // Trip end must be AFTER the last job completion
                 if ($proposedTripEndTime->lessThan($lastJobEndTime)) {
                     return response()->json([
                         'success' => false,
@@ -1841,7 +1839,7 @@ public function endTrip(Request $request, $tripId)
         $stmt = $pdo->prepare("
             SET NOCOUNT ON;
             DECLARE @OutputJson VARCHAR(MAX) = NULL;
-            EXEC dbo.sp_TripMain
+            EXEC dbo.sp_Trip_TripORJobStatusUpdate
                 @InputJson = :inputJson,
                 @TripMileage = :tripMileage,
                 @TripTrack = :tripTrack,
@@ -1887,7 +1885,7 @@ public function endTrip(Request $request, $tripId)
 
         if (($response['Status'] ?? 'Failed') === 'Success') {
 
-            // ✅ CRITICAL FIX: Calculate trip totals by SUMMING all completed job totals
+            // ✅ Calculate trip totals by summing all completed job totals
             $jobTotals = DB::table('Trip_TripJobMapping')
                 ->where('TripInfoID', $tripId)
                 ->where('IsDeleted', false)
@@ -1898,7 +1896,7 @@ public function endTrip(Request $request, $tripId)
                 ')
                 ->first();
 
-            // Use job totals (from SP) if available, otherwise fall back to GPS calculation
+            // Use job totals if available, otherwise fall back to GPS calculation
             $tripDistanceKm = $jobTotals->total_distance_km > 0 ?
                 $jobTotals->total_distance_km :
                 round($totalDistance / 1000, 2);
@@ -1907,34 +1905,22 @@ public function endTrip(Request $request, $tripId)
                 'trip_no' => $trip->TripNo,
                 'method' => $jobTotals->total_distance_km > 0 ? 'Summed from jobs' : 'From GPS data',
                 'completed_jobs' => $jobTotals->completed_jobs_count,
-                'job_distances' => DB::table('Trip_TripJobMapping')
-                    ->where('TripInfoID', $tripId)
-                    ->where('IsDeleted', false)
-                    ->whereNotNull('EndDate')
-                    ->pluck('TotalDistance', 'JobNo')
-                    ->toArray(),
                 'calculated_distance_km' => $tripDistanceKm
             ]);
 
-            // ✅ Update trip with calculated totals
+            // ✅ Update trip with calculated totals (FIXED COLUMN NAMES)
             DB::table('Trip_TripInfomation')
                 ->where('Id', $tripId)
                 ->update([
                     'TotalDistance' => $tripDistanceKm,
-                    'UpdatedOn' => now(),
-                    'UpdatedBy' => Auth::user()->email ?? 'system'
+                    'LastModifiedOn' => now(),
+                    'LastModifiedBy' => Auth::user()->email ?? 'system'
                 ]);
 
-            // ✅ Verify the update worked
-            $verifyTrip = DB::table('Trip_TripInfomation')
-                ->where('Id', $tripId)
-                ->first();
-
-            Log::info('✅ Trip totals updated successfully', [
+            Log::info('Trip totals updated successfully', [
                 'trip_id' => $tripId,
-                'trip_no' => $verifyTrip->TripNo,
-                'db_total_distance' => $verifyTrip->TotalDistance,
-                'update_verified' => $verifyTrip->TotalDistance == $tripDistanceKm
+                'trip_no' => $trip->TripNo,
+                'total_distance_km' => $tripDistanceKm
             ]);
 
             $message = $isBackdated ?
@@ -1981,7 +1967,7 @@ public function endTrip(Request $request, $tripId)
             'error' => $e->getMessage()
         ], 500);
     }
-}    // ===== HELPER METHODS =====
+}
 
     /**
      * Extract clean vehicle number from full reference (for display only)
