@@ -1234,7 +1234,7 @@ class ClientPartyController extends Controller
     public function store(StoreClientPartyRequest $request)
 {
     $user = $request->user();
-    
+
     // ================================================================
     // STEP 1: AUTHORIZATION CHECK
     // ================================================================
@@ -1269,7 +1269,7 @@ class ClientPartyController extends Controller
     // ================================================================
     $partyEntityType = $request->partyEntityType;
     $officeCode = $request->officeCode ?? 'KE';
-    
+
     Log::info('Storing Party Type:', ['partyEntityType' => $partyEntityType, 'code' => $code]);
 
     // ================================================================
@@ -1290,14 +1290,14 @@ class ClientPartyController extends Controller
             'partyType' => $request->partyEntityType,
             'code' => $code
         ]);
-        
+
         try {
             $companyDetails = DB::select(
                 'SET NOCOUNT ON;
                  EXEC [dbo].[sp_EntityAddressDetails] @PartyType = ?, @PartyID = ?',
                 [$request->partyEntityType, $request->companyId]
             );
-            
+
             if (!empty($companyDetails) && isset($companyDetails[0])) {
                 Log::info('Fetched details from sp_EntityAddressDetails:', ['details' => (array)$companyDetails[0], 'code' => $code]);
                 $addressLine1 = $addressLine1 ?: ($companyDetails[0]->Address_Line1 ?? 'Nairobi');
@@ -1337,7 +1337,7 @@ class ClientPartyController extends Controller
                 $country = DB::table('Cust_Country')
                     ->where('CountryID', $countryId)
                     ->first(['CountryCode', 'CountryName']);
-                
+
                 if ($country) {
                     $countryCode = $country->CountryCode;
                     Log::info('CountryCode derived from countryID', [
@@ -1359,7 +1359,7 @@ class ClientPartyController extends Controller
                      EXEC [dbo].[sp_EntityAddressDetails] @PartyType = ?, @PartyID = ?',
                     [$request->partyEntityType, $request->companyId]
                 );
-                
+
                 if (!empty($companyDetails) && isset($companyDetails[0]->CountryCode)) {
                     $countryCode = $companyDetails[0]->CountryCode;
                     $countryId = $countryDetails[0]->CountryID ?? $countryId;
@@ -1383,9 +1383,9 @@ class ClientPartyController extends Controller
                 'RW' => 'RW',
                 'ET' => 'ET',
             ];
-            
+
             $countryCode = $officeCountryMap[$officeCode] ?? 'KE';
-            
+
             Log::info('CountryCode derived from officeCode', [
                 'code' => $code,
                 'officeCode' => $officeCode,
@@ -1400,7 +1400,7 @@ class ClientPartyController extends Controller
             $country = DB::table('Cust_Country')
                 ->where('CountryCode', $countryCode)
                 ->first(['CountryID']);
-            
+
             if ($country) {
                 $countryId = $country->CountryID;
                 Log::info('CountryID derived from countryCode', [
@@ -1436,9 +1436,9 @@ class ClientPartyController extends Controller
     $licenseNo = $request->licenceTypeValue;
     $partyType = $request->legalEntityType ?? 'Debtor';
 
-    if ($licenseNo && $partyType && $officeCode && 
+    if ($licenseNo && $partyType && $officeCode &&
         !in_array($request->partyEntityType, ['NoSCMIntergration', 'Create only in D365'])) {
-        
+
         $partyTypes = explode(' & ', $partyType);
         $partyTypeMapLicense = [
             'debtor' => 'Debtor',
@@ -1447,7 +1447,7 @@ class ClientPartyController extends Controller
 
         foreach ($partyTypes as $singlePartyType) {
             $mappedPartyType = $partyTypeMapLicense[strtolower($singlePartyType)] ?? $singlePartyType;
-            
+
             Log::info('Checking license for:', [
                 'partyType' => $mappedPartyType,
                 'licenseNo' => $licenseNo,
@@ -1565,79 +1565,95 @@ class ClientPartyController extends Controller
 
         Log::info('Starting database transaction', ['code' => $code, 'client_party_id' => $client_party_id]);
 
-        $data = [
-            // ===== CRITICAL FIELDS (SP MUST HAVE THESE) =====
-            'Id' => $client_party_id,
-            'Code' => $code,
-            'OperationalEntityType' => $partyEntityType,
-            'Name' => $request->companyName,
-            'Address_Line1' => $addressLine1,
-            'Address_CountryId' => $countryId,  // SP needs GUID
-            'Cont_Bch_PersonName_FirstName' => $firstName,
-            'Cont_Bch_PersonName_LastName' => $lastName,
-            'Cont_Bch_PhoneNumbers' => $phoneNo,
-            'Cont_Bch_Email' => $contractEmail,
-            'Office' => $request->officeCountry,
-            'OfficeCode' => $officeCode,
-            'OfficeID' => $request->officeCountryID ?? $user->OfficeID,
-            'RequestforOtherParty' => isset($request->otherCheck) ? 1 : 0,
-            'Status' => $status,
-            
-            // ===== OPTIONAL FIELDS (SP CAN USE IF PRESENT) =====
-            'Address_Line2' => $request->addressLine2 ?? '',
-            'Address_City' => $request->cityName ?? '',
-            'Address_State' => $request->provinceName ?? '',
-            'Address_Pin' => $request->zipCode ?? '',
-            'Cont_Bch_Dept' => $request->department ?? '',
-            'LicenceTypeID' => $request->licenceTypeID ?? null,
-            'LicenceTypeValue' => $licenseNo ?? 'NIL',
-            'SpecialInstructions' => $request->specialInstruction ?? '',
-            
-            // ===== OTHER PARTY FIELDS =====
-            'OtherPartyName' => $request->otherInput ?? null,
-            'OtherPartyID' => $request->otherID ?? null,
-            'OtherPartyCode' => $request->otherCode ?? null,
-            'RequestId' => $request->requestID ?? null,
-            
-            // ===== METADATA =====
-            'CreatedBy' => $user->full_name ?? $user->LoginID ?? 'System',
-            'CreatedOn' => Carbon::now()->format('Y-m-d H:i:s'),
-            'LastModifiedOn' => Carbon::now()->format('Y-m-d H:i:s'),
-            'LastModifiedBy' => $user->full_name ?? $user->LoginID ?? 'System',
-        ];
-
-        // ===== ADD ACCOUNTING FIELDS (Only if accounting mode) =====
-        if ($hasAccountingEntities) {
-            $data = array_merge($data, [
+            // Prepare entity data
+            $data = [
+                'Id' => $client_party_id,
+                'Code' => $code,
+                'OperatioEntityType' => $partyEntityType,
                 'LegalEntityType' => $request->legalEntityType,
-                'Debtor' => $request->debtor ?? null,
-                'DebtorID' => $request->debtorID ?? null,
-                'DebtorCode' => $request->debtorCode ?? null,
-                'Vendor' => $request->vendor ?? null,
-                'VendorID' => $request->vendorID ?? null,
-                'VendorCode' => $request->vendorCode ?? null,
-                'DebtorType' => $request->debtorType ?? null,
-                'VendorType' => $request->vendorType ?? null,
-                'CreditDays' => $request->creditDays ?? 0,
-                'CreditLimitCurrencyId' => $request->billingCurrency ?? null,
-                'CreditLimitCurrencyCode' => $request->billingCurrencyCode ?? null,
-                'BillingCurrencyCode' => $request->billingCurrencyCode ?? null,
-                'BillingCurrencyId' => $request->billingCurrency ?? null,
+                'Name' => $request->companyName,
+                'Address_Line1' => $addressLine1,
+                'Address_Line2' => $addressLine2,
+                'Address_CountryId' => $request->countryID ?: null,
+                'Address_CountryName' => $request->countryName,
+                'Address_CountryCode' => $countryCode,
+                'Address_State' => $request->provinceName,
+                'Address_StateId' => $request->provinceID ?: null,
+                'Address_StateCode' => $request->provinceCode,
+                'Address_Pin' => $request->zipCode,
+                'Address_City' => $request->cityName,
+                'Address_CityCode' => $request->cityCode,
+                'Cont_Bch_PersonName_FirstName' => $firstName,
+                'Cont_Bch_PersonName_LastName' => $lastName,
+                'Cont_Bch_Dept' => $request->department,
+                'Cont_Bch_PhoneNumbers' => $phoneNo,
+                'Cont_Bch_Email' => $contractEmail,
+                'SpecialInstructions' => $request->specialInstruction,
+                'Office' => $request->officeCountry,
+                'OfficeCode' => $request->officeCode,
+                'OfficeID' => $request->officeCountryID,
+                'DefaultNotifyPartyName' => $request->notifyParty1,
+                'DefaultNotifyPartyId' => $request->notifyParty1ID ?: null,
+                'DefaultNotifyPartyCode' => $request->notifyParty1Code,
+                'AccountMgrOfficeFunMapName' => $request->accountPIC,
+                'AccountMgrOfficeFunMapId' => $request->accountPICID ?: null,
+                'DefaultNotifyParty1Name' => $request->notifyParty2,
+                'DefaultNotifyParty1Id' => $request->notifyParty2ID ?: null,
+                'DefaultNotifyParty1Code' => $request->notifyParty2Code,
+                'DefaultFowarderName' => $request->forwarderName,
+                'DefaultFowarderId' => $request->forwarderID ?: null,
+                'CreditDays' => $request->creditDays,
+                'CreditLimitCurrencyId' => $request->billingCurrency ?: null,
+                'CreditLimitCurrencyCode' => $request->billingCurrencyCode,
+                'BillingCurrencyCode' => $request->billingCurrencyCode,
+                'BillingCurrencyId' => $request->billingCurrency ?: null,
+                'BaseCurrencyName' => $request->baseCurrencyName,
+                'BaseCurrencyCode' => $request->baseCurrencyCode,
+                'BaseCurrencyId' => $request->baseCurrencyID ?: null,
                 'CreditLimit' => isset($request->maxCreditLimit) ? str_replace(',', '', $request->maxCreditLimit) : 0,
+                'LicenceTypeID' => $request->licenceTypeID,
+                'LicenceTypeCode' => $request->licenceTypeCode,
+                'LicenceTypeValue' => $request->licenceTypeValue,
+                'TariffValue' => $request->tarrif,
+                'FSCType' => $request->fscType,
+                'FSCRate' => isset($request->fscRate) ? $request->fscRate : 0,
+                'BillingType' => $request->billingType,
+                'Discount' => isset($request->discount) ? $request->discount : 0,
+                'ClientName' => $clientName,
+                'ClientID' => $request->clientID,
+                'ClientCode' => $request->clientCode,
+                'RequestId' => $request->requestID ?? null,
+                'RequestName' => $request->clientOptionVal ?? null,
+                'RequestCode' => $request->requestCode ?? null,
+                'ShipperConsigneeName' => $request->shipperInput,
+                'ShipperConsigneeID' => $request->shipperID,
+                'ShipperConsigneeCode' => $request->shipperCode,
+                'OtherPartyName' => $request->otherInput,
+                'OtherPartyID' => $request->otherID,
+                'OtherPartyCode' => $request->otherCode,
+                'Debtor' => $request->debtor,
+                'DebtorID' => $request->debtorID,
+                'DebtorCode' => $request->debtorCode,
+                'Vendor' => $request->vendor,
+                'VendorID' => $request->vendorID,
+                'VendorCode' => $request->vendorCode,
+                'RequestforClient' => isset($request->clientCheck) ? 1 : 0,
+                'RequestforShipperConsignee' => isset($request->consigneeCheck) ? 1 : (isset($request->shipperCheck) ? 1 : 0),
+                'RequestforOtherParty' => isset($request->otherCheck) ? 1 : 0,
                 'RequestforDebtor' => isset($request->debtorCheck) ? 1 : 0,
                 'RequestforVendor' => isset($request->vendorCheck) ? 1 : 0,
-            ]);
-        }
+                'CreatedBy' => $user->full_name,
+                'CreatedOn' => Carbon::now()->format('Y-m-d H:i:s'),
+                'LastModifiedOn' => Carbon::now()->format('Y-m-d H:i:s'),
+                'LastModifiedBy' => $user->full_name,
+                'DebtorType' => $request->debtorType,
+                'VendorType' => $request->vendorType,
+                'Status' => $status,
+            ];
 
-        Log::info('Inserting entity data', [
-            'code' => $code,
-            'client_party_id' => $client_party_id,
-            'field_count' => count($data),
-            'has_accounting' => $hasAccountingEntities
-        ]);
-
-        // Insert entity
-        DB::table('Cust_Entity')->insert($data);
+            // Insert entity data
+            Log::info('Inserting entity data', ['code' => $code, 'client_party_id' => $client_party_id]);
+            DB::table('Cust_Entity')->insert($data);
 
         // ================================================================
         // STEP 10: HANDLE FILE UPLOADS (WITHIN TRANSACTION)
@@ -1730,7 +1746,7 @@ class ClientPartyController extends Controller
 
         DB::commit();
         Log::info('Entity and files saved successfully', ['code' => $code, 'client_party_id' => $client_party_id]);
-        
+
     } catch (Exception $e) {
         DB::rollback();
         Log::error('Store Failed: ' . $e->getMessage(), [
@@ -1780,21 +1796,21 @@ class ClientPartyController extends Controller
     // ================================================================
     if (isset($results['data']) && is_array($results['data']) &&
         isset($results['data']['Status']) && $results['data']['Status'] !== 'Failed') {
-        
+
         Log::info('Success alert triggered', [
             'status' => $results['data']['Status'],
             'remark' => $results['data']['Remark'],
             'code' => $code
         ]);
-        
+
         Alert::success($results['data']['Status'], $results['data']['Remark'])
             ->persistent(true, false)->showConfirmButton();
     } else {
         $errorStatus = $results['data']['Status'] ?? 'Failed';
         $errorRemark = $results['data']['Remark'] ?? 'Unknown error occurred';
-        
+
         Log::error('Error alert triggered', ['status' => $errorStatus, 'remark' => $errorRemark, 'code' => $code]);
-        
+
         Alert::error($errorStatus, $errorRemark)->persistent(true, false)->showConfirmButton();
     }
 
@@ -3001,122 +3017,18 @@ public function preview($attachmentId)
     }
 
 
-    // public function CreateClientPartySCM(HttpRequest $request)
-    // {
-    //     $requestID = $request->input('requestID');
+    public function CreateClientPartySCM(HttpRequest $request)
+    {
+        $requestID = $request->input('requestID');
 
-    //     // Validate requestID format (UUID)
-    //     if (!preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $requestID)) {
-    //         Log::warning('Invalid RequestID format:', ['RequestID' => $requestID]);
-    //         return ['success' => false, 'error' => 'Invalid Request ID format'];
-    //     }
+        // Validate requestID format (UUID)
+        if (!preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $requestID)) {
+            Log::warning('Invalid RequestID format:', ['RequestID' => $requestID]);
+            return ['success' => false, 'error' => 'Invalid Request ID format'];
+        }
 
-    //     // Check permissions and OperationalEntityType
-    //     $entity = DB::table('Cust_entity')->where('Id', $requestID)->first();
-    //     if (!$entity) {
-    //         Log::warning('Entity not found:', ['RequestID' => $requestID]);
-    //         return ['success' => false, 'error' => 'Entity not found'];
-    //     }
-
-    //     if (!Auth::user()->can('create-client-party-SCM') && $entity->OperationalEntityType !== 'Client without Debtor or Vendor') {
-    //         Log::warning('SCM Permission Denied:', [
-    //             'UserID' => Auth::user()->Id,
-    //             'Permissions' => Auth::user()->getAllPermissions()->pluck('name')->toArray(),
-    //             'OperationalEntityType' => $entity->OperationalEntityType
-    //         ]);
-    //         return ['success' => false, 'error' => 'Unauthorized SCM Access'];
-    //     }
-
-    //     try {
-    //         // Execute the stored procedure
-    //         $results = DB::select(
-    //             'SET NOCOUNT ON;
-    //          DECLARE @Status VARCHAR(30), @Remark VARCHAR(1000), @ClientCode VARCHAR(60),
-    //                  @ClientID UNIQUEIDENTIFIER, @OtherCode VARCHAR(60), @OtherID UNIQUEIDENTIFIER;
-    //          EXEC [dbo].[Sp_OperationEntityCreation]
-    //              @RequestID = ?,
-    //              @Status = @Status OUTPUT,
-    //              @Remark = @Remark OUTPUT,
-    //              @ClientCode = @ClientCode OUTPUT,
-    //              @ClientID = @ClientID OUTPUT,
-    //              @OtherCode = @OtherCode OUTPUT,
-    //              @OtherID = @OtherID OUTPUT;
-    //          SELECT @Status AS Status, @Remark AS Remark, @ClientCode AS ClientCode,
-    //                 @ClientID AS ClientID, @OtherCode AS OtherCode, @OtherID AS OtherID',
-    //             [$requestID]
-    //         );
-
-    //         // Check if results are valid
-    //         if (!empty($results) && isset($results[0])) {
-    //             $result = (array)$results[0];
-
-    //             // Log success
-    //             Log::info('SCM Creation Success:', [
-    //                 'RequestID' => $requestID,
-    //                 'Result' => $result,
-    //                 'OperationalEntityType' => $entity->OperationalEntityType
-    //             ]);
-
-    //             // Check stored procedure status
-    //             if ($result['Status'] === 'Success') {
-    //                 return ['success' => true, 'data' => $result];
-    //             } else {
-    //                 Log::warning('Stored Procedure Failed:', [
-    //                     'RequestID' => $requestID,
-    //                     'Remark' => $result['Remark'],
-    //                     'OperationalEntityType' => $entity->OperationalEntityType
-    //                 ]);
-    //                 return ['success' => false, 'error' => $result['Remark']];
-    //             }
-    //         } else {
-    //             Log::warning('No valid data returned from Sp_OperationEntityCreation:', ['RequestID' => $requestID]);
-    //             return ['success' => false, 'error' => 'No data returned from stored procedure'];
-    //         }
-    //     } catch (QueryException $e) {
-    //         Log::error('Error executing Sp_OperationEntityCreation:', [
-    //             'RequestID' => $requestID,
-    //             'Error' => $e->getMessage(),
-    //             'OperationalEntityType' => $entity->OperationalEntityType
-    //         ]);
-    //         return ['success' => false, 'error' => 'Entity Creation Failed: ' . $e->getMessage()];
-    //     }
-    // }
-public function CreateClientPartySCM(HttpRequest $request)
-{
-    $requestID = $request->requestID;
-    $user = Auth::user();
-
-    Log::info('═══════════════════════════════════════════════════════════════════════');
-    Log::info('🚀 STEP 1: CreateClientPartySCM Called', [
-        'requestID' => $requestID,
-        'user' => $user->full_name ?? $user->LoginID ?? 'Unknown',
-        'timestamp' => Carbon::now()->format('Y-m-d H:i:s')
-    ]);
-
-    // ================================================================
-    // STEP 2: VALIDATE REQUEST ID FORMAT
-    // ================================================================
-    if (empty($requestID)) {
-        Log::error('❌ STEP 2: RequestID Validation Failed - Empty RequestID');
-        return [
-            'success' => false,
-            'data' => [
-                'Status' => 'Failed',
-                'Remark' => 'Request ID is required'
-            ]
-        ];
-    }
-
-    Log::info('✅ STEP 2: RequestID Validation Passed', ['requestID' => $requestID]);
-
-    // ================================================================
-    // STEP 3: FETCH ENTITY FROM DATABASE
-    // ================================================================
-    try {
-        $entity = DB::table('Cust_Entity')
-            ->where('Id', $requestID)
-            ->first();
-
+        // Check permissions and OperatioEntityType
+        $entity = DB::table('Cust_entity')->where('Id', $requestID)->first();
         if (!$entity) {
             Log::error('❌ STEP 3: Entity Not Found', ['requestID' => $requestID]);
             return [
@@ -3128,496 +3040,56 @@ public function CreateClientPartySCM(HttpRequest $request)
             ];
         }
 
-        Log::info('✅ STEP 3: Entity Fetched Successfully', [
-            'requestID' => $requestID,
-            'code' => $entity->Code,
-            'name' => $entity->Name,
-            'status' => $entity->Status,
-            'operationalEntityType' => $entity->OperationalEntityType
-        ]);
-
-    } catch (Exception $e) {
-        Log::error('❌ STEP 3: Entity Fetch Failed', [
-            'requestID' => $requestID,
-            'error' => $e->getMessage(),
-            'trace' => $e->getTraceAsString()
-        ]);
-        return [
-            'success' => false,
-            'data' => [
-                'Status' => 'Failed',
-                'Remark' => 'Database error: ' . $e->getMessage()
-            ]
-        ];
-    }
-
-    // ================================================================
-    // STEP 4: PERMISSION CHECK
-    // ================================================================
-    $canCreate = $user->can('create-client-party');
-    
-    if (!$canCreate) {
-        Log::warning('⚠️ STEP 4: Permission Check Failed', [
-            'requestID' => $requestID,
-            'user' => $user->full_name ?? $user->LoginID,
-            'userId' => $user->ID,
-            'requiredPermission' => 'create-client-party'
-        ]);
-        return [
-            'success' => false,
-            'data' => [
-                'Status' => 'Failed',
-                'Remark' => 'User does not have permission to create entities in SCM'
-            ]
-        ];
-    }
-
-    Log::info('✅ STEP 4: Permission Check Passed', [
-        'requestID' => $requestID,
-        'user' => $user->full_name ?? $user->LoginID,
-        'canCreate' => $canCreate
-    ]);
-
-    // ================================================================
-    // STEP 5: BACKUP ACCOUNTING FIELDS (BEFORE SP EXECUTION)
-    // ================================================================
-    Log::info('═══════════════════════════════════════════════════════════════════════');
-    Log::info('💾 STEP 5: Backing Up Accounting Fields Before SP Execution');
-
-    try {
-        $backupFields = DB::table('Cust_Entity')
-            ->where('Id', $requestID)
-            ->first([
-                'LegalEntityType', 'DebtorCode', 'VendorCode', 'DebtorID', 'VendorID',
-                'CreditLimit', 'CreditDays', 'BillingCurrencyCode', 'BillingCurrencyId',
-                'CreditLimitCurrencyCode', 'CreditLimitCurrencyId',
-                'DebtorType', 'VendorType', 'RequestforDebtor', 'RequestforVendor',
-                'OtherPartyName', 'OtherPartyID', 'OtherPartyCode', 'Debtor', 'Vendor',
-                // Add all critical fields
-                'Name', 'Address_Line1', 'Address_Line2', 'Address_City', 'Address_State',
-                'Address_CountryId', 'Address_Pin', 'Cont_Bch_PersonName_FirstName',
-                'Cont_Bch_PersonName_LastName', 'Cont_Bch_PhoneNumbers', 'Cont_Bch_Email',
-                'Cont_Bch_Dept', 'SpecialInstructions', 'LicenceTypeID', 'LicenceTypeValue'
+        if (!Auth::user()->can('create-client-party-SCM') && $entity->OperatioEntityType !== 'Client without Debtor or Vendor') {
+            Log::warning('SCM Permission Denied:', [
+                'UserID' => Auth::user()->Id,
+                'Permissions' => Auth::user()->getAllPermissions()->pluck('name')->toArray(),
+                'OperatioEntityType' => $entity->OperatioEntityType
             ]);
-
-        if ($backupFields) {
-            Log::info('✅ STEP 5: Accounting Fields Backed Up Successfully', [
-                'requestID' => $requestID,
-                'legalEntityType' => $backupFields->LegalEntityType,
-                'debtorCode' => $backupFields->DebtorCode,
-                'vendorCode' => $backupFields->VendorCode,
-                'creditLimit' => $backupFields->CreditLimit,
-                'creditDays' => $backupFields->CreditDays,
-                'requestforDebtor' => $backupFields->RequestforDebtor,
-                'requestforVendor' => $backupFields->RequestforVendor
-            ]);
-        } else {
-            Log::warning('⚠️ STEP 5: No Backup Fields Found (Entity may be new)');
-            $backupFields = null;
+            return ['success' => false, 'error' => 'Unauthorized SCM Access'];
         }
-
-    } catch (Exception $e) {
-        Log::error('❌ STEP 5: Backup Failed', [
-            'requestID' => $requestID,
-            'error' => $e->getMessage()
-        ]);
-        $backupFields = null;
-    }
-
-    // ================================================================
-    // STEP 6: PREPARE JSON INPUT FOR SP
-    // ================================================================
-    Log::info('═══════════════════════════════════════════════════════════════════════');
-    Log::info('📋 STEP 6: Preparing JSON Input for Stored Procedure');
-
-    $submittedDatetime = Carbon::now()->format('YmdHis');
-    $submittedBy = $user->full_name ?? $user->LoginID ?? 'System';
-
-    $inputJson = json_encode([
-        'OperationType' => 'OperationalEntityCreation',
-        'SubmittedDatetime' => $submittedDatetime,
-        'SubmittedBy' => $submittedBy,
-        'Action' => 'Add',
-        'RequestNo' => $entity->Code,
-        'Status' => 'Create'
-    ]);
-
-    Log::info('✅ STEP 6: JSON Input Prepared', [
-        'requestID' => $requestID,
-        'operationType' => 'OperationalEntityCreation',
-        'requestNo' => $entity->Code,
-        'submittedBy' => $submittedBy,
-        'submittedDatetime' => $submittedDatetime,
-        'jsonInput' => $inputJson
-    ]);
-
-    // ================================================================
-    // STEP 7: EXECUTE STORED PROCEDURE
-    // ================================================================
-    Log::info('═══════════════════════════════════════════════════════════════════════');
-    Log::info('⚙️ STEP 7: Executing Stored Procedure sp_CustEntity');
-
-    $startTime = microtime(true);
-
-    try {
-        $results = DB::select(
-            'SET NOCOUNT ON;
-             DECLARE @outputJson NVARCHAR(MAX);
-             EXEC [dbo].[sp_CustEntity] @inputJson = ?, @outputJson = @outputJson OUTPUT;
-             SELECT @outputJson AS outputJson',
-            [$inputJson]
-        );
-
-        $executionTime = round((microtime(true) - $startTime) * 1000, 2);
-
-        Log::info('✅ STEP 7: Stored Procedure Executed Successfully', [
-            'requestID' => $requestID,
-            'executionTime' => $executionTime . 'ms',
-            'resultCount' => count($results)
-        ]);
-
-    } catch (QueryException $e) {
-        $executionTime = round((microtime(true) - $startTime) * 1000, 2);
-        
-        Log::error('❌ STEP 7: Stored Procedure Execution Failed', [
-            'requestID' => $requestID,
-            'executionTime' => $executionTime . 'ms',
-            'error' => $e->getMessage(),
-            'errorCode' => $e->getCode(),
-            'sqlState' => $e->errorInfo[0] ?? 'Unknown',
-            'trace' => $e->getTraceAsString()
-        ]);
-
-        return [
-            'success' => false,
-            'data' => [
-                'Status' => 'Failed',
-                'Remark' => 'SP execution failed: ' . $e->getMessage()
-            ]
-        ];
-    }
-
-  // ================================================================
-// STEP 8: VALIDATE SP OUTPUT
-// ================================================================
-Log::info('═══════════════════════════════════════════════════════════════════════');
-Log::info('🔍 STEP 8: Validating Stored Procedure Output');
-
-if (empty($results) || !isset($results[0]) || !isset($results[0]->outputJson)) {
-    Log::error('❌ STEP 8: Invalid SP Output - Missing outputJson', [
-        'requestID' => $requestID,
-        'resultsEmpty' => empty($results),
-        'firstResultExists' => isset($results[0]),
-        'outputJsonExists' => isset($results[0]) && isset($results[0]->outputJson)
-    ]);
-
-    return [
-        'success' => false,
-        'data' => [
-            'Status' => 'Failed',
-            'Remark' => 'SP returned invalid output structure'
-        ]
-    ];
-}
-
-    $outputJson = $results[0]->outputJson;
-
-    if (empty($outputJson) || is_null($outputJson)) {
-        Log::error('❌ STEP 8: Empty Output JSON', [
-            'requestID' => $requestID,
-            'outputJson' => $outputJson
-        ]);
-
-        return [
-            'success' => false,
-            'data' => [
-                'Status' => 'Failed',
-                'Remark' => 'SP returned empty output'
-            ]
-        ];
-    }
-
-    Log::info('✅ STEP 8: SP Output Validation Passed', [
-        'requestID' => $requestID,
-        'outputJsonLength' => strlen($outputJson),
-        'outputJsonPreview' => substr($outputJson, 0, 200)
-    ]);
-
-    // ================================================================
-    // STEP 9: PARSE JSON OUTPUT
-    // ================================================================
-    Log::info('═══════════════════════════════════════════════════════════════════════');
-    Log::info('📊 STEP 9: Parsing JSON Output');
-
-    try {
-        $spResponse = json_decode($outputJson);
-
-        if (json_last_error() !== JSON_ERROR_NONE) {
-            throw new Exception('JSON decode error: ' . json_last_error_msg());
-        }
-
-        if (!$spResponse) {
-            throw new Exception('Decoded JSON is null or invalid');
-        }
-
-        Log::info('✅ STEP 9: JSON Parsed Successfully', [
-            'requestID' => $requestID,
-            'parsedObject' => json_encode($spResponse, JSON_PRETTY_PRINT)
-        ]);
-
-    } catch (Exception $e) {
-        Log::error('❌ STEP 9: JSON Parsing Failed', [
-            'requestID' => $requestID,
-            'error' => $e->getMessage(),
-            'rawOutput' => $outputJson,
-            'jsonLastError' => json_last_error_msg()
-        ]);
-
-        return [
-            'success' => false,
-            'data' => [
-                'Status' => 'Failed',
-                'Remark' => 'Failed to parse SP output: ' . $e->getMessage()
-            ]
-        ];
-    }
-
-    // ================================================================
-    // STEP 10: EXTRACT STATUS AND REMARKS
-    // ================================================================
-    Log::info('═══════════════════════════════════════════════════════════════════════');
-    Log::info('📝 STEP 10: Extracting Status and Remarks');
-
-    $status = $spResponse->Status ?? 'Unknown';
-    $remarks = 'No remarks provided';
-
-    if (isset($spResponse->Remarks) && is_array($spResponse->Remarks) && !empty($spResponse->Remarks)) {
-        $remarks = $spResponse->Remarks[0]->Remark ?? 'No remark text';
-    } elseif (isset($spResponse->Remark)) {
-        $remarks = $spResponse->Remark;
-    }
-
-    Log::info('✅ STEP 10: Status and Remarks Extracted', [
-        'requestID' => $requestID,
-        'status' => $status,
-        'remarks' => $remarks,
-        'hasRemarksArray' => isset($spResponse->Remarks),
-        'remarksCount' => isset($spResponse->Remarks) ? count($spResponse->Remarks) : 0
-    ]);
-
-    // ================================================================
-    // STEP 11: CHECK TRANSACTION LOG
-    // ================================================================
-    Log::info('═══════════════════════════════════════════════════════════════════════');
-    Log::info('📜 STEP 11: Verifying Transaction Log Entry');
-
-    try {
-        $transactionLog = DB::table('Cust_TransactionLog')
-            ->where('InputJson', 'LIKE', '%' . $entity->Code . '%')
-            ->where('OperationType', 'OperationalEntityCreation')
-            ->orderBy('SubmittedOn', 'desc')
-            ->first();
-
-        if ($transactionLog) {
-            Log::info('✅ STEP 11: Transaction Log Entry Found', [
-                'requestID' => $requestID,
-                'transactionId' => $transactionLog->Id,
-                'operationType' => $transactionLog->OperationType,
-                'status' => $transactionLog->Status,
-                'submittedOn' => $transactionLog->SubmittedOn,
-                'submittedBy' => $transactionLog->SubmittedBy
-            ]);
-        } else {
-            Log::warning('⚠️ STEP 11: No Transaction Log Entry Found', [
-                'requestID' => $requestID,
-                'requestNo' => $entity->Code
-            ]);
-        }
-
-    } catch (Exception $e) {
-        Log::error('❌ STEP 11: Transaction Log Check Failed', [
-            'requestID' => $requestID,
-            'error' => $e->getMessage()
-        ]);
-    }
-
-    // ================================================================
-    // STEP 12: HANDLE SP RESPONSE
-    // ================================================================
-    Log::info('═══════════════════════════════════════════════════════════════════════');
-    Log::info('🎯 STEP 12: Processing SP Response Status');
-
-    if (strtolower($status) === 'success') {
-        Log::info('✅ STEP 12: SP Status is SUCCESS - Proceeding with Updates', [
-            'requestID' => $requestID,
-            'status' => $status
-        ]);
-
-        // ================================================================
-        // STEP 13: RESTORE BACKED UP FIELDS + KEEP SP-GENERATED CODES
-        // ================================================================
-        Log::info('═══════════════════════════════════════════════════════════════════════');
-        Log::info('🔄 STEP 13: Restoring Backed Up Fields + Keeping SP Codes');
 
         try {
-            // Build restore data array
-            $restoreData = [
-                'Status' => 'Created',
-                'LastModifiedBy' => $user->full_name ?? $user->LoginID ?? 'System',
-                'LastModifiedOn' => Carbon::now()->format('Y-m-d H:i:s')
-            ];
+            // Execute the stored procedure
+            $results = DB::select(
+                'SET NOCOUNT ON;
+             DECLARE @Status VARCHAR(30), @Remark VARCHAR(1000), @ClientCode VARCHAR(60),
+                     @ClientID UNIQUEIDENTIFIER, @OtherCode VARCHAR(60), @OtherID UNIQUEIDENTIFIER;
+             EXEC [dbo].[Sp_OperationEntityCreation]
+                 @RequestID = ?,
+                 @Status = @Status OUTPUT,
+                 @Remark = @Remark OUTPUT,
+                 @ClientCode = @ClientCode OUTPUT,
+                 @ClientID = @ClientID OUTPUT,
+                 @OtherCode = @OtherCode OUTPUT,
+                 @OtherID = @OtherID OUTPUT;
+             SELECT @Status AS Status, @Remark AS Remark, @ClientCode AS ClientCode,
+                    @ClientID AS ClientID, @OtherCode AS OtherCode, @OtherID AS OtherID',
+                [$requestID]
+            );
 
-            // Extract codes from transaction log
-            $spUpdates = null;
-            if ($transactionLog && !empty($transactionLog->Remarks)) {
-                try {
-                    $remarksData = json_decode($transactionLog->Remarks);
-                    if ($remarksData && isset($remarksData->ClientCode)) {
-                        $spUpdates = $remarksData;
-                        Log::info('📊 SP-Generated Codes Extracted from Transaction Log', [
-                            'requestID' => $requestID,
-                            'clientCode' => $spUpdates->ClientCode ?? null,
-                            'clientID' => $spUpdates->ClientID ?? null,
-                            'otherCode' => $spUpdates->OtherCode ?? null,
-                            'otherID' => $spUpdates->OtherID ?? null
-                        ]);
-                    }
-                } catch (Exception $e) {
-                    Log::warning('⚠️ Could not parse Remarks JSON from transaction log', [
-                        'error' => $e->getMessage()
-                    ]);
-                }
-            }
+            // Check if results are valid
+            if (!empty($results) && isset($results[0])) {
+                $result = (array)$results[0];
 
-            // Keep SP-generated codes if available
-            if ($spUpdates) {
-                if (isset($spUpdates->ClientCode)) {
-                    $restoreData['ClientCode'] = $spUpdates->ClientCode;
-                }
-                if (isset($spUpdates->ClientID)) {
-                    $restoreData['ClientID'] = $spUpdates->ClientID;
-                }
-                if (isset($spUpdates->OtherCode)) {
-                    $restoreData['OtherPartyCode'] = $spUpdates->OtherCode;
-                }
-                if (isset($spUpdates->OtherID)) {
-                    $restoreData['OtherPartyID'] = $spUpdates->OtherID;
-                }
-            }
-
-            // Conditionally restore accounting fields if they existed
-            if ($backupFields) {
-                if ($backupFields->LegalEntityType) {
-                    $restoreData['LegalEntityType'] = $backupFields->LegalEntityType;
-                }
-                if ($backupFields->DebtorCode) {
-                    $restoreData['DebtorCode'] = $backupFields->DebtorCode;
-                }
-                if ($backupFields->VendorCode) {
-                    $restoreData['VendorCode'] = $backupFields->VendorCode;
-                }
-                if ($backupFields->DebtorID) {
-                    $restoreData['DebtorID'] = $backupFields->DebtorID;
-                }
-                if ($backupFields->VendorID) {
-                    $restoreData['VendorID'] = $backupFields->VendorID;
-                }
-                if ($backupFields->CreditLimit) {
-                    $restoreData['CreditLimit'] = $backupFields->CreditLimit;
-                }
-                if ($backupFields->CreditDays) {
-                    $restoreData['CreditDays'] = $backupFields->CreditDays;
-                }
-                if ($backupFields->BillingCurrencyCode) {
-                    $restoreData['BillingCurrencyCode'] = $backupFields->BillingCurrencyCode;
-                }
-                if ($backupFields->BillingCurrencyId) {
-                    $restoreData['BillingCurrencyId'] = $backupFields->BillingCurrencyId;
-                }
-                if ($backupFields->CreditLimitCurrencyCode) {
-                    $restoreData['CreditLimitCurrencyCode'] = $backupFields->CreditLimitCurrencyCode;
-                }
-                if ($backupFields->CreditLimitCurrencyId) {
-                    $restoreData['CreditLimitCurrencyId'] = $backupFields->CreditLimitCurrencyId;
-                }
-                if ($backupFields->DebtorType) {
-                    $restoreData['DebtorType'] = $backupFields->DebtorType;
-                }
-                if ($backupFields->VendorType) {
-                    $restoreData['VendorType'] = $backupFields->VendorType;
-                }
-                if (isset($backupFields->RequestforDebtor)) {
-                    $restoreData['RequestforDebtor'] = $backupFields->RequestforDebtor;
-                }
-                if (isset($backupFields->RequestforVendor)) {
-                    $restoreData['RequestforVendor'] = $backupFields->RequestforVendor;
-                }
-                if ($backupFields->Debtor) {
-                    $restoreData['Debtor'] = $backupFields->Debtor;
-                }
-                if ($backupFields->Vendor) {
-                    $restoreData['Vendor'] = $backupFields->Vendor;
-                }
-
-                // Restore other critical fields
-                if ($backupFields->Name) {
-                    $restoreData['Name'] = $backupFields->Name;
-                }
-                if ($backupFields->Address_Line1) {
-                    $restoreData['Address_Line1'] = $backupFields->Address_Line1;
-                }
-                if ($backupFields->OtherPartyName) {
-                    $restoreData['OtherPartyName'] = $backupFields->OtherPartyName;
-                }
-            }
-
-            Log::info('📦 Restore Data Prepared', [
-                'requestID' => $requestID,
-                'fieldCount' => count($restoreData),
-                'fields' => array_keys($restoreData),
-                'hasAccountingFields' => isset($restoreData['LegalEntityType']),
-                'hasSPCodes' => isset($restoreData['ClientCode'])
-            ]);
-
-            // Execute restore update
-            DB::table('Cust_Entity')
-                ->where('Id', $requestID)
-                ->update($restoreData);
-
-            Log::info('✅ STEP 13: Fields Restored Successfully', [
-                'requestID' => $requestID,
-                'updatedFields' => $restoreData
-            ]);
-
-        } catch (Exception $e) {
-            Log::error('❌ STEP 13: Field Restore Failed', [
-                'requestID' => $requestID,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-        }
-
-        // ================================================================
-        // STEP 14: VERIFY SCM TABLE ENTRIES
-        // ================================================================
-        Log::info('═══════════════════════════════════════════════════════════════════════');
-        Log::info('🔍 STEP 14: Verifying SCM Table Entries');
-
-        try {
-            // Check Cust_Clients
-            $scmClient = DB::connection('sqlsrv2')
-                ->table('Cust_Clients')
-                ->where('ClientCode', $restoreData['ClientCode'] ?? $entity->Code)
-                ->first();
-
-            if ($scmClient) {
-                Log::info('✅ STEP 14a: Cust_Clients Entry Found', [
-                    'requestID' => $requestID,
-                    'clientCode' => $scmClient->ClientCode,
-                    'clientID' => $scmClient->ClientID,
-                    'clientName' => $scmClient->ClientName,
-                    'office' => $scmClient->Office
+                // Log success
+                Log::info('SCM Creation Success:', [
+                    'RequestID' => $requestID,
+                    'Result' => $result,
+                    'OperatioEntityType' => $entity->OperatioEntityType
                 ]);
+
+                // Check stored procedure status
+                if ($result['Status'] === 'Success') {
+                    return ['success' => true, 'data' => $result];
+                } else {
+                    Log::warning('Stored Procedure Failed:', [
+                        'RequestID' => $requestID,
+                        'Remark' => $result['Remark'],
+                        'OperatioEntityType' => $entity->OperatioEntityType
+                    ]);
+                    return ['success' => false, 'error' => $result['Remark']];
+                }
             } else {
                 Log::warning('⚠️ STEP 14a: No Cust_Clients Entry Found', [
                     'requestID' => $requestID,
@@ -3645,58 +3117,13 @@ if (empty($results) || !isset($results[0]) || !isset($results[0]->outputJson)) {
                     'searchedCode' => $restoreData['OtherPartyCode'] ?? $entity->Code
                 ]);
             }
-
-        } catch (Exception $e) {
-            Log::error('❌ STEP 14: SCM Verification Failed', [
-                'requestID' => $requestID,
-                'error' => $e->getMessage()
+        } catch (QueryException $e) {
+            Log::error('Error executing Sp_OperationEntityCreation:', [
+                'RequestID' => $requestID,
+                'Error' => $e->getMessage(),
+                'OperatioEntityType' => $entity->OperatioEntityType
             ]);
-        }
-
-        // ================================================================
-        // STEP 15: PREPARE SUCCESS RESPONSE
-        // ================================================================
-        Log::info('═══════════════════════════════════════════════════════════════════════');
-        Log::info('✅ STEP 15: Preparing Success Response', [
-            'requestID' => $requestID,
-            'status' => $status,
-            'remarks' => $remarks
-        ]);
-
-        return [
-            'success' => true,
-            'data' => [
-                'Status' => $status,
-                'Remark' => $remarks
-            ]
-        ];
-
-    } else {
-        // SP returned failure status
-        Log::error('❌ STEP 12: SP Status is FAILURE', [
-            'requestID' => $requestID,
-            'status' => $status,
-            'remarks' => $remarks
-        ]);
-
-        // Check error log
-        try {
-            $errorLog = DB::table('Cust_ErrorLog')
-                ->where('ErrorType', 'LIKE', '%' . $entity->Code . '%')
-                ->orWhere('ErrorType', 'LIKE', '%Entity%')
-                ->orderBy('ErrorDate', 'desc')
-                ->first();
-
-            if ($errorLog) {
-                Log::error('📋 Error Log Entry Found', [
-                    'requestID' => $requestID,
-                    'errorType' => $errorLog->ErrorType,
-                    'errorMessage' => $errorLog->ErrorMessage,
-                    'errorDate' => $errorLog->ErrorDate
-                ]);
-            }
-        } catch (Exception $e) {
-            Log::error('Failed to check error log', ['error' => $e->getMessage()]);
+            return ['success' => false, 'error' => 'Entity Creation Failed: ' . $e->getMessage()];
         }
 
         Log::info('═══════════════════════════════════════════════════════════════════════');
@@ -3709,7 +3136,7 @@ if (empty($results) || !isset($results[0]) || !isset($results[0]->outputJson)) {
             ]
         ];
     }
-}
+
 
     /**
      * Remove the specified resource from storage.

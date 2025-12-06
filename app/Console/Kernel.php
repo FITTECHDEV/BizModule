@@ -63,11 +63,11 @@ class Kernel extends ConsoleKernel
             ->everyFiveMinutes()
             ->withoutOverlapping();
 
-        $schedule->command('sync:scmprofit')
-            ->everyTenMinutes()
-            ->withoutOverlapping()
-            ->appendOutputTo(storage_path('logs/scm-sync.log'))
-            ->emailOutputOnFailure('admin@yourcompany.com'); // Optional: add your email
+        // $schedule->command('sync:scmprofit')
+        //     ->everyTenMinutes()
+        //     ->withoutOverlapping()
+        //     ->appendOutputTo(storage_path('logs/scm-sync.log'))
+        //     ->emailOutputOnFailure('admin@yourcompany.com'); // Optional: add your email
 
         $schedule->command('crmscm:Booking')
             ->everyThirtyMinutes()

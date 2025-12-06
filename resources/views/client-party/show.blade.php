@@ -84,20 +84,28 @@
                                                             name="partyEntityType" required>
                                                             <option value="Client"
                                                                 @if (old('partyEntityType', $clientParty->OperationalEntityType) == 'Client') selected @endif>Client
+                                                                @if (old('partyEntityType', $clientParty->OperationalEntityType) == 'Client') selected @endif>Client
                                                             </option>
+                                                            <option value="Create only in D365"
+                                                                @if (old('partyEntityType') == 'Create only in D365') selected @endif>
+                                                                Create only in D365</option>
                                                             <option value="Create only in D365"
                                                                 @if (old('partyEntityType') == 'Create only in D365') selected @endif>
                                                                 Create only in D365</option>
                                                             <option value="Agent / Forwarder"
                                                                 @if (old('partyEntityType', $clientParty->OperationalEntityType) == 'Agent / Forwarder') selected @endif>Agent /
+                                                                @if (old('partyEntityType', $clientParty->OperationalEntityType) == 'Agent / Forwarder') selected @endif>Agent /
                                                                 Forwarder</option>
                                                             <option value="Airline"
+                                                                @if (old('partyEntityType', $clientParty->OperationalEntityType) == 'Airline') selected @endif>Airline
                                                                 @if (old('partyEntityType', $clientParty->OperationalEntityType) == 'Airline') selected @endif>Airline
                                                             </option>
                                                             <option value="Shipping Line"
                                                                 @if (old('partyEntityType', $clientParty->OperationalEntityType) == 'Shipping Line') selected @endif>Shipping
+                                                                @if (old('partyEntityType', $clientParty->OperationalEntityType) == 'Shipping Line') selected @endif>Shipping
                                                                 Line</option>
                                                             <option value="Trucker / Transporter"
+                                                                @if (old('partyEntityType', $clientParty->OperationalEntityType) == 'Trucker / Transporter') selected @endif>Trucker /
                                                                 @if (old('partyEntityType', $clientParty->OperationalEntityType) == 'Trucker / Transporter') selected @endif>Trucker /
                                                                 Transporter</option>
                                                         </select>
@@ -150,6 +158,8 @@
                                                 <div class="form-group row mb-1">
                                                     <label for="companyName"
                                                         class="col-sm-3 col-lg-4 col-md-4 col-form-label col-form-label-sm"><i
+                                                            class="fa fa-building" aria-hidden="true"></i>Company
+                                                        Name<span class="text-danger">*</span></label>
                                                             class="fa fa-building" aria-hidden="true"></i>Company
                                                         Name<span class="text-danger">*</span></label>
                                                     <div class="col-sm-9 col-lg-8 col-md-8">
@@ -2297,6 +2307,7 @@
                         }
                     };
                     const serverPartyType = '{{ $clientParty->OperationalEntityType }}';
+                    const serverPartyType = '{{ $clientParty->OperationalEntityType }}';
                     const config = typeConfig[serverPartyType] || {
                         display: serverPartyType,
                         value: serverPartyType
@@ -2401,6 +2412,7 @@
                             id: '{{ $clientParty->Id }}',
                             status: targetStatus,
                             partyEntityType: $('#partyEntityType').val() ||
+                                '{{ $clientParty->OperationalEntityType ?? '' }}',
                                 '{{ $clientParty->OperationalEntityType ?? '' }}',
                             debtorType: $('input[name="debtorType"]').val() || null,
                             vendorType: $('input[name="vendorType"]').val() || null,
@@ -2510,6 +2522,7 @@
                         // Add checkbox values as hidden inputs to the form
                         $('#clientPartyForm').find(
                             'input[name="otherCheckValue"], input[name="debtorCheckValue"], input[name="vendorCheckValue"]'
+                        ).remove();
                         ).remove();
 
                         // Add hidden inputs with checkbox values

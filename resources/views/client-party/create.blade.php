@@ -1626,33 +1626,31 @@
             }
 
             function validateGuidFields() {
-                const guidFields = [
-                    'companyId', 'clientID', 'otherID', 'hiddenOtherID',
-                    'countryID', 'officeCountryID', 'billingCurrency'
-                ];
+    const guidFields = [
+        'companyId', 'clientID', 'otherID', 'hiddenOtherID',
+        'countryID', 'officeCountryID', 'billingCurrency'
+    ];
 
-                guidFields.forEach(fieldId => {
-                    const field = $('#' + fieldId);
-                    if (field.length && field.val() && field.val().trim() !== '') {
-                        const value = field.val().trim();
+    guidFields.forEach(fieldId => {
+        const field = $('#' + fieldId);
+        if (field.length && field.val() && field.val().trim() !== '') {
+            const value = field.val().trim();
 
-                        // Check if it's a valid GUID format
-                        const guidRegex =
-                            /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+            // Check if it's a valid GUID format
+            const guidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-                        if (!guidRegex.test(value)) {
-                            console.warn(`Invalid GUID format for ${fieldId}:`, value);
+            if (!guidRegex.test(value)) {
+                console.warn(`Invalid GUID format for ${fieldId}:`, value);
 
-                            // If it's a temp ID that's not a proper GUID, replace it
-                            if (value.startsWith('temp-')) {
-                                field.val(generateUUID());
-                                console.log(`Replaced invalid temp ID with proper GUID for ${fieldId}`);
-                            }
-                        }
-                    }
-                });
+                // If it's a temp ID that's not a proper GUID, replace it
+                if (value.startsWith('temp-')) {
+                    field.val(generateUUID());
+                    console.log(`Replaced invalid temp ID with proper GUID for ${fieldId}`);
+                }
             }
-
+        }
+    });
+}
             function showFileError(message) {
                 const errorElement = $('#file-upload-error');
                 errorElement.html('<i class="fa fa-exclamation-triangle"></i> ' + message);
@@ -3293,7 +3291,7 @@ $(document).ready(function() {
 
                     console.log('Form submission - ensuring Other fields for accounting mode only');
                     ensureOtherFieldsForAccountingMode();
-                    validateGuidFields();
+                     validateGuidFields();
 
                     // Double-check that Other fields are properly set based on user access level
                     let otherInput, otherID, otherCode, otherChecked;
