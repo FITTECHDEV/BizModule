@@ -3,6 +3,9 @@
 @section('title', 'User Management Dashboard')
 
 
+@section('main-class', 'full-width')
+
+
 @push('styles')
 <style>
 /* ===== FULL-SCREEN OVERRIDES ===== */
@@ -1054,25 +1057,29 @@ body {
                 </span>
             </td>
             <td class="actions-cell">
-                <button class="btn btn-sm btn-primary" onclick="viewUser('{{ $user->Id }}')" 
-                        title="View User">
-                    <i class="fas fa-eye"></i>
-                </button>
-                <button class="btn btn-sm btn-warning" onclick="editUser('{{ $user->Id }}')" 
-                        title="Edit User">
-                    <i class="fas fa-edit"></i>
-                </button>
-                @if($user->Status === 'Active')
-                    <button class="btn btn-sm btn-danger" onclick="disableUser('{{ $user->Id }}')" 
-                            title="Disable User">
-                        <i class="fas fa-user-slash"></i>
-                    </button>
-                @else
-                    <button class="btn btn-sm btn-success" onclick="enableUser('{{ $user->Id }}')" 
-                            title="Enable User">
-                        <i class="fas fa-user-check"></i>
-                    </button>
-                @endif
+             <button class="btn btn-sm btn-primary" 
+        onclick="window.location.href='{{ route('azure.users.show', $user->id ?? $user->Id) }}'" 
+        title="View User">
+    <i class="fas fa-eye"></i>
+</button>
+                <button class="btn btn-sm btn-warning" 
+        onclick="window.location.href='{{ route('azure.users.edit', $user->id ?? $user->Id) }}'" 
+        title="Edit User">
+    <i class="fas fa-edit"></i>
+</button>
+               @if($user->Status === 'Active')
+    <button class="btn btn-sm btn-danger" 
+            onclick="disableUser('{{ $user->id ?? $user->Id }}')" 
+            title="Disable User">
+        <i class="fas fa-user-slash"></i>
+    </button>
+@else
+    <button class="btn btn-sm btn-success" 
+            onclick="enableUser('{{ $user->id ?? $user->Id }}')" 
+            title="Enable User">
+        <i class="fas fa-user-check"></i>
+    </button>
+@endif
             </td>
         </tr>
     @empty
@@ -1190,27 +1197,46 @@ body {
 
 @push('scripts')
 <script>
+/**
+ * ============================================================================
+ * USER MANAGEMENT DASHBOARD - JAVASCRIPT
+ * ============================================================================
+ * Handles all user interactions, search, filtering, and user status management
+ */
+
+// ============================================================================
+// INITIALIZATION
+// ============================================================================
+
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('Dashboard initialized');
     setupEventListeners();
     setupAccessibility();
+    restoreSearchFilters();
 });
 
+// ============================================================================
+// EVENT LISTENERS SETUP
+// ============================================================================
+
 function setupEventListeners() {
-    // Search functionality with debounce
+    // Search functionality with debounce (500ms delay)
     const searchInput = document.getElementById('searchUsers');
-    searchInput.addEventListener('input', debounce(function(e) {
-        performSearch();
-    }, 500));
-
-    // Clear search on Escape
-    searchInput.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape') {
-            e.target.value = '';
+    if (searchInput) {
+        searchInput.addEventListener('input', debounce(function(e) {
             performSearch();
-        }
-    });
+        }, 500));
 
-    // Status filter
+        // Clear search on Escape key
+        searchInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                e.target.value = '';
+                performSearch();
+            }
+        });
+    }
+
+    // Status filter dropdown
     const statusFilter = document.getElementById('statusFilter');
     if (statusFilter) {
         statusFilter.addEventListener('change', function(e) {
@@ -1234,29 +1260,107 @@ function setupEventListeners() {
             });
         }
     });
+
+    // Handle browser back/forward buttons
+    window.addEventListener('popstate', function(e) {
+        window.location.reload();
+    });
 }
 
+// ============================================================================
+// SEARCH AND FILTER FUNCTIONALITY
+// ============================================================================
+
+/**
+ * Performs search and filtering by rebuilding URL with query parameters
+ */
 function performSearch() {
-    const search = document.getElementById('searchUsers').value;
-    const status = document.getElementById('statusFilter').value;
+    const searchInput = document.getElementById('searchUsers');
+    const statusFilter = document.getElementById('statusFilter');
+    
+    if (!searchInput || !statusFilter) {
+        console.error('Search elements not found');
+        return;
+    }
+
+    const search = searchInput.value.trim();
+    const status = statusFilter.value;
     
     // Build URL with query parameters
     const url = new URL(window.location.href);
-    url.searchParams.set('search', search);
-    url.searchParams.set('status', status);
-    url.searchParams.delete('page'); // Reset to first page on new search
+    
+    // Set or remove search parameter
+    if (search) {
+        url.searchParams.set('search', search);
+    } else {
+        url.searchParams.delete('search');
+    }
+    
+    // Set or remove status parameter
+    if (status) {
+        url.searchParams.set('status', status);
+    } else {
+        url.searchParams.delete('status');
+    }
+    
+    // Reset to first page on new search
+    url.searchParams.delete('page');
+    
+    // Store in session storage for back button
+    try {
+        sessionStorage.setItem('lastSearch', JSON.stringify({
+            search: search,
+            status: status
+        }));
+    } catch (e) {
+        console.warn('SessionStorage not available:', e);
+    }
     
     // Show loading state
-    showLoading();
+    showLoading('Searching...');
     
     // Redirect with filters
     window.location.href = url.toString();
 }
 
+/**
+ * Restore search filters from URL parameters on page load
+ */
+function restoreSearchFilters() {
+    const urlParams = new URLSearchParams(window.location.search);
+    
+    // Restore search input
+    const searchInput = document.getElementById('searchUsers');
+    const searchValue = urlParams.get('search');
+    if (searchInput && searchValue) {
+        searchInput.value = searchValue;
+    }
+    
+    // Restore status filter
+    const statusFilter = document.getElementById('statusFilter');
+    const statusValue = urlParams.get('status');
+    if (statusFilter && statusValue) {
+        statusFilter.value = statusValue;
+    }
+}
+
+// ============================================================================
+// ACCESSIBILITY FEATURES
+// ============================================================================
+
+/**
+ * Sets up screen reader live region for announcements
+ */
 function setupAccessibility() {
+    // Check if already exists
+    if (document.getElementById('liveRegion')) {
+        return;
+    }
+
     const liveRegion = document.createElement('div');
     liveRegion.setAttribute('aria-live', 'polite');
     liveRegion.setAttribute('aria-atomic', 'true');
+    liveRegion.setAttribute('role', 'status');
     liveRegion.style.position = 'absolute';
     liveRegion.style.left = '-10000px';
     liveRegion.style.width = '1px';
@@ -1266,13 +1370,30 @@ function setupAccessibility() {
     document.body.appendChild(liveRegion);
 }
 
+/**
+ * Announces message to screen readers
+ * @param {string} message - The message to announce
+ */
 function announceToScreenReader(message) {
     const liveRegion = document.getElementById('liveRegion');
     if (liveRegion) {
-        liveRegion.textContent = message;
+        liveRegion.textContent = '';
+        // Small delay to ensure screen reader picks up the change
+        setTimeout(() => {
+            liveRegion.textContent = message;
+        }, 100);
     }
 }
 
+// ============================================================================
+// USER STATUS MANAGEMENT (Enable/Disable)
+// ============================================================================
+
+/**
+ * Toggles user status (enable or disable)
+ * @param {string|number} userId - The user ID
+ * @param {string} action - Either 'enable' or 'disable'
+ */
 function toggleUserStatus(userId, action) {
     const actionText = action === 'enable' ? 'enable' : 'disable';
     const actionTitle = action === 'enable' ? 'Enable User' : 'Disable User';
@@ -1280,76 +1401,200 @@ function toggleUserStatus(userId, action) {
         ? 'Are you sure you want to enable this user? This will restore access to all systems.'
         : 'Are you sure you want to disable this user? This will revoke access to all systems.';
     
+    // Confirm action with user
     if (!confirm(`${actionTitle}\n\n${actionMessage}`)) {
         return;
     }
     
-    showLoading();
+    showLoading(`${actionTitle}...`);
     
-    fetch(`/azure/users/${userId}/${actionText}`, {
+    // Build proper route URL
+    const url = `/azure/users/${userId}/${actionText}`;
+    
+    fetch(url, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
             'Accept': 'application/json',
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+            'X-Requested-With': 'XMLHttpRequest'
         }
     })
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
     .then(data => {
+        hideLoading();
+        
         if (data.success) {
-            alert(data.message || `User has been ${actionText}d successfully`);
-            window.location.reload();
+            const message = data.message || `User has been ${actionText}d successfully`;
+            
+            // Show success message
+            if (window.Swal) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Success',
+                    text: message,
+                    timer: 2000,
+                    showConfirmButton: false
+                }).then(() => {
+                    window.location.reload();
+                });
+            } else {
+                alert(message);
+                window.location.reload();
+            }
+            
+            // Announce to screen readers
+            announceToScreenReader(message);
         } else {
-            alert(data.message || `Failed to ${actionText} user`);
-            hideLoading();
+            const errorMessage = data.message || `Failed to ${actionText} user`;
+            
+            if (window.Swal) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: errorMessage
+                });
+            } else {
+                alert(errorMessage);
+            }
         }
     })
     .catch(error => {
-        console.error(`Error ${actionText}ing user:`, error);
-        alert(`Failed to ${actionText} user: ` + error.message);
         hideLoading();
+        console.error(`Error ${actionText}ing user:`, error);
+        
+        const errorMessage = `Failed to ${actionText} user. ${error.message}`;
+        
+        if (window.Swal) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: errorMessage,
+                footer: 'Please try again or contact support if the problem persists.'
+            });
+        } else {
+            alert(errorMessage);
+        }
     });
 }
 
-function viewUser(userId) {
-    // Redirect to user details page or implement modal view
-    window.location.href = `/azure/users/${userId}`;
+/**
+ * Enable a user
+ * @param {string|number} userId - The user ID
+ */
+function enableUser(userId) {
+    toggleUserStatus(userId, 'enable');
 }
 
-function editUser(userId) {
-    window.location.href = `/azure/users/${userId}/edit`;
+/**
+ * Disable a user
+ * @param {string|number} userId - The user ID
+ */
+function disableUser(userId) {
+    toggleUserStatus(userId, 'disable');
 }
 
+// ============================================================================
+// MODAL MANAGEMENT
+// ============================================================================
+
+/**
+ * Opens a modal by ID
+ * @param {string} modalId - The modal element ID
+ */
 function openModal(modalId) {
     const modal = document.getElementById(modalId);
-    if (modal) {
-        modal.style.display = 'block';
-        modal.setAttribute('aria-hidden', 'false');
-        document.body.style.overflow = 'hidden';
+    if (!modal) {
+        console.error(`Modal with ID "${modalId}" not found`);
+        return;
     }
+    
+    modal.style.display = 'block';
+    modal.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden'; // Prevent background scrolling
+    
+    // Focus on first focusable element in modal
+    setTimeout(() => {
+        const focusable = modal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+        if (focusable.length > 0) {
+            focusable[0].focus();
+        }
+    }, 100);
 }
 
+/**
+ * Closes a modal by ID
+ * @param {string} modalId - The modal element ID
+ */
 function closeModal(modalId) {
     const modal = document.getElementById(modalId);
-    if (modal) {
-        modal.style.display = 'none';
-        modal.setAttribute('aria-hidden', 'true');
-        document.body.style.overflow = '';
+    if (!modal) {
+        console.error(`Modal with ID "${modalId}" not found`);
+        return;
     }
+    
+    modal.style.display = 'none';
+    modal.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = ''; // Restore scrolling
 }
 
-function showLoading() {
-    // Add your loading indicator logic here
-    const body = document.body;
-    if (!document.getElementById('loadingOverlay')) {
-        const overlay = document.createElement('div');
-        overlay.id = 'loadingOverlay';
-        overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:9999;';
-        overlay.innerHTML = '<div style="background:white;padding:20px;border-radius:8px;"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
-        body.appendChild(overlay);
+// ============================================================================
+// LOADING INDICATOR
+// ============================================================================
+
+/**
+ * Shows loading overlay with optional message
+ * @param {string} message - Optional loading message
+ */
+function showLoading(message = 'Loading...') {
+    const existingOverlay = document.getElementById('loadingOverlay');
+    if (existingOverlay) {
+        return; // Already showing
     }
+
+    const overlay = document.createElement('div');
+    overlay.id = 'loadingOverlay';
+    overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        backdrop-filter: blur(2px);
+    `;
+    
+    overlay.innerHTML = `
+        <div style="
+            background: white;
+            padding: 30px 40px;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+        ">
+            <i class="fas fa-spinner fa-spin" style="font-size: 2.5em; color: var(--primary-color);"></i>
+            <div style="font-size: 1.1em; font-weight: 600; color: var(--text);">${escapeHtml(message)}</div>
+        </div>
+    `;
+    
+    document.body.appendChild(overlay);
 }
 
+/**
+ * Hides the loading overlay
+ */
 function hideLoading() {
     const overlay = document.getElementById('loadingOverlay');
     if (overlay) {
@@ -1357,6 +1602,16 @@ function hideLoading() {
     }
 }
 
+// ============================================================================
+// UTILITY FUNCTIONS
+// ============================================================================
+
+/**
+ * Debounces a function call
+ * @param {Function} func - The function to debounce
+ * @param {number} wait - Wait time in milliseconds
+ * @returns {Function} Debounced function
+ */
 function debounce(func, wait) {
     let timeout;
     return function executedFunction(...args) {
@@ -1369,6 +1624,11 @@ function debounce(func, wait) {
     };
 }
 
+/**
+ * Escapes HTML special characters to prevent XSS
+ * @param {string} text - Text to escape
+ * @returns {string} Escaped text
+ */
 function escapeHtml(text) {
     const map = {
         '&': '&amp;',
@@ -1377,8 +1637,115 @@ function escapeHtml(text) {
         '"': '&quot;',
         "'": '&#039;'
     };
-    return String(text || '').replace(/[&<>"']/g, function(m) { return map[m]; });
+    return String(text || '').replace(/[&<>"']/g, function(m) { 
+        return map[m]; 
+    });
 }
+
+/**
+ * Formats a date string
+ * @param {string} dateString - ISO date string
+ * @returns {string} Formatted date
+ */
+function formatDate(dateString) {
+    if (!dateString) return 'N/A';
+    
+    try {
+        const date = new Date(dateString);
+        return date.toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    } catch (e) {
+        console.error('Error formatting date:', e);
+        return dateString;
+    }
+}
+
+/**
+ * Copies text to clipboard
+ * @param {string} text - Text to copy
+ */
+function copyToClipboard(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text)
+            .then(() => {
+                announceToScreenReader('Copied to clipboard');
+                if (window.Swal) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Copied!',
+                        text: 'Text copied to clipboard',
+                        timer: 1500,
+                        showConfirmButton: false,
+                        toast: true,
+                        position: 'top-end'
+                    });
+                }
+            })
+            .catch(err => {
+                console.error('Failed to copy:', err);
+            });
+    } else {
+        // Fallback for older browsers
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.select();
+        try {
+            document.execCommand('copy');
+            announceToScreenReader('Copied to clipboard');
+        } catch (err) {
+            console.error('Failed to copy:', err);
+        }
+        document.body.removeChild(textArea);
+    }
+}
+
+// ============================================================================
+// ERROR HANDLING
+// ============================================================================
+
+/**
+ * Global error handler
+ */
+window.addEventListener('error', function(e) {
+    console.error('Global error:', e.error);
+    // You can add error reporting service here (e.g., Sentry)
+});
+
+/**
+ * Handle unhandled promise rejections
+ */
+window.addEventListener('unhandledrejection', function(e) {
+    console.error('Unhandled promise rejection:', e.reason);
+    // You can add error reporting service here
+});
+
+// ============================================================================
+// EXPORT FOR TESTING (Optional)
+// ============================================================================
+
+// If you want to test these functions in console
+if (typeof window !== 'undefined') {
+    window.dashboardUtils = {
+        enableUser,
+        disableUser,
+        openModal,
+        closeModal,
+        showLoading,
+        hideLoading,
+        performSearch,
+        copyToClipboard,
+        formatDate
+    };
+}
+
+console.log('Dashboard scripts loaded successfully');
 </script>
-@endpush
 @endpush

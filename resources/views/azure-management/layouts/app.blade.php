@@ -31,24 +31,34 @@
             --primary-color: #0b66ff;
             --primary-contrast: #ffffff;
             --secondary-color: #0ea5a4;
-            --bg: #e9edf2;          /* softer background */
+            --bg: #e9edf2;
             --surface: #ffffff;
             --muted: #6b7280;
             --text: #0f172a;
             --danger: #ef4444;
             --success: #10b981;
+            --warning: #f59e0b;
             --radius: 10px;
             --shadow-sm: 0 2px 8px rgba(15, 23, 42, 0.06);
             --shadow-md: 0 8px 30px rgba(15, 23, 42, 0.08);
             --focus-ring: 3px rgba(11, 102, 255, 0.15);
-            --max-width: 1320px;
-            --nav-width: 260px;
-            --mobile-nav-height: 64px;
         }
 
         /* ---------- Reset + Defaults ---------- */
-        * { box-sizing: border-box; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
-        html, body { height: 100%; margin: 0; }
+        * { 
+            box-sizing: border-box; 
+            -webkit-font-smoothing: antialiased; 
+            -moz-osx-font-smoothing: grayscale; 
+        }
+        
+        html, body { 
+            height: 100%; 
+            margin: 0 !important; 
+            padding: 0 !important;
+            width: 100%;
+            overflow-x: hidden;
+        }
+        
         body {
             font-family: "Inter", "Figtree", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
             background: var(--bg);
@@ -57,28 +67,47 @@
             line-height: 1.45;
         }
 
-        /* ---------- Layout ---------- */
+        /* ---------- Layout - Full Width Support ---------- */
         .app-shell {
             min-height: 100vh;
             display: flex;
             flex-direction: column;
+            width: 100%;
+            margin: 0;
+            padding: 0;
         }
 
-        /* ---------- Main Content ---------- */
+        /* Main Content - Default with padding, can be overridden */
         .main {
-            padding: 0 28px 28px 28px;             max-width: var(--max-width);
+            padding: 0 28px 28px 28px;
+            max-width: 1320px;
             margin: 0 auto;
             width: 100%;
             display: flex;
             flex-direction: column;
             gap: 20px;
         }
+        
+        /* Full-width variant for specific pages */
+        .main.full-width {
+            padding: 0 !important;
+            max-width: 100% !important;
+            margin: 0 !important;
+            gap: 0 !important;
+        }
+        
         .page-header {
             display: flex;
             align-items: center;
             justify-content: space-between;
             gap: 16px;
         }
+        
+        /* Hide page header when using full-width layout */
+        .main.full-width .page-header {
+            display: none !important;
+        }
+        
         .page-title {
             display: flex;
             align-items: center;
@@ -86,6 +115,12 @@
             font-size: 1.25rem;
             font-weight: 700;
             color: var(--text);
+        }
+        
+        /* Section - no padding for full-width pages */
+        .main.full-width section {
+            padding: 0 !important;
+            margin: 0 !important;
         }
 
         /* ---------- Buttons ---------- */
@@ -100,11 +135,28 @@
             cursor: pointer;
             transition: transform .08s ease, box-shadow .12s ease;
         }
-        .btn:focus-visible { outline: none; box-shadow: 0 0 0 4px var(--focus-ring); }
-        .btn-primary { background: var(--primary-color); color: var(--primary-contrast); box-shadow: var(--shadow-sm); }
-        .btn-primary:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
-        .btn-secondary { background: var(--secondary-color); color: var(--primary-contrast); }
-        .btn-ghost { background: transparent; color: var(--text); border: 1px solid rgba(15,23,42,0.06); }
+        .btn:focus-visible { 
+            outline: none; 
+            box-shadow: 0 0 0 4px var(--focus-ring); 
+        }
+        .btn-primary { 
+            background: var(--primary-color); 
+            color: var(--primary-contrast); 
+            box-shadow: var(--shadow-sm); 
+        }
+        .btn-primary:hover { 
+            transform: translateY(-2px); 
+            box-shadow: var(--shadow-md); 
+        }
+        .btn-secondary { 
+            background: var(--secondary-color); 
+            color: var(--primary-contrast); 
+        }
+        .btn-ghost { 
+            background: transparent; 
+            color: var(--text); 
+            border: 1px solid rgba(15,23,42,0.06); 
+        }
 
         /* ---------- Cards ---------- */
         .card-surface {
@@ -130,26 +182,39 @@
             text-align: center;
             min-width: 160px;
         }
-        .loading-spinner[aria-hidden="false"] { display: block; }
+        .loading-spinner[aria-hidden="false"] { 
+            display: block; 
+        }
         .spinner {
-            width: 36px; height: 36px;
+            width: 36px; 
+            height: 36px;
             border-radius: 50%;
             border: 4px solid rgba(15,23,42,0.06);
             border-top-color: var(--primary-color);
             margin: 0 auto 10px;
             animation: spin 0.9s linear infinite;
         }
-        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes spin { 
+            to { transform: rotate(360deg); } 
+        }
 
         /* ---------- Responsive ---------- */
         @media (max-width: 991px) {
-            .main { padding: 0 18px 18px 18px; }       
+            .main:not(.full-width) { 
+                padding: 0 18px 18px 18px; 
+            }
         }
 
         .sr-only {
-            position: absolute; width: 1px; height: 1px;
-            padding: 0; margin: -1px; overflow: hidden;
-            clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+            position: absolute; 
+            width: 1px; 
+            height: 1px;
+            padding: 0; 
+            margin: -1px; 
+            overflow: hidden;
+            clip: rect(0,0,0,0); 
+            white-space: nowrap; 
+            border: 0;
         }
 
         @yield('additional-styles')
@@ -160,9 +225,9 @@
 <body>
     <div class="app-shell" role="application">
         <!-- Main -->
-        <main class="main" role="main">
+        <main class="main @yield('main-class')" role="main">
             <header class="page-header">
-            
+                @yield('page-title')
                 <div>@yield('header-actions')</div>
             </header>
 
@@ -193,50 +258,76 @@
             // Loading helpers
             window.showLoading = () => {
                 const el = document.getElementById('loadingSpinner');
-                el?.setAttribute('aria-hidden', 'false');
-                el.style.display = 'block';
+                if (el) {
+                    el.setAttribute('aria-hidden', 'false');
+                    el.style.display = 'block';
+                }
             };
+            
             window.hideLoading = () => {
                 const el = document.getElementById('loadingSpinner');
-                el?.setAttribute('aria-hidden', 'true');
-                el.style.display = 'none';
+                if (el) {
+                    el.setAttribute('aria-hidden', 'true');
+                    el.style.display = 'none';
+                }
             };
 
             // SweetAlert helpers
             window.showAlert = (type, title, message) => {
                 if (window.Swal) {
-                    Swal.fire({ icon: type, title, text: message, toast: true, position: 'top-end', showConfirmButton: false, timer: 3000 });
+                    Swal.fire({ 
+                        icon: type, 
+                        title, 
+                        text: message, 
+                        toast: true, 
+                        position: 'top-end', 
+                        showConfirmButton: false, 
+                        timer: 3000,
+                        timerProgressBar: true
+                    });
                 } else {
                     alert(title + "\n\n" + message);
                 }
             };
+            
             window.confirmAction = (title, text, callback) => {
                 if (window.Swal) {
                     Swal.fire({
-                        title, text, icon: 'warning',
+                        title, 
+                        text, 
+                        icon: 'warning',
                         showCancelButton: true,
                         confirmButtonColor: getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim(),
                         cancelButtonColor: '#6b7280',
-                        confirmButtonText: 'Yes, proceed!'
+                        confirmButtonText: 'Yes, proceed!',
+                        cancelButtonText: 'Cancel'
                     }).then(result => {
-                        if (result.isConfirmed && typeof callback === 'function') callback();
+                        if (result.isConfirmed && typeof callback === 'function') {
+                            callback();
+                        }
                     });
                 } else if (confirm(title + "\n\n" + text)) {
-                    callback?.();
+                    if (typeof callback === 'function') {
+                        callback();
+                    }
                 }
             };
 
             // Laravel flash + validation messages
             @if ($errors->any())
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Validation Error',
-                    html: `<ul style="text-align:left;">@foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul>`
-                });
+                if (window.Swal) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Validation Error',
+                        html: `<ul style="text-align:left;margin:0;padding-left:20px;">@foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul>`
+                    });
+                }
             @endif
+            
             @if (session('success'))
                 showAlert('success', 'Success', '{{ session("success") }}');
             @endif
+            
             @if (session('error'))
                 showAlert('error', 'Error', '{{ session("error") }}');
             @endif
