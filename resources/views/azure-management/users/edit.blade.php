@@ -771,9 +771,131 @@
     let currentModalCardId = null;
     let isEditMode = false;
     let originalCardState = null;
+    
+    // NEW: Caches for dynamic data
+    let scmFunctionsCache = null;
+    let rolesCache = {};
+    let locationsCache = {};
+
+    // Initialize locations cache
+    locationsData.forEach(loc => {
+        locationsCache[loc.code.trim()] = {
+            id: loc.id,
+            code: loc.code.trim(),
+            name: loc.name
+        };
+    });
+
+    console.log('=== INITIAL DATA ===');
+    console.log('Modules:', modulesData);
+    console.log('Locations Cache:', locationsCache);
+
+    // Helper function to escape HTML
+    function escapeHtml(text) {
+        if (!text) return '';
+        const map = {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#039;'
+        };
+        return String(text).replace(/[&<>"']/g, m => map[m]);
+    }
 
     function deepClone(obj) {
         return JSON.parse(JSON.stringify(obj));
+    }
+
+    function getApplicationCodeForSP(module) {
+        return module.name;
+    }
+
+    // NEW: Fetch SCM Functions
+    async function fetchSCMFunctions() {
+        if (scmFunctionsCache) {
+            return scmFunctionsCache;
+        }
+
+        try {
+            const response = await fetch('/azure/modules/scm-functions', {
+                headers: {
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/json'
+                }
+            });
+            
+            const result = await response.json();
+            
+            if (result.success && result.data) {
+                scmFunctionsCache = result.data.map(f => ({
+                    id: f.ID || f.Id || f.id,
+                    code: f.Code || f.code,
+                    name: f.Name || f.name
+                }));
+                console.log('✅ Cached', scmFunctionsCache.length, 'SCM functions');
+                return scmFunctionsCache;
+            } else {
+                console.error('Failed to fetch SCM functions:', result.message);
+                return [];
+            }
+        } catch (error) {
+            console.error('Error fetching SCM functions:', error);
+            return [];
+        }
+    }
+
+    // NEW: Fetch Roles by Application Code
+    async function fetchRolesByApplicationCode(applicationCode) {
+        const cacheKey = `${applicationCode}_all`;
+        
+        if (rolesCache[cacheKey]) {
+            return rolesCache[cacheKey];
+        }
+
+        try {
+            const url = `/azure/modules/roles?application_code=${encodeURIComponent(applicationCode)}`;
+            
+            const response = await fetch(url, {
+                headers: {
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/json'
+                }
+            });
+            
+            const result = await response.json();
+            
+            if (result.success && result.data && result.data.length > 0) {
+                // Filter out error responses
+                const validRoles = result.data.filter(role => {
+                    const hasError = Object.values(role).some(val => 
+                        typeof val === 'string' && (
+                            val.toLowerCase().includes('failed') || 
+                            val.toLowerCase().includes('does not exist') ||
+                            val.toLowerCase().includes('error')
+                        )
+                    );
+                    return !hasError;
+                });
+                
+                rolesCache[cacheKey] = validRoles.map(r => ({
+                    id: r.RoleId || r.Id || r.id,
+                    code: r.RoleCode || r.Code || r.code,
+                    name: r.Role || r.Name || r.name
+                }));
+                
+                console.log('✅ Cached', rolesCache[cacheKey].length, 'roles for', applicationCode);
+                return rolesCache[cacheKey];
+            } else {
+                console.warn('⚠️ No roles found for:', applicationCode);
+                rolesCache[cacheKey] = [];
+                return [];
+            }
+        } catch (error) {
+            console.error('❌ Error fetching roles:', error);
+            rolesCache[cacheKey] = [];
+            return [];
+        }
     }
 
     function initializeModules() {
@@ -784,13 +906,23 @@
                 grouped[moduleId] = {
                     module_id: moduleId,
                     module_name: m.module_name,
+                    application_id: m.application_id,
                     assignments: []
                 };
             }
+            
+            // Store the assignment with proper structure
             grouped[moduleId].assignments.push({
                 id: `assign_${cardIdCounter++}`,
                 location: m.location,
-                role_id: m.role_id
+                locationIds: [m.location_id],
+                locationCodes: [m.location],
+                role_id: m.role_id,
+                roleIds: [m.role_id],
+                roleCodes: [m.role_code || ''],
+                function_id: m.function_id || undefined,
+                functionIds: m.function_id ? [m.function_id] : undefined,
+                functionCodes: m.function_code ? [m.function_code] : undefined
             });
         });
 
@@ -822,7 +954,7 @@
         const assignmentCount = card.assignments ? card.assignments.length : 0;
         div.innerHTML = `
             <i class="fas ${card.isNew ? 'fa-plus-circle' : 'fa-cube'} card-icon"></i>
-            <div class="card-title">${card.module_name}</div>
+            <div class="card-title">${escapeHtml(card.module_name)}</div>
             <span class="assignment-count">
                 <i class="fas fa-list"></i>
                 ${assignmentCount} assignment${assignmentCount !== 1 ? 's' : ''}
@@ -831,12 +963,33 @@
         return div;
     }
 
-    window.openModal = (cardId) => {
+    window.openModal = async (cardId) => {
         currentModalCardId = cardId;
         const card = moduleCards[cardId];
         originalCardState = deepClone(card);
         isEditMode = card.isNew;
+        
         document.getElementById('modalModuleName').textContent = card.module_name;
+        
+        // Pre-fetch data if needed
+        const module = modulesData.find(m => m.id == card.module_id);
+        if (module) {
+            const applicationCode = getApplicationCodeForSP(module);
+            const isSCM = applicationCode === 'OPS' || applicationCode === 'OPS UAT';
+            
+            // Show loading state
+            const container = document.getElementById('modalAssignmentsContainer');
+            container.innerHTML = '<div class="empty-assignments"><i class="fas fa-spinner fa-spin"></i><p>Loading data...</p></div>';
+            
+            // Fetch roles and functions concurrently
+            const promises = [fetchRolesByApplicationCode(applicationCode)];
+            if (isSCM) {
+                promises.push(fetchSCMFunctions());
+            }
+            
+            await Promise.all(promises);
+        }
+        
         renderModalAssignments();
         updateModalViewState();
         document.getElementById('moduleModal').classList.add('active');
@@ -906,29 +1059,60 @@
     function renderModalAssignments() {
         const card = moduleCards[currentModalCardId];
         const container = document.getElementById('modalAssignmentsContainer');
+        
         if (!card.assignments || card.assignments.length === 0) {
             container.innerHTML = '<div class="empty-assignments"><i class="fas fa-clipboard-list"></i><p>No assignments yet.</p></div>';
             return;
         }
+        
+        const module = modulesData.find(m => m.id == card.module_id);
+        
+        if (!module) {
+            container.innerHTML = '<div class="empty-assignments"><i class="fas fa-exclamation-triangle"></i><p>Module not found.</p></div>';
+            return;
+        }
+        
+        const applicationCode = getApplicationCodeForSP(module);
+        const isSCM = applicationCode === 'OPS' || applicationCode === 'OPS UAT';
+        const cacheKey = `${applicationCode}_all`;
+        
+        // Check if data is loaded
+        if (!rolesCache[cacheKey]) {
+            container.innerHTML = '<div class="empty-assignments"><i class="fas fa-spinner fa-spin"></i><p>Loading roles...</p></div>';
+            return;
+        }
+        
+        if (isSCM && !scmFunctionsCache) {
+            container.innerHTML = '<div class="empty-assignments"><i class="fas fa-spinner fa-spin"></i><p>Loading functions...</p></div>';
+            return;
+        }
+        
+        const availableRoles = rolesCache[cacheKey] || [];
+        const availableFunctions = isSCM ? (scmFunctionsCache || []) : [];
+        
         container.innerHTML = card.assignments.map(a => {
             const isAllLocations = a.location === 'ALL';
             const isAllRoles = a.role_id === 'ALL';
+            const isAllFunctions = a.function_id === 'ALL';
             const disabled = !isEditMode ? 'disabled' : '';
             const disabledClass = !isEditMode ? 'disabled' : '';
 
             return `
                 <div class="assignment-item" id="${a.id}">
                     <div class="assignment-header">
-                        <span style="font-weight: 600; color: var(--muted); font-size: 0.9em;">Assignment</span>
+                        <span style="font-weight: 600; color: var(--muted); font-size: 0.9em;">
+                            Assignment for ${escapeHtml(module.name)} (${escapeHtml(applicationCode)})
+                        </span>
                         <div style="display: flex; gap: 8px; ${!isEditMode ? 'display: none;' : ''}">
                             <button type="button" class="btn btn-sm btn-ghost" style="color: var(--danger);" onclick="deleteAssignment('${a.id}')">
                                 <i class="fas fa-trash"></i>
                             </button>
                         </div>
                     </div>
-                    <div class="assignment-info">
+                    <div class="assignment-info" style="grid-template-columns: ${isSCM ? '1fr 1fr 1fr' : '1fr 1fr'};">
+                        <!-- OFFICE LOCATION -->
                         <div class="info-field">
-                            <div class="field-label"><i class="fas fa-map-marker-alt"></i> Office</div>
+                            <div class="field-label"><i class="fas fa-map-marker-alt"></i> Office Location</div>
                             <div class="radio-group">
                                 <div class="radio-option ${disabledClass}">
                                     <input type="radio" id="${a.id}_all_locations" name="${a.id}_location_type" class="all-locations-radio" ${isAllLocations ? 'checked' : ''} ${disabled} onchange="handleLocationRadioChange('${a.id}')">
@@ -940,14 +1124,65 @@
                                 </div>
                             </div>
                             <div class="checkboxes-grid">
-                                ${locationsData.map(l => `
-                                    <div class="checkbox-option ${isAllLocations || !isEditMode ? 'disabled' : ''}">
-                                        <input type="checkbox" id="${a.id}_loc_${l.code}" class="location-checkbox" value="${l.code}" ${a.location === l.code || isAllLocations ? 'checked' : ''} ${isAllLocations || !isEditMode ? 'disabled' : ''} onchange="handleLocationCheckboxChange('${a.id}', this)">
-                                        <label for="${a.id}_loc_${l.code}">${l.name}</label>
-                                    </div>
-                                `).join('')}
+                                ${locationsData.map(l => {
+                                    const locCode = l.code.trim();
+                                    const isChecked = a.locationCodes && a.locationCodes.includes(locCode);
+                                    return `
+                                        <div class="checkbox-option ${isAllLocations || !isEditMode ? 'disabled' : ''}">
+                                            <input type="checkbox" 
+                                                   id="${a.id}_loc_${locCode}" 
+                                                   class="location-checkbox" 
+                                                   data-location-id="${l.id}"
+                                                   data-location-code="${locCode}"
+                                                   data-location-name="${escapeHtml(l.name)}"
+                                                   value="${locCode}" 
+                                                   ${isChecked || isAllLocations ? 'checked' : ''} 
+                                                   ${isAllLocations || !isEditMode ? 'disabled' : ''} 
+                                                   onchange="handleLocationCheckboxChange('${a.id}')">
+                                            <label for="${a.id}_loc_${locCode}">${escapeHtml(l.name)}</label>
+                                        </div>
+                                    `;
+                                }).join('')}
                             </div>
                         </div>
+                        
+                        <!-- SCM FUNCTIONS (Only for OPS/OPSUAT) -->
+                        ${isSCM ? `
+                        <div class="info-field">
+                            <div class="field-label"><i class="fas fa-cog"></i> Function (SCM)</div>
+                            <div class="radio-group">
+                                <div class="radio-option ${disabledClass}">
+                                    <input type="radio" id="${a.id}_all_functions" name="${a.id}_function_type" class="all-functions-radio" ${isAllFunctions ? 'checked' : ''} ${disabled} onchange="handleFunctionRadioChange('${a.id}')">
+                                    <label for="${a.id}_all_functions">All Functions</label>
+                                </div>
+                                <div class="radio-option ${disabledClass}">
+                                    <input type="radio" id="${a.id}_specific_functions" name="${a.id}_function_type" class="specific-functions-radio" ${!isAllFunctions ? 'checked' : ''} ${disabled} onchange="handleFunctionRadioChange('${a.id}')">
+                                    <label for="${a.id}_specific_functions">Specific Function</label>
+                                </div>
+                            </div>
+                            <div class="checkboxes-grid">
+                                ${availableFunctions.length > 0 ? availableFunctions.map(f => {
+                                    const isChecked = a.functionIds && a.functionIds.includes(String(f.id));
+                                    return `
+                                        <div class="checkbox-option ${isAllFunctions || !isEditMode ? 'disabled' : ''}">
+                                            <input type="checkbox" 
+                                                   id="${a.id}_func_${f.id}" 
+                                                   class="function-checkbox" 
+                                                   data-function-id="${f.id}"
+                                                   data-function-code="${escapeHtml(f.code)}"
+                                                   value="${f.id}" 
+                                                   ${isChecked || isAllFunctions ? 'checked' : ''} 
+                                                   ${isAllFunctions || !isEditMode ? 'disabled' : ''} 
+                                                   onchange="handleFunctionCheckboxChange('${a.id}')">
+                                            <label for="${a.id}_func_${f.id}">${escapeHtml(f.name)}</label>
+                                        </div>
+                                    `;
+                                }).join('') : '<p style="padding: 10px; color: #666;">No functions available</p>'}
+                            </div>
+                        </div>
+                        ` : ''}
+                        
+                        <!-- ROLES -->
                         <div class="info-field">
                             <div class="field-label"><i class="fas fa-user-tag"></i> Role</div>
                             <div class="radio-group">
@@ -961,12 +1196,23 @@
                                 </div>
                             </div>
                             <div class="checkboxes-grid">
-                                ${rolesData.map(r => `
-                                    <div class="checkbox-option ${isAllRoles || !isEditMode ? 'disabled' : ''}">
-                                        <input type="checkbox" id="${a.id}_role_${r.id}" class="role-checkbox" value="${r.id}" ${a.role_id == r.id || isAllRoles ? 'checked' : ''} ${isAllRoles || !isEditMode ? 'disabled' : ''} onchange="handleRoleCheckboxChange('${a.id}', this)">
-                                        <label for="${a.id}_role_${r.id}">${r.name}</label>
-                                    </div>
-                                `).join('')}
+                                ${availableRoles.length > 0 ? availableRoles.map(r => {
+                                    const isChecked = a.roleIds && a.roleIds.includes(String(r.id));
+                                    return `
+                                        <div class="checkbox-option ${isAllRoles || !isEditMode ? 'disabled' : ''}">
+                                            <input type="checkbox" 
+                                                   id="${a.id}_role_${r.id}" 
+                                                   class="role-checkbox" 
+                                                   data-role-id="${r.id}"
+                                                   data-role-code="${escapeHtml(r.code)}"
+                                                   value="${r.id}" 
+                                                   ${isChecked || isAllRoles ? 'checked' : ''} 
+                                                   ${isAllRoles || !isEditMode ? 'disabled' : ''} 
+                                                   onchange="handleRoleCheckboxChange('${a.id}')">
+                                            <label for="${a.id}_role_${r.id}">${escapeHtml(r.name)}</label>
+                                        </div>
+                                    `;
+                                }).join('') : '<p style="padding: 10px; color: #666;">No roles available for ' + escapeHtml(applicationCode) + '</p>'}
                             </div>
                         </div>
                     </div>
@@ -975,23 +1221,114 @@
         }).join('');
     }
 
+    // Handle location radio change (All vs Specific)
     window.handleLocationRadioChange = (assignId) => {
         if (!isEditMode) return;
         const container = document.getElementById(assignId);
         if (!container) return;
+        
         const allRadio = container.querySelector('.all-locations-radio');
         const checkboxes = container.querySelectorAll('.location-checkbox');
         const checkboxOptions = container.querySelectorAll('.info-field:first-child .checkbox-option');
         const card = moduleCards[currentModalCardId];
         const assignment = card.assignments.find(a => a.id === assignId);
+        
         if (allRadio && allRadio.checked) {
             checkboxes.forEach(cb => { cb.checked = true; cb.disabled = true; });
             checkboxOptions.forEach(opt => opt.classList.add('disabled'));
-            if (assignment) assignment.location = 'ALL';
+            if (assignment) {
+                assignment.location = 'ALL';
+                assignment.locationIds = ['ALL'];
+                assignment.locationCodes = ['ALL'];
+            }
         } else {
             checkboxes.forEach(cb => { cb.disabled = false; cb.checked = false; });
             checkboxOptions.forEach(opt => opt.classList.remove('disabled'));
-            if (assignment) assignment.location = '';
+            if (assignment) {
+                assignment.location = '';
+                assignment.locationIds = [];
+                assignment.locationCodes = [];
+            }
+        }
+    };
+
+    window.handleLocationCheckboxChange = (assignId) => {
+        if (!isEditMode) return;
+        const container = document.getElementById(assignId);
+        if (!container) return;
+        
+        const checkboxes = container.querySelectorAll('.location-checkbox:checked:not(:disabled)');
+        const card = moduleCards[currentModalCardId];
+        const assignment = card.assignments.find(a => a.id === assignId);
+        
+        if (assignment) {
+            assignment.locationIds = [];
+            assignment.locationCodes = [];
+            
+            checkboxes.forEach(cb => {
+                const locId = cb.getAttribute('data-location-id');
+                const locCode = cb.getAttribute('data-location-code');
+                
+                assignment.locationIds.push(locId);
+                assignment.locationCodes.push(locCode);
+            });
+            
+            assignment.location = assignment.locationCodes.length > 0 ? assignment.locationCodes[0] : '';
+        }
+    };
+
+    window.handleFunctionRadioChange = (assignId) => {
+        if (!isEditMode) return;
+        const container = document.getElementById(assignId);
+        if (!container) return;
+        
+        const allRadio = container.querySelector('.all-functions-radio');
+        const checkboxes = container.querySelectorAll('.function-checkbox');
+        const checkboxOptions = container.querySelectorAll('.info-field:nth-child(2) .checkbox-option');
+        const card = moduleCards[currentModalCardId];
+        const assignment = card.assignments.find(a => a.id === assignId);
+        
+        if (allRadio && allRadio.checked) {
+            checkboxes.forEach(cb => { cb.checked = true; cb.disabled = true; });
+            checkboxOptions.forEach(opt => opt.classList.add('disabled'));
+            if (assignment) {
+                assignment.function_id = 'ALL';
+                assignment.functionIds = ['ALL'];
+                assignment.functionCodes = ['ALL'];
+            }
+        } else {
+            checkboxes.forEach(cb => { cb.disabled = false; cb.checked = false; });
+            checkboxOptions.forEach(opt => opt.classList.remove('disabled'));
+            if (assignment) {
+                assignment.function_id = '';
+                assignment.functionIds = [];
+                assignment.functionCodes = [];
+            }
+        }
+    };
+
+    window.handleFunctionCheckboxChange = (assignId) => {
+        if (!isEditMode) return;
+        const container = document.getElementById(assignId);
+        if (!container) return;
+        
+        const checkboxes = container.querySelectorAll('.function-checkbox:checked:not(:disabled)');
+        const card = moduleCards[currentModalCardId];
+        const assignment = card.assignments.find(a => a.id === assignId);
+        
+        if (assignment) {
+            assignment.functionIds = [];
+            assignment.functionCodes = [];
+            
+            checkboxes.forEach(cb => {
+                const funcId = cb.getAttribute('data-function-id');
+                const funcCode = cb.getAttribute('data-function-code');
+                
+                assignment.functionIds.push(funcId);
+                assignment.functionCodes.push(funcCode);
+            });
+            
+            assignment.function_id = assignment.functionIds.length > 0 ? assignment.functionIds[0] : '';
         }
     };
 
@@ -999,66 +1336,122 @@
         if (!isEditMode) return;
         const container = document.getElementById(assignId);
         if (!container) return;
+        
         const allRadio = container.querySelector('.all-roles-radio');
         const checkboxes = container.querySelectorAll('.role-checkbox');
         const checkboxOptions = container.querySelectorAll('.info-field:last-child .checkbox-option');
         const card = moduleCards[currentModalCardId];
         const assignment = card.assignments.find(a => a.id === assignId);
+        
         if (allRadio && allRadio.checked) {
             checkboxes.forEach(cb => { cb.checked = true; cb.disabled = true; });
             checkboxOptions.forEach(opt => opt.classList.add('disabled'));
-            if (assignment) assignment.role_id = 'ALL';
+            if (assignment) {
+                assignment.role_id = 'ALL';
+                assignment.roleIds = ['ALL'];
+                assignment.roleCodes = ['ALL'];
+            }
         } else {
             checkboxes.forEach(cb => { cb.disabled = false; cb.checked = false; });
             checkboxOptions.forEach(opt => opt.classList.remove('disabled'));
-            if (assignment) assignment.role_id = '';
+            if (assignment) {
+                assignment.role_id = '';
+                assignment.roleIds = [];
+                assignment.roleCodes = [];
+            }
         }
     };
 
-    window.handleLocationCheckboxChange = (assignId, checkbox) => {
+    window.handleRoleCheckboxChange = (assignId) => {
         if (!isEditMode) return;
+        const container = document.getElementById(assignId);
+        if (!container) return;
+        
+        const checkboxes = container.querySelectorAll('.role-checkbox:checked:not(:disabled)');
         const card = moduleCards[currentModalCardId];
         const assignment = card.assignments.find(a => a.id === assignId);
-        if (assignment) assignment.location = checkbox.value;
-    };
-
-    window.handleRoleCheckboxChange = (assignId, checkbox) => {
-        if (!isEditMode) return;
-        const card = moduleCards[currentModalCardId];
-        const assignment = card.assignments.find(a => a.id === assignId);
-        if (assignment) assignment.role_id = checkbox.value;
+        
+        if (assignment) {
+            assignment.roleIds = [];
+            assignment.roleCodes = [];
+            
+            checkboxes.forEach(cb => {
+                const roleId = cb.getAttribute('data-role-id');
+                const roleCode = cb.getAttribute('data-role-code');
+                
+                assignment.roleIds.push(roleId);
+                assignment.roleCodes.push(roleCode);
+            });
+            
+            assignment.role_id = assignment.roleIds.length > 0 ? assignment.roleIds[0] : '';
+        }
     };
 
     window.addNewModule = () => {
         const moduleSelectorHTML = `
             <div class="module-selector-grid">
                 ${modulesData.map(m => `
-                    <div class="module-selector-card" onclick="selectModule(${m.id})">
+                    <div class="module-selector-card" data-module-id="${escapeHtml(String(m.id))}">
                         <i class="fas fa-cube"></i>
-                        <div class="module-name">${m.name}</div>
+                        <div class="module-name">${escapeHtml(m.name)}</div>
                     </div>
                 `).join('')}
             </div>
         `;
+        
         Swal.fire({
             title: 'Select Module',
             html: moduleSelectorHTML,
             showCancelButton: true,
             showConfirmButton: false,
             cancelButtonText: 'Close',
-            width: '700px'
+            width: '700px',
+            didOpen: () => {
+                document.querySelectorAll('.module-selector-card').forEach(card => {
+                    card.addEventListener('click', function() {
+                        const moduleId = this.getAttribute('data-module-id');
+                        selectModule(moduleId);
+                    });
+                });
+            }
         });
     };
 
     window.selectModule = (moduleId) => {
         Swal.close();
         const module = modulesData.find(m => m.id == moduleId);
+        
+        if (!module) {
+            showAlert('error', 'Error', 'Module not found');
+            return;
+        }
+        
         const cardId = `card_${cardIdCounter++}`;
         const assignId = `assign_${cardIdCounter++}`;
+        
+        const applicationCode = getApplicationCodeForSP(module);
+        const isSCM = applicationCode === 'OPS' || applicationCode === 'OPS UAT';
+        
         moduleCards[cardId] = {
-            id: cardId, isNew: true, module_id: moduleId, module_name: module.name,
-            assignments: [{id: assignId, location: '', role_id: ''}]
+            id: cardId,
+            isNew: true,
+            module_id: moduleId,
+            module_name: module.name,
+            application_id: module.application_id,
+            assignments: [{
+                id: assignId,
+                location: '',
+                locationIds: [],
+                locationCodes: [],
+                role_id: '',
+                roleIds: [],
+                roleCodes: [],
+                function_id: isSCM ? '' : undefined,
+                functionIds: isSCM ? [] : undefined,
+                functionCodes: isSCM ? [] : undefined
+            }]
         };
+        
         renderAllCards();
         openModal(cardId);
     };
@@ -1091,20 +1484,86 @@
         const container = document.getElementById('hiddenInputsContainer');
         container.innerHTML = '';
         let index = 0;
+        
         Object.values(moduleCards).forEach(card => {
-            if (card.module_id && card.assignments) {
-                card.assignments.forEach(a => {
-                    if (a.location && a.role_id) {
-                        container.innerHTML += `
-                            <input type="hidden" name="modules[${index}][module_id]" value="${card.module_id}">
-                            <input type="hidden" name="modules[${index}][location]" value="${a.location}">
-                            <input type="hidden" name="modules[${index}][role_id]" value="${a.role_id}">
-                        `;
-                        index++;
-                    }
-                });
-            }
+            if (!card.module_id || !card.assignments) return;
+            
+            const module = modulesData.find(m => m.id == card.module_id);
+            if (!module) return;
+            
+            const applicationCode = getApplicationCodeForSP(module);
+            const isSCM = applicationCode === 'OPS' || applicationCode === 'OPS UAT';
+            
+            card.assignments.forEach(a => {
+                // Determine what to expand
+                const locations = a.location === 'ALL' ? 
+                    locationsData.map(l => ({
+                        id: l.id,
+                        code: l.code.trim()
+                    })) : 
+                    (a.locationCodes || []).map(code => ({
+                        id: locationsCache[code]?.id || '',
+                        code: code
+                    }));
+                
+                const roles = a.role_id === 'ALL' ? 
+                    (rolesCache[`${applicationCode}_all`] || []).map(r => ({
+                        id: r.id,
+                        code: r.code
+                    })) : 
+                    (a.roleIds || []).map((id, idx) => ({
+                        id: id,
+                        code: a.roleCodes[idx] || ''
+                    }));
+                
+                const functions = isSCM ? (
+                    a.function_id === 'ALL' ? 
+                        (scmFunctionsCache || []).map(f => ({
+                            id: f.id,
+                            code: f.code
+                        })) : 
+                        (a.functionIds || []).map((id, idx) => ({
+                            id: id,
+                            code: a.functionCodes[idx] || ''
+                        }))
+                ) : [];
+                
+                // Create combinations
+                if (locations.length > 0 && roles.length > 0) {
+                    locations.forEach(loc => {
+                        roles.forEach(role => {
+                            if (isSCM && functions.length > 0) {
+                                functions.forEach(func => {
+                                    container.innerHTML += `
+                                        <input type="hidden" name="modules[${index}][module_id]" value="${card.module_id}">
+                                        <input type="hidden" name="modules[${index}][application_id]" value="${module.application_id}">
+                                        <input type="hidden" name="modules[${index}][location_id]" value="${loc.id}">
+                                        <input type="hidden" name="modules[${index}][location_code]" value="${loc.code}">
+                                        <input type="hidden" name="modules[${index}][role_id]" value="${role.id}">
+                                        <input type="hidden" name="modules[${index}][role_code]" value="${role.code}">
+                                        <input type="hidden" name="modules[${index}][function_id]" value="${func.id}">
+                                        <input type="hidden" name="modules[${index}][function_code]" value="${func.code}">
+                                    `;
+                                    index++;
+                                });
+                            } else {
+                                container.innerHTML += `
+                                    <input type="hidden" name="modules[${index}][module_id]" value="${card.module_id}">
+                                    <input type="hidden" name="modules[${index}][application_id]" value="${module.application_id}">
+                                    <input type="hidden" name="modules[${index}][location_id]" value="${loc.id}">
+                                    <input type="hidden" name="modules[${index}][location_code]" value="${loc.code}">
+                                    <input type="hidden" name="modules[${index}][role_id]" value="${role.id}">
+                                    <input type="hidden" name="modules[${index}][role_code]" value="${role.code}">
+                                `;
+                                index++;
+                            }
+                        });
+                    });
+                }
+            });
         });
+        
+        console.log('✅ Created', index, 'hidden inputs for', Object.keys(moduleCards).length, 'module cards');
     }
 
     window.updateUser = () => {
@@ -1137,6 +1596,40 @@
             showAlert('error', 'Error', 'An error occurred while updating the user');
         });
     };
+
+    function showAlert(type, title, message) {
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                icon: type,
+                title: title,
+                text: message,
+                confirmButtonColor: '#3498db'
+            });
+        } else {
+            alert(title + ': ' + message);
+        }
+    }
+
+    function showLoading() {
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                title: 'Processing...',
+                text: 'Please wait while we update the user',
+                allowOutsideClick: false,
+                allowEscapeKey: false,
+                showConfirmButton: false,
+                willOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+        }
+    }
+
+    function hideLoading() {
+        if (typeof Swal !== 'undefined') {
+            Swal.close();
+        }
+    }
 
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && currentModalCardId) cancelModal();
