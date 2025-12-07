@@ -30,7 +30,7 @@ class AzureUser extends Authenticatable
     /**
      * Indicates if the IDs are auto-incrementing.
      */
-    public $incrementing = false;
+    public $incrementing = true;
     
     /**
      * The "type" of the primary key ID.

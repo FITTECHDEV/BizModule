@@ -8,67 +8,68 @@
 
 @push('styles')
 <style>
-/* ===== FULL-SCREEN OVERRIDES ===== */
-body {
-    margin: 0 !important;
-    padding: 0 !important;
-    overflow-x: hidden;
-}
-
-.content-wrapper,
-.content,
-.content-header,
-.wrapper,
-.main-sidebar + .content-wrapper {
-    padding: 0 !important;
-    margin: 0 !important;
-    margin-left: 0 !important;
-    margin-right: 0 !important;
-}
-
-.content-wrapper {
-    width: 100% !important;
-    max-width: 100% !important;
-}
-
-.container,
-.container-fluid {
-    padding-left: 0 !important;
-    padding-right: 0 !important;
-    max-width: 100% !important;
-    width: 100% !important;
-}
-
-@media (min-width: 768px) {
-    .sidebar-mini.sidebar-collapse .content-wrapper,
-    .sidebar-mini-md.sidebar-collapse .content-wrapper {
-        margin-left: 0 !important;
+    /* ===== FULL-SCREEN OVERRIDES ===== */
+    body {
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow-x: hidden;
     }
-}
+
+    .content-wrapper,
+    .content,
+    .content-header,
+    .wrapper,
+    .main-sidebar+.content-wrapper {
+        padding: 0 !important;
+        margin: 0 !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+    }
+
+    .content-wrapper {
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+
+    .container,
+    .container-fluid {
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+        max-width: 100% !important;
+        width: 100% !important;
+    }
+
+    @media (min-width: 768px) {
+
+        .sidebar-mini.sidebar-collapse .content-wrapper,
+        .sidebar-mini-md.sidebar-collapse .content-wrapper {
+            margin-left: 0 !important;
+        }
+    }
 
     /* Dashboard Header Styles */
- .dashboard-header {
-    background: linear-gradient(135deg, var(--primary-color), #2980b9);
-    color: white;
-    padding: 20px 30px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-    position: sticky;
-    top: 0;
-    z-index: 100;
-    margin: 0;
-    margin-bottom: 0;
-}
+    .dashboard-header {
+        background: linear-gradient(135deg, var(--primary-color), #2980b9);
+        color: white;
+        padding: 20px 30px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        margin: 0;
+        margin-bottom: 0;
+    }
 
-  .header-content {
-    max-width: 100%;
-    margin: 0;
-    padding: 0 20px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 16px;
-}
+    .header-content {
+        max-width: 100%;
+        margin: 0;
+        padding: 0 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 16px;
+    }
 
     .header-left {
         display: flex;
@@ -146,11 +147,11 @@ body {
         opacity: 0.8;
     }
 
-.main-content {
-    max-width: 100%;
-    margin: 0;
-    padding: 0;
-}
+    .main-content {
+        max-width: 100%;
+        margin: 0;
+        padding: 0;
+    }
 
     .stats-grid {
         display: grid;
@@ -219,7 +220,7 @@ body {
     .users-table-container {
         background: var(--light-bg);
         backdrop-filter: blur(10px);
-        border-radius: 0;        
+        border-radius: 0;
         padding: 20px;
         box-shadow: var(--shadow-sm);
         overflow: hidden;
@@ -471,14 +472,15 @@ body {
     .btn-danger:hover:not(:disabled) {
         background: #c0392b;
     }
-.btn-warning {
-    background: #f39c12;
-    color: white;
-}
 
-.btn-warning:hover:not(:disabled) {
-    background: #e67e22;
-}
+    .btn-warning {
+        background: #f39c12;
+        color: white;
+    }
+
+    .btn-warning:hover:not(:disabled) {
+        background: #e67e22;
+    }
 
     .modal {
         display: none;
@@ -512,6 +514,7 @@ body {
             transform: translateY(-50px);
             opacity: 0;
         }
+
         to {
             transform: translateY(0);
             opacity: 1;
@@ -719,7 +722,7 @@ body {
             padding: 12px 8px;
             font-size: 13px;
         }
-        
+
         .user-details-grid {
             grid-template-columns: 1fr;
         }
@@ -916,11 +919,11 @@ body {
     }
 
     .pagination-btn.disabled,
-.pagination-btn[disabled] {
-    opacity: 0.4;
-    cursor: not-allowed;
-    pointer-events: none;
-}
+    .pagination-btn[disabled] {
+        opacity: 0.4;
+        cursor: not-allowed;
+        pointer-events: none;
+    }
 </style>
 @endpush
 
@@ -986,33 +989,33 @@ body {
     <!-- Users Table -->
     <div class="users-table-container">
         <div class="table-header">
-            
+
             <div class="table-controls">
-    <div class="table-controls-left">
-        <select id="statusFilter" class="filter-select">
-            <option value="">All Status</option>
-            <option value="active">Active</option>
-            <option value="pending">Pending</option>
-            <option value="inactive">Inactive</option>
-        </select>
-    </div>
-    <div class="table-controls-right" style="display:flex;gap:12px;align-items:center;">
-        <div style="position:relative;width:200px;">
-            <i class="fas fa-search" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#999;font-size:14px;"></i>
-            <input type="text" 
-                    id="searchUsers" 
-                    placeholder="Search users..." 
-                    autocomplete="off" 
-                    style="width:100%;padding:10px 12px 10px 36px;border:2px solid #e1e8ed;border-radius:8px;font-size:14px;outline:none;">
-        </div>
-        <a href="{{ route('azure.users.create') }}" 
-           class="btn btn-primary" 
-           style="height:38px;display:inline-flex;align-items:center;padding:0 16px;white-space:nowrap;">
-            <i class="fas fa-user-plus" style="font-size:14px;"></i>
-            <span style="margin-left:6px;">Add User</span>
-        </a>
-    </div>
-</div>
+                <div class="table-controls-left">
+                    <select id="statusFilter" class="filter-select">
+                        <option value="">All Status</option>
+                        <option value="active">Active</option>
+                        <option value="pending">Pending</option>
+                        <option value="inactive">Inactive</option>
+                    </select>
+                </div>
+                <div class="table-controls-right" style="display:flex;gap:12px;align-items:center;">
+                    <div style="position:relative;width:200px;">
+                        <i class="fas fa-search" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#999;font-size:14px;"></i>
+                        <input type="text"
+                            id="searchUsers"
+                            placeholder="Search users..."
+                            autocomplete="off"
+                            style="width:100%;padding:10px 12px 10px 36px;border:2px solid #e1e8ed;border-radius:8px;font-size:14px;outline:none;">
+                    </div>
+                    <a href="{{ route('azure.users.create') }}"
+                        class="btn btn-primary"
+                        style="height:38px;display:inline-flex;align-items:center;padding:0 16px;white-space:nowrap;">
+                        <i class="fas fa-user-plus" style="font-size:14px;"></i>
+                        <span style="margin-left:6px;">Add User</span>
+                    </a>
+                </div>
+            </div>
         </div>
         <div class="table-wrapper">
             <table class="users-table">
@@ -1028,143 +1031,151 @@ body {
                     </tr>
                 </thead>
                 <tbody id="usersTableBody">
-    @forelse($users as $user)
-        <tr>
-            <td>
-                <div class="user-info">
-                    <div class="user-avatar">{{ strtoupper(substr($user->displayName ?? 'NA', 0, 2)) }}</div>
-                    <div class="user-details">
-                        <div class="user-name">{{ $user->displayName ?? 'N/A' }}</div>
-                    </div>
-                </div>
-            </td>
-            <td>{{ $user->mail ?? $user->userPrincipalName ?? 'N/A' }}</td>
-            <td>{{ $user->userPrincipalName ?? 'N/A' }}</td>
-            <td>{{ $user->EmployeCode ?? 'N/A' }}</td>
-            <td>{{ $user->department ?? $user->companyName ?? 'N/A' }}</td>
-            <td>
-                @php
-                    $status = $user->Status ?? 'Unknown';
-                    $badgeClass = match(strtolower($status)) {
-                        'active' => 'status-active',
-                        'pending' => 'status-pending',
-                        'inactive' => 'status-inactive',
-                        default => 'status-inactive'
-                    };
-                @endphp
-                <span class="status-badge {{ $badgeClass }}">
-                    {{ $status }}
-                </span>
-            </td>
-            <td class="actions-cell">
-             <button class="btn btn-sm btn-primary" 
-        onclick="window.location.href='{{ route('azure.users.show', $user->id ?? $user->Id) }}'" 
-        title="View User">
-    <i class="fas fa-eye"></i>
-</button>
-                <button class="btn btn-sm btn-warning" 
-        onclick="window.location.href='{{ route('azure.users.edit', $user->id ?? $user->Id) }}'" 
-        title="Edit User">
-    <i class="fas fa-edit"></i>
-</button>
-               @if($user->Status === 'Active')
-    <button class="btn btn-sm btn-danger" 
-            onclick="disableUser('{{ $user->id ?? $user->Id }}')" 
-            title="Disable User">
-        <i class="fas fa-user-slash"></i>
-    </button>
-@else
-    <button class="btn btn-sm btn-success" 
-            onclick="enableUser('{{ $user->id ?? $user->Id }}')" 
-            title="Enable User">
-        <i class="fas fa-user-check"></i>
-    </button>
-@endif
-            </td>
-        </tr>
-    @empty
-        <tr>
-            <td colspan="7" class="empty-state">
-                <i class="fas fa-users"></i>
-                <div>No users found</div>
-            </td>
-        </tr>
-    @endforelse
-</tbody>
+                    @forelse($users as $user)
+                    <tr>
+
+                        <td colspan="7" style="background: yellow;">
+                            DEBUG: ID = {{ $user->Id ?? 'NULL' }} |
+                            id = {{ $user->id ?? 'NULL' }} |
+                            Type: {{ gettype($user->Id ?? 'unknown') }}
+                        </td>
+                        
+                        <td>
+                            <div class="user-info">
+                                <div class="user-avatar">{{ strtoupper(substr($user->displayName ?? 'NA', 0, 2)) }}</div>
+                                <div class="user-details">
+                                    <div class="user-name">{{ $user->displayName ?? 'N/A' }}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td>{{ $user->mail ?? $user->userPrincipalName ?? 'N/A' }}</td>
+                        <td>{{ $user->userPrincipalName ?? 'N/A' }}</td>
+                        <td>{{ $user->EmployeCode ?? 'N/A' }}</td>
+                        <td>{{ $user->department ?? $user->companyName ?? 'N/A' }}</td>
+                        <td>
+                            @php
+                            $status = $user->Status ?? 'Unknown';
+                            $badgeClass = match(strtolower($status)) {
+                            'active' => 'status-active',
+                            'pending' => 'status-pending',
+                            'inactive' => 'status-inactive',
+                            default => 'status-inactive'
+                            };
+                            @endphp
+                            <span class="status-badge {{ $badgeClass }}">
+                                {{ $status }}
+                            </span>
+                        </td>
+                        <td class="actions-cell">
+                            <button class="btn btn-sm btn-primary user-action-btn"
+                                data-url="{{ route('azure.users.show', $user->Id) }}"
+                                title="View User">
+                                <i class="fas fa-eye"></i>
+                            </button>
+
+                            <button class="btn btn-sm btn-warning user-action-btn"
+                                data-url="{{ route('azure.users.edit', $user->Id) }}"
+                                title="Edit User">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            @if($user->Status === 'Active')
+                            <button class="btn btn-sm btn-danger"
+                                onclick="disableUser('{{ $user->Id }}')"
+                                title="Disable User">
+                                <i class="fas fa-user-slash"></i>
+                            </button>
+                            @else
+                            <button class="btn btn-sm btn-success"
+                                onclick="enableUser('{{ $user->Id }}')"
+                                title="Enable User">
+                                <i class="fas fa-user-check"></i>
+                            </button>
+                            @endif
+                        </td>
+                    </tr>
+                    @empty
+                    <tr>
+                        <td colspan="7" class="empty-state">
+                            <i class="fas fa-users"></i>
+                            <div>No users found</div>
+                        </td>
+                    </tr>
+                    @endforelse
+                </tbody>
             </table>
         </div>
 
-<!-- Pagination -->
-<div class="pagination">
-    @if ($users->hasPages())
-        {{-- First Page --}}
-        @if ($users->onFirstPage())
+        <!-- Pagination -->
+        <div class="pagination">
+            @if ($users->hasPages())
+            {{-- First Page --}}
+            @if ($users->onFirstPage())
             <button class="pagination-btn" disabled>
                 <i class="fas fa-angle-double-left"></i>
                 <span class="btn-text">First</span>
             </button>
-        @else
+            @else
             <a href="{{ $users->appends(request()->except('page'))->url(1) }}" class="pagination-btn">
                 <i class="fas fa-angle-double-left"></i>
                 <span class="btn-text">First</span>
             </a>
-        @endif
-        
-        {{-- Previous Page --}}
-        @if ($users->onFirstPage())
+            @endif
+
+            {{-- Previous Page --}}
+            @if ($users->onFirstPage())
             <button class="pagination-btn" disabled>
                 <i class="fas fa-angle-left"></i>
                 <span class="btn-text">Previous</span>
             </button>
-        @else
+            @else
             <a href="{{ $users->appends(request()->except('page'))->previousPageUrl() }}" class="pagination-btn">
                 <i class="fas fa-angle-left"></i>
                 <span class="btn-text">Previous</span>
             </a>
-        @endif
-        
-        {{-- Page Numbers --}}
-        <div class="pagination-numbers">
-            @foreach ($users->getUrlRange(1, $users->lastPage()) as $page => $url)
+            @endif
+
+            {{-- Page Numbers --}}
+            <div class="pagination-numbers">
+                @foreach ($users->getUrlRange(1, $users->lastPage()) as $page => $url)
                 @if ($page == $users->currentPage())
-                    <span class="page-number active">{{ $page }}</span>
+                <span class="page-number active">{{ $page }}</span>
                 @else
-                    <a href="{{ $users->appends(request()->except('page'))->url($page) }}" class="page-number">{{ $page }}</a>
+                <a href="{{ $users->appends(request()->except('page'))->url($page) }}" class="page-number">{{ $page }}</a>
                 @endif
-            @endforeach
-        </div>
-        
-        {{-- Next Page --}}
-        @if ($users->hasMorePages())
+                @endforeach
+            </div>
+
+            {{-- Next Page --}}
+            @if ($users->hasMorePages())
             <a href="{{ $users->appends(request()->except('page'))->nextPageUrl() }}" class="pagination-btn">
                 <span class="btn-text">Next</span>
                 <i class="fas fa-angle-right"></i>
             </a>
-        @else
+            @else
             <button class="pagination-btn" disabled>
                 <span class="btn-text">Next</span>
                 <i class="fas fa-angle-right"></i>
             </button>
-        @endif
-        
-        {{-- Last Page --}}
-        @if ($users->currentPage() == $users->lastPage())
+            @endif
+
+            {{-- Last Page --}}
+            @if ($users->currentPage() == $users->lastPage())
             <button class="pagination-btn" disabled>
                 <span class="btn-text">Last</span>
                 <i class="fas fa-angle-double-right"></i>
             </button>
-        @else
+            @else
             <a href="{{ $users->appends(request()->except('page'))->url($users->lastPage()) }}" class="pagination-btn">
                 <span class="btn-text">Last</span>
                 <i class="fas fa-angle-double-right"></i>
             </a>
-        @endif
-    @endif
-    
-    <div class="pagination-info">
-        Showing {{ $users->firstItem() ?? 0 }} - {{ $users->lastItem() ?? 0 }} of {{ $users->total() }} users
-    </div>
-</div>
+            @endif
+            @endif
+
+            <div class="pagination-info">
+                Showing {{ $users->firstItem() ?? 0 }} - {{ $users->lastItem() ?? 0 }} of {{ $users->total() }} users
+            </div>
+        </div>
     </div>
 </div>
 
@@ -1197,369 +1208,374 @@ body {
 
 @push('scripts')
 <script>
-/**
- * ============================================================================
- * USER MANAGEMENT DASHBOARD - JAVASCRIPT
- * ============================================================================
- * Handles all user interactions, search, filtering, and user status management
- */
+    /**
+     * ============================================================================
+     * USER MANAGEMENT DASHBOARD - JAVASCRIPT
+     * ============================================================================
+     * Handles all user interactions, search, filtering, and user status management
+     */
 
-// ============================================================================
-// INITIALIZATION
-// ============================================================================
-
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('Dashboard initialized');
-    setupEventListeners();
-    setupAccessibility();
-    restoreSearchFilters();
-});
-
-// ============================================================================
-// EVENT LISTENERS SETUP
-// ============================================================================
-
-function setupEventListeners() {
-    // Search functionality with debounce (500ms delay)
-    const searchInput = document.getElementById('searchUsers');
-    if (searchInput) {
-        searchInput.addEventListener('input', debounce(function(e) {
-            performSearch();
-        }, 500));
-
-        // Clear search on Escape key
-        searchInput.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') {
-                e.target.value = '';
-                performSearch();
-            }
+    // ============================================================================
+    // INITIALIZATION
+    // ============================================================================
+    document.querySelectorAll('.user-action-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            window.location.href = this.dataset.url;
         });
-    }
-
-    // Status filter dropdown
-    const statusFilter = document.getElementById('statusFilter');
-    if (statusFilter) {
-        statusFilter.addEventListener('change', function(e) {
-            performSearch();
-        });
-    }
-
-    // Modal close on outside click
-    window.addEventListener('click', function(e) {
-        if (e.target.classList.contains('modal')) {
-            closeModal(e.target.id);
-        }
     });
 
-    // Modal close on Escape key
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape') {
-            const openModals = document.querySelectorAll('.modal[style*="block"]');
-            openModals.forEach(modal => {
-                closeModal(modal.id);
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('Dashboard initialized');
+        setupEventListeners();
+        setupAccessibility();
+        restoreSearchFilters();
+    });
+
+    // ============================================================================
+    // EVENT LISTENERS SETUP
+    // ============================================================================
+
+    function setupEventListeners() {
+        // Search functionality with debounce (500ms delay)
+        const searchInput = document.getElementById('searchUsers');
+        if (searchInput) {
+            searchInput.addEventListener('input', debounce(function(e) {
+                performSearch();
+            }, 500));
+
+            // Clear search on Escape key
+            searchInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    e.target.value = '';
+                    performSearch();
+                }
             });
         }
-    });
 
-    // Handle browser back/forward buttons
-    window.addEventListener('popstate', function(e) {
-        window.location.reload();
-    });
-}
+        // Status filter dropdown
+        const statusFilter = document.getElementById('statusFilter');
+        if (statusFilter) {
+            statusFilter.addEventListener('change', function(e) {
+                performSearch();
+            });
+        }
 
-// ============================================================================
-// SEARCH AND FILTER FUNCTIONALITY
-// ============================================================================
+        // Modal close on outside click
+        window.addEventListener('click', function(e) {
+            if (e.target.classList.contains('modal')) {
+                closeModal(e.target.id);
+            }
+        });
 
-/**
- * Performs search and filtering by rebuilding URL with query parameters
- */
-function performSearch() {
-    const searchInput = document.getElementById('searchUsers');
-    const statusFilter = document.getElementById('statusFilter');
-    
-    if (!searchInput || !statusFilter) {
-        console.error('Search elements not found');
-        return;
+        // Modal close on Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                const openModals = document.querySelectorAll('.modal[style*="block"]');
+                openModals.forEach(modal => {
+                    closeModal(modal.id);
+                });
+            }
+        });
+
+        // Handle browser back/forward buttons
+        window.addEventListener('popstate', function(e) {
+            window.location.reload();
+        });
     }
 
-    const search = searchInput.value.trim();
-    const status = statusFilter.value;
-    
-    // Build URL with query parameters
-    const url = new URL(window.location.href);
-    
-    // Set or remove search parameter
-    if (search) {
-        url.searchParams.set('search', search);
-    } else {
-        url.searchParams.delete('search');
-    }
-    
-    // Set or remove status parameter
-    if (status) {
-        url.searchParams.set('status', status);
-    } else {
-        url.searchParams.delete('status');
-    }
-    
-    // Reset to first page on new search
-    url.searchParams.delete('page');
-    
-    // Store in session storage for back button
-    try {
-        sessionStorage.setItem('lastSearch', JSON.stringify({
-            search: search,
-            status: status
-        }));
-    } catch (e) {
-        console.warn('SessionStorage not available:', e);
-    }
-    
-    // Show loading state
-    showLoading('Searching...');
-    
-    // Redirect with filters
-    window.location.href = url.toString();
-}
+    // ============================================================================
+    // SEARCH AND FILTER FUNCTIONALITY
+    // ============================================================================
 
-/**
- * Restore search filters from URL parameters on page load
- */
-function restoreSearchFilters() {
-    const urlParams = new URLSearchParams(window.location.search);
-    
-    // Restore search input
-    const searchInput = document.getElementById('searchUsers');
-    const searchValue = urlParams.get('search');
-    if (searchInput && searchValue) {
-        searchInput.value = searchValue;
-    }
-    
-    // Restore status filter
-    const statusFilter = document.getElementById('statusFilter');
-    const statusValue = urlParams.get('status');
-    if (statusFilter && statusValue) {
-        statusFilter.value = statusValue;
-    }
-}
+    /**
+     * Performs search and filtering by rebuilding URL with query parameters
+     */
+    function performSearch() {
+        const searchInput = document.getElementById('searchUsers');
+        const statusFilter = document.getElementById('statusFilter');
 
-// ============================================================================
-// ACCESSIBILITY FEATURES
-// ============================================================================
+        if (!searchInput || !statusFilter) {
+            console.error('Search elements not found');
+            return;
+        }
 
-/**
- * Sets up screen reader live region for announcements
- */
-function setupAccessibility() {
-    // Check if already exists
-    if (document.getElementById('liveRegion')) {
-        return;
+        const search = searchInput.value.trim();
+        const status = statusFilter.value;
+
+        // Build URL with query parameters
+        const url = new URL(window.location.href);
+
+        // Set or remove search parameter
+        if (search) {
+            url.searchParams.set('search', search);
+        } else {
+            url.searchParams.delete('search');
+        }
+
+        // Set or remove status parameter
+        if (status) {
+            url.searchParams.set('status', status);
+        } else {
+            url.searchParams.delete('status');
+        }
+
+        // Reset to first page on new search
+        url.searchParams.delete('page');
+
+        // Store in session storage for back button
+        try {
+            sessionStorage.setItem('lastSearch', JSON.stringify({
+                search: search,
+                status: status
+            }));
+        } catch (e) {
+            console.warn('SessionStorage not available:', e);
+        }
+
+        // Show loading state
+        showLoading('Searching...');
+
+        // Redirect with filters
+        window.location.href = url.toString();
     }
 
-    const liveRegion = document.createElement('div');
-    liveRegion.setAttribute('aria-live', 'polite');
-    liveRegion.setAttribute('aria-atomic', 'true');
-    liveRegion.setAttribute('role', 'status');
-    liveRegion.style.position = 'absolute';
-    liveRegion.style.left = '-10000px';
-    liveRegion.style.width = '1px';
-    liveRegion.style.height = '1px';
-    liveRegion.style.overflow = 'hidden';
-    liveRegion.id = 'liveRegion';
-    document.body.appendChild(liveRegion);
-}
+    /**
+     * Restore search filters from URL parameters on page load
+     */
+    function restoreSearchFilters() {
+        const urlParams = new URLSearchParams(window.location.search);
 
-/**
- * Announces message to screen readers
- * @param {string} message - The message to announce
- */
-function announceToScreenReader(message) {
-    const liveRegion = document.getElementById('liveRegion');
-    if (liveRegion) {
-        liveRegion.textContent = '';
-        // Small delay to ensure screen reader picks up the change
+        // Restore search input
+        const searchInput = document.getElementById('searchUsers');
+        const searchValue = urlParams.get('search');
+        if (searchInput && searchValue) {
+            searchInput.value = searchValue;
+        }
+
+        // Restore status filter
+        const statusFilter = document.getElementById('statusFilter');
+        const statusValue = urlParams.get('status');
+        if (statusFilter && statusValue) {
+            statusFilter.value = statusValue;
+        }
+    }
+
+    // ============================================================================
+    // ACCESSIBILITY FEATURES
+    // ============================================================================
+
+    /**
+     * Sets up screen reader live region for announcements
+     */
+    function setupAccessibility() {
+        // Check if already exists
+        if (document.getElementById('liveRegion')) {
+            return;
+        }
+
+        const liveRegion = document.createElement('div');
+        liveRegion.setAttribute('aria-live', 'polite');
+        liveRegion.setAttribute('aria-atomic', 'true');
+        liveRegion.setAttribute('role', 'status');
+        liveRegion.style.position = 'absolute';
+        liveRegion.style.left = '-10000px';
+        liveRegion.style.width = '1px';
+        liveRegion.style.height = '1px';
+        liveRegion.style.overflow = 'hidden';
+        liveRegion.id = 'liveRegion';
+        document.body.appendChild(liveRegion);
+    }
+
+    /**
+     * Announces message to screen readers
+     * @param {string} message - The message to announce
+     */
+    function announceToScreenReader(message) {
+        const liveRegion = document.getElementById('liveRegion');
+        if (liveRegion) {
+            liveRegion.textContent = '';
+            // Small delay to ensure screen reader picks up the change
+            setTimeout(() => {
+                liveRegion.textContent = message;
+            }, 100);
+        }
+    }
+
+    // ============================================================================
+    // USER STATUS MANAGEMENT (Enable/Disable)
+    // ============================================================================
+
+    /**
+     * Toggles user status (enable or disable)
+     * @param {string|number} userId - The user ID
+     * @param {string} action - Either 'enable' or 'disable'
+     */
+    function toggleUserStatus(userId, action) {
+        const actionText = action === 'enable' ? 'enable' : 'disable';
+        const actionTitle = action === 'enable' ? 'Enable User' : 'Disable User';
+        const actionMessage = action === 'enable' ?
+            'Are you sure you want to enable this user? This will restore access to all systems.' :
+            'Are you sure you want to disable this user? This will revoke access to all systems.';
+
+        // Confirm action with user
+        if (!confirm(`${actionTitle}\n\n${actionMessage}`)) {
+            return;
+        }
+
+        showLoading(`${actionTitle}...`);
+
+        // Build proper route URL
+        const url = `/azure/users/${userId}/${actionText}`;
+
+        fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                hideLoading();
+
+                if (data.success) {
+                    const message = data.message || `User has been ${actionText}d successfully`;
+
+                    // Show success message
+                    if (window.Swal) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Success',
+                            text: message,
+                            timer: 2000,
+                            showConfirmButton: false
+                        }).then(() => {
+                            window.location.reload();
+                        });
+                    } else {
+                        alert(message);
+                        window.location.reload();
+                    }
+
+                    // Announce to screen readers
+                    announceToScreenReader(message);
+                } else {
+                    const errorMessage = data.message || `Failed to ${actionText} user`;
+
+                    if (window.Swal) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: errorMessage
+                        });
+                    } else {
+                        alert(errorMessage);
+                    }
+                }
+            })
+            .catch(error => {
+                hideLoading();
+                console.error(`Error ${actionText}ing user:`, error);
+
+                const errorMessage = `Failed to ${actionText} user. ${error.message}`;
+
+                if (window.Swal) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: errorMessage,
+                        footer: 'Please try again or contact support if the problem persists.'
+                    });
+                } else {
+                    alert(errorMessage);
+                }
+            });
+    }
+
+    /**
+     * Enable a user
+     * @param {string|number} userId - The user ID
+     */
+    function enableUser(userId) {
+        toggleUserStatus(userId, 'enable');
+    }
+
+    /**
+     * Disable a user
+     * @param {string|number} userId - The user ID
+     */
+    function disableUser(userId) {
+        toggleUserStatus(userId, 'disable');
+    }
+
+    // ============================================================================
+    // MODAL MANAGEMENT
+    // ============================================================================
+
+    /**
+     * Opens a modal by ID
+     * @param {string} modalId - The modal element ID
+     */
+    function openModal(modalId) {
+        const modal = document.getElementById(modalId);
+        if (!modal) {
+            console.error(`Modal with ID "${modalId}" not found`);
+            return;
+        }
+
+        modal.style.display = 'block';
+        modal.setAttribute('aria-hidden', 'false');
+        document.body.style.overflow = 'hidden'; // Prevent background scrolling
+
+        // Focus on first focusable element in modal
         setTimeout(() => {
-            liveRegion.textContent = message;
+            const focusable = modal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+            if (focusable.length > 0) {
+                focusable[0].focus();
+            }
         }, 100);
     }
-}
 
-// ============================================================================
-// USER STATUS MANAGEMENT (Enable/Disable)
-// ============================================================================
-
-/**
- * Toggles user status (enable or disable)
- * @param {string|number} userId - The user ID
- * @param {string} action - Either 'enable' or 'disable'
- */
-function toggleUserStatus(userId, action) {
-    const actionText = action === 'enable' ? 'enable' : 'disable';
-    const actionTitle = action === 'enable' ? 'Enable User' : 'Disable User';
-    const actionMessage = action === 'enable'
-        ? 'Are you sure you want to enable this user? This will restore access to all systems.'
-        : 'Are you sure you want to disable this user? This will revoke access to all systems.';
-    
-    // Confirm action with user
-    if (!confirm(`${actionTitle}\n\n${actionMessage}`)) {
-        return;
-    }
-    
-    showLoading(`${actionTitle}...`);
-    
-    // Build proper route URL
-    const url = `/azure/users/${userId}/${actionText}`;
-    
-    fetch(url, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-            'X-Requested-With': 'XMLHttpRequest'
+    /**
+     * Closes a modal by ID
+     * @param {string} modalId - The modal element ID
+     */
+    function closeModal(modalId) {
+        const modal = document.getElementById(modalId);
+        if (!modal) {
+            console.error(`Modal with ID "${modalId}" not found`);
+            return;
         }
-    })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        return response.json();
-    })
-    .then(data => {
-        hideLoading();
-        
-        if (data.success) {
-            const message = data.message || `User has been ${actionText}d successfully`;
-            
-            // Show success message
-            if (window.Swal) {
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Success',
-                    text: message,
-                    timer: 2000,
-                    showConfirmButton: false
-                }).then(() => {
-                    window.location.reload();
-                });
-            } else {
-                alert(message);
-                window.location.reload();
-            }
-            
-            // Announce to screen readers
-            announceToScreenReader(message);
-        } else {
-            const errorMessage = data.message || `Failed to ${actionText} user`;
-            
-            if (window.Swal) {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: errorMessage
-                });
-            } else {
-                alert(errorMessage);
-            }
-        }
-    })
-    .catch(error => {
-        hideLoading();
-        console.error(`Error ${actionText}ing user:`, error);
-        
-        const errorMessage = `Failed to ${actionText} user. ${error.message}`;
-        
-        if (window.Swal) {
-            Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                text: errorMessage,
-                footer: 'Please try again or contact support if the problem persists.'
-            });
-        } else {
-            alert(errorMessage);
-        }
-    });
-}
 
-/**
- * Enable a user
- * @param {string|number} userId - The user ID
- */
-function enableUser(userId) {
-    toggleUserStatus(userId, 'enable');
-}
-
-/**
- * Disable a user
- * @param {string|number} userId - The user ID
- */
-function disableUser(userId) {
-    toggleUserStatus(userId, 'disable');
-}
-
-// ============================================================================
-// MODAL MANAGEMENT
-// ============================================================================
-
-/**
- * Opens a modal by ID
- * @param {string} modalId - The modal element ID
- */
-function openModal(modalId) {
-    const modal = document.getElementById(modalId);
-    if (!modal) {
-        console.error(`Modal with ID "${modalId}" not found`);
-        return;
-    }
-    
-    modal.style.display = 'block';
-    modal.setAttribute('aria-hidden', 'false');
-    document.body.style.overflow = 'hidden'; // Prevent background scrolling
-    
-    // Focus on first focusable element in modal
-    setTimeout(() => {
-        const focusable = modal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
-        if (focusable.length > 0) {
-            focusable[0].focus();
-        }
-    }, 100);
-}
-
-/**
- * Closes a modal by ID
- * @param {string} modalId - The modal element ID
- */
-function closeModal(modalId) {
-    const modal = document.getElementById(modalId);
-    if (!modal) {
-        console.error(`Modal with ID "${modalId}" not found`);
-        return;
-    }
-    
-    modal.style.display = 'none';
-    modal.setAttribute('aria-hidden', 'true');
-    document.body.style.overflow = ''; // Restore scrolling
-}
-
-// ============================================================================
-// LOADING INDICATOR
-// ============================================================================
-
-/**
- * Shows loading overlay with optional message
- * @param {string} message - Optional loading message
- */
-function showLoading(message = 'Loading...') {
-    const existingOverlay = document.getElementById('loadingOverlay');
-    if (existingOverlay) {
-        return; // Already showing
+        modal.style.display = 'none';
+        modal.setAttribute('aria-hidden', 'true');
+        document.body.style.overflow = ''; // Restore scrolling
     }
 
-    const overlay = document.createElement('div');
-    overlay.id = 'loadingOverlay';
-    overlay.style.cssText = `
+    // ============================================================================
+    // LOADING INDICATOR
+    // ============================================================================
+
+    /**
+     * Shows loading overlay with optional message
+     * @param {string} message - Optional loading message
+     */
+    function showLoading(message = 'Loading...') {
+        const existingOverlay = document.getElementById('loadingOverlay');
+        if (existingOverlay) {
+            return; // Already showing
+        }
+
+        const overlay = document.createElement('div');
+        overlay.id = 'loadingOverlay';
+        overlay.style.cssText = `
         position: fixed;
         top: 0;
         left: 0;
@@ -1572,8 +1588,8 @@ function showLoading(message = 'Loading...') {
         z-index: 9999;
         backdrop-filter: blur(2px);
     `;
-    
-    overlay.innerHTML = `
+
+        overlay.innerHTML = `
         <div style="
             background: white;
             padding: 30px 40px;
@@ -1588,164 +1604,164 @@ function showLoading(message = 'Loading...') {
             <div style="font-size: 1.1em; font-weight: 600; color: var(--text);">${escapeHtml(message)}</div>
         </div>
     `;
-    
-    document.body.appendChild(overlay);
-}
 
-/**
- * Hides the loading overlay
- */
-function hideLoading() {
-    const overlay = document.getElementById('loadingOverlay');
-    if (overlay) {
-        overlay.remove();
+        document.body.appendChild(overlay);
     }
-}
 
-// ============================================================================
-// UTILITY FUNCTIONS
-// ============================================================================
-
-/**
- * Debounces a function call
- * @param {Function} func - The function to debounce
- * @param {number} wait - Wait time in milliseconds
- * @returns {Function} Debounced function
- */
-function debounce(func, wait) {
-    let timeout;
-    return function executedFunction(...args) {
-        const later = () => {
-            clearTimeout(timeout);
-            func(...args);
-        };
-        clearTimeout(timeout);
-        timeout = setTimeout(later, wait);
-    };
-}
-
-/**
- * Escapes HTML special characters to prevent XSS
- * @param {string} text - Text to escape
- * @returns {string} Escaped text
- */
-function escapeHtml(text) {
-    const map = {
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        '"': '&quot;',
-        "'": '&#039;'
-    };
-    return String(text || '').replace(/[&<>"']/g, function(m) { 
-        return map[m]; 
-    });
-}
-
-/**
- * Formats a date string
- * @param {string} dateString - ISO date string
- * @returns {string} Formatted date
- */
-function formatDate(dateString) {
-    if (!dateString) return 'N/A';
-    
-    try {
-        const date = new Date(dateString);
-        return date.toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
-    } catch (e) {
-        console.error('Error formatting date:', e);
-        return dateString;
-    }
-}
-
-/**
- * Copies text to clipboard
- * @param {string} text - Text to copy
- */
-function copyToClipboard(text) {
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(text)
-            .then(() => {
-                announceToScreenReader('Copied to clipboard');
-                if (window.Swal) {
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Copied!',
-                        text: 'Text copied to clipboard',
-                        timer: 1500,
-                        showConfirmButton: false,
-                        toast: true,
-                        position: 'top-end'
-                    });
-                }
-            })
-            .catch(err => {
-                console.error('Failed to copy:', err);
-            });
-    } else {
-        // Fallback for older browsers
-        const textArea = document.createElement('textarea');
-        textArea.value = text;
-        textArea.style.position = 'fixed';
-        textArea.style.left = '-999999px';
-        document.body.appendChild(textArea);
-        textArea.select();
-        try {
-            document.execCommand('copy');
-            announceToScreenReader('Copied to clipboard');
-        } catch (err) {
-            console.error('Failed to copy:', err);
+    /**
+     * Hides the loading overlay
+     */
+    function hideLoading() {
+        const overlay = document.getElementById('loadingOverlay');
+        if (overlay) {
+            overlay.remove();
         }
-        document.body.removeChild(textArea);
     }
-}
 
-// ============================================================================
-// ERROR HANDLING
-// ============================================================================
+    // ============================================================================
+    // UTILITY FUNCTIONS
+    // ============================================================================
 
-/**
- * Global error handler
- */
-window.addEventListener('error', function(e) {
-    console.error('Global error:', e.error);
-    // You can add error reporting service here (e.g., Sentry)
-});
+    /**
+     * Debounces a function call
+     * @param {Function} func - The function to debounce
+     * @param {number} wait - Wait time in milliseconds
+     * @returns {Function} Debounced function
+     */
+    function debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    }
 
-/**
- * Handle unhandled promise rejections
- */
-window.addEventListener('unhandledrejection', function(e) {
-    console.error('Unhandled promise rejection:', e.reason);
-    // You can add error reporting service here
-});
+    /**
+     * Escapes HTML special characters to prevent XSS
+     * @param {string} text - Text to escape
+     * @returns {string} Escaped text
+     */
+    function escapeHtml(text) {
+        const map = {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#039;'
+        };
+        return String(text || '').replace(/[&<>"']/g, function(m) {
+            return map[m];
+        });
+    }
 
-// ============================================================================
-// EXPORT FOR TESTING (Optional)
-// ============================================================================
+    /**
+     * Formats a date string
+     * @param {string} dateString - ISO date string
+     * @returns {string} Formatted date
+     */
+    function formatDate(dateString) {
+        if (!dateString) return 'N/A';
 
-// If you want to test these functions in console
-if (typeof window !== 'undefined') {
-    window.dashboardUtils = {
-        enableUser,
-        disableUser,
-        openModal,
-        closeModal,
-        showLoading,
-        hideLoading,
-        performSearch,
-        copyToClipboard,
-        formatDate
-    };
-}
+        try {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        } catch (e) {
+            console.error('Error formatting date:', e);
+            return dateString;
+        }
+    }
 
-console.log('Dashboard scripts loaded successfully');
+    /**
+     * Copies text to clipboard
+     * @param {string} text - Text to copy
+     */
+    function copyToClipboard(text) {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text)
+                .then(() => {
+                    announceToScreenReader('Copied to clipboard');
+                    if (window.Swal) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Copied!',
+                            text: 'Text copied to clipboard',
+                            timer: 1500,
+                            showConfirmButton: false,
+                            toast: true,
+                            position: 'top-end'
+                        });
+                    }
+                })
+                .catch(err => {
+                    console.error('Failed to copy:', err);
+                });
+        } else {
+            // Fallback for older browsers
+            const textArea = document.createElement('textarea');
+            textArea.value = text;
+            textArea.style.position = 'fixed';
+            textArea.style.left = '-999999px';
+            document.body.appendChild(textArea);
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                announceToScreenReader('Copied to clipboard');
+            } catch (err) {
+                console.error('Failed to copy:', err);
+            }
+            document.body.removeChild(textArea);
+        }
+    }
+
+    // ============================================================================
+    // ERROR HANDLING
+    // ============================================================================
+
+    /**
+     * Global error handler
+     */
+    window.addEventListener('error', function(e) {
+        console.error('Global error:', e.error);
+        // You can add error reporting service here (e.g., Sentry)
+    });
+
+    /**
+     * Handle unhandled promise rejections
+     */
+    window.addEventListener('unhandledrejection', function(e) {
+        console.error('Unhandled promise rejection:', e.reason);
+        // You can add error reporting service here
+    });
+
+    // ============================================================================
+    // EXPORT FOR TESTING (Optional)
+    // ============================================================================
+
+    // If you want to test these functions in console
+    if (typeof window !== 'undefined') {
+        window.dashboardUtils = {
+            enableUser,
+            disableUser,
+            openModal,
+            closeModal,
+            showLoading,
+            hideLoading,
+            performSearch,
+            copyToClipboard,
+            formatDate
+        };
+    }
+
+    console.log('Dashboard scripts loaded successfully');
 </script>
 @endpush
