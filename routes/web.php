@@ -820,3 +820,26 @@ Route::get('/test-azure-users', function () {
         'first_user' => App\Models\AzureUser::first(),
     ]);
 });
+
+
+
+
+Route::middleware(['auth'])->prefix('tracker')->name('tracker.')->group(function () {
+
+    Route::get('/dashboard', [TrackerController::class, 'dashboard'])->name('dashboard');
+    Route::get('/trips/get/{filter?}', [TrackerController::class, 'getTrips']);
+    Route::get('/trips/{id}', [TrackerController::class, 'getTripDetails']);
+
+    Route::get('/vehicles/list', [TrackerController::class, 'getVehicles']);
+    Route::get('/jobs/available', [TrackerController::class, 'getAvailableJobs']);
+    Route::get('/locations', [TrackerController::class, 'getLocations']);
+
+    Route::post('/trips/create', [TrackerController::class, 'createTrip']);
+    Route::post('/trips/{tripId}/start', [TrackerController::class, 'startTrip']);
+    Route::post('/trips/{tripId}/end', [TrackerController::class, 'endTrip']);
+    Route::post('/trips/{tripId}/jobs/add', [TrackerController::class, 'addJobToTrip']);
+
+    // Correct job actions — require both tripId and jobId
+    Route::post('/trips/{tripId}/jobs/{jobId}/start', [TrackerController::class, 'startJob']);
+    Route::post('/trips/{tripId}/jobs/{jobId}/complete', [TrackerController::class, 'completeJob']);
+});

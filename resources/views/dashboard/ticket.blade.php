@@ -379,8 +379,6 @@
                         </div>
                     </a>
                 </div>
-                @endif <!-- @if (Auth::user()->can('azure-access'))
-    -->
 
                 <!-- Azure Management Card - Simple Click Solution -->
                 <div class="col-md-3 mb-2">
