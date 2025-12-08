@@ -2,10 +2,125 @@
 
 @section('title', 'Edit User')
 
-@section('page-title', 'Edit User')
-
 @push('styles')
 <style>
+    /* ---------- Override any parent container constraints ---------- */
+    .container, .container-fluid, [class*="container"] {
+        max-width: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        width: 100% !important;
+    }
+    
+    /* ---------- Full Screen Container ---------- */
+    .full-screen-container {
+        width: 100vw !important;
+        max-width: 100vw !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        margin-left: calc(-50vw + 50%) !important;
+        margin-right: calc(-50vw + 50%) !important;
+        position: relative;
+        left: 50%;
+        right: 50%;
+        transform: translateX(-50%);
+    }
+    
+    .page-content-wrapper {
+        padding: 0 30px;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    /* ---------- Page Header Styles ---------- */
+    .page-header-container {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 30px;
+        padding: 20px 0;
+        border-bottom: 2px solid #e1e8ed;
+    }
+
+    .header-left {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+
+    .page-title-icon {
+        font-size: 1.8em;
+        color: var(--primary-color);
+        display: flex;
+        align-items: center;
+    }
+
+    .page-main-title {
+        font-size: 1.9em;
+        font-weight: 700;
+        color: #2c3e50;
+        margin: 0;
+        letter-spacing: -0.02em;
+    }
+
+    .current-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 14px;
+        border-radius: 20px;
+        font-size: 0.9em;
+        font-weight: 600;
+    }
+
+    .status-active {
+        background: #d4edda;
+        color: #155724;
+        border: 2px solid #c3e6cb;
+    }
+
+    .status-pending {
+        background: #fff3cd;
+        color: #856404;
+        border: 2px solid #ffeaa7;
+    }
+
+    .status-inactive {
+        background: #f8d7da;
+        color: #721c24;
+        border: 2px solid #f5c6cb;
+    }
+
+    .header-right {
+        display: flex;
+        align-items: center;
+    }
+
+    .back-to-dashboard {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 16px;
+        background: #f8f9fa;
+        border: 2px solid #e1e8ed;
+        border-radius: 8px;
+        color: #2c3e50;
+        text-decoration: none;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+
+    .back-to-dashboard:hover {
+        background: #e8f0ff;
+        border-color: var(--primary-color);
+        color: var(--primary-color);
+        transform: translateX(2px);
+    }
+
+    .back-to-dashboard i {
+        font-size: 1.1em;
+    }
+
     /* ---------- Edit Form Styles ---------- */
     .edit-form-container {
         background: rgba(255, 255, 255, 0.95);
@@ -92,31 +207,6 @@
         font-size: 0.875em;
         margin-top: 5px;
         display: block;
-    }
-
-    .current-status {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        padding: 8px 12px;
-        border-radius: 20px;
-        font-size: 0.9em;
-        font-weight: 500;
-    }
-
-    .status-active {
-        background: #d4edda;
-        color: #155724;
-    }
-
-    .status-pending {
-        background: #fff3cd;
-        color: #856404;
-    }
-
-    .status-inactive {
-        background: #f8d7da;
-        color: #721c24;
     }
 
     /* Module Cards Grid */
@@ -209,6 +299,51 @@
         opacity: 0.3;
         margin-bottom: 15px;
         display: block;
+    }
+
+    /* Form Actions - Inside Module Assignments, hidden by default */
+    .module-actions-section {
+        display: none;
+        background: #fff3cd;
+        border: 2px solid #ffc107;
+        border-radius: 8px;
+        padding: 15px 20px;
+        margin-top: 20px;
+        animation: slideDown 0.3s ease;
+    }
+
+    .module-actions-section.visible {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    @keyframes slideDown {
+        from {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .form-actions-info {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: #856404;
+        font-weight: 600;
+    }
+
+    .form-actions-info i {
+        font-size: 1.3em;
+    }
+
+    .form-actions-buttons {
+        display: flex;
+        gap: 12px;
     }
 
     /* Modal Styles */
@@ -530,6 +665,24 @@
     }
 
     @media (max-width: 768px) {
+        .page-content-wrapper {
+            padding: 0 15px;
+        }
+
+        .page-header-container {
+            flex-direction: column;
+            gap: 15px;
+            align-items: flex-start;
+        }
+
+        .header-left {
+            flex-wrap: wrap;
+        }
+
+        .page-main-title {
+            font-size: 1.5em;
+        }
+
         .form-row {
             grid-template-columns: 1fr;
         }
@@ -541,185 +694,227 @@
         .assignment-info {
             grid-template-columns: 1fr;
         }
+
+        .module-actions-section.visible {
+            flex-direction: column;
+            gap: 15px;
+            align-items: stretch;
+        }
+
+        .form-actions-buttons {
+            width: 100%;
+            flex-direction: column;
+        }
+
+        .form-actions-buttons .btn {
+            width: 100%;
+        }
     }
 </style>
 @endpush
 
 @section('content')
-<div class="edit-form-container">
-    <form id="editUserForm" action="{{ route('users.update', $user) }}" method="POST">
-        @csrf
-        @method('PUT')
-
-        <!-- Basic Information Section -->
-        <div class="form-section">
-            <div class="form-section-title">
-                <i class="fas fa-user"></i>
-                Basic Information
-            </div>
-
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="name" class="form-label">
-                        Full Name <span style="color: var(--danger);">*</span>
-                    </label>
-                    <input type="text" 
-                        id="name" 
-                        name="name" 
-                        class="form-control @error('name') is-invalid @enderror" 
-                        value="{{ old('name', $user->name) }}" 
-                        readonly>
-                    @error('name')
-                        <div class="invalid-feedback">{{ $message }}</div>
-                    @enderror
+<style>
+    /* Additional inline override for this specific page */
+    #app, .main-content, .content-wrapper, main {
+        padding: 0 !important;
+        margin: 0 !important;
+        max-width: none !important;
+        width: 100% !important;
+    }
+</style>
+<div class="full-screen-container">
+    <div class="page-content-wrapper">
+        <!-- Page Header with Icon+Title+Status on left, Back button on right -->
+        <div class="page-header-container">
+            <div class="header-left">
+                <div class="page-title-icon">
+                    <i class="fas fa-user-edit"></i>
                 </div>
-
-                <div class="form-group">
-                    <label for="employee_id" class="form-label">
-                        Employee ID <span style="color: var(--danger);">*</span>
-                    </label>
-                    <input type="text" 
-                        id="employee_id" 
-                        name="employee_id" 
-                        class="form-control @error('employee_id') is-invalid @enderror" 
-                        value="{{ old('employee_id', $user->employee_id) }}" 
-                        readonly>
-                    @error('employee_id')
-                        <div class="invalid-feedback">{{ $message }}</div>
-                    @enderror
+                <h1 class="page-main-title">Edit User</h1>
+                <div class="current-status status-{{ $user->status }}">
+                    <i class="fas fa-circle"></i>
+                    {{ ucfirst($user->status) }}
                 </div>
             </div>
-
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="email" class="form-label">
-                        Email Address <span style="color: var(--danger);">*</span>
-                    </label>
-                    <input type="email" 
-                        id="email" 
-                        name="email" 
-                        class="form-control @error('email') is-invalid @enderror" 
-                        value="{{ old('email', $user->email) }}" 
-                        readonly>
-                    @error('email')
-                        <div class="invalid-feedback">{{ $message }}</div>
-                    @enderror
-                </div>
-
-                <div class="form-group">
-                    <label for="phone" class="form-label">
-                        Phone Number
-                    </label>
-                    <input type="tel" 
-                        id="phone" 
-                        name="phone" 
-                        class="form-control @error('phone') is-invalid @enderror" 
-                        value="{{ old('phone', $user->phone) }}"
-                        readonly>
-                    @error('phone')
-                        <div class="invalid-feedback">{{ $message }}</div>
-                    @enderror
-                </div>
+            <div class="header-right">
+                <a href="{{ route('azure.dashboard.index') }}" class="back-to-dashboard">
+                    <span>Back to Dashboard</span>
+                    <i class="fas fa-arrow-right"></i>
+                </a>
             </div>
         </div>
 
-        <!-- Location and Company Section -->
-        <div class="form-section">
-            <div class="form-section-title">
-                <i class="fas fa-map-marker-alt"></i>
-                Location & Company
-            </div>
+        <div class="edit-form-container">
+        <form id="editUserForm" action="{{ route('users.update', $user) }}" method="POST">
+            @csrf
+            @method('PUT')
 
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="location" class="form-label">
-                        Location
-                    </label>
-                    @php
-                        $userLocationCode = old('location', $user->location ?? '');
-                        $userLocationDisplay = '';
-                        if ($userLocationCode) {
-                            $locationObj = $locations->firstWhere('code', $userLocationCode);
-                            if ($locationObj) {
-                                $userLocationDisplay = $locationObj->name . ' (' . $locationObj->code . ')';
-                            }
-                        }
-                    @endphp
-                    <input type="text" 
-                        id="location" 
-                        name="location" 
-                        class="form-control @error('location') is-invalid @enderror" 
-                        value="{{ $userLocationDisplay }}" 
-                        readonly>
-                    @error('location')
-                        <div class="invalid-feedback">{{ $message }}</div>
-                    @enderror
+            <!-- Basic Information Section -->
+            <div class="form-section">
+                <div class="form-section-title">
+                    <i class="fas fa-user"></i>
+                    Basic Information
                 </div>
 
-                <div class="form-group">
-                    <label for="company_id" class="form-label">
-                        Company
-                    </label>
-                    @php
-                        $userCompanyId = old('company_id', $user->company_id ?? '');
-                        $userCompanyDisplay = '';
-                        if ($userCompanyId) {
-                            $companyObj = $companies->firstWhere('id', $userCompanyId);
-                            if ($companyObj) {
-                                $userCompanyDisplay = $companyObj->name;
-                            }
-                        }
-                    @endphp
-                    <input type="text" 
-                        id="company_id" 
-                        name="company_id" 
-                        class="form-control @error('company_id') is-invalid @enderror" 
-                        value="{{ $userCompanyDisplay }}" 
-                        readonly>
-                    @error('company_id')
-                        <div class="invalid-feedback">{{ $message }}</div>
-                    @enderror
-                </div>
-            </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="name" class="form-label">
+                            Full Name <span style="color: var(--danger);">*</span>
+                        </label>
+                        <input type="text" 
+                            id="name" 
+                            name="name" 
+                            class="form-control @error('name') is-invalid @enderror" 
+                            value="{{ old('name', $user->name) }}" 
+                            readonly>
+                        @error('name')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
 
-            <div class="form-row">
-                <div class="form-group">
-                    <label class="form-label">Current Status</label>
-                    <div class="current-status status-{{ $user->status }}">
-                        <i class="fas fa-circle"></i>
-                        {{ ucfirst($user->status) }}
+                    <div class="form-group">
+                        <label for="employee_id" class="form-label">
+                            Employee ID <span style="color: var(--danger);">*</span>
+                        </label>
+                        <input type="text" 
+                            id="employee_id" 
+                            name="employee_id" 
+                            class="form-control @error('employee_id') is-invalid @enderror" 
+                            value="{{ old('employee_id', $user->employee_id) }}" 
+                            readonly>
+                        @error('employee_id')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="email" class="form-label">
+                            Email Address <span style="color: var(--danger);">*</span>
+                        </label>
+                        <input type="email" 
+                            id="email" 
+                            name="email" 
+                            class="form-control @error('email') is-invalid @enderror" 
+                            value="{{ old('email', $user->email) }}" 
+                            readonly>
+                        @error('email')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+
+                    <div class="form-group">
+                        <label for="phone" class="form-label">
+                            Phone Number
+                        </label>
+                        <input type="tel" 
+                            id="phone" 
+                            name="phone" 
+                            class="form-control @error('phone') is-invalid @enderror" 
+                            value="{{ old('phone', $user->phone) }}"
+                            readonly>
+                        @error('phone')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
                     </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Module Assignments Section -->
-        <div class="form-section">
-            <div class="form-section-title" style="display: flex; justify-content: space-between; align-items: center;">
-                <div><i class="fas fa-th-large"></i> Module Assignments</div>
-                <button type="button" class="btn btn-sm btn-success" onclick="addNewModule()">
-                    <i class="fas fa-plus"></i> Add New Assignment
-                </button>
+            <!-- Location and Company Section -->
+            <div class="form-section">
+                <div class="form-section-title">
+                    <i class="fas fa-map-marker-alt"></i>
+                    Location & Company
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="location" class="form-label">
+                            Location
+                        </label>
+                        @php
+                            $userLocationCode = old('location', $user->location ?? '');
+                            $userLocationDisplay = '';
+                            if ($userLocationCode) {
+                                $locationObj = $locations->firstWhere('code', $userLocationCode);
+                                if ($locationObj) {
+                                    $userLocationDisplay = $locationObj->name . ' (' . $locationObj->code . ')';
+                                }
+                            }
+                        @endphp
+                        <input type="text" 
+                            id="location" 
+                            name="location" 
+                            class="form-control @error('location') is-invalid @enderror" 
+                            value="{{ $userLocationDisplay }}" 
+                            readonly>
+                        @error('location')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+
+                    <div class="form-group">
+                        <label for="company_id" class="form-label">
+                            Company
+                        </label>
+                        @php
+                            $userCompanyId = old('company_id', $user->company_id ?? '');
+                            $userCompanyDisplay = '';
+                            if ($userCompanyId) {
+                                $companyObj = $companies->firstWhere('id', $userCompanyId);
+                                if ($companyObj) {
+                                    $userCompanyDisplay = $companyObj->name;
+                                }
+                            }
+                        @endphp
+                        <input type="text" 
+                            id="company_id" 
+                            name="company_id" 
+                            class="form-control @error('company_id') is-invalid @enderror" 
+                            value="{{ $userCompanyDisplay }}" 
+                            readonly>
+                        @error('company_id')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+                </div>
             </div>
-            <div id="modulesGrid" class="modules-grid"></div>
-        </div>
 
-        <div id="hiddenInputsContainer"></div>
-
-        <!-- Form Actions -->
-        <div class="form-section">
-            <div style="display: flex; gap: 15px; justify-content: flex-end; align-items: center;">
-                <a href="{{ route('azure.dashboard.index') }}" class="btn btn-ghost">
-                    <i class="fas fa-times"></i>
-                    Cancel
-                </a>
-                <button type="button" class="btn btn-primary" onclick="updateUser()">
-                    <i class="fas fa-save"></i>
-                    Update User
-                </button>
+            <!-- Module Assignments Section -->
+            <div class="form-section">
+                <div class="form-section-title" style="display: flex; justify-content: space-between; align-items: center;">
+                    <div><i class="fas fa-th-large"></i> Module Assignments</div>
+                    <button type="button" class="btn btn-sm btn-success" onclick="addNewModule()">
+                        <i class="fas fa-plus"></i> Add New Assignment
+                    </button>
+                </div>
+                <div id="modulesGrid" class="modules-grid"></div>
+                
+                <!-- Form Actions - Inside Module Assignments, only visible when editing existing modules -->
+                <div class="module-actions-section" id="moduleActionsSection">
+                    <div class="form-actions-info">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <span>You have unsaved changes to module assignments</span>
+                    </div>
+                    <div class="form-actions-buttons">
+                        <button type="button" class="btn btn-ghost" onclick="cancelAllChanges()">
+                            <i class="fas fa-times"></i>
+                            Cancel Changes
+                        </button>
+                        <button type="button" class="btn btn-primary" onclick="updateUser()">
+                            <i class="fas fa-save"></i>
+                            Update User
+                        </button>
+                    </div>
+                </div>
             </div>
-        </div>
-    </form>
+
+            <div id="hiddenInputsContainer"></div>
+        </form>
+    </div>
+    </div>
 </div>
 
 <!-- Modal for Module Details -->
@@ -771,8 +966,10 @@
     let currentModalCardId = null;
     let isEditMode = false;
     let originalCardState = null;
+    let hasUnsavedChanges = false; // Track if there are unsaved changes to existing modules
+    let initialModuleState = {}; // Store initial state of all modules
     
-    // NEW: Caches for dynamic data
+    // Caches for dynamic data
     let scmFunctionsCache = null;
     let rolesCache = {};
     let locationsCache = {};
@@ -811,7 +1008,19 @@
         return module.name;
     }
 
-    // NEW: Fetch SCM Functions
+    // Show/Hide the Update User & Cancel buttons
+    function toggleFormActions(show) {
+        const moduleActionsSection = document.getElementById('moduleActionsSection');
+        if (show) {
+            moduleActionsSection.classList.add('visible');
+            hasUnsavedChanges = true;
+        } else {
+            moduleActionsSection.classList.remove('visible');
+            hasUnsavedChanges = false;
+        }
+    }
+
+    // Fetch SCM Functions
     async function fetchSCMFunctions() {
         if (scmFunctionsCache) {
             return scmFunctionsCache;
@@ -845,7 +1054,7 @@
         }
     }
 
-    // NEW: Fetch Roles by Application Code
+    // Fetch Roles by Application Code
     async function fetchRolesByApplicationCode(applicationCode) {
         const cacheKey = `${applicationCode}_all`;
         
@@ -931,6 +1140,9 @@
             moduleCards[cardId] = { id: cardId, isNew: false, ...data };
         });
 
+        // Store initial state for comparison
+        initialModuleState = deepClone(moduleCards);
+
         renderAllCards();
     }
 
@@ -967,6 +1179,8 @@
         currentModalCardId = cardId;
         const card = moduleCards[cardId];
         originalCardState = deepClone(card);
+        
+        // Set edit mode based on whether it's a new module
         isEditMode = card.isNew;
         
         document.getElementById('modalModuleName').textContent = card.module_name;
@@ -998,7 +1212,13 @@
     function updateModalViewState() {
         const viewBanner = document.getElementById('viewModeBanner');
         const footer = document.getElementById('modalFooter');
-        if (isEditMode) {
+        const card = moduleCards[currentModalCardId];
+        
+        // Never show view banner for new modules
+        if (card && card.isNew) {
+            viewBanner.style.display = 'none';
+            footer.classList.remove('hidden');
+        } else if (isEditMode) {
             viewBanner.style.display = 'none';
             footer.classList.remove('hidden');
         } else {
@@ -1014,6 +1234,7 @@
     };
 
     window.closeModal = () => {
+        // Revert changes if needed
         if (originalCardState && currentModalCardId) {
             moduleCards[currentModalCardId] = deepClone(originalCardState);
         }
@@ -1025,34 +1246,69 @@
     };
 
     window.cancelModal = () => {
-        if (originalCardState && originalCardState.isNew && currentModalCardId) {
+        const card = moduleCards[currentModalCardId];
+        
+        // Different behavior for new vs existing modules
+        if (card && card.isNew) {
+            // For new modules: delete the card and close modal
             delete moduleCards[currentModalCardId];
-        } else if (originalCardState && currentModalCardId) {
-            moduleCards[currentModalCardId] = deepClone(originalCardState);
+            document.getElementById('moduleModal').classList.remove('active');
+            currentModalCardId = null;
+            isEditMode = false;
+            originalCardState = null;
+            renderAllCards();
+        } else {
+            // For existing modules: revert changes and switch to view mode
+            if (originalCardState && currentModalCardId) {
+                moduleCards[currentModalCardId] = deepClone(originalCardState);
+            }
+            isEditMode = false;
+            renderModalAssignments();
+            updateModalViewState();
         }
-        document.getElementById('moduleModal').classList.remove('active');
-        currentModalCardId = null;
-        isEditMode = false;
-        originalCardState = null;
-        renderAllCards();
     };
 
     window.closeModalOnOverlay = (event) => {
         if (event.target.id === 'moduleModal') {
-            cancelModal();
+            closeModal();
         }
     };
 
     window.saveModalChanges = () => {
         if (!isEditMode) return;
-        originalCardState = null;
+        
+        const card = moduleCards[currentModalCardId];
+        
+        // For NEW modules: just close the modal (no Update User button needed)
+        if (card && card.isNew) {
+            card.isNew = false;
+            document.getElementById('moduleModal').classList.remove('active');
+            currentModalCardId = null;
+            isEditMode = false;
+            originalCardState = null;
+            renderAllCards();
+            showAlert('success', 'Saved', 'New module assignment added. The changes are ready.');
+            return;
+        }
+        
+        // For EXISTING modules: show the Update User & Cancel buttons
         if (currentModalCardId && moduleCards[currentModalCardId]) {
             moduleCards[currentModalCardId].isNew = false;
         }
+        
+        // Update the original state to the current state
+        originalCardState = deepClone(moduleCards[currentModalCardId]);
+        
+        // Close modal
         document.getElementById('moduleModal').classList.remove('active');
         currentModalCardId = null;
         isEditMode = false;
+        
         renderAllCards();
+        
+        // Show the Update User & Cancel buttons
+        toggleFormActions(true);
+        
         showAlert('success', 'Saved', 'Changes saved. Click "Update User" to save to database.');
     };
 
@@ -1480,6 +1736,27 @@
         });
     };
 
+    // Cancel all changes and revert to initial state
+    window.cancelAllChanges = () => {
+        Swal.fire({
+            title: 'Cancel All Changes?',
+            text: 'This will revert all unsaved changes to module assignments',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444',
+            confirmButtonText: 'Yes, cancel changes',
+            cancelButtonText: 'Keep editing'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // Revert to initial state
+                moduleCards = deepClone(initialModuleState);
+                renderAllCards();
+                toggleFormActions(false);
+                showAlert('info', 'Changes Reverted', 'All changes have been cancelled');
+            }
+        });
+    };
+
     function updateHiddenInputs() {
         const container = document.getElementById('hiddenInputsContainer');
         container.innerHTML = '';
@@ -1585,6 +1862,13 @@
             hideLoading();
             if (data.success) {
                 showAlert('success', 'Success', 'User updated successfully!');
+                
+                // Hide the Update User & Cancel buttons
+                toggleFormActions(false);
+                
+                // Update initial state
+                initialModuleState = deepClone(moduleCards);
+                
                 setTimeout(() => { window.location.href = "{{ route('azure.dashboard.index') }}"; }, 1500);
             } else {
                 showAlert('error', 'Error', data.message || 'Failed to update user');
@@ -1632,7 +1916,7 @@
     }
 
     document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && currentModalCardId) cancelModal();
+        if (e.key === 'Escape' && currentModalCardId) closeModal();
     });
 
     // Initialize on page load

@@ -1034,12 +1034,12 @@
                     @forelse($users as $user)
                     <tr>
 
-                        <td colspan="7" style="background: yellow;">
+                        <!-- <td colspan="7" style="background: yellow;">
                             DEBUG: ID = {{ $user->Id ?? 'NULL' }} |
                             id = {{ $user->id ?? 'NULL' }} |
                             Type: {{ gettype($user->Id ?? 'unknown') }}
-                        </td>
-                        
+                        </td> -->
+
                         <td>
                             <div class="user-info">
                                 <div class="user-avatar">{{ strtoupper(substr($user->displayName ?? 'NA', 0, 2)) }}</div>
