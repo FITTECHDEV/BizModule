@@ -1885,42 +1885,18 @@ public function endTrip(Request $request, $tripId)
 
         if (($response['Status'] ?? 'Failed') === 'Success') {
 
-            // ✅ Calculate trip totals by summing all completed job totals
-            $jobTotals = DB::table('Trip_TripJobMapping')
+            // ✅ NO MANUAL UPDATE - SP handles everything
+            // Just get the current totals from DB for response
+            $completedJobsCount = DB::table('Trip_TripJobMapping')
                 ->where('TripInfoID', $tripId)
                 ->where('IsDeleted', false)
                 ->whereNotNull('EndDate')
-                ->selectRaw('
-                    COALESCE(SUM(TotalDistance), 0) as total_distance_km,
-                    COUNT(*) as completed_jobs_count
-                ')
-                ->first();
+                ->count();
 
-            // Use job totals if available, otherwise fall back to GPS calculation
-            $tripDistanceKm = $jobTotals->total_distance_km > 0 ?
-                $jobTotals->total_distance_km :
-                round($totalDistance / 1000, 2);
-
-            Log::info('Trip totals calculation', [
+            Log::info('Trip ended successfully via SP', [
                 'trip_no' => $trip->TripNo,
-                'method' => $jobTotals->total_distance_km > 0 ? 'Summed from jobs' : 'From GPS data',
-                'completed_jobs' => $jobTotals->completed_jobs_count,
-                'calculated_distance_km' => $tripDistanceKm
-            ]);
-
-            // ✅ Update trip with calculated totals (FIXED COLUMN NAMES)
-            DB::table('Trip_TripInfomation')
-                ->where('Id', $tripId)
-                ->update([
-                    'TotalDistance' => $tripDistanceKm,
-                    'LastModifiedOn' => now(),
-                    'LastModifiedBy' => Auth::user()->email ?? 'system'
-                ]);
-
-            Log::info('Trip totals updated successfully', [
                 'trip_id' => $tripId,
-                'trip_no' => $trip->TripNo,
-                'total_distance_km' => $tripDistanceKm
+                'completed_jobs' => $completedJobsCount
             ]);
 
             $message = $isBackdated ?
@@ -1932,8 +1908,8 @@ public function endTrip(Request $request, $tripId)
                 'message' => $message,
                 'trip_no' => $trip->TripNo,
                 'end_date' => $isBackdated ? $customEndDate : now()->format('Y-m-d H:i:s'),
-                'total_distance' => $tripDistanceKm,
-                'completed_jobs' => $jobTotals->completed_jobs_count,
+                'total_distance' => round($totalDistance / 1000, 2), // From GPS for display only
+                'completed_jobs' => $completedJobsCount,
                 'avg_speed' => $avgSpeed,
                 'max_speed' => $maxSpeed,
                 'gps_points' => $gpsPointsCount,
