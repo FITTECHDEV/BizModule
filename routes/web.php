@@ -382,6 +382,10 @@ Route::prefix('azure')->name('azure.')->middleware(['auth'])->group(function () 
             ->name('retry-modules')
             ->middleware('throttle:user_actions');
 
+        Route::post('/{user}/reset-password', [App\Http\Controllers\AzureUserManagementController::class, 'resetPassword'])
+            ->name('reset-password')
+            ->middleware('throttle:user_actions');
+
         // Generic CRUD routes (come after specific actions)
         Route::get('/{user}', [App\Http\Controllers\AzureUserManagementController::class, 'show'])
             ->name('show');
@@ -880,7 +884,7 @@ Route::get('/azure-management/test', function () {
         'create_user' => [],
         'find_user' => [],
     ];
-    
+
     // ============================================
     // TEST 1: Configuration Check
     // ============================================
@@ -899,14 +903,14 @@ Route::get('/azure-management/test', function () {
             'error' => $e->getMessage()
         ];
     }
-    
+
     // ============================================
     // TEST 2: Get Access Token
     // ============================================
     try {
         $service = app(AzureGraphService::class);
         $token = $service->getAccessToken();
-        
+
         $results['token'] = [
             'status' => 'success',
             'token_preview' => substr($token, 0, 50) . '...',
@@ -919,11 +923,11 @@ Route::get('/azure-management/test', function () {
             'error' => $e->getMessage(),
             'message' => '❌ Failed to get token'
         ];
-        
+
         // Stop here if token fails
         return view('azure-management.test', compact('results'));
     }
-    
+
     // ============================================
     // TEST 3: Check if Test User Exists
     // ============================================
@@ -931,7 +935,7 @@ Route::get('/azure-management/test', function () {
         try {
             $testUpn = 'azuretest@freight-in-time.com';
             $existingUser = $service->findUserByUPN($testUpn);
-            
+
             if ($existingUser) {
                 $results['find_user'] = [
                     'status' => 'success',
@@ -955,16 +959,18 @@ Route::get('/azure-management/test', function () {
             ];
         }
     }
-    
+
     // ============================================
     // TEST 4: Create Test User (Only if not exists)
     // ============================================
-    if ($results['token']['status'] === 'success' && 
-        isset($results['find_user']['found']) && 
-        !$results['find_user']['found']) {
+    if (
+        $results['token']['status'] === 'success' &&
+        isset($results['find_user']['found']) &&
+        !$results['find_user']['found']
+    ) {
         try {
             $randomId = rand(1000, 9999);
-            
+
             $userData = [
                 'name' => "Azure Test User {$randomId}",
                 'email' => "azuretest{$randomId}@freight-in-time.com",
@@ -973,9 +979,9 @@ Route::get('/azure-management/test', function () {
                 'job_title' => 'Test Engineer',
                 'department' => 'IT Testing'
             ];
-            
+
             $result = $service->createUser($userData);
-            
+
             $results['create_user'] = [
                 'status' => 'success',
                 'azure_id' => $result['azure_id'],
@@ -993,7 +999,7 @@ Route::get('/azure-management/test', function () {
             ];
         }
     }
-    
+
     return view('azure-management.test', compact('results'));
 })->name('azure.test');
 

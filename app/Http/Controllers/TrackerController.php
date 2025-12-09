@@ -781,7 +781,6 @@ public function startTrip($tripId, $customStartDate = null)
         }
 
         if ($trip->StartDate) {
-            // Trip already started, return success silently for auto-start scenarios
             Log::info('Trip already started', ['trip_no' => $trip->TripNo]);
             return response()->json([
                 'success' => true,
@@ -789,14 +788,14 @@ public function startTrip($tripId, $customStartDate = null)
             ]);
         }
 
-        // ✅ NEW VALIDATION: Check for active trip on same vehicle
+        // ✅ VALIDATION: Check for active trip on same vehicle
         $activeTrip = DB::table('Trip_TripInfomation')
             ->where('VehicleNo', $trip->VehicleNo)
-            ->where('Id', '!=', $tripId) // Exclude current trip
+            ->where('Id', '!=', $tripId)
             ->where('OfficeCode', 'KE')
             ->where('IsDeleted', false)
-            ->whereNotNull('StartDate') // Trip has started
-            ->whereNull('EndDate')      // Trip has NOT ended
+            ->whereNotNull('StartDate')
+            ->whereNull('EndDate')
             ->first();
 
         if ($activeTrip) {
@@ -815,25 +814,25 @@ public function startTrip($tripId, $customStartDate = null)
             ], 400);
         }
 
-        // CRITICAL: Use correct timezone conversion
+        // ✅ SUBTRACT 3 HOURS - SQL Server is in UTC
         if ($customStartDate) {
-            // Parse custom date as Nairobi time, then subtract 3 hours for SP
             $actionDate = Carbon::parse($customStartDate, 'Africa/Nairobi')->subHours(3)->format('YmdHis');
 
             Log::info('Trip start with custom date', [
                 'trip_no' => $trip->TripNo,
-                'user_input' => $customStartDate,
+                'user_input_nairobi' => $customStartDate,
                 'nairobi_time' => Carbon::parse($customStartDate, 'Africa/Nairobi')->format('Y-m-d H:i:s'),
-                'sp_time' => $actionDate
+                'sp_time_utc' => $actionDate,
+                'note' => 'SQL Server is in UTC, subtracting 3 hours'
             ]);
         } else {
-            // Current time: subtract 3 hours for SP
             $actionDate = now()->subHours(3)->format('YmdHis');
 
             Log::info('Trip start with current time', [
                 'trip_no' => $trip->TripNo,
-                'server_now' => now()->format('Y-m-d H:i:s'),
-                'sp_time' => $actionDate
+                'server_now_nairobi' => now()->format('Y-m-d H:i:s'),
+                'sp_time_utc' => $actionDate,
+                'note' => 'SQL Server is in UTC, subtracting 3 hours'
             ]);
         }
 
@@ -933,11 +932,9 @@ public function startTrip($tripId, $customStartDate = null)
 public function startJob(Request $request, $tripId, $jobId)
 {
     try {
-        // Check if this is a manual start (backdating)
         $isManualStart = $request->has('start_date') && $request->has('start_time');
 
         if ($isManualStart) {
-            // Validate manual start inputs
             $request->validate([
                 'start_date' => 'required|date|before_or_equal:now',
                 'start_time' => 'required|date_format:H:i'
@@ -945,7 +942,6 @@ public function startJob(Request $request, $tripId, $jobId)
 
             $customStartDate = $request->start_date . ' ' . $request->start_time;
 
-            // VALIDATION 1: Validate start date is not in the future
             if (Carbon::parse($customStartDate, 'Africa/Nairobi')->isFuture()) {
                 return response()->json([
                     'success' => false,
@@ -954,7 +950,6 @@ public function startJob(Request $request, $tripId, $jobId)
             }
         }
 
-        // Get job details with trip info
         $job = DB::table('Trip_TripJobMapping as tjm')
             ->join('Trip_TripInfomation as t', 'tjm.TripInfoID', '=', 't.Id')
             ->select([
@@ -986,10 +981,7 @@ public function startJob(Request $request, $tripId, $jobId)
             ], 400);
         }
 
-        // ========================================
         // VALIDATION 2: Check if vehicle is on another active job
-        // (If vehicle has an active job, it's automatically on an active trip)
-        // ========================================
         $activeJob = DB::table('Trip_TripJobMapping as tjm')
             ->join('Trip_TripInfomation as t', 'tjm.TripInfoID', '=', 't.Id')
             ->select([
@@ -999,12 +991,12 @@ public function startJob(Request $request, $tripId, $jobId)
                 'tjm.StartDate as job_start_date'
             ])
             ->where('t.VehicleNo', $job->vehicle_no)
-            ->where('t.Id', '!=', $job->trip_id) // Exclude current trip
+            ->where('t.Id', '!=', $job->trip_id)
             ->where('t.OfficeCode', 'KE')
             ->where('t.IsDeleted', false)
             ->where('tjm.IsDeleted', false)
-            ->whereNotNull('tjm.StartDate') // Job has started
-            ->whereNull('tjm.EndDate')      // Job has NOT ended (In Transit)
+            ->whereNotNull('tjm.StartDate')
+            ->whereNull('tjm.EndDate')
             ->first();
 
         if ($activeJob) {
@@ -1021,19 +1013,17 @@ public function startJob(Request $request, $tripId, $jobId)
                 'message' => 'Cannot start job: This vehicle is currently on another job',
                 'active_trip_no' => $activeJob->active_trip_no,
                 'active_job_no' => $activeJob->active_job_no ?: 'Internal Job',
-                'active_job_started' => Carbon::parse($activeJob->job_start_date)->format('Y-m-d H:i'),
+                'active_job_started' => Carbon::parse($activeJob->job_start_date)->addHours(3)->format('Y-m-d H:i'),
                 'current_trip_no' => $job->trip_no,
                 'vehicle_no' => $job->vehicle_no,
                 'validation_type' => 'vehicle_active_job'
             ], 400);
         }
 
-        // ========================================
         // VALIDATION 3: Cannot start before trip started
-        // ========================================
         if ($isManualStart && $job->trip_start_date) {
             $manualStartDateTime = Carbon::parse($customStartDate, 'Africa/Nairobi');
-            $tripStartDateTime = Carbon::parse($job->trip_start_date);
+            $tripStartDateTime = Carbon::parse($job->trip_start_date)->addHours(3); // DB is UTC, convert to Nairobi
 
             if ($manualStartDateTime->lessThan($tripStartDateTime)) {
                 return response()->json([
@@ -1046,34 +1036,29 @@ public function startJob(Request $request, $tripId, $jobId)
             }
         }
 
-        // ========================================
         // VALIDATION 4: Cannot start during another job's execution
-        // ========================================
         if ($isManualStart) {
             $manualStartDateTime = Carbon::parse($customStartDate, 'Africa/Nairobi');
 
-            // Find ANY job that was In Transit at the proposed start time
-            // A job is "In Transit" if: start_time <= proposed_time < end_time
             $overlappingJob = DB::table('Trip_TripJobMapping')
                 ->where('TripInfoID', $tripId)
                 ->where('IsDeleted', false)
-                ->where('Id', '!=', $jobId) // Exclude current job
-                ->whereNotNull('StartDate') // Job must have started
-                ->whereNotNull('EndDate')   // Job must have ended (completed jobs only for backdating)
+                ->where('Id', '!=', $jobId)
+                ->whereNotNull('StartDate')
+                ->whereNotNull('EndDate')
                 ->get()
                 ->first(function($existingJob) use ($manualStartDateTime) {
-                    $jobStart = Carbon::parse($existingJob->StartDate);
-                    $jobEnd = Carbon::parse($existingJob->EndDate);
+                    // DB times are UTC, convert to Nairobi for comparison
+                    $jobStart = Carbon::parse($existingJob->StartDate)->addHours(3);
+                    $jobEnd = Carbon::parse($existingJob->EndDate)->addHours(3);
 
-                    // Check if manual start time falls within this job's duration
-                    // Manual start must be >= job end time (not during the job)
                     return $manualStartDateTime->greaterThanOrEqualTo($jobStart)
                         && $manualStartDateTime->lessThan($jobEnd);
                 });
 
             if ($overlappingJob) {
-                $jobStartTime = Carbon::parse($overlappingJob->StartDate);
-                $jobEndTime = Carbon::parse($overlappingJob->EndDate);
+                $jobStartTime = Carbon::parse($overlappingJob->StartDate)->addHours(3);
+                $jobEndTime = Carbon::parse($overlappingJob->EndDate)->addHours(3);
 
                 return response()->json([
                     'success' => false,
@@ -1087,19 +1072,18 @@ public function startJob(Request $request, $tripId, $jobId)
                 ], 400);
             }
 
-            // Log successful validation
             $previousJob = DB::table('Trip_TripJobMapping')
                 ->where('TripInfoID', $tripId)
                 ->where('IsDeleted', false)
                 ->whereNotNull('StartDate')
                 ->whereNotNull('EndDate')
                 ->where('Id', '!=', $jobId)
-                ->where('EndDate', '<=', $manualStartDateTime->format('Y-m-d H:i:s'))
+                ->where('EndDate', '<=', $manualStartDateTime->copy()->subHours(3)->format('Y-m-d H:i:s'))
                 ->orderByDesc('EndDate')
                 ->first();
 
             if ($previousJob) {
-                $previousJobEndDateTime = Carbon::parse($previousJob->EndDate);
+                $previousJobEndDateTime = Carbon::parse($previousJob->EndDate)->addHours(3);
 
                 Log::info('Sequential job validation passed', [
                     'current_job' => $job->job_no,
@@ -1111,7 +1095,7 @@ public function startJob(Request $request, $tripId, $jobId)
             }
         }
 
-        // === AUTO-START TRIP IF NOT STARTED ===
+        // AUTO-START TRIP IF NOT STARTED
         if (!$job->trip_start_date) {
             Log::info('AUTO-STARTING TRIP because first job is starting', [
                 'trip_no' => $job->trip_no,
@@ -1119,36 +1103,31 @@ public function startJob(Request $request, $tripId, $jobId)
                 'is_manual' => $isManualStart
             ]);
 
-            // Pass custom date if manual start, otherwise null for current time
             $tripStartResult = $this->startTrip($job->trip_id, $isManualStart ? $customStartDate : null);
 
-            // Check if trip start failed
             if ($tripStartResult->getStatusCode() !== 200) {
                 $responseData = json_decode($tripStartResult->getContent(), true);
                 return response()->json($responseData, $tripStartResult->getStatusCode());
             }
         }
 
-        // CRITICAL: Use correct timezone conversion for SP
-        // User enters time in Nairobi timezone (EAT = UTC+3)
-        // SP expects time with -3 hours offset
+        // ✅ SUBTRACT 3 HOURS - SQL Server is in UTC
         if ($isManualStart) {
-            // Parse the manual date as Nairobi time, then subtract 3 hours for SP
             $actionDate = Carbon::parse($customStartDate, 'Africa/Nairobi')->subHours(3)->format('YmdHis');
 
             Log::info('Manual start timezone conversion', [
-                'user_input' => $customStartDate,
+                'user_input_nairobi' => $customStartDate,
                 'nairobi_time' => Carbon::parse($customStartDate, 'Africa/Nairobi')->format('Y-m-d H:i:s'),
-                'sp_time' => $actionDate,
-                'explanation' => 'User enters Nairobi time, SP gets UTC time (Nairobi - 3 hours)'
+                'sp_time_utc' => $actionDate,
+                'note' => 'SQL Server is in UTC, subtracting 3 hours'
             ]);
         } else {
-            // Current time: already in server timezone, subtract 3 hours for SP
             $actionDate = now()->subHours(3)->format('YmdHis');
 
             Log::info('Current start timezone', [
-                'server_now' => now()->format('Y-m-d H:i:s'),
-                'sp_time' => $actionDate
+                'server_now_nairobi' => now()->format('Y-m-d H:i:s'),
+                'sp_time_utc' => $actionDate,
+                'note' => 'SQL Server is in UTC, subtracting 3 hours'
             ]);
         }
 
@@ -1233,6 +1212,7 @@ public function startJob(Request $request, $tripId, $jobId)
  * Complete job (supports both current time and backdating)
  * WITH VALIDATION: Cannot complete during another job's execution
  */
+
 public function completeJob(Request $request, $tripId, $jobId)
 {
     try {
@@ -1249,7 +1229,7 @@ public function completeJob(Request $request, $tripId, $jobId)
             $customEndDate = $request->end_date . ' ' . $request->end_time;
 
             // Validate end date is not in the future
-            if (Carbon::parse($customEndDate)->isFuture()) {
+            if (Carbon::parse($customEndDate, 'Africa/Nairobi')->isFuture()) {
                 return response()->json([
                     'success' => false,
                     'message' => 'End date cannot be in the future',
@@ -1353,64 +1333,59 @@ public function completeJob(Request $request, $tripId, $jobId)
             }
         }
 
-        // Prepare dates - Nairobi for SP, UTC for Jimi
+        // Prepare dates
         if ($isHistorical && $customStartDate && $customEndDate) {
-            // Historical entry with both dates
-            $startActionDate = Carbon::parse($customStartDate, 'Africa/Nairobi')->subHours(3)->format('YmdHis');
-            $endActionDate = Carbon::parse($customEndDate, 'Africa/Nairobi')->subHours(3)->format('YmdHis');
+            $startActionDate = Carbon::parse($customStartDate, 'Africa/Nairobi')->format('YmdHis');
+            $endActionDate = Carbon::parse($customEndDate, 'Africa/Nairobi')->format('YmdHis');
             $startTime = Carbon::parse($customStartDate, 'Africa/Nairobi')->setTimezone('UTC')->format('Y-m-d H:i:s');
             $endTime = Carbon::parse($customEndDate, 'Africa/Nairobi')->setTimezone('UTC')->format('Y-m-d H:i:s');
         } elseif ($isBackdated && $customEndDate) {
-            // Backdated completion (job already started)
             $startTime = Carbon::parse($job->job_start_date)->setTimezone('UTC')->format('Y-m-d H:i:s');
             $endTime = Carbon::parse($customEndDate, 'Africa/Nairobi')->setTimezone('UTC')->format('Y-m-d H:i:s');
             $startActionDate = null;
-            $endActionDate = Carbon::parse($customEndDate, 'Africa/Nairobi')->subHours(3)->format('YmdHis');
+            $endActionDate = Carbon::parse($customEndDate, 'Africa/Nairobi')->format('YmdHis');
 
-            // Validate end date is after start date
-            if (Carbon::parse($customEndDate)->lessThanOrEqualTo(Carbon::parse($job->job_start_date))) {
+            $proposedEndTime = Carbon::parse($customEndDate, 'Africa/Nairobi');
+            $jobStartTime = Carbon::parse($job->job_start_date, 'Africa/Nairobi');
+
+            if ($proposedEndTime->lessThanOrEqualTo($jobStartTime)) {
                 return response()->json([
                     'success' => false,
                     'message' => 'End date must be after job start date (' .
-                        Carbon::parse($job->job_start_date)->format('Y-m-d H:i') . ')',
+                        $jobStartTime->format('Y-m-d H:i') . ')',
+                    'job_started_at' => $jobStartTime->format('Y-m-d H:i'),
+                    'your_end_time' => $proposedEndTime->format('Y-m-d H:i'),
                 ], 400);
             }
         } else {
-            // Normal flow - current time
             $startTime = Carbon::parse($job->job_start_date)->setTimezone('UTC')->format('Y-m-d H:i:s');
             $endTime = now()->setTimezone('UTC')->format('Y-m-d H:i:s');
             $startActionDate = null;
-            $endActionDate = now('Africa/Nairobi')->subHours(3)->format('YmdHis');
+            $endActionDate = now('Africa/Nairobi')->format('YmdHis');
         }
 
-        // ========================================
-        // VALIDATION: Cannot complete during another job's execution
-        // ========================================
+        // VALIDATION: Overlap
         if ($isBackdated || $isHistorical) {
             $proposedEndDateTime = Carbon::parse($customEndDate, 'Africa/Nairobi');
 
-            // Find ANY job that was In Transit at the proposed end time
-            // Exclude the current job and check if proposed end falls during another job
             $overlappingJob = DB::table('Trip_TripJobMapping')
                 ->where('TripInfoID', $tripId)
                 ->where('IsDeleted', false)
-                ->where('Id', '!=', $jobId) // Exclude current job
-                ->whereNotNull('StartDate') // Job must have started
-                ->whereNotNull('EndDate')   // Job must have ended (for backdating validation)
+                ->where('Id', '!=', $jobId)
+                ->whereNotNull('StartDate')
+                ->whereNotNull('EndDate')
                 ->get()
                 ->first(function($existingJob) use ($proposedEndDateTime) {
-                    $jobStart = Carbon::parse($existingJob->StartDate);
-                    $jobEnd = Carbon::parse($existingJob->EndDate);
+                    $jobStart = Carbon::parse($existingJob->StartDate, 'Africa/Nairobi');
+                    $jobEnd = Carbon::parse($existingJob->EndDate, 'Africa/Nairobi');
 
-                    // Check if proposed end time falls within this job's duration
-                    // Proposed end must be <= job start OR >= job end (not during)
                     return $proposedEndDateTime->greaterThan($jobStart)
                         && $proposedEndDateTime->lessThan($jobEnd);
                 });
 
             if ($overlappingJob) {
-                $jobStartTime = Carbon::parse($overlappingJob->StartDate);
-                $jobEndTime = Carbon::parse($overlappingJob->EndDate);
+                $jobStartTime = Carbon::parse($overlappingJob->StartDate, 'Africa/Nairobi');
+                $jobEndTime = Carbon::parse($overlappingJob->EndDate, 'Africa/Nairobi');
 
                 return response()->json([
                     'success' => false,
@@ -1447,20 +1422,18 @@ public function completeJob(Request $request, $tripId, $jobId)
         $maxSpeed = 0;
         $gpsPointsCount = 0;
 
-        // Fetch GPS data from Jimi API using REAL IMEI
+        // Fetch GPS data
         $mileageResult = $this->jimi->getMileageData($realImei, $startTime, $endTime);
         $trackResult = $this->jimi->getTrackData($realImei, $startTime, $endTime);
 
         Log::info('Jimi Mileage Response', $mileageResult);
         Log::info('Jimi Track Data', ['points_count' => count($trackResult)]);
 
-        // Extract mileage and duration
         if ($mileageResult['success'] ?? false) {
             $totalDistance = $mileageResult['mileage'] ?? 0;
             $totalDuration = $mileageResult['duration'] ?? 0;
         }
 
-        // Calculate speed statistics
         $gpsPointsCount = count($trackResult);
 
         if ($gpsPointsCount > 0) {
@@ -1485,7 +1458,7 @@ public function completeJob(Request $request, $tripId, $jobId)
             'gps_points' => $gpsPointsCount,
         ]);
 
-        // Format mileage data for SP
+        // Format mileage data
         $tripsFormatted = [];
         foreach ($mileageResult['trips'] ?? [] as $trip) {
             $tripsFormatted[] = [
@@ -1514,7 +1487,7 @@ public function completeJob(Request $request, $tripId, $jobId)
             ],
         ], JSON_UNESCAPED_SLASHES);
 
-        // Format track data for SP
+        // Format track data
         $trackPointsFormatted = [];
         foreach ($trackResult as $point) {
             $trackPointsFormatted[] = [
@@ -1540,24 +1513,31 @@ public function completeJob(Request $request, $tripId, $jobId)
             'track_points_count' => count($trackPointsFormatted),
         ]);
 
-        // STEP 1: If historical, START the job with custom start date
+        // STEP 1: Historical START
         if ($isHistorical && $startActionDate) {
+
+            // APPLY -3 HOURS TO ACTION DATE
+            $adjustedStartActionDate = Carbon::parse($startActionDate)->subHours(3)->format('YmdHis');
+
             $startInputJson = json_encode([
                 'OperationType' => 'TripStatusUpdate',
-                'SubmittedDatetime' => $startActionDate,
+                'SubmittedDatetime' => $adjustedStartActionDate,
                 'SubmittedBy' => Auth::user()->email ?? 'system',
                 'Action' => 'Add',
                 'TransactionType' => 'Job',
                 'TransactionNo' => $job->job_no,
                 'ActionType' => 'Start',
-                'ActionDate' => $startActionDate,
+
+                // MODIFIED
+                'ActionDate' => $adjustedStartActionDate,
+
             ], JSON_UNESCAPED_SLASHES);
 
             Log::info('=== STEP 1: STARTING JOB WITH HISTORICAL DATE ===', [
                 'InputJson' => $startInputJson,
                 'JobNo' => $job->job_no,
-                'ActionDate' => $startActionDate,
-                'SubmittedDatetime' => $startActionDate,
+                'ActionDate' => $adjustedStartActionDate,
+                'SubmittedDatetime' => $adjustedStartActionDate,
             ]);
 
             $pdo = DB::connection()->getPdo();
@@ -1602,23 +1582,30 @@ public function completeJob(Request $request, $tripId, $jobId)
             }
         }
 
-        // STEP 2: END the job with GPS data
+        // STEP 2: END job
+
+        // APPLY -3 HOURS TO END ACTION DATE
+        $adjustedEndActionDate = Carbon::parse($endActionDate)->subHours(3)->format('YmdHis');
+
         $inputJson = json_encode([
             'OperationType' => 'TripStatusUpdate',
-            'SubmittedDatetime' => $isHistorical || $isBackdated ? $endActionDate : now()->format('YmdHis'),
+            'SubmittedDatetime' => $adjustedEndActionDate,
             'SubmittedBy' => Auth::user()->email ?? 'system',
             'Action' => 'Add',
             'TransactionType' => 'Job',
             'TransactionNo' => $job->job_no,
             'ActionType' => 'End',
-            'ActionDate' => $endActionDate,
+
+            // MODIFIED
+            'ActionDate' => $adjustedEndActionDate,
+
         ], JSON_UNESCAPED_SLASHES);
 
         Log::info('=== STEP 2: ENDING JOB WITH GPS DATA ===', [
             'InputJson' => $inputJson,
             'JobNo' => $job->job_no,
-            'ActionDate' => $endActionDate,
-            'SubmittedDatetime' => $isHistorical || $isBackdated ? $endActionDate : now()->format('YmdHis'),
+            'ActionDate' => $adjustedEndActionDate,
+            'SubmittedDatetime' => $adjustedEndActionDate,
             'TripMileage_sample' => substr($tripMileage, 0, 200) . '...',
             'TripTrack_sample' => substr($tripTrack, 0, 200) . '...',
         ]);
@@ -1673,7 +1660,6 @@ public function completeJob(Request $request, $tripId, $jobId)
             ], 500);
         }
 
-        // Return success with statistics
         if (($response['Status'] ?? 'Failed') === 'Success') {
             $message = 'Job completed successfully';
             if ($isHistorical) {
@@ -1698,7 +1684,6 @@ public function completeJob(Request $request, $tripId, $jobId)
             ]);
         }
 
-        // Handle errors
         $errors = [];
         foreach ($response['Remarks'] ?? [] as $item) {
             $errors[] = is_array($item) ? ($item['Remark'] ?? 'Unknown error') : $item;
@@ -1798,13 +1783,15 @@ public function endTrip(Request $request, $tripId)
             ], 400);
         }
 
-        // ✅ USE LAST JOB'S END DATE as trip end date
+        // ✅ Parse dates as stored (already in correct timezone from DB)
+        $tripStartDateTime = Carbon::parse($trip->StartDate);
         $tripEndDateTime = Carbon::parse($lastCompletedJob->EndDate);
 
         Log::info('Using last job end date as trip end', [
             'trip_no' => $trip->TripNo,
             'last_job' => $lastCompletedJob->JobNo ?: 'Internal Job',
             'job_end_date' => $tripEndDateTime->format('Y-m-d H:i:s'),
+            'trip_start_date' => $tripStartDateTime->format('Y-m-d H:i:s'),
         ]);
 
         if (empty($trip->VehicleIMEI)) {
@@ -1831,6 +1818,12 @@ public function endTrip(Request $request, $tripId)
         $vehiclePlate = explode(' - ', $trip->VehicleIMEI)[0];
         $realImei = $vehicleImeiMap[$vehiclePlate] ?? null;
 
+        Log::info('Vehicle IMEI Resolution', [
+            'db_vehicle_imei' => $trip->VehicleIMEI,
+            'extracted_plate' => $vehiclePlate,
+            'real_imei' => $realImei,
+        ]);
+
         if (empty($realImei)) {
             return response()->json([
                 'success' => false,
@@ -1838,23 +1831,39 @@ public function endTrip(Request $request, $tripId)
             ], 400);
         }
 
-        // Fetch GPS data from trip start to last job end
-        $startTime = Carbon::parse($trip->StartDate)->setTimezone('UTC')->format('Y-m-d H:i:s');
-        $endTime = $tripEndDateTime->setTimezone('UTC')->format('Y-m-d H:i:s');
+        // ✅ CRITICAL FIX: Convert DB times (Nairobi) to UTC for Jimi API
+        // DB stores Nairobi time, Jimi API expects UTC
+        $startTimeUTC = Carbon::parse($trip->StartDate)->setTimezone('UTC')->format('Y-m-d H:i:s');
+        $endTimeUTC = $tripEndDateTime->copy()->setTimezone('UTC')->format('Y-m-d H:i:s');
 
         Log::info('Fetching GPS data for trip', [
             'trip_no' => $trip->TripNo,
             'imei' => $realImei,
-            'start_time' => $startTime,
-            'end_time' => $endTime,
-            'duration_hours' => Carbon::parse($trip->StartDate)->diffInHours($tripEndDateTime),
+            'start_time_db' => $trip->StartDate,
+            'end_time_db' => $lastCompletedJob->EndDate,
+            'start_time_utc' => $startTimeUTC,
+            'end_time_utc' => $endTimeUTC,
+            'duration_hours' => $tripStartDateTime->diffInHours($tripEndDateTime),
         ]);
 
-        $mileageResult = $this->jimi->getMileageData($realImei, $startTime, $endTime);
-        $trackResult = $this->jimi->getTrackData($realImei, $startTime, $endTime);
+        $mileageResult = $this->jimi->getMileageData($realImei, $startTimeUTC, $endTimeUTC);
+        $trackResult = $this->jimi->getTrackData($realImei, $startTimeUTC, $endTimeUTC);
 
-        Log::info('Jimi Mileage Response (Full Trip)', $mileageResult);
-        Log::info('Jimi Track Data (Full Trip)', ['points_count' => count($trackResult)]);
+        // ✅ ENHANCED LOGGING - Full mileage response
+        Log::info('Jimi Mileage Response (Full Trip)', [
+            'success' => $mileageResult['success'] ?? false,
+            'mileage' => $mileageResult['mileage'] ?? 0,
+            'duration' => $mileageResult['duration'] ?? 0,
+            'trips_count' => count($mileageResult['trips'] ?? []),
+            'full_response' => $mileageResult,
+        ]);
+
+        // ✅ ENHANCED LOGGING - Track data with sample points
+        Log::info('Jimi Track Data (Full Trip)', [
+            'points_count' => count($trackResult),
+            'first_5_points' => array_slice($trackResult, 0, 5),
+            'last_5_points' => array_slice($trackResult, -5),
+        ]);
 
         $totalDistance = 0;
         $totalDuration = 0;
@@ -1862,8 +1871,16 @@ public function endTrip(Request $request, $tripId)
         if ($mileageResult['success'] ?? false) {
             $totalDistance = $mileageResult['mileage'] ?? 0;
             $totalDuration = $mileageResult['duration'] ?? 0;
+
+            Log::info('GPS Data Extracted Successfully', [
+                'total_distance_m' => $totalDistance,
+                'total_duration_sec' => $totalDuration,
+            ]);
         } else {
-            Log::warning('Jimi mileage API returned no data or failed', ['result' => $mileageResult]);
+            Log::warning('Jimi mileage API returned no data or failed', [
+                'result' => $mileageResult,
+                'error_message' => $mileageResult['message'] ?? 'No error message',
+            ]);
         }
 
         $avgSpeed = 0;
@@ -1874,13 +1891,24 @@ public function endTrip(Request $request, $tripId)
             $speeds = array_column($trackResult, 'speed');
             $maxSpeed = max($speeds);
             $movingSpeeds = array_filter($speeds, fn($speed) => $speed > 0);
+
             if (!empty($movingSpeeds)) {
                 $avgSpeed = round(array_sum($movingSpeeds) / count($movingSpeeds), 2);
             }
+
+            Log::info('Speed Statistics Calculated', [
+                'total_gps_points' => $gpsPointsCount,
+                'max_speed' => $maxSpeed,
+                'avg_speed' => $avgSpeed,
+                'moving_points' => count($movingSpeeds),
+                'stationary_points' => $gpsPointsCount - count($movingSpeeds),
+            ]);
         } else {
             Log::warning('No GPS track points returned for trip', [
                 'trip_no' => $trip->TripNo,
                 'imei' => $realImei,
+                'start_time_utc' => $startTimeUTC,
+                'end_time_utc' => $endTimeUTC,
             ]);
         }
 
@@ -1914,6 +1942,11 @@ public function endTrip(Request $request, $tripId)
             ];
         }
 
+        Log::info('Formatted Trips for SP', [
+            'trips_count' => count($tripsFormatted),
+            'sample_trip' => $tripsFormatted[0] ?? null,
+        ]);
+
         $tripMileage = json_encode([
             'result' => $tripsFormatted,
             'data' => [[
@@ -1937,8 +1970,16 @@ public function endTrip(Request $request, $tripId)
 
         $tripTrack = json_encode(['result' => $trackPointsFormatted], JSON_UNESCAPED_SLASHES);
 
-        // ✅ Use last job's end date (converted to SP timezone)
-        $actionDate = $tripEndDateTime->copy()->subHours(3)->format('YmdHis');
+        Log::info('Formatted data for SP', [
+            'trip_mileage_length' => strlen($tripMileage),
+            'trip_track_length' => strlen($tripTrack),
+            'track_points_count' => count($trackPointsFormatted),
+        ]);
+
+        // ✅ CRITICAL FIX: Use job end date AS IS from DB (already in correct format)
+        // The SP expects the datetime in the format it was originally stored
+        // DO NOT subtract hours - the date is already correct from the completed job
+        $actionDate = $tripEndDateTime->format('YmdHis');
 
         $inputJson = json_encode([
             'OperationType' => 'TripStatusUpdate',
@@ -1954,6 +1995,7 @@ public function endTrip(Request $request, $tripId)
         Log::info('Calling sp_TripMain to end trip', [
             'input_json' => $inputJson,
             'action_date' => $actionDate,
+            'explanation' => 'Using job end date AS IS (no timezone conversion)',
         ]);
 
         $pdo = DB::connection()->getPdo();

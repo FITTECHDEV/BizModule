@@ -38,6 +38,15 @@ class AzureUser extends Authenticatable
     protected $keyType = 'string';
 
     /**
+     * Get the route key name for Laravel route model binding.
+     * Use 'Id' (capital I) to match the database column.
+     */
+    public function getRouteKeyName()
+    {
+        return 'Id';
+    }
+
+    /**
      * Indicates if the model should be timestamped.
      */
     public $timestamps = false;
@@ -309,8 +318,8 @@ class AzureUser extends Authenticatable
      */
     public function canBeDeactivated(): bool
     {
-        return $this->isProvisionedToAzure() 
-            && $this->Status === 'Active' 
+        return $this->isProvisionedToAzure()
+            && $this->Status === 'Active'
             && $this->accountEnabled == 1;
     }
 
@@ -322,7 +331,7 @@ class AzureUser extends Authenticatable
      */
     public function canBeReactivated(): bool
     {
-        return $this->isProvisionedToAzure() 
+        return $this->isProvisionedToAzure()
             && $this->Status === 'Inactive';
     }
 
@@ -441,8 +450,8 @@ class AzureUser extends Authenticatable
      * @return bool
      */
     public function markAsProvisionedToAzure(
-        string $azureId, 
-        ?string $azureUpn = null, 
+        string $azureId,
+        ?string $azureUpn = null,
         ?string $azureDisplayName = null,
         ?string $updatedBy = null
     ): bool {

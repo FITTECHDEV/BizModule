@@ -1,8 +1,204 @@
-@extends('azure-management.layouts.app')
+@extends('adminlte::page')
 
 @section('title', 'Edit User')
 
-@push('styles')
+@section('content_header')
+<div class="page-header-container">
+    <div class="header-left">
+        <div class="page-title-icon">
+            <i class="fas fa-user-edit"></i>
+        </div>
+        <h1 class="page-main-title">Edit User</h1>
+        <div class="current-status status-{{ $user->status }}">
+            <i class="fas fa-circle"></i>
+            {{ ucfirst($user->status) }}
+        </div>
+    </div>
+    <div class="header-right">
+        <a href="{{ route('azure.dashboard.index') }}" class="back-to-dashboard">
+            <span>Back to Dashboard</span>
+            <i class="fas fa-arrow-right"></i>
+        </a>
+    </div>
+</div>
+@stop
+
+@section('content')
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="edit-form-container">
+                <form id="editUserForm" action="{{ route('users.update', $user) }}" method="POST">
+                    @csrf
+                    @method('PUT')
+
+                    <!-- Basic Information Section -->
+                    <div class="form-section">
+                        <div class="form-section-title">
+                            <i class="fas fa-user"></i>
+                            Basic Information
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="name" class="form-label">
+                                    Full Name <span style="color: var(--danger);">*</span>
+                                </label>
+                                <input type="text"
+                                    id="name"
+                                    name="name"
+                                    class="form-control @error('name') is-invalid @enderror"
+                                    value="{{ old('name', $user->name) }}"
+                                    readonly>
+                                @error('name')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+
+                            <div class="form-group">
+                                <label for="employee_id" class="form-label">
+                                    Employee ID <span style="color: var(--danger);">*</span>
+                                </label>
+                                <input type="text"
+                                    id="employee_id"
+                                    name="employee_id"
+                                    class="form-control @error('employee_id') is-invalid @enderror"
+                                    value="{{ old('employee_id', $user->employee_id) }}"
+                                    readonly>
+                                @error('employee_id')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="email" class="form-label">
+                                    Email Address <span style="color: var(--danger);">*</span>
+                                </label>
+                                <input type="email"
+                                    id="email"
+                                    name="email"
+                                    class="form-control @error('email') is-invalid @enderror"
+                                    value="{{ old('email', $user->email) }}"
+                                    readonly>
+                                @error('email')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+
+                            <div class="form-group">
+                                <label for="phone" class="form-label">
+                                    Phone Number
+                                </label>
+                                <input type="tel"
+                                    id="phone"
+                                    name="phone"
+                                    class="form-control @error('phone') is-invalid @enderror"
+                                    value="{{ old('phone', $user->phone) }}"
+                                    readonly>
+                                @error('phone')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                            <div class="form-group">
+                                <label for="company_id" class="form-label">
+                                    Company
+                                </label>
+                                @php
+                                $userCompanyId = old('company_id', $user->company_id ?? '');
+                                $userCompanyDisplay = '';
+                                if ($userCompanyId) {
+                                $companyObj = $companies->firstWhere('id', $userCompanyId);
+                                if ($companyObj) {
+                                $userCompanyDisplay = $companyObj->name;
+                                }
+                                }
+                                @endphp
+                                <input type="text"
+                                    id="company_id"
+                                    name="company_id"
+                                    class="form-control @error('company_id') is-invalid @enderror"
+                                    value="{{ $userCompanyDisplay }}"
+                                    readonly>
+                                @error('company_id')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Module Assignments Section -->
+                    <div class="form-section">
+                        <div class="form-section-title" style="display: flex; justify-content: space-between; align-items: center;">
+                            <div><i class="fas fa-th-large"></i> Module Assignments</div>
+                            <button type="button" class="btn btn-sm btn-success" onclick="addNewModule()">
+                                <i class="fas fa-plus"></i> Add New Assignment
+                            </button>
+                        </div>
+                        <div id="modulesGrid" class="modules-grid"></div>
+
+                        <!-- Form Actions - Inside Module Assignments, only visible when editing existing modules -->
+                        <div class="module-actions-section" id="moduleActionsSection">
+                            <div class="form-actions-info">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                <span>You have unsaved changes to module assignments</span>
+                            </div>
+                            <div class="form-actions-buttons">
+                                <button type="button" class="btn btn-ghost" onclick="cancelAllChanges()">
+                                    <i class="fas fa-times"></i>
+                                    Cancel Changes
+                                </button>
+                                <button type="button" class="btn btn-primary" onclick="updateUser()">
+                                    <i class="fas fa-save"></i>
+                                    Update User
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="hiddenInputsContainer"></div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal for Module Details -->
+<div id="moduleModal" class="modal-overlay" onclick="closeModalOnOverlay(event)">
+    <div class="modal-content" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <div class="modal-title">
+                <i class="fas fa-cube" style="color: var(--primary-color)"></i>
+                <span id="modalModuleName">Module Name</span>
+            </div>
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div id="viewModeBanner" class="view-mode-banner" style="display: none;">
+                <div class="info">
+                    <i class="fas fa-eye"></i>
+                    <span>View Mode - Click Edit to make changes</span>
+                </div>
+                <button type="button" class="btn btn-sm btn-primary" onclick="enableEditMode()">
+                    <i class="fas fa-edit"></i> Edit
+                </button>
+            </div>
+            <div id="modalAssignmentsContainer"></div>
+        </div>
+        <div class="modal-footer" id="modalFooter">
+            <button type="button" class="btn btn-ghost" onclick="cancelModal()">
+                <i class="fas fa-times"></i> Cancel
+            </button>
+            <button type="button" class="btn btn-primary" onclick="saveModalChanges()">
+                <i class="fas fa-save"></i> Save Changes
+            </button>
+        </div>
+    </div>
+</div>
+@stop
+
+@section('css')
 <style>
     /* ---------- Full Screen Container ---------- */
     .full-screen-container {
@@ -38,7 +234,7 @@
 
     .page-title-icon {
         font-size: 1.8em;
-        color: var(--primary-color);
+        color: #007bff;
         display: flex;
         align-items: center;
     }
@@ -100,8 +296,8 @@
 
     .back-to-dashboard:hover {
         background: #e8f0ff;
-        border-color: var(--primary-color);
-        color: var(--primary-color);
+        border-color: #007bff;
+        color: #007bff;
         transform: translateX(2px);
     }
 
@@ -118,6 +314,7 @@
         box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
         margin-bottom: 40px;
         overflow: hidden;
+        position: relative;
     }
 
     .edit-form-container::before {
@@ -155,12 +352,10 @@
         border-bottom: 3px solid #e8f0ff;
     }
 
-
     .form-section-title i {
-        color: var(--primary-color, #3498db);
+        color: #007bff;
         font-size: 1.1em;
     }
-
 
     .form-row {
         display: grid;
@@ -190,12 +385,12 @@
     }
 
     .form-label .required {
-        color: var(--danger, #e74c3c);
+        color: #e74c3c;
         margin-left: 2px;
     }
 
     .form-label i {
-        color: var(--primary-color, #3498db);
+        color: #007bff;
         font-size: 0.9em;
     }
 
@@ -253,7 +448,7 @@
         padding: 24px;
         cursor: pointer;
         transition: all 0.3s ease;
-        box-shadow: var(--shadow-sm);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         text-align: center;
         min-height: 140px;
         display: flex;
@@ -264,31 +459,31 @@
     }
 
     .module-card:hover {
-        border-color: var(--primary-color);
+        border-color: #007bff;
         transform: translateY(-4px);
-        box-shadow: var(--shadow-md);
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
     }
 
     .module-card.new-module {
-        border-color: var(--success);
+        border-color: #28a745;
         border-style: dashed;
         background: #f0fff4;
     }
 
     .card-icon {
         font-size: 2.5em;
-        color: var(--primary-color);
+        color: #007bff;
         margin-bottom: 8px;
     }
 
     .module-card.new-module .card-icon {
-        color: var(--success);
+        color: #28a745;
     }
 
     .card-title {
         font-size: 1.1em;
         font-weight: 600;
-        color: var(--text);
+        color: #2c3e50;
         margin-bottom: 4px;
     }
 
@@ -298,7 +493,7 @@
         gap: 6px;
         padding: 4px 12px;
         background: #e8f0ff;
-        color: var(--primary-color);
+        color: #007bff;
         border-radius: 20px;
         font-weight: 600;
         font-size: 0.85em;
@@ -307,7 +502,7 @@
     .empty-state {
         text-align: center;
         padding: 40px 20px;
-        color: var(--muted);
+        color: #6c757d;
     }
 
     .empty-state i {
@@ -320,7 +515,7 @@
         grid-column: 1/-1;
         text-align: center;
         padding: 60px 20px;
-        color: var(--muted);
+        color: #6c757d;
     }
 
     .empty-grid i {
@@ -385,7 +580,7 @@
         right: 0;
         bottom: 0;
         background: rgba(0, 0, 0, 0.5);
-        z-index: 1000;
+        z-index: 1050;
         backdrop-filter: blur(4px);
     }
 
@@ -439,14 +634,14 @@
         background: none;
         border: none;
         font-size: 1.5em;
-        color: var(--muted);
+        color: #6c757d;
         cursor: pointer;
         padding: 4px 8px;
         transition: all 0.2s;
     }
 
     .modal-close:hover {
-        color: var(--text);
+        color: #2c3e50;
         transform: rotate(90deg);
     }
 
@@ -503,7 +698,7 @@
 
     .field-label {
         font-size: 0.85em;
-        color: var(--muted);
+        color: #6c757d;
         font-weight: 600;
         display: flex;
         align-items: center;
@@ -528,7 +723,7 @@
     }
 
     .radio-option:hover {
-        border-color: var(--primary-color);
+        border-color: #007bff;
         background: #f8faff;
     }
 
@@ -580,7 +775,7 @@
     }
 
     .checkbox-option:hover {
-        border-color: var(--primary-color);
+        border-color: #007bff;
     }
 
     .checkbox-option input[type="checkbox"] {
@@ -606,7 +801,7 @@
     .empty-assignments {
         text-align: center;
         padding: 40px 20px;
-        color: var(--muted);
+        color: #6c757d;
     }
 
     .empty-assignments i {
@@ -642,7 +837,7 @@
     }
 
     .module-selector-card:hover {
-        border-color: var(--primary-color);
+        border-color: #007bff;
         background: #f8faff;
         transform: translateY(-2px);
         box-shadow: 0 4px 12px rgba(11, 102, 255, 0.15);
@@ -650,20 +845,20 @@
 
     .module-selector-card i {
         font-size: 2em;
-        color: var(--primary-color);
+        color: #007bff;
         margin-bottom: 5px;
     }
 
     .module-selector-card .module-name {
         font-weight: 600;
         font-size: 0.95em;
-        color: var(--text);
+        color: #2c3e50;
     }
 
     /* View Mode Styles */
     .view-mode-banner {
         background: #e8f0ff;
-        border: 2px solid var(--primary-color);
+        border: 2px solid #007bff;
         border-radius: 8px;
         padding: 12px 16px;
         margin-bottom: 20px;
@@ -676,23 +871,91 @@
         display: flex;
         align-items: center;
         gap: 10px;
-        color: var(--primary-color);
+        color: #007bff;
         font-weight: 600;
     }
 
-    .btn-danger {
-        background: var(--danger);
-        color: var(--primary-contrast);
+    /* Button Styles */
+    .btn {
+        display: inline-block;
+        font-weight: 400;
+        text-align: center;
+        white-space: nowrap;
+        vertical-align: middle;
+        user-select: none;
+        border: 1px solid transparent;
+        padding: 0.375rem 0.75rem;
+        font-size: 1rem;
+        line-height: 1.5;
+        border-radius: 0.25rem;
+        transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out, border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+    }
+
+    .btn-primary {
+        color: #fff;
+        background-color: #007bff;
+        border-color: #007bff;
+    }
+
+    .btn-primary:hover {
+        color: #fff;
+        background-color: #0069d9;
+        border-color: #0062cc;
     }
 
     .btn-success {
-        background: var(--success);
-        color: var(--primary-contrast);
+        color: #fff;
+        background-color: #28a745;
+        border-color: #28a745;
+    }
+
+    .btn-success:hover {
+        color: #fff;
+        background-color: #218838;
+        border-color: #1e7e34;
+    }
+
+    .btn-danger {
+        color: #fff;
+        background-color: #dc3545;
+        border-color: #dc3545;
+    }
+
+    .btn-danger:hover {
+        color: #fff;
+        background-color: #c82333;
+        border-color: #bd2130;
+    }
+
+    .btn-warning {
+        color: #212529;
+        background-color: #ffc107;
+        border-color: #ffc107;
+    }
+
+    .btn-warning:hover {
+        color: #212529;
+        background-color: #e0a800;
+        border-color: #d39e00;
+    }
+
+    .btn-ghost {
+        color: #6c757d;
+        background-color: transparent;
+        border-color: #6c757d;
+    }
+
+    .btn-ghost:hover {
+        color: #fff;
+        background-color: #6c757d;
+        border-color: #6c757d;
     }
 
     .btn-sm {
-        padding: 6px 10px;
+        padding: 0.25rem 0.5rem;
         font-size: 0.875rem;
+        line-height: 1.5;
+        border-radius: 0.2rem;
     }
 
     @media (max-width: 768px) {
@@ -742,215 +1005,10 @@
         }
     }
 </style>
-@endpush
+@stop
 
-@section('content')
-<style>
-    /* Additional inline override for this specific page */
-    #app,
-    .main-content,
-    .content-wrapper,
-    main {
-        padding: 0 !important;
-        margin: 0 !important;
-        max-width: none !important;
-        width: 100% !important;
-    }
-</style>
-<div class="full-screen-container">
-    <div class="page-content-wrapper">
-        <!-- Page Header with Icon+Title+Status on left, Back button on right -->
-        <div class="page-header-container">
-            <div class="header-left">
-                <div class="page-title-icon">
-                    <i class="fas fa-user-edit"></i>
-                </div>
-                <h1 class="page-main-title">Edit User</h1>
-                <div class="current-status status-{{ $user->status }}">
-                    <i class="fas fa-circle"></i>
-                    {{ ucfirst($user->status) }}
-                </div>
-            </div>
-            <div class="header-right">
-                <a href="{{ route('azure.dashboard.index') }}" class="back-to-dashboard">
-                    <span>Back to Dashboard</span>
-                    <i class="fas fa-arrow-right"></i>
-                </a>
-            </div>
-        </div>
-
-        <div class="edit-form-container">
-            <form id="editUserForm" action="{{ route('users.update', $user) }}" method="POST">
-                @csrf
-                @method('PUT')
-
-                <!-- Basic Information Section -->
-                <div class="form-section">
-                    <div class="form-section-title">
-                        <i class="fas fa-user"></i>
-                        Basic Information
-                    </div>
-
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="name" class="form-label">
-                                Full Name <span style="color: var(--danger);">*</span>
-                            </label>
-                            <input type="text"
-                                id="name"
-                                name="name"
-                                class="form-control @error('name') is-invalid @enderror"
-                                value="{{ old('name', $user->name) }}"
-                                readonly>
-                            @error('name')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                        </div>
-
-                        <div class="form-group">
-                            <label for="employee_id" class="form-label">
-                                Employee ID <span style="color: var(--danger);">*</span>
-                            </label>
-                            <input type="text"
-                                id="employee_id"
-                                name="employee_id"
-                                class="form-control @error('employee_id') is-invalid @enderror"
-                                value="{{ old('employee_id', $user->employee_id) }}"
-                                readonly>
-                            @error('employee_id')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                        </div>
-                    </div>
-
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="email" class="form-label">
-                                Email Address <span style="color: var(--danger);">*</span>
-                            </label>
-                            <input type="email"
-                                id="email"
-                                name="email"
-                                class="form-control @error('email') is-invalid @enderror"
-                                value="{{ old('email', $user->email) }}"
-                                readonly>
-                            @error('email')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                        </div>
-
-                        <div class="form-group">
-                            <label for="phone" class="form-label">
-                                Phone Number
-                            </label>
-                            <input type="tel"
-                                id="phone"
-                                name="phone"
-                                class="form-control @error('phone') is-invalid @enderror"
-                                value="{{ old('phone', $user->phone) }}"
-                                readonly>
-                            @error('phone')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                        </div>
-                        <div class="form-group">
-                            <label for="company_id" class="form-label">
-                                Company
-                            </label>
-                            @php
-                            $userCompanyId = old('company_id', $user->company_id ?? '');
-                            $userCompanyDisplay = '';
-                            if ($userCompanyId) {
-                            $companyObj = $companies->firstWhere('id', $userCompanyId);
-                            if ($companyObj) {
-                            $userCompanyDisplay = $companyObj->name;
-                            }
-                            }
-                            @endphp
-                            <input type="text"
-                                id="company_id"
-                                name="company_id"
-                                class="form-control @error('company_id') is-invalid @enderror"
-                                value="{{ $userCompanyDisplay }}"
-                                readonly>
-                            @error('company_id')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                        </div>
-                    </div>
-                </div>
-
-
-                <!-- Module Assignments Section -->
-                <div class="form-section">
-                    <div class="form-section-title" style="display: flex; justify-content: space-between; align-items: center;">
-                        <div><i class="fas fa-th-large"></i> Module Assignments</div>
-                        <button type="button" class="btn btn-sm btn-success" onclick="addNewModule()">
-                            <i class="fas fa-plus"></i> Add New Assignment
-                        </button>
-                    </div>
-                    <div id="modulesGrid" class="modules-grid"></div>
-
-                    <!-- Form Actions - Inside Module Assignments, only visible when editing existing modules -->
-                    <div class="module-actions-section" id="moduleActionsSection">
-                        <div class="form-actions-info">
-                            <i class="fas fa-exclamation-triangle"></i>
-                            <span>You have unsaved changes to module assignments</span>
-                        </div>
-                        <div class="form-actions-buttons">
-                            <button type="button" class="btn btn-ghost" onclick="cancelAllChanges()">
-                                <i class="fas fa-times"></i>
-                                Cancel Changes
-                            </button>
-                            <button type="button" class="btn btn-primary" onclick="updateUser()">
-                                <i class="fas fa-save"></i>
-                                Update User
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <div id="hiddenInputsContainer"></div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<!-- Modal for Module Details -->
-<div id="moduleModal" class="modal-overlay" onclick="closeModalOnOverlay(event)">
-    <div class="modal-content" onclick="event.stopPropagation()">
-        <div class="modal-header">
-            <div class="modal-title">
-                <i class="fas fa-cube" style="color: var(--primary-color)"></i>
-                <span id="modalModuleName">Module Name</span>
-            </div>
-            <button class="modal-close" onclick="closeModal()">&times;</button>
-        </div>
-        <div class="modal-body">
-            <div id="viewModeBanner" class="view-mode-banner" style="display: none;">
-                <div class="info">
-                    <i class="fas fa-eye"></i>
-                    <span>View Mode - Click Edit to make changes</span>
-                </div>
-                <button type="button" class="btn btn-sm btn-primary" onclick="enableEditMode()">
-                    <i class="fas fa-edit"></i> Edit
-                </button>
-            </div>
-            <div id="modalAssignmentsContainer"></div>
-        </div>
-        <div class="modal-footer" id="modalFooter">
-            <button type="button" class="btn btn-ghost" onclick="cancelModal()">
-                <i class="fas fa-times"></i> Cancel
-            </button>
-            <button type="button" class="btn btn-primary" onclick="saveModalChanges()">
-                <i class="fas fa-save"></i> Save Changes
-            </button>
-        </div>
-    </div>
-</div>
-@endsection
-
-@push('scripts')
+@section('js')
+<script src="//cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
     // Data from Laravel
     const modulesData = @json($modules);
@@ -1319,6 +1377,18 @@
         const card = moduleCards[currentModalCardId];
         const container = document.getElementById('modalAssignmentsContainer');
 
+        // Update modal header - REMOVED the extra "Delete Module" button
+        const modalHeader = document.querySelector('.modal-header');
+        if (modalHeader) {
+            modalHeader.innerHTML = `
+            <div class="modal-title">
+                <i class="fas fa-cube" style="color: #007bff"></i>
+                <span id="modalModuleName">${escapeHtml(card.module_name)}</span>
+            </div>
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+        `;
+        }
+
         if (!card.assignments || card.assignments.length === 0) {
             container.innerHTML = '<div class="empty-assignments"><i class="fas fa-clipboard-list"></i><p>No assignments yet.</p></div>';
             return;
@@ -1357,126 +1427,126 @@
             const disabledClass = !isEditMode ? 'disabled' : '';
 
             return `
-                <div class="assignment-item" id="${a.id}">
-                    <div class="assignment-header">
-                        <span style="font-weight: 600; color: var(--muted); font-size: 0.9em;">
-                            Assignment for ${escapeHtml(module.name)} (${escapeHtml(applicationCode)})
-                        </span>
-                        <div style="display: flex; gap: 8px; ${!isEditMode ? 'display: none;' : ''}">
-                            <button type="button" class="btn btn-sm btn-ghost" style="color: var(--danger);" onclick="deleteAssignment('${a.id}')">
-                                <i class="fas fa-trash"></i>
-                            </button>
+            <div class="assignment-item" id="${a.id}">
+                <div class="assignment-header">
+                    <span style="font-weight: 600; color: #6c757d; font-size: 0.9em;">
+                        Assignment for ${escapeHtml(module.name)} (${escapeHtml(applicationCode)})
+                    </span>
+                    <div style="display: flex; gap: 8px; ${!isEditMode ? 'display: none;' : ''}">
+                        <button type="button" class="btn btn-sm btn-ghost" style="color: #dc3545;" onclick="deleteAssignment('${a.id}')">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="assignment-info" style="grid-template-columns: ${isSCM ? '1fr 1fr 1fr' : '1fr 1fr'};">
+                    <!-- OFFICE LOCATION -->
+                    <div class="info-field">
+                        <div class="field-label"><i class="fas fa-map-marker-alt"></i> Office Location</div>
+                        <div class="radio-group">
+                            <div class="radio-option ${disabledClass}">
+                                <input type="radio" id="${a.id}_all_locations" name="${a.id}_location_type" class="all-locations-radio" ${isAllLocations ? 'checked' : ''} ${disabled} onchange="handleLocationRadioChange('${a.id}')">
+                                <label for="${a.id}_all_locations">All Locations</label>
+                            </div>
+                            <div class="radio-option ${disabledClass}">
+                                <input type="radio" id="${a.id}_specific_locations" name="${a.id}_location_type" class="specific-locations-radio" ${!isAllLocations ? 'checked' : ''} ${disabled} onchange="handleLocationRadioChange('${a.id}')">
+                                <label for="${a.id}_specific_locations">Specific Location</label>
+                            </div>
+                        </div>
+                        <div class="checkboxes-grid">
+                            ${locationsData.map(l => {
+                                const locCode = l.code.trim();
+                                const isChecked = a.locationCodes && a.locationCodes.includes(locCode);
+                                return `
+                                    <div class="checkbox-option ${isAllLocations || !isEditMode ? 'disabled' : ''}">
+                                        <input type="checkbox" 
+                                               id="${a.id}_loc_${locCode}" 
+                                               class="location-checkbox" 
+                                               data-location-id="${l.id}"
+                                               data-location-code="${locCode}"
+                                               data-location-name="${escapeHtml(l.name)}"
+                                               value="${locCode}" 
+                                               ${isChecked || isAllLocations ? 'checked' : ''} 
+                                               ${isAllLocations || !isEditMode ? 'disabled' : ''} 
+                                               onchange="handleLocationCheckboxChange('${a.id}')">
+                                        <label for="${a.id}_loc_${locCode}">${escapeHtml(l.name)}</label>
+                                    </div>
+                                `;
+                            }).join('')}
                         </div>
                     </div>
-                    <div class="assignment-info" style="grid-template-columns: ${isSCM ? '1fr 1fr 1fr' : '1fr 1fr'};">
-                        <!-- OFFICE LOCATION -->
-                        <div class="info-field">
-                            <div class="field-label"><i class="fas fa-map-marker-alt"></i> Office Location</div>
-                            <div class="radio-group">
-                                <div class="radio-option ${disabledClass}">
-                                    <input type="radio" id="${a.id}_all_locations" name="${a.id}_location_type" class="all-locations-radio" ${isAllLocations ? 'checked' : ''} ${disabled} onchange="handleLocationRadioChange('${a.id}')">
-                                    <label for="${a.id}_all_locations">All Locations</label>
-                                </div>
-                                <div class="radio-option ${disabledClass}">
-                                    <input type="radio" id="${a.id}_specific_locations" name="${a.id}_location_type" class="specific-locations-radio" ${!isAllLocations ? 'checked' : ''} ${disabled} onchange="handleLocationRadioChange('${a.id}')">
-                                    <label for="${a.id}_specific_locations">Specific Location</label>
-                                </div>
+                    
+                    <!-- SCM FUNCTIONS (Only for OPS/OPSUAT) -->
+                    ${isSCM ? `
+                    <div class="info-field">
+                        <div class="field-label"><i class="fas fa-cog"></i> Function (SCM)</div>
+                        <div class="radio-group">
+                            <div class="radio-option ${disabledClass}">
+                                <input type="radio" id="${a.id}_all_functions" name="${a.id}_function_type" class="all-functions-radio" ${isAllFunctions ? 'checked' : ''} ${disabled} onchange="handleFunctionRadioChange('${a.id}')">
+                                <label for="${a.id}_all_functions">All Functions</label>
                             </div>
-                            <div class="checkboxes-grid">
-                                ${locationsData.map(l => {
-                                    const locCode = l.code.trim();
-                                    const isChecked = a.locationCodes && a.locationCodes.includes(locCode);
-                                    return `
-                                        <div class="checkbox-option ${isAllLocations || !isEditMode ? 'disabled' : ''}">
-                                            <input type="checkbox" 
-                                                   id="${a.id}_loc_${locCode}" 
-                                                   class="location-checkbox" 
-                                                   data-location-id="${l.id}"
-                                                   data-location-code="${locCode}"
-                                                   data-location-name="${escapeHtml(l.name)}"
-                                                   value="${locCode}" 
-                                                   ${isChecked || isAllLocations ? 'checked' : ''} 
-                                                   ${isAllLocations || !isEditMode ? 'disabled' : ''} 
-                                                   onchange="handleLocationCheckboxChange('${a.id}')">
-                                            <label for="${a.id}_loc_${locCode}">${escapeHtml(l.name)}</label>
-                                        </div>
-                                    `;
-                                }).join('')}
+                            <div class="radio-option ${disabledClass}">
+                                <input type="radio" id="${a.id}_specific_functions" name="${a.id}_function_type" class="specific-functions-radio" ${!isAllFunctions ? 'checked' : ''} ${disabled} onchange="handleFunctionRadioChange('${a.id}')">
+                                <label for="${a.id}_specific_functions">Specific Function</label>
                             </div>
                         </div>
-                        
-                        <!-- SCM FUNCTIONS (Only for OPS/OPSUAT) -->
-                        ${isSCM ? `
-                        <div class="info-field">
-                            <div class="field-label"><i class="fas fa-cog"></i> Function (SCM)</div>
-                            <div class="radio-group">
-                                <div class="radio-option ${disabledClass}">
-                                    <input type="radio" id="${a.id}_all_functions" name="${a.id}_function_type" class="all-functions-radio" ${isAllFunctions ? 'checked' : ''} ${disabled} onchange="handleFunctionRadioChange('${a.id}')">
-                                    <label for="${a.id}_all_functions">All Functions</label>
-                                </div>
-                                <div class="radio-option ${disabledClass}">
-                                    <input type="radio" id="${a.id}_specific_functions" name="${a.id}_function_type" class="specific-functions-radio" ${!isAllFunctions ? 'checked' : ''} ${disabled} onchange="handleFunctionRadioChange('${a.id}')">
-                                    <label for="${a.id}_specific_functions">Specific Function</label>
-                                </div>
+                        <div class="checkboxes-grid">
+                            ${availableFunctions.length > 0 ? availableFunctions.map(f => {
+                                const isChecked = a.functionIds && a.functionIds.includes(String(f.id));
+                                return `
+                                    <div class="checkbox-option ${isAllFunctions || !isEditMode ? 'disabled' : ''}">
+                                        <input type="checkbox" 
+                                               id="${a.id}_func_${f.id}" 
+                                               class="function-checkbox" 
+                                               data-function-id="${f.id}"
+                                               data-function-code="${escapeHtml(f.code)}"
+                                               value="${f.id}" 
+                                               ${isChecked || isAllFunctions ? 'checked' : ''} 
+                                               ${isAllFunctions || !isEditMode ? 'disabled' : ''} 
+                                               onchange="handleFunctionCheckboxChange('${a.id}')">
+                                        <label for="${a.id}_func_${f.id}">${escapeHtml(f.name)}</label>
+                                    </div>
+                                `;
+                            }).join('') : '<p style="padding: 10px; color: #666;">No functions available</p>'}
+                        </div>
+                    </div>
+                    ` : ''}
+                    
+                    <!-- ROLES -->
+                    <div class="info-field">
+                        <div class="field-label"><i class="fas fa-user-tag"></i> Role</div>
+                        <div class="radio-group">
+                            <div class="radio-option ${disabledClass}">
+                                <input type="radio" id="${a.id}_all_roles" name="${a.id}_role_type" class="all-roles-radio" ${isAllRoles ? 'checked' : ''} ${disabled} onchange="handleRoleRadioChange('${a.id}')">
+                                <label for="${a.id}_all_roles">All Roles</label>
                             </div>
-                            <div class="checkboxes-grid">
-                                ${availableFunctions.length > 0 ? availableFunctions.map(f => {
-                                    const isChecked = a.functionIds && a.functionIds.includes(String(f.id));
-                                    return `
-                                        <div class="checkbox-option ${isAllFunctions || !isEditMode ? 'disabled' : ''}">
-                                            <input type="checkbox" 
-                                                   id="${a.id}_func_${f.id}" 
-                                                   class="function-checkbox" 
-                                                   data-function-id="${f.id}"
-                                                   data-function-code="${escapeHtml(f.code)}"
-                                                   value="${f.id}" 
-                                                   ${isChecked || isAllFunctions ? 'checked' : ''} 
-                                                   ${isAllFunctions || !isEditMode ? 'disabled' : ''} 
-                                                   onchange="handleFunctionCheckboxChange('${a.id}')">
-                                            <label for="${a.id}_func_${f.id}">${escapeHtml(f.name)}</label>
-                                        </div>
-                                    `;
-                                }).join('') : '<p style="padding: 10px; color: #666;">No functions available</p>'}
+                            <div class="radio-option ${disabledClass}">
+                                <input type="radio" id="${a.id}_specific_roles" name="${a.id}_role_type" class="specific-roles-radio" ${!isAllRoles ? 'checked' : ''} ${disabled} onchange="handleRoleRadioChange('${a.id}')">
+                                <label for="${a.id}_specific_roles">Specific Role</label>
                             </div>
                         </div>
-                        ` : ''}
-                        
-                        <!-- ROLES -->
-                        <div class="info-field">
-                            <div class="field-label"><i class="fas fa-user-tag"></i> Role</div>
-                            <div class="radio-group">
-                                <div class="radio-option ${disabledClass}">
-                                    <input type="radio" id="${a.id}_all_roles" name="${a.id}_role_type" class="all-roles-radio" ${isAllRoles ? 'checked' : ''} ${disabled} onchange="handleRoleRadioChange('${a.id}')">
-                                    <label for="${a.id}_all_roles">All Roles</label>
-                                </div>
-                                <div class="radio-option ${disabledClass}">
-                                    <input type="radio" id="${a.id}_specific_roles" name="${a.id}_role_type" class="specific-roles-radio" ${!isAllRoles ? 'checked' : ''} ${disabled} onchange="handleRoleRadioChange('${a.id}')">
-                                    <label for="${a.id}_specific_roles">Specific Role</label>
-                                </div>
-                            </div>
-                            <div class="checkboxes-grid">
-                                ${availableRoles.length > 0 ? availableRoles.map(r => {
-                                    const isChecked = a.roleIds && a.roleIds.includes(String(r.id));
-                                    return `
-                                        <div class="checkbox-option ${isAllRoles || !isEditMode ? 'disabled' : ''}">
-                                            <input type="checkbox" 
-                                                   id="${a.id}_role_${r.id}" 
-                                                   class="role-checkbox" 
-                                                   data-role-id="${r.id}"
-                                                   data-role-code="${escapeHtml(r.code)}"
-                                                   value="${r.id}" 
-                                                   ${isChecked || isAllRoles ? 'checked' : ''} 
-                                                   ${isAllRoles || !isEditMode ? 'disabled' : ''} 
-                                                   onchange="handleRoleCheckboxChange('${a.id}')">
-                                            <label for="${a.id}_role_${r.id}">${escapeHtml(r.name)}</label>
-                                        </div>
-                                    `;
-                                }).join('') : '<p style="padding: 10px; color: #666;">No roles available for ' + escapeHtml(applicationCode) + '</p>'}
-                            </div>
+                        <div class="checkboxes-grid">
+                            ${availableRoles.length > 0 ? availableRoles.map(r => {
+                                const isChecked = a.roleIds && a.roleIds.includes(String(r.id));
+                                return `
+                                    <div class="checkbox-option ${isAllRoles || !isEditMode ? 'disabled' : ''}">
+                                        <input type="checkbox" 
+                                               id="${a.id}_role_${r.id}" 
+                                               class="role-checkbox" 
+                                               data-role-id="${r.id}"
+                                               data-role-code="${escapeHtml(r.code)}"
+                                               value="${r.id}" 
+                                               ${isChecked || isAllRoles ? 'checked' : ''} 
+                                               ${isAllRoles || !isEditMode ? 'disabled' : ''} 
+                                               onchange="handleRoleCheckboxChange('${a.id}')">
+                                        <label for="${a.id}_role_${r.id}">${escapeHtml(r.name)}</label>
+                                    </div>
+                                `;
+                            }).join('') : '<p style="padding: 10px; color: #666;">No roles available for ' + escapeHtml(applicationCode) + '</p>'}
                         </div>
                     </div>
                 </div>
-            `;
+            </div>
+        `;
         }).join('');
     }
 
@@ -1734,25 +1804,114 @@
     };
 
     window.deleteAssignment = (assignId) => {
-        if (!isEditMode) return;
+        console.log('🗑️ Delete assignment clicked:', assignId);
+        console.log('Current modal card ID:', currentModalCardId);
+
+        if (!currentModalCardId) {
+            console.error('❌ No modal card ID - cannot delete');
+            showAlert('error', 'Error', 'Cannot delete assignment - modal context lost');
+            return;
+        }
+
+        const card = moduleCards[currentModalCardId];
+
+        if (!card) {
+            console.error('❌ Card not found:', currentModalCardId);
+            showAlert('error', 'Error', 'Cannot delete assignment - card not found');
+            return;
+        }
+
+        console.log('Card before delete:', {
+            id: card.id,
+            module: card.module_name,
+            assignments: card.assignments.length
+        });
+
         Swal.fire({
-            title: 'Delete Assignment?',
-            text: 'This action cannot be undone',
+            title: 'Delete Module?',
+            html: `
+            <p>Are you sure you want to delete <strong>${escapeHtml(card.module_name)}</strong>?</p>
+            <p style="color: #666; font-size: 0.9em; margin-top: 10px;">
+                This will remove all assignments for this module.
+            </p>
+        `,
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#ef4444',
-            confirmButtonText: 'Yes, delete it'
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Yes, delete module',
+            cancelButtonText: 'Cancel',
+            reverseButtons: true
         }).then((result) => {
             if (result.isConfirmed) {
-                const card = moduleCards[currentModalCardId];
-                card.assignments = card.assignments.filter(a => a.id !== assignId);
-                if (card.assignments.length === 0 && card.isNew) {
-                    delete moduleCards[currentModalCardId];
-                    closeModal();
-                } else {
-                    renderModalAssignments();
+                console.log('✓ Delete confirmed for entire module');
+
+                // Delete the entire module card
+                delete moduleCards[currentModalCardId];
+
+                // If this was an existing module (not new), show the Update User button
+                if (!card.isNew) {
+                    toggleFormActions(true);
                 }
-                showAlert('success', 'Deleted', 'Assignment removed');
+
+                // Close the modal
+                document.getElementById('moduleModal').classList.remove('active');
+                currentModalCardId = null;
+                isEditMode = false;
+                originalCardState = null;
+
+                // Re-render all cards
+                renderAllCards();
+
+                showAlert('success', 'Deleted', 'Module has been deleted');
+            } else {
+                console.log('✗ Delete cancelled');
+            }
+        });
+    };
+
+    // DELETE THIS ENTIRE FUNCTION
+    window.deleteModuleCard = (cardId) => {
+        const card = moduleCards[cardId];
+        if (!card) return;
+
+        Swal.fire({
+            title: 'Delete Module?',
+            html: `
+        <p>Are you sure you want to delete <strong>${escapeHtml(card.module_name)}</strong>?</p>
+        <p style="color: #666; font-size: 0.9em; margin-top: 10px;">
+            This will remove all assignments for this module.
+        </p>
+    `,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Yes, delete module',
+            cancelButtonText: 'Cancel',
+            reverseButtons: true
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // Delete the entire card
+                delete moduleCards[cardId];
+
+                // If we're currently viewing this card's modal, close it
+                if (currentModalCardId === cardId) {
+                    document.getElementById('moduleModal').classList.remove('active');
+                    currentModalCardId = null;
+                    isEditMode = false;
+                    originalCardState = null;
+                }
+
+                // Re-render all cards
+                renderAllCards();
+
+                // If this was an existing module (not new), show the Update User button
+                if (!card.isNew) {
+                    toggleFormActions(true);
+                }
+
+                showAlert('success', 'Deleted', 'Module has been deleted');
             }
         });
     };
@@ -1946,6 +2105,8 @@
     });
 
     // Initialize on page load
-    initializeModules();
+    document.addEventListener('DOMContentLoaded', function() {
+        initializeModules();
+    });
 </script>
-@endpush
+@stop

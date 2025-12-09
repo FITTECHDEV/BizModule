@@ -2,13 +2,73 @@
 
 @section('title', 'Create New User')
 
-@section('content_header')
-<h1><i class="fas fa-user-plus"></i> Create User Data</h1>
-<p class="text-muted mb-0">Add a new user to the system</p>
-@stop
 
 @section('css')
 <style>
+    .mb-3 {
+        text-align: right;
+        margin-bottom: 20px;
+    }
+
+    .mb-3 .btn {
+        display: inline-block;
+    }
+
+    /* Custom Page Header Styles */
+    .custom-page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        padding: 0 0 15px 0;
+        border-bottom: 1px solid #dee2e6;
+    }
+
+    .page-title-container {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .page-title-icon {
+        font-size: 1.8em;
+        color: #007bff;
+    }
+
+    .page-main-title {
+        font-size: 1.8em;
+        font-weight: 700;
+        color: #2c3e50;
+        margin: 0;
+    }
+
+    .page-subtitle {
+        color: #6c757d;
+        font-size: 0.95em;
+        margin: 0;
+    }
+
+    .header-actions {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+
+    /* Responsive styles */
+    @media (max-width: 768px) {
+        .custom-page-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 15px;
+        }
+
+        .header-actions {
+            width: 100%;
+            justify-content: space-between;
+        }
+    }
+
+
     .content-wrapper {
         background: #f5f7fa;
     }
@@ -776,15 +836,26 @@ gap: 0 !important;
 
 @section('content')
 <!-- Add Back Button at top -->
-<div class="mb-3">
-    <a href="{{ route('azure.dashboard.index') }}" class="btn btn-secondary">
-        <i class="fas fa-arrow-left"></i> Back to Dashboard
-    </a>
+<!-- Header with title on left and button on right -->
+<div class="page-header-wrapper" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding: 15px 0; border-bottom: 1px solid #dee2e6;">
+    <div class="page-title-section">
+        <h1 style="margin: 0; font-size: 1.8em; color: #2c3e50; font-weight: 700;">
+            <i class="fas fa-user-plus" style="color: #3498db; margin-right: 10px;"></i> Create User Data
+        </h1>
+        <p style="margin: 5px 0 0 0; color: #6c757d; font-size: 0.95em;">Add a new user to the system</p>
+    </div>
+    
+    <!-- Back to Dashboard Button on the right -->
+    <div class="header-actions">
+        <a href="{{ route('azure.dashboard.index') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Back to Dashboard
+        </a>
+    </div>
 </div>
 
 <!-- Use AdminLTE Card -->
 <div class="card">
-    <div class="card-header">
+    <div class="card-header" style="display: none;"> <!-- Hide the duplicate card header -->
         <h3 class="card-title"><i class="fas fa-user-plus"></i> Create New User</h3>
     </div>
     <div class="card-body">
@@ -2018,16 +2089,16 @@ gap: 0 !important;
             });
         });
 
-        if (compactModules.length === 0) {
-            console.error('❌❌❌ NO ASSIGNMENTS CREATED!');
-            showAlert('error', 'Configuration Error',
-                'No valid module assignments were created. Please ensure:\n' +
-                '1. You have selected at least one location\n' +
-                '2. You have selected at least one role\n' +
-                '3. For SCM modules, you have selected at least one function'
-            );
-            return false;
-        }
+        // if (compactModules.length === 0) {
+        //     console.error('❌❌❌ NO ASSIGNMENTS CREATED!');
+        //     showAlert('error', 'Configuration Error',
+        //         'No valid module assignments were created. Please ensure:\n' +
+        //         '1. You have selected at least one location\n' +
+        //         '2. You have selected at least one role\n' +
+        //         '3. For SCM modules, you have selected at least one function'
+        //     );
+        //     return false;
+        // }
 
         // Create a single hidden input with JSON data
         const jsonData = JSON.stringify(compactModules);

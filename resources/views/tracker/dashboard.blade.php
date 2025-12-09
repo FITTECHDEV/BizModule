@@ -1334,58 +1334,60 @@
                 });
 
                 // ========================================
-// END TRIP - SIMPLIFIED (No backdate option)
-// ========================================
-$(document).on('click', '.endTrip', function() {
-    const tripId = $(this).data('trip-id');
-    const $btn = $(this);
+                // END TRIP - SIMPLIFIED (No backdate option)
+                // ========================================
+                $(document).on('click', '.endTrip', function() {
+                    const tripId = $(this).data('trip-id');
+                    const $btn = $(this);
 
-    if ($btn.prop('disabled')) return;
+                    if ($btn.prop('disabled')) return;
 
-    $btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i>');
+                    $btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i>');
 
-    $.get(`/tracker/trips/${tripId}`)
-        .done(function(res) {
-            if (!res.success) {
-                Swal.fire('Error', 'Failed to load trip details', 'error');
-                $btn.prop('disabled', false).html('<i class="fa fa-stop"></i>');
-                return;
-            }
+                    $.get(`/tracker/trips/${tripId}`)
+                        .done(function(res) {
+                            if (!res.success) {
+                                Swal.fire('Error', 'Failed to load trip details', 'error');
+                                $btn.prop('disabled', false).html('<i class="fa fa-stop"></i>');
+                                return;
+                            }
 
-            // Check if all jobs are completed
-            const incompleteJobs = (res.data.jobs || []).filter(j => j.status !== 'Completed');
+                            // Check if all jobs are completed
+                            const incompleteJobs = (res.data.jobs || []).filter(j => j.status !==
+                                'Completed');
 
-            if (incompleteJobs.length > 0) {
-                const jobList = incompleteJobs
-                    .map(j => `• ${j.job_number || 'Internal Job'} <small>(${j.status})</small>`)
-                    .join('<br>');
+                            if (incompleteJobs.length > 0) {
+                                const jobList = incompleteJobs
+                                    .map(j =>
+                                        `• ${j.job_number || 'Internal Job'} <small>(${j.status})</small>`)
+                                    .join('<br>');
 
-                Swal.fire({
-                    icon: 'warning',
-                    title: 'Cannot End Trip',
-                    html: `<strong>All jobs must be completed first.</strong><br><br>Pending jobs:<br>${jobList}`,
-                    confirmButtonText: 'OK',
-                    confirmButtonColor: '#d33'
-                });
+                                Swal.fire({
+                                    icon: 'warning',
+                                    title: 'Cannot End Trip',
+                                    html: `<strong>All jobs must be completed first.</strong><br><br>Pending jobs:<br>${jobList}`,
+                                    confirmButtonText: 'OK',
+                                    confirmButtonColor: '#d33'
+                                });
 
-                $btn.prop('disabled', false).html('<i class="fa fa-stop"></i>');
-                return;
-            }
+                                $btn.prop('disabled', false).html('<i class="fa fa-stop"></i>');
+                                return;
+                            }
 
-            // Get last completed job info
-            const completedJobs = (res.data.jobs || [])
-                .filter(j => j.status === 'Completed' && j.end_date)
-                .sort((a, b) => new Date(b.end_date) - new Date(a.end_date));
+                            // Get last completed job info
+                            const completedJobs = (res.data.jobs || [])
+                                .filter(j => j.status === 'Completed' && j.end_date)
+                                .sort((a, b) => new Date(b.end_date) - new Date(a.end_date));
 
-            const lastJob = completedJobs[0];
-            const lastJobInfo = lastJob ?
-                `<br><small>Trip will end at: <strong>${moment(lastJob.end_date).format('DD/MM/YY HH:mm')}</strong></small>` :
-                '';
+                            const lastJob = completedJobs[0];
+                            const lastJobInfo = lastJob ?
+                                `<br><small>Trip will end at: <strong>${moment(lastJob.end_date).format('DD/MM/YY HH:mm')}</strong></small>` :
+                                '';
 
-            // Show confirmation
-            Swal.fire({
-                title: 'End Trip?',
-                html: `
+                            // Show confirmation
+                            Swal.fire({
+                                title: 'End Trip?',
+                                html: `
                     <p><strong>Trip:</strong> ${res.data.trip_no}</p>
                     <p><strong>Vehicle:</strong> ${res.data.vehicle_no}</p>
                     <p><strong>Driver:</strong> ${res.data.driver_name || 'Not assigned'}</p>
@@ -1396,29 +1398,31 @@ $(document).on('click', '.endTrip', function() {
                         Trip will be ended with the completion time of the last job.
                     </div>
                 `,
-                icon: 'question',
-                showCancelButton: true,
-                confirmButtonText: '<i class="fa fa-stop-circle"></i> End Trip',
-                cancelButtonText: 'Cancel',
-                confirmButtonColor: '#d33',
-                cancelButtonColor: '#6c757d'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    // End trip
-                    $btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Ending...');
+                                icon: 'question',
+                                showCancelButton: true,
+                                confirmButtonText: '<i class="fa fa-stop-circle"></i> End Trip',
+                                cancelButtonText: 'Cancel',
+                                confirmButtonColor: '#d33',
+                                cancelButtonColor: '#6c757d'
+                            }).then((result) => {
+                                if (result.isConfirmed) {
+                                    // End trip
+                                    $btn.prop('disabled', true).html(
+                                        '<i class="fa fa-spinner fa-spin"></i> Ending...');
 
-                    $.ajax({
-                        url: `/tracker/trips/${tripId}/end`,
-                        type: 'POST',
-                        headers: {
-                            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-                        },
-                        success: function(endRes) {
-                            if (endRes.success) {
-                                Swal.fire({
-                                    icon: 'success',
-                                    title: 'Trip Ended Successfully!',
-                                    html: `
+                                    $.ajax({
+                                        url: `/tracker/trips/${tripId}/end`,
+                                        type: 'POST',
+                                        headers: {
+                                            'X-CSRF-TOKEN': $('meta[name="csrf-token"]')
+                                                .attr('content')
+                                        },
+                                        success: function(endRes) {
+                                            if (endRes.success) {
+                                                Swal.fire({
+                                                    icon: 'success',
+                                                    title: 'Trip Ended Successfully!',
+                                                    html: `
                                         <div style="text-align: left;">
                                             <p><strong>Trip:</strong> ${endRes.trip_no}</p>
                                             <p><strong>Ended at:</strong> ${moment(endRes.end_date).format('DD/MM/YY HH:mm')}</p>
@@ -1430,33 +1434,38 @@ $(document).on('click', '.endTrip', function() {
                                             <p><strong>Max Speed:</strong> ${endRes.max_speed || 'N/A'} km/h</p>
                                         </div>
                                     `,
-                                    confirmButtonText: 'OK'
-                                });
+                                                    confirmButtonText: 'OK'
+                                                });
 
-                                if (typeof tripsTable !== 'undefined') {
-                                    tripsTable.ajax.reload(null, false);
+                                                if (typeof tripsTable !== 'undefined') {
+                                                    tripsTable.ajax.reload(null, false);
+                                                }
+                                            } else {
+                                                Swal.fire('Failed', endRes.message ||
+                                                    'Unknown error', 'error');
+                                            }
+
+                                            $btn.prop('disabled', false).html(
+                                                '<i class="fa fa-stop"></i>');
+                                        },
+                                        error: function(xhr) {
+                                            Swal.fire('Error', xhr.responseJSON
+                                                ?.message || 'Server error', 'error'
+                                                );
+                                            $btn.prop('disabled', false).html(
+                                                '<i class="fa fa-stop"></i>');
+                                        }
+                                    });
+                                } else {
+                                    $btn.prop('disabled', false).html('<i class="fa fa-stop"></i>');
                                 }
-                            } else {
-                                Swal.fire('Failed', endRes.message || 'Unknown error', 'error');
-                            }
-
+                            });
+                        })
+                        .fail(function() {
+                            Swal.fire('Error', 'Failed to connect to server', 'error');
                             $btn.prop('disabled', false).html('<i class="fa fa-stop"></i>');
-                        },
-                        error: function(xhr) {
-                            Swal.fire('Error', xhr.responseJSON?.message || 'Server error', 'error');
-                            $btn.prop('disabled', false).html('<i class="fa fa-stop"></i>');
-                        }
-                    });
-                } else {
-                    $btn.prop('disabled', false).html('<i class="fa fa-stop"></i>');
-                }
-            });
-        })
-        .fail(function() {
-            Swal.fire('Error', 'Failed to connect to server', 'error');
-            $btn.prop('disabled', false).html('<i class="fa fa-stop"></i>');
-        });
-});
+                        });
+                });
 
                 // // ========================================
                 // // BACKDATE TRIP FORM SUBMIT - ENHANCED ERROR HANDLING
@@ -1494,10 +1503,10 @@ $(document).on('click', '.endTrip', function() {
                 //                     icon: 'success',
                 //                     title: 'Trip Ended!',
                 //                     html: `
-                //         <strong>Ended:</strong> ${endDate} ${endTime}<br>
-                //         <strong>Distance:</strong> ${res.total_distance || 'N/A'} km<br>
-                //         <strong>Duration:</strong> ${res.duration_hours || 'N/A'} hours
-                //           `,
+        //         <strong>Ended:</strong> ${endDate} ${endTime}<br>
+        //         <strong>Distance:</strong> ${res.total_distance || 'N/A'} km<br>
+        //         <strong>Duration:</strong> ${res.duration_hours || 'N/A'} hours
+        //           `,
                 //                     confirmButtonText: 'OK'
                 //                 });
 
@@ -1518,16 +1527,16 @@ $(document).on('click', '.endTrip', function() {
                 //                 if (xhr.responseJSON.last_job_no && xhr.responseJSON
                 //                     .last_job_completed_at) {
                 //                     errorMsg = `
-                //         <div style="text-align: left;">
-                //             <p><strong>Cannot backdate trip to this time!</strong></p>
-                //             <hr>
-                //             <p><strong>Last Job:</strong> ${xhr.responseJSON.last_job_no}</p>
-                //             <p><strong>Completed:</strong> ${xhr.responseJSON.last_job_completed_at}</p>
-                //             <p><strong>Your Trip End:</strong> ${xhr.responseJSON.proposed_trip_end}</p>
-                //             <hr>
-                //             <p class="text-danger">Trip end time must be AFTER the last job completion.</p>
-                //         </div>
-                //         `;
+        //         <div style="text-align: left;">
+        //             <p><strong>Cannot backdate trip to this time!</strong></p>
+        //             <hr>
+        //             <p><strong>Last Job:</strong> ${xhr.responseJSON.last_job_no}</p>
+        //             <p><strong>Completed:</strong> ${xhr.responseJSON.last_job_completed_at}</p>
+        //             <p><strong>Your Trip End:</strong> ${xhr.responseJSON.proposed_trip_end}</p>
+        //             <hr>
+        //             <p class="text-danger">Trip end time must be AFTER the last job completion.</p>
+        //         </div>
+        //         `;
                 //                 }
                 //             }
 

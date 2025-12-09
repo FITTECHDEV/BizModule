@@ -895,15 +895,131 @@ class AzureUserManagementController extends Controller
     /**
      * Display the specified user
      */
-    public function show(AzureUser $user)
-    {
-        // $user->load(['company', 'modules.roles', 'roles']);
+/**
+ * Display the specified user with module assignments
+ */
+public function show(AzureUser $user)
+{
+    try {
+        Log::info('Loading user details page', [
+            'user_id' => $user->Id,
+            'user_email' => $user->userPrincipalName
+        ]);
 
-        // Get provisioning status
-        $provisioningStatus = $this->provisioningService->getProvisioningStatus($user);
+        // Get provisioning status with error handling
+        $provisioningStatus = null;
+        try {
+            $provisioningStatus = $this->provisioningService->getProvisioningStatus($user);
+        } catch (\Exception $e) {
+            Log::warning('Failed to get provisioning status', [
+                'user_id' => $user->Id,
+                'error' => $e->getMessage()
+            ]);
 
-        return view('azure-management.users.show', compact('user', 'provisioningStatus'));
+            // Provide default status if service fails
+            $provisioningStatus = [
+                'local_user' => [
+                    'exists' => true,
+                    'status' => $user->Status,
+                    'created_at' => $user->createdDateTime,
+                ],
+                'azure' => [
+                    'provisioned' => !empty($user->AzureId),
+                    'azure_id' => $user->AzureId,
+                    'azure_upn' => $user->userPrincipalName,
+                    'synced' => false,
+                    'account_enabled' => $user->accountEnabled,
+                ],
+                'modules' => [],
+                'overall_status' => $user->Status === 'Active' ? 'active' : 'pending',
+            ];
+        }
+
+        // Fetch user's module assignments from Azure_Application_UserMapping
+        $assignmentsRaw = DB::connection('sqlsrv')
+            ->select("
+                SELECT 
+                    application_id,
+                    ApplicationName,
+                    OfficeCode,
+                    OfficeID,
+                    RoleCode,
+                    RoleID,
+                    FunctionCode,
+                    FunctionID
+                FROM Azure_Application_UserMapping
+                WHERE user_id = ?
+                    AND IsActive = 1
+                    AND IsDelete = 0
+                ORDER BY ApplicationName, OfficeCode, RoleCode
+            ", [$user->userPrincipalName]);
+
+        // Group assignments by module
+        $moduleAssignments = collect($assignmentsRaw)
+            ->groupBy('ApplicationName')
+            ->map(function ($assignments, $moduleName) {
+                // Get unique locations
+                $locations = $assignments->pluck('OfficeCode')->unique()->sort()->values();
+                
+                // Get unique roles
+                $roles = $assignments->map(function ($assignment) {
+                    return [
+                        'id' => $assignment->RoleID,
+                        'code' => $assignment->RoleCode
+                    ];
+                })->unique('code')->values();
+                
+                // Get unique functions (for SCM modules)
+                $functions = $assignments
+                    ->filter(function ($assignment) {
+                        return !empty($assignment->FunctionCode);
+                    })
+                    ->map(function ($assignment) {
+                        return [
+                            'id' => $assignment->FunctionID,
+                            'code' => $assignment->FunctionCode
+                        ];
+                    })
+                    ->unique('code')
+                    ->values();
+
+                return [
+                    'application_id' => $assignments->first()->application_id,
+                    'module_name' => $moduleName,
+                    'locations' => $locations,
+                    'locations_count' => $locations->count(),
+                    'roles' => $roles,
+                    'roles_count' => $roles->count(),
+                    'functions' => $functions,
+                    'functions_count' => $functions->count(),
+                    'total_assignments' => $assignments->count()
+                ];
+            })
+            ->sortBy('module_name')
+            ->values();
+
+        Log::info('User details loaded successfully', [
+            'user_id' => $user->Id,
+            'modules_count' => $moduleAssignments->count(),
+            'total_assignments' => $assignmentsRaw ? count($assignmentsRaw) : 0
+        ]);
+
+        return view('azure-management.users.show', compact(
+            'user', 
+            'provisioningStatus',
+            'moduleAssignments'
+        ));
+    } catch (\Exception $e) {
+        Log::error('Failed to load user details page', [
+            'user_id' => $user->Id ?? null,
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString()
+        ]);
+
+        return redirect()->route('azure.users.index')
+            ->withErrors(['error' => 'Failed to load user details: ' . $e->getMessage()]);
     }
+}
 
     /**
      * Show the form for editing the specified user
@@ -1512,46 +1628,71 @@ class AzureUserManagementController extends Controller
 
     // ... rest of your methods remain the same (disable, enable, getStatus, destroy, retryModuleAssignments, logUserActivity)
 
-    /**
-     * Disable the specified user via POST request (for AJAX)
-     */
     public function disable(AzureUser $user)
     {
         try {
+            Log::info('=== DISABLE USER REQUEST ===', [
+                'user_id' => $user->Id,
+                'email' => $user->userPrincipalName,
+                'current_status' => $user->Status,
+                'initiated_by' => Auth::id()
+            ]);
+
             // Check if user is already inactive
-            if ($user->status === 'inactive') {
+            if ($user->Status === 'Inactive') {
+                Log::info('User already inactive', [
+                    'user_id' => $user->Id,
+                    'status' => $user->Status
+                ]);
+
                 return response()->json([
                     'success' => false,
                     'message' => 'User is already disabled'
                 ], 400);
             }
 
-            // Update user status to inactive
-            $user->status = 'inactive';
-            $user->disabled_at = now();
-            $user->save();
+            // Update user status using the model's disable method
+            $success = $user->disable(Auth::id());
+
+            if (!$success) {
+                throw new \Exception('Failed to update user status in database');
+            }
 
             // Try to disable in Azure (optional - don't fail if this fails)
             try {
-                if (isset($this->provisioningService)) {
+                if (isset($this->provisioningService) && !empty($user->AzureId)) {
                     $this->provisioningService->disableUser($user);
+                    Log::info('User disabled in Azure AD', [
+                        'user_id' => $user->Id,
+                        'azure_id' => $user->AzureId
+                    ]);
                 }
             } catch (\Exception $e) {
                 Log::warning('Azure disable failed but local disable succeeded', [
-                    'user_id' => $user->id,
+                    'user_id' => $user->Id,
                     'error' => $e->getMessage()
                 ]);
             }
 
-            // Try to log activity (don't fail if this fails)
+            // Log activity
             try {
-                $this->logUserActivity($user, 'disabled', 'User account disabled');
+                $this->logUserActivity(
+                    $user->Id,
+                    'user.disabled',
+                    'User account disabled',
+                    ['disabled_by' => Auth::id()]
+                );
             } catch (\Exception $e) {
                 Log::warning('Failed to log user activity', [
-                    'user_id' => $user->id,
+                    'user_id' => $user->Id,
                     'error' => $e->getMessage()
                 ]);
             }
+
+            Log::info('=== USER DISABLED SUCCESSFULLY ===', [
+                'user_id' => $user->Id,
+                'disabled_by' => Auth::id()
+            ]);
 
             return response()->json([
                 'success' => true,
@@ -1559,7 +1700,7 @@ class AzureUserManagementController extends Controller
             ]);
         } catch (\Exception $e) {
             Log::error('Failed to disable user', [
-                'user_id' => $user->id ?? null,
+                'user_id' => $user->Id ?? null,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
@@ -1577,40 +1718,68 @@ class AzureUserManagementController extends Controller
     public function enable(AzureUser $user)
     {
         try {
+            Log::info('=== ENABLE USER REQUEST ===', [
+                'user_id' => $user->Id,
+                'email' => $user->userPrincipalName,
+                'current_status' => $user->Status,
+                'initiated_by' => Auth::id()
+            ]);
+
             // Check if user is already active
-            if ($user->status === 'active') {
+            if ($user->Status === 'Active') {
+                Log::info('User already active', [
+                    'user_id' => $user->Id,
+                    'status' => $user->Status
+                ]);
+
                 return response()->json([
                     'success' => false,
                     'message' => 'User is already enabled'
                 ], 400);
             }
 
-            // Update user status to active
-            $user->status = 'active';
-            $user->disabled_at = null;
-            $user->save();
+            // Update user status using the model's enable method
+            $success = $user->enable(Auth::id());
 
-            // Try to enable in Azure (optional)
+            if (!$success) {
+                throw new \Exception('Failed to update user status in database');
+            }
+
+            // Try to enable in Azure (optional - don't fail if this fails)
             try {
-                if (isset($this->provisioningService)) {
+                if (isset($this->provisioningService) && !empty($user->AzureId)) {
                     $this->provisioningService->enableUser($user);
+                    Log::info('User enabled in Azure AD', [
+                        'user_id' => $user->Id,
+                        'azure_id' => $user->AzureId
+                    ]);
                 }
             } catch (\Exception $e) {
                 Log::warning('Azure enable failed but local enable succeeded', [
-                    'user_id' => $user->id,
+                    'user_id' => $user->Id,
                     'error' => $e->getMessage()
                 ]);
             }
 
-            // Try to log activity (don't fail if this fails)
+            // Log activity
             try {
-                $this->logUserActivity($user, 'enabled', 'User account enabled');
+                $this->logUserActivity(
+                    $user->Id,
+                    'user.enabled',
+                    'User account enabled',
+                    ['enabled_by' => Auth::id()]
+                );
             } catch (\Exception $e) {
                 Log::warning('Failed to log user activity', [
-                    'user_id' => $user->id,
+                    'user_id' => $user->Id,
                     'error' => $e->getMessage()
                 ]);
             }
+
+            Log::info('=== USER ENABLED SUCCESSFULLY ===', [
+                'user_id' => $user->Id,
+                'enabled_by' => Auth::id()
+            ]);
 
             return response()->json([
                 'success' => true,
@@ -1618,7 +1787,7 @@ class AzureUserManagementController extends Controller
             ]);
         } catch (\Exception $e) {
             Log::error('Failed to enable user', [
-                'user_id' => $user->id ?? null,
+                'user_id' => $user->Id ?? null,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
@@ -1626,6 +1795,77 @@ class AzureUserManagementController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to enable user: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Reset user password (placeholder implementation)
+     * 
+     * @param AzureUser $user
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function resetPassword(AzureUser $user)
+    {
+        try {
+            Log::info('=== RESET PASSWORD REQUEST ===', [
+                'user_id' => $user->Id,
+                'email' => $user->userPrincipalName,
+                'initiated_by' => Auth::id()
+            ]);
+
+            // Check if user is provisioned to Azure
+            if (empty($user->AzureId)) {
+                Log::warning('Cannot reset password - user not provisioned to Azure', [
+                    'user_id' => $user->Id,
+                    'email' => $user->userPrincipalName
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cannot reset password: User is not provisioned to Azure AD yet.'
+                ], 400);
+            }
+
+            // Log activity
+            try {
+                $this->logUserActivity(
+                    $user->Id,
+                    'user.password_reset_requested',
+                    'Password reset requested for user',
+                    [
+                        'requested_by' => Auth::id(),
+                        'user_email' => $user->userPrincipalName
+                    ]
+                );
+            } catch (\Exception $e) {
+                Log::warning('Failed to log password reset activity', [
+                    'user_id' => $user->Id,
+                    'error' => $e->getMessage()
+                ]);
+            }
+
+            Log::info('=== PASSWORD RESET REQUEST LOGGED ===', [
+                'user_id' => $user->Id,
+                'requested_by' => Auth::id()
+            ]);
+
+            // TODO: Implement actual password reset logic via Azure Graph API
+            // For now, return a placeholder message
+            return response()->json([
+                'success' => true,
+                'message' => 'Password reset request logged. Please contact IT support to complete the reset process.'
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to process password reset request', [
+                'user_id' => $user->Id ?? null,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to process password reset: ' . $e->getMessage()
             ], 500);
         }
     }
