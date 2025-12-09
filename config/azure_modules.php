@@ -5,7 +5,7 @@ return [
     'module_mapping' => [
         // SCM Modules (work directly with stored procedure)
         'OPS' => 'OPS',
-        'OPS UAT' => 'OPSUAT',
+        'OPS UAT' => 'OPS',  // ✅ CHANGE THIS from 'OPSUAT' to 'OPS'
         
         // Other modules - map to OPS (which has GUIDs)
         'Odoo' => 'OPS',

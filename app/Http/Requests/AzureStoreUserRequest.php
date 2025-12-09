@@ -10,12 +10,9 @@ class AzureStoreUserRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
-     * 
-     * Note: Actual authorization is handled by middleware/policies
      */
     public function authorize(): bool
     {
-        // Only authenticated users with proper permissions can create Azure users
         return auth()->check();
     }
 
@@ -31,14 +28,13 @@ class AzureStoreUserRequest extends FormRequest
                 'string',
                 'max:100',
                 'min:2',
-                'regex:/^[a-zA-Z\s\-\.]+$/' // Allow letters, spaces, hyphens, dots
+                'regex:/^[a-zA-Z\s\-\.]+$/'
             ],
             'email' => [
                 'required',
                 'email',
                 'max:255',
                 function ($attribute, $value, $fail) {
-                    // Check if email exists in Azure_Users table
                     $exists = DB::connection('sqlsrv')
                         ->table('Azure_Users')
                         ->where('mail', strtolower(trim($value)))
@@ -53,9 +49,8 @@ class AzureStoreUserRequest extends FormRequest
                 'required',
                 'string',
                 'max:50',
-                'regex:/^[A-Z0-9\-]+$/', // Uppercase letters, numbers, hyphens
+                'regex:/^[A-Z0-9\-]+$/',
                 function ($attribute, $value, $fail) {
-                    // Check if employee ID exists in Azure_Users table
                     $exists = DB::connection('sqlsrv')
                         ->table('Azure_Users')
                         ->where('EmployeCode', strtoupper(trim($value)))
@@ -96,17 +91,22 @@ class AzureStoreUserRequest extends FormRequest
                 'max:255'
             ],
 
-            // === MODULE ASSIGNMENTS (REQUIRED) ===
-            'modules' => [
+            // === MODULE ASSIGNMENTS (NEW JSON FORMAT) ===
+            'modules_json' => [
                 'required',
+                'json'
+            ],
+
+            // === OLD FORMAT (KEEP FOR BACKWARDS COMPATIBILITY) ===
+            'modules' => [
+                'sometimes',
                 'array',
                 'min:1'
             ],
             'modules.*.module_id' => [
-                'required',
-                'uuid', // GUID format
+                'required_with:modules',
+                'uuid',
                 function ($attribute, $value, $fail) {
-                    // Verify module exists in Azure_SoftwareMaster
                     $exists = DB::connection('sqlsrv')
                         ->table('Azure_SoftwareMaster')
                         ->where('Id', $value)
@@ -120,18 +120,18 @@ class AzureStoreUserRequest extends FormRequest
                 }
             ],
             'modules.*.application_id' => [
-                'required',
-                'string', // Can be GUID or other format
+                'required_with:modules',
+                'string',
                 'max:255'
             ],
             'modules.*.application_name' => [
-                'required',
+                'required_with:modules',
                 'string',
                 'max:255'
             ],
             'modules.*.role_id' => [
-                'required',
-                'uuid' // GUID format
+                'required_with:modules',
+                'uuid'
             ],
             'modules.*.role_code' => [
                 'nullable',
@@ -139,11 +139,10 @@ class AzureStoreUserRequest extends FormRequest
                 'max:100'
             ],
             'modules.*.location_code' => [
-                'required',
+                'required_with:modules',
                 'string',
                 'max:50',
                 function ($attribute, $value, $fail) {
-                    // Allow 'ALL' or verify location exists in Cust_Office
                     if (strtoupper($value) === 'ALL') {
                         return;
                     }
@@ -162,16 +161,16 @@ class AzureStoreUserRequest extends FormRequest
             ],
             'modules.*.location_id' => [
                 'nullable',
-                'uuid' // GUID format, optional
+                'uuid'
             ],
             'modules.*.function_code' => [
                 'nullable',
                 'string',
-                'max:100' // For SCM modules
+                'max:100'
             ],
             'modules.*.function_id' => [
                 'nullable',
-                'uuid' // For SCM modules
+                'uuid'
             ]
         ];
     }
@@ -203,52 +202,19 @@ class AzureStoreUserRequest extends FormRequest
             'phone.max' => 'The phone number cannot exceed 30 characters.',
             'phone.regex' => 'Please enter a valid phone number format.',
 
-            // Mobile phone validation messages
-            'mobile_phone.max' => 'The mobile phone cannot exceed 30 characters.',
-            'mobile_phone.regex' => 'Please enter a valid mobile phone format.',
+            // Module JSON validation messages
+            'modules_json.required' => 'Please assign at least one module to this user.',
+            'modules_json.json' => 'Invalid module data format.',
 
-            // Job title validation messages
-            'job_title.max' => 'The job title cannot exceed 255 characters.',
-
-            // Department validation messages
-            'department.max' => 'The department cannot exceed 255 characters.',
-
-            // Company validation messages
-            'company_id.max' => 'The company name cannot exceed 255 characters.',
-
-            // Module validation messages
+            // Old format messages (backwards compatibility)
             'modules.required' => 'Please assign at least one module to this user.',
             'modules.array' => 'Module data must be in a valid format.',
             'modules.min' => 'At least one module must be assigned.',
-
-            // Module field validation messages
-            'modules.*.module_id.required' => 'Module ID is required for each assignment.',
-            'modules.*.module_id.uuid' => 'Module ID must be a valid GUID format.',
-
-            'modules.*.application_id.required' => 'Application ID is required for each module.',
-            'modules.*.application_id.max' => 'Application ID cannot exceed 255 characters.',
-
-            'modules.*.application_name.required' => 'Application name is required for each module.',
-            'modules.*.application_name.max' => 'Application name cannot exceed 255 characters.',
-
-            'modules.*.role_id.required' => 'Role ID is required for each module assignment.',
-            'modules.*.role_id.uuid' => 'Role ID must be a valid GUID format.',
-
-            'modules.*.role_code.max' => 'Role code cannot exceed 100 characters.',
-
-            'modules.*.location_code.required' => 'Location code is required for each module assignment.',
-            'modules.*.location_code.max' => 'Location code cannot exceed 50 characters.',
-
-            'modules.*.location_id.uuid' => 'Location ID must be a valid GUID format.',
-
-            'modules.*.function_code.max' => 'Function code cannot exceed 100 characters.',
-            'modules.*.function_id.uuid' => 'Function ID must be a valid GUID format.'
         ];
     }
 
     /**
      * Prepare the data for validation.
-     * Sanitize and normalize input before validation runs.
      */
     protected function prepareForValidation(): void
     {
@@ -273,7 +239,12 @@ class AzureStoreUserRequest extends FormRequest
             $data['company_id'] = trim($this->company_id);
         }
 
-        // Sanitize modules array
+        // Keep modules_json as-is (don't decode it here, let controller handle it)
+        if ($this->has('modules_json')) {
+            $data['modules_json'] = $this->modules_json;
+        }
+
+        // Sanitize old format modules array (backwards compatibility)
         if ($this->has('modules') && is_array($this->modules)) {
             $data['modules'] = array_map(function ($module) {
                 return [
@@ -295,22 +266,154 @@ class AzureStoreUserRequest extends FormRequest
 
     /**
      * Configure the validator instance.
-     * Add additional validation logic after initial validation passes.
      */
     public function withValidator($validator): void
     {
         $validator->after(function ($validator) {
+            // Validate modules_json if present
+            if ($this->has('modules_json')) {
+                $modulesJson = $this->input('modules_json');
+                
+                // Try to decode JSON
+                $modules = json_decode($modulesJson, true);
+                
+                if (json_last_error() !== JSON_ERROR_NONE) {
+                    $validator->errors()->add('modules_json', 'Invalid JSON format: ' . json_last_error_msg());
+                    return;
+                }
+                
+                // Ensure at least one module
+                if (empty($modules) || !is_array($modules)) {
+                    $validator->errors()->add('modules_json', 'At least one module assignment is required.');
+                    return;
+                }
+                
+                // Validate structure of decoded JSON
+                foreach ($modules as $index => $module) {
+                    if (!is_array($module)) {
+                        $validator->errors()->add('modules_json', "Module #{$index} must be an object.");
+                        continue;
+                    }
+                    
+                    // Check required fields
+                    $requiredFields = ['module_id', 'application_id', 'application_name'];
+                    foreach ($requiredFields as $field) {
+                        if (empty($module[$field])) {
+                            $validator->errors()->add(
+                                'modules_json',
+                                "Module #{$index}: {$field} is required."
+                            );
+                        }
+                    }
+                    
+                    // Validate module_id is valid UUID and exists in database
+                    if (!empty($module['module_id'])) {
+                        if (!$this->isValidUuid($module['module_id'])) {
+                            $validator->errors()->add(
+                                'modules_json',
+                                "Module #{$index}: Invalid module ID format."
+                            );
+                        } else {
+                            // Check if module exists and is active
+                            $moduleExists = DB::connection('sqlsrv')
+                                ->table('Azure_SoftwareMaster')
+                                ->where('Id', $module['module_id'])
+                                ->where('IsActive', 1)
+                                ->where('IsDeleted', 0)
+                                ->exists();
+                            
+                            if (!$moduleExists) {
+                                $validator->errors()->add(
+                                    'modules_json',
+                                    "Module #{$index}: Selected module does not exist or is inactive."
+                                );
+                            }
+                        }
+                    }
+                    
+                    // Validate locationCodes array exists and has at least one item
+                    if (empty($module['locationCodes']) || !is_array($module['locationCodes'])) {
+                        $validator->errors()->add(
+                            'modules_json',
+                            "Module #{$index}: At least one location must be selected."
+                        );
+                    } else {
+                        // Validate each location code (skip 'ALL')
+                        foreach ($module['locationCodes'] as $locationCode) {
+                            if (strtoupper($locationCode) === 'ALL') {
+                                continue; // 'ALL' is valid
+                            }
+                            
+                            $locationExists = DB::connection('sqlsrv')
+                                ->table('Cust_Office')
+                                ->where('code', strtoupper($locationCode))
+                                ->where('IsActive', 1)
+                                ->where('IsDeleted', 0)
+                                ->exists();
+                            
+                            if (!$locationExists) {
+                                $validator->errors()->add(
+                                    'modules_json',
+                                    "Module #{$index}: Location code '{$locationCode}' is invalid or inactive."
+                                );
+                            }
+                        }
+                    }
+                    
+                    // Validate roleIds array exists and has at least one item
+                    if (empty($module['roleIds']) || !is_array($module['roleIds'])) {
+                        $validator->errors()->add(
+                            'modules_json',
+                            "Module #{$index}: At least one role must be selected."
+                        );
+                    } else {
+                        // Validate each role ID is a valid UUID (skip 'ALL')
+                        foreach ($module['roleIds'] as $roleId) {
+                            if (strtoupper($roleId) === 'ALL') {
+                                continue; // 'ALL' is valid
+                            }
+                            
+                            if (!$this->isValidUuid($roleId)) {
+                                $validator->errors()->add(
+                                    'modules_json',
+                                    "Module #{$index}: Invalid role ID format '{$roleId}'."
+                                );
+                            }
+                        }
+                    }
+                    
+                    // For SCM modules (OPS, OPSUAT, OPS UAT), validate functions if present
+                    $isSCM = in_array(strtoupper($module['application_name'] ?? ''), ['OPS', 'OPS UAT', 'OPSUAT']);
+                    if ($isSCM) {
+                        if (!empty($module['functionIds']) && is_array($module['functionIds'])) {
+                            foreach ($module['functionIds'] as $functionId) {
+                                if (strtoupper($functionId) === 'ALL') {
+                                    continue; // 'ALL' is valid
+                                }
+                                
+                                if (!$this->isValidUuid($functionId)) {
+                                    $validator->errors()->add(
+                                        'modules_json',
+                                        "Module #{$index}: Invalid function ID format '{$functionId}'."
+                                    );
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                return; // Skip old format validation if modules_json is present
+            }
+
+            // Old format validation (backwards compatibility)
             $modules = $this->input('modules', []);
 
-            // Ensure at least one module is provided
             if (empty($modules)) {
                 $validator->errors()->add('modules', 'At least one module assignment is required.');
                 return;
             }
 
-            // Validate each module has all required fields
             foreach ($modules as $index => $module) {
-                // Check for required fields
                 $requiredFields = ['module_id', 'application_id', 'application_name', 'role_id', 'location_code'];
                 
                 foreach ($requiredFields as $field) {
@@ -318,24 +421,23 @@ class AzureStoreUserRequest extends FormRequest
                         $fieldName = ucwords(str_replace('_', ' ', $field));
                         $validator->errors()->add(
                             "modules.{$index}.{$field}",
-                            "{$fieldName} is required for module assignment #{" . ($index + 1) . "}."
+                            "{$fieldName} is required for module assignment #" . ($index + 1) . "."
                         );
                     }
                 }
 
-                // Validate GUID format for UUID fields
                 $uuidFields = ['module_id', 'role_id'];
                 foreach ($uuidFields as $field) {
                     if (!empty($module[$field]) && !$this->isValidUuid($module[$field])) {
                         $validator->errors()->add(
                             "modules.{$index}.{$field}",
-                            "Invalid GUID format for {$field} in module assignment #{" . ($index + 1) . "}."
+                            "Invalid GUID format for {$field} in module assignment #" . ($index + 1) . "."
                         );
                     }
                 }
             }
 
-            // Check for duplicate module assignments (same module + location)
+            // Check for duplicates
             $seen = [];
             foreach ($modules as $index => $module) {
                 $key = ($module['module_id'] ?? '') . '|' . ($module['location_code'] ?? '');
@@ -343,7 +445,7 @@ class AzureStoreUserRequest extends FormRequest
                 if (in_array($key, $seen)) {
                     $validator->errors()->add(
                         "modules.{$index}",
-                        "Duplicate module assignment detected. Each module can only be assigned once per location."
+                        "Duplicate module assignment detected."
                     );
                 }
                 
@@ -367,11 +469,12 @@ class AzureStoreUserRequest extends FormRequest
             'department' => 'department',
             'company_id' => 'company',
             'modules' => 'module assignments',
+            'modules_json' => 'module assignments',
         ];
     }
 
     /**
-     * Sanitize phone number - remove invalid characters but keep valid ones
+     * Sanitize phone number
      */
     private function sanitizePhone(?string $phone): string
     {
@@ -379,7 +482,6 @@ class AzureStoreUserRequest extends FormRequest
             return '';
         }
 
-        // Keep only: digits, +, -, (, ), and spaces
         return preg_replace('/[^0-9\+\-\(\)\s]/', '', $phone);
     }
 

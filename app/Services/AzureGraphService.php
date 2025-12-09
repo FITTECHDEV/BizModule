@@ -372,27 +372,16 @@ class AzureGraphService
             // Generate UPN based on strategy
             $upn = $this->generateUPN($userData);
 
+            // Support both 'name' and 'displayName' keys for logging
+            $userName = $userData['name'] ?? $userData['displayName'] ?? 'unknown';
+
             Log::channel('azure')->debug('Generated UPN for user creation', [
                 'generated_upn' => $upn,
-                'user_name' => $userData['name'],
+                'user_name' => $userName,
                 'user_data' => $userData
             ]);
 
-            // 🎯 AUDIT: Log user creation attempt
-            // AzureAuditLogger::log(
-            //     'azure.user.creation.started',
-            //     null,
-            //     'success',
-            //     null,
-            //     [
-            //         'upn' => $upn,
-            //         'name' => $userData['name'],
-            //         'employee_id' => $userData['employee_id'] ?? null,
-            //         'email' => $userData['email'] ?? null,
-            //     ]
-            // );
-
-            // ✅ CHECK IF USER ALREADY EXISTS IN AZURE
+            // Check if user already exists in Azure
             Log::channel('azure')->info('Checking if user exists in Azure AD', [
                 'upn' => $upn
             ]);
@@ -405,24 +394,11 @@ class AzureGraphService
                     'azure_id' => $existingUser['id']
                 ]);
 
-                // 🎯 AUDIT: Log existing user found
-                // AzureAuditLogger::log(
-                //     'azure.user.duplicate_detected',
-                //     null,
-                //     'success',
-                //     null,
-                //     [
-                //         'upn' => $upn,
-                //         'azure_id' => $existingUser['id'],
-                //         'action' => 'returned_existing_user',
-                //     ]
-                // );
-
                 // Return existing user data instead of failing
                 return [
-                    'azure_id' => $existingUser['id'],
-                    'azure_upn' => $existingUser['userPrincipalName'],
-                    'azure_display_name' => $existingUser['displayName'],
+                    'id' => $existingUser['id'],
+                    'userPrincipalName' => $existingUser['userPrincipalName'],
+                    'displayName' => $existingUser['displayName'],
                     'temporary_password' => null, // No new password since user exists
                 ];
             }
@@ -437,7 +413,7 @@ class AzureGraphService
 
             $requestBody = [
                 'accountEnabled' => true,
-                'displayName' => $userData['name'],
+                'displayName' => $userName,
                 'mailNickname' => $this->generateMailNickname($userData),
                 'userPrincipalName' => $upn,
                 'passwordProfile' => [
@@ -453,14 +429,14 @@ class AzureGraphService
             if (!empty($userData['phone'])) {
                 $requestBody['mobilePhone'] = $userData['phone'];
             }
-            if (!empty($userData['job_title'])) {
-                $requestBody['jobTitle'] = $userData['job_title'];
+            if (!empty($userData['job_title']) || !empty($userData['jobTitle'])) {
+                $requestBody['jobTitle'] = $userData['job_title'] ?? $userData['jobTitle'];
             }
             if (!empty($userData['department'])) {
                 $requestBody['department'] = $userData['department'];
             }
-            if (!empty($userData['employee_id'])) {
-                $requestBody['employeeId'] = $userData['employee_id'];
+            if (!empty($userData['employee_id']) || !empty($userData['employeeId'])) {
+                $requestBody['employeeId'] = $userData['employee_id'] ?? $userData['employeeId'];
             }
 
             $response = $this->makeRequestWithRetry(
@@ -477,102 +453,18 @@ class AzureGraphService
 
             $azureUser = $response->json();
 
-            // 🎯 AUDIT: Log successful Azure user creation
-            // AzureAuditLogger::log(
-            //     'azure.user.created',
-            //     null,
-            //     'success',
-            //     null,
-            //     [
-            //         'azure_id' => $azureUser['id'],
-            //         'azure_upn' => $azureUser['userPrincipalName'],
-            //         'display_name' => $azureUser['displayName'],
-            //         'employee_id' => $userData['employee_id'] ?? null,
-            //         'email' => $userData['email'] ?? null,
-            //     ]
-            // );
-
             Log::channel('azure')->info('User created in Azure AD', [
                 'azure_id' => $azureUser['id'],
                 'upn' => $azureUser['userPrincipalName']
             ]);
 
-            // Send credentials email to user
-            // $emailSent = false;
-            // try {
-            //     if (!empty($userData['email'])) {
-            //         Mail::to($userData['email'])->send(
-            //             new NewUserCredentials(
-            //                 $userData['name'],
-            //                 $userData['email'],
-            //                 $temporaryPassword,
-            //                 $azureUser['userPrincipalName']
-            //             )
-            //         );
-
-            //         $emailSent = true;
-
-            //         // 🎯 AUDIT: Log successful email delivery
-            //         // AzureAuditLogger::log(
-            //         //     'azure.credentials.email_sent',
-            //         //     null,
-            //         //     'success',
-            //         //     null,
-            //         //     [
-            //         //         'azure_id' => $azureUser['id'],
-            //         //         'email' => $userData['email'],
-            //         //         'upn' => $azureUser['userPrincipalName'],
-            //         //     ]
-            //         // );
-
-            //         Log::channel('azure')->info('Credentials email sent successfully', [
-            //             'email' => $userData['email'],
-            //             'upn' => $azureUser['userPrincipalName']
-            //         ]);
-            //     }
-            // } catch (\Exception $emailException) {
-            //     // 🎯 AUDIT: Log email failure (non-critical)
-            //     // AzureAuditLogger::log(
-            //     //     'azure.credentials.email_failed',
-            //     //     null,
-            //     //     'failed',
-            //     //     $emailException->getMessage(),
-            //     //     [
-            //     //         'azure_id' => $azureUser['id'],
-            //     //         'email' => $userData['email'] ?? 'unknown',
-            //     //         'upn' => $azureUser['userPrincipalName'],
-            //     //         'note' => 'User created successfully but email delivery failed',
-            //     //     ]
-            //     // );
-
-            //     // Don't fail user creation if email fails
-            //     Log::channel('azure')->error('Failed to send credentials email', [
-            //         'email' => $userData['email'] ?? 'unknown',
-            //         'error' => $emailException->getMessage()
-            //     ]);
-            // }
-
             return [
-                'azure_id' => $azureUser['id'],
-                'azure_upn' => $azureUser['userPrincipalName'],
-                'azure_display_name' => $azureUser['displayName'],
+                'id' => $azureUser['id'],
+                'userPrincipalName' => $azureUser['userPrincipalName'],
+                'displayName' => $azureUser['displayName'],
                 'temporary_password' => $temporaryPassword,
-                // 'email_sent' => $emailSent,
             ];
         } catch (Exception $e) {
-            // 🎯 AUDIT: Log failed user creation
-            // AzureAuditLogger::log(
-            //     'azure.user.creation.failed',
-            //     null,
-            //     'failed',
-            //     $e->getMessage(),
-            //     [
-            //         'name' => $userData['name'] ?? null,
-            //         'employee_id' => $userData['employee_id'] ?? null,
-            //         'email' => $userData['email'] ?? null,
-            //     ]
-            // );
-
             Log::channel('azure')->error('Failed to create user', [
                 'userData' => $userData,
                 'error' => $e->getMessage()
@@ -699,7 +591,7 @@ class AzureGraphService
             //     ]
             // );
 
-            $response = $this->makeRequestWithRetry(                
+            $response = $this->makeRequestWithRetry(
                 'PATCH',
                 $this->graphApiBaseUrl . "/users/{$azureId}",
                 ['accountEnabled' => false]
@@ -914,8 +806,11 @@ class AzureGraphService
         $strategy = config('azure.upn_strategy', 'name_based');
 
         if ($strategy === 'name_based') {
+            // Support both 'name' and 'displayName' keys
+            $name = $userData['name'] ?? $userData['displayName'] ?? 'user';
+
             // firstname.lastname@domain.com
-            $nameParts = explode(' ', strtolower($userData['name']));
+            $nameParts = explode(' ', strtolower($name));
             $firstName = $nameParts[0] ?? 'user';
             $lastName = end($nameParts);
 
@@ -923,7 +818,8 @@ class AzureGraphService
         }
 
         // employee_id based: employeeID@domain.com
-        return strtolower($userData['employee_id']) . "@{$this->defaultDomain}";
+        $employeeId = $userData['employee_id'] ?? $userData['employeeId'] ?? 'user';
+        return strtolower($employeeId) . "@{$this->defaultDomain}";
     }
 
     /**
@@ -934,7 +830,10 @@ class AzureGraphService
      */
     private function generateMailNickname(array $userData): string
     {
-        $nameParts = explode(' ', strtolower($userData['name']));
+        // Support both 'name' and 'displayName' keys
+        $name = $userData['name'] ?? $userData['displayName'] ?? 'user';
+
+        $nameParts = explode(' ', strtolower($name));
         $firstName = $nameParts[0] ?? 'user';
         $lastName = end($nameParts);
 

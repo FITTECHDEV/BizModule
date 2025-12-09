@@ -53,7 +53,7 @@
             <div class="col-md-3 col-lg-3 col-xl-auto p-1 m-0 flex-fill">
                 <div class="card bg-transit order-card mb-1" id="inProgressCard" style="cursor: pointer;">
                     <div class="card-block">
-                        <h6 class="m-b-20">In Progress</h6>
+                        <h6 class="m-b-20">In Transit</h6>
                         <h2 class="text-right">
                             <i class="fa fa-truck f-left"></i>
                             <span>{{ $stats->in_progress ?? 0 }}</span>
@@ -841,7 +841,7 @@
                                 if (!row.start_date)
                                     return '<small class="text-muted">Not started</small>';
                                 if (!row.end_date)
-                                    return '<small class="text-warning">In Progress...</small>';
+                                    return '<small class="text-warning">In Transit...</small>';
 
                                 let start = moment(row.start_date);
                                 let end = moment(row.end_date);
@@ -861,7 +861,7 @@
                             render: function(data, type, row) {
                                 const badgeClass = {
                                     'Planned': 'badge-info',
-                                    'In Progress': 'badge-warning',
+                                    'In Transit': 'badge-warning',
                                     'Completed': 'badge-success'
                                 } [data] || 'badge-secondary'; // ✅ SYNTAX FIX: Removed space
 
@@ -876,12 +876,12 @@
                                 let buttons =
                                     `<button class="btn btn-sm btn-info viewTrip" data-trip-id="${row.id}" title="View"><i class="fa fa-eye"></i></button> `;
 
-                                if (row.status === 'In Progress') {
+                                if (row.status === 'In Transit') {
                                     buttons +=
                                         `<button class="btn btn-sm btn-danger endTrip" data-trip-id="${row.id}" title="End Trip"><i class="fa fa-stop"></i></button> `;
                                 }
 
-                                if (row.status === 'Planned' || row.status === 'In Progress') {
+                                if (row.status === 'Planned' || row.status === 'In Transit') {
                                     buttons +=
                                         `<button class="btn btn-sm btn-warning addJobsBtn" data-trip-id="${row.id}" title="Add Jobs"><i class="fa fa-plus"></i></button>`;
                                 }
@@ -1757,8 +1757,8 @@
                                 text: 'Planned',
                                 class: 'badge-info'
                             },
-                            'In Progress': {
-                                text: 'In Progress',
+                            'In Transit': {
+                                text: 'In Transit',
                                 class: 'badge-warning'
                             },
                             'Completed': {
@@ -1767,7 +1767,7 @@
                             }
                         };
                         const status = trip.status || (trip.start_date ? (trip.end_date ? 'Completed' :
-                            'In Progress') : 'Planned');
+                            'In Transit') : 'Planned');
                         const badge = statusMap[status] || {
                             text: status,
                             class: 'badge-secondary'
@@ -1812,18 +1812,18 @@
                                 const typeBadge = job.job_type === 'Internal Job' ? 'info' :
                                     'primary';
                                 const statusBadge = job.status === 'Completed' ? 'success' :
-                                    job.status === 'In Progress' ? 'warning' : 'secondary';
+                                    job.status === 'In Transit' ? 'warning' : 'secondary';
 
                                 // ✅ Historical badge
                                 const historicalBadge = job.is_historical ?
                                     '<span class="historical-badge">H</span>' : '';
 
-                                // NEW — only allow starting a job if NO other job is In Progress
+                                // NEW — only allow starting a job if NO other job is In Transit
                                 // Inside your viewTrip success callback — replace the entire actionBtn logic with this:
-                                const hasActiveJob = jobs.some(j => j.status === 'In Progress');
+                                const hasActiveJob = jobs.some(j => j.status === 'In Transit');
                                 const activeJobNo = hasActiveJob ?
-                                    jobs.find(j => j.status === 'In Progress')?.job_number ||
-                                    'Job in progress' :
+                                    jobs.find(j => j.status === 'In Transit')?.job_number ||
+                                    'Job In Transit' :
                                     null;
 
                                 let actionBtn = '-';
@@ -1844,7 +1844,7 @@
                 <i class="fa fa-play"></i> Start
                 </button>`;
                                     }
-                                } else if (job.status === 'In Progress') {
+                                } else if (job.status === 'In Transit') {
                                     actionBtn = `
                 <button class="btn btn-sm btn-danger stopJobBtn"
                 data-job-id="${job.job_id}"
@@ -2024,7 +2024,7 @@
                                         .find('.badge')
                                         .removeClass('badge-secondary badge-info')
                                         .addClass('badge-warning')
-                                        .text('In Progress');
+                                        .text('In Transit');
 
                                     // Show beautiful message
                                     let message = `Job "${jobNo}" started successfully!`;
@@ -2032,7 +2032,7 @@
                                         message +=
                                             `\n\nTrip has been automatically started!\nLive tracking is now ACTIVE.`;
                                     } else {
-                                        message += `\n\nTrip is already in progress.`;
+                                        message += `\n\nTrip is already In Transit.`;
                                     }
 
                                     Swal.fire('Success!', message, 'success');
@@ -2276,7 +2276,7 @@
                             ${xhr.responseJSON.conflicting_job}
                         </p>
                         <p style="margin: 5px 0; color: #856404;">
-                            <i class="fa fa-clock"></i> <strong>Was In Progress:</strong><br>
+                            <i class="fa fa-clock"></i> <strong>Was In Transit:</strong><br>
                             ${xhr.responseJSON.conflicting_job_start} → ${xhr.responseJSON.conflicting_job_end}
                         </p>
                     </div>
@@ -2399,7 +2399,7 @@
                                     ${xhr.responseJSON.conflicting_job}
                                 </p>
                                 <p style="margin: 5px 0; color: #856404;">
-                                    <i class="fa fa-clock"></i> <strong>Was In Progress:</strong><br>
+                                    <i class="fa fa-clock"></i> <strong>Was In Transit:</strong><br>
                                     ${xhr.responseJSON.conflicting_job_start} → ${xhr.responseJSON.conflicting_job_end}
                                 </p>
                             </div>
@@ -2725,7 +2725,7 @@
                                             'overlap_end') {
                                             errorTitle = 'Job Timeline Conflict';
                                             errorMsg = `
-                <div style="text-align: left; font-size: 0.95rem;">
+                 <div style="text-align: left; font-size: 0.95rem;">
                     <p style="font-size: 1.1rem; margin-bottom: 15px;">
                         <strong><i class="fa fa-exclamation-triangle"></i> ${xhr.responseJSON.message}</strong>
                     </p>
@@ -2736,7 +2736,7 @@
                             ${xhr.responseJSON.conflicting_job}
                         </p>
                         <p style="margin: 5px 0; color: #856404;">
-                            <i class="fa fa-clock"></i> <strong>Was In Progress:</strong><br>
+                            <i class="fa fa-clock"></i> <strong>Was In Transit:</strong><br>
                             ${xhr.responseJSON.conflicting_job_start} → ${xhr.responseJSON.conflicting_job_end}
                         </p>
                     </div>
@@ -2754,8 +2754,8 @@
                             ${xhr.responseJSON.suggestion}
                         </p>
                     </div>
-                </div>
-            `;
+                    </div>
+             `;
                                         }
                                     }
 

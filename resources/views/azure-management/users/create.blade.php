@@ -1194,6 +1194,10 @@ gap: 0 !important;
     };
 
     // Render modal assignments
+    // ========================================
+    // REPLACE YOUR renderModalAssignments FUNCTION
+    // ========================================
+
     function renderModalAssignments() {
         const card = moduleCards[currentModalCardId];
         const container = document.getElementById('modalAssignmentsContainer');
@@ -1228,131 +1232,178 @@ gap: 0 !important;
         const availableRoles = rolesCache[cacheKey] || [];
         const availableFunctions = isSCM ? (scmFunctionsCache || []) : [];
 
+        console.log('Rendering modal with:', {
+            module: module.name,
+            applicationCode,
+            isSCM,
+            availableRoles: availableRoles.length,
+            availableFunctions: availableFunctions.length
+        });
+
         container.innerHTML = card.assignments.map(a => {
             const isAllLocations = a.location === 'ALL';
             const isAllRoles = a.role_id === 'ALL';
             const isAllFunctions = a.function_id === 'ALL';
 
-            return `
-                <div class="assignment-item" id="${a.id}">
-                    <div class="assignment-header">
-                        <span style="font-weight: 600; color: var(--muted); font-size: 0.9em;">
-                            Assignment for ${escapeHtml(module.name)} (${escapeHtml(applicationCode)})
-                        </span>
-                        <button type="button" class="btn btn-sm btn-ghost" style="color: var(--danger);" onclick="deleteAssignment('${a.id}')">
-                            <i class="fas fa-trash"></i>
-                        </button>
+            console.log('Rendering assignment:', {
+                id: a.id,
+                isAllRoles,
+                role_id: a.role_id,
+                roleIds: a.roleIds,
+                roleCodes: a.roleCodes
+            });
+
+            // Generate role checkboxes HTML
+            const roleCheckboxesHTML = availableRoles.length > 0 ?
+                availableRoles.map(r => {
+                    // Check if this role is selected
+                    const isChecked = isAllRoles || (a.roleIds && a.roleIds.includes(String(r.id)));
+
+                    return `
+                    <div class="checkbox-option ${isAllRoles ? 'disabled' : ''}">
+                        <input type="checkbox" 
+                               id="${a.id}_role_${r.id}" 
+                               class="role-checkbox" 
+                               data-role-id="${r.id}"
+                               data-role-code="${escapeHtml(r.code)}"
+                               data-role-name="${escapeHtml(r.name)}"
+                               value="${r.id}" 
+                               ${isChecked ? 'checked' : ''} 
+                               ${isAllRoles ? 'disabled' : ''}>
+                        <label for="${a.id}_role_${r.id}">${escapeHtml(r.name)}</label>
                     </div>
-                    <div class="assignment-info" style="grid-template-columns: ${isSCM ? '1fr 1fr 1fr' : '1fr 1fr'};">
-                        <!-- OFFICE LOCATION -->
-                        <div class="info-field">
-                            <div class="field-label"><i class="fas fa-map-marker-alt"></i> Office Location</div>
-                            <div class="radio-group">
-                                <div class="radio-option">
-                                    <input type="radio" id="${a.id}_all_locations" name="${a.id}_location_type" class="all-locations-radio" ${isAllLocations ? 'checked' : ''} onchange="handleLocationRadioChange('${a.id}')">
-                                    <label for="${a.id}_all_locations">All Locations</label>
-                                </div>
-                                <div class="radio-option">
-                                    <input type="radio" id="${a.id}_specific_locations" name="${a.id}_location_type" class="specific-locations-radio" ${!isAllLocations ? 'checked' : ''} onchange="handleLocationRadioChange('${a.id}')">
-                                    <label for="${a.id}_specific_locations">Specific Location</label>
-                                </div>
+                `;
+                }).join('') :
+                '<p style="padding: 10px; color: #666;">No roles available for ' + escapeHtml(applicationCode) + '</p>';
+
+            return `
+            <div class="assignment-item" id="${a.id}">
+                <div class="assignment-header">
+                    <span style="font-weight: 600; color: var(--muted); font-size: 0.9em;">
+                        Assignment for ${escapeHtml(module.name)} (${escapeHtml(applicationCode)})
+                    </span>
+                    <button type="button" class="btn btn-sm btn-ghost" style="color: var(--danger);" onclick="deleteAssignment('${a.id}')">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+                <div class="assignment-info" style="grid-template-columns: ${isSCM ? '1fr 1fr 1fr' : '1fr 1fr'};">
+                    <!-- OFFICE LOCATION -->
+                    <div class="info-field">
+                        <div class="field-label"><i class="fas fa-map-marker-alt"></i> Office Location</div>
+                        <div class="radio-group">
+                            <div class="radio-option">
+                                <input type="radio" 
+                                       id="${a.id}_all_locations" 
+                                       name="${a.id}_location_type" 
+                                       class="all-locations-radio" 
+                                       ${isAllLocations ? 'checked' : ''}>
+                                <label for="${a.id}_all_locations">All Locations</label>
                             </div>
-                            <div class="checkboxes-grid">
-                                ${locationsData.map(l => {
-                                    const locCode = l.code.trim();
-                                    const isChecked = a.locationCodes && a.locationCodes.includes(locCode);
-                                    return `
-                                        <div class="checkbox-option ${isAllLocations ? 'disabled' : ''}">
-                                            <input type="checkbox" 
-                                                   id="${a.id}_loc_${locCode}" 
-                                                   class="location-checkbox" 
-                                                   data-location-id="${l.id}"
-                                                   data-location-code="${locCode}"
-                                                   data-location-name="${escapeHtml(l.name)}"
-                                                   value="${locCode}" 
-                                                   ${isChecked ? 'checked' : ''} 
-                                                   ${isAllLocations ? 'disabled' : ''} 
-                                                   onchange="handleLocationCheckboxChange('${a.id}')">
-                                            <label for="${a.id}_loc_${locCode}">${escapeHtml(l.name)}</label>
-                                        </div>
-                                    `;
-                                }).join('')}
-                            </div>
-                        </div>
-                        
-                        <!-- SCM FUNCTIONS (Only for OPS/OPSUAT) -->
-                        ${isSCM ? `
-                        <div class="info-field">
-                            <div class="field-label"><i class="fas fa-cog"></i> Function (SCM)</div>
-                            <div class="radio-group">
-                                <div class="radio-option">
-                                    <input type="radio" id="${a.id}_all_functions" name="${a.id}_function_type" class="all-functions-radio" ${isAllFunctions ? 'checked' : ''} onchange="handleFunctionRadioChange('${a.id}')">
-                                    <label for="${a.id}_all_functions">All Functions</label>
-                                </div>
-                                <div class="radio-option">
-                                    <input type="radio" id="${a.id}_specific_functions" name="${a.id}_function_type" class="specific-functions-radio" ${!isAllFunctions ? 'checked' : ''} onchange="handleFunctionRadioChange('${a.id}')">
-                                    <label for="${a.id}_specific_functions">Specific Function</label>
-                                </div>
-                            </div>
-                            <div class="checkboxes-grid">
-                                ${availableFunctions.length > 0 ? availableFunctions.map(f => {
-                                    const isChecked = a.functionIds && a.functionIds.includes(String(f.id));
-                                    return `
-                                        <div class="checkbox-option ${isAllFunctions ? 'disabled' : ''}">
-                                            <input type="checkbox" 
-                                                   id="${a.id}_func_${f.id}" 
-                                                   class="function-checkbox" 
-                                                   data-function-id="${f.id}"
-                                                   data-function-code="${escapeHtml(f.code)}"
-                                                   value="${f.id}" 
-                                                   ${isChecked ? 'checked' : ''} 
-                                                   ${isAllFunctions ? 'disabled' : ''} 
-                                                   onchange="handleFunctionCheckboxChange('${a.id}')">
-                                            <label for="${a.id}_func_${f.id}">${escapeHtml(f.name)}</label>
-                                        </div>
-                                    `;
-                                }).join('') : '<p style="padding: 10px; color: #666;">No functions available</p>'}
+                            <div class="radio-option">
+                                <input type="radio" 
+                                       id="${a.id}_specific_locations" 
+                                       name="${a.id}_location_type" 
+                                       class="specific-locations-radio" 
+                                       ${!isAllLocations ? 'checked' : ''}>
+                                <label for="${a.id}_specific_locations">Specific Location</label>
                             </div>
                         </div>
-                        ` : ''}
-                        
-                        <!-- ROLES -->
-                        <div class="info-field">
-                            <div class="field-label"><i class="fas fa-user-tag"></i> Role</div>
-                            <div class="radio-group">
-                                <div class="radio-option">
-                                    <input type="radio" id="${a.id}_all_roles" name="${a.id}_role_type" class="all-roles-radio" ${isAllRoles ? 'checked' : ''} onchange="handleRoleRadioChange('${a.id}')">
-                                    <label for="${a.id}_all_roles">All Roles</label>
-                                </div>
-                                <div class="radio-option">
-                                    <input type="radio" id="${a.id}_specific_roles" name="${a.id}_role_type" class="specific-roles-radio" ${!isAllRoles ? 'checked' : ''} onchange="handleRoleRadioChange('${a.id}')">
-                                    <label for="${a.id}_specific_roles">Specific Role</label>
-                                </div>
+                        <div class="checkboxes-grid">
+                            ${locationsData.map(l => {
+                                const locCode = l.code.trim();
+                                const isChecked = a.locationCodes && a.locationCodes.includes(locCode);
+                                return `
+                                    <div class="checkbox-option ${isAllLocations ? 'disabled' : ''}">
+                                        <input type="checkbox" 
+                                               id="${a.id}_loc_${locCode}" 
+                                               class="location-checkbox" 
+                                               data-location-id="${l.id}"
+                                               data-location-code="${locCode}"
+                                               data-location-name="${escapeHtml(l.name)}"
+                                               value="${locCode}" 
+                                               ${isChecked ? 'checked' : ''} 
+                                               ${isAllLocations ? 'disabled' : ''}>
+                                        <label for="${a.id}_loc_${locCode}">${escapeHtml(l.name)}</label>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                    
+                    <!-- SCM FUNCTIONS (Only for OPS/OPSUAT) -->
+                    ${isSCM ? `
+                    <div class="info-field">
+                        <div class="field-label"><i class="fas fa-cog"></i> Function (SCM)</div>
+                        <div class="radio-group">
+                            <div class="radio-option">
+                                <input type="radio" 
+                                       id="${a.id}_all_functions" 
+                                       name="${a.id}_function_type" 
+                                       class="all-functions-radio" 
+                                       ${isAllFunctions ? 'checked' : ''}>
+                                <label for="${a.id}_all_functions">All Functions</label>
                             </div>
-                            <div class="checkboxes-grid">
-                                ${availableRoles.length > 0 ? availableRoles.map(r => {
-                                    const isChecked = a.roleIds && a.roleIds.includes(String(r.id));
-                                    return `
-                                        <div class="checkbox-option ${isAllRoles ? 'disabled' : ''}">
-                                            <input type="checkbox" 
-                                                   id="${a.id}_role_${r.id}" 
-                                                   class="role-checkbox" 
-                                                   data-role-id="${r.id}"
-                                                   data-role-code="${escapeHtml(r.code)}"
-                                                   value="${r.id}" 
-                                                   ${isChecked ? 'checked' : ''} 
-                                                   ${isAllRoles ? 'disabled' : ''} 
-                                                   onchange="handleRoleCheckboxChange('${a.id}')">
-                                            <label for="${a.id}_role_${r.id}">${escapeHtml(r.name)}</label>
-                                        </div>
-                                    `;
-                                }).join('') : '<p style="padding: 10px; color: #666;">No roles available for ' + escapeHtml(applicationCode) + '</p>'}
+                            <div class="radio-option">
+                                <input type="radio" 
+                                       id="${a.id}_specific_functions" 
+                                       name="${a.id}_function_type" 
+                                       class="specific-functions-radio" 
+                                       ${!isAllFunctions ? 'checked' : ''}>
+                                <label for="${a.id}_specific_functions">Specific Function</label>
                             </div>
+                        </div>
+                        <div class="checkboxes-grid">
+                            ${availableFunctions.length > 0 ? availableFunctions.map(f => {
+                                const isChecked = a.functionIds && a.functionIds.includes(String(f.id));
+                                return `
+                                    <div class="checkbox-option ${isAllFunctions ? 'disabled' : ''}">
+                                        <input type="checkbox" 
+                                               id="${a.id}_func_${f.id}" 
+                                               class="function-checkbox" 
+                                               data-function-id="${f.id}"
+                                               data-function-code="${escapeHtml(f.code)}"
+                                               value="${f.id}" 
+                                               ${isChecked ? 'checked' : ''} 
+                                               ${isAllFunctions ? 'disabled' : ''}>
+                                        <label for="${a.id}_func_${f.id}">${escapeHtml(f.name)}</label>
+                                    </div>
+                                `;
+                            }).join('') : '<p style="padding: 10px; color: #666;">No functions available</p>'}
+                        </div>
+                    </div>
+                    ` : ''}
+                    
+                    <!-- ROLES -->
+                    <div class="info-field">
+                        <div class="field-label"><i class="fas fa-user-tag"></i> Role</div>
+                        <div class="radio-group">
+                            <div class="radio-option">
+                                <input type="radio" 
+                                       id="${a.id}_all_roles" 
+                                       name="${a.id}_role_type" 
+                                       class="all-roles-radio" 
+                                       ${isAllRoles ? 'checked' : ''}>
+                                <label for="${a.id}_all_roles">All Roles</label>
+                            </div>
+                            <div class="radio-option">
+                                <input type="radio" 
+                                       id="${a.id}_specific_roles" 
+                                       name="${a.id}_role_type" 
+                                       class="specific-roles-radio" 
+                                       ${!isAllRoles ? 'checked' : ''}>
+                                <label for="${a.id}_specific_roles">Specific Role</label>
+                            </div>
+                        </div>
+                        <div class="checkboxes-grid">
+                            ${roleCheckboxesHTML}
                         </div>
                     </div>
                 </div>
-            `;
+            </div>
+        `;
         }).join('');
+
+        console.log('✓ Modal rendered with', card.assignments.length, 'assignments');
     }
 
     // Handle location radio change (All vs Specific)
@@ -1513,23 +1564,25 @@ gap: 0 !important;
         if (allRadio && allRadio.checked) {
             console.log('✅ "All Roles" selected');
 
-            // Enable all checkboxes and mark them checked
+            // Check and disable all checkboxes
             checkboxes.forEach(cb => {
                 cb.checked = true;
                 cb.disabled = true;
             });
             checkboxOptions.forEach(opt => opt.classList.add('disabled'));
 
-            // Set ALL in assignment
+            // Collect ALL role data
             assignment.role_id = 'ALL';
             assignment.roleIds = ['ALL'];
             assignment.roleCodes = ['ALL'];
 
-            console.log('Updated assignment:', {
-                role_id: assignment.role_id,
-                roleIds: assignment.roleIds,
-                roleCodes: assignment.roleCodes
-            });
+            // Also store the actual role data for expansion
+            assignment._allRoleData = Array.from(checkboxes).map(cb => ({
+                id: cb.getAttribute('data-role-id'),
+                code: cb.getAttribute('data-role-code')
+            }));
+
+            console.log('✅ Stored ALL roles:', assignment.roleIds);
         } else {
             console.log('✅ "Specific Roles" selected');
 
@@ -1544,9 +1597,17 @@ gap: 0 !important;
             assignment.role_id = '';
             assignment.roleIds = [];
             assignment.roleCodes = [];
+            assignment._allRoleData = undefined;
 
-            console.log('Cleared role selection - user must now select specific roles');
+            console.log('✅ Cleared role selection - user must now select specific roles');
         }
+
+        // Log final state
+        console.log('Final assignment state:', {
+            role_id: assignment.role_id,
+            roleIds: assignment.roleIds,
+            roleCodes: assignment.roleCodes
+        });
     };
 
     // Handle role checkbox change (when specific roles are selected)
@@ -1561,6 +1622,7 @@ gap: 0 !important;
 
         // Get only checked and enabled checkboxes
         const checkboxes = container.querySelectorAll('.role-checkbox:checked:not(:disabled)');
+        console.log('→ Found', checkboxes.length, 'checked roles');
 
         const card = moduleCards[currentModalCardId];
         if (!card) {
@@ -1579,27 +1641,102 @@ gap: 0 !important;
         assignment.roleCodes = [];
 
         // Populate from checked checkboxes
-        checkboxes.forEach(cb => {
+        checkboxes.forEach((cb, idx) => {
             const roleId = cb.getAttribute('data-role-id');
             const roleCode = cb.getAttribute('data-role-code');
+
+            console.log(`  Role ${idx + 1}:`, {
+                id: roleId,
+                code: roleCode,
+                value: cb.value
+            });
 
             if (roleId && roleCode) {
                 assignment.roleIds.push(roleId);
                 assignment.roleCodes.push(roleCode);
+            } else {
+                console.warn(`  ⚠️ Role ${idx + 1} missing id or code`);
             }
         });
 
         // Set role_id to first selected role (for backwards compatibility)
         assignment.role_id = assignment.roleIds.length > 0 ? assignment.roleIds[0] : '';
 
-        console.log('Updated role selection:', {
+        console.log('✅ Updated role selection:', {
             selected_count: checkboxes.length,
             role_id: assignment.role_id,
             roleIds: assignment.roleIds,
             roleCodes: assignment.roleCodes
         });
+
+        // Visual feedback - show what's selected
+        if (assignment.roleIds.length === 0) {
+            console.warn('⚠️ No roles selected!');
+        }
     };
 
+    // Add event delegation for dynamically created checkboxes
+    document.addEventListener('change', function(e) {
+        // Location checkboxes
+        if (e.target.classList.contains('location-checkbox')) {
+            const assignmentContainer = e.target.closest('.assignment-item');
+            if (assignmentContainer) {
+                const assignId = assignmentContainer.id;
+                console.log('📡 Event delegation caught location checkbox change for:', assignId);
+                handleLocationCheckboxChange(assignId);
+            }
+        }
+
+        // Location radio buttons
+        if (e.target.classList.contains('all-locations-radio') || e.target.classList.contains('specific-locations-radio')) {
+            const assignmentContainer = e.target.closest('.assignment-item');
+            if (assignmentContainer) {
+                const assignId = assignmentContainer.id;
+                console.log('📡 Event delegation caught location radio change for:', assignId);
+                handleLocationRadioChange(assignId);
+            }
+        }
+
+        // Function checkboxes (for SCM modules)
+        if (e.target.classList.contains('function-checkbox')) {
+            const assignmentContainer = e.target.closest('.assignment-item');
+            if (assignmentContainer) {
+                const assignId = assignmentContainer.id;
+                console.log('📡 Event delegation caught function checkbox change for:', assignId);
+                handleFunctionCheckboxChange(assignId);
+            }
+        }
+
+        // Function radio buttons
+        if (e.target.classList.contains('all-functions-radio') || e.target.classList.contains('specific-functions-radio')) {
+            const assignmentContainer = e.target.closest('.assignment-item');
+            if (assignmentContainer) {
+                const assignId = assignmentContainer.id;
+                console.log('📡 Event delegation caught function radio change for:', assignId);
+                handleFunctionRadioChange(assignId);
+            }
+        }
+
+        // Role checkboxes
+        if (e.target.classList.contains('role-checkbox')) {
+            const assignmentContainer = e.target.closest('.assignment-item');
+            if (assignmentContainer) {
+                const assignId = assignmentContainer.id;
+                console.log('📡 Event delegation caught role checkbox change for:', assignId);
+                handleRoleCheckboxChange(assignId);
+            }
+        }
+
+        // Role radio buttons
+        if (e.target.classList.contains('all-roles-radio') || e.target.classList.contains('specific-roles-radio')) {
+            const assignmentContainer = e.target.closest('.assignment-item');
+            if (assignmentContainer) {
+                const assignId = assignmentContainer.id;
+                console.log('📡 Event delegation caught role radio change for:', assignId);
+                handleRoleRadioChange(assignId);
+            }
+        }
+    });
 
     // Add new module
     function addNewModule() {
@@ -1679,29 +1816,91 @@ gap: 0 !important;
 
     // Delete assignment
     window.deleteAssignment = (assignId) => {
+        console.log('🗑️ Delete assignment clicked:', assignId);
+        console.log('Current modal card ID:', currentModalCardId);
+
+        if (!currentModalCardId) {
+            console.error('❌ No modal card ID - cannot delete');
+            showAlert('error', 'Error', 'Cannot delete assignment - modal context lost');
+            return;
+        }
+
+        const card = moduleCards[currentModalCardId];
+
+        if (!card) {
+            console.error('❌ Card not found:', currentModalCardId);
+            showAlert('error', 'Error', 'Cannot delete assignment - card not found');
+            return;
+        }
+
+        console.log('Card before delete:', {
+            id: card.id,
+            module: card.module_name,
+            assignments: card.assignments.length
+        });
+
         Swal.fire({
             title: 'Delete Assignment?',
-            text: 'This action cannot be undone',
+            html: `
+            <p>Are you sure you want to delete this assignment?</p>
+            <p style="color: #666; font-size: 0.9em; margin-top: 10px;">
+                Module: <strong>${escapeHtml(card.module_name)}</strong><br>
+                Assignments remaining after delete: <strong>${card.assignments.length - 1}</strong>
+            </p>
+        `,
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#ef4444',
-            confirmButtonText: 'Yes, delete it'
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Yes, delete it',
+            cancelButtonText: 'Cancel'
         }).then((result) => {
             if (result.isConfirmed) {
-                const card = moduleCards[currentModalCardId];
-                card.assignments = card.assignments.filter(a => a.id !== assignId);
+                console.log('✓ Delete confirmed');
 
-                if (card.assignments.length === 0 && card.isNew) {
-                    delete moduleCards[currentModalCardId];
-                    closeModal();
-                    if (Object.keys(moduleCards).length === 0) {
-                        document.querySelector('.action-buttons').classList.remove('show');
+                // Filter out the assignment
+                const assignmentsBefore = card.assignments.length;
+                card.assignments = card.assignments.filter(a => a.id !== assignId);
+                const assignmentsAfter = card.assignments.length;
+
+                console.log(`Assignments: ${assignmentsBefore} → ${assignmentsAfter}`);
+
+                // Check if this was the last assignment
+                if (card.assignments.length === 0) {
+                    console.log('⚠️ Last assignment deleted');
+
+                    // If this is a NEW card with no assignments, delete the entire card
+                    if (card.isNew) {
+                        console.log('→ Deleting entire NEW card (no assignments left)');
+                        delete moduleCards[currentModalCardId];
+
+                        // Close modal
+                        document.getElementById('moduleModal').classList.remove('active');
+                        currentModalCardId = null;
+                        originalCardState = null;
+
+                        // Re-render grid
+                        renderAllCards();
+
+                        // Hide action buttons if no more cards
+                        if (Object.keys(moduleCards).length === 0) {
+                            document.querySelector('.action-buttons').classList.remove('show');
+                        }
+
+                        showAlert('success', 'Deleted', 'Module removed (no assignments left)');
+                    } else {
+                        // If this is an EXISTING card, show warning but keep card
+                        showAlert('warning', 'Warning', 'All assignments removed. Add new assignments or delete the module.');
+                        renderModalAssignments();
                     }
                 } else {
+                    // Still has assignments - just re-render modal
+                    console.log('✓ Assignment deleted, remaining:', card.assignments.length);
                     renderModalAssignments();
+                    showAlert('success', 'Deleted', 'Assignment removed successfully');
                 }
-
-                showAlert('success', 'Deleted', 'Assignment removed');
+            } else {
+                console.log('✗ Delete cancelled');
             }
         });
     };
@@ -1947,8 +2146,12 @@ gap: 0 !important;
         );
     }
 
+    // ====================================
+    // REPLACE YOUR FORM SUBMIT HANDLER (around line 2250)
+    // ====================================
+
     document.getElementById('userForm').addEventListener('submit', function(e) {
-        e.preventDefault(); // ✅ CRITICAL: Prevent form from submitting normally
+        e.preventDefault(); // Prevent default form submission
 
         console.log('=== FORM SUBMISSION STARTED ===');
         console.log('Module Cards at submit:', moduleCards);
@@ -1969,6 +2172,7 @@ gap: 0 !important;
         const inputsGenerated = updateHiddenInputs();
         if (!inputsGenerated) {
             console.error('❌ Failed to generate hidden inputs');
+            showAlert('error', 'Validation Error', 'Failed to prepare module data. Please try again.');
             return;
         }
 
@@ -1981,16 +2185,91 @@ gap: 0 !important;
             return;
         }
 
-        console.log('✅ Form validation passed. Hidden input value:', hiddenInput.value);
+        console.log('✅ Form validation passed');
+        console.log('📤 Submitting data:', hiddenInput.value);
 
-        showLoading();
-
+        // Disable submit button
         const submitBtn = document.getElementById('submitBtn');
         submitBtn.disabled = true;
         submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating...';
 
-        // ✅ Submit the form programmatically
-        this.submit();
+        // Show loading
+        showLoading();
+
+        // ✅ USE AJAX INSTEAD OF NORMAL SUBMIT
+        const formData = new FormData(this);
+
+        // Debug: Log what we're sending
+        console.log('📦 Form Data being sent:');
+        for (let pair of formData.entries()) {
+            console.log(`  ${pair[0]}: ${pair[1].substring(0, 100)}${pair[1].length > 100 ? '...' : ''}`);
+        }
+
+        fetch(this.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            })
+            .then(response => {
+                console.log('📨 Response status:', response.status);
+                return response.json().catch(() => {
+                    // If response is not JSON, try to get text
+                    return response.text().then(text => {
+                        console.error('❌ Response is not JSON:', text.substring(0, 500));
+                        throw new Error('Server returned invalid response');
+                    });
+                });
+            })
+            .then(data => {
+                console.log('✅ Response data:', data);
+
+                if (data.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Success!',
+                        text: data.message || 'User created successfully',
+                        confirmButtonColor: '#3498db'
+                    }).then(() => {
+                        // Redirect on success
+                        if (data.redirect) {
+                            window.location.href = data.redirect;
+                        } else {
+                            window.location.href = '{{ route("azure.dashboard.index") }}';
+                        }
+                    });
+                } else {
+                    // Server returned error
+                    console.error('❌ Server error:', data);
+
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: data.message || 'Failed to create user',
+                        confirmButtonColor: '#e74c3c'
+                    });
+
+                    // Re-enable submit button
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '<i class="fas fa-save"></i> Create User';
+                }
+            })
+            .catch(error => {
+                console.error('❌ Submission error:', error);
+
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'An error occurred while creating the user. Please try again.',
+                    confirmButtonColor: '#e74c3c'
+                });
+
+                // Re-enable submit button
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fas fa-save"></i> Create User';
+            });
     });
 
     // ================================

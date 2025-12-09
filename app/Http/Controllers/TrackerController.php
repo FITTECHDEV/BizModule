@@ -133,7 +133,7 @@ class TrackerController extends Controller
                     if ($trip->EndDate !== null) {
                         $status = 'Completed';
                     } elseif ($trip->StartDate !== null) {
-                        $status = 'In Progress';
+                        $status = 'In Transit';
                     }
 
                     return [
@@ -226,7 +226,7 @@ class TrackerController extends Controller
             if ($trip->end_date_raw !== null) {
                 $trip->status = 'Completed';
             } elseif ($trip->start_date_raw !== null) {
-                $trip->status = 'In Progress';
+                $trip->status = 'In Transit';
             } else {
                 $trip->status = 'Planned';
             }
@@ -247,7 +247,7 @@ class TrackerController extends Controller
                     DB::raw("
                         CASE
                             WHEN tjm.EndDate IS NOT NULL THEN 'Completed'
-                            WHEN tjm.StartDate IS NOT NULL THEN 'In Progress'
+                            WHEN tjm.StartDate IS NOT NULL THEN 'In Transit'
                             ELSE 'Allocated'
                         END as status
                     "),
@@ -981,8 +981,8 @@ public function startJob(Request $request, $tripId, $jobId)
         if ($isManualStart) {
             $manualStartDateTime = Carbon::parse($customStartDate, 'Africa/Nairobi');
 
-            // Find ANY job that was in progress at the proposed start time
-            // A job is "in progress" if: start_time <= proposed_time < end_time
+            // Find ANY job that was In Transit at the proposed start time
+            // A job is "In Transit" if: start_time <= proposed_time < end_time
             $overlappingJob = DB::table('Trip_TripJobMapping')
                 ->where('TripInfoID', $tripId)
                 ->where('IsDeleted', false)
@@ -1312,7 +1312,7 @@ public function completeJob(Request $request, $tripId, $jobId)
         if ($isBackdated || $isHistorical) {
             $proposedEndDateTime = Carbon::parse($customEndDate, 'Africa/Nairobi');
 
-            // Find ANY job that was in progress at the proposed end time
+            // Find ANY job that was In Transit at the proposed end time
             // Exclude the current job and check if proposed end falls during another job
             $overlappingJob = DB::table('Trip_TripJobMapping')
                 ->where('TripInfoID', $tripId)

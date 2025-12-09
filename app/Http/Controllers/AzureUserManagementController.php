@@ -242,15 +242,14 @@ class AzureUserManagementController extends Controller
                 Id, userPrincipalName, displayName, surname, mail, givenName,
                 telephoneNumber, mobilePhone, jobTitle, department, 
                 officeLocation, accountEnabled, userType, usageLocation, country,
-                createdDateTime, Status, EmployeCode, companyName, AzureId,
-                LastModifiedBy, LastModifiedOn
+                createdDateTime, Status, EmployeCode, companyName, AzureId
+                
             )
             VALUES (
                 ?, ?, ?, ?, ?, ?,
                 ?, ?, ?, ?,
                 ?, ?, ?, ?, ?,
-                GETDATE(), ?, ?, ?, NULL,
-                ?, GETDATE()
+                GETDATE(), ?, ?, ?, NULL
             )
         ", [
                 $userId,
@@ -271,7 +270,6 @@ class AzureUserManagementController extends Controller
                 'Pending', // Status = Pending
                 $request->employee_id,
                 $request->company_id, // Can be null
-                Auth::id() // LastModifiedBy
             ]);
 
             Log::info('✓ Step 2: User created in local database', [
@@ -355,13 +353,10 @@ class AzureUserManagementController extends Controller
 
             DB::connection('sqlsrv')->update("
             UPDATE Azure_Users 
-            SET AzureId = ?,
-                LastModifiedBy = ?,
-                LastModifiedOn = GETDATE()
+            SET AzureId = ?
             WHERE Id = ?
         ", [
                 $azureId,
-                Auth::id(),
                 $userId
             ]);
 
@@ -723,17 +718,36 @@ class AzureUserManagementController extends Controller
                 ->values()
                 ->toArray();
 
+            $successMessage = sprintf(
+                '✓ User created successfully!<br>' .
+                    'Azure ID: %s<br>' .
+                    'Status: <strong>Pending</strong> (awaiting external system sync)<br>' .
+                    '%d module assignment(s) created across %d module(s): %s',
+                substr($azureId, 0, 8) . '...',
+                $assignmentsCreated,
+                count($uniqueModules),
+                implode(', ', $uniqueModules)
+            );
+
+            // ✅ DETECT AJAX REQUEST AND RETURN APPROPRIATE RESPONSE
+            if ($request->wantsJson() || $request->ajax() || $request->header('X-Requested-With') === 'XMLHttpRequest') {
+                return response()->json([
+                    'success' => true,
+                    'message' => strip_tags($successMessage),
+                    'redirect' => route('azure.dashboard.index'),
+                    'data' => [
+                        'user_id' => $userId,
+                        'azure_id' => $azureId,
+                        'email' => $request->email,
+                        'assignments_created' => $assignmentsCreated,
+                        'modules' => $uniqueModules
+                    ]
+                ]);
+            }
+
+            // Regular form submission - redirect
             return redirect()->route('azure.dashboard.index')
-                ->with('success', sprintf(
-                    '✓ User created successfully!<br>' .
-                        'Azure ID: %s<br>' .
-                        'Status: <strong>Pending</strong> (awaiting external system sync)<br>' .
-                        '%d module assignment(s) created across %d module(s): %s',
-                    substr($azureId, 0, 8) . '...',
-                    $assignmentsCreated,
-                    count($uniqueModules),
-                    implode(', ', $uniqueModules)
-                ));
+                ->with('success', $successMessage);
         } catch (\Exception $e) {
             // ====================================================================
             // ERROR HANDLING & ROLLBACK
@@ -764,7 +778,7 @@ class AzureUserManagementController extends Controller
                 } catch (\Exception $deleteError) {
                     Log::critical('✗ CRITICAL: Failed to delete Azure user during rollback', [
                         'azure_id' => $azureId,
-                        'email' => $request->email,
+                        'email' => $request->email ?? 'unknown',
                         'error' => $deleteError->getMessage(),
                         'action_required' => 'MANUAL CLEANUP NEEDED IN AZURE AD'
                     ]);
@@ -776,6 +790,8 @@ class AzureUserManagementController extends Controller
                 }
             }
 
+            $errorMessage = 'Failed to create user: ' . $e->getMessage() . $cleanupWarning;
+
             Log::error('=== USER CREATION FAILED ===', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -784,10 +800,22 @@ class AzureUserManagementController extends Controller
                 'request_data' => $request->except(['_token'])
             ]);
 
+            // ✅ DETECT AJAX REQUEST AND RETURN APPROPRIATE ERROR RESPONSE
+            if ($request->wantsJson() || $request->ajax() || $request->header('X-Requested-With') === 'XMLHttpRequest') {
+                return response()->json([
+                    'success' => false,
+                    'message' => strip_tags($errorMessage),
+                    'error' => $e->getMessage(),
+                    'user_id' => $userId,
+                    'azure_id' => $azureId
+                ], 422); // 422 Unprocessable Entity
+            }
+
+            // Regular form submission - redirect back with errors
             return redirect()->back()
                 ->withInput()
                 ->withErrors([
-                    'error' => 'Failed to create user: ' . $e->getMessage() . $cleanupWarning
+                    'error' => $errorMessage
                 ]);
         }
     }
@@ -1232,12 +1260,9 @@ class AzureUserManagementController extends Controller
             // Update status to Active
             DB::connection('sqlsrv')->update("
             UPDATE Azure_Users 
-            SET Status = 'Active',
-                LastModifiedBy = ?,
-                LastModifiedOn = GETDATE()
+            SET Status = 'Active'
             WHERE Id = ?
         ", [
-                Auth::id(), // Guaranteed to exist due to AzureStoreUserRequest authorization
                 $user->Id
             ]);
 
