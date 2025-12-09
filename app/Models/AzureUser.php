@@ -21,22 +21,22 @@ class AzureUser extends Authenticatable
      * The table associated with the model.
      */
     protected $table = 'Azure_Users';
-    
+
     /**
      * The primary key for the model.
      */
     protected $primaryKey = 'Id';
-    
+
     /**
      * Indicates if the IDs are auto-incrementing.
      */
     public $incrementing = true;
-    
+
     /**
      * The "type" of the primary key ID.
      */
     protected $keyType = 'string';
-    
+
     /**
      * Indicates if the model should be timestamped.
      */
@@ -69,6 +69,7 @@ class AzureUser extends Authenticatable
         'createdDateTime',
         'LastModifiedBy',
         'LastModifiedOn',
+        'AzureId',              // Using existing column name
     ];
 
     /**
@@ -87,6 +88,43 @@ class AzureUser extends Authenticatable
         'LastModifiedOn' => 'datetime',
         'accountEnabled' => 'boolean',
     ];
+
+    // =================================================================
+    // ATTRIBUTE ACCESSORS - Map to existing columns
+    // =================================================================
+
+    /**
+     * Accessor: azure_id -> AzureId (existing column)
+     */
+    public function getAzureIdAttribute()
+    {
+        return $this->attributes['AzureId'] ?? null;
+    }
+
+    /**
+     * Mutator: azure_id -> AzureId (existing column)
+     */
+    public function setAzureIdAttribute($value)
+    {
+        $this->attributes['AzureId'] = $value;
+    }
+
+    /**
+     * Accessor: azure_upn -> userPrincipalName (existing column)
+     * Since Azure UPN is the same as userPrincipalName
+     */
+    public function getAzureUpnAttribute()
+    {
+        return $this->attributes['userPrincipalName'] ?? null;
+    }
+
+    /**
+     * Accessor: azure_display_name -> displayName (existing column)
+     */
+    public function getAzureDisplayNameAttribute()
+    {
+        return $this->attributes['displayName'] ?? null;
+    }
 
     // =================================================================
     // RELATIONSHIPS
@@ -121,7 +159,7 @@ class AzureUser extends Authenticatable
     public function scopeActive($query)
     {
         return $query->where('Status', 'Active')
-                     ->where('accountEnabled', true);
+            ->where('accountEnabled', true);
     }
 
     /**
@@ -155,9 +193,9 @@ class AzureUser extends Authenticatable
     {
         return $query->where(function ($q) use ($term) {
             $q->where('displayName', 'LIKE', "%{$term}%")
-              ->orWhere('mail', 'LIKE', "%{$term}%")
-              ->orWhere('userPrincipalName', 'LIKE', "%{$term}%")
-              ->orWhere('EmployeCode', 'LIKE', "%{$term}%");
+                ->orWhere('mail', 'LIKE', "%{$term}%")
+                ->orWhere('userPrincipalName', 'LIKE', "%{$term}%")
+                ->orWhere('EmployeCode', 'LIKE', "%{$term}%");
         });
     }
 
@@ -173,13 +211,13 @@ class AzureUser extends Authenticatable
         if (empty($this->displayName)) {
             return 'U';
         }
-        
+
         $names = explode(' ', trim($this->displayName));
-        
+
         if (count($names) >= 2) {
             return strtoupper($names[0][0] . $names[1][0]);
         }
-        
+
         return strtoupper(substr($this->displayName, 0, 2));
     }
 
@@ -246,6 +284,200 @@ class AzureUser extends Authenticatable
     public function isEnabled(): bool
     {
         return (bool) $this->accountEnabled;
+    }
+
+    // =================================================================
+    // AZURE PROVISIONING STATUS CHECKS
+    // =================================================================
+
+    /**
+     * Check if user has been provisioned to Azure AD
+     * Uses existing AzureId column
+     * 
+     * @return bool
+     */
+    public function isProvisionedToAzure(): bool
+    {
+        return !empty($this->AzureId);
+    }
+
+    /**
+     * Check if user can be deactivated
+     * User must be provisioned to Azure, currently active, and account enabled
+     * 
+     * @return bool
+     */
+    public function canBeDeactivated(): bool
+    {
+        return $this->isProvisionedToAzure() 
+            && $this->Status === 'Active' 
+            && $this->accountEnabled == 1;
+    }
+
+    /**
+     * Check if user can be reactivated
+     * User must be provisioned to Azure and currently inactive
+     * 
+     * @return bool
+     */
+    public function canBeReactivated(): bool
+    {
+        return $this->isProvisionedToAzure() 
+            && $this->Status === 'Inactive';
+    }
+
+    /**
+     * Check if user is currently deactivated
+     * 
+     * @return bool
+     */
+    public function isDeactivated(): bool
+    {
+        return $this->Status === 'Inactive';
+    }
+
+    /**
+     * Get the Azure provisioning status with details
+     * 
+     * @return array
+     */
+    public function getAzureProvisioningStatus(): array
+    {
+        if (!$this->isProvisionedToAzure()) {
+            return [
+                'provisioned' => false,
+                'status' => 'Not Provisioned',
+                'message' => 'User has not been provisioned to Azure AD yet.',
+                'azure_id' => null,
+                'azure_upn' => null,
+            ];
+        }
+
+        return [
+            'provisioned' => true,
+            'status' => $this->Status,
+            'account_enabled' => $this->accountEnabled == 1,
+            'azure_id' => $this->AzureId,
+            'azure_upn' => $this->userPrincipalName,
+            'azure_display_name' => $this->displayName,
+            'can_deactivate' => $this->canBeDeactivated(),
+            'can_reactivate' => $this->canBeReactivated(),
+        ];
+    }
+
+    /**
+     * Check if user needs Azure sync
+     * Compares local data with expected Azure state
+     * 
+     * @return bool
+     */
+    public function needsAzureSync(): bool
+    {
+        if (!$this->isProvisionedToAzure()) {
+            return true; // Not provisioned at all
+        }
+
+        // Check if status mismatch (local says Active but we're not sure about Azure)
+        if ($this->Status === 'Pending') {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Get a summary of Azure provisioning issues (if any)
+     * 
+     * @return array
+     */
+    public function getAzureProvisioningIssues(): array
+    {
+        $issues = [];
+
+        if (!$this->isProvisionedToAzure()) {
+            $issues[] = [
+                'type' => 'critical',
+                'message' => 'User not provisioned to Azure AD',
+                'action' => 'Provision user to Azure',
+            ];
+        }
+
+        if ($this->Status === 'Pending' && $this->isProvisionedToAzure()) {
+            $issues[] = [
+                'type' => 'warning',
+                'message' => 'User status is Pending but has Azure ID',
+                'action' => 'Update status to Active or verify Azure provisioning',
+            ];
+        }
+
+        if (empty($this->userPrincipalName) && $this->isProvisionedToAzure()) {
+            $issues[] = [
+                'type' => 'warning',
+                'message' => 'Missing User Principal Name',
+                'action' => 'Sync UPN from Azure AD',
+            ];
+        }
+
+        // Check for module assignments without Azure provisioning
+        if (!$this->isProvisionedToAzure() && $this->moduleAssignments()->count() > 0) {
+            $issues[] = [
+                'type' => 'critical',
+                'message' => 'Has module assignments but not provisioned to Azure',
+                'action' => 'Provision to Azure to enable group/role assignments',
+            ];
+        }
+
+        return $issues;
+    }
+
+    /**
+     * Mark user as provisioned to Azure
+     * Updates AzureId (existing column) and status
+     * 
+     * @param string $azureId Azure AD Object ID
+     * @param string|null $azureUpn Azure User Principal Name (optional, uses userPrincipalName)
+     * @param string|null $azureDisplayName Display name in Azure (optional, uses displayName)
+     * @param string|null $updatedBy Who performed the update
+     * @return bool
+     */
+    public function markAsProvisionedToAzure(
+        string $azureId, 
+        ?string $azureUpn = null, 
+        ?string $azureDisplayName = null,
+        ?string $updatedBy = null
+    ): bool {
+        // Update AzureId (existing column)
+        // Note: azureUpn and azureDisplayName are already stored in userPrincipalName and displayName
+        return DB::connection('sqlsrv')->update("
+            UPDATE Azure_Users 
+            SET AzureId = ?,
+                Status = 'Active',
+                LastModifiedBy = ?,
+                LastModifiedOn = GETDATE()
+            WHERE Id = ?
+        ", [
+            $azureId,
+            $updatedBy ?? 'system',
+            $this->Id
+        ]) > 0;
+    }
+
+    /**
+     * Clear Azure provisioning data (for rollback scenarios)
+     * 
+     * @param string|null $updatedBy Who performed the update
+     * @return bool
+     */
+    public function clearAzureProvisioning(?string $updatedBy = null): bool
+    {
+        return DB::connection('sqlsrv')->update("
+            UPDATE Azure_Users 
+            SET AzureId = NULL,
+                Status = 'Pending',
+                LastModifiedBy = ?,
+                LastModifiedOn = GETDATE()
+            WHERE Id = ?
+        ", [$updatedBy ?? 'system', $this->Id]) > 0;
     }
 
     // =================================================================
@@ -320,6 +552,9 @@ class AzureUser extends Authenticatable
             'account_enabled' => $this->accountEnabled,
             'module_count' => $this->module_count,
             'created_at' => $this->createdDateTime,
+            'azure_provisioned' => $this->isProvisionedToAzure(),
+            'azure_id' => $this->AzureId,
+            'azure_upn' => $this->userPrincipalName,
         ];
     }
 

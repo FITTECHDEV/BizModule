@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\AzureStoreUserRequest;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use App\Models\AzureUser;
@@ -82,9 +83,9 @@ class AzureUserManagementController extends Controller
             // Fetch modules from SQL Server Azure_SoftwareMaster
             $modulesRaw = DB::connection('sqlsrv')
                 ->select("SELECT Id, Name, ApplicationId 
-                     FROM Azure_SoftwareMaster 
-                     WHERE IsActive = 1 AND IsDeleted = 0 
-                     ORDER BY Name");
+                    FROM Azure_SoftwareMaster 
+                    WHERE IsActive = 1 AND IsDeleted = 0 
+                    ORDER BY Name");
 
             // Convert to Laravel collection with proper structure
             $modules = collect($modulesRaw)->map(function ($module) {
@@ -98,9 +99,9 @@ class AzureUserManagementController extends Controller
             // Fetch locations from Cust_Office table
             $locationsRaw = DB::connection('sqlsrv')
                 ->select("SELECT Id, Name, code 
-                     FROM Cust_Office 
-                     WHERE IsActive = 1 AND IsDeleted = 0 
-                     ORDER BY Name");
+                    FROM Cust_Office 
+                    WHERE IsActive = 1 AND IsDeleted = 0 
+                    ORDER BY Name");
 
             // Convert to Laravel collection
             $locations = collect($locationsRaw)->map(function ($location) {
@@ -135,56 +136,121 @@ class AzureUserManagementController extends Controller
     }
 
     /**
-     * Store a newly created user (with Azure provisioning)
+     * Store a newly created user with Azure AD provisioning
+     * 
+     * Flow:
+     * 1. Validate and decode modules JSON
+     * 2. Expand ALL selections (locations, roles, functions) server-side
+     * 3. Create user in local DB (Status='Pending')
+     * 4. Create user in Azure AD
+     * 5. Save AzureId to local DB
+     * 6. Create all expanded module assignments
+     * 7. Rollback everything if ANY step fails (all-or-nothing)
+     * 
+     * @param AzureStoreUserRequest $request
+     * @return \Illuminate\Http\RedirectResponse
      */
-    public function store(Request $request)
+    public function store(AzureStoreUserRequest $request)
     {
-        try {
+        // Variables to track what was created (for rollback)
+        $userId = null;
+        $azureId = null;
+        $azureService = null;
 
-            // Validate required fields
-            $request->validate([
-                'name' => 'required|string|max:100',
-                'email' => 'required|email|max:255',
-                'employee_id' => 'required|string|max:50',
-                'phone' => 'required|string|max:30',
+        try {
+            Log::info('=== USER CREATION STARTED ===', [
+                'name' => $request->name,
+                'email' => $request->email,
+                'employee_id' => $request->employee_id,
+                'initiated_by' => Auth::id(),
             ]);
 
+            // ====================================================================
+            // STEP 0: Decode and validate modules JSON
+            // ====================================================================
+            $modulesData = [];
+
+            if ($request->has('modules_json')) {
+                $modulesData = json_decode($request->input('modules_json'), true);
+
+                if (json_last_error() !== JSON_ERROR_NONE) {
+                    throw new \Exception('Invalid modules JSON format: ' . json_last_error_msg());
+                }
+
+                Log::info('✓ Modules JSON decoded successfully', [
+                    'compact_assignments' => count($modulesData)
+                ]);
+            } elseif ($request->has('modules')) {
+                // Fallback to old format for compatibility
+                $modulesData = $request->input('modules');
+
+                Log::info('Using legacy modules format', [
+                    'assignments' => count($modulesData)
+                ]);
+            }
+
+            // Validate we have modules
+            if (empty($modulesData)) {
+                throw new \Exception('No module assignments provided. Please assign at least one module.');
+            }
+
+            // Start database transaction
             DB::connection('sqlsrv')->beginTransaction();
+
+            // ====================================================================
+            // STEP 1: Prepare user data
+            // ====================================================================
 
             // Split name into first and last name
             $nameParts = explode(' ', trim($request->name), 2);
             $givenName = $nameParts[0];
             $surname = $nameParts[1] ?? $nameParts[0];
 
-            // Generate userPrincipalName from email
+            // Use email as userPrincipalName
             $userPrincipalName = $request->email;
 
             // Generate new GUID for user ID
             $userId = DB::connection('sqlsrv')
                 ->selectOne("SELECT NEWID() as newId")->newId;
 
-            // Get primary location from first module assignment (if any)
-            $primaryLocation = 'KE'; // Default
-            if ($request->has('modules') && is_array($request->modules) && count($request->modules) > 0) {
-                $firstModule = $request->modules[0];
-                if (isset($firstModule['location_code']) && $firstModule['location_code'] !== 'ALL') {
-                    $primaryLocation = $firstModule['location_code'];
+            // Determine primary location from first module assignment
+            $primaryLocation = 'KE'; // Default to Kenya
+            if (!empty($modulesData)) {
+                $firstModule = $modulesData[0];
+                if (
+                    !empty($firstModule['locationCodes']) &&
+                    $firstModule['locationCodes'][0] !== 'ALL' &&
+                    strtoupper($firstModule['locationCodes'][0]) !== 'ALL'
+                ) {
+                    $primaryLocation = $firstModule['locationCodes'][0];
                 }
             }
 
-            // Insert into Azure_Users with Status = 'Pending'
+            Log::info('✓ User data prepared', [
+                'user_id' => $userId,
+                'given_name' => $givenName,
+                'surname' => $surname,
+                'primary_location' => $primaryLocation
+            ]);
+
+            // ====================================================================
+            // STEP 2: Insert into Azure_Users with Status = 'Pending'
+            // ====================================================================
+
             DB::connection('sqlsrv')->insert("
             INSERT INTO Azure_Users (
                 Id, userPrincipalName, displayName, surname, mail, givenName,
                 telephoneNumber, mobilePhone, jobTitle, department, 
                 officeLocation, accountEnabled, userType, usageLocation, country,
-                createdDateTime, Status, EmployeCode, companyName
+                createdDateTime, Status, EmployeCode, companyName, AzureId,
+                LastModifiedBy, LastModifiedOn
             )
             VALUES (
                 ?, ?, ?, ?, ?, ?,
                 ?, ?, ?, ?,
                 ?, ?, ?, ?, ?,
-                GETDATE(), ?, ?, ?
+                GETDATE(), ?, ?, ?, NULL,
+                ?, GETDATE()
             )
         ", [
                 $userId,
@@ -194,70 +260,365 @@ class AzureUserManagementController extends Controller
                 $request->email,
                 $givenName,
                 $request->phone,
-                $request->mobile_phone,
-                $request->job_title,
-                $request->department,
+                $request->mobile_phone, // Can be null
+                $request->job_title,     // Can be null
+                $request->department,    // Can be null
                 $primaryLocation,
                 1, // accountEnabled = true
                 'Member',
                 'KE',
                 'Kenya',
-                'Pending', // Status
+                'Pending', // Status = Pending
                 $request->employee_id,
-                $request->company_id
+                $request->company_id, // Can be null
+                Auth::id() // LastModifiedBy
             ]);
 
-            // Process module assignments (if any)
-            if ($request->has('modules') && is_array($request->modules)) {
-                foreach ($request->modules as $moduleData) {
-                    // Check for required fields
+            Log::info('✓ Step 2: User created in local database', [
+                'user_id' => $userId,
+                'email' => $request->email,
+                'status' => 'Pending'
+            ]);
+
+            // ====================================================================
+            // STEP 3: Create user in Azure AD
+            // ====================================================================
+
+            $azureService = app(\App\Services\AzureGraphService::class);
+            $azureUpn = null;
+
+            Log::info('→ Step 3: Checking Azure AD...', [
+                'upn' => $userPrincipalName,
+                'display_name' => $request->name
+            ]);
+
+            // Check if user already exists in Azure AD
+            $existingAzureUser = $azureService->findUserByUPN($userPrincipalName);
+
+            if ($existingAzureUser) {
+                // User already exists in Azure - link to existing user
+                $azureId = $existingAzureUser['id'];
+                $azureUpn = $existingAzureUser['userPrincipalName'];
+
+                Log::info('✓ Step 3: User already exists in Azure AD - linking', [
+                    'azure_id' => $azureId,
+                    'azure_upn' => $azureUpn
+                ]);
+            } else {
+                // Create new user in Azure AD
+                $azureUserData = [
+                    'accountEnabled' => true,
+                    'displayName' => $request->name,
+                    'mailNickname' => explode('@', $request->email)[0],
+                    'userPrincipalName' => $userPrincipalName,
+                    'givenName' => $givenName,
+                    'surname' => $surname,
+                    'mail' => $request->email,
+                    'usageLocation' => 'KE',
+                    'passwordProfile' => [
+                        'forceChangePasswordNextSignIn' => true,
+                        'password' => $this->generateSecurePassword()
+                    ]
+                ];
+
+                // Add optional fields if present
+                if ($request->mobile_phone) {
+                    $azureUserData['mobilePhone'] = $request->mobile_phone;
+                }
+                if ($request->phone) {
+                    $azureUserData['businessPhones'] = [$request->phone];
+                }
+                if ($request->job_title) {
+                    $azureUserData['jobTitle'] = $request->job_title;
+                }
+                if ($request->department) {
+                    $azureUserData['department'] = $request->department;
+                }
+                if ($primaryLocation) {
+                    $azureUserData['officeLocation'] = $primaryLocation;
+                }
+
+                $azureResult = $azureService->createUser($azureUserData);
+
+                $azureId = $azureResult['id'];
+                $azureUpn = $azureResult['userPrincipalName'];
+
+                Log::info('✓ Step 3: User created in Azure AD', [
+                    'azure_id' => $azureId,
+                    'azure_upn' => $azureUpn
+                ]);
+            }
+
+            // ====================================================================
+            // STEP 4: Update local DB with AzureId
+            // ====================================================================
+
+            DB::connection('sqlsrv')->update("
+            UPDATE Azure_Users 
+            SET AzureId = ?,
+                LastModifiedBy = ?,
+                LastModifiedOn = GETDATE()
+            WHERE Id = ?
+        ", [
+                $azureId,
+                Auth::id(),
+                $userId
+            ]);
+
+            Log::info('✓ Step 4: Azure ID saved to local database', [
+                'user_id' => $userId,
+                'azure_id' => $azureId,
+                'status' => 'Pending (awaiting external system sync)'
+            ]);
+
+            // ====================================================================
+            // STEP 5: Expand module assignments (server-side)
+            // ====================================================================
+
+            $expandedAssignments = [];
+            $expansionErrors = [];
+
+            Log::info('→ Step 5: Expanding module assignments...', [
+                'compact_assignments' => count($modulesData)
+            ]);
+
+            foreach ($modulesData as $index => $compactAssignment) {
+                try {
+                    // Validate required fields
                     if (
-                        !isset($moduleData['module_id']) ||
-                        !isset($moduleData['application_id']) ||
-                        !isset($moduleData['location_code']) ||
-                        !isset($moduleData['role_id'])
+                        empty($compactAssignment['module_id']) ||
+                        empty($compactAssignment['application_id']) ||
+                        empty($compactAssignment['application_name'])
                     ) {
-                        continue; // Skip incomplete assignments
-                    }
-
-                    // Get the module details
-                    $module = DB::connection('sqlsrv')
-                        ->selectOne(
-                            "SELECT Id, Name, ApplicationId FROM Azure_SoftwareMaster WHERE Id = ?",
-                            [$moduleData['module_id']]
-                        );
-
-                    if (!$module) {
-                        Log::warning('Module not found', ['module_id' => $moduleData['module_id']]);
+                        $expansionErrors[] = "Assignment {$index}: Missing required fields";
                         continue;
                     }
 
+                    // Verify module exists
+                    $module = DB::connection('sqlsrv')
+                        ->selectOne(
+                            "SELECT Id, Name, ApplicationId FROM Azure_SoftwareMaster 
+                        WHERE Id = ? AND IsActive = 1 AND IsDeleted = 0",
+                            [$compactAssignment['module_id']]
+                        );
+
+                    if (!$module) {
+                        $expansionErrors[] = "Assignment {$index}: Module not found or inactive";
+                        continue;
+                    }
+
+                    // --------------------------------------------------------
+                    // 5.1: Expand LOCATIONS
+                    // --------------------------------------------------------
+                    $locations = [];
+
+                    if (
+                        $compactAssignment['location'] === 'ALL' ||
+                        in_array('ALL', $compactAssignment['locationCodes'] ?? [])
+                    ) {
+                        // Fetch ALL locations
+                        $locationsRaw = DB::connection('sqlsrv')
+                            ->select("SELECT Id, code, Name FROM Cust_Office WHERE IsActive = 1 AND IsDeleted = 0");
+                        $locations = collect($locationsRaw);
+
+                        Log::info("  Expanded ALL locations to {$locations->count()} locations");
+                    } else {
+                        // Fetch specific locations
+                        $locationCodes = $compactAssignment['locationCodes'] ?? [];
+                        if (!empty($locationCodes)) {
+                            $placeholders = implode(',', array_fill(0, count($locationCodes), '?'));
+                            $locationsRaw = DB::connection('sqlsrv')
+                                ->select(
+                                    "SELECT Id, code, Name FROM Cust_Office 
+                                WHERE code IN ({$placeholders}) AND IsActive = 1 AND IsDeleted = 0",
+                                    $locationCodes
+                                );
+                            $locations = collect($locationsRaw);
+
+                            Log::info("  Using {$locations->count()} specific locations");
+                        }
+                    }
+
+                    if ($locations->isEmpty()) {
+                        $expansionErrors[] = "Assignment {$index}: No valid locations found";
+                        continue;
+                    }
+
+                    // --------------------------------------------------------
+                    // 5.2: Expand ROLES
+                    // --------------------------------------------------------
+                    $roles = [];
+                    $applicationCode = $compactAssignment['application_name'];
+
+                    if (
+                        $compactAssignment['role_id'] === 'ALL' ||
+                        in_array('ALL', $compactAssignment['roleIds'] ?? [])
+                    ) {
+                        // Fetch ALL roles for this application
+                        try {
+                            $rolesRaw = DB::connection('sqlsrv')
+                                ->select(
+                                    'EXEC sp_UserCreation_ResourceRole @ApplicationCode = ?',
+                                    [$applicationCode]
+                                );
+
+                            $roles = collect($rolesRaw)->map(function ($r) {
+                                return (object)[
+                                    'id' => $r->RoleId ?? $r->Id ?? $r->id,
+                                    'code' => $r->RoleCode ?? $r->Code ?? $r->code
+                                ];
+                            })->filter(function ($r) {
+                                return !empty($r->id) && !empty($r->code);
+                            });
+
+                            Log::info("  Expanded ALL roles to {$roles->count()} roles for {$applicationCode}");
+                        } catch (\Exception $e) {
+                            $expansionErrors[] = "Assignment {$index}: Failed to fetch roles - {$e->getMessage()}";
+                            continue;
+                        }
+                    } else {
+                        // Use specific roles
+                        $roleIds = $compactAssignment['roleIds'] ?? [];
+                        $roleCodes = $compactAssignment['roleCodes'] ?? [];
+
+                        if (!empty($roleIds)) {
+                            $roles = collect($roleIds)->map(function ($id, $idx) use ($roleCodes) {
+                                return (object)[
+                                    'id' => $id,
+                                    'code' => $roleCodes[$idx] ?? ''
+                                ];
+                            })->filter(function ($r) {
+                                return !empty($r->id) && !empty($r->code);
+                            });
+
+                            Log::info("  Using {$roles->count()} specific roles");
+                        }
+                    }
+
+                    if ($roles->isEmpty()) {
+                        $expansionErrors[] = "Assignment {$index}: No valid roles found";
+                        continue;
+                    }
+
+                    // --------------------------------------------------------
+                    // 5.3: Expand FUNCTIONS (SCM modules only)
+                    // --------------------------------------------------------
+                    $functions = collect([null]); // Default: no functions
+                    $isSCM = in_array(strtoupper($applicationCode), ['OPS', 'OPS UAT', 'OPSUAT']);
+
+                    if ($isSCM) {
+                        if (
+                            $compactAssignment['function_id'] === 'ALL' ||
+                            in_array('ALL', $compactAssignment['functionIds'] ?? [])
+                        ) {
+                            // Fetch ALL functions
+                            try {
+                                $functionsRaw = DB::connection('sqlsrv')
+                                    ->select('EXEC sp_UserCreation_Resourcefunction');
+
+                                $functions = collect($functionsRaw)->map(function ($f) {
+                                    return (object)[
+                                        'id' => $f->ID ?? $f->Id ?? $f->id,
+                                        'code' => $f->Code ?? $f->code
+                                    ];
+                                })->filter(function ($f) {
+                                    return !empty($f->id) && !empty($f->code);
+                                });
+
+                                Log::info("  Expanded ALL functions to {$functions->count()} functions");
+                            } catch (\Exception $e) {
+                                $expansionErrors[] = "Assignment {$index}: Failed to fetch SCM functions - {$e->getMessage()}";
+                                continue;
+                            }
+                        } else {
+                            // Use specific functions
+                            $functionIds = $compactAssignment['functionIds'] ?? [];
+                            $functionCodes = $compactAssignment['functionCodes'] ?? [];
+
+                            if (!empty($functionIds)) {
+                                $functions = collect($functionIds)->map(function ($id, $idx) use ($functionCodes) {
+                                    return (object)[
+                                        'id' => $id,
+                                        'code' => $functionCodes[$idx] ?? ''
+                                    ];
+                                })->filter(function ($f) {
+                                    return !empty($f->id) && !empty($f->code);
+                                });
+
+                                Log::info("  Using {$functions->count()} specific functions");
+                            }
+                        }
+
+                        if ($functions->isEmpty()) {
+                            $expansionErrors[] = "Assignment {$index}: SCM module requires functions but none found";
+                            continue;
+                        }
+                    }
+
+                    // --------------------------------------------------------
+                    // 5.4: Create all combinations
+                    // --------------------------------------------------------
+                    foreach ($locations as $location) {
+                        foreach ($roles as $role) {
+                            foreach ($functions as $function) {
+                                $expandedAssignments[] = [
+                                    'module_id' => $compactAssignment['module_id'],
+                                    'application_id' => $compactAssignment['application_id'],
+                                    'application_name' => $compactAssignment['application_name'],
+                                    'location_id' => $location->Id,
+                                    'location_code' => $location->code,
+                                    'role_id' => $role->id,
+                                    'role_code' => $role->code,
+                                    'function_id' => $function->id ?? null,
+                                    'function_code' => $function->code ?? null,
+                                ];
+                            }
+                        }
+                    }
+                } catch (\Exception $e) {
+                    $expansionErrors[] = "Assignment {$index}: Expansion error - {$e->getMessage()}";
+                    Log::error("Error expanding assignment {$index}", [
+                        'error' => $e->getMessage(),
+                        'assignment' => $compactAssignment
+                    ]);
+                }
+            }
+
+            // Check if expansion failed
+            if (!empty($expansionErrors)) {
+                $errorMessage = "Failed to expand module assignments:\n" . implode("\n", $expansionErrors);
+                Log::error('Expansion errors occurred', [
+                    'errors' => $expansionErrors,
+                    'expanded_count' => count($expandedAssignments)
+                ]);
+                throw new \Exception($errorMessage);
+            }
+
+            if (empty($expandedAssignments)) {
+                throw new \Exception('No valid module assignments after expansion. Please check your selections.');
+            }
+
+            Log::info('✓ Step 5: Module assignments expanded successfully', [
+                'compact_assignments' => count($modulesData),
+                'expanded_assignments' => count($expandedAssignments)
+            ]);
+
+            // ====================================================================
+            // STEP 6: Insert all expanded assignments into database
+            // ====================================================================
+
+            $assignmentsCreated = 0;
+            $failedAssignments = [];
+
+            Log::info('→ Step 6: Creating expanded module assignments...', [
+                'total_assignments' => count($expandedAssignments)
+            ]);
+
+            foreach ($expandedAssignments as $index => $moduleData) {
+                try {
                     // Generate new GUID for this mapping
                     $mappingId = DB::connection('sqlsrv')
                         ->selectOne("SELECT NEWID() as newId")->newId;
-
-                    // Determine if this is an SCM module
-                    $applicationId = $moduleData['application_id'];
-                    $isSCM = in_array($applicationId, ['OPS', 'OPSUAT']);
-
-                    // Prepare insert data
-                    $insertData = [
-                        $mappingId,                          // Id
-                        $userPrincipalName,                  // user_id
-                        $applicationId,                      // application_id
-                        $request->name,                      // Username
-                        $module->Name,                       // ApplicationName
-                        $moduleData['function_code'] ?? null, // FunctionCode
-                        $moduleData['function_id'] ?? null,   // FunctionID
-                        $moduleData['role_code'] ?? null,     // RoleCode
-                        $moduleData['role_id'] ?? null,       // RoleID
-                        $moduleData['location_code'] ?? null, // OfficeCode
-                        $moduleData['location_id'] ?? null,   // OfficeID
-                        1,                                    // IsActive
-                        0,                                    // IsDelete
-                        Auth::id() ?? 'system',              // CreatedBy
-                        // CreatedOn will be GETDATE()
-                    ];
 
                     // Insert into Azure_Application_UserMapping
                     DB::connection('sqlsrv')->insert("
@@ -279,49 +640,191 @@ class AzureUserManagementController extends Controller
                         CreatedOn
                     )
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, GETDATE())
-                ", $insertData);
+                ", [
+                        $mappingId,
+                        $userPrincipalName,
+                        $moduleData['application_id'],
+                        $request->name,
+                        $moduleData['application_name'],
+                        $moduleData['function_code'],
+                        $moduleData['function_id'],
+                        $moduleData['role_code'],
+                        $moduleData['role_id'],
+                        $moduleData['location_code'],
+                        $moduleData['location_id'],
+                        1, // IsActive
+                        0, // IsDelete
+                        Auth::id()
+                    ]);
 
-                    Log::info('Module assignment created', [
-                        'user' => $userPrincipalName,
-                        'module' => $module->Name,
-                        'application_id' => $applicationId,
-                        'location_code' => $moduleData['location_code'],
-                        'location_id' => $moduleData['location_id'],
-                        'role_code' => $moduleData['role_code'],
-                        'role_id' => $moduleData['role_id'],
-                        'function_code' => $moduleData['function_code'] ?? null,
-                        'function_id' => $moduleData['function_id'] ?? null,
-                        'is_scm' => $isSCM
+                    $assignmentsCreated++;
+
+                    if ($assignmentsCreated % 10 === 0) {
+                        Log::info("  Progress: {$assignmentsCreated}/{" . count($expandedAssignments) . "} assignments created");
+                    }
+                } catch (\Exception $moduleError) {
+                    $failedAssignments[] = [
+                        'index' => $index + 1,
+                        'module' => $moduleData['application_name'],
+                        'location' => $moduleData['location_code'],
+                        'role' => $moduleData['role_code'],
+                        'function' => $moduleData['function_code'] ?? 'N/A',
+                        'reason' => $moduleError->getMessage()
+                    ];
+
+                    Log::error("  ✗ Assignment failed", [
+                        'index' => $index + 1,
+                        'module_data' => $moduleData,
+                        'error' => $moduleError->getMessage()
                     ]);
                 }
             }
 
-            DB::connection('sqlsrv')->commit();
+            // Check if ALL assignments succeeded (ALL-OR-NOTHING requirement)
+            if (!empty($failedAssignments)) {
+                $errorMessage = sprintf(
+                    'Failed to create %d out of %d module assignments. All assignments must succeed.',
+                    count($failedAssignments),
+                    count($expandedAssignments)
+                );
 
-            Log::info('User created successfully in SQL Server', [
-                'user_id' => $userId,
-                'email' => $request->email,
-                'primary_location' => $primaryLocation,
-                'status' => 'Pending',
-                'modules_count' => count($request->modules ?? []),
-                'created_by' => Auth::id()
+                Log::error('Module assignment creation failed - rolling back', [
+                    'failed_assignments' => $failedAssignments,
+                    'succeeded' => $assignmentsCreated,
+                    'total' => count($expandedAssignments)
+                ]);
+
+                throw new \Exception($errorMessage);
+            }
+
+            Log::info('✓ Step 6: All module assignments created successfully', [
+                'assignments_created' => $assignmentsCreated
             ]);
 
-            return redirect()->route('azure.dashboard.index')
-                ->with('success', 'User created successfully! Status: Pending. Module assignments have been configured.');
-        } catch (\Exception $e) {
-            DB::connection('sqlsrv')->rollBack();
+            // ====================================================================
+            // STEP 7: Commit transaction - everything succeeded!
+            // ====================================================================
 
-            Log::error('User creation failed', [
+            DB::connection('sqlsrv')->commit();
+
+            Log::info('=== USER CREATION COMPLETED SUCCESSFULLY ===', [
+                'user_id' => $userId,
+                'azure_id' => $azureId,
+                'email' => $request->email,
+                'status' => 'Pending',
+                'modules_assigned' => $assignmentsCreated,
+                'next_step' => 'External systems will sync, then admin can activate user'
+            ]);
+
+            // Get unique module names for success message
+            $uniqueModules = collect($expandedAssignments)
+                ->pluck('application_name')
+                ->unique()
+                ->values()
+                ->toArray();
+
+            return redirect()->route('azure.dashboard.index')
+                ->with('success', sprintf(
+                    '✓ User created successfully!<br>' .
+                        'Azure ID: %s<br>' .
+                        'Status: <strong>Pending</strong> (awaiting external system sync)<br>' .
+                        '%d module assignment(s) created across %d module(s): %s',
+                    substr($azureId, 0, 8) . '...',
+                    $assignmentsCreated,
+                    count($uniqueModules),
+                    implode(', ', $uniqueModules)
+                ));
+        } catch (\Exception $e) {
+            // ====================================================================
+            // ERROR HANDLING & ROLLBACK
+            // ====================================================================
+
+            // Rollback local database transaction
+            if (DB::connection('sqlsrv')->transactionLevel() > 0) {
+                DB::connection('sqlsrv')->rollBack();
+            }
+
+            Log::error('Transaction rolled back due to error', [
+                'error' => $e->getMessage()
+            ]);
+
+            // CRITICAL: If Azure user was created, attempt to delete it (cleanup)
+            $cleanupWarning = '';
+            if (isset($azureId) && $azureService) {
+                try {
+                    Log::info('Attempting to delete Azure user during rollback...', [
+                        'azure_id' => $azureId
+                    ]);
+
+                    $azureService->deleteUser($azureId);
+
+                    Log::info('✓ Azure user deleted during rollback', [
+                        'azure_id' => $azureId
+                    ]);
+                } catch (\Exception $deleteError) {
+                    Log::critical('✗ CRITICAL: Failed to delete Azure user during rollback', [
+                        'azure_id' => $azureId,
+                        'email' => $request->email,
+                        'error' => $deleteError->getMessage(),
+                        'action_required' => 'MANUAL CLEANUP NEEDED IN AZURE AD'
+                    ]);
+
+                    $cleanupWarning = sprintf(
+                        '<br><strong>WARNING:</strong> Azure user (ID: %s) may still exist and require manual cleanup.',
+                        substr($azureId, 0, 8) . '...'
+                    );
+                }
+            }
+
+            Log::error('=== USER CREATION FAILED ===', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
+                'user_id' => $userId,
+                'azure_id' => $azureId,
                 'request_data' => $request->except(['_token'])
             ]);
 
             return redirect()->back()
                 ->withInput()
-                ->withErrors(['error' => 'Failed to create user: ' . $e->getMessage()]);
+                ->withErrors([
+                    'error' => 'Failed to create user: ' . $e->getMessage() . $cleanupWarning
+                ]);
         }
+    }
+
+    /**
+     * Generate a secure random password for Azure AD
+     * Meets Azure AD password complexity requirements:
+     * - At least 8 characters
+     * - Contains uppercase, lowercase, number, and special character
+     * 
+     * @return string
+     */
+    private function generateSecurePassword(): string
+    {
+        $length = config('azure.default_password_length', 16);
+
+        // Character sets
+        $uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        $lowercase = 'abcdefghijklmnopqrstuvwxyz';
+        $numbers = '0123456789';
+        $special = '!@#$%^&*()-_=+[]{}|;:,.<>?';
+
+        // Ensure at least one character from each set
+        $password = '';
+        $password .= $uppercase[random_int(0, strlen($uppercase) - 1)];
+        $password .= $lowercase[random_int(0, strlen($lowercase) - 1)];
+        $password .= $numbers[random_int(0, strlen($numbers) - 1)];
+        $password .= $special[random_int(0, strlen($special) - 1)];
+
+        // Fill remaining length with random characters from all sets
+        $allChars = $uppercase . $lowercase . $numbers . $special;
+        for ($i = 4; $i < $length; $i++) {
+            $password .= $allChars[random_int(0, strlen($allChars) - 1)];
+        }
+
+        // Shuffle to avoid predictable pattern (special char always at position 4, etc.)
+        return str_shuffle($password);
     }
 
     /**
@@ -346,9 +849,9 @@ class AzureUserManagementController extends Controller
             // Fetch modules from SQL Server Azure_SoftwareMaster
             $modulesRaw = DB::connection('sqlsrv')
                 ->select("SELECT Id, Name, ApplicationId 
-                     FROM Azure_SoftwareMaster 
-                     WHERE IsActive = 1 AND IsDeleted = 0 
-                     ORDER BY Name");
+                    FROM Azure_SoftwareMaster 
+                    WHERE IsActive = 1 AND IsDeleted = 0 
+                    ORDER BY Name");
 
             // Convert to Laravel collection with proper structure
             $modules = collect($modulesRaw)->map(function ($module) {
@@ -362,9 +865,9 @@ class AzureUserManagementController extends Controller
             // Fetch locations from Cust_Office table
             $locationsRaw = DB::connection('sqlsrv')
                 ->select("SELECT Id, Name, code 
-                     FROM Cust_Office 
-                     WHERE IsActive = 1 AND IsDeleted = 0 
-                     ORDER BY Name");
+                    FROM Cust_Office 
+                    WHERE IsActive = 1 AND IsDeleted = 0 
+                    ORDER BY Name");
 
             // Convert to Laravel collection
             $locations = collect($locationsRaw)->map(function ($location) {
@@ -631,6 +1134,301 @@ class AzureUserManagementController extends Controller
     }
 
     /**
+     * Sync user status from Pending to Active
+     * 
+     * This method is called after external systems (SCM, Odoo, BIZ) have
+     * created their users and populated the external ID columns.
+     * 
+     * @param AzureUser $user
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function sync(AzureUser $user)
+    {
+        try {
+            Log::info('=== USER SYNC STARTED ===', [
+                'user_id' => $user->Id,
+                'email' => $user->userPrincipalName,
+                'current_status' => $user->Status,
+                'initiated_by' => Auth::id()
+            ]);
+
+            // Validation 1: Check if user is already Active
+            if ($user->Status === 'Active') {
+                Log::info('User already active - no action needed', [
+                    'user_id' => $user->Id,
+                    'status' => $user->Status
+                ]);
+
+                return redirect()->back()
+                    ->with('info', 'User is already Active. No changes made.');
+            }
+
+            // Validation 2: Check if user is Pending (only valid state for sync)
+            if ($user->Status !== 'Pending') {
+                Log::warning('Invalid status for sync operation', [
+                    'user_id' => $user->Id,
+                    'current_status' => $user->Status,
+                    'expected_status' => 'Pending'
+                ]);
+
+                return redirect()->back()
+                    ->with('error', sprintf(
+                        'Only Pending users can be synced. Current status: %s',
+                        $user->Status
+                    ));
+            }
+
+            // Validation 3: Check if user has been provisioned to Azure AD
+            if (empty($user->AzureId)) {
+                Log::error('Cannot sync - user not provisioned to Azure AD', [
+                    'user_id' => $user->Id,
+                    'email' => $user->userPrincipalName
+                ]);
+
+                return redirect()->back()
+                    ->with('error', 'Cannot sync: User has not been provisioned to Azure AD yet. Please contact IT support.');
+            }
+
+            // Check which external systems have synced this user
+            $externalSystems = $this->getExternalSystemsSyncStatus($user);
+
+            Log::info('External system sync check', [
+                'user_id' => $user->Id,
+                'scm_synced' => $externalSystems['scm']['synced'],
+                'odoo_synced' => $externalSystems['odoo']['synced'],
+                'biz_synced' => $externalSystems['biz']['synced'],
+                'total_synced' => $externalSystems['synced_count']
+            ]);
+
+            // Get list of synced system names
+            $syncedSystemNames = [];
+            if ($externalSystems['scm']['synced']) {
+                $syncedSystemNames[] = 'SCM';
+            }
+            if ($externalSystems['odoo']['synced']) {
+                $syncedSystemNames[] = 'Odoo';
+            }
+            if ($externalSystems['biz']['synced']) {
+                $syncedSystemNames[] = 'BIZ';
+            }
+
+            // Optional: Warn if no external systems have synced
+            // (Uncomment this block if you want to require at least one external system)
+            /*
+        if (empty($syncedSystemNames)) {
+            Log::warning('No external systems have synced this user', [
+                'user_id' => $user->Id,
+                'email' => $user->userPrincipalName
+            ]);
+
+            return redirect()->back()
+                ->with('warning', 
+                    'Warning: No external systems (SCM, Odoo, BIZ) have synced this user yet. ' .
+                    'The user can login to Azure AD but may not have access to application modules.'
+                );
+        }
+        */
+
+            // Update status to Active
+            DB::connection('sqlsrv')->update("
+            UPDATE Azure_Users 
+            SET Status = 'Active',
+                LastModifiedBy = ?,
+                LastModifiedOn = GETDATE()
+            WHERE Id = ?
+        ", [
+                Auth::id(), // Guaranteed to exist due to AzureStoreUserRequest authorization
+                $user->Id
+            ]);
+
+            Log::info('=== USER SYNC COMPLETED SUCCESSFULLY ===', [
+                'user_id' => $user->Id,
+                'email' => $user->userPrincipalName,
+                'old_status' => 'Pending',
+                'new_status' => 'Active',
+                'synced_systems' => $syncedSystemNames,
+                'synced_count' => count($syncedSystemNames),
+                'synced_by' => Auth::id()
+            ]);
+
+            // Log audit trail
+            $this->logUserActivity(
+                $user->Id,
+                'user.synced',
+                'User status updated from Pending to Active',
+                [
+                    'old_status' => 'Pending',
+                    'new_status' => 'Active',
+                    'synced_systems' => $syncedSystemNames,
+                    'external_ids' => [
+                        'scm' => $externalSystems['scm']['user_id'],
+                        'odoo' => $externalSystems['odoo']['user_id'],
+                        'biz' => $externalSystems['biz']['user_id']
+                    ]
+                ]
+            );
+
+            // Build success message
+            $systemsList = !empty($syncedSystemNames)
+                ? sprintf(' Synced with: <strong>%s</strong>', implode(', ', $syncedSystemNames))
+                : ' <em>(No external systems synced yet)</em>';
+
+            return redirect()->back()
+                ->with('success', '✓ User activated successfully!' . $systemsList);
+        } catch (\Exception $e) {
+            Log::error('=== USER SYNC FAILED ===', [
+                'user_id' => $user->Id ?? null,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return redirect()->back()
+                ->with('error', 'Failed to sync user: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Get sync status for a user (AJAX endpoint)
+     * 
+     * Returns detailed information about external system sync status
+     * Useful for displaying real-time sync status in the UI
+     * 
+     * @param AzureUser $user
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function syncStatus(AzureUser $user)
+    {
+        try {
+            $externalSystems = $this->getExternalSystemsSyncStatus($user);
+
+            $syncStatus = [
+                'user_id' => $user->Id,
+                'email' => $user->userPrincipalName,
+                'current_status' => $user->Status,
+                'azure_provisioned' => !empty($user->AzureId),
+                'azure_id' => $user->AzureId,
+                'external_systems' => $externalSystems,
+                'can_be_activated' => $user->Status === 'Pending' && !empty($user->AzureId),
+                'is_active' => $user->Status === 'Active',
+                'module_assignments_count' => $user->moduleAssignments()->count(),
+                'last_modified' => $user->LastModifiedOn,
+                'last_modified_by' => $user->LastModifiedBy
+            ];
+
+            return response()->json([
+                'success' => true,
+                'data' => $syncStatus
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to get sync status', [
+                'user_id' => $user->Id ?? null,
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to get sync status: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Helper method: Get external systems sync status
+     * 
+     * Checks which external systems (SCM, Odoo, BIZ) have synced the user
+     * by checking if their respective ID columns are populated
+     * 
+     * @param AzureUser $user
+     * @return array
+     */
+    private function getExternalSystemsSyncStatus(AzureUser $user): array
+    {
+        return [
+            'scm' => [
+                'synced' => !empty($user->SCMUserID),
+                'user_id' => $user->SCMUserID,
+                'resource_id' => $user->SCMResourceID,
+                'login_id' => $user->SCMLoginId,
+                'created_on' => $user->SCMCreatedOn
+            ],
+            'odoo' => [
+                'synced' => !empty($user->OdooUserId),
+                'user_id' => $user->OdooUserId,
+                'employee_id' => $user->OdooEmployeeId,
+                'login_id' => $user->OdooLoginId,
+                'created_on' => $user->OdooCreatedOn
+            ],
+            'biz' => [
+                'synced' => !empty($user->BizUserID),
+                'user_id' => $user->BizUserID,
+                'login_id' => $user->BizLoginId,
+                'created_on' => $user->BizCreatedOn
+            ],
+            'synced_count' => (empty($user->SCMUserID) ? 0 : 1) +
+                (empty($user->OdooUserId) ? 0 : 1) +
+                (empty($user->BizUserID) ? 0 : 1)
+        ];
+    }
+
+    /**
+     * Helper method: Log user activity to audit trail
+     * 
+     * Creates an audit log entry for user-related actions
+     * 
+     * @param string|AzureUser $userOrId - Either Azure_Users.Id (GUID string) or AzureUser model instance
+     * @param string $action - Action type (e.g., 'user.synced', 'user.created')
+     * @param string $description - Human-readable description
+     * @param array $metadata - Additional data to store
+     * @return void
+     */
+    private function logUserActivity(
+        $userOrId,
+        string $action,
+        string $description,
+        array $metadata = []
+    ): void {
+        try {
+            // Handle both string ID and AzureUser model
+            $userId = $userOrId instanceof AzureUser ? $userOrId->Id : $userOrId;
+
+            DB::connection('mysql')->table('audit_logs')->insert([
+                'user_id' => Auth::id(),
+                'action' => $action,
+                'auditable_type' => 'AzureUser',
+                'auditable_id' => $userId,
+                'old_values' => null,
+                'new_values' => json_encode($metadata),
+                'performed_by' => Auth::id(),
+                'ip_address' => request()->ip(),
+                'user_agent' => request()->userAgent(),
+                'url' => request()->fullUrl(),
+                'method' => request()->method(),
+                'status' => 'success',
+                'error_message' => null,
+                'metadata' => json_encode([
+                    'description' => $description,
+                    'timestamp' => now()->toIso8601String()
+                ]),
+                'created_at' => now()
+            ]);
+
+            Log::info('Audit log created', [
+                'action' => $action,
+                'user_id' => $userId
+            ]);
+        } catch (\Exception $e) {
+            // Don't fail the main operation if audit logging fails
+            Log::error('Failed to create audit log', [
+                'action' => $action,
+                'user_id' => $userOrId instanceof AzureUser ? $userOrId->Id : $userOrId,
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+
+
+
+    /**
      * Get roles for a specific module (API endpoint)
      */
     public function getModuleRoles($moduleId)
@@ -850,29 +1648,6 @@ class AzureUserManagementController extends Controller
                 ->withErrors(['error' => 'Failed to retry: ' . $e->getMessage()]);
         }
     }
-
-    /**
-     * Log user activity for audit trail
-     */
-    private function logUserActivity(AzureUser $user, string $action, string $description)
-    {
-        // Comment out if auditLogs relationship doesn't exist
-        // $user->auditLogs()->create([
-        //     'action' => $action,
-        //     'description' => $description,
-        //     'performed_by' => Auth::id(),
-        //     'ip_address' => request()->ip(),
-        //     'user_agent' => request()->userAgent(),
-        // ]);
-
-        Log::info('User activity', [
-            'user_id' => $user->id,
-            'action' => $action,
-            'description' => $description,
-            'performed_by' => Auth::id(),
-        ]);
-    }
-
 
     /**
      * Get functions for SCM modules (OPS/OPSUAT) using sp_UserCreation_Resourcefunction

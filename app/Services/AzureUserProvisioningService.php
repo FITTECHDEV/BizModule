@@ -55,18 +55,18 @@ class AzureUserProvisioningService
             $results['user'] = $user;
 
             // 🎯 AUDIT: Log provisioning started
-            AzureAuditLogger::log(
-                'user.provisioning.started',
-                $user,
-                'success',
-                null,
-                [
-                    'employee_id' => $user->employee_id,
-                    'email' => $user->email,
-                    'modules_count' => count($moduleAssignments),
-                    'module_ids' => array_column($moduleAssignments, 'module_id'),
-                ]
-            );
+            // // AzureAuditLogger::log(
+            //     'user.provisioning.started',
+            //     $user,
+            //     'success',
+            //     null,
+            //     [
+            //         'employee_id' => $user->employee_id,
+            //         'email' => $user->email,
+            //         'modules_count' => count($moduleAssignments),
+            //         'module_ids' => array_column($moduleAssignments, 'module_id'),
+            //     ]
+            // );
 
             Log::channel('provisioning')->info('Starting user provisioning', [
                 'user_id' => $user->id,
@@ -95,13 +95,13 @@ class AzureUserProvisioningService
                     ];
 
                     // 🎯 AUDIT: Log Azure update
-                    AzureAuditLogger::azureUserUpdated(
-                        $user,
-                        $user->azure_id,
-                        [
-                            'fields_updated' => ['name', 'email', 'phone', 'job_title', 'department']
-                        ]
-                    );
+                    // // AzureAuditLogger::azureUserUpdated(
+                    //     $user,
+                    //     $user->azure_id,
+                    //     [
+                    //         'fields_updated' => ['name', 'email', 'phone', 'job_title', 'department']
+                    //     ]
+                    // );
 
                     Log::channel('provisioning')->info('User updated in Azure AD', [
                         'user_id' => $user->id,
@@ -159,16 +159,16 @@ class AzureUserProvisioningService
                     }
 
                     // 🎯 AUDIT: Log successful Azure creation
-                    AzureAuditLogger::azureUserCreated(
-                        $user,
-                        $azureData['azure_id'],
-                        $azureData['azure_upn'],
-                        [
-                            'display_name' => $azureData['azure_display_name'],
-                            'password_sent' => !empty($user->email),
-                            'temporary_password_created' => true,
-                        ]
-                    );
+                    // // AzureAuditLogger::azureUserCreated(
+                    //     $user,
+                    //     $azureData['azure_id'],
+                    //     $azureData['azure_upn'],
+                    //     [
+                    //         'display_name' => $azureData['azure_display_name'],
+                    //         'password_sent' => !empty($user->email),
+                    //         'temporary_password_created' => true,
+                    //     ]
+                    // );
 
                     $results['azure'] = [
                         'success'  => true,
@@ -182,15 +182,15 @@ class AzureUserProvisioningService
                 $errorMessage = $azureException->getMessage();
                 
                 // 🎯 AUDIT: Log Azure creation failure
-                AzureAuditLogger::azureUserCreationFailed(
-                    $user,
-                    $errorMessage,
-                    [
-                        'employee_id' => $user->employee_id,
-                        'email' => $user->email,
-                        'attempted_action' => $user->azure_id ? 'update' : 'create',
-                    ]
-                );
+                // // AzureAuditLogger::azureUserCreationFailed(
+                //     $user,
+                //     $errorMessage,
+                //     [
+                //         'employee_id' => $user->employee_id,
+                //         'email' => $user->email,
+                //         'attempted_action' => $user->azure_id ? 'update' : 'create',
+                //     ]
+                // );
                 
                 if (str_contains($errorMessage, 'userPrincipalName already exists')) {
                     Log::channel('provisioning')->warning('Azure UPN conflict detected, attempting to link', [
@@ -217,17 +217,17 @@ class AzureUserProvisioningService
                         ];
 
                         // 🎯 AUDIT: Log successful Azure link
-                        AzureAuditLogger::log(
-                            'azure.user.linked',
-                            $user,
-                            'success',
-                            null,
-                            [
-                                'azure_id' => $existing['id'],
-                                'azure_upn' => $existing['userPrincipalName'],
-                                'reason' => 'UPN conflict resolved by linking to existing user',
-                            ]
-                        );
+                        // // AzureAuditLogger::log(
+                        //     'azure.user.linked',
+                        //     $user,
+                        //     'success',
+                        //     null,
+                        //     [
+                        //         'azure_id' => $existing['id'],
+                        //         'azure_upn' => $existing['userPrincipalName'],
+                        //         'reason' => 'UPN conflict resolved by linking to existing user',
+                        //     ]
+                        // );
 
                         Log::channel('provisioning')->info('Linked to existing Azure user', [
                             'user_id' => $user->id,
@@ -260,24 +260,24 @@ class AzureUserProvisioningService
                         $results['errors'][] = count($failedModules) . " module assignment(s) failed";
                         
                         // 🎯 AUDIT: Log partial failure
-                        AzureAuditLogger::log(
-                            'user.provisioning.partial_failure',
-                            $user,
-                            'failed',
-                            'Some module assignments failed',
-                            [
-                                'failed_count' => count($failedModules),
-                                'total_count' => count($moduleAssignments),
-                                'successful_count' => count($moduleAssignments) - count($failedModules),
-                                'failed_modules' => array_map(function($m) {
-                                    return [
-                                        'module_id' => $m['module_id'] ?? null,
-                                        'module_code' => $m['module_code'] ?? null,
-                                        'errors' => $m['errors'] ?? [],
-                                    ];
-                                }, $failedModules),
-                            ]
-                        );
+                        // // AzureAuditLogger::log(
+                        //     'user.provisioning.partial_failure',
+                        //     $user,
+                        //     'failed',
+                        //     'Some module assignments failed',
+                        //     [
+                        //         'failed_count' => count($failedModules),
+                        //         'total_count' => count($moduleAssignments),
+                        //         'successful_count' => count($moduleAssignments) - count($failedModules),
+                        //         'failed_modules' => array_map(function($m) {
+                        //             return [
+                        //                 'module_id' => $m['module_id'] ?? null,
+                        //                 'module_code' => $m['module_code'] ?? null,
+                        //                 'errors' => $m['errors'] ?? [],
+                        //             ];
+                        //         }, $failedModules),
+                        //     ]
+                        // );
                         
                         Log::channel('provisioning')->warning('Partial provisioning failure', [
                             'user_id' => $user->id,
@@ -306,20 +306,20 @@ class AzureUserProvisioningService
             // 🎯 AUDIT: Log successful provisioning completion
             $successfulModules = count($moduleAssignments) - count(array_filter($results['modules'], fn($m) => !$m['success']));
             
-            AzureAuditLogger::log(
-                'user.provisioning.completed',
-                $user,
-                'success',
-                null,
-                [
-                    'azure_id' => $azureUserId,
-                    'azure_upn' => $user->azure_upn,
-                    'modules_assigned' => $successfulModules,
-                    'total_modules' => count($moduleAssignments),
-                    'partial_failure' => $results['partial_failure'],
-                    'azure_action' => $results['azure']['action'] ?? 'unknown',
-                ]
-            );
+            // // AzureAuditLogger::log(
+            //     'user.provisioning.completed',
+            //     $user,
+            //     'success',
+            //     null,
+            //     [
+            //         'azure_id' => $azureUserId,
+            //         'azure_upn' => $user->azure_upn,
+            //         'modules_assigned' => $successfulModules,
+            //         'total_modules' => count($moduleAssignments),
+            //         'partial_failure' => $results['partial_failure'],
+            //         'azure_action' => $results['azure']['action'] ?? 'unknown',
+            //     ]
+            // );
 
             Log::channel('provisioning')->info('User provisioning completed successfully', [
                 'user_id' => $user->id,
@@ -334,20 +334,20 @@ class AzureUserProvisioningService
             DB::rollBack();
 
             // 🎯 AUDIT: Log provisioning failure
-            AzureAuditLogger::log(
-                'user.provisioning.failed',
-                $results['user'] ?? null,
-                'failed',
-                $e->getMessage(),
-                [
-                    'azure_user_created' => $azureUserCreated,
-                    'azure_user_id' => $azureUserId,
-                    'rollback_performed' => $results['rollback_performed'],
-                    'employee_id' => $userData['employee_id'] ?? null,
-                    'email' => $userData['email'] ?? null,
-                    'modules_attempted' => count($moduleAssignments),
-                ]
-            );
+            // // AzureAuditLogger::log(
+            //     'user.provisioning.failed',
+            //     $results['user'] ?? null,
+            //     'failed',
+            //     $e->getMessage(),
+            //     [
+            //         'azure_user_created' => $azureUserCreated,
+            //         'azure_user_id' => $azureUserId,
+            //         'rollback_performed' => $results['rollback_performed'],
+            //         'employee_id' => $userData['employee_id'] ?? null,
+            //         'email' => $userData['email'] ?? null,
+            //         'modules_attempted' => count($moduleAssignments),
+            //     ]
+            // );
 
             Log::channel('provisioning')->error('User provisioning failed - transaction rolled back', [
                 'user_id' => $results['user']->id ?? null,
@@ -470,15 +470,15 @@ class AzureUserProvisioningService
             $this->azureService->deleteUser($azureUserId);
             
             // 🎯 AUDIT: Log successful rollback
-            AzureAuditLogger::azureRollback(
-                $user,
-                $azureUserId,
-                'Provisioning failed after Azure user creation',
-                [
-                    'rollback_successful' => true,
-                    'employee_id' => $user->employee_id,
-                ]
-            );
+            // // AzureAuditLogger::azureRollback(
+            //     $user,
+            //     $azureUserId,
+            //     'Provisioning failed after Azure user creation',
+            //     [
+            //         'rollback_successful' => true,
+            //         'employee_id' => $user->employee_id,
+            //     ]
+            // );
             
             Log::channel('provisioning')->info('✅ Azure rollback successful - user deleted', [
                 'azure_user_id' => $azureUserId,
@@ -489,17 +489,17 @@ class AzureUserProvisioningService
 
         } catch (Exception $rollbackException) {
             // 🎯 AUDIT: Log failed rollback (CRITICAL)
-            AzureAuditLogger::azureRollbackFailed(
-                $user,
-                $azureUserId,
-                $rollbackException->getMessage(),
-                [
-                    'action_required' => 'MANUAL CLEANUP REQUIRED',
-                    'azure_user_id' => $azureUserId,
-                    'employee_id' => $user->employee_id,
-                    'manual_action' => 'Delete Azure AD user: ' . $azureUserId,
-                ]
-            );
+            // // AzureAuditLogger::azureRollbackFailed(
+            //     $user,
+            //     $azureUserId,
+            //     $rollbackException->getMessage(),
+            //     [
+            //         'action_required' => 'MANUAL CLEANUP REQUIRED',
+            //         'azure_user_id' => $azureUserId,
+            //         'employee_id' => $user->employee_id,
+            //         'manual_action' => 'Delete Azure AD user: ' . $azureUserId,
+            //     ]
+            // );
             
             Log::channel('provisioning')->critical('❌ AZURE ROLLBACK FAILED - MANUAL CLEANUP REQUIRED', [
                 'azure_user_id' => $azureUserId,
@@ -536,11 +536,11 @@ class AzureUserProvisioningService
 
         // 🎯 AUDIT: Log local user creation (only if newly created)
         if ($user->wasRecentlyCreated) {
-            AzureAuditLogger::userCreated($user, [
-                'employee_id' => $user->employee_id,
-                'company_id' => $user->company_id,
-                'initial_status' => 'pending',
-            ]);
+            // // AzureAuditLogger::userCreated($user, [
+            //     'employee_id' => $user->employee_id,
+            //     'company_id' => $user->company_id,
+            //     'initial_status' => 'pending',
+            // ]);
         }
 
         Log::channel('provisioning')->info('Local user record created/updated', [
@@ -656,9 +656,9 @@ class AzureUserProvisioningService
             $results['local_updated'] = true;
 
             // 🎯 AUDIT: Log local user update
-            AzureAuditLogger::userUpdated($user, $oldValues, $updateData, [
-                'fields_changed' => array_keys(array_diff_assoc($updateData, $oldValues)),
-            ]);
+            // // AzureAuditLogger::userUpdated($user, $oldValues, $updateData, [
+            //     'fields_changed' => array_keys(array_diff_assoc($updateData, $oldValues)),
+            // ]);
 
             Log::info('Local user updated', [
                 'user_id' => $user->id,
@@ -679,9 +679,9 @@ class AzureUserProvisioningService
                     $results['azure_updated'] = true;
 
                     // 🎯 AUDIT: Log Azure update
-                    AzureAuditLogger::azureUserUpdated($user, $user->azure_id, [
-                        'fields_updated' => array_keys($updateData),
-                    ]);
+                    // // AzureAuditLogger::azureUserUpdated($user, $user->azure_id, [
+                    //     'fields_updated' => array_keys($updateData),
+                    // ]);
 
                     Log::info('Azure user updated', [
                         'user_id' => $user->id,
@@ -692,16 +692,16 @@ class AzureUserProvisioningService
                     $results['errors'][] = 'Azure update failed: ' . $e->getMessage();
                     
                     // 🎯 AUDIT: Log Azure update failure
-                    AzureAuditLogger::log(
-                        'azure.user.update.failed',
-                        $user,
-                        'failed',
-                        $e->getMessage(),
-                        [
-                            'azure_id' => $user->azure_id,
-                            'attempted_fields' => array_keys($updateData),
-                        ]
-                    );
+                    // // AzureAuditLogger::log(
+                    //     'azure.user.update.failed',
+                    //     $user,
+                    //     'failed',
+                    //     $e->getMessage(),
+                    //     [
+                    //         'azure_id' => $user->azure_id,
+                    //         'attempted_fields' => array_keys($updateData),
+                    //     ]
+                    // );
 
                     Log::warning('Azure update failed but local update succeeded', [
                         'user_id' => $user->id,
@@ -720,15 +720,15 @@ class AzureUserProvisioningService
             DB::rollBack();
 
             // 🎯 AUDIT: Log update failure
-            AzureAuditLogger::log(
-                'user.update.failed',
-                $user,
-                'failed',
-                $e->getMessage(),
-                [
-                    'attempted_fields' => array_keys($updateData),
-                ]
-            );
+            // // AzureAuditLogger::log(
+            //     'user.update.failed',
+            //     $user,
+            //     'failed',
+            //     $e->getMessage(),
+            //     [
+            //         'attempted_fields' => array_keys($updateData),
+            //     ]
+            // );
 
             Log::error('User update failed', [
                 'user_id' => $user->id,
@@ -766,9 +766,9 @@ class AzureUserProvisioningService
             $results['local_disabled'] = true;
 
             // 🎯 AUDIT: Log user disabled locally
-            AzureAuditLogger::userDisabled($user, [
-                'disabled_at' => now(),
-            ]);
+            // // AzureAuditLogger::userDisabled($user, [
+            //     'disabled_at' => now(),
+            // ]);
 
             Log::info('Local user disabled', ['user_id' => $user->id]);
 
@@ -779,13 +779,13 @@ class AzureUserProvisioningService
                     $results['azure_disabled'] = true;
 
                     // 🎯 AUDIT: Log Azure disable
-                    AzureAuditLogger::log(
-                        'azure.user.disabled',
-                        $user,
-                        'success',
-                        null,
-                        ['azure_id' => $user->azure_id]
-                    );
+                    // // AzureAuditLogger::log(
+                    //     'azure.user.disabled',
+                    //     $user,
+                    //     'success',
+                    //     null,
+                    //     ['azure_id' => $user->azure_id]
+                    // );
 
                     Log::info('Azure user disabled', [
                         'user_id' => $user->id,
@@ -796,13 +796,13 @@ class AzureUserProvisioningService
                     $results['errors'][] = 'Azure disable failed: ' . $e->getMessage();
 
                     // 🎯 AUDIT: Log Azure disable failure
-                    AzureAuditLogger::log(
-                        'azure.user.disable.failed',
-                        $user,
-                        'failed',
-                        $e->getMessage(),
-                        ['azure_id' => $user->azure_id]
-                    );
+                    // // AzureAuditLogger::log(
+                    //     'azure.user.disable.failed',
+                    //     $user,
+                    //     'failed',
+                    //     $e->getMessage(),
+                    //     ['azure_id' => $user->azure_id]
+                    // );
 
                     Log::warning('Azure disable failed but local disable succeeded', [
                         'user_id' => $user->id,
@@ -821,12 +821,12 @@ class AzureUserProvisioningService
             DB::rollBack();
 
             // 🎯 AUDIT: Log disable failure
-            AzureAuditLogger::log(
-                'user.disable.failed',
-                $user,
-                'failed',
-                $e->getMessage()
-            );
+            // // AzureAuditLogger::log(
+            //     'user.disable.failed',
+            //     $user,
+            //     'failed',
+            //     $e->getMessage()
+            // );
 
             Log::error('User disable failed', [
                 'user_id' => $user->id,
@@ -864,7 +864,7 @@ class AzureUserProvisioningService
             $results['local_enabled'] = true;
 
             // 🎯 AUDIT: Log user enabled locally
-            AzureAuditLogger::userEnabled($user);
+            // AzureAuditLogger::userEnabled($user);
 
             Log::info('Local user enabled', ['user_id' => $user->id]);
 
@@ -875,13 +875,13 @@ class AzureUserProvisioningService
                     $results['azure_enabled'] = true;
 
                     // 🎯 AUDIT: Log Azure enable
-                    AzureAuditLogger::log(
-                        'azure.user.enabled',
-                        $user,
-                        'success',
-                        null,
-                        ['azure_id' => $user->azure_id]
-                    );
+                    // // AzureAuditLogger::log(
+                    //     'azure.user.enabled',
+                    //     $user,
+                    //     'success',
+                    //     null,
+                    //     ['azure_id' => $user->azure_id]
+                    // );
 
                     Log::info('Azure user enabled', [
                         'user_id' => $user->id,
@@ -892,13 +892,13 @@ class AzureUserProvisioningService
                     $results['errors'][] = 'Azure enable failed: ' . $e->getMessage();
 
                     // 🎯 AUDIT: Log Azure enable failure
-                    AzureAuditLogger::log(
-                        'azure.user.enable.failed',
-                        $user,
-                        'failed',
-                        $e->getMessage(),
-                        ['azure_id' => $user->azure_id]
-                    );
+                    // // AzureAuditLogger::log(
+                    //     'azure.user.enable.failed',
+                    //     $user,
+                    //     'failed',
+                    //     $e->getMessage(),
+                    //     ['azure_id' => $user->azure_id]
+                    // );
 
                     Log::warning('Azure enable failed but local enable succeeded', [
                         'user_id' => $user->id,
@@ -917,12 +917,12 @@ class AzureUserProvisioningService
             DB::rollBack();
 
             // 🎯 AUDIT: Log enable failure
-            AzureAuditLogger::log(
-                'user.enable.failed',
-                $user,
-                'failed',
-                $e->getMessage()
-            );
+            // // AzureAuditLogger::log(
+            //     'user.enable.failed',
+            //     $user,
+            //     'failed',
+            //     $e->getMessage()
+            // );
 
             Log::error('User enable failed', [
                 'user_id' => $user->id,
@@ -981,29 +981,29 @@ class AzureUserProvisioningService
 
                     // 🎯 AUDIT: Log retry result
                     if ($result['success']) {
-                        AzureAuditLogger::log(
-                            'module.assignment.retry.success',
-                            $user,
-                            'success',
-                            null,
-                            [
-                                'module_id' => $module->id,
-                                'module_code' => $module->code,
-                                'role_id' => $pivot->role_id,
-                            ]
-                        );
+                        // // AzureAuditLogger::log(
+                        //     'module.assignment.retry.success',
+                        //     $user,
+                        //     'success',
+                        //     null,
+                        //     [
+                        //         'module_id' => $module->id,
+                        //         'module_code' => $module->code,
+                        //         'role_id' => $pivot->role_id,
+                        //     ]
+                        // );
                     } else {
-                        AzureAuditLogger::log(
-                            'module.assignment.retry.failed',
-                            $user,
-                            'failed',
-                            implode(', ', $result['errors'] ?? []),
-                            [
-                                'module_id' => $module->id,
-                                'module_code' => $module->code,
-                                'role_id' => $pivot->role_id,
-                            ]
-                        );
+                        // // AzureAuditLogger::log(
+                        //     'module.assignment.retry.failed',
+                        //     $user,
+                        //     'failed',
+                        //     implode(', ', $result['errors'] ?? []),
+                        //     [
+                        //         'module_id' => $module->id,
+                        //         'module_code' => $module->code,
+                        //         'role_id' => $pivot->role_id,
+                        //     ]
+                        // );
                     }
 
                 } catch (Exception $e) {

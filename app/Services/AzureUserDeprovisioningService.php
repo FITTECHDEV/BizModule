@@ -36,11 +36,11 @@ class AzureUserDeprovisioningService
                 ? 'User is already deactivated' 
                 : 'User cannot be deactivated (not provisioned to Azure)';
             
-            AzureAuditLogger::logUserDeactivationFailed(
-                $user->id,
-                $message,
-                $performedBy
-            );
+            // // AzureAuditLogger::logUserDeactivationFailed(
+            //     $user->id,
+            //     $message,
+            //     $performedBy
+            // );
 
             return [
                 'success' => false,
@@ -53,11 +53,11 @@ class AzureUserDeprovisioningService
 
         try {
             // Step 1: Log deactivation start
-            AzureAuditLogger::logUserDeactivationStarted(
-                $user->id,
-                $reason,
-                $performedBy
-            );
+            // // AzureAuditLogger::logUserDeactivationStarted(
+            //     $user->id,
+            //     $reason,
+            //     $performedBy
+            // );
 
             Log::info('Starting user deactivation process', [
                 'user_id' => $user->id,
@@ -93,12 +93,12 @@ class AzureUserDeprovisioningService
                         'group_id' => $azureGroupId
                     ];
 
-                    AzureAuditLogger::logAzureGroupRemoval(
-                        $user->id,
-                        $azureGroupId,
-                        $module->name,
-                        $performedBy
-                    );
+                    // // AzureAuditLogger::logAzureGroupRemoval(
+                    //     $user->id,
+                    //     $azureGroupId,
+                    //     $module->name,
+                    //     $performedBy
+                    // );
 
                     Log::info('Removed user from Azure group', [
                         'user_id' => $user->id,
@@ -126,11 +126,11 @@ class AzureUserDeprovisioningService
             try {
                 $this->azureService->disableUserAccount($user->azure_id);
                 
-                AzureAuditLogger::logAzureUserDisabled(
-                    $user->id,
-                    $user->azure_id,
-                    $performedBy
-                );
+                // // AzureAuditLogger::logAzureUserDisabled(
+                //     $user->id,
+                //     $user->azure_id,
+                //     $performedBy
+                // );
 
                 Log::info('Disabled user account in Azure AD', [
                     'user_id' => $user->id,
@@ -147,11 +147,11 @@ class AzureUserDeprovisioningService
 
                 DB::rollBack();
 
-                AzureAuditLogger::logUserDeactivationFailed(
-                    $user->id,
-                    'Failed to disable Azure account: ' . $e->getMessage(),
-                    $performedBy
-                );
+                // // AzureAuditLogger::logUserDeactivationFailed(
+                //     $user->id,
+                //     'Failed to disable Azure account: ' . $e->getMessage(),
+                //     $performedBy
+                // );
 
                 return [
                     'success' => false,
@@ -182,15 +182,15 @@ class AzureUserDeprovisioningService
             DB::commit();
 
             // Step 6: Log successful deactivation
-            AzureAuditLogger::logUserDeactivationCompleted(
-                $user->id,
-                [
-                    'groups_removed' => count($removedGroups),
-                    'groups_failed' => count($failedGroups),
-                    'reason' => $reason
-                ],
-                $performedBy
-            );
+            // // AzureAuditLogger::logUserDeactivationCompleted(
+            //     $user->id,
+            //     [
+            //         'groups_removed' => count($removedGroups),
+            //         'groups_failed' => count($failedGroups),
+            //         'reason' => $reason
+            //     ],
+            //     $performedBy
+            // );
 
             Log::info('User deactivation completed successfully', [
                 'user_id' => $user->id,
@@ -214,11 +214,11 @@ class AzureUserDeprovisioningService
         } catch (Exception $e) {
             DB::rollBack();
 
-            AzureAuditLogger::logUserDeactivationFailed(
-                $user->id,
-                $e->getMessage(),
-                $performedBy
-            );
+            // // AzureAuditLogger::logUserDeactivationFailed(
+            //     $user->id,
+            //     $e->getMessage(),
+            //     $performedBy
+            // );
 
             Log::error('User deactivation failed', [
                 'user_id' => $user->id,
@@ -254,11 +254,11 @@ class AzureUserDeprovisioningService
                 ? 'User is already active' 
                 : 'User cannot be reactivated (not provisioned to Azure)';
             
-            AzureAuditLogger::logUserReactivationFailed(
-                $user->id,
-                $message,
-                $performedBy
-            );
+            // // AzureAuditLogger::logUserReactivationFailed(
+            //     $user->id,
+            //     $message,
+            //     $performedBy
+            // );
 
             return [
                 'success' => false,
@@ -271,11 +271,11 @@ class AzureUserDeprovisioningService
 
         try {
             // Step 1: Log reactivation start
-            AzureAuditLogger::logUserReactivationStarted(
-                $user->id,
-                $reason,
-                $performedBy
-            );
+            // // AzureAuditLogger::logUserReactivationStarted(
+            //     $user->id,
+            //     $reason,
+            //     $performedBy
+            // );
 
             Log::info('Starting user reactivation process', [
                 'user_id' => $user->id,
@@ -289,11 +289,11 @@ class AzureUserDeprovisioningService
             try {
                 $this->azureService->enableUserAccount($user->azure_id);
                 
-                AzureAuditLogger::logAzureUserEnabled(
-                    $user->id,
-                    $user->azure_id,
-                    $performedBy
-                );
+                // // AzureAuditLogger::logAzureUserEnabled(
+                //     $user->id,
+                //     $user->azure_id,
+                //     $performedBy
+                // );
 
                 Log::info('Enabled user account in Azure AD', [
                     'user_id' => $user->id,
@@ -309,11 +309,11 @@ class AzureUserDeprovisioningService
 
                 DB::rollBack();
 
-                AzureAuditLogger::logUserReactivationFailed(
-                    $user->id,
-                    'Failed to enable Azure account: ' . $e->getMessage(),
-                    $performedBy
-                );
+                // // AzureAuditLogger::logUserReactivationFailed(
+                //     $user->id,
+                //     'Failed to enable Azure account: ' . $e->getMessage(),
+                //     $performedBy
+                // );
 
                 return [
                     'success' => false,
@@ -349,12 +349,12 @@ class AzureUserDeprovisioningService
                         'group_id' => $azureGroupId
                     ];
 
-                    AzureAuditLogger::logAzureGroupAssignment(
-                        $user->id,
-                        $azureGroupId,
-                        $module->name,
-                        $performedBy
-                    );
+                    // // AzureAuditLogger::logAzureGroupAssignment(
+                    //     $user->id,
+                    //     $azureGroupId,
+                    //     $module->name,
+                    //     $performedBy
+                    // );
 
                     // Update module assignment status
                     DB::table('azure_user_modules')
@@ -406,15 +406,15 @@ class AzureUserDeprovisioningService
             DB::commit();
 
             // Step 5: Log successful reactivation
-            AzureAuditLogger::logUserReactivationCompleted(
-                $user->id,
-                [
-                    'groups_added' => count($addedGroups),
-                    'groups_failed' => count($failedGroups),
-                    'reason' => $reason
-                ],
-                $performedBy
-            );
+            // // AzureAuditLogger::logUserReactivationCompleted(
+            //     $user->id,
+            //     [
+            //         'groups_added' => count($addedGroups),
+            //         'groups_failed' => count($failedGroups),
+            //         'reason' => $reason
+            //     ],
+            //     $performedBy
+            // );
 
             Log::info('User reactivation completed successfully', [
                 'user_id' => $user->id,
@@ -438,11 +438,11 @@ class AzureUserDeprovisioningService
         } catch (Exception $e) {
             DB::rollBack();
 
-            AzureAuditLogger::logUserReactivationFailed(
-                $user->id,
-                $e->getMessage(),
-                $performedBy
-            );
+            // // AzureAuditLogger::logUserReactivationFailed(
+            //     $user->id,
+            //     $e->getMessage(),
+            //     $performedBy
+            // );
 
             Log::error('User reactivation failed', [
                 'user_id' => $user->id,

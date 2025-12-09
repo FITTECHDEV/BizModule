@@ -2,14 +2,79 @@
 
 @section('title', 'Create New User')
 
-@section('page-title', 'Create New User')
+@section('page-title', '')
+
+@section('main-class', 'full-width')
 
 @push('styles')
 <style>
+    :root {
+        --primary-color: #3498db;
+        /* Blue */
+        --success: #27ae60;
+        /* Green */
+        --warning: #f39c12;
+        /* Orange */
+        --danger: #e74c3c;
+        /* Red */
+        --text: #2c3e50;
+        --muted: #95a5a6;
+        --border-color: #e1e8ed;
+        --hover-bg: #f8f9fa;
+        --light-bg: rgba(255, 255, 255, 0.95);
+        --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.1);
+        --radius: 12px;
+        --transition: all 0.3s ease;
+    }
+
+    /* Override the old bad rule - keep header visible even in full-width */
+    .main.full-width .page-header {
+        display: flex !important;
+        padding: 30px 40px 20px;
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(10px);
+        margin: 0;
+        border-bottom: 1px solid #e2e8f0;
+    }
+
+    .main.full-width {
+        padding: 0 !important;
+        max-width: 100% !important;
+        margin: 0 !important;
+    }
+
+    .user-form-panel {
+        padding: 40px;
+        min-height: calc(100vh - 120px);
+        background: white;
+    }
+
+    @media (max-width: 768px) {
+        .main.full-width .page-header {
+            padding: 20px 15px;
+            flex-direction: column;
+            text-align: center;
+            gap: 15px;
+        }
+
+        .user-form-panel {
+            padding: 20px 15px;
+        }
+    }
+
+    /* .main.full-width {
+padding: 0 !important;
+max-width: 100% !important;
+margin: 0 !important;
+gap: 0 !important;
+} */
+
     .main-content {
-        max-width: 1400px;
-        margin: 0 auto;
-        padding: 20px;
+        max-width: 100%;
+        width: 100%;
+        margin: 0;
+        padding: 0;
+        min-height: 100vh;
     }
 
     /* Back Button Styles */
@@ -44,42 +109,99 @@
     .user-form-panel {
         background: rgba(255, 255, 255, 0.95);
         backdrop-filter: blur(10px);
-        border-radius: 15px;
-        padding: 30px;
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-        margin-bottom: 20px;
+        border-radius: 0;
+        padding: 20px;
+        box-shadow: none;
+        margin-bottom: 0;
+        min-height: 100vh;
     }
 
+
+    .user-form-card {
+        background: rgba(255, 255, 255, 0.98);
+        backdrop-filter: blur(10px);
+        border-radius: 25px;
+        padding: 40px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        margin-bottom: 40px;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .user-form-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 6px;
+        background: linear-gradient(90deg, #3498db, #8e44ad);
+        border-radius: 25px 25px 0 0;
+    }
+
+
     .form-section {
-        margin-bottom: 30px;
-        padding-bottom: 25px;
-        border-bottom: 2px solid #e1e8ed;
+        margin-bottom: 40px;
+        padding-bottom: 32px;
+        border-bottom: 2px solid #f0f3f7;
     }
 
     .form-section:last-child {
         border-bottom: none;
         margin-bottom: 0;
+        padding-bottom: 0;
     }
 
-    .section-title {
-        font-size: 1.4em;
-        font-weight: 600;
+    .form-section-title {
+        font-size: 1.3em;
+        font-weight: 700;
         color: #2c3e50;
-        margin-bottom: 20px;
+        margin-bottom: 24px;
         display: flex;
         align-items: center;
-        gap: 10px;
+        gap: 12px;
+        padding-bottom: 12px;
+        border-bottom: 3px solid #e8f0ff;
+    }
+
+    .form-section-title i {
+        color: var(--primary-color, #3498db);
+        font-size: 1.1em;
     }
 
     .form-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-        gap: 20px;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 24px;
+        margin-bottom: 20px;
+    }
+
+    .form-row {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 24px;
+        margin-bottom: 24px;
+    }
+
+
+    .form-row.single-column,
+    .form-grid.single-column {
+        grid-template-columns: 1fr;
     }
 
     .form-group {
         display: flex;
         flex-direction: column;
+        gap: 8px;
+    }
+
+    .form-label {
+        font-weight: 600;
+        color: #2c3e50;
+        font-size: 0.9em;
+        display: flex;
+        align-items: center;
+        gap: 6px;
     }
 
     .form-group label {
@@ -251,6 +373,7 @@
             opacity: 0;
             transform: translateY(-20px) scale(0.95);
         }
+
         to {
             opacity: 1;
             transform: translateY(0) scale(1);
@@ -480,11 +603,15 @@
     }
 
     .action-buttons {
-        display: flex;
+        display: none;
         gap: 15px;
         justify-content: flex-end;
         margin-top: 30px;
         padding-top: 20px;
+    }
+
+    .action-buttons.show {
+        display: flex;
     }
 
     .btn {
@@ -556,8 +683,11 @@
     }
 
     @media (max-width: 768px) {
+
+        .form-row,
         .form-grid {
             grid-template-columns: 1fr;
+            gap: 20px;
         }
 
         .action-buttons {
@@ -573,164 +703,189 @@
             grid-template-columns: 1fr;
         }
     }
+
+
+    .main.full-width .page-header {
+        display: flex !important;
+        justify-content: space-between;
+        align-items: center;
+        padding: 30px 40px 0 40px !important;
+        /* removed bottom padding that created space for the line */
+        background: transparent !important;
+        /* remove white background */
+        backdrop-filter: none !important;
+        margin: 0;
+        border-bottom: none !important;
+        /* THIS REMOVES THE LINE */
+        gap: 20px;
+    }
+
+    .page-header .section-title {
+        font-size: 2rem !important;
+        /* much bigger */
+        font-weight: 700 !important;
+        color: #2c3e50 !important;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .page-header .section-title i {
+        font-size: 2.2rem;
+        color: var(--primary-color, #3498db);
+    }
+
+    /* Optional: tighter spacing on mobile */
+    @media (max-width: 768px) {
+        .main.full-width .page-header {
+            padding: 20px 15px 0 15px !important;
+            flex-direction: column;
+            text-align: center;
+            gap: 15px;
+        }
+
+        .page-header .section-title {
+            font-size: 1.7rem !important;
+        }
+
+        .page-header .section-title i {
+            font-size: 1.9rem;
+        }
+    }
 </style>
 @endpush
 
 @section('content')
 <div class="main-content">
     <div class="user-form-panel">
-        <form id="userForm" method="POST" action="{{ route('azure.users.store') }}">
-            @csrf
-            
-            <!-- Basic Information Section -->
-            <div class="form-section">
-                <div class="page-header">
-                    <div class="section-title" style="margin-bottom: 0;">
-                        <i class="fas fa-user-plus"></i>
-                        Create User Data
-                    </div>
-                    <a href="{{ route('azure.dashboard.index') }}" class="back-to-dashboard">
-                        <i class="fas fa-arrow-left"></i>
-                        Back to Dashboard
-                    </a>
-                </div>
+        <!-- Back button + Title Header (kept outside the card for better hierarchy) -->
+        <div class="page-header">
+            <div class="section-title">
+                <i class="fas fa-user-plus"></i>
+                Create User Data
+            </div>
+            <a href="{{ route('azure.dashboard.index') }}" class="back-to-dashboard">
+                <i class="fas fa-arrow-left"></i>
+                Back to Dashboard
+            </a>
+        </div>
 
+        <!-- THE CARD THAT WRAPS THE ENTIRE FORM -->
+        <div class="user-form-card">
+            <form id="userForm" method="POST" action="{{ route('azure.users.store') }}">
+                @csrf
+
+                <!-- Info Note -->
                 <div class="info-note">
                     <i class="fas fa-info-circle"></i>
                     <strong>Note:</strong> Fields marked with * are required.
                 </div>
-                
-                <div class="form-grid">
-                    <!-- Name -->
-                    <div class="form-group">
-                        <label for="name">
-                            Full Name <span style="color: var(--danger);">*</span>
-                        </label>
-                        <input type="text" 
-                                id="name" 
-                                name="name" 
-                                value="{{ old('name') }}" 
-                                required 
+
+                <!-- Basic Information Section -->
+                <div class="form-section">
+                    <h3 class="form-section-title">
+                        <i class="fas fa-user"></i> Basic Information
+                    </h3>
+
+                    <div class="form-grid">
+                        <!-- Name -->
+                        <div class="form-group">
+                            <label for="name">
+                                Full Name <span style="color: var(--danger);">*</span>
+                            </label>
+                            <input type="text" id="name" name="name" value="{{ old('name') }}" required
                                 placeholder="e.g., John Doe"
                                 class="@error('name') is-invalid @enderror">
-                        @error('name')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
-                    </div>
+                            @error('name')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        </div>
 
-                    <div class="form-group" style="display: none;">
-                        <label for="company_id">
-                            Company
-                        </label>
-                        <select id="company_id" 
-                                name="company_id"
-                                class="@error('company_id') is-invalid @enderror">
-                            <option value="">Select Company</option>
-                            @foreach($companies as $company)
+                        <!-- Hidden Company (if needed later) -->
+                        <div class="form-group" style="display: none;">
+                            <label for="company_id">Company</label>
+                            <select id="company_id" name="company_id" class="@error('company_id') is-invalid @enderror">
+                                <option value="">Select Company</option>
+                                @foreach($companies as $company)
                                 <option value="{{ $company->id }}" {{ old('company_id') == $company->id ? 'selected' : '' }}>
                                     {{ $company->name }}
                                 </option>
-                            @endforeach
-                        </select>
-                        @error('company_id')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
-                    </div>
+                                @endforeach
+                            </select>
+                            @error('company_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        </div>
 
-                    <!-- Employee ID -->
-                    <div class="form-group">
-                        <label for="employee_id">
-                            Employee ID <span style="color: var(--danger);">*</span>
-                        </label>
-                        <input type="text" 
-                                id="employee_id" 
-                                name="employee_id" 
-                                value="{{ old('employee_id') }}" 
-                                required 
+                        <!-- Employee ID -->
+                        <div class="form-group">
+                            <label for="employee_id">
+                                Employee ID <span style="color: var(--danger);">*</span>
+                            </label>
+                            <input type="text" id="employee_id" name="employee_id" value="{{ old('employee_id') }}" required
                                 placeholder="e.g., EMP001"
                                 class="@error('employee_id') is-invalid @enderror">
-                        @error('employee_id')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
-                    </div>
-                    
-                    <!-- Email -->
-                    <div class="form-group">
-                        <label for="email">
-                            Email Address <span style="color: var(--danger);">*</span>
-                        </label>
-                        <input type="email" 
-                                id="email" 
-                                name="email" 
-                                value="{{ old('email') }}" 
-                                required
+                            @error('employee_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        </div>
+
+                        <!-- Email -->
+                        <div class="form-group">
+                            <label for="email">
+                                Email Address <span style="color: var(--danger);">*</span>
+                            </label>
+                            <input type="email" id="email" name="email" value="{{ old('email') }}" required
                                 placeholder="e.g., john.doe@company.com"
                                 class="@error('email') is-invalid @enderror">
-                        @error('email')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
-                    </div>
+                            @error('email')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        </div>
 
-                    <!-- Phone -->
-                    <div class="form-group">
-                        <label for="phone">
-                            Phone Number <span style="color: var(--danger);">*</span>
-                        </label>
-                        <input type="tel" 
-                                id="phone" 
-                                name="phone" 
-                                value="{{ old('phone') }}" 
-                                required
+                        <!-- Phone -->
+                        <div class="form-group">
+                            <label for="phone">
+                                Phone Number <span style="color: var(--danger);">*</span>
+                            </label>
+                            <input type="tel" id="phone" name="phone" value="{{ old('phone') }}" required
                                 placeholder="e.g., +254 712 345 678"
                                 class="@error('phone') is-invalid @enderror">
-                        @error('phone')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
-                    </div>
+                            @error('phone')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        </div>
 
-                    <!-- Department -->
-                    <div class="form-group">
-                        <label for="department">
-                            Department
-                        </label>
-                        <input type="text" 
-                                id="department" 
-                                name="department" 
-                                value="{{ old('department') }}" 
+                        <!-- Department -->
+                        <div class="form-group">
+                            <label for="department">Department</label>
+                            <input type="text" id="department" name="department" value="{{ old('department') }}"
                                 placeholder="e.g., IT Department"
                                 class="@error('department') is-invalid @enderror">
-                        @error('department')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
+                            @error('department')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Module Assignments Section -->
-            <div class="form-section">
-                <div class="section-title" style="display: flex; justify-content: space-between; align-items: center;">
-                    <div><i class="fas fa-th-large"></i> Module Assignments</div>
-                    <button type="button" class="btn btn-sm btn-success" onclick="addNewModule()">
-                        <i class="fas fa-plus"></i> Add Module
+                <!-- Module Assignments Section -->
+                <div class="form-section">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h3 class="form-section-title">
+                            <i class="fas fa-th-large"></i> Module Assignments
+                        </h3>
+                        <button type="button" class="btn btn-sm btn-success" onclick="addNewModule()">
+                            <i class="fas fa-plus"></i> Add Module
+                        </button>
+                    </div>
+
+                    <div id="modulesGrid" class="modules-grid"></div>
+                </div>
+
+                <div id="hiddenInputsContainer"></div>
+
+                <!-- Action Buttons -->
+                <div class="action-buttons" style="border-top: 1px solid #e2e8f0; padding-top: 24px; margin-top: 30px;">
+                    <button type="button" class="btn btn-secondary" onclick="cancelForm()">
+                        <i class="fas fa-times"></i> Cancel
+                    </button>
+                    <button type="submit" class="btn btn-primary" id="submitBtn">
+                        <i class="fas fa-save"></i> Create User
                     </button>
                 </div>
-                <div id="modulesGrid" class="modules-grid"></div>
-            </div>
-
-            <div id="hiddenInputsContainer"></div>
-
-            <!-- Action Buttons -->
-            <div class="action-buttons">
-                <button type="button" class="btn btn-secondary" onclick="cancelForm()">
-                    <i class="fas fa-times"></i>
-                    Cancel
-                </button>
-                <button type="submit" class="btn btn-primary" id="submitBtn">
-                    <i class="fas fa-save"></i>
-                    Create User
-                </button>
-            </div>
-        </form>
+            </form>
+        </div>
+        <!-- End of .user-form-card -->
     </div>
 </div>
 
@@ -806,8 +961,8 @@
     }
 
     function getApplicationCodeForSP(module) {
-    return module.name; 
-}
+        return module.name;
+    }
 
     // Fetch SCM Functions (returns array of {ID, Code, Name})
     async function fetchSCMFunctions() {
@@ -822,9 +977,9 @@
                     'Accept': 'application/json'
                 }
             });
-            
+
             const result = await response.json();
-            
+
             if (result.success && result.data) {
                 // Transform to consistent structure
                 scmFunctionsCache = result.data.map(f => ({
@@ -847,43 +1002,43 @@
     // Fetch Roles by Application Code (returns array of {RoleId, RoleCode, Role})
     async function fetchRolesByApplicationCode(applicationCode) {
         const cacheKey = `${applicationCode}_all`;
-        
+
         if (rolesCache[cacheKey]) {
             return rolesCache[cacheKey];
         }
 
         try {
             const url = `/azure/modules/roles?application_code=${encodeURIComponent(applicationCode)}`;
-            
+
             const response = await fetch(url, {
                 headers: {
                     'X-CSRF-TOKEN': csrfToken,
                     'Accept': 'application/json'
                 }
             });
-            
+
             const result = await response.json();
-            
+
             if (result.success && result.data && result.data.length > 0) {
                 // Filter out error responses
                 const validRoles = result.data.filter(role => {
-                    const hasError = Object.values(role).some(val => 
+                    const hasError = Object.values(role).some(val =>
                         typeof val === 'string' && (
-                            val.toLowerCase().includes('failed') || 
+                            val.toLowerCase().includes('failed') ||
                             val.toLowerCase().includes('does not exist') ||
                             val.toLowerCase().includes('error')
                         )
                     );
                     return !hasError;
                 });
-                
+
                 // Transform to consistent structure
                 rolesCache[cacheKey] = validRoles.map(r => ({
                     id: r.RoleId || r.Id || r.id,
                     code: r.RoleCode || r.Code || r.code,
                     name: r.Role || r.Name || r.name
                 }));
-                
+
                 console.log('✅ Cached', rolesCache[cacheKey].length, 'roles for', applicationCode);
                 return rolesCache[cacheKey];
             } else {
@@ -902,15 +1057,15 @@
     function renderAllCards() {
         const grid = document.getElementById('modulesGrid');
         grid.innerHTML = '';
-        
+
         Object.values(moduleCards).forEach(card => {
             grid.appendChild(createModuleCard(card));
         });
-        
+
         if (Object.keys(moduleCards).length === 0) {
             grid.innerHTML = '<div class="empty-grid"><i class="fas fa-inbox"></i><p>No modules assigned yet. Click "Add Module" to get started.</p></div>';
         }
-        
+
         updateHiddenInputs();
     }
 
@@ -920,9 +1075,9 @@
         div.className = `module-card ${card.isNew ? 'new-module' : ''}`;
         div.id = card.id;
         div.onclick = () => openModal(card.id);
-        
+
         const assignmentCount = card.assignments ? card.assignments.length : 0;
-        
+
         div.innerHTML = `
             <i class="fas ${card.isNew ? 'fa-plus-circle' : 'fa-cube'} card-icon"></i>
             <div class="card-title">${escapeHtml(card.module_name)}</div>
@@ -931,7 +1086,7 @@
                 ${assignmentCount} assignment${assignmentCount !== 1 ? 's' : ''}
             </span>
         `;
-        
+
         return div;
     }
 
@@ -940,24 +1095,24 @@
         currentModalCardId = cardId;
         const card = moduleCards[cardId];
         originalCardState = deepClone(card);
-        
+
         document.getElementById('modalModuleName').textContent = card.module_name;
-        
+
         // Pre-fetch data if needed
         const module = modulesData.find(m => m.id == card.module_id);
         if (module) {
             const applicationCode = getApplicationCodeForSP(module);
             const isSCM = applicationCode === 'OPS' || applicationCode === 'OPS UAT';
-            
+
             // Fetch roles and functions concurrently
             const promises = [fetchRolesByApplicationCode(applicationCode)];
             if (isSCM) {
                 promises.push(fetchSCMFunctions());
             }
-            
+
             await Promise.all(promises);
         }
-        
+
         renderModalAssignments();
         document.getElementById('moduleModal').classList.add('active');
     };
@@ -1002,6 +1157,39 @@
         document.getElementById('moduleModal').classList.remove('active');
         currentModalCardId = null;
         renderAllCards();
+        // Show action buttons when modules are assigned
+        const actionButtons = document.querySelector('.action-buttons');
+        if (Object.keys(moduleCards).length > 0) {
+            actionButtons.classList.add('show');
+        }
+        showAlert('success', 'Saved', 'Module assignment saved. Click "Create User" to save everything.');
+    };
+
+    window.saveModalChanges = () => {
+        console.log('=== SAVE MODAL CHANGES ===');
+        console.log('Current Modal Card ID:', currentModalCardId);
+        console.log('Current Card Data:', moduleCards[currentModalCardId]);
+        console.log('All Module Cards Before Save:', moduleCards);
+
+        originalCardState = null;
+        if (currentModalCardId && moduleCards[currentModalCardId]) {
+            moduleCards[currentModalCardId].isNew = false;
+            console.log('✓ Card marked as not new');
+        }
+
+        console.log('All Module Cards After Save:', moduleCards);
+
+        document.getElementById('moduleModal').classList.remove('active');
+        currentModalCardId = null;
+        renderAllCards();
+
+        const actionButtons = document.querySelector('.action-buttons');
+        if (Object.keys(moduleCards).length > 0) {
+            actionButtons.classList.add('show');
+            console.log('✓ Action buttons shown');
+        }
+
+        console.log('=== END SAVE ===');
         showAlert('success', 'Saved', 'Module assignment saved. Click "Create User" to save everything.');
     };
 
@@ -1009,37 +1197,37 @@
     function renderModalAssignments() {
         const card = moduleCards[currentModalCardId];
         const container = document.getElementById('modalAssignmentsContainer');
-        
+
         if (!card.assignments || card.assignments.length === 0) {
             container.innerHTML = '<div class="empty-assignments"><i class="fas fa-clipboard-list"></i><p>No assignments yet.</p></div>';
             return;
         }
-        
+
         const module = modulesData.find(m => m.id == card.module_id);
-        
+
         if (!module) {
             container.innerHTML = '<div class="empty-assignments"><i class="fas fa-exclamation-triangle"></i><p>Module not found.</p></div>';
             return;
         }
-        
+
         const applicationCode = getApplicationCodeForSP(module);
         const isSCM = applicationCode === 'OPS' || applicationCode === 'OPS UAT';
         const cacheKey = `${applicationCode}_all`;
-        
+
         // Check if data is loaded
         if (!rolesCache[cacheKey]) {
             container.innerHTML = '<div class="empty-assignments"><i class="fas fa-spinner fa-spin"></i><p>Loading roles...</p></div>';
             return;
         }
-        
+
         if (isSCM && !scmFunctionsCache) {
             container.innerHTML = '<div class="empty-assignments"><i class="fas fa-spinner fa-spin"></i><p>Loading functions...</p></div>';
             return;
         }
-        
+
         const availableRoles = rolesCache[cacheKey] || [];
         const availableFunctions = isSCM ? (scmFunctionsCache || []) : [];
-        
+
         container.innerHTML = card.assignments.map(a => {
             const isAllLocations = a.location === 'ALL';
             const isAllRoles = a.role_id === 'ALL';
@@ -1171,21 +1359,21 @@
     window.handleLocationRadioChange = (assignId) => {
         const container = document.getElementById(assignId);
         if (!container) return;
-        
+
         const allRadio = container.querySelector('.all-locations-radio');
         const checkboxes = container.querySelectorAll('.location-checkbox');
         const checkboxOptions = container.querySelectorAll('.info-field:first-child .checkbox-option');
         const card = moduleCards[currentModalCardId];
         const assignment = card.assignments.find(a => a.id === assignId);
-        
+
         if (allRadio && allRadio.checked) {
             // All locations selected
-            checkboxes.forEach(cb => { 
-                cb.checked = true; 
-                cb.disabled = true; 
+            checkboxes.forEach(cb => {
+                cb.checked = true;
+                cb.disabled = true;
             });
             checkboxOptions.forEach(opt => opt.classList.add('disabled'));
-            
+
             if (assignment) {
                 assignment.location = 'ALL';
                 assignment.locationIds = ['ALL'];
@@ -1193,12 +1381,12 @@
             }
         } else {
             // Specific locations
-            checkboxes.forEach(cb => { 
-                cb.disabled = false; 
-                cb.checked = false; 
+            checkboxes.forEach(cb => {
+                cb.disabled = false;
+                cb.checked = false;
             });
             checkboxOptions.forEach(opt => opt.classList.remove('disabled'));
-            
+
             if (assignment) {
                 assignment.location = '';
                 assignment.locationIds = [];
@@ -1211,23 +1399,23 @@
     window.handleLocationCheckboxChange = (assignId) => {
         const container = document.getElementById(assignId);
         if (!container) return;
-        
+
         const checkboxes = container.querySelectorAll('.location-checkbox:checked:not(:disabled)');
         const card = moduleCards[currentModalCardId];
         const assignment = card.assignments.find(a => a.id === assignId);
-        
+
         if (assignment) {
             assignment.locationIds = [];
             assignment.locationCodes = [];
-            
+
             checkboxes.forEach(cb => {
                 const locId = cb.getAttribute('data-location-id');
                 const locCode = cb.getAttribute('data-location-code');
-                
+
                 assignment.locationIds.push(locId);
                 assignment.locationCodes.push(locCode);
             });
-            
+
             assignment.location = assignment.locationCodes.length > 0 ? assignment.locationCodes[0] : '';
         }
     };
@@ -1236,32 +1424,32 @@
     window.handleFunctionRadioChange = (assignId) => {
         const container = document.getElementById(assignId);
         if (!container) return;
-        
+
         const allRadio = container.querySelector('.all-functions-radio');
         const checkboxes = container.querySelectorAll('.function-checkbox');
         const checkboxOptions = container.querySelectorAll('.info-field:nth-child(2) .checkbox-option');
         const card = moduleCards[currentModalCardId];
         const assignment = card.assignments.find(a => a.id === assignId);
-        
+
         if (allRadio && allRadio.checked) {
-            checkboxes.forEach(cb => { 
-                cb.checked = true; 
-                cb.disabled = true; 
+            checkboxes.forEach(cb => {
+                cb.checked = true;
+                cb.disabled = true;
             });
             checkboxOptions.forEach(opt => opt.classList.add('disabled'));
-            
+
             if (assignment) {
                 assignment.function_id = 'ALL';
                 assignment.functionIds = ['ALL'];
                 assignment.functionCodes = ['ALL'];
             }
         } else {
-            checkboxes.forEach(cb => { 
-                cb.disabled = false; 
-                cb.checked = false; 
+            checkboxes.forEach(cb => {
+                cb.disabled = false;
+                cb.checked = false;
             });
             checkboxOptions.forEach(opt => opt.classList.remove('disabled'));
-            
+
             if (assignment) {
                 assignment.function_id = '';
                 assignment.functionIds = [];
@@ -1274,89 +1462,144 @@
     window.handleFunctionCheckboxChange = (assignId) => {
         const container = document.getElementById(assignId);
         if (!container) return;
-        
+
         const checkboxes = container.querySelectorAll('.function-checkbox:checked:not(:disabled)');
         const card = moduleCards[currentModalCardId];
         const assignment = card.assignments.find(a => a.id === assignId);
-        
+
         if (assignment) {
             assignment.functionIds = [];
             assignment.functionCodes = [];
-            
+
             checkboxes.forEach(cb => {
                 const funcId = cb.getAttribute('data-function-id');
                 const funcCode = cb.getAttribute('data-function-code');
-                
+
                 assignment.functionIds.push(funcId);
                 assignment.functionCodes.push(funcCode);
             });
-            
+
             assignment.function_id = assignment.functionIds.length > 0 ? assignment.functionIds[0] : '';
         }
     };
 
     // Handle role radio change (All vs Specific)
     window.handleRoleRadioChange = (assignId) => {
+        console.log('🔄 Role radio changed for assignment:', assignId);
+
         const container = document.getElementById(assignId);
-        if (!container) return;
-        
+        if (!container) {
+            console.error('❌ Assignment container not found:', assignId);
+            return;
+        }
+
         const allRadio = container.querySelector('.all-roles-radio');
+        const specificRadio = container.querySelector('.specific-roles-radio');
         const checkboxes = container.querySelectorAll('.role-checkbox');
         const checkboxOptions = container.querySelectorAll('.info-field:last-child .checkbox-option');
+
         const card = moduleCards[currentModalCardId];
+        if (!card) {
+            console.error('❌ Card not found:', currentModalCardId);
+            return;
+        }
+
         const assignment = card.assignments.find(a => a.id === assignId);
-        
+        if (!assignment) {
+            console.error('❌ Assignment not found:', assignId);
+            return;
+        }
+
         if (allRadio && allRadio.checked) {
-            checkboxes.forEach(cb => { 
-                cb.checked = true; 
-                cb.disabled = true; 
+            console.log('✅ "All Roles" selected');
+
+            // Enable all checkboxes and mark them checked
+            checkboxes.forEach(cb => {
+                cb.checked = true;
+                cb.disabled = true;
             });
             checkboxOptions.forEach(opt => opt.classList.add('disabled'));
-            
-            if (assignment) {
-                assignment.role_id = 'ALL';
-                assignment.roleIds = ['ALL'];
-                assignment.roleCodes = ['ALL'];
-            }
+
+            // Set ALL in assignment
+            assignment.role_id = 'ALL';
+            assignment.roleIds = ['ALL'];
+            assignment.roleCodes = ['ALL'];
+
+            console.log('Updated assignment:', {
+                role_id: assignment.role_id,
+                roleIds: assignment.roleIds,
+                roleCodes: assignment.roleCodes
+            });
         } else {
-            checkboxes.forEach(cb => { 
-                cb.disabled = false; 
-                cb.checked = false; 
+            console.log('✅ "Specific Roles" selected');
+
+            // Enable checkboxes and uncheck all
+            checkboxes.forEach(cb => {
+                cb.disabled = false;
+                cb.checked = false;
             });
             checkboxOptions.forEach(opt => opt.classList.remove('disabled'));
-            
-            if (assignment) {
-                assignment.role_id = '';
-                assignment.roleIds = [];
-                assignment.roleCodes = [];
-            }
+
+            // Clear assignment data
+            assignment.role_id = '';
+            assignment.roleIds = [];
+            assignment.roleCodes = [];
+
+            console.log('Cleared role selection - user must now select specific roles');
         }
     };
 
-    // Handle role checkbox change
+    // Handle role checkbox change (when specific roles are selected)
     window.handleRoleCheckboxChange = (assignId) => {
+        console.log('✅ Role checkbox changed for assignment:', assignId);
+
         const container = document.getElementById(assignId);
-        if (!container) return;
-        
+        if (!container) {
+            console.error('❌ Assignment container not found:', assignId);
+            return;
+        }
+
+        // Get only checked and enabled checkboxes
         const checkboxes = container.querySelectorAll('.role-checkbox:checked:not(:disabled)');
+
         const card = moduleCards[currentModalCardId];
+        if (!card) {
+            console.error('❌ Card not found:', currentModalCardId);
+            return;
+        }
+
         const assignment = card.assignments.find(a => a.id === assignId);
-        
-        if (assignment) {
-            assignment.roleIds = [];
-            assignment.roleCodes = [];
-            
-            checkboxes.forEach(cb => {
-                const roleId = cb.getAttribute('data-role-id');
-                const roleCode = cb.getAttribute('data-role-code');
-                
+        if (!assignment) {
+            console.error('❌ Assignment not found:', assignId);
+            return;
+        }
+
+        // Clear existing data
+        assignment.roleIds = [];
+        assignment.roleCodes = [];
+
+        // Populate from checked checkboxes
+        checkboxes.forEach(cb => {
+            const roleId = cb.getAttribute('data-role-id');
+            const roleCode = cb.getAttribute('data-role-code');
+
+            if (roleId && roleCode) {
                 assignment.roleIds.push(roleId);
                 assignment.roleCodes.push(roleCode);
-            });
-            
-            assignment.role_id = assignment.roleIds.length > 0 ? assignment.roleIds[0] : '';
-        }
+            }
+        });
+
+        // Set role_id to first selected role (for backwards compatibility)
+        assignment.role_id = assignment.roleIds.length > 0 ? assignment.roleIds[0] : '';
+
+        console.log('Updated role selection:', {
+            selected_count: checkboxes.length,
+            role_id: assignment.role_id,
+            roleIds: assignment.roleIds,
+            roleCodes: assignment.roleCodes
+        });
     };
+
 
     // Add new module
     function addNewModule() {
@@ -1370,7 +1613,7 @@
                 `).join('')}
             </div>
         `;
-        
+
         Swal.fire({
             title: 'Select Module',
             html: moduleSelectorHTML,
@@ -1393,26 +1636,28 @@
     // Select module and create card
     function selectModuleDirectly(moduleId) {
         Swal.close();
-        
+
         const module = modulesData.find(m => m.id == moduleId);
-        
+
         if (!module) {
             showAlert('error', 'Error', 'Module not found');
             return;
         }
-        
+
         const cardId = `card_${cardIdCounter++}`;
         const assignId = `assign_${cardIdCounter++}`;
-        
+
         const applicationCode = getApplicationCodeForSP(module);
         const isSCM = applicationCode === 'OPS' || applicationCode === 'OPS UAT';
-        
+
+        // ✅ FIX: Store application_name along with other module data
         moduleCards[cardId] = {
             id: cardId,
             isNew: true,
             module_id: moduleId,
             module_name: module.name,
             application_id: module.application_id,
+            application_name: module.name, // ✅ ADD THIS LINE
             assignments: [{
                 id: assignId,
                 location: '',
@@ -1426,7 +1671,7 @@
                 functionCodes: isSCM ? [] : undefined
             }]
         };
-        
+
         renderAllCards();
         openModal(cardId);
     }
@@ -1445,121 +1690,211 @@
             if (result.isConfirmed) {
                 const card = moduleCards[currentModalCardId];
                 card.assignments = card.assignments.filter(a => a.id !== assignId);
-                
+
                 if (card.assignments.length === 0 && card.isNew) {
                     delete moduleCards[currentModalCardId];
                     closeModal();
+                    if (Object.keys(moduleCards).length === 0) {
+                        document.querySelector('.action-buttons').classList.remove('show');
+                    }
                 } else {
                     renderModalAssignments();
                 }
-                
+
                 showAlert('success', 'Deleted', 'Assignment removed');
             }
         });
     };
 
     // Update hidden inputs for form submission
+    // Update hidden inputs for form submission - OPTIMIZED VERSION
+    // Update hidden inputs for form submission - CORRECTED VERSION
     function updateHiddenInputs() {
         const container = document.getElementById('hiddenInputsContainer');
         container.innerHTML = '';
-        let index = 0;
-        
+
+        console.log('=== GENERATING COMPACT JSON FOR SUBMISSION ===');
+        console.log('Module Cards:', moduleCards);
+
+        // Create a compact JSON structure
+        const compactModules = [];
+
         Object.values(moduleCards).forEach(card => {
-            if (!card.module_id || !card.assignments) return;
-            
+            if (!card.module_id || !card.assignments) {
+                console.warn('⚠️ Skipping card - missing module_id or assignments', card);
+                return;
+            }
+
             const module = modulesData.find(m => m.id == card.module_id);
-            if (!module) return;
-            
+            if (!module) {
+                console.error('❌ Module not found for ID:', card.module_id);
+                return;
+            }
+
             const applicationCode = getApplicationCodeForSP(module);
             const isSCM = applicationCode === 'OPS' || applicationCode === 'OPS UAT';
-            
-            card.assignments.forEach(a => {
-                // Determine what to expand
-                const locations = a.location === 'ALL' ? 
-                    locationsData.map(l => ({
-                        id: l.id,
-                        code: l.code.trim()
-                    })) : 
-                    (a.locationCodes || []).map(code => ({
-                        id: locationsCache[code]?.id || '',
-                        code: code
-                    }));
-                
-                const roles = a.role_id === 'ALL' ? 
-                    (rolesCache[`${applicationCode}_all`] || []).map(r => ({
-                        id: r.id,
-                        code: r.code
-                    })) : 
-                    (a.roleIds || []).map((id, idx) => ({
-                        id: id,
-                        code: a.roleCodes[idx] || ''
-                    }));
-                
-                const functions = isSCM ? (
-                    a.function_id === 'ALL' ? 
-                        (scmFunctionsCache || []).map(f => ({
-                            id: f.id,
-                            code: f.code
-                        })) : 
-                        (a.functionIds || []).map((id, idx) => ({
-                            id: id,
-                            code: a.functionCodes[idx] || ''
-                        }))
-                ) : [];
-                
-                // Create combinations
-                if (locations.length > 0 && roles.length > 0) {
-                    locations.forEach(loc => {
-                        roles.forEach(role => {
-                            if (isSCM && functions.length > 0) {
-                                functions.forEach(func => {
-                                    container.innerHTML += `
-                                        <input type="hidden" name="modules[${index}][module_id]" value="${card.module_id}">
-                                        <input type="hidden" name="modules[${index}][application_id]" value="${module.application_id}">
-                                        <input type="hidden" name="modules[${index}][location_id]" value="${loc.id}">
-                                        <input type="hidden" name="modules[${index}][location_code]" value="${loc.code}">
-                                        <input type="hidden" name="modules[${index}][role_id]" value="${role.id}">
-                                        <input type="hidden" name="modules[${index}][role_code]" value="${role.code}">
-                                        <input type="hidden" name="modules[${index}][function_id]" value="${func.id}">
-                                        <input type="hidden" name="modules[${index}][function_code]" value="${func.code}">
-                                    `;
-                                    index++;
-                                });
-                            } else {
-                                container.innerHTML += `
-                                    <input type="hidden" name="modules[${index}][module_id]" value="${card.module_id}">
-                                    <input type="hidden" name="modules[${index}][application_id]" value="${module.application_id}">
-                                    <input type="hidden" name="modules[${index}][location_id]" value="${loc.id}">
-                                    <input type="hidden" name="modules[${index}][location_code]" value="${loc.code}">
-                                    <input type="hidden" name="modules[${index}][role_id]" value="${role.id}">
-                                    <input type="hidden" name="modules[${index}][role_code]" value="${role.code}">
-                                `;
-                                index++;
-                            }
-                        });
-                    });
+
+            console.log(`📦 Processing module: ${module.name}`, {
+                module_id: card.module_id,
+                application_id: module.application_id,
+                application_name: module.name,
+                isSCM: isSCM,
+                assignments: card.assignments.length
+            });
+
+            card.assignments.forEach((a, assignIndex) => {
+                console.log(`  📋 Assignment ${assignIndex + 1}:`, {
+                    location: a.location,
+                    locationIds: a.locationIds,
+                    locationCodes: a.locationCodes,
+                    role_id: a.role_id,
+                    roleIds: a.roleIds,
+                    roleCodes: a.roleCodes,
+                    function_id: a.function_id,
+                    functionIds: a.functionIds,
+                    functionCodes: a.functionCodes
+                });
+
+                // Validate assignment has required data
+                const hasLocations = a.location === 'ALL' ||
+                    (a.locationCodes && a.locationCodes.length > 0);
+                const hasRoles = a.role_id === 'ALL' ||
+                    (a.roleIds && a.roleIds.length > 0);
+                const hasFunctions = !isSCM || a.function_id === 'ALL' ||
+                    (a.functionIds && a.functionIds.length > 0);
+
+                if (!hasLocations) {
+                    console.error(`  ❌ Assignment ${assignIndex + 1}: No locations selected`);
+                    return;
                 }
+
+                if (!hasRoles) {
+                    console.error(`  ❌ Assignment ${assignIndex + 1}: No roles selected`);
+                    return;
+                }
+
+                if (!hasFunctions && isSCM) {
+                    console.error(`  ❌ Assignment ${assignIndex + 1}: SCM module requires functions`);
+                    return;
+                }
+
+                // Prepare compact assignment data
+                const assignment = {
+                    module_id: card.module_id,
+                    application_id: module.application_id,
+                    application_name: module.name,
+                    location: a.location || '',
+                    locationIds: a.locationIds || [],
+                    locationCodes: a.locationCodes || [],
+                    role_id: a.role_id || '',
+                    roleIds: a.roleIds || [],
+                    roleCodes: a.roleCodes || []
+                };
+
+                // Add function data for SCM modules
+                if (isSCM) {
+                    assignment.function_id = a.function_id || '';
+                    assignment.functionIds = a.functionIds || [];
+                    assignment.functionCodes = a.functionCodes || [];
+                }
+
+                compactModules.push(assignment);
+                console.log(`  ✅ Assignment ${assignIndex + 1} added to compact modules`);
             });
         });
-        
-        console.log('✅ Created', index, 'hidden inputs for', Object.keys(moduleCards).length, 'module cards');
+
+        if (compactModules.length === 0) {
+            console.error('❌❌❌ NO ASSIGNMENTS CREATED!');
+            showAlert('error', 'Configuration Error',
+                'No valid module assignments were created. Please ensure:\n' +
+                '1. You have selected at least one location\n' +
+                '2. You have selected at least one role\n' +
+                '3. For SCM modules, you have selected at least one function'
+            );
+            return false;
+        }
+
+        // Create a single hidden input with JSON data
+        const jsonData = JSON.stringify(compactModules);
+
+        console.log('📤 Creating hidden input with JSON data');
+        console.log('JSON Length:', jsonData.length, 'characters');
+        console.log('Compact Modules:', compactModules);
+
+        container.innerHTML = `<input type="hidden" name="modules_json" value='${jsonData.replace(/'/g, "&#39;")}'>`;
+
+        console.log(`✅ Created compact JSON with ${compactModules.length} assignments`);
+        console.log('=== END HIDDEN INPUTS ===');
+
+        return true;
     }
+    // (Removed duplicated debugging / validation block that was placed outside the updateHiddenInputs function 
+    // and caused a stray closing brace and syntax error.)
+
+    // Add this function to help debug what's being sent
+    window.debugModuleData = function() {
+        console.log('=== DEBUG: Module Cards State ===');
+        console.log('Total Cards:', Object.keys(moduleCards).length);
+
+        Object.values(moduleCards).forEach((card, idx) => {
+            console.log(`\nCard ${idx + 1}:`, {
+                module_id: card.module_id,
+                module_name: card.module_name,
+                assignments: card.assignments.length
+            });
+
+            card.assignments.forEach((a, aIdx) => {
+                console.log(`  Assignment ${aIdx + 1}:`, {
+                    location: a.location,
+                    locationCodes: a.locationCodes,
+                    role_id: a.role_id,
+                    roleIds: a.roleIds,
+                    roleCodes: a.roleCodes,
+                    function_id: a.function_id,
+                    functionIds: a.functionIds
+                });
+            });
+        });
+
+        // Try to generate hidden inputs
+        const success = updateHiddenInputs();
+
+        if (success) {
+            const input = document.querySelector('input[name="modules_json"]');
+            if (input) {
+                console.log('\n✅ Hidden input created successfully');
+                console.log('JSON Value:', input.value);
+
+                try {
+                    const parsed = JSON.parse(input.value);
+                    console.log('Parsed JSON:', parsed);
+                    console.log('Total assignments:', parsed.length);
+                } catch (e) {
+                    console.error('❌ Failed to parse JSON:', e);
+                }
+            } else {
+                console.error('❌ Hidden input not found!');
+            }
+        } else {
+            console.error('❌ updateHiddenInputs() returned false');
+        }
+    };
 
     // Form validation
     function validateForm() {
         let isValid = true;
         const requiredFields = ['name', 'employee_id', 'email', 'phone'];
-        
+
         document.querySelectorAll('.is-invalid').forEach(el => {
             el.classList.remove('is-invalid');
         });
-        
+
         requiredFields.forEach(field => {
             const element = document.getElementById(field);
             if (!element.value.trim()) {
                 element.classList.add('is-invalid');
                 isValid = false;
-                
+
                 if (!element.nextElementSibling || !element.nextElementSibling.classList.contains('invalid-feedback')) {
                     const errorDiv = document.createElement('div');
                     errorDiv.className = 'invalid-feedback';
@@ -1568,14 +1903,14 @@
                 }
             }
         });
-        
+
         const emailField = document.getElementById('email');
         if (emailField.value.trim()) {
             const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
             if (!emailPattern.test(emailField.value)) {
                 emailField.classList.add('is-invalid');
                 isValid = false;
-                
+
                 if (!emailField.nextElementSibling || !emailField.nextElementSibling.classList.contains('invalid-feedback')) {
                     const errorDiv = document.createElement('div');
                     errorDiv.className = 'invalid-feedback';
@@ -1584,17 +1919,20 @@
                 }
             }
         }
-        
+
         if (!isValid) {
             const firstError = document.querySelector('.is-invalid');
             if (firstError) {
-                firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                firstError.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'center'
+                });
                 firstError.focus();
             }
-            
+
             showAlert('error', 'Validation Error', 'Please fill in all required fields correctly.');
         }
-        
+
         return isValid;
     }
 
@@ -1609,29 +1947,128 @@
         );
     }
 
-    // Form submission
     document.getElementById('userForm').addEventListener('submit', function(e) {
-        e.preventDefault();
-        
+        e.preventDefault(); // ✅ CRITICAL: Prevent form from submitting normally
+
+        console.log('=== FORM SUBMISSION STARTED ===');
+        console.log('Module Cards at submit:', moduleCards);
+
+        // Validate basic form fields first
         if (!validateForm()) {
+            console.error('❌ Form validation failed');
             return;
         }
 
-        updateHiddenInputs();
-        
-        // Debug: show what we're submitting
-        console.log('=== FORM SUBMISSION ===');
-        console.log('Module Cards:', moduleCards);
-        console.log('Hidden Inputs Count:', document.querySelectorAll('#hiddenInputsContainer input').length);
-        
+        // Check if we have any module cards
+        if (Object.keys(moduleCards).length === 0) {
+            showAlert('error', 'Validation Error', 'Please add at least one module assignment');
+            return;
+        }
+
+        // Generate hidden inputs and validate
+        const inputsGenerated = updateHiddenInputs();
+        if (!inputsGenerated) {
+            console.error('❌ Failed to generate hidden inputs');
+            return;
+        }
+
+        // Final check: Do we have the hidden input?
+        const hiddenInput = document.querySelector('input[name="modules_json"]');
+        if (!hiddenInput || !hiddenInput.value) {
+            showAlert('error', 'Validation Error',
+                'No module assignments were generated. Please check your selections and try again.'
+            );
+            return;
+        }
+
+        console.log('✅ Form validation passed. Hidden input value:', hiddenInput.value);
+
         showLoading();
-        
+
         const submitBtn = document.getElementById('submitBtn');
         submitBtn.disabled = true;
         submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating...';
-        
+
+        // ✅ Submit the form programmatically
         this.submit();
     });
+
+    // ================================
+    // Enhanced debug function
+    // Call in browser console: debugFormData()
+    // ================================
+
+    function debugFormData() {
+        console.log('=== DEBUG FORM DATA ===');
+        console.log('Module Cards:', moduleCards);
+        console.log('Locations Data:', locationsData);
+        console.log('Roles Cache:', rolesCache);
+        console.log('SCM Functions Cache:', scmFunctionsCache);
+
+        // Try to generate hidden inputs
+        const success = updateHiddenInputs();
+
+        if (!success) {
+            console.error('❌ Failed to generate hidden inputs');
+            return null;
+        }
+
+        // Extract generated data
+        const container = document.getElementById('hiddenInputsContainer');
+        const inputs = container.querySelectorAll('input[type="hidden"]');
+
+        console.log('\n📊 Generated Hidden Inputs:', inputs.length);
+
+        const modules = {};
+        inputs.forEach(input => {
+            const match = input.name.match(/modules\[(\d+)\]\[([^\]]+)\]/);
+            if (match) {
+                const idx = match[1];
+                const field = match[2];
+
+                if (!modules[idx]) {
+                    modules[idx] = {};
+                }
+                modules[idx][field] = input.value;
+            }
+        });
+
+        console.log('\n📦 Parsed Modules:', Object.keys(modules).length);
+
+        Object.keys(modules).forEach(idx => {
+            console.log(`\n--- Module #${idx} ---`);
+            console.log(modules[idx]);
+
+            // Validate required fields
+            const required = ['module_id', 'application_id', 'application_name', 'location_id', 'location_code', 'role_id', 'role_code'];
+            const missing = required.filter(field => !modules[idx][field]);
+
+            if (missing.length > 0) {
+                console.error(`  ❌ Missing required fields:`, missing);
+            } else {
+                console.log(`  ✅ All required fields present`);
+            }
+
+            // Validate GUID format
+            const uuidFields = ['module_id', 'role_id', 'location_id'];
+            uuidFields.forEach(field => {
+                if (modules[idx][field]) {
+                    const isValid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(modules[idx][field]);
+                    if (!isValid) {
+                        console.error(`  ❌ Invalid GUID for ${field}:`, modules[idx][field]);
+                    }
+                }
+            });
+        });
+
+        console.log('\n=== END DEBUG ===');
+
+        return modules;
+    }
+
+    // Make it globally accessible
+    window.debugFormData = debugFormData;
+
 
     // Email validation on blur
     document.getElementById('email').addEventListener('blur', function() {
@@ -1717,6 +2154,8 @@
 
     // Initialize on page load
     document.addEventListener('DOMContentLoaded', function() {
+        console.log('Page loaded, initializing...');
+        console.log('Module cards on load:', moduleCards);
         renderAllCards();
     });
 </script>

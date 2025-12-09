@@ -4,9 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Log;
 
 class AzureModule extends Model
@@ -16,163 +14,229 @@ class AzureModule extends Model
     /**
      * The database connection to use
      */
-    // protected $connection = 'azure_management';
+    protected $connection = 'sqlsrv';
 
     /**
      * The table associated with the model.
      */
-    // protected $table = 'modules';
-
-    protected $fillable = [
-        'name',
-        'code',
-        'description',
-        'is_active',
-        // Azure Integration
-        'azure_group_id',
-        'azure_enterprise_app_id',
-        'requires_group_assignment',
-        'requires_app_role_assignment',
-        // External API Integration
-        'external_api_endpoint',
-        'api_auth_method',
-        'api_credentials',
-    ];
-
-    protected $casts = [
-        'is_active' => 'boolean',
-        'requires_group_assignment' => 'boolean',
-        'requires_app_role_assignment' => 'boolean',
-    ];
-
-    protected $hidden = [
-        'api_credentials', // Hide encrypted credentials from JSON output
-    ];
+    protected $table = 'Azure_SoftwareMaster';
 
     /**
-     * Relationships
+     * The primary key for the model.
      */
-    public function users(): BelongsToMany
-    {
-        return $this->belongsToMany(AzureUser::class, 'user_modules')
-                    ->withPivot('role_id', 'location', 'assigned_at', 'external_system_id', 'external_sync_status')
-                    ->withTimestamps();
-    }
+    protected $primaryKey = 'Id';
 
-    public function roles(): BelongsToMany
+    /**
+     * Indicates if the IDs are auto-incrementing.
+     */
+    public $incrementing = false;
+
+    /**
+     * The "type" of the primary key ID.
+     */
+    protected $keyType = 'string';
+
+    /**
+     * Indicates if the model should be timestamped.
+     */
+    public $timestamps = false;
+
+    /**
+     * The attributes that are mass assignable.
+     */
+    protected $fillable = [
+        'Id',
+        'Name',
+        'ApplicationId',
+        'IsActive',
+        'IsDeleted',
+        'CreatedOn',
+    ];
+
+    /**
+     * The attributes that should be cast.
+     */
+    protected $casts = [
+        'IsActive' => 'boolean',
+        'IsDeleted' => 'boolean',
+        'CreatedOn' => 'datetime',
+    ];
+
+    // =================================================================
+    // ATTRIBUTE ACCESSORS - Map to service expectations
+    // =================================================================
+
+    /**
+     * Accessor: name -> Name
+     */
+    public function getNameAttribute()
     {
-        return $this->belongsToMany(AzureRole::class, 'module_roles')
-                    ->withTimestamps();
+        return $this->attributes['Name'] ?? null;
     }
 
     /**
-     * Get all role mappings for this module
+     * Accessor: code -> ApplicationId
+     */
+    public function getCodeAttribute()
+    {
+        return $this->attributes['ApplicationId'] ?? null;
+    }
+
+    /**
+     * Accessor: is_active -> IsActive AND !IsDeleted
+     */
+    public function getIsActiveAttribute()
+    {
+        return ($this->attributes['IsActive'] ?? false) && !($this->attributes['IsDeleted'] ?? false);
+    }
+
+    /**
+     * Accessor: id -> Id (for services expecting lowercase)
+     */
+    public function getIdAttribute()
+    {
+        return $this->attributes['Id'] ?? null;
+    }
+
+    // =================================================================
+    // RELATIONSHIPS
+    // =================================================================
+
+    /**
+     * Get all user assignments for this module
+     */
+    public function userAssignments(): HasMany
+    {
+        return $this->hasMany(AzureApplicationUserMapping::class, 'application_id', 'ApplicationId');
+    }
+
+    /**
+     * Get role-to-group mappings for this module
      */
     public function roleGroups(): HasMany
     {
-        return $this->hasMany(AzureModuleRole::class, 'module_id');
+        return $this->hasMany(AzureModuleRole::class, 'ModuleId', 'Id');
     }
 
+    // =================================================================
+    // QUERY SCOPES
+    // =================================================================
+
     /**
-     * Scopes
+     * Scope to get only active modules
      */
     public function scopeActive($query)
     {
-        return $query->where('is_active', true);
-    }
-
-    public function scopeRequiresAzureProvisioning($query)
-    {
-        return $query->where(function ($q) {
-            $q->where('requires_group_assignment', true)
-                ->orWhere('requires_app_role_assignment', true);
-        });
-    }
-
-    public function scopeHasExternalApi($query)
-    {
-        return $query->whereNotNull('external_api_endpoint');
+        return $query->where('IsActive', true)
+                    ->where('IsDeleted', false);
     }
 
     /**
-     * Azure Integration Helper Methods
+     * Scope to get modules that require Azure provisioning
+     * Note: Since we don't have these flags in the table yet,
+     * we'll assume all active modules require provisioning
+     */
+    public function scopeRequiresAzureProvisioning($query)
+    {
+        return $query->active();
+    }
+
+    // =================================================================
+    // AZURE INTEGRATION HELPER METHODS
+    // =================================================================
+
+    /**
+     * Check if module requires Azure provisioning
+     * For now, all active modules require provisioning
      */
     public function requiresAzureProvisioning(): bool
     {
-        return $this->requires_group_assignment || $this->requires_app_role_assignment;
-    }
-
-    public function requiresGroupAssignment(): bool
-    {
-        return $this->requires_group_assignment && !empty($this->azure_group_id);
-    }
-
-    public function requiresAppRoleAssignment(): bool
-    {
-        return $this->requires_app_role_assignment && !empty($this->azure_enterprise_app_id);
-    }
-
-    public function hasAzureGroupConfigured(): bool
-    {
-        return !empty($this->azure_group_id);
-    }
-
-    public function hasAzureAppConfigured(): bool
-    {
-        return !empty($this->azure_enterprise_app_id);
+        return $this->is_active;
     }
 
     /**
-     * External API Helper Methods
+     * Check if module requires group assignment
+     * For now, we'll check if it has role mappings configured
+     */
+    public function requiresGroupAssignment(): bool
+    {
+        return $this->is_active && $this->roleGroups()->exists();
+    }
+
+    /**
+     * Check if module requires app role assignment
+     * This would need additional configuration in the future
+     */
+    public function requiresAppRoleAssignment(): bool
+    {
+        // TODO: Add configuration table for app role requirements
+        return false;
+    }
+
+    /**
+     * Check if module has Azure group configured
+     */
+    public function hasAzureGroupConfigured(): bool
+    {
+        return $this->roleGroups()->exists();
+    }
+
+    /**
+     * Check if module has Azure app configured
+     */
+    public function hasAzureAppConfigured(): bool
+    {
+        // TODO: Add enterprise app configuration
+        return false;
+    }
+
+    // =================================================================
+    // EXTERNAL API HELPER METHODS
+    // =================================================================
+
+    /**
+     * Check if module has external API
+     * TODO: Add external_api_endpoint column or separate config table
      */
     public function hasExternalApi(): bool
     {
-        return !empty($this->external_api_endpoint);
-    }
-
-    public function requiresApiAuthentication(): bool
-    {
-        return $this->hasExternalApi() && $this->api_auth_method !== 'none';
-    }
-
-    public function getApiCredentials(): ?array
-    {
-        if (empty($this->api_credentials)) {
-            return null;
-        }
-
-        try {
-            $decrypted = Crypt::decryptString($this->api_credentials);
-            return json_decode($decrypted, true);
-        } catch (\Exception $e) {
-            Log::error("Failed to decrypt API credentials for module {$this->code}", [
-                'error' => $e->getMessage()
-            ]);
-            return null;
-        }
-    }
-
-    public function setApiCredentials(array $credentials): void
-    {
-        $json = json_encode($credentials);
-        $this->api_credentials = Crypt::encryptString($json);
+        // For now, check if it's one of the known external systems
+        $externalModules = ['SCM', 'ODOO', 'BIZ', 'FITGP'];
+        return in_array($this->ApplicationId, $externalModules);
     }
 
     /**
-     * Provisioning Status Methods
+     * Check if API authentication is required
+     */
+    public function requiresApiAuthentication(): bool
+    {
+        return $this->hasExternalApi();
+    }
+
+    /**
+     * Get API credentials (placeholder for future implementation)
+     */
+    public function getApiCredentials(): ?array
+    {
+        // TODO: Implement credentials storage
+        return null;
+    }
+
+    // =================================================================
+    // PROVISIONING STATUS METHODS
+    // =================================================================
+
+    /**
+     * Check if module is fully configured
      */
     public function isFullyConfigured(): bool
     {
-        // Check if module has all required configurations
-        $azureConfigured = !$this->requiresAzureProvisioning() || 
-                        ($this->hasAzureGroupConfigured() && $this->hasAzureAppConfigured());
-        
-        $apiConfigured = !$this->hasExternalApi() || 
-                        ($this->requiresApiAuthentication() && !empty($this->api_credentials));
-
-        return $azureConfigured && $apiConfigured;
+        return $this->is_active && $this->hasAzureGroupConfigured();
     }
 
+    /**
+     * Get integration type
+     */
     public function getIntegrationType(): string
     {
         $types = [];
@@ -188,6 +252,9 @@ class AzureModule extends Model
         return empty($types) ? 'None' : implode(' + ', $types);
     }
 
+    /**
+     * Get provisioning requirements
+     */
     public function getProvisioningRequirements(): array
     {
         return [
@@ -198,8 +265,53 @@ class AzureModule extends Model
         ];
     }
 
+    // =================================================================
+    // ROLE-TO-GROUP MAPPING METHODS
+    // =================================================================
+
     /**
-     * Attribute Accessors
+     * Get the Azure group ID for a specific role
+     * This is critical for the AzureModuleAssignmentService
+     */
+    public function getAzureGroupForRole(int $roleId): ?array
+    {
+        $mapping = AzureModuleRole::where('ModuleId', $this->Id)
+            ->where('RoleId', $roleId)
+            ->where('IsActive', true)
+            ->first();
+        
+        if (!$mapping) {
+            Log::warning("No Azure group mapping found for module-role combination", [
+                'module_id' => $this->Id,
+                'module_name' => $this->Name,
+                'role_id' => $roleId,
+            ]);
+            return null;
+        }
+        
+        return [
+            'group_id' => $mapping->AzureGroupId,
+            'group_name' => $mapping->AzureGroupName ?? 'Unknown Group',
+        ];
+    }
+
+    /**
+     * Check if this module has a mapping for a specific role
+     */
+    public function hasRoleMapping(int $roleId): bool
+    {
+        return AzureModuleRole::where('ModuleId', $this->Id)
+            ->where('RoleId', $roleId)
+            ->where('IsActive', true)
+            ->exists();
+    }
+
+    // =================================================================
+    // STATUS ATTRIBUTE ACCESSORS
+    // =================================================================
+
+    /**
+     * Get integration status
      */
     public function getIntegrationStatusAttribute(): string
     {
@@ -214,6 +326,9 @@ class AzureModule extends Model
         return 'ready';
     }
 
+    /**
+     * Get integration status badge class for UI
+     */
     public function getIntegrationStatusBadgeClassAttribute(): string
     {
         return match($this->integration_status) {
@@ -224,32 +339,33 @@ class AzureModule extends Model
         };
     }
 
+    // =================================================================
+    // UTILITY METHODS
+    // =================================================================
+
     /**
-     * Get the Azure group ID for a specific role
+     * Get module summary
      */
-    public function getAzureGroupForRole(int $roleId): ?array
+    public function getModuleSummary(): array
     {
-        $mapping = AzureModuleRole::where('module_id', $this->id)
-            ->where('role_id', $roleId)
-            ->first();
-        
-        if (!$mapping) {
-            return null;
-        }
-        
         return [
-            'group_id' => $mapping->azure_group_id,
-            'group_name' => $mapping->azure_group_name,
+            'id' => $this->Id,
+            'name' => $this->Name,
+            'code' => $this->ApplicationId,
+            'is_active' => $this->is_active,
+            'requires_azure' => $this->requiresAzureProvisioning(),
+            'has_group_mapping' => $this->hasAzureGroupConfigured(),
+            'has_external_api' => $this->hasExternalApi(),
+            'status' => $this->integration_status,
+            'user_count' => $this->userAssignments()->count(),
         ];
     }
 
     /**
-     * Check if this module has a mapping for a specific role
+     * Check if a specific application code matches this module
      */
-    public function hasRoleMapping(int $roleId): bool
+    public function matchesApplicationCode(string $code): bool
     {
-        return AzureModuleRole::where('module_id', $this->id)
-            ->where('role_id', $roleId)
-            ->exists();
+        return strtoupper($this->ApplicationId) === strtoupper($code);
     }
 }

@@ -4,33 +4,19 @@
 
 @push('styles')
 <style>
-    /* ---------- Override any parent container constraints ---------- */
-    .container,
-    .container-fluid,
-    [class*="container"] {
-        max-width: none !important;
-        padding: 0 !important;
-        margin: 0 !important;
-        width: 100% !important;
-    }
-
     /* ---------- Full Screen Container ---------- */
     .full-screen-container {
-        width: 100vw !important;
-        max-width: 100vw !important;
-        padding: 0 !important;
-        margin: 0 !important;
-        margin-left: calc(-50vw + 50%) !important;
-        margin-right: calc(-50vw + 50%) !important;
-        position: relative;
-        left: 50%;
-        right: 50%;
-        transform: translateX(-50%);
+        width: 100%;
+        max-width: none;
+        padding: 0;
+        margin: 0;
     }
 
     .page-content-wrapper {
-        padding: 0 30px;
+        padding: 0 20px;
         width: 100%;
+        max-width: 1400px;
+        margin: 0 auto;
         box-sizing: border-box;
     }
 
@@ -127,52 +113,90 @@
     .edit-form-container {
         background: rgba(255, 255, 255, 0.95);
         backdrop-filter: blur(10px);
-        border-radius: 15px;
-        padding: 30px;
+        border-radius: 25px;
+        padding: 40px;
         box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-        margin-bottom: 30px;
+        margin-bottom: 40px;
+        overflow: hidden;
+    }
+
+    .edit-form-container::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 6px;
+        background: linear-gradient(90deg, #3498db, #8e44ad);
+        border-radius: 20px 20px 0 0;
     }
 
     .form-section {
-        margin-bottom: 30px;
-        padding-bottom: 25px;
-        border-bottom: 2px solid #e1e8ed;
+        margin-bottom: 40px;
+        padding-bottom: 32px;
+        border-bottom: 2px solid #f0f3f7;
     }
 
     .form-section:last-child {
         border-bottom: none;
         margin-bottom: 0;
+        padding-bottom: 0;
     }
 
     .form-section-title {
         font-size: 1.3em;
-        font-weight: 600;
+        font-weight: 700;
         color: #2c3e50;
-        margin-bottom: 20px;
+        margin-bottom: 24px;
         display: flex;
         align-items: center;
-        gap: 10px;
+        gap: 12px;
+        padding-bottom: 12px;
+        border-bottom: 3px solid #e8f0ff;
     }
+
+
+    .form-section-title i {
+        color: var(--primary-color, #3498db);
+        font-size: 1.1em;
+    }
+
 
     .form-row {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-        gap: 20px;
-        margin-bottom: 20px;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 24px;
+        margin-bottom: 24px;
+    }
+
+    /* Single column override for full-width fields */
+    .form-row.single-column {
+        grid-template-columns: 1fr;
     }
 
     .form-group {
         display: flex;
         flex-direction: column;
+        gap: 8px;
     }
 
     .form-label {
         font-weight: 600;
         color: #2c3e50;
-        margin-bottom: 8px;
+        font-size: 0.9em;
         display: flex;
         align-items: center;
-        gap: 5px;
+        gap: 6px;
+    }
+
+    .form-label .required {
+        color: var(--danger, #e74c3c);
+        margin-left: 2px;
+    }
+
+    .form-label i {
+        color: var(--primary-color, #3498db);
+        font-size: 0.9em;
     }
 
     .form-control {
@@ -183,17 +207,14 @@
         transition: all 0.3s ease;
         background: white;
         width: 100%;
+        font-family: inherit;
     }
 
     .form-control:focus {
         outline: none;
         border-color: #3498db;
         box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
-    }
-
-    .form-control.is-invalid {
-        border-color: #e74c3c;
-        box-shadow: 0 0 0 3px rgba(231, 76, 60, 0.1);
+        background: #fafbfc;
     }
 
     .form-control:read-only,
@@ -204,11 +225,17 @@
         border-color: #ced4da;
     }
 
+    .form-control.is-invalid {
+        border-color: #e74c3c;
+        box-shadow: 0 0 0 3px rgba(231, 76, 60, 0.1);
+    }
+
     .invalid-feedback {
         color: #e74c3c;
         font-size: 0.875em;
         margin-top: 5px;
         display: block;
+        font-weight: 500;
     }
 
     /* Module Cards Grid */
@@ -826,42 +853,6 @@
                             <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
-                    </div>
-                </div>
-
-                <!-- Location and Company Section -->
-                <div class="form-section">
-                    <div class="form-section-title">
-                        <i class="fas fa-map-marker-alt"></i>
-                        Location & Company
-                    </div>
-
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="location" class="form-label">
-                                Location
-                            </label>
-                            @php
-                            $userLocationCode = old('location', $user->location ?? '');
-                            $userLocationDisplay = '';
-                            if ($userLocationCode) {
-                            $locationObj = $locations->firstWhere('code', $userLocationCode);
-                            if ($locationObj) {
-                            $userLocationDisplay = $locationObj->name . ' (' . $locationObj->code . ')';
-                            }
-                            }
-                            @endphp
-                            <input type="text"
-                                id="location"
-                                name="location"
-                                class="form-control @error('location') is-invalid @enderror"
-                                value="{{ $userLocationDisplay }}"
-                                readonly>
-                            @error('location')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                        </div>
-
                         <div class="form-group">
                             <label for="company_id" class="form-label">
                                 Company
@@ -888,6 +879,7 @@
                         </div>
                     </div>
                 </div>
+
 
                 <!-- Module Assignments Section -->
                 <div class="form-section">

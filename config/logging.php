@@ -46,11 +46,20 @@ return [
             'level' => env('LOG_LEVEL', 'debug'),
         ],
 
-        // ✅ NEW: Import log channel
+        // ✅ Import log channel
         'import' => [
             'driver' => 'single',
             'path' => storage_path('logs/import.log'),
             'level' => env('LOG_LEVEL', 'debug'),
+            'replace_placeholders' => true,
+        ],
+
+        // ✅ NEW: Azure log channel
+        'azure' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/azure.log'),
+            'level' => env('LOG_LEVEL', 'debug'),
+            'days' => 14,
             'replace_placeholders' => true,
         ],
 

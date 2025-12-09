@@ -43,19 +43,19 @@ class AzureModuleAssignmentService
         ];
 
         // 🎯 AUDIT: Log module assignment started
-        AzureAuditLogger::log(
-            'module.assignment.started',
-            $user,
-            'success',
-            null,
-            [
-                'module_id' => $module->id,
-                'module_code' => $module->code,
-                'module_name' => $module->name,
-                'role_id' => $roleId,
-                'location' => $location,
-            ]
-        );
+        // // AzureAuditLogger::log(
+        //     'module.assignment.started',
+        //     $user,
+        //     'success',
+        //     null,
+        //     [
+        //         'module_id' => $module->id,
+        //         'module_code' => $module->code,
+        //         'module_name' => $module->name,
+        //         'role_id' => $roleId,
+        //         'location' => $location,
+        //     ]
+        // );
 
         try {
             // Validate location if required
@@ -120,22 +120,22 @@ class AzureModuleAssignmentService
             }
 
             // 🎯 AUDIT: Log module assignment completed
-            AzureAuditLogger::log(
-                'module.assignment.completed',
-                $user,
-                'success',
-                null,
-                [
-                    'module_id' => $module->id,
-                    'module_code' => $module->code,
-                    'module_name' => $module->name,
-                    'role_id' => $roleId,
-                    'azure_group_success' => $results['azure_group']['success'],
-                    'azure_app_role_success' => $results['azure_app_role']['success'],
-                    'external_api_success' => $results['external_api']['success'],
-                    'has_warnings' => !empty($results['errors']),
-                ]
-            );
+            // // AzureAuditLogger::log(
+            //     'module.assignment.completed',
+            //     $user,
+            //     'success',
+            //     null,
+            //     [
+            //         'module_id' => $module->id,
+            //         'module_code' => $module->code,
+            //         'module_name' => $module->name,
+            //         'role_id' => $roleId,
+            //         'azure_group_success' => $results['azure_group']['success'],
+            //         'azure_app_role_success' => $results['azure_app_role']['success'],
+            //         'external_api_success' => $results['external_api']['success'],
+            //         'has_warnings' => !empty($results['errors']),
+            //     ]
+            // );
 
             Log::channel('provisioning')->info('Module assignment completed', [
                 'user_id' => $user->id,
@@ -148,19 +148,19 @@ class AzureModuleAssignmentService
 
         } catch (Exception $e) {
             // 🎯 AUDIT: Log module assignment failed
-            AzureAuditLogger::log(
-                'module.assignment.failed',
-                $user,
-                'failed',
-                $e->getMessage(),
-                [
-                    'module_id' => $module->id,
-                    'module_code' => $module->code,
-                    'module_name' => $module->name,
-                    'role_id' => $roleId,
-                    'results' => $results,
-                ]
-            );
+            // // AzureAuditLogger::log(
+            //     'module.assignment.failed',
+            //     $user,
+            //     'failed',
+            //     $e->getMessage(),
+            //     [
+            //         'module_id' => $module->id,
+            //         'module_code' => $module->code,
+            //         'module_name' => $module->name,
+            //         'role_id' => $roleId,
+            //         'results' => $results,
+            //     ]
+            // );
 
             Log::channel('provisioning')->error('Module assignment exception', [
                 'user_id' => $user->id,
@@ -200,20 +200,20 @@ class AzureModuleAssignmentService
         );
 
         // 🎯 AUDIT: Log pivot record creation
-        AzureAuditLogger::log(
-            'module.pivot_record.created',
-            $user,
-            'success',
-            null,
-            [
-                'user_module_id' => $userModule->id,
-                'module_id' => $module->id,
-                'module_code' => $module->code,
-                'role_id' => $roleId,
-                'location' => $location,
-                'action' => $userModule->wasRecentlyCreated ? 'created' : 'updated',
-            ]
-        );
+        // // AzureAuditLogger::log(
+        //     'module.pivot_record.created',
+        //     $user,
+        //     'success',
+        //     null,
+        //     [
+        //         'user_module_id' => $userModule->id,
+        //         'module_id' => $module->id,
+        //         'module_code' => $module->code,
+        //         'role_id' => $roleId,
+        //         'location' => $location,
+        //         'action' => $userModule->wasRecentlyCreated ? 'created' : 'updated',
+        //     ]
+        // );
 
         Log::channel('provisioning')->info('User module pivot record created', [
             'user_id' => $user->id,
@@ -235,17 +235,17 @@ class AzureModuleAssignmentService
         $roleId = $userModule->role_id;
         
         // 🎯 AUDIT: Log Azure group lookup started
-        AzureAuditLogger::log(
-            'azure.group.lookup.started',
-            $user,
-            'success',
-            null,
-            [
-                'module_id' => $module->id,
-                'module_code' => $module->code,
-                'role_id' => $roleId,
-            ]
-        );
+        // // AzureAuditLogger::log(
+        //     'azure.group.lookup.started',
+        //     $user,
+        //     'success',
+        //     null,
+        //     [
+        //         'module_id' => $module->id,
+        //         'module_code' => $module->code,
+        //         'role_id' => $roleId,
+        //     ]
+        // );
         
         $groupInfo = $module->getAzureGroupForRole($roleId);
 
@@ -253,19 +253,19 @@ class AzureModuleAssignmentService
             $error = "No Azure group mapping found for module '{$module->name}' and role ID {$roleId}";
             
             // 🎯 AUDIT: Log mapping not found (CRITICAL ERROR)
-            AzureAuditLogger::log(
-                'azure.group.mapping.not_found',
-                $user,
-                'failed',
-                $error,
-                [
-                    'module_id' => $module->id,
-                    'module_code' => $module->code,
-                    'module_name' => $module->name,
-                    'role_id' => $roleId,
-                    'action_required' => 'Create mapping in module_role_groups table',
-                ]
-            );
+            // // AzureAuditLogger::log(
+            //     'azure.group.mapping.not_found',
+            //     $user,
+            //     'failed',
+            //     $error,
+            //     [
+            //         'module_id' => $module->id,
+            //         'module_code' => $module->code,
+            //         'module_name' => $module->name,
+            //         'role_id' => $roleId,
+            //         'action_required' => 'Create mapping in module_role_groups table',
+            //     ]
+            // );
             
             throw new Exception($error);
         }
@@ -301,18 +301,18 @@ class AzureModuleAssignmentService
             ]);
 
             // 🎯 AUDIT: Log successful Azure group assignment
-            AzureAuditLogger::azureGroupAssigned(
-                $user,
-                $azureGroupId,
-                $azureGroupName,
-                [
-                    'module_id' => $module->id,
-                    'module_code' => $module->code,
-                    'role_id' => $roleId,
-                    'status' => $result['status'], // 'assigned' or 'already_member'
-                    'stored_in_pivot' => true,
-                ]
-            );
+            // // AzureAuditLogger::azureGroupAssigned(
+            //     $user,
+            //     $azureGroupId,
+            //     $azureGroupName,
+            //     [
+            //         'module_id' => $module->id,
+            //         'module_code' => $module->code,
+            //         'role_id' => $roleId,
+            //         'status' => $result['status'], // 'assigned' or 'already_member'
+            //         'stored_in_pivot' => true,
+            //     ]
+            // );
             
             Log::channel('azure')->info('User added to Azure Group successfully', [
                 'user_id' => $user->id,
@@ -326,17 +326,17 @@ class AzureModuleAssignmentService
             ]);
         } else {
             // 🎯 AUDIT: Log failed Azure group assignment
-            AzureAuditLogger::azureGroupAssignmentFailed(
-                $user,
-                $azureGroupId,
-                $azureGroupName,
-                $result['error'] ?? 'Unknown error',
-                [
-                    'module_id' => $module->id,
-                    'module_code' => $module->code,
-                    'role_id' => $roleId,
-                ]
-            );
+            // // AzureAuditLogger::azureGroupAssignmentFailed(
+            //     $user,
+            //     $azureGroupId,
+            //     $azureGroupName,
+            //     $result['error'] ?? 'Unknown error',
+            //     [
+            //         'module_id' => $module->id,
+            //         'module_code' => $module->code,
+            //         'role_id' => $roleId,
+            //     ]
+            // );
         }
 
         return $result;
@@ -386,20 +386,20 @@ class AzureModuleAssignmentService
 
             if ($result['success']) {
                 // 🎯 AUDIT: Log successful app role assignment
-                AzureAuditLogger::log(
-                    'azure.app_role.assigned',
-                    $user,
-                    'success',
-                    null,
-                    [
-                        'module_id' => $module->id,
-                        'module_code' => $module->code,
-                        'app_id' => $module->azure_enterprise_app_id,
-                        'app_role_id' => $appRoleId,
-                        'role_id' => $userModule->role_id,
-                        'status' => $result['status'],
-                    ]
-                );
+                // // AzureAuditLogger::log(
+                //     'azure.app_role.assigned',
+                //     $user,
+                //     'success',
+                //     null,
+                //     [
+                //         'module_id' => $module->id,
+                //         'module_code' => $module->code,
+                //         'app_id' => $module->azure_enterprise_app_id,
+                //         'app_role_id' => $appRoleId,
+                //         'role_id' => $userModule->role_id,
+                //         'status' => $result['status'],
+                //     ]
+                // );
                 
                 Log::channel('azure')->info('App role assigned successfully', [
                     'user_id' => $user->id,
@@ -410,19 +410,19 @@ class AzureModuleAssignmentService
                 ]);
             } else {
                 // 🎯 AUDIT: Log failed app role assignment
-                AzureAuditLogger::log(
-                    'azure.app_role.assigned',
-                    $user,
-                    'failed',
-                    $result['error'] ?? 'Unknown error',
-                    [
-                        'module_id' => $module->id,
-                        'module_code' => $module->code,
-                        'app_id' => $module->azure_enterprise_app_id,
-                        'app_role_id' => $appRoleId,
-                        'role_id' => $userModule->role_id,
-                    ]
-                );
+                // // AzureAuditLogger::log(
+                //     'azure.app_role.assigned',
+                //     $user,
+                //     'failed',
+                //     $result['error'] ?? 'Unknown error',
+                //     [
+                //         'module_id' => $module->id,
+                //         'module_code' => $module->code,
+                //         'app_id' => $module->azure_enterprise_app_id,
+                //         'app_role_id' => $appRoleId,
+                //         'role_id' => $userModule->role_id,
+                //     ]
+                // );
             }
 
             return $result;
@@ -477,19 +477,19 @@ class AzureModuleAssignmentService
             $externalSystemId = $this->extractExternalUserId($responseData, $module);
 
             // 🎯 AUDIT: Log successful external API provisioning
-            AzureAuditLogger::log(
-                'external.api.provisioned',
-                $user,
-                'success',
-                null,
-                [
-                    'module_id' => $module->id,
-                    'module_code' => $module->code,
-                    'external_system_id' => $externalSystemId,
-                    'api_endpoint' => $apiEndpoint,
-                    'auth_method' => $authMethod,
-                ]
-            );
+            // // AzureAuditLogger::log(
+            //     'external.api.provisioned',
+            //     $user,
+            //     'success',
+            //     null,
+            //     [
+            //         'module_id' => $module->id,
+            //         'module_code' => $module->code,
+            //         'external_system_id' => $externalSystemId,
+            //         'api_endpoint' => $apiEndpoint,
+            //         'auth_method' => $authMethod,
+            //     ]
+            // );
 
             Log::channel('provisioning')->info('User provisioned to external system', [
                 'user_id' => $user->id,
@@ -510,17 +510,17 @@ class AzureModuleAssignmentService
 
         } catch (Exception $e) {
             // 🎯 AUDIT: Log failed external API provisioning
-            AzureAuditLogger::log(
-                'external.api.provisioned',
-                $user,
-                'failed',
-                $e->getMessage(),
-                [
-                    'module_id' => $module->id,
-                    'module_code' => $module->code,
-                    'api_endpoint' => $module->external_api_endpoint ?? 'not_configured',
-                ]
-            );
+            // // AzureAuditLogger::log(
+            //     'external.api.provisioned',
+            //     $user,
+            //     'failed',
+            //     $e->getMessage(),
+            //     [
+            //         'module_id' => $module->id,
+            //         'module_code' => $module->code,
+            //         'api_endpoint' => $module->external_api_endpoint ?? 'not_configured',
+            //     ]
+            // );
 
             Log::channel('provisioning')->error('External API provisioning failed', [
                 'user_id' => $user->id,

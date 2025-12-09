@@ -16,6 +16,8 @@ use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
+use App\Services\AzureGraphService;
+
 
 
 use Illuminate\Support\Facades\Crypt;
@@ -843,3 +845,163 @@ Route::middleware(['auth'])->prefix('tracker')->name('tracker.')->group(function
     Route::post('/trips/{tripId}/jobs/{jobId}/start', [TrackerController::class, 'startJob']);
     Route::post('/trips/{tripId}/jobs/{jobId}/complete', [TrackerController::class, 'completeJob']);
 });
+
+
+
+Route::middleware(['auth'])->prefix('jimi-test')->group(function () {
+
+    // Test page
+    Route::get('/', [JimiTestController::class, 'testPage'])->name('jimi.test');
+
+    // Test connection
+    Route::get('/connection', [JimiTestController::class, 'testConnection'])->name('jimi.test.connection');
+
+    // Get all vehicles
+    Route::get('/vehicles', [JimiTestController::class, 'getVehicles'])->name('jimi.test.vehicles');
+
+    // Get current location
+    Route::get('/location/{imei}', [JimiTestController::class, 'getCurrentLocation'])->name('jimi.test.location');
+
+    // Get mileage
+    Route::post('/mileage', [JimiTestController::class, 'getMileage'])->name('jimi.test.mileage');
+
+    // Get track data
+    Route::post('/track', [JimiTestController::class, 'getTrackData'])->name('jimi.test.track');
+});
+
+
+
+
+
+Route::get('/azure-management/test', function () {
+    $results = [
+        'config' => [],
+        'token' => [],
+        'create_user' => [],
+        'find_user' => [],
+    ];
+    
+    // ============================================
+    // TEST 1: Configuration Check
+    // ============================================
+    try {
+        $results['config'] = [
+            'status' => 'success',
+            'tenant_id' => config('azure.tenant_id') ? 'Set ✅' : 'Missing ❌',
+            'client_id' => config('azure.client_id') ? 'Set ✅' : 'Missing ❌',
+            'client_secret' => config('azure.client_secret') ? 'Set ✅' : 'Missing ❌',
+            'domain' => config('azure.default_domain'),
+            'graph_url' => config('azure.graph_api_base_url'),
+        ];
+    } catch (\Exception $e) {
+        $results['config'] = [
+            'status' => 'failed',
+            'error' => $e->getMessage()
+        ];
+    }
+    
+    // ============================================
+    // TEST 2: Get Access Token
+    // ============================================
+    try {
+        $service = app(AzureGraphService::class);
+        $token = $service->getAccessToken();
+        
+        $results['token'] = [
+            'status' => 'success',
+            'token_preview' => substr($token, 0, 50) . '...',
+            'token_length' => strlen($token),
+            'message' => '✅ Successfully obtained Azure AD token!'
+        ];
+    } catch (\Exception $e) {
+        $results['token'] = [
+            'status' => 'failed',
+            'error' => $e->getMessage(),
+            'message' => '❌ Failed to get token'
+        ];
+        
+        // Stop here if token fails
+        return view('azure-management.test', compact('results'));
+    }
+    
+    // ============================================
+    // TEST 3: Check if Test User Exists
+    // ============================================
+    if ($results['token']['status'] === 'success') {
+        try {
+            $testUpn = 'azuretest@freight-in-time.com';
+            $existingUser = $service->findUserByUPN($testUpn);
+            
+            if ($existingUser) {
+                $results['find_user'] = [
+                    'status' => 'success',
+                    'found' => true,
+                    'azure_id' => $existingUser['id'],
+                    'upn' => $existingUser['userPrincipalName'],
+                    'display_name' => $existingUser['displayName'],
+                    'message' => '✅ Test user already exists (will not create duplicate)'
+                ];
+            } else {
+                $results['find_user'] = [
+                    'status' => 'success',
+                    'found' => false,
+                    'message' => 'Test user not found (ready to create)'
+                ];
+            }
+        } catch (\Exception $e) {
+            $results['find_user'] = [
+                'status' => 'failed',
+                'error' => $e->getMessage()
+            ];
+        }
+    }
+    
+    // ============================================
+    // TEST 4: Create Test User (Only if not exists)
+    // ============================================
+    if ($results['token']['status'] === 'success' && 
+        isset($results['find_user']['found']) && 
+        !$results['find_user']['found']) {
+        try {
+            $randomId = rand(1000, 9999);
+            
+            $userData = [
+                'name' => "Azure Test User {$randomId}",
+                'email' => "azuretest{$randomId}@freight-in-time.com",
+                'employee_id' => "TEST{$randomId}",
+                'phone' => '+254712345678',
+                'job_title' => 'Test Engineer',
+                'department' => 'IT Testing'
+            ];
+            
+            $result = $service->createUser($userData);
+            
+            $results['create_user'] = [
+                'status' => 'success',
+                'azure_id' => $result['azure_id'],
+                'azure_upn' => $result['azure_upn'],
+                'display_name' => $result['azure_display_name'],
+                'password_generated' => !empty($result['temporary_password']),
+                'message' => '✅ Test user created successfully in Azure AD!',
+                'note' => 'This is a real user - you may want to delete it from Azure AD portal'
+            ];
+        } catch (\Exception $e) {
+            $results['create_user'] = [
+                'status' => 'failed',
+                'error' => $e->getMessage(),
+                'message' => '❌ Failed to create test user'
+            ];
+        }
+    }
+    
+    return view('azure-management.test', compact('results'));
+})->name('azure.test');
+
+// Route::post('/azure/users/{user}/sync', [AzureUserManagementController::class, 'sync'])
+//     ->name('azure.users.sync');
+
+// Route::get('/azure/users/{user}/sync-status', [AzureUserManagementController::class, 'syncStatus'])
+//     ->name('azure.users.sync-status');
+
+// Route::post('/azure/users', [AzureUserManagementController::class, 'store'])
+//        ->middleware(['auth', 'permission:create-azure-users']);

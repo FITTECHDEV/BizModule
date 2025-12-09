@@ -104,9 +104,9 @@
         }
         
         /* Hide page header when using full-width layout */
-        .main.full-width .page-header {
+        /* .main.full-width .page-header {
             display: none !important;
-        }
+        } */
         
         .page-title {
             display: flex;

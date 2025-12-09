@@ -21,6 +21,15 @@
             font-weight: bold;
             margin-left: 5px;
         }
+
+        /* Enhanced SweetAlert styling for validation errors */
+        .swal-wide {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+
+        .swal-wide .swal2-html-container {
+            text-align: left !important;
+        }
     </style>
 @stop
 
@@ -32,10 +41,10 @@
             <div class="col-md-3 col-lg-3 col-xl-auto p-1 m-0 flex-fill">
                 <div class="card bg-created order-card mb-1" id="createdCard" style="cursor: pointer;">
                     <div class="card-block">
-                        <h6 class="m-b-20">Created</h6>
+                        <h6 class="m-b-20">Planned</h6>
                         <h2 class="text-right">
                             <i class="fa fa-plus-circle f-left"></i>
-                            <span>{{ $stats->created ?? 0 }}</span>
+                            <span>{{ $stats->Planned ?? 0 }}</span>
                         </h2>
                     </div>
                 </div>
@@ -265,6 +274,7 @@
                         <form id="createTripForm">
                             <div class="modal-body">
 
+                                <!-- 1. Vehicle -->
                                 <div class="form-group">
                                     <label>Vehicle <span class="text-danger">*</span></label>
                                     <select class="form-control" id="tripVehicle" name="imei" required>
@@ -273,6 +283,21 @@
                                     <input type="hidden" id="tripVehicleNo" name="vehicle_no">
                                 </div>
 
+                                <!-- 2. Driver Name -->
+                                <div class="form-group">
+                                    <label>Driver Name <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="driverName" name="driver_name"
+                                        placeholder="Enter driver's full name" required>
+                                </div>
+
+                                <!-- 3. Driver Phone -->
+                                <div class="form-group">
+                                    <label>Driver Phone <span class="text-danger">*</span></label>
+                                    <input type="tel" class="form-control" id="driverPhone" name="driver_phone"
+                                        placeholder="e.g. 0712345678" required>
+                                </div>
+
+                                <!-- 4. Start Location -->
                                 <div class="form-group">
                                     <label>Start Location <span class="text-danger">*</span></label>
                                     <select class="form-control" id="tripStartLocation" name="start_location_code"
@@ -282,32 +307,24 @@
                                     <small class="text-muted">Where the trip begins</small>
                                 </div>
 
+                                <!-- 5. End Location -->
                                 <div class="form-group">
                                     <label>End Location <span class="text-danger">*</span></label>
                                     <select class="form-control" id="tripEndLocation" name="end_location_code" required>
                                         <option value="">Loading locations...</option>
                                     </select>
-                                    <small class="text-muted">Final destination</small>
+                                    <small class="text-muted">Final destination of the trip</small>
                                 </div>
 
-                                <div class="form-group">
-                                    <label>Driver Name</label>
-                                    <input type="text" class="form-control" id="driverName" name="driver_name"
-                                        placeholder="Enter driver name">
-                                </div>
-
-                                <div class="form-group">
-                                    <label>Driver Phone</label>
-                                    <input type="tel" class="form-control" id="driverPhone" name="driver_phone"
-                                        placeholder="0712345678">
-                                </div>
-
-                                <div class="alert alert-info">
-                                    <i class="fa fa-info-circle"></i> <strong>Note:</strong> Trip will be created with
-                                    "Created" status. Add jobs and start any job to begin the trip.
+                                <!-- Info Alert -->
+                                <div class="alert alert-info mt-3">
+                                    <i class="fa fa-info-circle"></i>
+                                    <strong>Note:</strong> Trip will be created with "Created" status.
+                                    Add jobs and start any job to begin tracking.
                                 </div>
 
                             </div>
+
                             <div class="modal-footer">
                                 <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
                                 <button type="submit" class="btn btn-primary" id="submitCreateTrip">
@@ -682,6 +699,64 @@
                     </div>
                 </div>
             </div>
+            <!-- Manual Start Job Modal -->
+            <div class="modal fade" id="manualStartJobModal" tabindex="-1" data-backdrop="static" role="dialog">
+                <div class="modal-dialog modal-md" role="document">
+                    <div class="modal-content">
+                        <div class="modal-header bg-success text-white">
+                            <h5 class="modal-title">
+                                <i class="fa fa-clock"></i> Backdate Job Start <!-- Changed -->
+                            </h5>
+                            <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
+                        </div>
+                        <form id="manualStartJobForm">
+                            <div class="modal-body">
+                                <input type="hidden" id="manualStartJobId">
+                                <input type="hidden" id="manualStartTripId">
+
+                                <div class="alert alert-info">
+                                    <strong>Job:</strong> <span id="manualStartJobNo">-</span>
+                                </div>
+
+                                <div class="alert alert-warning">
+                                    <i class="fa fa-exclamation-triangle"></i>
+                                    <strong>Backdating:</strong> Enter the actual time this job was started in the past.
+                                    <!-- Changed -->
+                                    <br><small>Cannot be in the future.</small> <!-- Added -->
+                                </div>
+
+                                <div class="form-group">
+                                    <label>Start Date <span class="text-danger">*</span></label>
+                                    <input type="date" class="form-control" id="manualStartJobDate" name="start_date"
+                                        max="" required> <!-- Added max attribute -->
+                                    <small class="text-muted">Date when the job was actually started</small>
+                                    <!-- Changed -->
+                                </div>
+
+                                <div class="form-group">
+                                    <label>Start Time <span class="text-danger">*</span></label>
+                                    <input type="time" class="form-control" id="manualStartJobTime" name="start_time"
+                                        required>
+                                    <small class="text-muted">Time when the job was actually started (Nairobi time)</small>
+                                    <!-- Changed -->
+                                </div>
+
+                                <div class="alert alert-info"> <!-- Added -->
+                                    <i class="fa fa-info-circle"></i>
+                                    <strong>Note:</strong> If this is the first job, the trip will also be started
+                                    automatically with this time.
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                                <button type="submit" class="btn btn-success" id="submitManualStartJob">
+                                    <i class="fa fa-check"></i> Start Job
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
         </div>
     @endsection
 
@@ -785,7 +860,7 @@
                             data: 'status',
                             render: function(data, type, row) {
                                 const badgeClass = {
-                                    'Created': 'badge-info',
+                                    'Planned': 'badge-info',
                                     'In Progress': 'badge-warning',
                                     'Completed': 'badge-success'
                                 } [data] || 'badge-secondary'; // ✅ SYNTAX FIX: Removed space
@@ -806,7 +881,7 @@
                                         `<button class="btn btn-sm btn-danger endTrip" data-trip-id="${row.id}" title="End Trip"><i class="fa fa-stop"></i></button> `;
                                 }
 
-                                if (row.status === 'Created' || row.status === 'In Progress') {
+                                if (row.status === 'Planned' || row.status === 'In Progress') {
                                     buttons +=
                                         `<button class="btn btn-sm btn-warning addJobsBtn" data-trip-id="${row.id}" title="Add Jobs"><i class="fa fa-plus"></i></button>`;
                                 }
@@ -834,8 +909,8 @@
                 });
                 // Card Filters
                 $('#createdCard').click(() => {
-                    currentFilter = 'created';
-                    tripsTable.ajax.url('/tracker/trips/get/created').load();
+                    currentFilter = 'Planned';
+                    tripsTable.ajax.url('/tracker/trips/get/Planned').load();
                 });
 
                 $('#inProgressCard').click(() => {
@@ -865,15 +940,24 @@
                     }, function(res) {
                         if (res.success && res.data.length > 0) {
                             let options = '<option value="">Select Location</option>';
+
                             res.data.forEach(location => {
-                                options += `<option value="${location.code}">${location.name}</option>`;
+                                // Shows: Nairobi (NBO), Mombasa (MBA), etc.
+                                options +=
+                                    `<option value="${location.code}">${location.name} - ${location.code}</option>`;
                             });
                             $('#tripStartLocation').html(options);
                             $('#tripEndLocation').html(options);
+                        } else {
+                            // Optional: handle empty case
+                            let emptyOption = '<option value="">No locations found</option>';
+                            $('#tripStartLocation').html(emptyOption);
+                            $('#tripEndLocation').html(emptyOption);
                         }
+                    }).fail(function() {
+                        alert('Failed to load locations. Please try again.');
                     });
                 }
-
                 $(document).on('click', '#createTripBtn', function() {
                     $.get('/tracker/vehicles/list', function(res) {
                         if (res.success) {
@@ -919,9 +1003,10 @@
                         return alert('Please select an end location');
                     }
 
-                    if (formData.start_location_code === formData.end_location_code) {
-                        return alert('Start and end locations cannot be the same');
-                    }
+                    // ❌ REMOVED — start/end cannot be same check
+                    // if (formData.start_location_code === formData.end_location_code) {
+                    //     return alert('Start and end locations cannot be the same');
+                    // }
 
                     $('#submitCreateTrip').prop('disabled', true).html(
                         '<i class="fa fa-spinner fa-spin"></i> Creating...');
@@ -962,6 +1047,7 @@
                         }
                     });
                 });
+
 
                 // ========================================
                 // ADD JOBS MODAL
@@ -1092,7 +1178,11 @@
                     const jobType = $('#addJobType').val();
 
                     if (!jobType) {
-                        return alert('Please select a job type');
+                        return Swal.fire({
+                            icon: 'warning',
+                            title: 'Missing Selection',
+                            text: 'Please select a job type'
+                        });
                     }
 
                     let jobs = [];
@@ -1102,11 +1192,19 @@
                         const endLocationCode = $('#jobEndLocation').val();
 
                         if (!startLocationCode || !endLocationCode) {
-                            return alert('Please select start and end locations');
+                            return Swal.fire({
+                                icon: 'warning',
+                                title: 'Missing Fields',
+                                text: 'Please select start and end locations'
+                            });
                         }
 
                         if (startLocationCode === endLocationCode) {
-                            return alert('Start and end locations cannot be the same');
+                            return Swal.fire({
+                                icon: 'warning',
+                                title: 'Invalid Input',
+                                text: 'Start and end locations cannot be the same'
+                            });
                         }
 
                         jobs.push({
@@ -1120,7 +1218,11 @@
                         const selectedJob = $('#customerJobSelect').val();
 
                         if (!selectedJob) {
-                            return alert('Please select a customer job');
+                            return Swal.fire({
+                                icon: 'warning',
+                                title: 'Missing Job',
+                                text: 'Please select a customer job'
+                            });
                         }
 
                         const selectedOption = $('#customerJobSelect option:selected');
@@ -1139,7 +1241,8 @@
                     };
 
                     $('#submitAddJob').prop('disabled', true).html(
-                        '<i class="fa fa-spinner fa-spin"></i> Adding...');
+                        '<i class="fa fa-spinner fa-spin"></i> Adding...'
+                    );
 
                     $.ajax({
                         url: `/tracker/trips/${formData.trip_id}/jobs/add`,
@@ -1152,57 +1255,85 @@
                         success: function(res) {
                             if (res.success === true || res.success === 'true' || res.success ===
                                 1) {
+
                                 $('#addJobsModal').modal('hide');
-                                alert(
-                                    `Success!\n\n${res.message}\nTrip No: ${res.trip_no}\nJobs Added: ${res.jobs_added}`
-                                );
+
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'Success!',
+                                    html: `
+                        <strong>${res.message}</strong><br><br>
+                        <b>Trip No:</b> ${res.trip_no}<br>
+                        <b>Jobs Added:</b> ${res.jobs_added}
+                    `,
+                                    confirmButtonText: 'OK'
+                                });
+
                                 $('#addJobsForm')[0].reset();
                                 $('#internalJobFields').hide();
                                 $('#customerDeliveryFields').hide();
                                 $('#customerJobDetails').hide();
+
                             } else {
-                                let errorText = 'Failed to add jobs:\n\n';
+                                let errorHtml = '<p>Failed to add jobs:</p><ul>';
+
                                 if (Array.isArray(res.errors)) {
                                     res.errors.forEach(err => {
-                                        errorText += '• ' + (err.Remark || err) + '\n';
+                                        errorHtml += `<li>${err.Remark || err}</li>`;
                                     });
                                 } else {
-                                    errorText += res.message || 'Unknown error occurred';
+                                    errorHtml +=
+                                        `<li>${res.message || 'Unknown error occurred'}</li>`;
                                 }
-                                alert(errorText);
+
+                                errorHtml += '</ul>';
+
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Error',
+                                    html: errorHtml
+                                });
                             }
                         },
                         error: function(xhr) {
-                            let errorText = 'Failed to add jobs';
+                            let errorHtml = '<p>Failed to add jobs:</p><ul>';
+
                             if (xhr.responseJSON) {
                                 if (xhr.responseJSON.errors) {
-                                    errorText += ':\n\n';
                                     const errors = xhr.responseJSON.errors;
+
                                     if (Array.isArray(errors)) {
                                         errors.forEach(err => {
-                                            errorText += '• ' + (err.Remark || err) + '\n';
+                                            errorHtml += `<li>${err.Remark || err}</li>`;
                                         });
                                     } else {
                                         Object.keys(errors).forEach(key => {
-                                            errorText += '• ' + errors[key][0] + '\n';
+                                            errorHtml += `<li>${errors[key][0]}</li>`;
                                         });
                                     }
+
                                 } else if (xhr.responseJSON.message) {
-                                    errorText += ':\n' + xhr.responseJSON.message;
+                                    errorHtml += `<li>${xhr.responseJSON.message}</li>`;
                                 }
                             }
-                            alert(errorText);
+
+                            errorHtml += '</ul>';
+
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Request Failed',
+                                html: errorHtml
+                            });
                         },
                         complete: () => {
                             $('#submitAddJob').prop('disabled', false).html(
-                                '<i class="fa fa-check"></i> Add Job to Trip');
+                                '<i class="fa fa-check"></i> Add Job to Trip'
+                            );
                         }
                     });
                 });
 
-                // ========================================
-                // END TRIP - ✅ WITH VALIDATION
-                // ========================================
+
                 // ========================================
                 // END TRIP - WITH BACKDATE OPTION
                 // ========================================
@@ -1397,40 +1528,40 @@
                         </div>
                         ${completedJobs.length > 1 ?
                             `<div style="background: rgba(255,255,255,0.2);
-                                                                                padding: 5px 10px;
-                                                                                border-radius: 20px;
-                                                                                font-size: 0.8rem;">
-                                                                        ${completedJobs.length} Jobs
-                                                                    </div>`
+                                                                                                                                                padding: 5px 10px;
+                                                                                                                                                border-radius: 20px;
+                                                                                                                                                font-size: 0.8rem;">
+                                                                                                                                        ${completedJobs.length} Jobs
+                                                                                                                                    </div>`
                             : ''}
                     </div>
                 </div>
 
                 ${completedJobs.length > 1 ? `
-                                                            <!-- Collapsible Section for Older Jobs -->
-                                                            <div style="border: 1px solid #ddd; border-radius: 5px; overflow: hidden; margin-bottom: 10px;">
-                                                                <button type="button"
-                                                                        class="btn btn-sm btn-block text-left"
-                                                                        style="background: #f5f5f5;
-                                                                               border: none;
-                                                                               padding: 8px 12px;
-                                                                               display: flex;
-                                                                               justify-content: space-between;
-                                                                               align-items: center;
-                                                                               font-weight: 500;"
-                                                                        onclick="$('#olderJobsList').slideToggle(200); $(this).find('.toggle-icon').toggleClass('fa-chevron-down fa-chevron-up');">
-                                                                    <span>
-                                                                        <i class="fa fa-history"></i>
-                                                                        View ${completedJobs.length - 1} Earlier Job${completedJobs.length - 1 > 1 ? 's' : ''}
-                                                                    </span>
-                                                                    <i class="fa fa-chevron-down toggle-icon" style="font-size: 0.8rem;"></i>
-                                                                </button>
+                                                                                                                            <!-- Collapsible Section for Older Jobs -->
+                                                                                                                            <div style="border: 1px solid #ddd; border-radius: 5px; overflow: hidden; margin-bottom: 10px;">
+                                                                                                                                <button type="button"
+                                                                                                                                        class="btn btn-sm btn-block text-left"
+                                                                                                                                        style="background: #f5f5f5;
+                                                                                                                                               border: none;
+                                                                                                                                               padding: 8px 12px;
+                                                                                                                                               display: flex;
+                                                                                                                                               justify-content: space-between;
+                                                                                                                                               align-items: center;
+                                                                                                                                               font-weight: 500;"
+                                                                                                                                        onclick="$('#olderJobsList').slideToggle(200); $(this).find('.toggle-icon').toggleClass('fa-chevron-down fa-chevron-up');">
+                                                                                                                                    <span>
+                                                                                                                                        <i class="fa fa-history"></i>
+                                                                                                                                        View ${completedJobs.length - 1} Earlier Job${completedJobs.length - 1 > 1 ? 's' : ''}
+                                                                                                                                    </span>
+                                                                                                                                    <i class="fa fa-chevron-down toggle-icon" style="font-size: 0.8rem;"></i>
+                                                                                                                                </button>
 
-                                                                <div id="olderJobsList" style="display: none; max-height: 150px; overflow-y: auto;">
-                                                                    ${olderJobsHtml}
-                                                                </div>
-                                                            </div>
-                                                        ` : ''}
+                                                                                                                                <div id="olderJobsList" style="display: none; max-height: 150px; overflow-y: auto;">
+                                                                                                                                    ${olderJobsHtml}
+                                                                                                                                </div>
+                                                                                                                            </div>
+                                                                                                                        ` : ''}
 
                 <!-- Minimum Time Warning -->
                 <div style="background: #fff3cd;
@@ -1622,8 +1753,8 @@
                         $('#viewGpsPoints').text(trip.gps_points || 'N/A');
 
                         const statusMap = {
-                            'Created': {
-                                text: 'Created',
+                            'Planned': {
+                                text: 'Planned',
                                 class: 'badge-info'
                             },
                             'In Progress': {
@@ -1636,7 +1767,7 @@
                             }
                         };
                         const status = trip.status || (trip.start_date ? (trip.end_date ? 'Completed' :
-                            'In Progress') : 'Created');
+                            'In Progress') : 'Planned');
                         const badge = statusMap[status] || {
                             text: status,
                             class: 'badge-secondary'
@@ -1828,7 +1959,8 @@
                 });
 
 
-                // START JOB - AUTO-START TRIP IF NEEDED
+                // ========================================
+                // START JOB - WITH MANUAL START OPTION
                 // ========================================
                 $(document).on('click', '.startJobBtn', function(e) {
                     e.preventDefault();
@@ -1836,79 +1968,122 @@
                     const jobNo = $(this).data('job-no') || 'Internal Job';
                     const tripId = $(this).data('trip-id');
 
-                    if (!confirm(`Start job ${jobNo}?\n\nLive GPS tracking will begin immediately.`)) {
-                        return;
-                    }
-
-                    const $btn = $(this);
-                    const $row = $btn.closest('tr');
-                    const $actionCell = $btn.parent();
-
-                    $btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Starting...');
-
-                    $.ajax({
-                        url: `/tracker/trips/${tripId}/jobs/${jobId}/start`,
-                        type: 'POST',
-                        headers: {
-                            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-                        },
-                        success: function(res) {
-                            if (res.success) {
-                                // Update button to "Stop"
-                                const stopBtn = `
-                    <button class="btn btn-sm btn-danger stopJobBtn"
-                            data-job-id="${jobId}"
-                            data-job-no="${jobNo}"
-                            data-trip-id="${tripId}">
-                        <i class="fa fa-stop"></i> Stop
-                    </button>
-                    `;
-                                $actionCell.html(stopBtn);
-
-                                // Update job status badge
-                                $row.find('td:eq(3)') // Status column
-                                    .find('.badge')
-                                    .removeClass('badge-secondary badge-info')
-                                    .addClass('badge-warning')
-                                    .text('In Progress');
-
-                                // Show beautiful message
-                                let message = `Job "${jobNo}" started successfully!`;
-                                if (res.trip_auto_started) {
-                                    message +=
-                                        `\n\nTrip has been automatically started!\nLive tracking is now ACTIVE.`;
-                                } else {
-                                    message += `\n\nTrip is already in progress.`;
-                                }
-
-                                alert(message);
-
-                                // Refresh table
-                                if (typeof tripsTable !== 'undefined') {
-                                    tripsTable.ajax.reload(null, false);
-                                }
-
-                                // Re-open modal to show updated trip status + start date
-                                setTimeout(() => {
-                                    $(`.viewTrip[data-trip-id="${tripId}"]`).trigger(
-                                        'click');
-                                }, 500);
-                            }
-                        },
-                        error: function(xhr) {
-                            let msg = 'Failed to start job';
-                            if (xhr.responseJSON?.message) {
-                                msg = xhr.responseJSON.message;
-                            } else if (xhr.responseJSON?.errors) {
-                                msg = xhr.responseJSON.errors.join('\n');
-                            }
-                            alert('Error: ' + msg);
-                            $btn.prop('disabled', false).html('<i class="fa fa-play"></i> Start');
-                        }
+                    // Show choice dialog
+                    Swal.fire({
+                        title: `Start Job: ${jobNo}?`,
+                        html: `
+            <p>Choose start method:</p>
+            <div style="margin-top: 20px;">
+                <button class="btn btn-success btn-lg btn-block" id="startNowBtn">
+                    <i class="fa fa-play-circle"></i> Start Now
+                    <br><small>Use current time</small>
+                </button>
+                <button class="btn btn-warning btn-lg btn-block mt-2" id="manualStartBtn">
+                    <i class="fa fa-clock"></i> Manual Start
+                    <br><small>Specify past start time</small>
+                </button>
+            </div>
+        `,
+                        showConfirmButton: false,
+                        showCancelButton: true,
+                        cancelButtonText: 'Cancel'
                     });
+
+                    // Start now - original functionality
+                    $(document).on('click', '#startNowBtn', function() {
+                        Swal.close();
+
+                        const $btn = $(`.startJobBtn[data-job-id="${jobId}"]`);
+                        const $row = $btn.closest('tr');
+                        const $actionCell = $btn.parent();
+
+                        $btn.prop('disabled', true).html(
+                            '<i class="fa fa-spinner fa-spin"></i> Starting...');
+
+                        $.ajax({
+                            url: `/tracker/trips/${tripId}/jobs/${jobId}/start`,
+                            type: 'POST',
+                            headers: {
+                                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                            },
+                            success: function(res) {
+                                if (res.success) {
+                                    // Update button to "Stop"
+                                    const stopBtn = `
+                        <button class="btn btn-sm btn-danger stopJobBtn"
+                                data-job-id="${jobId}"
+                                data-job-no="${jobNo}"
+                                data-trip-id="${tripId}">
+                            <i class="fa fa-stop"></i> Stop
+                        </button>
+                    `;
+                                    $actionCell.html(stopBtn);
+
+                                    // Update job status badge
+                                    $row.find('td:eq(3)')
+                                        .find('.badge')
+                                        .removeClass('badge-secondary badge-info')
+                                        .addClass('badge-warning')
+                                        .text('In Progress');
+
+                                    // Show beautiful message
+                                    let message = `Job "${jobNo}" started successfully!`;
+                                    if (res.trip_auto_started) {
+                                        message +=
+                                            `\n\nTrip has been automatically started!\nLive tracking is now ACTIVE.`;
+                                    } else {
+                                        message += `\n\nTrip is already in progress.`;
+                                    }
+
+                                    Swal.fire('Success!', message, 'success');
+
+                                    // Refresh table
+                                    if (typeof tripsTable !== 'undefined') {
+                                        tripsTable.ajax.reload(null, false);
+                                    }
+
+                                    // Re-open modal to show updated trip status
+                                    setTimeout(() => {
+                                        $(`.viewTrip[data-trip-id="${tripId}"]`)
+                                            .trigger('click');
+                                    }, 500);
+                                }
+                            },
+                            error: function(xhr) {
+                                let msg = 'Failed to start job';
+                                if (xhr.responseJSON?.message) {
+                                    msg = xhr.responseJSON.message;
+                                }
+                                Swal.fire('Error', msg, 'error');
+                                $btn.prop('disabled', false).html(
+                                    '<i class="fa fa-play"></i> Start');
+                            }
+                        });
+                    });
+
+                    // Manual start - new functionality
+                    $(document).on('click', '#manualStartBtn', function() {
+                        Swal.close();
+
+                        $('#manualStartJobId').val(jobId);
+                        $('#manualStartTripId').val(tripId);
+                        $('#manualStartJobNo').text(jobNo);
+
+                        // Set default to current date/time
+                        const now = new Date();
+                        $('#manualStartJobDate').val(now.toISOString().split('T')[0]);
+                        $('#manualStartJobTime').val(now.toTimeString().slice(0, 5));
+
+                        $('#viewTripModal').modal('hide');
+                        setTimeout(() => {
+                            $('#manualStartJobModal').modal('show');
+                        }, 300);
+                    });
+
                 });
 
-                
+
+
                 // ========================================
                 // STOP JOB - WITH BACKDATE OPTION
                 // ========================================
@@ -2080,8 +2255,57 @@
                             }
                         },
                         error: function(xhr) {
-                            Swal.fire('Error', xhr.responseJSON?.message || 'Server error',
-                                'error');
+                            let errorMsg = 'Server error';
+                            let errorTitle = 'Validation Error';
+
+                            if (xhr.responseJSON) {
+                                errorMsg = xhr.responseJSON.message || 'Server error';
+
+                                // ✅ VALIDATION TYPE 1: Overlapping job error (for completion)
+                                if (xhr.responseJSON.validation_type === 'overlap_end') {
+                                    errorTitle = 'Job Timeline Conflict';
+                                    errorMsg = `
+                <div style="text-align: left; font-size: 0.95rem;">
+                    <p style="font-size: 1.1rem; margin-bottom: 15px;">
+                        <strong><i class="fa fa-exclamation-triangle"></i> ${xhr.responseJSON.message}</strong>
+                    </p>
+
+                    <div style="background: #fff3cd; padding: 12px; border-left: 4px solid #ffc107; border-radius: 5px; margin: 15px 0;">
+                        <p style="margin: 5px 0; color: #856404;">
+                            <i class="fa fa-briefcase"></i> <strong>Conflicting Job:</strong>
+                            ${xhr.responseJSON.conflicting_job}
+                        </p>
+                        <p style="margin: 5px 0; color: #856404;">
+                            <i class="fa fa-clock"></i> <strong>Was In Progress:</strong><br>
+                            ${xhr.responseJSON.conflicting_job_start} → ${xhr.responseJSON.conflicting_job_end}
+                        </p>
+                    </div>
+
+                    <div style="background: #f8d7da; padding: 12px; border-left: 4px solid #dc3545; border-radius: 5px; margin: 15px 0;">
+                        <p style="margin: 5px 0; color: #721c24;">
+                            <i class="fa fa-times-circle"></i> <strong>Your End Time:</strong>
+                            ${xhr.responseJSON.your_end_time}
+                        </p>
+                    </div>
+
+                    <div style="background: #d1ecf1; padding: 12px; border-left: 4px solid #17a2b8; border-radius: 5px; margin: 15px 0;">
+                        <p style="margin: 5px 0; color: #0c5460;">
+                            <i class="fa fa-lightbulb"></i> <strong>Solution:</strong><br>
+                            ${xhr.responseJSON.suggestion}
+                        </p>
+                    </div>
+                </div>
+            `;
+                                }
+                            }
+
+                            Swal.fire({
+                                icon: 'error',
+                                title: errorTitle,
+                                html: errorMsg,
+                                confirmButtonText: 'OK',
+                                width: '600px'
+                            });
                         },
                         complete: function() {
                             $('#submitBackdateJob').prop('disabled', false).html(
@@ -2095,6 +2319,160 @@
                     $(this).find('form')[0]?.reset();
                 });
             });
+
+
+            // ========================================
+            // MANUAL START JOB FORM SUBMIT - WITH ENHANCED ERROR DISPLAY
+            // ========================================
+            $('#manualStartJobForm').submit(function(e) {
+                e.preventDefault();
+
+                const jobId = $('#manualStartJobId').val();
+                const tripId = $('#manualStartTripId').val();
+                const startDate = $('#manualStartJobDate').val();
+                const startTime = $('#manualStartJobTime').val();
+
+                if (!startDate || !startTime) {
+                    return Swal.fire('Error', 'Please enter both date and time', 'error');
+                }
+
+                $('#submitManualStartJob').prop('disabled', true).html(
+                    '<i class="fa fa-spinner fa-spin"></i> Processing...'
+                );
+
+                $.ajax({
+                    url: `/tracker/trips/${tripId}/jobs/${jobId}/start`,
+                    type: 'POST',
+                    data: {
+                        start_date: startDate,
+                        start_time: startTime
+                    },
+                    headers: {
+                        'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                    },
+                    success: function(res) {
+                        if (res.success) {
+                            $('#manualStartJobModal').modal('hide');
+
+                            let message = `Started: ${startDate} ${startTime}`;
+                            if (res.trip_auto_started) {
+                                message += `<br><br><strong>Trip was automatically started!</strong>`;
+                            }
+
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Job Started!',
+                                html: message,
+                                confirmButtonText: 'OK'
+                            });
+
+                            setTimeout(() => {
+                                $(`.viewTrip[data-trip-id="${tripId}"]`).trigger('click');
+                            }, 500);
+
+                            if (typeof tripsTable !== 'undefined') {
+                                tripsTable.ajax.reload(null, false);
+                            }
+                        } else {
+                            Swal.fire('Failed', res.message || 'Unknown error', 'error');
+                        }
+                    },
+                    error: function(xhr) {
+                        let errorMsg = 'Server error';
+                        let errorTitle = 'Validation Error';
+
+                        if (xhr.responseJSON) {
+                            errorMsg = xhr.responseJSON.message || 'Server error';
+
+                            // ✅ VALIDATION TYPE 1: Overlapping job error
+                            if (xhr.responseJSON.validation_type === 'overlap') {
+                                errorTitle = 'Job Timeline Conflict';
+                                errorMsg = `
+                        <div style="text-align: left; font-size: 0.95rem;">
+                            <p style="font-size: 1.1rem; margin-bottom: 15px;">
+                                <strong><i class="fa fa-exclamation-triangle"></i> ${xhr.responseJSON.message}</strong>
+                            </p>
+
+                            <div style="background: #fff3cd; padding: 12px; border-left: 4px solid #ffc107; border-radius: 5px; margin: 15px 0;">
+                                <p style="margin: 5px 0; color: #856404;">
+                                    <i class="fa fa-briefcase"></i> <strong>Conflicting Job:</strong>
+                                    ${xhr.responseJSON.conflicting_job}
+                                </p>
+                                <p style="margin: 5px 0; color: #856404;">
+                                    <i class="fa fa-clock"></i> <strong>Was In Progress:</strong><br>
+                                    ${xhr.responseJSON.conflicting_job_start} → ${xhr.responseJSON.conflicting_job_end}
+                                </p>
+                            </div>
+
+                            <div style="background: #f8d7da; padding: 12px; border-left: 4px solid #dc3545; border-radius: 5px; margin: 15px 0;">
+                                <p style="margin: 5px 0; color: #721c24;">
+                                    <i class="fa fa-times-circle"></i> <strong>Your Start Time:</strong>
+                                    ${xhr.responseJSON.your_start_time}
+                                </p>
+                            </div>
+
+                            <div style="background: #d1ecf1; padding: 12px; border-left: 4px solid #17a2b8; border-radius: 5px; margin: 15px 0;">
+                                <p style="margin: 5px 0; color: #0c5460;">
+                                    <i class="fa fa-lightbulb"></i> <strong>Solution:</strong><br>
+                                    ${xhr.responseJSON.suggestion}
+                                </p>
+                            </div>
+                        </div>
+                    `;
+                            }
+                            // ✅ VALIDATION TYPE 2: Trip start time error
+                            else if (xhr.responseJSON.validation_type === 'trip_start') {
+                                errorTitle = 'Trip Timeline Conflict';
+                                errorMsg = `
+                        <div style="text-align: left; font-size: 0.95rem;">
+                            <p style="font-size: 1.1rem; margin-bottom: 15px;">
+                                <strong><i class="fa fa-exclamation-triangle"></i> ${xhr.responseJSON.message}</strong>
+                            </p>
+
+                            <div style="background: #d1ecf1; padding: 12px; border-left: 4px solid #17a2b8; border-radius: 5px; margin: 15px 0;">
+                                <p style="margin: 5px 0; color: #0c5460;">
+                                    <i class="fa fa-truck"></i> <strong>Trip Started:</strong>
+                                    ${xhr.responseJSON.trip_started_at}
+                                </p>
+                            </div>
+
+                            <div style="background: #f8d7da; padding: 12px; border-left: 4px solid #dc3545; border-radius: 5px; margin: 15px 0;">
+                                <p style="margin: 5px 0; color: #721c24;">
+                                    <i class="fa fa-times-circle"></i> <strong>Your Start Time:</strong>
+                                    ${xhr.responseJSON.your_start_time}
+                                </p>
+                            </div>
+
+                            <div style="background: #fff3cd; padding: 12px; border-left: 4px solid #ffc107; border-radius: 5px; margin: 15px 0;">
+                                <p style="margin: 5px 0; color: #856404;">
+                                    <i class="fa fa-info-circle"></i> Jobs must start at or after the trip start time.
+                                </p>
+                            </div>
+                        </div>
+                    `;
+                            }
+                        }
+
+                        Swal.fire({
+                            icon: 'error',
+                            title: errorTitle,
+                            html: errorMsg,
+                            confirmButtonText: 'OK',
+                            width: '600px',
+                            customClass: {
+                                popup: 'swal-wide'
+                            }
+                        });
+                    },
+                    complete: function() {
+                        $('#submitManualStartJob').prop('disabled', false).html(
+                            '<i class="fa fa-check"></i> Start Job'
+                        );
+                    }
+                });
+            });
+
+
 
             // ========================================
             // MANUAL JOB ENTRY - ✅ HISTORICAL
@@ -2335,8 +2713,59 @@
                                     }
                                 },
                                 error: function(xhr) {
-                                    alert('Error: ' + (xhr.responseJSON?.message ||
-                                        'Failed to complete job'));
+                                    let errorMsg = 'Failed to complete job';
+                                    let errorTitle = 'Error';
+
+                                    if (xhr.responseJSON) {
+                                        errorMsg = xhr.responseJSON.message ||
+                                            'Server error';
+
+                                        // ✅ Handle overlap validation
+                                        if (xhr.responseJSON.validation_type ===
+                                            'overlap_end') {
+                                            errorTitle = 'Job Timeline Conflict';
+                                            errorMsg = `
+                <div style="text-align: left; font-size: 0.95rem;">
+                    <p style="font-size: 1.1rem; margin-bottom: 15px;">
+                        <strong><i class="fa fa-exclamation-triangle"></i> ${xhr.responseJSON.message}</strong>
+                    </p>
+
+                    <div style="background: #fff3cd; padding: 12px; border-left: 4px solid #ffc107; border-radius: 5px; margin: 15px 0;">
+                        <p style="margin: 5px 0; color: #856404;">
+                            <i class="fa fa-briefcase"></i> <strong>Conflicting Job:</strong>
+                            ${xhr.responseJSON.conflicting_job}
+                        </p>
+                        <p style="margin: 5px 0; color: #856404;">
+                            <i class="fa fa-clock"></i> <strong>Was In Progress:</strong><br>
+                            ${xhr.responseJSON.conflicting_job_start} → ${xhr.responseJSON.conflicting_job_end}
+                        </p>
+                    </div>
+
+                    <div style="background: #f8d7da; padding: 12px; border-left: 4px solid #dc3545; border-radius: 5px; margin: 15px 0;">
+                        <p style="margin: 5px 0; color: #721c24;">
+                            <i class="fa fa-times-circle"></i> <strong>Your End Time:</strong>
+                            ${xhr.responseJSON.your_end_time}
+                        </p>
+                    </div>
+
+                    <div style="background: #d1ecf1; padding: 12px; border-left: 4px solid #17a2b8; border-radius: 5px; margin: 15px 0;">
+                        <p style="margin: 5px 0; color: #0c5460;">
+                            <i class="fa fa-lightbulb"></i> <strong>Solution:</strong><br>
+                            ${xhr.responseJSON.suggestion}
+                        </p>
+                    </div>
+                </div>
+            `;
+                                        }
+                                    }
+
+                                    Swal.fire({
+                                        icon: 'error',
+                                        title: errorTitle,
+                                        html: errorMsg,
+                                        confirmButtonText: 'OK',
+                                        width: '600px'
+                                    });
                                 },
                                 complete: () => {
                                     $('#submitManualJob').prop('disabled', false).html(
