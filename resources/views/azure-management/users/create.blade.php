@@ -1,13 +1,27 @@
-@extends('azure-management.layouts.app')
+@extends('adminlte::page')
 
 @section('title', 'Create New User')
 
-@section('page-title', '')
+@section('content_header')
+<h1><i class="fas fa-user-plus"></i> Create User Data</h1>
+<p class="text-muted mb-0">Add a new user to the system</p>
+@stop
 
-@section('main-class', 'full-width')
-
-@push('styles')
+@section('css')
 <style>
+    .content-wrapper {
+        background: #f5f7fa;
+    }
+
+    .card {
+        box-shadow: 0 0 1px rgba(0, 0, 0, .125), 0 1px 3px rgba(0, 0, 0, .2);
+        border: none;
+    }
+
+    .card-body {
+        padding: 30px;
+    }
+
     :root {
         --primary-color: #3498db;
         /* Blue */
@@ -28,7 +42,7 @@
     }
 
     /* Override the old bad rule - keep header visible even in full-width */
-    .main.full-width .page-header {
+    /* .main.full-width .page-header {
         display: flex !important;
         padding: 30px 40px 20px;
         background: rgba(255, 255, 255, 0.95);
@@ -47,7 +61,7 @@
         padding: 40px;
         min-height: calc(100vh - 120px);
         background: white;
-    }
+    } */
 
     @media (max-width: 768px) {
         .main.full-width .page-header {
@@ -78,7 +92,7 @@ gap: 0 !important;
     }
 
     /* Back Button Styles */
-    .back-to-dashboard {
+    /* .back-to-dashboard {
         display: inline-flex;
         align-items: center;
         gap: 8px;
@@ -89,7 +103,7 @@ gap: 0 !important;
         text-decoration: none;
         font-weight: 600;
         transition: all 0.3s ease;
-    }
+    } */
 
     .back-to-dashboard:hover {
         background: #5a6268;
@@ -99,12 +113,12 @@ gap: 0 !important;
         text-decoration: none;
     }
 
-    .page-header {
+    /* .page-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
         margin-bottom: 20px;
-    }
+    } */
 
     .user-form-panel {
         background: rgba(255, 255, 255, 0.95);
@@ -117,15 +131,19 @@ gap: 0 !important;
     }
 
 
-    .user-form-card {
+    .card-body {
         background: rgba(255, 255, 255, 0.98);
-        backdrop-filter: blur(10px);
-        border-radius: 25px;
-        padding: 40px;
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-        margin-bottom: 40px;
-        position: relative;
-        overflow: hidden;
+        padding: 40px !important;
+    }
+
+    .card-body::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 6px;
+        background: linear-gradient(90deg, #3498db, #8e44ad);
     }
 
     .user-form-card::before {
@@ -754,140 +772,137 @@ gap: 0 !important;
         }
     }
 </style>
-@endpush
+@stop
 
 @section('content')
-<div class="main-content">
-    <div class="user-form-panel">
-        <!-- Back button + Title Header (kept outside the card for better hierarchy) -->
-        <div class="page-header">
-            <div class="section-title">
-                <i class="fas fa-user-plus"></i>
-                Create User Data
-            </div>
-            <a href="{{ route('azure.dashboard.index') }}" class="back-to-dashboard">
-                <i class="fas fa-arrow-left"></i>
-                Back to Dashboard
-            </a>
-        </div>
-
-        <!-- THE CARD THAT WRAPS THE ENTIRE FORM -->
-        <div class="user-form-card">
-            <form id="userForm" method="POST" action="{{ route('azure.users.store') }}">
-                @csrf
-
-                <!-- Info Note -->
-                <div class="info-note">
-                    <i class="fas fa-info-circle"></i>
-                    <strong>Note:</strong> Fields marked with * are required.
-                </div>
-
-                <!-- Basic Information Section -->
-                <div class="form-section">
-                    <h3 class="form-section-title">
-                        <i class="fas fa-user"></i> Basic Information
-                    </h3>
-
-                    <div class="form-grid">
-                        <!-- Name -->
-                        <div class="form-group">
-                            <label for="name">
-                                Full Name <span style="color: var(--danger);">*</span>
-                            </label>
-                            <input type="text" id="name" name="name" value="{{ old('name') }}" required
-                                placeholder="e.g., John Doe"
-                                class="@error('name') is-invalid @enderror">
-                            @error('name')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                        </div>
-
-                        <!-- Hidden Company (if needed later) -->
-                        <div class="form-group" style="display: none;">
-                            <label for="company_id">Company</label>
-                            <select id="company_id" name="company_id" class="@error('company_id') is-invalid @enderror">
-                                <option value="">Select Company</option>
-                                @foreach($companies as $company)
-                                <option value="{{ $company->id }}" {{ old('company_id') == $company->id ? 'selected' : '' }}>
-                                    {{ $company->name }}
-                                </option>
-                                @endforeach
-                            </select>
-                            @error('company_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                        </div>
-
-                        <!-- Employee ID -->
-                        <div class="form-group">
-                            <label for="employee_id">
-                                Employee ID <span style="color: var(--danger);">*</span>
-                            </label>
-                            <input type="text" id="employee_id" name="employee_id" value="{{ old('employee_id') }}" required
-                                placeholder="e.g., EMP001"
-                                class="@error('employee_id') is-invalid @enderror">
-                            @error('employee_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                        </div>
-
-                        <!-- Email -->
-                        <div class="form-group">
-                            <label for="email">
-                                Email Address <span style="color: var(--danger);">*</span>
-                            </label>
-                            <input type="email" id="email" name="email" value="{{ old('email') }}" required
-                                placeholder="e.g., john.doe@company.com"
-                                class="@error('email') is-invalid @enderror">
-                            @error('email')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                        </div>
-
-                        <!-- Phone -->
-                        <div class="form-group">
-                            <label for="phone">
-                                Phone Number <span style="color: var(--danger);">*</span>
-                            </label>
-                            <input type="tel" id="phone" name="phone" value="{{ old('phone') }}" required
-                                placeholder="e.g., +254 712 345 678"
-                                class="@error('phone') is-invalid @enderror">
-                            @error('phone')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                        </div>
-
-                        <!-- Department -->
-                        <div class="form-group">
-                            <label for="department">Department</label>
-                            <input type="text" id="department" name="department" value="{{ old('department') }}"
-                                placeholder="e.g., IT Department"
-                                class="@error('department') is-invalid @enderror">
-                            @error('department')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Module Assignments Section -->
-                <div class="form-section">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                        <h3 class="form-section-title">
-                            <i class="fas fa-th-large"></i> Module Assignments
-                        </h3>
-                        <button type="button" class="btn btn-sm btn-success" onclick="addNewModule()">
-                            <i class="fas fa-plus"></i> Add Module
-                        </button>
-                    </div>
-
-                    <div id="modulesGrid" class="modules-grid"></div>
-                </div>
-
-                <div id="hiddenInputsContainer"></div>
-
-                <!-- Action Buttons -->
-                <div class="action-buttons" style="border-top: 1px solid #e2e8f0; padding-top: 24px; margin-top: 30px;">
-                    <button type="button" class="btn btn-secondary" onclick="cancelForm()">
-                        <i class="fas fa-times"></i> Cancel
-                    </button>
-                    <button type="submit" class="btn btn-primary" id="submitBtn">
-                        <i class="fas fa-save"></i> Create User
-                    </button>
-                </div>
-            </form>
-        </div>
-        <!-- End of .user-form-card -->
-    </div>
+<!-- Add Back Button at top -->
+<div class="mb-3">
+    <a href="{{ route('azure.dashboard.index') }}" class="btn btn-secondary">
+        <i class="fas fa-arrow-left"></i> Back to Dashboard
+    </a>
 </div>
+
+<!-- Use AdminLTE Card -->
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title"><i class="fas fa-user-plus"></i> Create New User</h3>
+    </div>
+    <div class="card-body">
+        <form id="userForm" method="POST" action="{{ route('azure.users.store') }}">
+            @csrf
+
+            <!-- Info Note -->
+            <div class="info-note">
+                <i class="fas fa-info-circle"></i>
+                <strong>Note:</strong> Fields marked with * are required.
+            </div>
+
+            <!-- Basic Information Section -->
+            <div class="form-section">
+                <h3 class="form-section-title">
+                    <i class="fas fa-user"></i> Basic Information
+                </h3>
+
+                <div class="form-grid">
+                    <!-- Name -->
+                    <div class="form-group">
+                        <label for="name">
+                            Full Name <span style="color: var(--danger);">*</span>
+                        </label>
+                        <input type="text" id="name" name="name" value="{{ old('name') }}" required
+                            placeholder="e.g., John Doe"
+                            class="@error('name') is-invalid @enderror">
+                        @error('name')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
+
+                    <!-- Hidden Company (if needed later) -->
+                    <div class="form-group" style="display: none;">
+                        <label for="company_id">Company</label>
+                        <select id="company_id" name="company_id" class="@error('company_id') is-invalid @enderror">
+                            <option value="">Select Company</option>
+                            @foreach($companies as $company)
+                            <option value="{{ $company->id }}" {{ old('company_id') == $company->id ? 'selected' : '' }}>
+                                {{ $company->name }}
+                            </option>
+                            @endforeach
+                        </select>
+                        @error('company_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
+
+                    <!-- Employee ID -->
+                    <div class="form-group">
+                        <label for="employee_id">
+                            Employee ID <span style="color: var(--danger);">*</span>
+                        </label>
+                        <input type="text" id="employee_id" name="employee_id" value="{{ old('employee_id') }}" required
+                            placeholder="e.g., EMP001"
+                            class="@error('employee_id') is-invalid @enderror">
+                        @error('employee_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
+
+                    <!-- Email -->
+                    <div class="form-group">
+                        <label for="email">
+                            Email Address <span style="color: var(--danger);">*</span>
+                        </label>
+                        <input type="email" id="email" name="email" value="{{ old('email') }}" required
+                            placeholder="e.g., john.doe@company.com"
+                            class="@error('email') is-invalid @enderror">
+                        @error('email')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
+
+                    <!-- Phone -->
+                    <div class="form-group">
+                        <label for="phone">
+                            Phone Number <span style="color: var(--danger);">*</span>
+                        </label>
+                        <input type="tel" id="phone" name="phone" value="{{ old('phone') }}" required
+                            placeholder="e.g., +254 712 345 678"
+                            class="@error('phone') is-invalid @enderror">
+                        @error('phone')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
+
+                    <!-- Department -->
+                    <div class="form-group">
+                        <label for="department">Department</label>
+                        <input type="text" id="department" name="department" value="{{ old('department') }}"
+                            placeholder="e.g., IT Department"
+                            class="@error('department') is-invalid @enderror">
+                        @error('department')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
+                </div>
+            </div>
+
+            <!-- Module Assignments Section -->
+            <div class="form-section">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h3 class="form-section-title">
+                        <i class="fas fa-th-large"></i> Module Assignments
+                    </h3>
+                    <button type="button" class="btn btn-sm btn-success" onclick="addNewModule()">
+                        <i class="fas fa-plus"></i> Add Module
+                    </button>
+                </div>
+
+                <div id="modulesGrid" class="modules-grid"></div>
+            </div>
+
+            <div id="hiddenInputsContainer"></div>
+
+            <!-- Action Buttons -->
+            <div class="action-buttons" style="border-top: 1px solid #e2e8f0; padding-top: 24px; margin-top: 30px;">
+                <button type="button" class="btn btn-secondary" onclick="cancelForm()">
+                    <i class="fas fa-times"></i> Cancel
+                </button>
+                <button type="submit" class="btn btn-primary" id="submitBtn">
+                    <i class="fas fa-save"></i> Create User
+                </button>
+            </div>
+        </form>
+    </div>
+    <!-- /.card-body -->
+</div>
+<!-- /.card -->
 
 <!-- Modal for Module Details -->
 <div id="moduleModal" class="modal-overlay" onclick="closeModalOnOverlay(event)">
@@ -912,9 +927,9 @@ gap: 0 !important;
         </div>
     </div>
 </div>
-@endsection
+@stop
 
-@push('scripts')
+@section('js')
 <script>
     // Data from Laravel
     const modulesData = @json($modules);
@@ -1738,6 +1753,7 @@ gap: 0 !important;
         }
     });
 
+
     // Add new module
     function addNewModule() {
         const moduleSelectorHTML = `
@@ -2438,4 +2454,4 @@ gap: 0 !important;
         renderAllCards();
     });
 </script>
-@endpush
+@stop

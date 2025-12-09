@@ -13,7 +13,7 @@
 <div class="row">
     <!-- Active Users Card -->
     <div class="col-lg-3 col-md-6">
-        <div class="small-box bg-success">
+        <div class="small-box bg-success" style="cursor: pointer;" onclick="window.location='{{ route('azure.users.index', ['status' => 'active']) }}'">
             <div class="inner">
                 <h3>{{ $stats['active'] ?? 0 }}</h3>
                 <p>Active Users</p>
@@ -26,7 +26,7 @@
 
     <!-- Pending Users Card -->
     <div class="col-lg-3 col-md-6">
-        <div class="small-box bg-warning">
+        <div class="small-box bg-warning" style="cursor: pointer;" onclick="window.location='{{ route('azure.users.index', ['status' => 'pending']) }}'">
             <div class="inner">
                 <h3>{{ $stats['pending'] ?? 0 }}</h3>
                 <p>Pending</p>
@@ -39,7 +39,7 @@
 
     <!-- Inactive Users Card -->
     <div class="col-lg-3 col-md-6">
-        <div class="small-box bg-danger">
+        <div class="small-box bg-danger" style="cursor: pointer;" onclick="window.location='{{ route('azure.users.index', ['status' => 'inactive']) }}'">
             <div class="inner">
                 <h3>{{ $stats['inactive'] ?? 0 }}</h3>
                 <p>Inactive</p>
@@ -67,8 +67,8 @@
 <!-- Users Table Card -->
 <div class="card">
     <div class="card-header">
-        <div class="row">
-            <div class="col-md-3">
+        <div class="row align-items-center">
+            <div class="col-md-2">
                 <select id="statusFilter" class="form-control form-control-sm">
                     <option value="">All Status</option>
                     <option value="active" {{ request('status') == 'active' ? 'selected' : '' }}>Active</option>
@@ -76,23 +76,26 @@
                     <option value="inactive" {{ request('status') == 'inactive' ? 'selected' : '' }}>Inactive</option>
                 </select>
             </div>
-            <div class="col-md-6">
-                <div class="input-group input-group-sm">
-                    <input type="text" 
-                           id="searchUsers" 
-                           class="form-control" 
-                           placeholder="Search by name, email, group, or country..." 
-                           value="{{ request('search') }}"
-                           autocomplete="off">
-                    <div class="input-group-append">
-                        <span class="input-group-text"><i class="fas fa-search"></i></span>
+            <div class="col-md-10 text-right">
+                <div class="d-inline-flex align-items-center">
+                    <div class="input-group input-group-sm mr-2" style="width: 350px;">
+                        <input type="text" 
+                               id="searchUsers" 
+                               class="form-control form-control-sm" 
+                               placeholder="Search... (Press Enter)" 
+                               value="{{ request('search') }}"
+                               autocomplete="off">
+                        <div class="input-group-append">
+                            <button class="btn btn-outline-secondary" type="button" id="clearSearch" title="Clear search">
+                                <i class="fas fa-times"></i>
+                            </button>
+                            <span class="input-group-text"><i class="fas fa-search"></i></span>
+                        </div>
                     </div>
+                    <a href="{{ route('azure.users.create') }}" class="btn btn-primary btn-sm">
+                        <i class="fas fa-user-plus"></i> Add User
+                    </a>
                 </div>
-            </div>
-            <div class="col-md-3 text-right">
-                <a href="{{ route('azure.users.create') }}" class="btn btn-primary btn-sm">
-                    <i class="fas fa-user-plus"></i> Add User
-                </a>
             </div>
         </div>
     </div>
@@ -106,6 +109,7 @@
                     <th>Login ID</th>
                     <th>Employee ID</th>
                     <th>Group</th>
+                    <th>Location</th>
                     <th>Status</th>
                     <th style="width: 120px;">Actions</th>
                 </tr>
@@ -125,6 +129,7 @@
                     <td>{{ $user->userPrincipalName ?? 'N/A' }}</td>
                     <td>{{ $user->EmployeCode ?? 'N/A' }}</td>
                     <td>{{ $user->department ?? $user->companyName ?? 'N/A' }}</td>
+                    <td>{{ $user->officeLocation ?? $user->city ?? 'N/A' }}</td>
                     <td>
                         @php
                             $status = $user->Status ?? 'Unknown';
@@ -167,9 +172,14 @@
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="7" class="text-center text-muted py-4">
+                    <td colspan="8" class="text-center text-muted py-4">
                         <i class="fas fa-users fa-3x mb-3"></i>
                         <p>No users found</p>
+                        @if(request('search') || request('status'))
+                        <button class="btn btn-sm btn-outline-primary" onclick="clearAllFilters()">
+                            <i class="fas fa-redo"></i> Clear Filters
+                        </button>
+                        @endif
                     </td>
                 </tr>
                 @endforelse
@@ -281,6 +291,16 @@
         font-weight: bold;
     }
     
+    /* Clickable stats cards */
+    .small-box[onclick] {
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    
+    .small-box[onclick]:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+    
     /* Pagination Styles */
     .pagination {
         margin-bottom: 0;
@@ -303,22 +323,52 @@
         background-color: #f8f9fa;
         border-top: 1px solid #dee2e6;
     }
+    
+    /* Compact form controls */
+    #statusFilter {
+        max-width: 150px;
+    }
+    
+    #clearSearch {
+        border-left: 0;
+    }
+    
+    #clearSearch:hover {
+        background-color: #e9ecef;
+    }
+    
+    /* Search input focus */
+    #searchUsers:focus {
+        border-color: #80bdff;
+        box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+    }
 </style>
 @stop
 
 @section('js')
 <script>
-    // Search functionality with debounce
-    let searchTimeout;
-    document.getElementById('searchUsers').addEventListener('input', function(e) {
-        clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(() => {
+    // Search functionality - only trigger on Enter key
+    document.getElementById('searchUsers').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
             performSearch();
-        }, 500);
+        }
+        
+        // Clear search on Escape key
+        if (e.key === 'Escape') {
+            e.target.value = '';
+            performSearch();
+        }
     });
 
     // Status filter
     document.getElementById('statusFilter').addEventListener('change', function() {
+        performSearch();
+    });
+
+    // Clear search button
+    document.getElementById('clearSearch').addEventListener('click', function() {
+        document.getElementById('searchUsers').value = '';
         performSearch();
     });
 
@@ -340,6 +390,16 @@
             url.searchParams.delete('status');
         }
         
+        url.searchParams.delete('page');
+        window.location.href = url.toString();
+    }
+
+    function clearAllFilters() {
+        document.getElementById('searchUsers').value = '';
+        document.getElementById('statusFilter').value = '';
+        const url = new URL(window.location.href);
+        url.searchParams.delete('search');
+        url.searchParams.delete('status');
         url.searchParams.delete('page');
         window.location.href = url.toString();
     }
@@ -388,14 +448,6 @@
             alert(`Failed to ${actionText} user. ${error.message}`);
         });
     }
-
-    // Clear search on Escape key
-    document.getElementById('searchUsers').addEventListener('keydown', function(e) {
-        if (e.key === 'Escape') {
-            e.target.value = '';
-            performSearch();
-        }
-    });
 
     console.log('Dashboard scripts loaded successfully');
 </script>

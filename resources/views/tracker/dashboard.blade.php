@@ -648,7 +648,7 @@
                 </div>
             </div>
 
-            <!-- Backdate Trip End Modal -->
+            {{-- <!-- Backdate Trip End Modal -->
             <div class="modal fade" id="backdateTripModal" tabindex="-1" data-backdrop="static" role="dialog">
                 <div class="modal-dialog modal-md" role="document">
                     <div class="modal-content">
@@ -698,7 +698,7 @@
                         </form>
                     </div>
                 </div>
-            </div>
+            </div> --}}
             <!-- Manual Start Job Modal -->
             <div class="modal fade" id="manualStartJobModal" tabindex="-1" data-backdrop="static" role="dialog">
                 <div class="modal-dialog modal-md" role="document">
@@ -1333,326 +1333,103 @@
                     });
                 });
 
-
                 // ========================================
-                // END TRIP - WITH BACKDATE OPTION
-                // ========================================
-                $(document).on('click', '.endTrip', function() {
-                    const tripId = $(this).data('trip-id');
-                    const $btn = $(this);
+// END TRIP - SIMPLIFIED (No backdate option)
+// ========================================
+$(document).on('click', '.endTrip', function() {
+    const tripId = $(this).data('trip-id');
+    const $btn = $(this);
 
-                    if ($btn.prop('disabled')) return;
+    if ($btn.prop('disabled')) return;
 
-                    $btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i>');
+    $btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i>');
 
-                    $.get(`/tracker/trips/${tripId}`)
-                        .done(function(res) {
-                            if (!res.success) {
-                                Swal.fire('Error', 'Failed to load trip details', 'error');
-                                $btn.prop('disabled', false).html('<i class="fa fa-stop"></i>');
-                                return;
-                            }
+    $.get(`/tracker/trips/${tripId}`)
+        .done(function(res) {
+            if (!res.success) {
+                Swal.fire('Error', 'Failed to load trip details', 'error');
+                $btn.prop('disabled', false).html('<i class="fa fa-stop"></i>');
+                return;
+            }
 
-                            // SAME VALIDATION AS BEFORE
-                            const incompleteJobs = (res.data.jobs || []).filter(j => j.status !==
-                                'Completed');
+            // Check if all jobs are completed
+            const incompleteJobs = (res.data.jobs || []).filter(j => j.status !== 'Completed');
 
-                            if (incompleteJobs.length > 0) {
-                                const jobList = incompleteJobs
-                                    .map(j =>
-                                        `• ${j.job_number || 'Internal Job'} <small>(${j.status})</small>`)
-                                    .join('<br>');
+            if (incompleteJobs.length > 0) {
+                const jobList = incompleteJobs
+                    .map(j => `• ${j.job_number || 'Internal Job'} <small>(${j.status})</small>`)
+                    .join('<br>');
 
-                                Swal.fire({
-                                    icon: 'warning',
-                                    title: 'Cannot End Trip',
-                                    html: `<strong>All jobs must be completed first.</strong><br><br>Pending jobs:<br>${jobList}`,
-                                    confirmButtonText: 'OK',
-                                    confirmButtonColor: '#d33'
-                                });
-
-                                $btn.prop('disabled', false).html('<i class="fa fa-stop"></i>');
-                                return;
-                            }
-
-                            // Show choice dialog
-                            Swal.fire({
-                                title: 'End Trip?',
-                                html: `
-                    <p><strong>Trip:</strong> ${res.data.trip_no}</p>
-                    <p>Choose end method:</p>
-                    <div style="margin-top: 20px;">
-                        <button class="btn btn-danger btn-lg btn-block" id="endNowBtn">
-                            <i class="fa fa-stop-circle"></i> End Now
-                            <br><small>Use current time</small>
-                        </button>
-                        <button class="btn btn-warning btn-lg btn-block mt-2" id="backdateTripBtn">
-                            <i class="fa fa-clock"></i> Backdate End
-                            <br><small>Specify past end time</small>
-                        </button>
-                    </div>
-                `,
-                                showConfirmButton: false,
-                                showCancelButton: true,
-                                cancelButtonText: 'Cancel',
-                                didClose: () => {
-                                    $btn.prop('disabled', false).html(
-                                        '<i class="fa fa-stop"></i>');
-                                }
-                            });
-
-                            // End now - EXACT SAME AS BEFORE
-                            $(document).on('click', '#endNowBtn', function() {
-                                Swal.close();
-
-                                $btn.prop('disabled', true).html(
-                                    '<i class="fa fa-spinner fa-spin"></i>');
-
-                                $.ajax({
-                                    url: `/tracker/trips/${tripId}/end`,
-                                    type: 'POST',
-                                    headers: {
-                                        'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr(
-                                            'content')
-                                    },
-                                    success: function(endRes) {
-                                        if (endRes.success) {
-                                            Swal.fire({
-                                                icon: 'success',
-                                                title: 'Trip Ended!',
-                                                html: `
-                                    <strong>Distance:</strong> ${endRes.total_distance || 'N/A'} km<br>
-                                    <strong>Duration:</strong> ${endRes.duration_hours || 'N/A'} hours
-                                `,
-                                                confirmButtonText: 'OK'
-                                            });
-
-                                            if (typeof tripsTable !== 'undefined') {
-                                                tripsTable.ajax.reload(null, false);
-                                            }
-                                        } else {
-                                            Swal.fire('Failed', endRes.message ||
-                                                'Unknown error', 'error');
-                                        }
-
-                                        $btn.prop('disabled', false).html(
-                                            '<i class="fa fa-stop"></i>');
-                                    },
-                                    error: function(xhr) {
-                                        Swal.fire('Error', xhr.responseJSON?.message ||
-                                            'Server error', 'error');
-                                        $btn.prop('disabled', false).html(
-                                            '<i class="fa fa-stop"></i>');
-                                    }
-                                });
-                            });
-
-                            $(document).on('click', '#backdateTripBtn', function() {
-                                Swal.close();
-
-                                $('#backdateTripEndId').val(tripId);
-                                $('#backdateTripNo').text(res.data.trip_no);
-                                $('#backdateTripStart').text(
-                                    res.data.start_date ? moment(res.data.start_date).format(
-                                        'DD/MM/YY HH:mm') : '-'
-                                );
-
-                                // Remove previous alerts
-                                $('#backdateTripMinTime').remove();
-
-                                // Get ALL completed jobs sorted by end date (newest first)
-                                const completedJobs = (res.data.jobs || [])
-                                    .filter(j => j.status === 'Completed' && j.end_date)
-                                    .sort((a, b) => new Date(b.end_date) - new Date(a.end_date));
-
-                                const lastCompletedJob = completedJobs[0];
-
-                                // Set default to current date/time
-                                const now = new Date();
-                                $('#backdateTripEndDate').val(now.toISOString().split('T')[0]);
-                                $('#backdateTripEndTime').val(now.toTimeString().slice(0, 5));
-
-                                if (lastCompletedJob && lastCompletedJob.end_date) {
-                                    const minDateTime = new Date(lastCompletedJob.end_date);
-                                    $('#backdateTripEndDate').attr('min', minDateTime.toISOString()
-                                        .split('T')[0]);
-
-                                    // Build the UI
-                                    const latestJobNo = lastCompletedJob.job_number ||
-                                        'Internal Job';
-                                    const latestEndTime = moment(lastCompletedJob.end_date).format(
-                                        'DD/MM/YY HH:mm');
-
-                                    let olderJobsHtml = '';
-                                    if (completedJobs.length > 1) {
-                                        // Build list of older jobs
-                                        const olderJobs = completedJobs.slice(
-                                            1); // All except first
-
-                                        olderJobs.forEach(job => {
-                                            const jobNo = job.job_number || 'Internal Job';
-                                            const endTime = moment(job.end_date).format(
-                                                'DD/MM/YY HH:mm');
-
-                                            olderJobsHtml += `
-                    <div style="padding: 5px 10px; border-bottom: 1px solid #e0e0e0; background: #f9f9f9;">
-                        <strong style="font-size: 0.9rem;">${jobNo}</strong>
-                        <br>
-                        <small style="color: #666;">Completed: ${endTime}</small>
-                    </div>
-                `;
-                                        });
-                                    }
-
-                                    const minMessage = `
-            <div class="alert alert-info" id="backdateTripMinTime" style="margin-top: 10px; padding: 15px;">
-
-                <!-- Latest Job - Always Visible -->
-                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                            color: white;
-                            padding: 12px;
-                            border-radius: 8px;
-                            margin-bottom: 10px;
-                            box-shadow: 0 2px 8px rgba(0,0,0,0.15);">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <div>
-                            <div style="font-size: 0.75rem; opacity: 0.9; margin-bottom: 3px;">
-                                <i class="fa fa-clock"></i> LATEST COMPLETED JOB
-                            </div>
-                            <div style="font-size: 1.1rem; font-weight: bold;">
-                                ${latestJobNo}
-                            </div>
-                            <div style="font-size: 0.85rem; opacity: 0.95; margin-top: 3px;">
-                                <i class="fa fa-check-circle"></i> ${latestEndTime}
-                            </div>
-                        </div>
-                        ${completedJobs.length > 1 ?
-                            `<div style="background: rgba(255,255,255,0.2);
-                                                                                                                                                padding: 5px 10px;
-                                                                                                                                                border-radius: 20px;
-                                                                                                                                                font-size: 0.8rem;">
-                                                                                                                                        ${completedJobs.length} Jobs
-                                                                                                                                    </div>`
-                            : ''}
-                    </div>
-                </div>
-
-                ${completedJobs.length > 1 ? `
-                                                                                                                            <!-- Collapsible Section for Older Jobs -->
-                                                                                                                            <div style="border: 1px solid #ddd; border-radius: 5px; overflow: hidden; margin-bottom: 10px;">
-                                                                                                                                <button type="button"
-                                                                                                                                        class="btn btn-sm btn-block text-left"
-                                                                                                                                        style="background: #f5f5f5;
-                                                                                                                                               border: none;
-                                                                                                                                               padding: 8px 12px;
-                                                                                                                                               display: flex;
-                                                                                                                                               justify-content: space-between;
-                                                                                                                                               align-items: center;
-                                                                                                                                               font-weight: 500;"
-                                                                                                                                        onclick="$('#olderJobsList').slideToggle(200); $(this).find('.toggle-icon').toggleClass('fa-chevron-down fa-chevron-up');">
-                                                                                                                                    <span>
-                                                                                                                                        <i class="fa fa-history"></i>
-                                                                                                                                        View ${completedJobs.length - 1} Earlier Job${completedJobs.length - 1 > 1 ? 's' : ''}
-                                                                                                                                    </span>
-                                                                                                                                    <i class="fa fa-chevron-down toggle-icon" style="font-size: 0.8rem;"></i>
-                                                                                                                                </button>
-
-                                                                                                                                <div id="olderJobsList" style="display: none; max-height: 150px; overflow-y: auto;">
-                                                                                                                                    ${olderJobsHtml}
-                                                                                                                                </div>
-                                                                                                                            </div>
-                                                                                                                        ` : ''}
-
-                <!-- Minimum Time Warning -->
-                <div style="background: #fff3cd;
-                            border: 2px solid #ffc107;
-                            border-radius: 5px;
-                            padding: 10px;
-                            color: #856404;">
-                    <strong>
-                        <i class="fa fa-exclamation-triangle"></i>
-                        Trip must end AFTER: ${latestEndTime}
-                    </strong>
-                    </div>
-
-                    </div>
-                     `;
-
-                                    $('.alert-warning').after(minMessage);
-
-                                } else if (res.data.start_date) {
-                                    // No completed jobs
-                                    const minDateTime = new Date(res.data.start_date);
-                                    $('#backdateTripEndDate').attr('min', minDateTime.toISOString()
-                                        .split('T')[0]);
-
-                                    const minMessage = `
-                   <div class="alert alert-info" id="backdateTripMinTime" style="margin-top: 10px;">
-                    <i class="fa fa-info-circle"></i>
-                    <strong>Minimum:</strong> ${moment(res.data.start_date).format('DD/MM/YY HH:mm')} (Trip started)
-                    </div>
-                    `;
-
-                                    $('.alert-warning').after(minMessage);
-                                }
-
-                                $btn.prop('disabled', false).html('<i class="fa fa-stop"></i>');
-                                $('#backdateTripModal').modal('show');
-                            });
-
-                            // ✅ Clean up backdating modal when it closes
-                            $('#backdateTripModal').on('hidden.bs.modal', function() {
-                                $('#backdateTripMinTime').remove(); // Remove the info box
-                                $('#backdateTripForm')[0].reset(); // Reset form
-                            });
-
-                        })
-                        .fail(function() {
-                            Swal.fire('Error', 'Failed to connect to server', 'error');
-                            $btn.prop('disabled', false).html('<i class="fa fa-stop"></i>');
-                        });
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Cannot End Trip',
+                    html: `<strong>All jobs must be completed first.</strong><br><br>Pending jobs:<br>${jobList}`,
+                    confirmButtonText: 'OK',
+                    confirmButtonColor: '#d33'
                 });
 
-                // ========================================
-                // BACKDATE TRIP FORM SUBMIT - ENHANCED ERROR HANDLING
-                // ========================================
-                $('#backdateTripForm').submit(function(e) {
-                    e.preventDefault();
+                $btn.prop('disabled', false).html('<i class="fa fa-stop"></i>');
+                return;
+            }
 
-                    const tripId = $('#backdateTripEndId').val();
-                    const endDate = $('#backdateTripEndDate').val();
-                    const endTime = $('#backdateTripEndTime').val();
+            // Get last completed job info
+            const completedJobs = (res.data.jobs || [])
+                .filter(j => j.status === 'Completed' && j.end_date)
+                .sort((a, b) => new Date(b.end_date) - new Date(a.end_date));
 
-                    if (!endDate || !endTime) {
-                        return Swal.fire('Error', 'Please enter both date and time', 'error');
-                    }
+            const lastJob = completedJobs[0];
+            const lastJobInfo = lastJob ?
+                `<br><small>Trip will end at: <strong>${moment(lastJob.end_date).format('DD/MM/YY HH:mm')}</strong></small>` :
+                '';
 
-                    $('#submitBackdateTrip').prop('disabled', true).html(
-                        '<i class="fa fa-spinner fa-spin"></i> Processing...'
-                    );
+            // Show confirmation
+            Swal.fire({
+                title: 'End Trip?',
+                html: `
+                    <p><strong>Trip:</strong> ${res.data.trip_no}</p>
+                    <p><strong>Vehicle:</strong> ${res.data.vehicle_no}</p>
+                    <p><strong>Driver:</strong> ${res.data.driver_name || 'Not assigned'}</p>
+                    ${lastJobInfo}
+                    <br>
+                    <div class="alert alert-info mt-3" style="font-size: 0.9rem;">
+                        <i class="fa fa-info-circle"></i>
+                        Trip will be ended with the completion time of the last job.
+                    </div>
+                `,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: '<i class="fa fa-stop-circle"></i> End Trip',
+                cancelButtonText: 'Cancel',
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#6c757d'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // End trip
+                    $btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Ending...');
 
                     $.ajax({
                         url: `/tracker/trips/${tripId}/end`,
                         type: 'POST',
-                        data: {
-                            end_date: endDate,
-                            end_time: endTime
-                        },
                         headers: {
                             'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
                         },
-                        success: function(res) {
-                            if (res.success) {
-                                $('#backdateTripModal').modal('hide');
-
+                        success: function(endRes) {
+                            if (endRes.success) {
                                 Swal.fire({
                                     icon: 'success',
-                                    title: 'Trip Ended!',
+                                    title: 'Trip Ended Successfully!',
                                     html: `
-                        <strong>Ended:</strong> ${endDate} ${endTime}<br>
-                        <strong>Distance:</strong> ${res.total_distance || 'N/A'} km<br>
-                        <strong>Duration:</strong> ${res.duration_hours || 'N/A'} hours
-                          `,
+                                        <div style="text-align: left;">
+                                            <p><strong>Trip:</strong> ${endRes.trip_no}</p>
+                                            <p><strong>Ended at:</strong> ${moment(endRes.end_date).format('DD/MM/YY HH:mm')}</p>
+                                            <p><strong>Last Job:</strong> ${endRes.last_job_no}</p>
+                                            <hr>
+                                            <p><strong>Total Distance:</strong> ${endRes.total_distance || 'N/A'} km</p>
+                                            <p><strong>Duration:</strong> ${endRes.duration_hours || 'N/A'} hours</p>
+                                            <p><strong>Avg Speed:</strong> ${endRes.avg_speed || 'N/A'} km/h</p>
+                                            <p><strong>Max Speed:</strong> ${endRes.max_speed || 'N/A'} km/h</p>
+                                        </div>
+                                    `,
                                     confirmButtonText: 'OK'
                                 });
 
@@ -1660,46 +1437,114 @@
                                     tripsTable.ajax.reload(null, false);
                                 }
                             } else {
-                                Swal.fire('Failed', res.message || 'Unknown error', 'error');
+                                Swal.fire('Failed', endRes.message || 'Unknown error', 'error');
                             }
+
+                            $btn.prop('disabled', false).html('<i class="fa fa-stop"></i>');
                         },
                         error: function(xhr) {
-                            let errorMsg = 'Server error';
-
-                            if (xhr.responseJSON) {
-                                errorMsg = xhr.responseJSON.message || 'Server error';
-
-                                // ✅ Show detailed error for job timing conflicts
-                                if (xhr.responseJSON.last_job_no && xhr.responseJSON
-                                    .last_job_completed_at) {
-                                    errorMsg = `
-                        <div style="text-align: left;">
-                            <p><strong>Cannot backdate trip to this time!</strong></p>
-                            <hr>
-                            <p><strong>Last Job:</strong> ${xhr.responseJSON.last_job_no}</p>
-                            <p><strong>Completed:</strong> ${xhr.responseJSON.last_job_completed_at}</p>
-                            <p><strong>Your Trip End:</strong> ${xhr.responseJSON.proposed_trip_end}</p>
-                            <hr>
-                            <p class="text-danger">Trip end time must be AFTER the last job completion.</p>
-                        </div>
-                        `;
-                                }
-                            }
-
-                            Swal.fire({
-                                icon: 'error',
-                                title: 'Validation Error',
-                                html: errorMsg,
-                                confirmButtonText: 'OK'
-                            });
-                        },
-                        complete: function() {
-                            $('#submitBackdateTrip').prop('disabled', false).html(
-                                '<i class="fa fa-check"></i> End Trip'
-                            );
+                            Swal.fire('Error', xhr.responseJSON?.message || 'Server error', 'error');
+                            $btn.prop('disabled', false).html('<i class="fa fa-stop"></i>');
                         }
                     });
-                });
+                } else {
+                    $btn.prop('disabled', false).html('<i class="fa fa-stop"></i>');
+                }
+            });
+        })
+        .fail(function() {
+            Swal.fire('Error', 'Failed to connect to server', 'error');
+            $btn.prop('disabled', false).html('<i class="fa fa-stop"></i>');
+        });
+});
+
+                // // ========================================
+                // // BACKDATE TRIP FORM SUBMIT - ENHANCED ERROR HANDLING
+                // // ========================================
+                // $('#backdateTripForm').submit(function(e) {
+                //     e.preventDefault();
+
+                //     const tripId = $('#backdateTripEndId').val();
+                //     const endDate = $('#backdateTripEndDate').val();
+                //     const endTime = $('#backdateTripEndTime').val();
+
+                //     if (!endDate || !endTime) {
+                //         return Swal.fire('Error', 'Please enter both date and time', 'error');
+                //     }
+
+                //     $('#submitBackdateTrip').prop('disabled', true).html(
+                //         '<i class="fa fa-spinner fa-spin"></i> Processing...'
+                //     );
+
+                //     $.ajax({
+                //         url: `/tracker/trips/${tripId}/end`,
+                //         type: 'POST',
+                //         data: {
+                //             end_date: endDate,
+                //             end_time: endTime
+                //         },
+                //         headers: {
+                //             'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                //         },
+                //         success: function(res) {
+                //             if (res.success) {
+                //                 $('#backdateTripModal').modal('hide');
+
+                //                 Swal.fire({
+                //                     icon: 'success',
+                //                     title: 'Trip Ended!',
+                //                     html: `
+                //         <strong>Ended:</strong> ${endDate} ${endTime}<br>
+                //         <strong>Distance:</strong> ${res.total_distance || 'N/A'} km<br>
+                //         <strong>Duration:</strong> ${res.duration_hours || 'N/A'} hours
+                //           `,
+                //                     confirmButtonText: 'OK'
+                //                 });
+
+                //                 if (typeof tripsTable !== 'undefined') {
+                //                     tripsTable.ajax.reload(null, false);
+                //                 }
+                //             } else {
+                //                 Swal.fire('Failed', res.message || 'Unknown error', 'error');
+                //             }
+                //         },
+                //         error: function(xhr) {
+                //             let errorMsg = 'Server error';
+
+                //             if (xhr.responseJSON) {
+                //                 errorMsg = xhr.responseJSON.message || 'Server error';
+
+                //                 // ✅ Show detailed error for job timing conflicts
+                //                 if (xhr.responseJSON.last_job_no && xhr.responseJSON
+                //                     .last_job_completed_at) {
+                //                     errorMsg = `
+                //         <div style="text-align: left;">
+                //             <p><strong>Cannot backdate trip to this time!</strong></p>
+                //             <hr>
+                //             <p><strong>Last Job:</strong> ${xhr.responseJSON.last_job_no}</p>
+                //             <p><strong>Completed:</strong> ${xhr.responseJSON.last_job_completed_at}</p>
+                //             <p><strong>Your Trip End:</strong> ${xhr.responseJSON.proposed_trip_end}</p>
+                //             <hr>
+                //             <p class="text-danger">Trip end time must be AFTER the last job completion.</p>
+                //         </div>
+                //         `;
+                //                 }
+                //             }
+
+                //             Swal.fire({
+                //                 icon: 'error',
+                //                 title: 'Validation Error',
+                //                 html: errorMsg,
+                //                 confirmButtonText: 'OK'
+                //             });
+                //         },
+                //         complete: function() {
+                //             $('#submitBackdateTrip').prop('disabled', false).html(
+                //                 '<i class="fa fa-check"></i> End Trip'
+                //             );
+                //         }
+                //     });
+                // });
                 // ========================================
                 // VIEW TRIP - ✅ WITH HISTORICAL BADGE
                 // ========================================

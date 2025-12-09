@@ -37,11 +37,47 @@ class AzureUserManagementController extends Controller
     /**
      * Display a listing of users with statistics
      */
-    public function index()
+    public function index(Request $request)
     {
         try {
-            // Order by Id instead of createdDateTime (which is NULL for most users)
-            $users = AzureUser::orderBy('Id', 'desc')->paginate(15);
+            // Start building the query
+            $query = AzureUser::query();
+
+            // Apply status filter if provided
+            if ($status = $request->get('status')) {
+                switch (strtolower($status)) {
+                    case 'active':
+                        $query->where('Status', 'Active');
+                        break;
+                    case 'pending':
+                        $query->where('Status', 'Pending');
+                        break;
+                    case 'inactive':
+                        $query->whereIn('Status', ['Inactive', null]);
+                        break;
+                }
+            }
+
+            // Apply search filter if provided
+            if ($search = $request->get('search')) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('displayName', 'like', "%{$search}%")
+                        ->orWhere('mail', 'like', "%{$search}%")
+                        ->orWhere('userPrincipalName', 'like', "%{$search}%")
+                        ->orWhere('EmployeCode', 'like', "%{$search}%")
+                        ->orWhere('department', 'like', "%{$search}%")
+                        ->orWhere('companyName', 'like', "%{$search}%")
+                        ->orWhere('officeLocation', 'like', "%{$search}%")
+                        ->orWhere('city', 'like', "%{$search}%")
+                        ->orWhere('country', 'like', "%{$search}%")
+                        ->orWhere('jobTitle', 'like', "%{$search}%");
+                });
+            }
+
+            // Order by Id and paginate (preserving query parameters)
+            $users = $query->orderBy('Id', 'desc')
+                ->paginate(15)
+                ->appends($request->except('page'));
 
             // Calculate stats - handle NULL Status values
             $stats = [
@@ -85,6 +121,7 @@ class AzureUserManagementController extends Controller
                 ->select("SELECT Id, Name, ApplicationId 
                     FROM Azure_SoftwareMaster 
                     WHERE IsActive = 1 AND IsDeleted = 0 
+                    AND Name != 'Odoo'
                     ORDER BY Name");
 
             // Convert to Laravel collection with proper structure
@@ -878,7 +915,7 @@ class AzureUserManagementController extends Controller
             $modulesRaw = DB::connection('sqlsrv')
                 ->select("SELECT Id, Name, ApplicationId 
                     FROM Azure_SoftwareMaster 
-                    WHERE IsActive = 1 AND IsDeleted = 0 
+                    WHERE IsActive = 1 AND IsDeleted = 0 AND Name != 'Odoo'
                     ORDER BY Name");
 
             // Convert to Laravel collection with proper structure

@@ -343,6 +343,13 @@ return [
             'can'  => 'efris-access'
         ],
 
+        [
+            'text' => 'AZURE AD MANAGEMENT',
+            'url'  => 'azure/dashboard',
+            'icon' => 'fab fa-fw fa-microsoft',
+            'active' => ['azure/*'],
+        ],
+
         // ['header' => 'account_settings'],
         [
             'text' => 'SETTINGS',

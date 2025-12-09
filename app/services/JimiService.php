@@ -28,7 +28,7 @@ class JimiService
      */
     public function getAccessToken()
     {
-        return Cache::remember('jimi_access_token', 3600, function () {
+        return Cache::remember('jimi_access_token', 7000, function () {
             try {
                 // Generate timestamp in UTC (Y-m-d H:i:s format)
                 $timestamp = gmdate('Y-m-d H:i:s');
