@@ -50,7 +50,7 @@ Route::post('/logout', [App\Http\Controllers\Auth\LoginController::class, 'logou
 
 Route::get('/logout', function () {
     return redirect('/login');
-})->name('logout');
+});
 
 Route::get('quote-logger', function () {
 
@@ -360,6 +360,12 @@ Route::prefix('azure')->name('azure.')->middleware(['auth'])->group(function () 
         Route::get('/', [App\Http\Controllers\AzureUserManagementController::class, 'index'])->name('index');
         Route::get('/create', [App\Http\Controllers\AzureUserManagementController::class, 'create'])->name('create');
 
+        // ✅ ADD THESE THREE ROUTES HERE (after 'create', before 'store'):
+        Route::get('/active', [App\Http\Controllers\AzureUserManagementController::class, 'active'])->name('active');
+        Route::get('/pending', [App\Http\Controllers\AzureUserManagementController::class, 'pending'])->name('pending');
+        Route::get('/inactive', [App\Http\Controllers\AzureUserManagementController::class, 'inactive'])->name('inactive');
+
+
         // POST: Create user (rate limited - 10 per minute)
         Route::post('/', [App\Http\Controllers\AzureUserManagementController::class, 'store'])
             ->name('store')
@@ -474,6 +480,7 @@ Route::prefix('azure')->name('azure.')->middleware(['auth'])->group(function () 
             // List and create routes
             Route::get('/', [App\Http\Controllers\AzureUserManagementController::class, 'index'])->name('index');
             Route::get('/create', [App\Http\Controllers\AzureUserManagementController::class, 'create'])->name('create');
+
 
             // POST: Create user (rate limited - 10 per minute)
             Route::post('/', [App\Http\Controllers\AzureUserManagementController::class, 'store'])

@@ -1451,7 +1451,7 @@
                                         error: function(xhr) {
                                             Swal.fire('Error', xhr.responseJSON
                                                 ?.message || 'Server error', 'error'
-                                                );
+                                            );
                                             $btn.prop('disabled', false).html(
                                                 '<i class="fa fa-stop"></i>');
                                         }
@@ -1554,8 +1554,13 @@
                 //         }
                 //     });
                 // });
+
+                // UPDATED SECTION: Jobs Table in View Trip Modal
+                // Find this section around line 800-900 in your blade file
+                // Replace the existing jobs table rendering code with this:
+
                 // ========================================
-                // VIEW TRIP - ✅ WITH HISTORICAL BADGE
+                // VIEW TRIP - ✅ WITH START DATE, END DATE, DURATION, AND MILEAGE
                 // ========================================
                 $(document).on('click', '.viewTrip', function() {
                     const tripId = $(this).data('trip-id');
@@ -1631,6 +1636,7 @@
                         $('#viewStatusBadge')
                             .removeClass('badge-info badge-warning badge-success badge-secondary')
                             .addClass(badge.class);
+
                         // Update "Add Historical Job" button based on trip status
                         const $histBtn = $('#addManualJobBtn');
 
@@ -1648,7 +1654,7 @@
                                 .attr('title', 'Add a job that occurred in the past');
                         }
 
-                        // ✅ Jobs with historical badge
+                        // ✅ Jobs table with START DATE, END DATE, DURATION, and MILEAGE
                         const jobs = Array.isArray(trip.jobs) ? trip.jobs : [];
                         $('#jobsCount').text(jobs.length);
 
@@ -1657,10 +1663,21 @@
                                 '<div class="text-center text-muted py-4"><i class="fa fa-briefcase fa-2x mb-2"></i><p>No jobs allocated</p></div>'
                             );
                         } else {
-                            let html = `<div class="table-responsive"><table class="table table-sm table-bordered">
-                                <thead class="bg-primary text-white"><tr>
-                                    <th>Job No</th><th>Type</th><th>Route</th><th>Status</th><th class="text-center">Action</th>
-                                </tr></thead><tbody>`;
+                            let html = `<div class="table-responsive"><table class="table table-sm table-bordered" style="font-size: 0.85rem;">
+                <thead class="bg-primary text-white">
+                    <tr>
+                        <th>Job No</th>
+                        <th>Type</th>
+                        <th>Route</th>
+                        <th>Start Date</th>
+                        <th>End Date</th>
+                        <th>Duration</th>
+                        <th>Mileage</th>
+                        <th>Status</th>
+                        <th class="text-center">Action</th>
+                    </tr>
+                </thead>
+                <tbody>`;
 
                             jobs.forEach(job => {
                                 const typeBadge = job.job_type === 'Internal Job' ? 'info' :
@@ -1672,8 +1689,36 @@
                                 const historicalBadge = job.is_historical ?
                                     '<span class="historical-badge">H</span>' : '';
 
-                                // NEW — only allow starting a job if NO other job is In Transit
-                                // Inside your viewTrip success callback — replace the entire actionBtn logic with this:
+                                // ✅ Format dates
+                                const startDate = job.start_date ?
+                                    moment(job.start_date).format('DD/MM/YY HH:mm') :
+                                    '<small class="text-muted">Not started</small>';
+
+                                const endDate = job.end_date ?
+                                    moment(job.end_date).format('DD/MM/YY HH:mm') :
+                                    (job.start_date ?
+                                        '<small class="text-warning">In transit...</small>' :
+                                        '<small class="text-muted">-</small>');
+
+                                // ✅ Calculate duration
+                                let duration = '<small class="text-muted">-</small>';
+                                if (job.start_date && job.end_date) {
+                                    const dur = moment.duration(moment(job.end_date).diff(
+                                        moment(job.start_date)));
+                                    const hours = Math.floor(dur.asHours());
+                                    const minutes = dur.minutes();
+                                    duration = `<strong>${hours}h ${minutes}m</strong>`;
+                                } else if (job.start_date && !job.end_date) {
+                                    duration =
+                                        '<small class="text-warning"><i class="fa fa-clock"></i> Running...</small>';
+                                }
+
+                                // ✅ Format mileage from job data
+                                const mileage = job.total_distance ?
+                                    `<strong>${parseFloat(job.total_distance).toFixed(2)} km</strong>` :
+                                    '<small class="text-muted">N/A</small>';
+
+                                // Check if any job is active
                                 const hasActiveJob = jobs.some(j => j.status === 'In Transit');
                                 const activeJobNo = hasActiveJob ?
                                     jobs.find(j => j.status === 'In Transit')?.job_number ||
@@ -1685,35 +1730,40 @@
                                 if (job.status === 'Allocated') {
                                     if (hasActiveJob) {
                                         actionBtn = `
-                <button class="btn btn-sm btn-secondary" disabled
-                    title="Complete the active job first: ${activeJobNo}">
-                <i class="fa fa-play"></i> Start
-                </button>`;
+            <button class="btn btn-sm btn-secondary" disabled
+                title="Complete the active job first: ${activeJobNo}">
+            <i class="fa fa-play"></i> Start
+            </button>`;
                                     } else {
                                         actionBtn = `
-                <button class="btn btn-sm btn-success startJobBtn"
-                    data-job-id="${job.job_id}"
-                    data-job-no="${job.job_number || 'Internal Job'}"
-                    data-trip-id="${tripId}">
-                <i class="fa fa-play"></i> Start
-                </button>`;
-                                    }
-                                } else if (job.status === 'In Transit') {
-                                    actionBtn = `
-                <button class="btn btn-sm btn-danger stopJobBtn"
+            <button class="btn btn-sm btn-success startJobBtn"
                 data-job-id="${job.job_id}"
                 data-job-no="${job.job_number || 'Internal Job'}"
                 data-trip-id="${tripId}">
-                <i class="fa fa-stop"></i> Stop
-                </button>`;
+            <i class="fa fa-play"></i> Start
+            </button>`;
+                                    }
+                                } else if (job.status === 'In Transit') {
+                                    actionBtn = `
+            <button class="btn btn-sm btn-danger stopJobBtn"
+            data-job-id="${job.job_id}"
+            data-job-no="${job.job_number || 'Internal Job'}"
+            data-trip-id="${tripId}">
+            <i class="fa fa-stop"></i> Stop
+            </button>`;
                                 }
+
                                 html += `<tr>
-                                    <td><strong>${job.job_number || 'Internal'}${historicalBadge}</strong></td>
-                                    <td><span class="badge badge-${typeBadge}">${job.job_type}</span></td>
-                                    <td><small>${job.pickup_location} → ${job.delivery_location}</small></td>
-                                    <td><span class="badge badge-${statusBadge}">${job.status}</span></td>
-                                    <td class="text-center">${actionBtn}</td>
-                                </tr>`;
+                    <td><strong>${job.job_number || 'Internal'}${historicalBadge}</strong></td>
+                    <td><span class="badge badge-${typeBadge}">${job.job_type}</span></td>
+                    <td><small>${job.pickup_location} → ${job.delivery_location}</small></td>
+                    <td>${startDate}</td>
+                    <td>${endDate}</td>
+                    <td>${duration}</td>
+                    <td>${mileage}</td>
+                    <td><span class="badge badge-${statusBadge}">${job.status}</span></td>
+                    <td class="text-center">${actionBtn}</td>
+                </tr>`;
                             });
                             html += '</tbody></table></div>';
                             $('#allocatedJobsContainer').html(html);

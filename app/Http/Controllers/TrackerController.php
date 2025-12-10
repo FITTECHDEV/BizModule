@@ -1712,8 +1712,11 @@ public function completeJob(Request $request, $tripId, $jobId)
 }
 
 
-   /**
+
+
+/**
  * End trip - automatically uses last job's end date
+ * FIXED: Adds +3 hours to job end date from DB before processing
  */
 public function endTrip(Request $request, $tripId)
 {
@@ -1768,7 +1771,7 @@ public function endTrip(Request $request, $tripId)
             ], 400);
         }
 
-        // ✅ GET LAST JOB'S END DATE - This becomes the trip end date
+        // ✅ GET LAST JOB'S END DATE
         $lastCompletedJob = DB::table('Trip_TripJobMapping')
             ->where('TripInfoID', $tripId)
             ->where('IsDeleted', false)
@@ -1783,14 +1786,16 @@ public function endTrip(Request $request, $tripId)
             ], 400);
         }
 
-        // ✅ Parse dates as stored (already in correct timezone from DB)
+        // ✅ CRITICAL FIX: Add +3 hours to the job end date from DB
+        // The DB stores the time minus 3 hours, so we need to add it back
         $tripStartDateTime = Carbon::parse($trip->StartDate);
-        $tripEndDateTime = Carbon::parse($lastCompletedJob->EndDate);
+        $tripEndDateTime = Carbon::parse($lastCompletedJob->EndDate)->addHours(3);
 
         Log::info('Using last job end date as trip end', [
             'trip_no' => $trip->TripNo,
             'last_job' => $lastCompletedJob->JobNo ?: 'Internal Job',
-            'job_end_date' => $tripEndDateTime->format('Y-m-d H:i:s'),
+            'job_end_date_from_db' => $lastCompletedJob->EndDate,
+            'job_end_date_after_plus_3' => $tripEndDateTime->format('Y-m-d H:i:s'),
             'trip_start_date' => $tripStartDateTime->format('Y-m-d H:i:s'),
         ]);
 
@@ -1818,12 +1823,6 @@ public function endTrip(Request $request, $tripId)
         $vehiclePlate = explode(' - ', $trip->VehicleIMEI)[0];
         $realImei = $vehicleImeiMap[$vehiclePlate] ?? null;
 
-        Log::info('Vehicle IMEI Resolution', [
-            'db_vehicle_imei' => $trip->VehicleIMEI,
-            'extracted_plate' => $vehiclePlate,
-            'real_imei' => $realImei,
-        ]);
-
         if (empty($realImei)) {
             return response()->json([
                 'success' => false,
@@ -1831,8 +1830,7 @@ public function endTrip(Request $request, $tripId)
             ], 400);
         }
 
-        // ✅ CRITICAL FIX: Convert DB times (Nairobi) to UTC for Jimi API
-        // DB stores Nairobi time, Jimi API expects UTC
+        // ✅ Convert to UTC for Jimi API
         $startTimeUTC = Carbon::parse($trip->StartDate)->setTimezone('UTC')->format('Y-m-d H:i:s');
         $endTimeUTC = $tripEndDateTime->copy()->setTimezone('UTC')->format('Y-m-d H:i:s');
 
@@ -1840,7 +1838,8 @@ public function endTrip(Request $request, $tripId)
             'trip_no' => $trip->TripNo,
             'imei' => $realImei,
             'start_time_db' => $trip->StartDate,
-            'end_time_db' => $lastCompletedJob->EndDate,
+            'end_time_db_raw' => $lastCompletedJob->EndDate,
+            'end_time_after_plus_3' => $tripEndDateTime->format('Y-m-d H:i:s'),
             'start_time_utc' => $startTimeUTC,
             'end_time_utc' => $endTimeUTC,
             'duration_hours' => $tripStartDateTime->diffInHours($tripEndDateTime),
@@ -1849,20 +1848,15 @@ public function endTrip(Request $request, $tripId)
         $mileageResult = $this->jimi->getMileageData($realImei, $startTimeUTC, $endTimeUTC);
         $trackResult = $this->jimi->getTrackData($realImei, $startTimeUTC, $endTimeUTC);
 
-        // ✅ ENHANCED LOGGING - Full mileage response
         Log::info('Jimi Mileage Response (Full Trip)', [
             'success' => $mileageResult['success'] ?? false,
             'mileage' => $mileageResult['mileage'] ?? 0,
             'duration' => $mileageResult['duration'] ?? 0,
             'trips_count' => count($mileageResult['trips'] ?? []),
-            'full_response' => $mileageResult,
         ]);
 
-        // ✅ ENHANCED LOGGING - Track data with sample points
         Log::info('Jimi Track Data (Full Trip)', [
             'points_count' => count($trackResult),
-            'first_5_points' => array_slice($trackResult, 0, 5),
-            'last_5_points' => array_slice($trackResult, -5),
         ]);
 
         $totalDistance = 0;
@@ -1871,16 +1865,6 @@ public function endTrip(Request $request, $tripId)
         if ($mileageResult['success'] ?? false) {
             $totalDistance = $mileageResult['mileage'] ?? 0;
             $totalDuration = $mileageResult['duration'] ?? 0;
-
-            Log::info('GPS Data Extracted Successfully', [
-                'total_distance_m' => $totalDistance,
-                'total_duration_sec' => $totalDuration,
-            ]);
-        } else {
-            Log::warning('Jimi mileage API returned no data or failed', [
-                'result' => $mileageResult,
-                'error_message' => $mileageResult['message'] ?? 'No error message',
-            ]);
         }
 
         $avgSpeed = 0;
@@ -1895,33 +1879,7 @@ public function endTrip(Request $request, $tripId)
             if (!empty($movingSpeeds)) {
                 $avgSpeed = round(array_sum($movingSpeeds) / count($movingSpeeds), 2);
             }
-
-            Log::info('Speed Statistics Calculated', [
-                'total_gps_points' => $gpsPointsCount,
-                'max_speed' => $maxSpeed,
-                'avg_speed' => $avgSpeed,
-                'moving_points' => count($movingSpeeds),
-                'stationary_points' => $gpsPointsCount - count($movingSpeeds),
-            ]);
-        } else {
-            Log::warning('No GPS track points returned for trip', [
-                'trip_no' => $trip->TripNo,
-                'imei' => $realImei,
-                'start_time_utc' => $startTimeUTC,
-                'end_time_utc' => $endTimeUTC,
-            ]);
         }
-
-        Log::info('Calculated Trip Statistics', [
-            'trip_no' => $trip->TripNo,
-            'total_distance_m' => $totalDistance,
-            'total_distance_km' => round($totalDistance / 1000, 2),
-            'total_duration_sec' => $totalDuration,
-            'total_duration_hours' => round($totalDuration / 3600, 2),
-            'avg_speed' => $avgSpeed,
-            'max_speed' => $maxSpeed,
-            'gps_points' => $gpsPointsCount,
-        ]);
 
         // Format data for SP
         $tripsFormatted = [];
@@ -1941,11 +1899,6 @@ public function endTrip(Request $request, $tripId)
                 'endMileage' => 0,
             ];
         }
-
-        Log::info('Formatted Trips for SP', [
-            'trips_count' => count($tripsFormatted),
-            'sample_trip' => $tripsFormatted[0] ?? null,
-        ]);
 
         $tripMileage = json_encode([
             'result' => $tripsFormatted,
@@ -1970,16 +1923,10 @@ public function endTrip(Request $request, $tripId)
 
         $tripTrack = json_encode(['result' => $trackPointsFormatted], JSON_UNESCAPED_SLASHES);
 
-        Log::info('Formatted data for SP', [
-            'trip_mileage_length' => strlen($tripMileage),
-            'trip_track_length' => strlen($tripTrack),
-            'track_points_count' => count($trackPointsFormatted),
-        ]);
-
-        // ✅ CRITICAL FIX: Use job end date AS IS from DB (already in correct format)
-        // The SP expects the datetime in the format it was originally stored
-        // DO NOT subtract hours - the date is already correct from the completed job
-        $actionDate = $tripEndDateTime->format('YmdHis');
+        // ✅ Now subtract 3 hours for SP (because we added 3 above)
+        // After adding 3 hours above, we have the correct Nairobi time
+        // Now subtract 3 to send to SP
+        $actionDate = $tripEndDateTime->copy()->subHours(3)->format('YmdHis');
 
         $inputJson = json_encode([
             'OperationType' => 'TripStatusUpdate',
@@ -1993,9 +1940,12 @@ public function endTrip(Request $request, $tripId)
         ], JSON_UNESCAPED_SLASHES);
 
         Log::info('Calling sp_TripMain to end trip', [
-            'input_json' => $inputJson,
-            'action_date' => $actionDate,
-            'explanation' => 'Using job end date AS IS (no timezone conversion)',
+            'trip_no' => $trip->TripNo,
+            'job_end_date_from_db' => $lastCompletedJob->EndDate,
+            'after_adding_3_hours' => $tripEndDateTime->format('Y-m-d H:i:s'),
+            'action_date_sent_to_sp' => $actionDate,
+            'action_date_readable' => $tripEndDateTime->copy()->subHours(3)->format('Y-m-d H:i:s'),
+            'explanation' => 'Added +3 to DB value, then subtract 3 for SP',
         ]);
 
         $pdo = DB::connection()->getPdo();
@@ -2003,7 +1953,7 @@ public function endTrip(Request $request, $tripId)
         $stmt = $pdo->prepare("
             SET NOCOUNT ON;
             DECLARE @OutputJson VARCHAR(MAX) = NULL;
-            EXEC dbo.sp_Trip_TripORJobStatusUpdate
+            EXEC dbo.sp_TripMain
                 @InputJson = :inputJson,
                 @TripMileage = :tripMileage,
                 @TripTrack = :tripTrack,
@@ -2054,13 +2004,6 @@ public function endTrip(Request $request, $tripId)
                 ->where('IsDeleted', false)
                 ->whereNotNull('EndDate')
                 ->count();
-
-            Log::info('Trip ended successfully via SP', [
-                'trip_no' => $trip->TripNo,
-                'trip_id' => $tripId,
-                'completed_jobs' => $completedJobsCount,
-                'end_date' => $tripEndDateTime->format('Y-m-d H:i:s'),
-            ]);
 
             return response()->json([
                 'success' => true,

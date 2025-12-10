@@ -33,6 +33,8 @@
                     @method('PUT')
 
                     <!-- Basic Information Section -->
+                    <!-- Replace the Basic Information Section in your edit.blade.php -->
+
                     <div class="form-section">
                         <div class="form-section-title">
                             <i class="fas fa-user"></i>
@@ -48,7 +50,7 @@
                                     id="name"
                                     name="name"
                                     class="form-control @error('name') is-invalid @enderror"
-                                    value="{{ old('name', $user->name) }}"
+                                    value="{{ old('name', $user->displayName ?? $user->name ?? '') }}"
                                     readonly>
                                 @error('name')
                                 <div class="invalid-feedback">{{ $message }}</div>
@@ -63,7 +65,7 @@
                                     id="employee_id"
                                     name="employee_id"
                                     class="form-control @error('employee_id') is-invalid @enderror"
-                                    value="{{ old('employee_id', $user->employee_id) }}"
+                                    value="{{ old('employee_id', $user->EmployeCode ?? $user->employeeId ?? '') }}"
                                     readonly>
                                 @error('employee_id')
                                 <div class="invalid-feedback">{{ $message }}</div>
@@ -80,7 +82,7 @@
                                     id="email"
                                     name="email"
                                     class="form-control @error('email') is-invalid @enderror"
-                                    value="{{ old('email', $user->email) }}"
+                                    value="{{ old('email', $user->mail ?? $user->userPrincipalName ?? '') }}"
                                     readonly>
                                 @error('email')
                                 <div class="invalid-feedback">{{ $message }}</div>
@@ -95,35 +97,46 @@
                                     id="phone"
                                     name="phone"
                                     class="form-control @error('phone') is-invalid @enderror"
-                                    value="{{ old('phone', $user->phone) }}"
+                                    value="{{ old('phone', $user->telephoneNumber ?? $user->mobilePhone ?? '') }}"
                                     readonly>
                                 @error('phone')
                                 <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
+                        </div>
+
+                        <div class="form-row">
                             <div class="form-group">
-                                <label for="company_id" class="form-label">
+                                <label for="company_name" class="form-label">
                                     Company
                                 </label>
                                 @php
-                                $userCompanyId = old('company_id', $user->company_id ?? '');
-                                $userCompanyDisplay = '';
-                                if ($userCompanyId) {
-                                $companyObj = $companies->firstWhere('id', $userCompanyId);
-                                if ($companyObj) {
-                                $userCompanyDisplay = $companyObj->name;
-                                }
-                                }
+                                $userCompanyDisplay = old('company_name', $user->companyName ?? 'Not Assigned');
                                 @endphp
                                 <input type="text"
-                                    id="company_id"
-                                    name="company_id"
-                                    class="form-control @error('company_id') is-invalid @enderror"
+                                    id="company_name"
+                                    name="company_name"
+                                    class="form-control"
                                     value="{{ $userCompanyDisplay }}"
-                                    readonly>
-                                @error('company_id')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
+                                    readonly
+                                    style="background-color: #f8f9fa; cursor: not-allowed;">
+
+                                <small class="form-text text-muted">
+                                    Company assignment cannot be changed after user creation
+                                </small>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="job_title" class="form-label">
+                                    Job Title
+                                </label>
+                                <input type="text"
+                                    id="job_title"
+                                    name="job_title"
+                                    class="form-control"
+                                    value="{{ old('job_title', $user->jobTitle ?? '') }}"
+                                    readonly
+                                    style="background-color: #f8f9fa; cursor: not-allowed;">
                             </div>
                         </div>
                     </div>

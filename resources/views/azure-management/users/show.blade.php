@@ -9,12 +9,12 @@
             <p class="text-muted mb-0">View complete user information</p>
         </div>
         <div>
-            <a href="{{ route('azure.users.index') }}" class="btn btn-secondary btn-sm">
+            <a href="{{ route('azure.dashboard.index') }}" class="btn btn-secondary btn-sm">
                 <i class="fas fa-arrow-left"></i> Back to Users
             </a>
-            <!-- <a href="{{ route('azure.users.edit', $user->Id) }}" class="btn btn-warning btn-sm">
+            <a href="{{ route('azure.users.edit', $user->Id) }}" class="btn btn-warning btn-sm">
                 <i class="fas fa-edit"></i> Edit User
-            </a> -->
+            </a>
         </div>
     </div>
 @stop
@@ -171,9 +171,9 @@
                             </div>
 
                             <div id="collapse{{ $index }}" 
-                                 class="collapse" 
-                                 aria-labelledby="heading{{ $index }}" 
-                                 data-parent="#moduleAssignmentsAccordion">
+                                class="collapse" 
+                                aria-labelledby="heading{{ $index }}" 
+                                data-parent="#moduleAssignmentsAccordion">
                                 <div class="card-body">
                                     <!-- Locations -->
                                     <div class="mb-3">

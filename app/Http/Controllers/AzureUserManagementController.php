@@ -61,9 +61,12 @@ class AzureUserManagementController extends Controller
             // Apply search filter if provided
             if ($search = $request->get('search')) {
                 $query->where(function ($q) use ($search) {
+                    // Search in name fields
                     $q->where('displayName', 'like', "%{$search}%")
-                        ->orWhere('mail', 'like', "%{$search}%")
-                        ->orWhere('userPrincipalName', 'like', "%{$search}%")
+                        // Search in email username part only (before @)
+                        ->orWhereRaw("LEFT(mail, CHARINDEX('@', mail) - 1) LIKE ?", ["%{$search}%"])
+                        ->orWhereRaw("LEFT(userPrincipalName, CHARINDEX('@', userPrincipalName) - 1) LIKE ?", ["%{$search}%"])
+                        // Search in other fields
                         ->orWhere('EmployeCode', 'like', "%{$search}%")
                         ->orWhere('department', 'like', "%{$search}%")
                         ->orWhere('companyName', 'like', "%{$search}%")
@@ -95,6 +98,122 @@ class AzureUserManagementController extends Controller
                 ->withErrors(['error' => 'Failed to load dashboard: ' . $e->getMessage()]);
         }
     }
+
+
+    /**
+     * Display active users page
+     */
+    public function active(Request $request)
+    {
+        try {
+            // Build query for active users only
+            $query = AzureUser::where('Status', 'Active');
+
+            // Apply search filter if provided
+            if ($search = $request->get('search')) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('displayName', 'like', "%{$search}%")
+                        ->orWhereRaw("LEFT(mail, CHARINDEX('@', mail) - 1) LIKE ?", ["%{$search}%"])
+                        ->orWhereRaw("LEFT(userPrincipalName, CHARINDEX('@', userPrincipalName) - 1) LIKE ?", ["%{$search}%"])
+                        ->orWhere('EmployeCode', 'like', "%{$search}%")
+                        ->orWhere('department', 'like', "%{$search}%")
+                        ->orWhere('companyName', 'like', "%{$search}%")
+                        ->orWhere('officeLocation', 'like', "%{$search}%")
+                        ->orWhere('city', 'like', "%{$search}%")
+                        ->orWhere('country', 'like', "%{$search}%")
+                        ->orWhere('jobTitle', 'like', "%{$search}%");
+                });
+            }
+
+            // Order by Id and paginate
+            $users = $query->orderBy('Id', 'desc')
+                ->paginate(15)
+                ->appends($request->except('page'));
+
+            return view('azure-management.users.active', compact('users'));
+        } catch (\Exception $e) {
+            Log::error('Active Users Page Error: ' . $e->getMessage());
+            return redirect()->route('azure.dashboard.index')
+                ->withErrors(['error' => 'Failed to load active users: ' . $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Display pending users page
+     */
+    public function pending(Request $request)
+    {
+        try {
+            // Build query for pending users only
+            $query = AzureUser::where('Status', 'Pending');
+
+            // Apply search filter if provided
+            if ($search = $request->get('search')) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('displayName', 'like', "%{$search}%")
+                        ->orWhereRaw("LEFT(mail, CHARINDEX('@', mail) - 1) LIKE ?", ["%{$search}%"])
+                        ->orWhereRaw("LEFT(userPrincipalName, CHARINDEX('@', userPrincipalName) - 1) LIKE ?", ["%{$search}%"])
+                        ->orWhere('EmployeCode', 'like', "%{$search}%")
+                        ->orWhere('department', 'like', "%{$search}%")
+                        ->orWhere('companyName', 'like', "%{$search}%")
+                        ->orWhere('officeLocation', 'like', "%{$search}%")
+                        ->orWhere('city', 'like', "%{$search}%")
+                        ->orWhere('country', 'like', "%{$search}%")
+                        ->orWhere('jobTitle', 'like', "%{$search}%");
+                });
+            }
+
+            // Order by Id and paginate
+            $users = $query->orderBy('Id', 'desc')
+                ->paginate(15)
+                ->appends($request->except('page'));
+
+            return view('azure-management.users.pending', compact('users'));
+        } catch (\Exception $e) {
+            Log::error('Pending Users Page Error: ' . $e->getMessage());
+            return redirect()->route('azure.dashboard.index')
+                ->withErrors(['error' => 'Failed to load pending users: ' . $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Display inactive users page
+     */
+    public function inactive(Request $request)
+    {
+        try {
+            // Build query for inactive users only
+            $query = AzureUser::whereIn('Status', ['Inactive', null]);
+
+            // Apply search filter if provided
+            if ($search = $request->get('search')) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('displayName', 'like', "%{$search}%")
+                        ->orWhereRaw("LEFT(mail, CHARINDEX('@', mail) - 1) LIKE ?", ["%{$search}%"])
+                        ->orWhereRaw("LEFT(userPrincipalName, CHARINDEX('@', userPrincipalName) - 1) LIKE ?", ["%{$search}%"])
+                        ->orWhere('EmployeCode', 'like', "%{$search}%")
+                        ->orWhere('department', 'like', "%{$search}%")
+                        ->orWhere('companyName', 'like', "%{$search}%")
+                        ->orWhere('officeLocation', 'like', "%{$search}%")
+                        ->orWhere('city', 'like', "%{$search}%")
+                        ->orWhere('country', 'like', "%{$search}%")
+                        ->orWhere('jobTitle', 'like', "%{$search}%");
+                });
+            }
+
+            // Order by Id and paginate
+            $users = $query->orderBy('Id', 'desc')
+                ->paginate(15)
+                ->appends($request->except('page'));
+
+            return view('azure-management.users.inactive', compact('users'));
+        } catch (\Exception $e) {
+            Log::error('Inactive Users Page Error: ' . $e->getMessage());
+            return redirect()->route('azure.dashboard.index')
+                ->withErrors(['error' => 'Failed to load inactive users: ' . $e->getMessage()]);
+        }
+    }
+
     /**
      * Get user statistics for dashboard (API endpoint)
      */
@@ -895,49 +1014,49 @@ class AzureUserManagementController extends Controller
     /**
      * Display the specified user
      */
-/**
- * Display the specified user with module assignments
- */
-public function show(AzureUser $user)
-{
-    try {
-        Log::info('Loading user details page', [
-            'user_id' => $user->Id,
-            'user_email' => $user->userPrincipalName
-        ]);
-
-        // Get provisioning status with error handling
-        $provisioningStatus = null;
+    /**
+     * Display the specified user with module assignments
+     */
+    public function show(AzureUser $user)
+    {
         try {
-            $provisioningStatus = $this->provisioningService->getProvisioningStatus($user);
-        } catch (\Exception $e) {
-            Log::warning('Failed to get provisioning status', [
+            Log::info('Loading user details page', [
                 'user_id' => $user->Id,
-                'error' => $e->getMessage()
+                'user_email' => $user->userPrincipalName
             ]);
 
-            // Provide default status if service fails
-            $provisioningStatus = [
-                'local_user' => [
-                    'exists' => true,
-                    'status' => $user->Status,
-                    'created_at' => $user->createdDateTime,
-                ],
-                'azure' => [
-                    'provisioned' => !empty($user->AzureId),
-                    'azure_id' => $user->AzureId,
-                    'azure_upn' => $user->userPrincipalName,
-                    'synced' => false,
-                    'account_enabled' => $user->accountEnabled,
-                ],
-                'modules' => [],
-                'overall_status' => $user->Status === 'Active' ? 'active' : 'pending',
-            ];
-        }
+            // Get provisioning status with error handling
+            $provisioningStatus = null;
+            try {
+                $provisioningStatus = $this->provisioningService->getProvisioningStatus($user);
+            } catch (\Exception $e) {
+                Log::warning('Failed to get provisioning status', [
+                    'user_id' => $user->Id,
+                    'error' => $e->getMessage()
+                ]);
 
-        // Fetch user's module assignments from Azure_Application_UserMapping
-        $assignmentsRaw = DB::connection('sqlsrv')
-            ->select("
+                // Provide default status if service fails
+                $provisioningStatus = [
+                    'local_user' => [
+                        'exists' => true,
+                        'status' => $user->Status,
+                        'created_at' => $user->createdDateTime,
+                    ],
+                    'azure' => [
+                        'provisioned' => !empty($user->AzureId),
+                        'azure_id' => $user->AzureId,
+                        'azure_upn' => $user->userPrincipalName,
+                        'synced' => false,
+                        'account_enabled' => $user->accountEnabled,
+                    ],
+                    'modules' => [],
+                    'overall_status' => $user->Status === 'Active' ? 'active' : 'pending',
+                ];
+            }
+
+            // Fetch user's module assignments from Azure_Application_UserMapping
+            $assignmentsRaw = DB::connection('sqlsrv')
+                ->select("
                 SELECT 
                     application_id,
                     ApplicationName,
@@ -954,72 +1073,72 @@ public function show(AzureUser $user)
                 ORDER BY ApplicationName, OfficeCode, RoleCode
             ", [$user->userPrincipalName]);
 
-        // Group assignments by module
-        $moduleAssignments = collect($assignmentsRaw)
-            ->groupBy('ApplicationName')
-            ->map(function ($assignments, $moduleName) {
-                // Get unique locations
-                $locations = $assignments->pluck('OfficeCode')->unique()->sort()->values();
-                
-                // Get unique roles
-                $roles = $assignments->map(function ($assignment) {
-                    return [
-                        'id' => $assignment->RoleID,
-                        'code' => $assignment->RoleCode
-                    ];
-                })->unique('code')->values();
-                
-                // Get unique functions (for SCM modules)
-                $functions = $assignments
-                    ->filter(function ($assignment) {
-                        return !empty($assignment->FunctionCode);
-                    })
-                    ->map(function ($assignment) {
+            // Group assignments by module
+            $moduleAssignments = collect($assignmentsRaw)
+                ->groupBy('ApplicationName')
+                ->map(function ($assignments, $moduleName) {
+                    // Get unique locations
+                    $locations = $assignments->pluck('OfficeCode')->unique()->sort()->values();
+
+                    // Get unique roles
+                    $roles = $assignments->map(function ($assignment) {
                         return [
-                            'id' => $assignment->FunctionID,
-                            'code' => $assignment->FunctionCode
+                            'id' => $assignment->RoleID,
+                            'code' => $assignment->RoleCode
                         ];
-                    })
-                    ->unique('code')
-                    ->values();
+                    })->unique('code')->values();
 
-                return [
-                    'application_id' => $assignments->first()->application_id,
-                    'module_name' => $moduleName,
-                    'locations' => $locations,
-                    'locations_count' => $locations->count(),
-                    'roles' => $roles,
-                    'roles_count' => $roles->count(),
-                    'functions' => $functions,
-                    'functions_count' => $functions->count(),
-                    'total_assignments' => $assignments->count()
-                ];
-            })
-            ->sortBy('module_name')
-            ->values();
+                    // Get unique functions (for SCM modules)
+                    $functions = $assignments
+                        ->filter(function ($assignment) {
+                            return !empty($assignment->FunctionCode);
+                        })
+                        ->map(function ($assignment) {
+                            return [
+                                'id' => $assignment->FunctionID,
+                                'code' => $assignment->FunctionCode
+                            ];
+                        })
+                        ->unique('code')
+                        ->values();
 
-        Log::info('User details loaded successfully', [
-            'user_id' => $user->Id,
-            'modules_count' => $moduleAssignments->count(),
-            'total_assignments' => $assignmentsRaw ? count($assignmentsRaw) : 0
-        ]);
+                    return [
+                        'application_id' => $assignments->first()->application_id,
+                        'module_name' => $moduleName,
+                        'locations' => $locations,
+                        'locations_count' => $locations->count(),
+                        'roles' => $roles,
+                        'roles_count' => $roles->count(),
+                        'functions' => $functions,
+                        'functions_count' => $functions->count(),
+                        'total_assignments' => $assignments->count()
+                    ];
+                })
+                ->sortBy('module_name')
+                ->values();
 
-        return view('azure-management.users.show', compact(
-            'user', 
-            'provisioningStatus',
-            'moduleAssignments'
-        ));
-    } catch (\Exception $e) {
-        Log::error('Failed to load user details page', [
-            'user_id' => $user->Id ?? null,
-            'error' => $e->getMessage(),
-            'trace' => $e->getTraceAsString()
-        ]);
+            Log::info('User details loaded successfully', [
+                'user_id' => $user->Id,
+                'modules_count' => $moduleAssignments->count(),
+                'total_assignments' => $assignmentsRaw ? count($assignmentsRaw) : 0
+            ]);
 
-        return redirect()->route('azure.users.index')
-            ->withErrors(['error' => 'Failed to load user details: ' . $e->getMessage()]);
+            return view('azure-management.users.show', compact(
+                'user',
+                'provisioningStatus',
+                'moduleAssignments'
+            ));
+        } catch (\Exception $e) {
+            Log::error('Failed to load user details page', [
+                'user_id' => $user->Id ?? null,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return redirect()->route('azure.users.index')
+                ->withErrors(['error' => 'Failed to load user details: ' . $e->getMessage()]);
+        }
     }
-}
 
     /**
      * Show the form for editing the specified user
@@ -1027,14 +1146,31 @@ public function show(AzureUser $user)
     public function edit(AzureUser $user)
     {
         try {
-            // Fetch modules from SQL Server Azure_SoftwareMaster
+            Log::info('Loading edit user page', [
+                'user_id' => $user->Id,
+                'user_email' => $user->userPrincipalName,
+                'user_data' => [
+                    'displayName' => $user->displayName ?? 'NULL',
+                    'EmployeCode' => $user->EmployeCode ?? 'NULL',
+                    'employeeId' => $user->employeeId ?? 'NULL',
+                    'mail' => $user->mail ?? 'NULL',
+                    'telephoneNumber' => $user->telephoneNumber ?? 'NULL',
+                    'mobilePhone' => $user->mobilePhone ?? 'NULL',
+                    'companyName' => $user->companyName ?? 'NULL',
+                    'jobTitle' => $user->jobTitle ?? 'NULL',
+                ]
+            ]);
+
+            // ====================================================================
+            // 1. Fetch all modules
+            // ====================================================================
             $modulesRaw = DB::connection('sqlsrv')
                 ->select("SELECT Id, Name, ApplicationId 
-                    FROM Azure_SoftwareMaster 
-                    WHERE IsActive = 1 AND IsDeleted = 0 AND Name != 'Odoo'
-                    ORDER BY Name");
+                FROM Azure_SoftwareMaster 
+                WHERE IsActive = 1 AND IsDeleted = 0 
+                AND Name != 'Odoo'
+                ORDER BY Name");
 
-            // Convert to Laravel collection with proper structure
             $modules = collect($modulesRaw)->map(function ($module) {
                 return (object)[
                     'id' => $module->Id,
@@ -1043,14 +1179,19 @@ public function show(AzureUser $user)
                 ];
             });
 
-            // Fetch locations from Cust_Office table
+            Log::info('Modules loaded', [
+                'count' => $modules->count()
+            ]);
+
+            // ====================================================================
+            // 2. Fetch all locations
+            // ====================================================================
             $locationsRaw = DB::connection('sqlsrv')
                 ->select("SELECT Id, Name, code 
-                    FROM Cust_Office 
-                    WHERE IsActive = 1 AND IsDeleted = 0 
-                    ORDER BY Name");
+                FROM Cust_Office 
+                WHERE IsActive = 1 AND IsDeleted = 0 
+                ORDER BY Name");
 
-            // Convert to Laravel collection
             $locations = collect($locationsRaw)->map(function ($location) {
                 return (object)[
                     'id' => $location->Id,
@@ -1059,32 +1200,37 @@ public function show(AzureUser $user)
                 ];
             });
 
-            // Fetch user's existing module assignments
+            Log::info('Locations loaded', [
+                'count' => $locations->count()
+            ]);
+
+            // ====================================================================
+            // 3. Fetch user's existing module assignments
+            // ====================================================================
             $userAssignmentsRaw = DB::connection('sqlsrv')
                 ->select("
-                SELECT 
-                    aaum.Id,
-                    aaum.user_id,
-                    aaum.application_id,
-                    aaum.ApplicationName as module_name,
-                    aaum.FunctionCode as function_code,
-                    aaum.FunctionID as function_id,
-                    aaum.RoleCode as role_code,
-                    aaum.RoleID as role_id,
-                    aaum.OfficeCode as location,
-                    aaum.OfficeID as location_id,
-                    asm.Id as module_id
-                FROM Azure_Application_UserMapping aaum
-                LEFT JOIN Azure_SoftwareMaster asm 
-                    ON aaum.ApplicationName = asm.Name 
-                    AND aaum.application_id = asm.ApplicationId
-                WHERE aaum.user_id = ?
-                    AND aaum.IsActive = 1
-                    AND aaum.IsDelete = 0
-                ORDER BY aaum.ApplicationName
-            ", [$user->userPrincipalName]);
+            SELECT 
+                aaum.Id,
+                aaum.user_id,
+                aaum.application_id,
+                aaum.ApplicationName as module_name,
+                aaum.FunctionCode as function_code,
+                aaum.FunctionID as function_id,
+                aaum.RoleCode as role_code,
+                aaum.RoleID as role_id,
+                aaum.OfficeCode as location,
+                aaum.OfficeID as location_id,
+                asm.Id as module_id
+            FROM Azure_Application_UserMapping aaum
+            LEFT JOIN Azure_SoftwareMaster asm 
+                ON aaum.ApplicationName = asm.Name 
+                AND aaum.application_id = asm.ApplicationId
+            WHERE aaum.user_id = ?
+                AND aaum.IsActive = 1
+                AND aaum.IsDelete = 0
+            ORDER BY aaum.ApplicationName, aaum.OfficeCode
+        ", [$user->userPrincipalName]);
 
-            // Convert to Laravel collection
             $userModuleAssignments = collect($userAssignmentsRaw)->map(function ($assignment) {
                 return [
                     'id' => $assignment->Id,
@@ -1100,8 +1246,21 @@ public function show(AzureUser $user)
                 ];
             });
 
-            Log::info('Edit user page loaded', [
+            Log::info('User module assignments loaded', [
                 'user_id' => $user->Id,
+                'assignments_count' => $userModuleAssignments->count(),
+                'unique_modules' => $userModuleAssignments->pluck('module_name')->unique()->count()
+            ]);
+
+            // ====================================================================
+            // 4. Log successful data loading
+            // ====================================================================
+            Log::info('Edit user page data loaded successfully', [
+                'user_id' => $user->Id,
+                'user_email' => $user->userPrincipalName,
+                'user_name' => $user->displayName,
+                'user_status' => $user->Status,
+                'user_company' => $user->companyName ?? 'Not Set',
                 'modules_count' => $modules->count(),
                 'locations_count' => $locations->count(),
                 'assignments_count' => $userModuleAssignments->count()
@@ -1113,9 +1272,9 @@ public function show(AzureUser $user)
 
             return view('azure-management.users.edit', compact(
                 'user',
-                'locations',
                 'companies',
                 'modules',
+                'locations',
                 'roles',
                 'userModuleAssignments'
             ));

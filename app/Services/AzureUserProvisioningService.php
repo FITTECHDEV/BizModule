@@ -107,7 +107,6 @@ class AzureUserProvisioningService
                         'user_id' => $user->id,
                         'azure_id' => $user->azure_id
                     ]);
-
                 } else {
                     // Create new Azure user
                     Log::channel('provisioning')->info('Creating new Azure AD user', [
@@ -122,7 +121,7 @@ class AzureUserProvisioningService
                         'phone'       => $user->phone,
                         'job_title'   => $user->job_title,
                         'department'  => $user->department,
-                        'company_name'=> $user->company->name ?? null,
+                        'company_name' => $user->company->name ?? null,
                     ]);
 
                     $azureUserId = $azureData['azure_id'];
@@ -139,7 +138,7 @@ class AzureUserProvisioningService
                         $user->update([
                             'azure_id'          => $azureData['azure_id'],
                             'azure_upn'         => $azureData['azure_upn'],
-                            'azure_display_name'=> $azureData['azure_display_name'],
+                            'azure_display_name' => $azureData['azure_display_name'],
                             'status'            => 'active',
                         ]);
 
@@ -147,14 +146,13 @@ class AzureUserProvisioningService
                             'user_id' => $user->id,
                             'azure_id' => $azureData['azure_id']
                         ]);
-
                     } catch (Exception $dbException) {
                         Log::channel('provisioning')->error('Failed to update local user with Azure details', [
                             'user_id' => $user->id,
                             'azure_id' => $azureUserId,
                             'error' => $dbException->getMessage()
                         ]);
-                        
+
                         throw new Exception('Database update failed after Azure user creation: ' . $dbException->getMessage());
                     }
 
@@ -173,14 +171,13 @@ class AzureUserProvisioningService
                     $results['azure'] = [
                         'success'  => true,
                         'azure_id' => $azureData['azure_id'],
-                        'azure_upn'=> $azureData['azure_upn'],
+                        'azure_upn' => $azureData['azure_upn'],
                         'action' => 'created'
                     ];
                 }
-
             } catch (Exception $azureException) {
                 $errorMessage = $azureException->getMessage();
-                
+
                 // 🎯 AUDIT: Log Azure creation failure
                 // // AzureAuditLogger::azureUserCreationFailed(
                 //     $user,
@@ -191,7 +188,7 @@ class AzureUserProvisioningService
                 //         'attempted_action' => $user->azure_id ? 'update' : 'create',
                 //     ]
                 // );
-                
+
                 if (str_contains($errorMessage, 'userPrincipalName already exists')) {
                     Log::channel('provisioning')->warning('Azure UPN conflict detected, attempting to link', [
                         'user_id' => $user->id,
@@ -204,7 +201,7 @@ class AzureUserProvisioningService
                         $user->update([
                             'azure_id'          => $existing['id'],
                             'azure_upn'         => $existing['userPrincipalName'],
-                            'azure_display_name'=> $existing['displayName'],
+                            'azure_display_name' => $existing['displayName'],
                             'status'            => 'active',
                         ]);
 
@@ -212,7 +209,7 @@ class AzureUserProvisioningService
                         $results['azure'] = [
                             'success'  => true,
                             'azure_id' => $existing['id'],
-                            'azure_upn'=> $existing['userPrincipalName'],
+                            'azure_upn' => $existing['userPrincipalName'],
                             'action' => 'linked'
                         ];
 
@@ -242,7 +239,7 @@ class AzureUserProvisioningService
                         $this->performAzureRollback($azureUserId, $user);
                         $results['rollback_performed'] = true;
                     }
-                    
+
                     throw $azureException;
                 }
             }
@@ -254,11 +251,11 @@ class AzureUserProvisioningService
                     $results['modules'] = $moduleResults;
 
                     $failedModules = array_filter($moduleResults, fn($m) => !$m['success']);
-                    
+
                     if (!empty($failedModules)) {
                         $results['partial_failure'] = true;
                         $results['errors'][] = count($failedModules) . " module assignment(s) failed";
-                        
+
                         // 🎯 AUDIT: Log partial failure
                         // // AzureAuditLogger::log(
                         //     'user.provisioning.partial_failure',
@@ -278,7 +275,7 @@ class AzureUserProvisioningService
                         //         }, $failedModules),
                         //     ]
                         // );
-                        
+
                         Log::channel('provisioning')->warning('Partial provisioning failure', [
                             'user_id' => $user->id,
                             'failed_modules' => count($failedModules),
@@ -295,7 +292,7 @@ class AzureUserProvisioningService
                         $this->performAzureRollback($azureUserId, $user);
                         $results['rollback_performed'] = true;
                     }
-                    
+
                     throw $moduleException;
                 }
             }
@@ -305,7 +302,7 @@ class AzureUserProvisioningService
 
             // 🎯 AUDIT: Log successful provisioning completion
             $successfulModules = count($moduleAssignments) - count(array_filter($results['modules'], fn($m) => !$m['success']));
-            
+
             // // AzureAuditLogger::log(
             //     'user.provisioning.completed',
             //     $user,
@@ -329,7 +326,6 @@ class AzureUserProvisioningService
             ]);
 
             return $results;
-
         } catch (Exception $e) {
             DB::rollBack();
 
@@ -426,7 +422,6 @@ class AzureUserProvisioningService
                         'errors' => $result['errors'] ?? []
                     ]);
                 }
-
             } catch (Exception $e) {
                 // Critical failure - log and re-throw to trigger parent transaction rollback
                 Log::channel('provisioning')->error('Module assignment exception', [
@@ -468,7 +463,7 @@ class AzureUserProvisioningService
 
         try {
             $this->azureService->deleteUser($azureUserId);
-            
+
             // 🎯 AUDIT: Log successful rollback
             // // AzureAuditLogger::azureRollback(
             //     $user,
@@ -479,14 +474,13 @@ class AzureUserProvisioningService
             //         'employee_id' => $user->employee_id,
             //     ]
             // );
-            
+
             Log::channel('provisioning')->info('✅ Azure rollback successful - user deleted', [
                 'azure_user_id' => $azureUserId,
                 'local_user_id' => $user->id
             ]);
 
             return true;
-
         } catch (Exception $rollbackException) {
             // 🎯 AUDIT: Log failed rollback (CRITICAL)
             // // AzureAuditLogger::azureRollbackFailed(
@@ -500,7 +494,7 @@ class AzureUserProvisioningService
             //         'manual_action' => 'Delete Azure AD user: ' . $azureUserId,
             //     ]
             // );
-            
+
             Log::channel('provisioning')->critical('❌ AZURE ROLLBACK FAILED - MANUAL CLEANUP REQUIRED', [
                 'azure_user_id' => $azureUserId,
                 'local_user_id' => $user->id,
@@ -595,9 +589,9 @@ class AzureUserProvisioningService
         }
 
         // Check module assignments
-        $user->load(['modules' => function($query) {
-            $query->withPivot('role_id', 'location', 'azure_group_id', 'provisioned_at');
-        }]);
+        $moduleAssignments = $user->moduleAssignments()
+            ->select('ApplicationName', 'application_id', 'RoleCode', 'RoleID', 'OfficeCode')
+            ->get();
 
         foreach ($user->modules as $module) {
             $moduleStatus = [
@@ -687,10 +681,9 @@ class AzureUserProvisioningService
                         'user_id' => $user->id,
                         'azure_id' => $user->azure_id
                     ]);
-
                 } catch (Exception $e) {
                     $results['errors'][] = 'Azure update failed: ' . $e->getMessage();
-                    
+
                     // 🎯 AUDIT: Log Azure update failure
                     // // AzureAuditLogger::log(
                     //     'azure.user.update.failed',
@@ -715,7 +708,6 @@ class AzureUserProvisioningService
             $results['success'] = true;
 
             return $results;
-
         } catch (Exception $e) {
             DB::rollBack();
 
@@ -791,7 +783,6 @@ class AzureUserProvisioningService
                         'user_id' => $user->id,
                         'azure_id' => $user->azure_id
                     ]);
-
                 } catch (Exception $e) {
                     $results['errors'][] = 'Azure disable failed: ' . $e->getMessage();
 
@@ -816,7 +807,6 @@ class AzureUserProvisioningService
             $results['success'] = true;
 
             return $results;
-
         } catch (Exception $e) {
             DB::rollBack();
 
@@ -887,7 +877,6 @@ class AzureUserProvisioningService
                         'user_id' => $user->id,
                         'azure_id' => $user->azure_id
                     ]);
-
                 } catch (Exception $e) {
                     $results['errors'][] = 'Azure enable failed: ' . $e->getMessage();
 
@@ -912,7 +901,6 @@ class AzureUserProvisioningService
             $results['success'] = true;
 
             return $results;
-
         } catch (Exception $e) {
             DB::rollBack();
 
@@ -945,9 +933,7 @@ class AzureUserProvisioningService
         $results = [];
 
         // Load user's modules with pivot data
-        $user->load(['modules' => function($query) {
-            $query->withPivot('role_id', 'location', 'azure_group_id', 'provisioned_at', 'provision_status');
-        }]);
+        $moduleAssignments = $user->moduleAssignments()->get();
 
         Log::info('Retrying failed module assignments', [
             'user_id' => $user->id,
@@ -1005,7 +991,6 @@ class AzureUserProvisioningService
                         //     ]
                         // );
                     }
-
                 } catch (Exception $e) {
                     Log::error('Module assignment retry failed', [
                         'user_id' => $user->id,
