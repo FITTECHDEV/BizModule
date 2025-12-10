@@ -3,20 +3,20 @@
 @section('title', 'User Details')
 
 @section('content_header')
-    <div class="d-flex justify-content-between align-items-center">
-        <div>
-            <h1><i class="fas fa-user-circle"></i> User Details</h1>
-            <p class="text-muted mb-0">View complete user information</p>
-        </div>
-        <div>
-            <a href="{{ route('azure.dashboard.index') }}" class="btn btn-secondary btn-sm">
-                <i class="fas fa-arrow-left"></i> Back to Users
-            </a>
-            <a href="{{ route('azure.users.edit', $user->Id) }}" class="btn btn-warning btn-sm">
-                <i class="fas fa-edit"></i> Edit User
-            </a>
-        </div>
+<div class="d-flex justify-content-between align-items-center">
+    <div>
+        <h1><i class="fas fa-user-circle"></i> User Details</h1>
+        <p class="text-muted mb-0">View complete user information</p>
     </div>
+    <div>
+        <a href="{{ route('azure.dashboard.index') }}" class="btn btn-secondary btn-sm">
+            <i class="fas fa-arrow-left"></i> Back to Users
+        </a>
+        <a href="{{ route('azure.users.edit', $user->Id) }}" class="btn btn-warning btn-sm">
+            <i class="fas fa-edit"></i> Edit User
+        </a>
+    </div>
+</div>
 @stop
 
 @section('content')
@@ -33,15 +33,15 @@
                     </div>
                     <h3 class="profile-username text-center">{{ $user->displayName ?? 'N/A' }}</h3>
                     <p class="text-muted text-center">{{ $user->jobTitle ?? 'No Job Title' }}</p>
-                    
+
                     @php
-                        $status = $user->Status ?? 'Unknown';
-                        $badgeClass = match(strtolower($status)) {
-                            'active' => 'badge-success',
-                            'pending' => 'badge-warning',
-                            'inactive' => 'badge-danger',
-                            default => 'badge-secondary'
-                        };
+                    $status = $user->Status ?? 'Unknown';
+                    $badgeClass = match(strtolower($status)) {
+                    'active' => 'badge-success',
+                    'pending' => 'badge-warning',
+                    'inactive' => 'badge-danger',
+                    default => 'badge-secondary'
+                    };
                     @endphp
                     <span class="badge {{ $badgeClass }} badge-lg">{{ $status }}</span>
                 </div>
@@ -58,20 +58,20 @@
                 <strong><i class="fas fa-phone mr-1"></i> Business Phone</strong>
                 <p class="text-muted mb-2">
                     @if(!empty($user->businessPhones))
-                        @foreach(json_decode($user->businessPhones, true) ?? [] as $phone)
-                            <a href="tel:{{ $phone }}">{{ $phone }}</a><br>
-                        @endforeach
+                    @foreach(json_decode($user->businessPhones, true) ?? [] as $phone)
+                    <a href="tel:{{ $phone }}">{{ $phone }}</a><br>
+                    @endforeach
                     @else
-                        N/A
+                    N/A
                     @endif
                 </p>
 
                 <strong><i class="fas fa-mobile-alt mr-1"></i> Mobile Phone</strong>
                 <p class="text-muted mb-2">
                     @if($user->mobilePhone)
-                        <a href="tel:{{ $user->mobilePhone }}">{{ $user->mobilePhone }}</a>
+                    <a href="tel:{{ $user->mobilePhone }}">{{ $user->mobilePhone }}</a>
                     @else
-                        N/A
+                    N/A
                     @endif
                 </p>
 
@@ -79,7 +79,7 @@
                 <p class="text-muted mb-2">
                     {{ $user->officeLocation ?? $user->city ?? 'N/A' }}
                     @if($user->country)
-                        <br><small>{{ $user->country }}</small>
+                    <br><small>{{ $user->country }}</small>
                     @endif
                 </p>
             </div>
@@ -139,91 +139,104 @@
             </div>
             <div class="card-body">
                 @if($moduleAssignments->isEmpty())
-                    <div class="text-center text-muted py-5">
-                        <i class="fas fa-inbox fa-3x mb-3"></i>
-                        <p>No module assignments found for this user.</p>
-                    </div>
+                <div class="text-center text-muted py-5">
+                    <i class="fas fa-inbox fa-3x mb-3"></i>
+                    <p>No module assignments found for this user.</p>
+                </div>
                 @else
-                    <!-- Accordion for Module Assignments -->
-                    <div class="accordion" id="moduleAssignmentsAccordion">
-                        @foreach($moduleAssignments as $index => $module)
-                        <div class="card mb-2">
-                            <div class="card-header p-0" id="heading{{ $index }}">
-                                <button class="btn btn-link btn-block text-left d-flex justify-content-between align-items-center collapsed" 
-                                        type="button" 
-                                        data-toggle="collapse" 
-                                        data-target="#collapse{{ $index }}" 
-                                        aria-expanded="false" 
-                                        aria-controls="collapse{{ $index }}">
-                                    <div>
-                                        <i class="fas fa-cube mr-2"></i>
-                                        <strong>{{ $module['module_name'] }}</strong>
-                                    </div>
-                                    <div>
-                                        <span class="badge badge-primary">{{ $module['locations_count'] }} Location(s)</span>
-                                        <span class="badge badge-info">{{ $module['roles_count'] }} Role(s)</span>
-                                        @if($module['functions_count'] > 0)
-                                            <span class="badge badge-warning">{{ $module['functions_count'] }} Function(s)</span>
-                                        @endif
-                                        <i class="fas fa-chevron-down ml-2"></i>
-                                    </div>
-                                </button>
-                            </div>
+                <!-- Accordion for Module Assignments -->
+                <div class="accordion" id="moduleAssignmentsAccordion">
+                    @foreach($moduleAssignments as $index => $module)
+                    <div class="card mb-2">
+                        <div class="card-header p-0" id="heading{{ $index }}">
+                            <button class="btn btn-link btn-block text-left d-flex justify-content-between align-items-center collapsed"
+                                type="button"
+                                data-toggle="collapse"
+                                data-target="#collapse{{ $index }}"
+                                aria-expanded="false"
+                                aria-controls="collapse{{ $index }}">
+                                <div>
+                                    <i class="fas fa-cube mr-2"></i>
+                                    <strong>{{ $module['module_name'] }}</strong>
+                                </div>
+                                <div>
+                                    <span class="badge badge-primary">{{ $module['locations_count'] }} Location(s)</span>
+                                    <span class="badge badge-info">{{ $module['roles_count'] }} Role(s)</span>
+                                    @if($module['functions_count'] > 0)
+                                    <span class="badge badge-warning">{{ $module['functions_count'] }} Function(s)</span>
+                                    @endif
+                                    <i class="fas fa-chevron-down ml-2"></i>
+                                </div>
+                            </button>
+                        </div>
 
-                            <div id="collapse{{ $index }}" 
-                                class="collapse" 
-                                aria-labelledby="heading{{ $index }}" 
-                                data-parent="#moduleAssignmentsAccordion">
-                                <div class="card-body">
-                                    <!-- Locations -->
-                                    <div class="mb-3">
-                                        <h6 class="text-muted">
-                                            <i class="fas fa-map-marker-alt mr-2"></i>Locations
-                                        </h6>
-                                        <div class="ml-4">
-                                            @foreach($module['locations'] as $location)
-                                                <span class="badge badge-primary mr-1">{{ $location }}</span>
-                                            @endforeach
+                        <div id="collapse{{ $index }}"
+                            class="collapse"
+                            aria-labelledby="heading{{ $index }}"
+                            data-parent="#moduleAssignmentsAccordion">
+                            <div class="card-body">
+                                <!-- Horizontal Layout for Locations, Roles, Functions -->
+                                <div class="row">
+                                    <!-- Locations Column -->
+                                    <div class="col-md-4">
+                                        <div class="module-section">
+                                            <h6 class="section-title">
+                                                <i class="fas fa-map-marker-alt mr-2"></i>Locations
+                                            </h6>
+                                            <div class="section-content">
+                                                @foreach($module['locations'] as $location)
+                                                <span class="badge badge-primary mr-1 mb-1">{{ $location }}</span>
+                                                @endforeach
+                                            </div>
                                         </div>
                                     </div>
 
-                                    <!-- Roles -->
-                                    <div class="mb-3">
-                                        <h6 class="text-muted">
-                                            <i class="fas fa-user-tag mr-2"></i>Roles
-                                        </h6>
-                                        <ul class="ml-4">
-                                            @foreach($module['roles'] as $role)
-                                                <li>{{ $role['code'] }}</li>
-                                            @endforeach
-                                        </ul>
+                                    <!-- Roles Column -->
+                                    <div class="col-md-4">
+                                        <div class="module-section">
+                                            <h6 class="section-title">
+                                                <i class="fas fa-user-tag mr-2"></i>Roles
+                                            </h6>
+                                            <div class="section-content">
+                                                <ul class="list-unstyled mb-0">
+                                                    @foreach($module['roles'] as $role)
+                                                    <li><i class="fas fa-check-circle text-info mr-1"></i>{{ $role['code'] }}</li>
+                                                    @endforeach
+                                                </ul>
+                                            </div>
+                                        </div>
                                     </div>
 
-                                    <!-- Functions (Only for SCM modules) -->
+                                    <!-- Functions Column (Only for SCM modules) -->
                                     @if($module['functions_count'] > 0)
-                                        <div class="mb-0">
-                                            <h6 class="text-muted">
+                                    <div class="col-md-4">
+                                        <div class="module-section">
+                                            <h6 class="section-title">
                                                 <i class="fas fa-cog mr-2"></i>Functions
                                             </h6>
-                                            <ul class="ml-4 mb-0">
-                                                @foreach($module['functions'] as $function)
-                                                    <li>{{ $function['code'] }}</li>
-                                                @endforeach
-                                            </ul>
+                                            <div class="section-content">
+                                                <ul class="list-unstyled mb-0">
+                                                    @foreach($module['functions'] as $function)
+                                                    <li><i class="fas fa-check-circle text-warning mr-1"></i>{{ $function['code'] }}</li>
+                                                    @endforeach
+                                                </ul>
+                                            </div>
                                         </div>
+                                    </div>
                                     @endif
-
-                                    <!-- Total Assignments Count -->
-                                    <hr>
-                                    <small class="text-muted">
-                                        <i class="fas fa-info-circle mr-1"></i>
-                                        Total: {{ $module['total_assignments'] }} individual assignment(s)
-                                    </small>
                                 </div>
+
+                                <!-- Total Assignments Count -->
+                                <hr class="mt-3 mb-2">
+                                <small class="text-muted">
+                                    <i class="fas fa-info-circle mr-1"></i>
+                                    Total: {{ $module['total_assignments'] }} individual assignment(s)
+                                </small>
                             </div>
                         </div>
-                        @endforeach
                     </div>
+                    @endforeach
+                </div>
                 @endif
             </div>
         </div>
@@ -258,9 +271,9 @@
                             <label>Account Enabled</label>
                             <p>
                                 @if($user->accountEnabled ?? true)
-                                    <span class="badge badge-success">Yes</span>
+                                <span class="badge badge-success">Yes</span>
                                 @else
-                                    <span class="badge badge-danger">No</span>
+                                <span class="badge badge-danger">No</span>
                                 @endif
                             </p>
                         </div>
@@ -461,6 +474,60 @@
 
 @section('css')
 <style>
+    /* Module Section Styling */
+    .module-section {
+        padding: 1rem;
+        background-color: #f8f9fa;
+        border-radius: 6px;
+        height: 100%;
+        border: 1px solid #e9ecef;
+    }
+
+    .module-section .section-title {
+        font-weight: 600;
+        color: #495057;
+        margin-bottom: 0.75rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid #dee2e6;
+        font-size: 0.9rem;
+    }
+
+    .module-section .section-content {
+        max-height: 200px;
+        overflow-y: auto;
+    }
+
+    .module-section .section-content ul li {
+        padding: 0.25rem 0;
+        font-size: 0.85rem;
+    }
+
+    /* Scrollbar styling */
+    .section-content::-webkit-scrollbar {
+        width: 5px;
+    }
+
+    .section-content::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 4px;
+    }
+
+    .section-content::-webkit-scrollbar-thumb {
+        background: #888;
+        border-radius: 4px;
+    }
+
+    .section-content::-webkit-scrollbar-thumb:hover {
+        background: #555;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        .module-section {
+            margin-bottom: 1rem;
+        }
+    }
+
     .user-avatar-large {
         width: 120px;
         height: 120px;
@@ -472,19 +539,19 @@
         color: white;
         font-weight: bold;
         font-size: 48px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     }
-    
+
     .badge-lg {
         padding: 8px 16px;
         font-size: 14px;
         border-radius: 20px;
     }
-    
+
     .info-item {
         margin-bottom: 20px;
     }
-    
+
     .info-item label {
         font-weight: 600;
         color: #6c757d;
@@ -493,51 +560,51 @@
         margin-bottom: 5px;
         display: block;
     }
-    
+
     .info-item p {
         font-size: 15px;
         color: #333;
         margin-bottom: 0;
     }
-    
+
     .info-item code {
         font-size: 13px;
         padding: 4px 8px;
         background-color: #f4f4f4;
         border-radius: 4px;
     }
-    
+
     .nav-pills .nav-link {
         color: #333;
         border-radius: 0;
         padding: 12px 20px;
     }
-    
+
     .nav-pills .nav-link:hover {
         background-color: #f8f9fa;
     }
-    
+
     .nav-pills .nav-link i {
         width: 20px;
     }
-    
+
     .card-header {
         background-color: #f8f9fa;
         border-bottom: 2px solid #dee2e6;
     }
-    
+
     .card-header .card-title {
         font-weight: 600;
         color: #495057;
     }
-    
+
     .timeline {
         position: relative;
         margin: 0 0 30px 0;
         padding: 0;
         list-style: none;
     }
-    
+
     .timeline:before {
         content: '';
         position: absolute;
@@ -548,15 +615,15 @@
         left: 31px;
         margin: 0;
     }
-    
-    .timeline > div {
+
+    .timeline>div {
         margin-bottom: 15px;
         position: relative;
     }
-    
-    .timeline > div > .fas,
-    .timeline > div > .far,
-    .timeline > div > .fab {
+
+    .timeline>div>.fas,
+    .timeline>div>.far,
+    .timeline>div>.fab {
         width: 30px;
         height: 30px;
         font-size: 15px;
@@ -569,27 +636,27 @@
         left: 18px;
         top: 0;
     }
-    
-    .timeline > div > .timeline-item {
+
+    .timeline>div>.timeline-item {
         margin-left: 60px;
         background: #fff;
         border: 1px solid #dee2e6;
         border-radius: 3px;
         padding: 10px;
     }
-    
+
     .timeline-header {
         margin: 0;
         color: #495057;
         font-size: 16px;
         font-weight: 600;
     }
-    
+
     .timeline-body {
         padding: 10px 0 0 0;
     }
-    
-    .time-label > span {
+
+    .time-label>span {
         font-weight: 600;
         padding: 5px 10px;
         display: inline-block;
@@ -653,29 +720,29 @@
         }
 
         const url = `/azure/users/${userId}/${actionText}`;
-        
+
         fetch(url, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                'X-Requested-With': 'XMLHttpRequest'
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert(data.message || `User has been ${actionText}d successfully`);
-                window.location.reload();
-            } else {
-                alert(data.message || `Failed to ${actionText} user`);
-            }
-        })
-        .catch(error => {
-            console.error(`Error ${actionText}ing user:`, error);
-            alert(`Failed to ${actionText} user. ${error.message}`);
-        });
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message || `User has been ${actionText}d successfully`);
+                    window.location.reload();
+                } else {
+                    alert(data.message || `Failed to ${actionText} user`);
+                }
+            })
+            .catch(error => {
+                console.error(`Error ${actionText}ing user:`, error);
+                alert(`Failed to ${actionText} user. ${error.message}`);
+            });
     }
 
     function resetPassword(userId) {
@@ -684,28 +751,28 @@
         }
 
         const url = `/azure/users/${userId}/reset-password`;
-        
+
         fetch(url, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                'X-Requested-With': 'XMLHttpRequest'
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert(data.message || 'Password reset successfully. Temporary password sent to user.');
-            } else {
-                alert(data.message || 'Failed to reset password');
-            }
-        })
-        .catch(error => {
-            console.error('Error resetting password:', error);
-            alert('Failed to reset password. ' + error.message);
-        });
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message || 'Password reset successfully. Temporary password sent to user.');
+                } else {
+                    alert(data.message || 'Failed to reset password');
+                }
+            })
+            .catch(error => {
+                console.error('Error resetting password:', error);
+                alert('Failed to reset password. ' + error.message);
+            });
     }
 
     console.log('User detail page loaded successfully');
