@@ -2037,14 +2037,47 @@
     }
 
     window.updateUser = () => {
+        console.log('=== UPDATE USER STARTED ===');
+
+        // Step 1: Update hidden inputs
         updateHiddenInputs();
+
+        // Step 2: Log what we're about to send
+        const hiddenInputs = document.querySelectorAll('#hiddenInputsContainer input');
+        console.log('Total hidden inputs:', hiddenInputs.length);
+
+        // Group inputs by index to see assignments
+        const assignments = {};
+        hiddenInputs.forEach(input => {
+            const match = input.name.match(/modules\[(\d+)\]\[(\w+)\]/);
+            if (match) {
+                const index = match[1];
+                const field = match[2];
+                if (!assignments[index]) {
+                    assignments[index] = {};
+                }
+                assignments[index][field] = input.value;
+            }
+        });
+
+        console.log('Assignments to be saved:', assignments);
+        console.log('Total assignments:', Object.keys(assignments).length);
+
+        // Step 3: Create form data
         const formData = new FormData();
         formData.append('_token', csrfToken);
         formData.append('_method', 'PUT');
-        document.querySelectorAll('#hiddenInputsContainer input').forEach(input => {
+
+        hiddenInputs.forEach(input => {
             formData.append(input.name, input.value);
         });
+
+        // Step 4: Show loading
         showLoading();
+
+        // Step 5: Send to server
+        console.log('Sending to:', updateRoute);
+
         fetch(updateRoute, {
                 method: 'POST',
                 body: formData,
@@ -2053,9 +2086,15 @@
                     'X-Requested-With': 'XMLHttpRequest'
                 }
             })
-            .then(response => response.json())
+            .then(response => {
+                console.log('Response status:', response.status);
+                return response.json();
+            })
             .then(data => {
                 hideLoading();
+
+                console.log('=== SERVER RESPONSE ===', data);
+
                 if (data.success) {
                     showAlert('success', 'Success', 'User updated successfully!');
 
@@ -2065,17 +2104,21 @@
                     // Update initial state
                     initialModuleState = deepClone(moduleCards);
 
+                    console.log('✅ Update successful - redirecting to user details');
+
+                    // Redirect to user details page to see the new modules
                     setTimeout(() => {
-                        window.location.href = "{{ route('azure.dashboard.index') }}";
+                        window.location.href = "{{ route('azure.users.show', $user->Id) }}";
                     }, 1500);
                 } else {
+                    console.error('❌ Update failed:', data.message);
                     showAlert('error', 'Error', data.message || 'Failed to update user');
                 }
             })
             .catch(error => {
                 hideLoading();
-                console.error('Error:', error);
-                showAlert('error', 'Error', 'An error occurred while updating the user');
+                console.error('=== UPDATE ERROR ===', error);
+                showAlert('error', 'Error', 'An error occurred while updating the user: ' + error.message);
             });
     };
 

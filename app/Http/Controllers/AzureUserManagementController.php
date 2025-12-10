@@ -1293,13 +1293,18 @@ class AzureUserManagementController extends Controller
     /**
      * Update the specified user
      */
+    /**
+     * Update the specified user - Enhanced with better logging
+     */
     public function update(Request $request, AzureUser $user)
     {
         try {
-            Log::info('=== UPDATE USER REQUEST ===', [
+            Log::info('=== UPDATE USER REQUEST RECEIVED ===', [
                 'user_id' => $user->Id,
                 'user_principal' => $user->userPrincipalName,
-                'modules' => $request->input('modules', [])
+                'request_method' => $request->method(),
+                'is_ajax' => $request->ajax(),
+                'modules_count' => count($request->input('modules', []))
             ]);
 
             // Validate the request
@@ -1320,13 +1325,20 @@ class AzureUserManagementController extends Controller
             // Get the modules data
             $modulesData = $request->input('modules', []);
 
-            Log::info('Processing modules', [
-                'count' => count($modulesData),
+            Log::info('📦 Processing modules for update', [
+                'total_assignments' => count($modulesData),
                 'user_principal' => $user->userPrincipalName
             ]);
 
+            // Log first few assignments for debugging
+            if (count($modulesData) > 0) {
+                Log::info('📝 Sample assignments (first 3):', [
+                    'samples' => array_slice($modulesData, 0, 3)
+                ]);
+            }
+
             // Delete existing module assignments for this user
-            DB::connection('sqlsrv')
+            $deletedCount = DB::connection('sqlsrv')
                 ->table('Azure_Application_UserMapping')
                 ->where('user_id', $user->userPrincipalName)
                 ->update([
@@ -1336,8 +1348,9 @@ class AzureUserManagementController extends Controller
                     'ModifiedOn' => DB::raw('GETDATE()')
                 ]);
 
-            Log::info('Marked existing assignments as deleted', [
-                'user_principal' => $user->userPrincipalName
+            Log::info('🗑️ Marked existing assignments as deleted', [
+                'user_principal' => $user->userPrincipalName,
+                'deleted_count' => $deletedCount
             ]);
 
             // Process each module assignment
@@ -1354,6 +1367,10 @@ class AzureUserManagementController extends Controller
 
                     if (!$module) {
                         $errors[] = "Module not found: {$moduleData['module_id']}";
+                        Log::warning("⚠️ Module not found", [
+                            'module_id' => $moduleData['module_id'],
+                            'index' => $index
+                        ]);
                         continue;
                     }
 
@@ -1380,35 +1397,84 @@ class AzureUserManagementController extends Controller
                         'CreatedOn' => DB::raw('GETDATE()'),
                     ];
 
+                    // Log every 10th insertion for debugging
+                    if ($insertedCount % 10 === 0 || $insertedCount === 0) {
+                        Log::info("💾 Inserting assignment #{$insertedCount}", [
+                            'module' => $module->Name,
+                            'location' => $moduleData['location_code'],
+                            'role' => $moduleData['role_code'],
+                            'function' => $moduleData['function_code'] ?? 'N/A'
+                        ]);
+                    }
+
                     // Insert the assignment
                     DB::connection('sqlsrv')
                         ->table('Azure_Application_UserMapping')
                         ->insert($insertData);
 
                     $insertedCount++;
-
-                    Log::info("Inserted assignment {$insertedCount}", [
-                        'module' => $module->Name,
-                        'application_id' => $moduleData['application_id'],
-                        'location' => $moduleData['location_code'],
-                        'role' => $moduleData['role_code']
-                    ]);
                 } catch (\Exception $e) {
-                    $errors[] = "Error processing module {$index}: " . $e->getMessage();
-                    Log::error("Error processing module assignment", [
+                    $errorMsg = "Error processing module {$index}: " . $e->getMessage();
+                    $errors[] = $errorMsg;
+                    Log::error("❌ Assignment insertion failed", [
                         'index' => $index,
                         'module_data' => $moduleData,
-                        'error' => $e->getMessage()
+                        'error' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString()
                     ]);
                 }
             }
 
+            // Check if we have any errors
+            if (!empty($errors)) {
+                DB::connection('sqlsrv')->rollBack();
+
+                $errorMessage = sprintf(
+                    'Failed to save %d out of %d assignments. Rolling back all changes.',
+                    count($errors),
+                    count($modulesData)
+                );
+
+                Log::error('❌ Update failed - rolling back', [
+                    'errors' => $errors,
+                    'succeeded' => $insertedCount,
+                    'total' => count($modulesData)
+                ]);
+
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => $errorMessage,
+                        'errors' => $errors
+                    ], 422);
+                }
+
+                return back()
+                    ->with('error', $errorMessage)
+                    ->withInput();
+            }
+
+            // Commit transaction
             DB::connection('sqlsrv')->commit();
 
-            Log::info('Update completed', [
+            Log::info('=== UPDATE COMPLETED SUCCESSFULLY ===', [
                 'user_principal' => $user->userPrincipalName,
-                'inserted' => $insertedCount,
+                'total_assignments_saved' => $insertedCount,
                 'errors_count' => count($errors)
+            ]);
+
+            // Verify data was saved by checking the database
+            $verifyCount = DB::connection('sqlsrv')
+                ->table('Azure_Application_UserMapping')
+                ->where('user_id', $user->userPrincipalName)
+                ->where('IsActive', 1)
+                ->where('IsDelete', 0)
+                ->count();
+
+            Log::info('✅ Verification check', [
+                'expected' => $insertedCount,
+                'actual_in_db' => $verifyCount,
+                'match' => $insertedCount === $verifyCount ? 'YES' : 'NO'
             ]);
 
             // Log activity
@@ -1426,6 +1492,7 @@ class AzureUserManagementController extends Controller
                     'message' => "User updated successfully! {$insertedCount} assignments saved.",
                     'data' => [
                         'inserted' => $insertedCount,
+                        'verified' => $verifyCount,
                         'errors' => $errors
                     ]
                 ]);
@@ -1436,7 +1503,7 @@ class AzureUserManagementController extends Controller
         } catch (\Illuminate\Validation\ValidationException $e) {
             DB::connection('sqlsrv')->rollBack();
 
-            Log::error('Validation failed', [
+            Log::error('❌ Validation failed', [
                 'errors' => $e->errors()
             ]);
 
@@ -1454,7 +1521,7 @@ class AzureUserManagementController extends Controller
         } catch (\Exception $e) {
             DB::connection('sqlsrv')->rollBack();
 
-            Log::error('Update user failed', [
+            Log::error('❌ Update user failed', [
                 'user_id' => $user->Id ?? null,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
