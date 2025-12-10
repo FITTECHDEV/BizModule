@@ -1291,252 +1291,420 @@ class AzureUserManagementController extends Controller
     }
 
     /**
-     * Update the specified user
-     */
-    /**
      * Update the specified user - Enhanced with better logging
      */
     public function update(Request $request, AzureUser $user)
     {
+        // Set timeout to prevent 60-second timeout
+        set_time_limit(120);
+
+        // Enable error reporting for debugging
+        error_reporting(E_ALL);
+        ini_set('display_errors', 1);
+
+        Log::info('=== UPDATE METHOD ENTRY - FULL REQUEST DEBUG ===', [
+            'request_class' => get_class($request),
+            'request_method' => $request->method(),
+            'is_ajax' => $request->ajax(),
+            'expects_json' => $request->expectsJson(),
+            'content_type' => $request->header('Content-Type'),
+            'all_input_keys' => array_keys($request->all()),
+            'has_FirstName' => $request->has('FirstName'),
+            'has_modules' => $request->has('modules'),
+            'has_modules_empty' => $request->has('modules_empty'),
+            'route_parameters' => ['user_id' => $user->Id],
+        ]);
+
         try {
             Log::info('=== UPDATE USER REQUEST RECEIVED ===', [
                 'user_id' => $user->Id,
                 'user_principal' => $user->userPrincipalName,
                 'request_method' => $request->method(),
                 'is_ajax' => $request->ajax(),
-                'modules_count' => count($request->input('modules', []))
             ]);
 
-            // Validate the request
-            $validated = $request->validate([
-                'modules' => 'nullable|array',
-                'modules.*.module_id' => 'required',
-                'modules.*.application_id' => 'required|string',
-                'modules.*.location_id' => 'required',
-                'modules.*.location_code' => 'required|string',
-                'modules.*.role_id' => 'required',
-                'modules.*.role_code' => 'required|string',
-                'modules.*.function_id' => 'nullable',
-                'modules.*.function_code' => 'nullable|string',
-            ]);
-
-            DB::connection('sqlsrv')->beginTransaction();
-
-            // Get the modules data
+            // ====================================================================
+            // STEP 1: Process modules data with proper error handling
+            // ====================================================================
             $modulesData = $request->input('modules', []);
 
-            Log::info('📦 Processing modules for update', [
-                'total_assignments' => count($modulesData),
-                'user_principal' => $user->userPrincipalName
+            Log::info('Processing modules data', [
+                'raw_input' => $request->input('modules'),
+                'modules_empty_flag' => $request->has('modules_empty'),
+                'is_array' => is_array($modulesData),
+                'is_string' => is_string($modulesData),
             ]);
 
-            // Log first few assignments for debugging
-            if (count($modulesData) > 0) {
-                Log::info('📝 Sample assignments (first 3):', [
-                    'samples' => array_slice($modulesData, 0, 3)
-                ]);
-            }
-
-            // Delete existing module assignments for this user
-            $deletedCount = DB::connection('sqlsrv')
-                ->table('Azure_Application_UserMapping')
-                ->where('user_id', $user->userPrincipalName)
-                ->update([
-                    'IsDelete' => 1,
-                    'IsActive' => 0,
-                    'ModifiedBy' => Auth::id() ?? 'system',
-                    'ModifiedOn' => DB::raw('GETDATE()')
-                ]);
-
-            Log::info('🗑️ Marked existing assignments as deleted', [
-                'user_principal' => $user->userPrincipalName,
-                'deleted_count' => $deletedCount
-            ]);
-
-            // Process each module assignment
-            $insertedCount = 0;
-            $errors = [];
-
-            foreach ($modulesData as $index => $moduleData) {
-                try {
-                    // Get module details
-                    $module = DB::connection('sqlsrv')
-                        ->table('Azure_SoftwareMaster')
-                        ->where('Id', $moduleData['module_id'])
-                        ->first();
-
-                    if (!$module) {
-                        $errors[] = "Module not found: {$moduleData['module_id']}";
-                        Log::warning("⚠️ Module not found", [
-                            'module_id' => $moduleData['module_id'],
-                            'index' => $index
+            // Handle empty modules case
+            if ($request->has('modules_empty')) {
+                $modulesData = [];
+                Log::info('Empty modules marker detected - deleting all assignments');
+            } elseif (is_string($modulesData)) {
+                // Handle JSON string
+                if ($modulesData === '[]' || $modulesData === '{}' || $modulesData === '' || $modulesData === 'null') {
+                    $modulesData = [];
+                    Log::info('Empty string detected - converting to empty array');
+                } else {
+                    try {
+                        $decoded = json_decode($modulesData, true);
+                        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                            $modulesData = $decoded;
+                            Log::info('Decoded JSON string to array', ['count' => count($modulesData)]);
+                        } else {
+                            $modulesData = [];
+                            Log::warning('Invalid JSON string - converting to empty array');
+                        }
+                    } catch (\Exception $e) {
+                        Log::warning('Failed to decode modules string', [
+                            'string' => substr($modulesData, 0, 100),
+                            'error' => $e->getMessage()
                         ]);
-                        continue;
+                        $modulesData = [];
                     }
-
-                    // Generate new GUID for this mapping
-                    $mappingId = DB::connection('sqlsrv')
-                        ->selectOne("SELECT NEWID() as newId")->newId;
-
-                    // Prepare insert data
-                    $insertData = [
-                        'Id' => $mappingId,
-                        'user_id' => $user->userPrincipalName,
-                        'application_id' => $moduleData['application_id'],
-                        'Username' => $user->displayName,
-                        'ApplicationName' => $module->Name,
-                        'FunctionCode' => $moduleData['function_code'] ?? null,
-                        'FunctionID' => $moduleData['function_id'] ?? null,
-                        'RoleCode' => $moduleData['role_code'],
-                        'RoleID' => $moduleData['role_id'],
-                        'OfficeCode' => $moduleData['location_code'],
-                        'OfficeID' => $moduleData['location_id'],
-                        'IsActive' => 1,
-                        'IsDelete' => 0,
-                        'CreatedBy' => Auth::id() ?? 'system',
-                        'CreatedOn' => DB::raw('GETDATE()'),
-                    ];
-
-                    // Log every 10th insertion for debugging
-                    if ($insertedCount % 10 === 0 || $insertedCount === 0) {
-                        Log::info("💾 Inserting assignment #{$insertedCount}", [
-                            'module' => $module->Name,
-                            'location' => $moduleData['location_code'],
-                            'role' => $moduleData['role_code'],
-                            'function' => $moduleData['function_code'] ?? 'N/A'
-                        ]);
-                    }
-
-                    // Insert the assignment
-                    DB::connection('sqlsrv')
-                        ->table('Azure_Application_UserMapping')
-                        ->insert($insertData);
-
-                    $insertedCount++;
-                } catch (\Exception $e) {
-                    $errorMsg = "Error processing module {$index}: " . $e->getMessage();
-                    $errors[] = $errorMsg;
-                    Log::error("❌ Assignment insertion failed", [
-                        'index' => $index,
-                        'module_data' => $moduleData,
-                        'error' => $e->getMessage(),
-                        'trace' => $e->getTraceAsString()
-                    ]);
                 }
             }
 
-            // Check if we have any errors
-            if (!empty($errors)) {
-                DB::connection('sqlsrv')->rollBack();
-
-                $errorMessage = sprintf(
-                    'Failed to save %d out of %d assignments. Rolling back all changes.',
-                    count($errors),
-                    count($modulesData)
-                );
-
-                Log::error('❌ Update failed - rolling back', [
-                    'errors' => $errors,
-                    'succeeded' => $insertedCount,
-                    'total' => count($modulesData)
+            // Final validation: ensure it's an array
+            if (!is_array($modulesData)) {
+                Log::warning('Modules data is not an array, converting to empty array', [
+                    'type' => gettype($modulesData),
+                    'value' => $modulesData
                 ]);
+                $modulesData = [];
+            }
 
-                if ($request->expectsJson()) {
+            Log::info('Final modules data', [
+                'count' => count($modulesData),
+                'is_empty' => empty($modulesData),
+                'type' => gettype($modulesData)
+            ]);
+
+            // ====================================================================
+            // STEP 2: Validate modules only if we have them
+            // ====================================================================
+            if (!empty($modulesData)) {
+                try {
+                    $validated = $request->validate([
+                        'modules' => 'required|array|min:1',
+                        'modules.*.module_id' => 'required|string',
+                        'modules.*.application_id' => 'required|string',
+                        'modules.*.location_id' => 'required|string',
+                        'modules.*.location_code' => 'required|string',
+                        'modules.*.role_id' => 'required|string',
+                        'modules.*.role_code' => 'required|string',
+                        'modules.*.function_id' => 'nullable|string',
+                        'modules.*.function_code' => 'nullable|string',
+                    ]);
+
+                    Log::info('Validation passed', ['modules_count' => count($modulesData)]);
+                } catch (\Illuminate\Validation\ValidationException $e) {
+                    Log::error('Validation failed', ['errors' => $e->errors()]);
+
                     return response()->json([
                         'success' => false,
-                        'message' => $errorMessage,
+                        'message' => 'Validation failed',
+                        'errors' => $e->errors()
+                    ], 422);
+                }
+            } else {
+                // No modules to validate
+                Log::info('No modules to validate - proceeding with empty array');
+            }
+
+            // ====================================================================
+            // STEP 3: Start database transaction
+            // ====================================================================
+            DB::connection('sqlsrv')->beginTransaction();
+
+            try {
+                Log::info('📦 Processing modules for update', [
+                    'total_assignments' => count($modulesData),
+                    'user_principal' => $user->userPrincipalName
+                ]);
+
+                // Log sample assignments for debugging
+                if (count($modulesData) > 0) {
+                    Log::info('📝 Sample assignments (first 2):', [
+                        'samples' => array_slice($modulesData, 0, 2)
+                    ]);
+                } else {
+                    Log::info('📝 No module assignments - all existing modules will be deleted');
+                }
+
+                // ====================================================================
+                // STEP 4: Soft delete existing assignments
+                // ====================================================================
+                $deletedCount = DB::connection('sqlsrv')
+                    ->table('Azure_Application_UserMapping')
+                    ->where('user_id', $user->userPrincipalName)
+                    ->where('IsDelete', 0)
+                    ->update([
+                        'IsDelete' => 1,
+                        'IsActive' => 0,
+                        'LastModifiedBy' => Auth::id() ?? 'system',
+                        'LastModifiedOn' => DB::raw('GETDATE()')
+                    ]);
+
+                Log::info('🗑️ Marked existing assignments as deleted', [
+                    'user_principal' => $user->userPrincipalName,
+                    'deleted_count' => $deletedCount
+                ]);
+
+                // ====================================================================
+                // STEP 5: If no new modules, commit and return success
+                // ====================================================================
+                if (empty($modulesData)) {
+                    DB::connection('sqlsrv')->commit();
+
+                    Log::info('=== UPDATE COMPLETED (ALL MODULES DELETED) ===', [
+                        'user_principal' => $user->userPrincipalName,
+                        'deleted_assignments' => $deletedCount
+                    ]);
+
+                    return response()->json([
+                        'success' => true,
+                        'message' => "All module assignments removed successfully! {$deletedCount} assignments deleted.",
+                        'data' => [
+                            'deleted' => $deletedCount,
+                            'inserted' => 0
+                        ]
+                    ]);
+                }
+
+                // ====================================================================
+                // STEP 6: Insert new module assignments
+                // ====================================================================
+                $insertedCount = 0;
+                $errors = [];
+
+                foreach ($modulesData as $index => $moduleData) {
+                    try {
+                        // Validate required fields
+                        $requiredFields = ['module_id', 'application_id', 'location_id', 'location_code', 'role_id', 'role_code'];
+                        foreach ($requiredFields as $field) {
+                            if (empty($moduleData[$field])) {
+                                throw new \Exception("Missing required field: {$field}");
+                            }
+                        }
+
+                        // Get module details
+                        $module = DB::connection('sqlsrv')
+                            ->table('Azure_SoftwareMaster')
+                            ->where('Id', $moduleData['module_id'])
+                            ->first();
+
+                        if (!$module) {
+                            throw new \Exception("Module not found: {$moduleData['module_id']}");
+                        }
+
+                        // Generate new GUID for this mapping
+                        $mappingId = DB::connection('sqlsrv')
+                            ->selectOne("SELECT NEWID() as newId")->newId;
+
+                        // Prepare insert data
+                        $insertData = [
+                            'Id' => $mappingId,
+                            'user_id' => $user->userPrincipalName,
+                            'application_id' => $moduleData['application_id'],
+                            'Username' => $user->displayName,
+                            'ApplicationName' => $module->Name,
+                            'FunctionCode' => $moduleData['function_code'] ?? null,
+                            'FunctionID' => $moduleData['function_id'] ?? null,
+                            'RoleCode' => $moduleData['role_code'],
+                            'RoleID' => $moduleData['role_id'],
+                            'OfficeCode' => $moduleData['location_code'],
+                            'OfficeID' => $moduleData['location_id'],
+                            'IsActive' => 1,
+                            'IsDelete' => 0,
+                            'CreatedBy' => Auth::id() ?? 'system',
+                            'CreatedOn' => DB::raw('GETDATE()'),
+                        ];
+
+                        // Log first insertion for debugging
+                        if ($insertedCount === 0) {
+                            Log::info("💾 Inserting first assignment", [
+                                'module' => $module->Name,
+                                'location' => $moduleData['location_code'],
+                                'role' => $moduleData['role_code'],
+                                'function' => $moduleData['function_code'] ?? 'N/A'
+                            ]);
+                        }
+
+                        // Insert the assignment
+                        DB::connection('sqlsrv')
+                            ->table('Azure_Application_UserMapping')
+                            ->insert($insertData);
+
+                        $insertedCount++;
+                    } catch (\Exception $e) {
+                        $errorMsg = "Error processing assignment {$index}: " . $e->getMessage();
+                        $errors[] = $errorMsg;
+                        Log::error("❌ Assignment insertion failed", [
+                            'index' => $index,
+                            'module_data' => $moduleData,
+                            'error' => $e->getMessage()
+                        ]);
+                    }
+                }
+
+                // ====================================================================
+                // STEP 7: Check for errors and rollback if any
+                // ====================================================================
+                if (!empty($errors)) {
+                    DB::connection('sqlsrv')->rollBack();
+
+                    Log::error('❌ Update failed - rolling back', [
+                        'errors' => $errors,
+                        'succeeded' => $insertedCount,
+                        'total' => count($modulesData)
+                    ]);
+
+                    return response()->json([
+                        'success' => false,
+                        'message' => sprintf(
+                            'Failed to save %d out of %d assignments. Rolling back all changes.',
+                            count($errors),
+                            count($modulesData)
+                        ),
                         'errors' => $errors
                     ], 422);
                 }
 
-                return back()
-                    ->with('error', $errorMessage)
-                    ->withInput();
-            }
+                // ====================================================================
+                // STEP 8: Commit transaction
+                // ====================================================================
+                DB::connection('sqlsrv')->commit();
 
-            // Commit transaction
-            DB::connection('sqlsrv')->commit();
-
-            Log::info('=== UPDATE COMPLETED SUCCESSFULLY ===', [
-                'user_principal' => $user->userPrincipalName,
-                'total_assignments_saved' => $insertedCount,
-                'errors_count' => count($errors)
-            ]);
-
-            // Verify data was saved by checking the database
-            $verifyCount = DB::connection('sqlsrv')
-                ->table('Azure_Application_UserMapping')
-                ->where('user_id', $user->userPrincipalName)
-                ->where('IsActive', 1)
-                ->where('IsDelete', 0)
-                ->count();
-
-            Log::info('✅ Verification check', [
-                'expected' => $insertedCount,
-                'actual_in_db' => $verifyCount,
-                'match' => $insertedCount === $verifyCount ? 'YES' : 'NO'
-            ]);
-
-            // Log activity
-            try {
-                $this->logUserActivity($user, 'updated', "User module assignments updated. {$insertedCount} assignments saved.");
-            } catch (\Exception $e) {
-                Log::warning('Failed to log user activity', [
-                    'error' => $e->getMessage()
+                Log::info('=== UPDATE COMPLETED SUCCESSFULLY ===', [
+                    'user_principal' => $user->userPrincipalName,
+                    'assignments_saved' => $insertedCount,
+                    'assignments_deleted' => $deletedCount
                 ]);
-            }
 
-            if ($request->expectsJson()) {
+                // ====================================================================
+                // STEP 9: Verify data was saved
+                // ====================================================================
+                $verifyCount = DB::connection('sqlsrv')
+                    ->table('Azure_Application_UserMapping')
+                    ->where('user_id', $user->userPrincipalName)
+                    ->where('IsActive', 1)
+                    ->where('IsDelete', 0)
+                    ->count();
+
+                Log::info('✅ Verification check', [
+                    'expected' => $insertedCount,
+                    'actual_in_db' => $verifyCount,
+                    'match' => $insertedCount === $verifyCount ? 'YES' : 'NO'
+                ]);
+
+                // ====================================================================
+                // STEP 10: Return success response
+                // ====================================================================
                 return response()->json([
                     'success' => true,
                     'message' => "User updated successfully! {$insertedCount} assignments saved.",
                     'data' => [
                         'inserted' => $insertedCount,
-                        'verified' => $verifyCount,
-                        'errors' => $errors
+                        'deleted' => $deletedCount,
+                        'verified' => $verifyCount
                     ]
                 ]);
-            }
+            } catch (\Exception $e) {
+                // ====================================================================
+                // STEP 11: Rollback on any database error
+                // ====================================================================
+                if (DB::connection('sqlsrv')->transactionLevel() > 0) {
+                    DB::connection('sqlsrv')->rollBack();
+                }
 
-            return redirect()->route('azure.dashboard.index')
-                ->with('success', "User updated successfully! {$insertedCount} assignments saved.");
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            DB::connection('sqlsrv')->rollBack();
+                Log::error('❌ Database transaction failed', [
+                    'user_id' => $user->Id,
+                    'error' => $e->getMessage(),
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'trace' => $e->getTraceAsString()
+                ]);
 
-            Log::error('❌ Validation failed', [
-                'errors' => $e->errors()
-            ]);
-
-            if ($request->expectsJson()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Validation failed',
-                    'errors' => $e->errors()
-                ], 422);
+                    'message' => 'Database error: ' . $e->getMessage(),
+                    'error_details' => config('app.debug') ? [
+                        'file' => $e->getFile(),
+                        'line' => $e->getLine(),
+                        'message' => $e->getMessage()
+                    ] : null
+                ], 500);
+            }
+        } catch (\Exception $e) {
+            // ====================================================================
+            // STEP 12: Catch any other unexpected errors
+            // ====================================================================
+            Log::error('❌ Unexpected error in update method', [
+                'user_id' => $user->Id ?? null,
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Server Error: ' . $e->getMessage(),
+                'error_details' => config('app.debug') ? [
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine()
+                ] : null
+            ], 500);
+        }
+    }
+
+    /**
+     * Test endpoint for debugging
+     */
+    public function testUpdate(AzureUser $user)
+    {
+        try {
+            Log::info('=== TEST UPDATE ENDPOINT ===');
+
+            // Simulate what the controller receives
+            $requestData = [
+                '_token' => csrf_token(),
+                '_method' => 'PUT',
+                'modules_empty' => '1'
+            ];
+
+            Log::info('Test data', $requestData);
+
+            // Test database connection
+            try {
+                $test = DB::connection('sqlsrv')->select('SELECT 1 as test');
+                Log::info('Database connection OK', ['test' => $test]);
+            } catch (\Exception $e) {
+                Log::error('Database connection failed', ['error' => $e->getMessage()]);
+                throw $e;
             }
 
-            return back()
-                ->withErrors($e->errors())
-                ->withInput();
+            return response()->json([
+                'success' => true,
+                'message' => 'Test endpoint working',
+                'user' => [
+                    'id' => $user->Id,
+                    'email' => $user->userPrincipalName
+                ],
+                'database' => 'connected',
+                'request' => $requestData
+            ]);
         } catch (\Exception $e) {
-            DB::connection('sqlsrv')->rollBack();
-
-            Log::error('❌ Update user failed', [
-                'user_id' => $user->Id ?? null,
+            Log::error('Test endpoint error', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
 
-            if ($request->expectsJson()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Failed to update user: ' . $e->getMessage()
-                ], 500);
-            }
-
-            return back()
-                ->with('error', 'Failed to update user: ' . $e->getMessage())
-                ->withInput();
+            return response()->json([
+                'success' => false,
+                'message' => 'Test failed: ' . $e->getMessage(),
+                'trace' => config('app.debug') ? $e->getTraceAsString() : null
+            ], 500);
         }
     }
 

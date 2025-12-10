@@ -53,7 +53,7 @@ class TrackerController extends Controller
             'KDN 347Y' => '865784055076759',
             'KDN 348Y' => '865784055073996',
             'KDN 349Y' => '865784055074077',
-            'KDN 351Y' => '865784055073303',
+            'KDN 351Y' => '865784055074028',
             'KDN 352Y' => '865784055082542',
         ];
 
@@ -73,210 +73,252 @@ class TrackerController extends Controller
     /**
      * Get trips for DataTable - Matches route: /trips/get/{filter?}
      */
-    public function getTrips($filter = 'all')
-    {
-        try {
-            $query = DB::table('Trip_TripInfomation')
-                ->where('IsActive', true)
-                ->where('IsDeleted', false)
-                ->where('OfficeCode', 'KE');
+  public function getTrips($filter = 'all')
+{
+    try {
+        $query = DB::table('Trip_TripInfomation')
+            ->where('IsActive', true)
+            ->where('IsDeleted', false)
+            ->where('OfficeCode', 'KE');
 
-            // Apply status filter
-            switch (strtolower($filter)) {
-                case 'planned':
-                    $query->whereNull('StartDate');
-                    break;
-                case 'in-progress':
-                    $query->whereNotNull('StartDate')
-                        ->whereNull('EndDate');
-                    break;
-                case 'completed':
-                    $query->whereNotNull('EndDate');
-                    break;
-                case 'all':
-                default:
-                    break;
-            }
+        // Apply status filter
+        switch (strtolower($filter)) {
+            case 'planned':
+                $query->whereNull('StartDate');
+                break;
+            case 'in-progress':
+                $query->whereNotNull('StartDate')
+                    ->whereNull('EndDate');
+                break;
+            case 'completed':
+                $query->whereNotNull('EndDate');
+                break;
+            case 'all':
+            default:
+                break;
+        }
 
-            // ✅ FIXED: Order by numeric part of TripNo
-            $trips = $query->orderByRaw('
+        $trips = $query->orderByRaw('
             CAST(SUBSTRING(TripNo, 4, LEN(TripNo) - 3) AS BIGINT) DESC
         ')
-                ->get()
-                ->map(function ($trip) {
-                    // Format dates
-                    $startDate = null;
-                    if ($trip->StartDate) {
-                        try {
-                            $startDate = Carbon::parse($trip->StartDate)->format('Y-m-d H:i:s');
-                        } catch (\Exception $e) {
-                            Log::warning('Invalid StartDate', ['id' => $trip->Id, 'raw' => $trip->StartDate]);
-                        }
-                    } elseif ($trip->CreatedOn) {
-                        try {
-                            $startDate = Carbon::parse($trip->CreatedOn)->format('Y-m-d H:i:s');
-                        } catch (\Exception $e) {
-                            Log::warning('Invalid CreatedOn', ['id' => $trip->Id, 'raw' => $trip->CreatedOn]);
-                        }
-                    }
-
-                    $endDate = null;
-                    if ($trip->EndDate) {
-                        try {
-                            $endDate = Carbon::parse($trip->EndDate)->format('Y-m-d H:i:s');
-                        } catch (\Exception $e) {
-                            Log::warning('Invalid EndDate', ['id' => $trip->Id, 'raw' => $trip->EndDate]);
-                        }
-                    }
-
-                    $status = 'Planned';
-                    if ($trip->EndDate !== null) {
-                        $status = 'Completed';
-                    } elseif ($trip->StartDate !== null) {
-                        $status = 'In Transit';
-                    }
-
-                    return [
-                        'id' => $trip->Id,
-                        'trip_no' => $trip->TripNo ?? 'N/A',
-                        'vehicle_no' => $trip->VehicleNo ?? 'N/A',
-                        'driver_name' => $trip->DriverName ?? 'Not assigned',
-                        'start_date' => $startDate,
-                        'end_date' => $endDate,
-                        'total_mileage' => $trip->TotalDistance ?? 0,
-                        'avg_speed' => 0,
-                        'max_speed' => 0,
-                        'gps_points' => 0,
-                        'total_duration' => $trip->TotalDuration ?? 0,
-                        'status' => $status,
-                        'DT_RowId' => 'row_'.$trip->Id,
-                        'DT_RowData' => ['trip_id' => $trip->Id],
-                    ];
-                });
-
-            return response()->json([
-                'success' => true,
-                'data' => $trips,
-            ]);
-
-        } catch (\Exception $e) {
-            Log::error('Error fetching trips', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Error fetching trips: '.$e->getMessage(),
-            ], 500);
-        }
-    }
-
-    /**
-     * Get single trip details
-     */
-    public function getTripDetails($id)
-    {
-        try {
-            $trip = DB::table('Trip_TripInfomation as t')
-                ->select([
-                    't.Id as id',
-                    't.TripNo as trip_no',
-                    't.VehicleNo as vehicle_no',
-                    't.VehicleIMEI as vehicle_imei',
-                    't.DriverName as driver_name',
-                    't.DriverContactNo as driver_phone',
-                    't.StartLocationCode as start_location_code',
-                    't.StartLocation as start_location',
-                    't.EndLocationCode as end_location_code',
-                    't.EndLocation as end_location',
-                    't.CreatedOn as created_on',
-                    't.StartDate as start_date_raw',
-                    't.EndDate as end_date_raw',
-                    't.TotalDistance as total_distance',
-                    't.TotalDuration as total_duration',
-                    't.Status as db_status',
-                ])
-                ->where('t.Id', $id)
-                ->where('t.OfficeCode', 'KE') // ← Back to 'KE'
-                ->where('t.IsDeleted', false)
-                ->first();
-
-            if (! $trip) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Trip not found',
-                ], 404);
+        ->get()
+        ->map(function ($trip) {
+            // ✅ ADD +3 HOURS WHEN FORMATTING
+            $startDate = null;
+            if ($trip->StartDate) {
+                try {
+                    // Add 3 hours to StartDate
+                    $startDate = Carbon::parse($trip->StartDate)
+                        ->addHours(3)
+                        ->format('Y-m-d H:i:s');
+                } catch (\Exception $e) {
+                    Log::warning('Invalid StartDate', ['id' => $trip->Id, 'raw' => $trip->StartDate]);
+                }
+            } elseif ($trip->CreatedOn) {
+                try {
+                    // Add 3 hours to CreatedOn
+                    $startDate = Carbon::parse($trip->CreatedOn)
+                        ->addHours(3)
+                        ->format('Y-m-d H:i:s');
+                } catch (\Exception $e) {
+                    Log::warning('Invalid CreatedOn', ['id' => $trip->Id, 'raw' => $trip->CreatedOn]);
+                }
             }
 
-            // Format dates
-            $trip->created_on = $trip->created_on
-                ? Carbon::parse($trip->created_on)->format('Y-m-d H:i:s')
-                : null;
-
-            $trip->start_date = $trip->start_date_raw
-                ? Carbon::parse($trip->start_date_raw)->format('Y-m-d H:i:s')
-                : null;
-
-            $trip->end_date = $trip->end_date_raw
-                ? Carbon::parse($trip->end_date_raw)->format('Y-m-d H:i:s')
-                : null;
-
-            // Determine status
-            if ($trip->end_date_raw !== null) {
-                $trip->status = 'Completed';
-            } elseif ($trip->start_date_raw !== null) {
-                $trip->status = 'In Transit';
-            } else {
-                $trip->status = 'Planned';
+            $endDate = null;
+            if ($trip->EndDate) {
+                try {
+                    // Add 3 hours to EndDate
+                    $endDate = Carbon::parse($trip->EndDate)
+                        ->addHours(3)
+                        ->format('Y-m-d H:i:s');
+                } catch (\Exception $e) {
+                    Log::warning('Invalid EndDate', ['id' => $trip->Id, 'raw' => $trip->EndDate]);
+                }
             }
 
-            // Clean up raw date fields
-            unset($trip->start_date_raw, $trip->end_date_raw, $trip->db_status);
+            $status = 'Planned';
+            if ($trip->EndDate !== null) {
+                $status = 'Completed';
+            } elseif ($trip->StartDate !== null) {
+                $status = 'In Transit';
+            }
 
-            // Get allocated jobs from Trip_TripJobMapping
-            $jobs = DB::table('Trip_TripJobMapping as tjm')
-                ->select([
-                    'tjm.Id as job_id',
-                    'tjm.JobNo as job_number',
-                    'tjm.JobType as job_type',
-                    'tjm.StartLocation as pickup_location',
-                    'tjm.EndLocation as delivery_location',
-                    'tjm.StartDate as start_date',
-                    'tjm.EndDate as end_date',
-                    DB::raw("
-                        CASE
-                            WHEN tjm.EndDate IS NOT NULL THEN 'Completed'
-                            WHEN tjm.StartDate IS NOT NULL THEN 'In Transit'
-                            ELSE 'Allocated'
-                        END as status
-                    "),
-                ])
-                ->where('tjm.TripInfoID', $id)
-                ->where('tjm.IsDeleted', false)
-                ->orderBy('tjm.CreatedOn')
-                ->get();
+            return [
+                'id' => $trip->Id,
+                'trip_no' => $trip->TripNo ?? 'N/A',
+                'vehicle_no' => $trip->VehicleNo ?? 'N/A',
+                'driver_name' => $trip->DriverName ?? 'Not assigned',
+                'start_date' => $startDate,  // ✅ Has +3 hours
+                'end_date' => $endDate,      // ✅ Has +3 hours
+                'total_mileage' => $trip->TotalDistance ?? 0,
+                'avg_speed' => 0,
+                'max_speed' => 0,
+                'gps_points' => 0,
+                'total_duration' => $trip->TotalDuration ?? 0,
+                'status' => $status,
+                'DT_RowId' => 'row_'.$trip->Id,
+                'DT_RowData' => ['trip_id' => $trip->Id],
+            ];
+        });
 
-            $trip->jobs = $jobs;
+        return response()->json([
+            'success' => true,
+            'data' => $trips,
+        ]);
 
-            return response()->json([
-                'success' => true,
-                'data' => $trip,
-            ]);
+    } catch (\Exception $e) {
+        Log::error('Error fetching trips', [
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString(),
+        ]);
 
-        } catch (\Exception $e) {
-            Log::error('Error fetching trip details', [
-                'trip_id' => $id,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
+        return response()->json([
+            'success' => false,
+            'message' => 'Error fetching trips: '.$e->getMessage(),
+        ], 500);
+    }
+}
 
+
+/**
+ * Get single trip details with job mileage
+ * ✅ COMPLETE METHOD - Adds +3 hours in PHP (not SQL)
+ */
+public function getTripDetails($id)
+{
+    try {
+        // Get trip information
+        $trip = DB::table('Trip_TripInfomation as t')
+            ->select([
+                't.Id as id',
+                't.TripNo as trip_no',
+                't.VehicleNo as vehicle_no',
+                't.VehicleIMEI as vehicle_imei',
+                't.DriverName as driver_name',
+                't.DriverContactNo as driver_phone',
+                't.StartLocationCode as start_location_code',
+                't.StartLocation as start_location',
+                't.EndLocationCode as end_location_code',
+                't.EndLocation as end_location',
+                't.CreatedOn as created_on',
+                't.StartDate as start_date_raw',
+                't.EndDate as end_date_raw',
+                't.TotalDistance as total_distance',
+                't.TotalDuration as total_duration',
+                't.Status as db_status',
+            ])
+            ->where('t.Id', $id)
+            ->where('t.OfficeCode', 'KE')
+            ->where('t.IsDeleted', false)
+            ->first();
+
+        if (!$trip) {
             return response()->json([
                 'success' => false,
-                'message' => 'Error fetching trip details: '.$e->getMessage(),
-            ], 500);
+                'message' => 'Trip not found',
+            ], 404);
         }
+
+        // ✅ Format trip dates WITH +3 HOURS
+        $trip->created_on = $trip->created_on
+            ? Carbon::parse($trip->created_on)->addHours(3)->format('Y-m-d H:i:s')
+            : null;
+
+        $trip->start_date = $trip->start_date_raw
+            ? Carbon::parse($trip->start_date_raw)->addHours(3)->format('Y-m-d H:i:s')
+            : null;
+
+        $trip->end_date = $trip->end_date_raw
+            ? Carbon::parse($trip->end_date_raw)->addHours(3)->format('Y-m-d H:i:s')
+            : null;
+
+        // Determine status
+        if ($trip->end_date_raw !== null) {
+            $trip->status = 'Completed';
+        } elseif ($trip->start_date_raw !== null) {
+            $trip->status = 'In Transit';
+        } else {
+            $trip->status = 'Planned';
+        }
+
+        // Clean up raw date fields
+        unset($trip->start_date_raw, $trip->end_date_raw, $trip->db_status);
+
+        // ✅ Get jobs WITH mileage - Simple SQL query
+        $jobs = DB::table('Trip_TripJobMapping as tjm')
+            ->leftJoin('Trip_TripMileage as mil', function($join) {
+                $join->on('tjm.Id', '=', 'mil.TripJobInfoID');
+            })
+            ->select([
+                'tjm.Id as job_id',
+                'tjm.JobNo as job_number',
+                'tjm.JobType as job_type',
+                'tjm.StartLocation as pickup_location',
+                'tjm.EndLocation as delivery_location',
+                'tjm.StartDate as start_date_raw',  // Raw date from DB
+                'tjm.EndDate as end_date_raw',      // Raw date from DB
+                'tjm.CreatedOn as created_on',
+                DB::raw('COALESCE(SUM(mil.distance) / 1000.0, 0) as total_distance'),
+                DB::raw("
+                    CASE
+                        WHEN tjm.EndDate IS NOT NULL THEN 'Completed'
+                        WHEN tjm.StartDate IS NOT NULL THEN 'In Transit'
+                        ELSE 'Allocated'
+                    END as status
+                "),
+            ])
+            ->where('tjm.TripInfoID', $id)
+            ->where('tjm.IsDeleted', false)
+            ->groupBy([
+                'tjm.Id',
+                'tjm.JobNo',
+                'tjm.JobType',
+                'tjm.StartLocation',
+                'tjm.EndLocation',
+                'tjm.StartDate',
+                'tjm.EndDate',
+                'tjm.CreatedOn'
+            ])
+            ->orderBy('tjm.CreatedOn')
+            ->get()
+            ->map(function($job) {
+                // ✅ ADD +3 HOURS TO DATES IN PHP
+                $job->start_date = $job->start_date_raw
+                    ? Carbon::parse($job->start_date_raw)->addHours(3)->format('Y-m-d H:i:s')
+                    : null;
+
+                $job->end_date = $job->end_date_raw
+                    ? Carbon::parse($job->end_date_raw)->addHours(3)->format('Y-m-d H:i:s')
+                    : null;
+
+                // Remove raw fields (clean up)
+                unset($job->start_date_raw, $job->end_date_raw);
+
+                return $job;
+            });
+
+        $trip->jobs = $jobs;
+
+        return response()->json([
+            'success' => true,
+            'data' => $trip,
+        ]);
+
+    } catch (\Exception $e) {
+        Log::error('Error fetching trip details', [
+            'trip_id' => $id,
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString(),
+        ]);
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Error fetching trip details: '.$e->getMessage(),
+        ], 500);
     }
+}
+
 
     /**
      * Get vehicles from sp_Trip_VehicleList stored procedure
@@ -1296,7 +1338,7 @@ public function completeJob(Request $request, $tripId, $jobId)
             'KDN 347Y' => '865784055076759',
             'KDN 348Y' => '865784055073996',
             'KDN 349Y' => '865784055074077',
-            'KDN 351Y' => '865784055073303',
+            'KDN 351Y' => '865784055074028',
             'KDN 352Y' => '865784055082542',
         ];
 
@@ -1816,7 +1858,7 @@ public function endTrip(Request $request, $tripId)
             'KDN 347Y' => '865784055076759',
             'KDN 348Y' => '865784055073996',
             'KDN 349Y' => '865784055074077',
-            'KDN 351Y' => '865784055073303',
+            'KDN 351Y' => '865784055074028',
             'KDN 352Y' => '865784055082542',
         ];
 
@@ -2071,7 +2113,7 @@ public function endTrip(Request $request, $tripId)
             'KDN 347Y' => '865784055076759',
             'KDN 348Y' => '865784055073996',
             'KDN 349Y' => '865784055074077',
-            'KDN 351Y' => '865784055073303', // correct
+            'KDN 351Y' => '865784055074028', // correct
             'KDN 352Y' => '865784055082542',
         ];
 

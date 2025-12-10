@@ -1028,7 +1028,7 @@
     const locationsData = @json($locations);
     const rolesData = @json($roles);
     const existingModules = @json($userModuleAssignments ?? []);
-    const updateRoute = "{{ route('users.update', $user) }}";
+    const updateRoute = "{{ route('azure.users.update', $user) }}";
     const csrfToken = "{{ csrf_token() }}";
 
     let moduleCards = {};
@@ -1219,6 +1219,39 @@
 
         renderAllCards();
     }
+
+    // Clean up invalid cards after initialization
+    function cleanupInvalidCards() {
+        const invalidCards = [];
+
+        Object.entries(moduleCards).forEach(([cardId, card]) => {
+            if (!card.module_id) {
+                invalidCards.push(cardId);
+                return;
+            }
+
+            const module = modulesData.find(m => m.id == card.module_id);
+            if (!module) {
+                console.warn('🗑️ Removing invalid card on load:', cardId, card.module_id);
+                invalidCards.push(cardId);
+            }
+        });
+
+        invalidCards.forEach(cardId => {
+            delete moduleCards[cardId];
+        });
+
+        if (invalidCards.length > 0) {
+            console.log(`✅ Cleaned up ${invalidCards.length} invalid card(s)`);
+            renderAllCards();
+        }
+    }
+
+    // Call cleanup after initialization
+    document.addEventListener('DOMContentLoaded', function() {
+        initializeModules();
+        cleanupInvalidCards(); // Add this line
+    });
 
     function renderAllCards() {
         const grid = document.getElementById('modulesGrid');
@@ -1950,133 +1983,26 @@
         });
     };
 
-    function updateHiddenInputs() {
-        const container = document.getElementById('hiddenInputsContainer');
-        container.innerHTML = '';
-        let index = 0;
-
-        Object.values(moduleCards).forEach(card => {
-            if (!card.module_id || !card.assignments) return;
-
-            const module = modulesData.find(m => m.id == card.module_id);
-            if (!module) return;
-
-            const applicationCode = getApplicationCodeForSP(module);
-            const isSCM = applicationCode === 'OPS' || applicationCode === 'OPS UAT';
-
-            card.assignments.forEach(a => {
-                // Determine what to expand
-                const locations = a.location === 'ALL' ?
-                    locationsData.map(l => ({
-                        id: l.id,
-                        code: l.code.trim()
-                    })) :
-                    (a.locationCodes || []).map(code => ({
-                        id: locationsCache[code]?.id || '',
-                        code: code
-                    }));
-
-                const roles = a.role_id === 'ALL' ?
-                    (rolesCache[`${applicationCode}_all`] || []).map(r => ({
-                        id: r.id,
-                        code: r.code
-                    })) :
-                    (a.roleIds || []).map((id, idx) => ({
-                        id: id,
-                        code: a.roleCodes[idx] || ''
-                    }));
-
-                const functions = isSCM ? (
-                    a.function_id === 'ALL' ?
-                    (scmFunctionsCache || []).map(f => ({
-                        id: f.id,
-                        code: f.code
-                    })) :
-                    (a.functionIds || []).map((id, idx) => ({
-                        id: id,
-                        code: a.functionCodes[idx] || ''
-                    }))
-                ) : [];
-
-                // Create combinations
-                if (locations.length > 0 && roles.length > 0) {
-                    locations.forEach(loc => {
-                        roles.forEach(role => {
-                            if (isSCM && functions.length > 0) {
-                                functions.forEach(func => {
-                                    container.innerHTML += `
-                                        <input type="hidden" name="modules[${index}][module_id]" value="${card.module_id}">
-                                        <input type="hidden" name="modules[${index}][application_id]" value="${module.application_id}">
-                                        <input type="hidden" name="modules[${index}][location_id]" value="${loc.id}">
-                                        <input type="hidden" name="modules[${index}][location_code]" value="${loc.code}">
-                                        <input type="hidden" name="modules[${index}][role_id]" value="${role.id}">
-                                        <input type="hidden" name="modules[${index}][role_code]" value="${role.code}">
-                                        <input type="hidden" name="modules[${index}][function_id]" value="${func.id}">
-                                        <input type="hidden" name="modules[${index}][function_code]" value="${func.code}">
-                                    `;
-                                    index++;
-                                });
-                            } else {
-                                container.innerHTML += `
-                                    <input type="hidden" name="modules[${index}][module_id]" value="${card.module_id}">
-                                    <input type="hidden" name="modules[${index}][application_id]" value="${module.application_id}">
-                                    <input type="hidden" name="modules[${index}][location_id]" value="${loc.id}">
-                                    <input type="hidden" name="modules[${index}][location_code]" value="${loc.code}">
-                                    <input type="hidden" name="modules[${index}][role_id]" value="${role.id}">
-                                    <input type="hidden" name="modules[${index}][role_code]" value="${role.code}">
-                                `;
-                                index++;
-                            }
-                        });
-                    });
-                }
-            });
-        });
-
-        console.log('✅ Created', index, 'hidden inputs for', Object.keys(moduleCards).length, 'module cards');
+    function debugFormData() {
+        const formData = new FormData(document.getElementById('editUserForm'));
+        console.log('=== FORM DEBUG ===');
+        for (let [key, value] of formData.entries()) {
+            console.log(`${key}: ${value}`);
+        }
+        console.log('==================');
     }
 
-    window.updateUser = () => {
-        console.log('=== UPDATE USER STARTED ===');
+    // Call this before submitting to verify
+    debugFormData();
 
-        // Step 1: Update hidden inputs
-        updateHiddenInputs();
 
-        // Step 2: Log what we're about to send
-        const hiddenInputs = document.querySelectorAll('#hiddenInputsContainer input');
-        console.log('Total hidden inputs:', hiddenInputs.length);
-
-        // Group inputs by index to see assignments
-        const assignments = {};
-        hiddenInputs.forEach(input => {
-            const match = input.name.match(/modules\[(\d+)\]\[(\w+)\]/);
-            if (match) {
-                const index = match[1];
-                const field = match[2];
-                if (!assignments[index]) {
-                    assignments[index] = {};
-                }
-                assignments[index][field] = input.value;
-            }
-        });
-
-        console.log('Assignments to be saved:', assignments);
-        console.log('Total assignments:', Object.keys(assignments).length);
-
-        // Step 3: Create form data
+    function testSubmit() {
         const formData = new FormData();
         formData.append('_token', csrfToken);
         formData.append('_method', 'PUT');
+        formData.append('modules', JSON.stringify([]));
 
-        hiddenInputs.forEach(input => {
-            formData.append(input.name, input.value);
-        });
-
-        // Step 4: Show loading
-        showLoading();
-
-        // Step 5: Send to server
-        console.log('Sending to:', updateRoute);
+        console.log('Testing with empty modules array...');
 
         fetch(updateRoute, {
                 method: 'POST',
@@ -2086,39 +2012,231 @@
                     'X-Requested-With': 'XMLHttpRequest'
                 }
             })
-            .then(response => {
+            .then(r => r.json())
+            .then(data => console.log('Test response:', data))
+            .catch(err => console.error('Test error:', err));
+    }
+
+
+
+    function updateHiddenInputs() {
+        const container = document.getElementById('hiddenInputsContainer');
+        container.innerHTML = '';
+
+        let validAssignments = [];
+        let index = 0;
+
+        // If no cards, add empty marker and return
+        if (Object.keys(moduleCards).length === 0) {
+            container.innerHTML = '<input type="hidden" name="modules_empty" value="1">';
+            console.log('✅ No modules - adding empty marker');
+            return;
+        }
+
+        Object.values(moduleCards).forEach(card => {
+            if (!card.module_id || !card.assignments) {
+                console.warn('⚠️ Skipping card - missing module_id or assignments:', card);
+                return;
+            }
+
+            const module = modulesData.find(m => m.id == card.module_id);
+            if (!module) {
+                console.warn('⚠️ Skipping card - module not found:', card.module_id);
+                return;
+            }
+
+            const applicationCode = getApplicationCodeForSP(module);
+            const isSCM = applicationCode === 'OPS' || applicationCode === 'OPS UAT' || applicationCode === 'OPSUAT';
+
+            card.assignments.forEach(a => {
+                // Determine what to expand
+                const locations = a.location === 'ALL' || (a.locationCodes && a.locationCodes.includes('ALL')) ?
+                    locationsData.map(l => ({
+                        id: l.id,
+                        code: l.code.trim()
+                    })) :
+                    (a.locationCodes || []).map(code => {
+                        const loc = locationsCache[code];
+                        return loc ? {
+                            id: loc.id,
+                            code: loc.code
+                        } : null;
+                    }).filter(Boolean);
+
+                const roles = a.role_id === 'ALL' || (a.roleIds && a.roleIds.includes('ALL')) ?
+                    (rolesCache[`${applicationCode}_all`] || []).map(r => ({
+                        id: r.id,
+                        code: r.code
+                    })) :
+                    (a.roleIds || []).map((id, idx) => ({
+                        id: id,
+                        code: (a.roleCodes || [])[idx] || ''
+                    }));
+
+                const functions = isSCM ? (
+                    a.function_id === 'ALL' || (a.functionIds && a.functionIds.includes('ALL')) ?
+                    (scmFunctionsCache || []).map(f => ({
+                        id: f.id,
+                        code: f.code
+                    })) :
+                    (a.functionIds || []).map((id, idx) => ({
+                        id: id,
+                        code: (a.functionCodes || [])[idx] || ''
+                    }))
+                ) : [];
+
+                // Create combinations
+                if (locations.length > 0 && roles.length > 0) {
+                    locations.forEach(loc => {
+                        roles.forEach(role => {
+                            if (isSCM && functions.length > 0) {
+                                functions.forEach(func => {
+                                    validAssignments.push({
+                                        module_id: card.module_id,
+                                        application_id: module.application_id,
+                                        location_id: loc.id,
+                                        location_code: loc.code,
+                                        role_id: role.id,
+                                        role_code: role.code,
+                                        function_id: func.id,
+                                        function_code: func.code
+                                    });
+                                });
+                            } else {
+                                validAssignments.push({
+                                    module_id: card.module_id,
+                                    application_id: module.application_id,
+                                    location_id: loc.id,
+                                    location_code: loc.code,
+                                    role_id: role.id,
+                                    role_code: role.code,
+                                    function_id: null,
+                                    function_code: null
+                                });
+                            }
+                        });
+                    });
+                }
+            });
+        });
+
+        // Create hidden inputs for each valid assignment
+        validAssignments.forEach((assignment, idx) => {
+            Object.entries(assignment).forEach(([key, value]) => {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = `modules[${idx}][${key}]`;
+                input.value = value || '';
+                container.appendChild(input);
+            });
+        });
+
+        console.log(`✅ Created ${validAssignments.length} valid assignments`);
+
+        // If no valid assignments, add empty marker
+        if (validAssignments.length === 0) {
+            container.innerHTML = '<input type="hidden" name="modules_empty" value="1">';
+            console.log('⚠️ No valid assignments - sending empty marker');
+        }
+    }
+
+    // In your JavaScript updateUser() function, replace the fetch call with:
+
+    window.updateUser = () => {
+        console.log('=== UPDATE USER STARTED ===');
+
+        // Step 1: Update hidden inputs
+        updateHiddenInputs();
+
+        // Step 2: Create form data
+        const formData = new FormData();
+        formData.append('_token', csrfToken);
+        formData.append('_method', 'PUT');
+
+        // Step 3: Check what to send
+        const hiddenInputs = document.querySelectorAll('#hiddenInputsContainer input');
+        const modulesEmptyInput = document.querySelector('input[name="modules_empty"]');
+
+        if (modulesEmptyInput && modulesEmptyInput.value === '1') {
+            // Send empty marker
+            formData.append('modules_empty', '1');
+            console.log('📤 Sending empty modules marker');
+        } else if (hiddenInputs.length > 0) {
+            // Send module assignments
+            hiddenInputs.forEach(input => {
+                formData.append(input.name, input.value);
+            });
+            console.log(`📤 Sending ${hiddenInputs.length} module inputs`);
+        } else {
+            // No modules at all
+            formData.append('modules_empty', '1');
+            console.log('📤 No modules found - sending empty marker');
+        }
+
+        // Step 4: Log what we're sending
+        console.log('=== FORMDATA CONTENTS ===');
+        for (let [key, value] of formData.entries()) {
+            console.log(`${key}: ${value}`);
+        }
+
+        // Step 5: Show loading
+        showLoading();
+
+        // Step 6: Send request
+        fetch(updateRoute, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRF-TOKEN': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            })
+            .then(async response => {
                 console.log('Response status:', response.status);
-                return response.json();
+
+                // Try to parse JSON, but handle non-JSON responses
+                const text = await response.text();
+                console.log('Response text (first 500 chars):', text.substring(0, 500));
+
+                try {
+                    return JSON.parse(text);
+                } catch (e) {
+                    console.error('Failed to parse JSON:', e);
+                    throw new Error('Server returned non-JSON response');
+                }
             })
             .then(data => {
                 hideLoading();
-
                 console.log('=== SERVER RESPONSE ===', data);
 
                 if (data.success) {
-                    showAlert('success', 'Success', 'User updated successfully!');
-
-                    // Hide the Update User & Cancel buttons
+                    showAlert('success', 'Success', data.message || 'User updated successfully!');
                     toggleFormActions(false);
-
-                    // Update initial state
                     initialModuleState = deepClone(moduleCards);
 
-                    console.log('✅ Update successful - redirecting to user details');
-
-                    // Redirect to user details page to see the new modules
                     setTimeout(() => {
                         window.location.href = "{{ route('azure.users.show', $user->Id) }}";
                     }, 1500);
                 } else {
                     console.error('❌ Update failed:', data.message);
-                    showAlert('error', 'Error', data.message || 'Failed to update user');
+
+                    let errorMsg = data.message;
+                    if (data.errors) {
+                        if (Array.isArray(data.errors)) {
+                            errorMsg += '\n\n' + data.errors.join('\n');
+                        } else if (typeof data.errors === 'object') {
+                            errorMsg += '\n\n' + Object.values(data.errors).flat().join('\n');
+                        }
+                    }
+
+                    showAlert('error', 'Update Failed', errorMsg);
                 }
             })
             .catch(error => {
                 hideLoading();
-                console.error('=== UPDATE ERROR ===', error);
-                showAlert('error', 'Error', 'An error occurred while updating the user: ' + error.message);
+                console.error('=== FETCH ERROR ===', error);
+                showAlert('error', 'Network Error', 'Failed to communicate with server. Please check console for details.');
             });
     };
 
