@@ -60,9 +60,8 @@ class AzureUserManagementController extends Controller
             }
 
             // Apply search filter if provided
-            // Apply search filter if provided
             if ($search = $request->get('search')) {
-                Log::info('Search query received', ['search' => $search]); // ADD THIS LINE
+                Log::info('Search query received', ['search' => $search]);
 
                 $query->where(function ($q) use ($search) {
                     // Search in name fields
@@ -1399,7 +1398,7 @@ class AzureUserManagementController extends Controller
                         'modules.*.application_id' => 'required|string',
                         'modules.*.location_id' => 'required|string',
                         'modules.*.location_code' => 'required|string',
-                        'modules.*.role_id' => 'required|string',
+                        'modules.*.role_id' => 'required',
                         'modules.*.role_code' => 'required|string',
                         'modules.*.function_id' => 'nullable|string',
                         'modules.*.function_code' => 'nullable|string',
@@ -1517,8 +1516,11 @@ class AzureUserManagementController extends Controller
                             'application_id' => $moduleData['application_id'],
                             'Username' => $user->displayName,
                             'ApplicationName' => $module->Name,
-                            'FunctionCode' => $moduleData['function_code'] ?? null,
-                            'FunctionID' => $moduleData['function_id'] ?? null,
+
+                            // ✅ FIX: Convert empty strings to NULL
+                            'FunctionCode' => !empty($moduleData['function_code']) ? $moduleData['function_code'] : null,
+                            'FunctionID' => !empty($moduleData['function_id']) ? $moduleData['function_id'] : null,
+
                             'RoleCode' => $moduleData['role_code'],
                             'RoleID' => $moduleData['role_id'],
                             'OfficeCode' => $moduleData['location_code'],
@@ -1615,7 +1617,8 @@ class AzureUserManagementController extends Controller
                     'data' => [
                         'inserted' => $insertedCount,
                         'deleted' => $deletedCount,
-                        'verified' => $verifyCount
+                        'verified' => $verifyCount,
+                        'user_id' => $user->Id
                     ]
                 ]);
             } catch (\Exception $e) {
@@ -2386,66 +2389,23 @@ class AzureUserManagementController extends Controller
      */
     public function getModuleRolesByCode(Request $request)
     {
-        // Enable debug mode from config
         $debugMode = config('azure_modules.debug', false);
 
         try {
-            // Step 1: Get parameters from request
             $applicationCode = $request->query('application_code');
             $filter = $request->query('filter', null);
 
-            if ($debugMode) {
-                Log::info('🔍 [AZURE ROLES] Request received', [
-                    'application_code' => $applicationCode,
-                    'filter' => $filter,
-                    'request_url' => $request->fullUrl(),
-                    'timestamp' => now()->toDateTimeString()
-                ]);
-            }
-
-            // Step 2: Validate application code
             if (!$applicationCode) {
-                Log::warning('⚠️ [AZURE ROLES] Missing application code');
-
                 return response()->json([
                     'success' => false,
                     'message' => 'Application code is required'
                 ], 400);
             }
 
-            // Step 3: Get mapping from config file
             $mapping = config('azure_modules.module_mapping', []);
-
-            if ($debugMode) {
-                Log::info('📋 [AZURE ROLES] Config mapping loaded', [
-                    'total_mappings' => count($mapping),
-                    'available_modules' => array_keys($mapping)
-                ]);
-            }
-
-            // Step 4: Map the application code
             $finalCode = $mapping[$applicationCode] ?? $applicationCode;
 
-            $wasMapped = isset($mapping[$applicationCode]);
-
-            Log::info('🔄 [AZURE ROLES] Application code mapping', [
-                'original_code' => $applicationCode,
-                'mapped_code' => $finalCode,
-                'was_mapped' => $wasMapped,
-                'mapping_source' => $wasMapped ? 'config file' : 'direct (no mapping found)'
-            ]);
-
-            // Step 5: Call stored procedure
-            if ($debugMode) {
-                Log::info('🎯 [AZURE ROLES] Calling stored procedure', [
-                    'procedure' => 'sp_UserCreation_ResourceRole',
-                    'parameters' => [
-                        'ApplicationCode' => $finalCode,
-                        'Filter' => $filter
-                    ]
-                ]);
-            }
-
+            // ✅ CALL STORED PROCEDURE (returns RoleId as varchar)
             if ($filter) {
                 $roles = DB::connection('sqlsrv')
                     ->select(
@@ -2460,55 +2420,53 @@ class AzureUserManagementController extends Controller
                     );
             }
 
-            // Step 6: Process results
-            $roleCount = count($roles);
+            // ✅ FIX: Map RoleId (varchar) to Id (GUID)
+            $roleIds = collect($roles)->pluck('RoleId')->filter()->toArray();
 
-            Log::info('✅ [AZURE ROLES] Roles fetched successfully', [
-                'application_code' => $applicationCode,
-                'mapped_to' => $finalCode,
-                'role_count' => $roleCount,
-                'filter_applied' => $filter ? true : false
-            ]);
+            if (!empty($roleIds)) {
+                // Get the actual GUIDs from the table
+                $roleMapping = DB::connection('sqlsrv')
+                    ->table('Azure_Users_Role')
+                    ->select('Id', 'RoleId', 'RoleCode', 'Role')
+                    ->where('ApplicationCode', $finalCode)
+                    ->whereIn('RoleId', $roleIds)
+                    ->where('IsActive', 1)
+                    ->where('IsDeleted', 0)
+                    ->get()
+                    ->keyBy('RoleId');
 
-            if ($debugMode && $roleCount > 0) {
-                Log::info('📊 [AZURE ROLES] Sample roles', [
-                    'first_role' => $roles[0] ?? null,
-                    'total_count' => $roleCount
-                ]);
+                // Replace varchar RoleId with GUID Id
+                foreach ($roles as &$role) {
+                    $oldRoleId = $role->RoleId;
+                    if (isset($roleMapping[$oldRoleId])) {
+                        $role->RoleId = $roleMapping[$oldRoleId]->Id; // ✅ Use GUID
+                    }
+                }
             }
 
-            // Step 7: Return response
+            Log::info('✅ [AZURE ROLES] Roles fetched and mapped to GUIDs', [
+                'application_code' => $applicationCode,
+                'role_count' => count($roles)
+            ]);
+
             return response()->json([
                 'success' => true,
                 'data' => $roles,
                 'meta' => [
                     'application_code_requested' => $applicationCode,
                     'application_code_used' => $finalCode,
-                    'was_mapped' => $wasMapped,
-                    'role_count' => $roleCount,
+                    'role_count' => count($roles),
                     'filter' => $filter
                 ]
             ]);
         } catch (\Exception $e) {
-            // Step 8: Error handling
             Log::error('❌ [AZURE ROLES] Failed to fetch module roles', [
-                'application_code' => $request->query('application_code'),
-                'filter' => $request->query('filter'),
-                'error_message' => $e->getMessage(),
-                'error_code' => $e->getCode(),
-                'error_file' => $e->getFile(),
-                'error_line' => $e->getLine(),
-                'trace' => $e->getTraceAsString()
+                'error' => $e->getMessage()
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to fetch roles: ' . $e->getMessage(),
-                'error_details' => config('app.debug') ? [
-                    'file' => $e->getFile(),
-                    'line' => $e->getLine(),
-                    'trace' => $e->getTraceAsString()
-                ] : null
+                'message' => 'Failed to fetch roles: ' . $e->getMessage()
             ], 500);
         }
     }

@@ -1079,15 +1079,29 @@
     }
 
     // Show/Hide the Update User & Cancel buttons
+    // Show/Hide the Update User & Cancel buttons
     function toggleFormActions(show) {
+        console.log('🔘 toggleFormActions called with:', show);
         const moduleActionsSection = document.getElementById('moduleActionsSection');
+
+        if (!moduleActionsSection) {
+            console.error('❌ moduleActionsSection element not found!');
+            return;
+        }
+
+        console.log('📍 moduleActionsSection element found:', moduleActionsSection);
+
         if (show) {
+            console.log('✅ Adding visible class');
             moduleActionsSection.classList.add('visible');
             hasUnsavedChanges = true;
         } else {
+            console.log('❌ Removing visible class');
             moduleActionsSection.classList.remove('visible');
             hasUnsavedChanges = false;
         }
+
+        console.log('📊 Current classes:', moduleActionsSection.className);
     }
 
     // Fetch SCM Functions
@@ -1178,6 +1192,18 @@
     }
 
     function initializeModules() {
+
+        moduleCards = {};
+
+        console.log('=== EXISTING MODULES FROM BACKEND ===');
+        console.log('Total count:', existingModules.length);
+        console.log('Data:', existingModules);
+
+        // Check for duplicates
+        const moduleIds = existingModules.map(m => m.module_id);
+        const uniqueModuleIds = [...new Set(moduleIds)];
+        console.log('Unique module IDs:', uniqueModuleIds.length);
+        console.log('Has duplicates?', moduleIds.length !== uniqueModuleIds.length);
         const grouped = {};
         existingModules.forEach(m => {
             const moduleId = m.module_id;
@@ -1382,21 +1408,40 @@
     };
 
     window.saveModalChanges = () => {
-        if (!isEditMode) return;
+        console.log('💾 saveModalChanges called');
+
+        if (!isEditMode) {
+            console.log('❌ Not in edit mode, returning');
+            return;
+        }
 
         const card = moduleCards[currentModalCardId];
+        console.log('📦 Current card:', card);
+        console.log('🆕 Is new module?', card?.isNew);
 
-        // For NEW modules: just close the modal (no Update User button needed)
+        // For NEW modules: mark as not new and show Update User button
         if (card && card.isNew) {
+            console.log('✅ Processing NEW module');
             card.isNew = false;
+
+            // Close modal
             document.getElementById('moduleModal').classList.remove('active');
             currentModalCardId = null;
             isEditMode = false;
             originalCardState = null;
+
+            // Re-render cards
             renderAllCards();
-            showAlert('success', 'Saved', 'New module assignment added. The changes are ready.');
+
+            // ✅ SHOW THE UPDATE USER BUTTON
+            console.log('🔘 Calling toggleFormActions(true)');
+            toggleFormActions(true);
+
+            showAlert('success', 'Saved', 'New module assignment added. Click "Update User" to save to database.');
             return;
         }
+
+        console.log('✅ Processing EXISTING module');
 
         // For EXISTING modules: show the Update User & Cancel buttons
         if (currentModalCardId && moduleCards[currentModalCardId]) {
@@ -1414,6 +1459,7 @@
         renderAllCards();
 
         // Show the Update User & Cancel buttons
+        console.log('🔘 Calling toggleFormActions(true) for existing module');
         toggleFormActions(true);
 
         showAlert('success', 'Saved', 'Changes saved. Click "Update User" to save to database.');
@@ -1571,14 +1617,16 @@
                             </div>
                         </div>
                         <div class="checkboxes-grid">
-                            ${availableRoles.length > 0 ? availableRoles.map(r => {
-                                const isChecked = a.roleIds && a.roleIds.includes(String(r.id));
-                                return `
-                                    <div class="checkbox-option ${isAllRoles || !isEditMode ? 'disabled' : ''}">
-                                        <input type="checkbox" 
-                                               id="${a.id}_role_${r.id}" 
-                                               class="role-checkbox" 
-                                               data-role-id="${r.id}"
+                           ${availableRoles.length > 0 ? availableRoles.map(r => {
+    const isChecked = a.roleIds && a.roleIds.map(String).includes(String(r.id));
+    return `
+        <div class="checkbox-option ${isAllRoles || !isEditMode ? 'disabled' : ''}">
+            <input type="checkbox" 
+                   id="${a.id}_role_${r.id}" 
+                   class="role-checkbox" 
+                   data-role-id="${r.id}"
+                   data-role-code="${escapeHtml(r.code)}"
+                   value="${r.id}"
                                                data-role-code="${escapeHtml(r.code)}"
                                                value="${r.id}" 
                                                ${isChecked || isAllRoles ? 'checked' : ''} 
@@ -2162,11 +2210,17 @@
             formData.append('modules_empty', '1');
             console.log('📤 Sending empty modules marker');
         } else if (hiddenInputs.length > 0) {
-            // Send module assignments
+            // Send module assignments - BUT SKIP EMPTY FUNCTION FIELDS
             hiddenInputs.forEach(input => {
+                // Skip function_id and function_code if they're empty
+                if ((input.name.includes('function_id') || input.name.includes('function_code')) &&
+                    input.value === '') {
+                    console.log(`⏭️ Skipping empty field: ${input.name}`);
+                    return; // Skip this one
+                }
                 formData.append(input.name, input.value);
             });
-            console.log(`📤 Sending ${hiddenInputs.length} module inputs`);
+            console.log(`📤 Sending ${hiddenInputs.length} module inputs (filtered)`);
         } else {
             // No modules at all
             formData.append('modules_empty', '1');
@@ -2216,7 +2270,8 @@
                     initialModuleState = deepClone(moduleCards);
 
                     setTimeout(() => {
-                        window.location.href = "{{ route('azure.users.show', $user->Id) }}";
+                        const userId = data.data?.user_id || "{{ $user->Id }}";
+                        window.location.href = `/azure/users/${userId}`;
                     }, 1500);
                 } else {
                     console.error('❌ Update failed:', data.message);
