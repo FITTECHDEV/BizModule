@@ -263,9 +263,11 @@ class AzureUserManagementController extends Controller
             // Fetch locations from Cust_Office table
             $locationsRaw = DB::connection('sqlsrv')
                 ->select("SELECT Id, Name, code 
-                    FROM Cust_Office 
-                    WHERE IsActive = 1 AND IsDeleted = 0 
-                    ORDER BY Name");
+                FROM Cust_Office 
+                WHERE IsActive = 1 
+                    AND IsDeleted = 0 
+                    AND code != 'ALL'
+                ORDER BY Name");
 
             // Convert to Laravel collection
             $locations = collect($locationsRaw)->map(function ($location) {
@@ -1197,7 +1199,9 @@ class AzureUserManagementController extends Controller
             $locationsRaw = DB::connection('sqlsrv')
                 ->select("SELECT Id, Name, code 
                 FROM Cust_Office 
-                WHERE IsActive = 1 AND IsDeleted = 0 
+                WHERE IsActive = 1 
+                    AND IsDeleted = 0 
+                    AND code != 'ALL'
                 ORDER BY Name");
 
             $locations = collect($locationsRaw)->map(function ($location) {
