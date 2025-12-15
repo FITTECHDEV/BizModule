@@ -56,8 +56,28 @@ class RouteServiceProvider extends ServiceProvider
      */
     protected function configureRateLimiting()
     {
+        // ✅ Default API rate limit - increased from 60 to 300
         RateLimiter::for('api', function (Request $request) {
-            return Limit::perMinute(60)->by(optional($request->user())->id ?: $request->ip());
+            return Limit::perMinute(300)
+                ->by($request->user()?->id ?: $request->ip());
+        });
+
+        // ✅ Dashboard endpoints - moderate limit
+        RateLimiter::for('dashboard', function (Request $request) {
+            return Limit::perMinute(100)
+                ->by($request->user()?->id ?: $request->ip());
+        });
+
+        // ✅ User actions (create, update, delete) - stricter limit
+        RateLimiter::for('user_actions', function (Request $request) {
+            return Limit::perMinute(30)
+                ->by($request->user()?->id ?: $request->ip());
+        });
+
+        // ✅ Heavy operations (exports, bulk operations) - very strict
+        RateLimiter::for('heavy_operations', function (Request $request) {
+            return Limit::perMinute(10)
+                ->by($request->user()?->id ?: $request->ip());
         });
     }
 }

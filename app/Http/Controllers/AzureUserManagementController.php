@@ -2402,51 +2402,57 @@ class AzureUserManagementController extends Controller
                 ], 400);
             }
 
-            $mapping = config('azure_modules.module_mapping', []);
-            $finalCode = $mapping[$applicationCode] ?? $applicationCode;
+            // ✅ ADD CACHING - cache for 1 hour
+            $cacheKey = "roles_{$applicationCode}_" . md5($filter ?? 'all');
 
-            // ✅ CALL STORED PROCEDURE (returns RoleId as varchar)
-            if ($filter) {
-                $roles = DB::connection('sqlsrv')
-                    ->select(
-                        'EXEC sp_UserCreation_ResourceRole @ApplicationCode = ?, @Filter = ?',
-                        [$finalCode, $filter]
-                    );
-            } else {
-                $roles = DB::connection('sqlsrv')
-                    ->select(
-                        'EXEC sp_UserCreation_ResourceRole @ApplicationCode = ?',
-                        [$finalCode]
-                    );
-            }
+            $roles = Cache::remember($cacheKey, 3600, function () use ($request, $applicationCode, $filter) {
+                $mapping = config('azure_modules.module_mapping', []);
+                $finalCode = $mapping[$applicationCode] ?? $applicationCode;
 
-            // ✅ FIX: Map RoleId (varchar) to Id (GUID)
-            $roleIds = collect($roles)->pluck('RoleId')->filter()->toArray();
+                // Call stored procedure
+                if ($filter) {
+                    $roles = DB::connection('sqlsrv')
+                        ->select(
+                            'EXEC sp_UserCreation_ResourceRole @ApplicationCode = ?, @Filter = ?',
+                            [$finalCode, $filter]
+                        );
+                } else {
+                    $roles = DB::connection('sqlsrv')
+                        ->select(
+                            'EXEC sp_UserCreation_ResourceRole @ApplicationCode = ?',
+                            [$finalCode]
+                        );
+                }
 
-            if (!empty($roleIds)) {
-                // Get the actual GUIDs from the table
-                $roleMapping = DB::connection('sqlsrv')
-                    ->table('Azure_Users_Role')
-                    ->select('Id', 'RoleId', 'RoleCode', 'Role')
-                    ->where('ApplicationCode', $finalCode)
-                    ->whereIn('RoleId', $roleIds)
-                    ->where('IsActive', 1)
-                    ->where('IsDeleted', 0)
-                    ->get()
-                    ->keyBy('RoleId');
+                // Map RoleId to GUID
+                $roleIds = collect($roles)->pluck('RoleId')->filter()->toArray();
 
-                // Replace varchar RoleId with GUID Id
-                foreach ($roles as &$role) {
-                    $oldRoleId = $role->RoleId;
-                    if (isset($roleMapping[$oldRoleId])) {
-                        $role->RoleId = $roleMapping[$oldRoleId]->Id; // ✅ Use GUID
+                if (!empty($roleIds)) {
+                    $roleMapping = DB::connection('sqlsrv')
+                        ->table('Azure_Users_Role')
+                        ->select('Id', 'RoleId', 'RoleCode', 'Role')
+                        ->where('ApplicationCode', $finalCode)
+                        ->whereIn('RoleId', $roleIds)
+                        ->where('IsActive', 1)
+                        ->where('IsDeleted', 0)
+                        ->get()
+                        ->keyBy('RoleId');
+
+                    foreach ($roles as &$role) {
+                        $oldRoleId = $role->RoleId;
+                        if (isset($roleMapping[$oldRoleId])) {
+                            $role->RoleId = $roleMapping[$oldRoleId]->Id;
+                        }
                     }
                 }
-            }
 
-            Log::info('✅ [AZURE ROLES] Roles fetched and mapped to GUIDs', [
+                return $roles;
+            });
+
+            Log::info('✅ [AZURE ROLES] Roles fetched', [
                 'application_code' => $applicationCode,
-                'role_count' => count($roles)
+                'role_count' => count($roles),
+                'cached' => true
             ]);
 
             return response()->json([
@@ -2454,7 +2460,6 @@ class AzureUserManagementController extends Controller
                 'data' => $roles,
                 'meta' => [
                     'application_code_requested' => $applicationCode,
-                    'application_code_used' => $finalCode,
                     'role_count' => count($roles),
                     'filter' => $filter
                 ]
