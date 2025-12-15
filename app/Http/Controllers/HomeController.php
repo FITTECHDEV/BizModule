@@ -46,6 +46,21 @@ class HomeController extends Controller
             $tims_stats = new KRABillingHeader();
             $tims_stats = $tims_stats->timsStats();
 
+            // Azure User Statistics with error handling
+            try {
+                $azureStats = Cache::remember('azure_user_stats', 300, function () {
+                    return [
+                        'active' => \App\Models\AzureUser::where('Status', 'active')->count(),
+                        'pending' => \App\Models\AzureUser::where('Status', 'pending')->count(),
+                        'inactive' => \App\Models\AzureUser::where('Status', 'inactive')->count(),
+                        'total' => \App\Models\AzureUser::count(),
+                    ];
+                });
+            } catch (\Exception $e) {
+                \Log::error('Azure Stats Error: ' . $e->getMessage());
+                $azureStats = ['active' => 0, 'pending' => 0, 'inactive' => 0, 'total' => 0];
+            }
+
             $role = Auth::user()->Role;
 
             try {
@@ -77,11 +92,12 @@ class HomeController extends Controller
                 'ticketStatistics' => $ticketStatistics,
                 'efris_stats' => $efris_stats,
                 'traStatsTZ' => $traStatsTZ,
+                'azureStats' => $azureStats,
             ]);
 
             return view(
                 'dashboard.ticket',
-                compact('ticketStatistics', 'entityStatistics', 'tims_stats', 'efris_stats', 'traStatsTZ', 'traStatsADL', 'rra_stats')
+                compact('ticketStatistics', 'entityStatistics', 'tims_stats', 'efris_stats', 'traStatsTZ', 'traStatsADL', 'rra_stats', 'azureStats')
             );
         } catch (\Exception $e) {
             \Log::error('Home Controller Error: ' . $e->getMessage());

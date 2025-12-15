@@ -13,7 +13,7 @@
 <div class="row">
     <!-- Active Users Card -->
     <div class="col-lg-3 col-md-6">
-        <div class="small-box bg-success" style="cursor: pointer;" onclick="window.location='{{ route('azure.users.active') }}'">
+        <div class="small-box bg-success" style="cursor: pointer;" onclick="window.location=`{{ route('azure.users.active') }}`">
             <div class="inner">
                 <h3>{{ $stats['active'] ?? 0 }}</h3>
                 <p>Active Users</p>
@@ -26,7 +26,7 @@
 
     <!-- Pending Users Card -->
     <div class="col-lg-3 col-md-6">
-        <div class="small-box bg-warning" style="cursor: pointer;" onclick="window.location='{{ route('azure.users.pending') }}'">
+        <div class="small-box bg-warning" style="cursor: pointer;" onclick="window.location=`{{ route('azure.users.pending') }}`">
             <div class="inner">
                 <h3>{{ $stats['pending'] ?? 0 }}</h3>
                 <p>Pending</p>
@@ -39,7 +39,7 @@
 
     <!-- Inactive Users Card -->
     <div class="col-lg-3 col-md-6">
-        <div class="small-box bg-danger" style="cursor: pointer;" onclick="window.location='{{ route('azure.users.inactive') }}'">
+        <div class="small-box bg-danger" style="cursor: pointer;" onclick="window.location=`{{ route('azure.users.inactive') }}`">
             <div class="inner">
                 <h3>{{ $stats['inactive'] ?? 0 }}</h3>
                 <p>Inactive</p>
@@ -68,15 +68,77 @@
 <div class="card">
     <div class="card-header">
         <div class="row align-items-center">
-            <div class="col-md-2">
-                <select id="statusFilter" class="form-control form-control-sm">
-                    <option value="">All Status</option>
-                    <option value="active" {{ request('status') == 'active' ? 'selected' : '' }}>Active</option>
-                    <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>Pending</option>
-                    <option value="inactive" {{ request('status') == 'inactive' ? 'selected' : '' }}>Inactive</option>
-                </select>
+            <div class="col-md-6">
+                <div class="d-flex align-items-center">
+                    <!-- Status Filter -->
+                    <div class="mr-2" style="min-width: 150px;">
+                        <select id="statusFilter" class="form-control form-control-sm">
+                            <option value="">All Status</option>
+                            <option value="active" {{ request('status') == 'active' ? 'selected' : '' }}>Active</option>
+                            <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>Pending</option>
+                            <option value="inactive" {{ request('status') == 'inactive' ? 'selected' : '' }}>Inactive</option>
+                        </select>
+                    </div>
+
+                    <!-- Department Filter -->
+                    <div class="mr-2" style="min-width: 180px;">
+                        <select id="departmentFilter" class="form-control form-control-sm">
+                            <option value="">All Departments</option>
+                            @foreach($departments as $dept)
+                            <option value="{{ $dept }}" {{ request('department') == $dept ? 'selected' : '' }}>
+                                {{ $dept }}
+                            </option>
+                            @endforeach
+                            <option value="no_department" {{ request('department') == 'no_department' ? 'selected' : '' }}>
+                                (No Department)
+                            </option>
+                        </select>
+                    </div>
+
+                    <!-- Company Name Filter -->
+                    <div class="mr-2" style="min-width: 180px;">
+                        <select id="companyFilter" class="form-control form-control-sm">
+                            <option value="">All Companies</option>
+                            @foreach($companies as $company)
+                            <option value="{{ $company }}" {{ request('company') == $company ? 'selected' : '' }}>
+                                {{ $company }}
+                            </option>
+                            @endforeach
+                            <option value="no_company" {{ request('company') == 'no_company' ? 'selected' : '' }}>
+                                (No Company)
+                            </option>
+                        </select>
+                    </div>
+
+                    <!-- Office Location Filter -->
+                    <div class="mr-2" style="min-width: 180px;">
+                        <select id="locationFilter" class="form-control form-control-sm">
+                            <option value="">All Locations</option>
+                            @foreach($locations as $location)
+                            <option value="{{ $location }}" {{ request('location') == $location ? 'selected' : '' }}>
+                                {{ $location }}
+                            </option>
+                            @endforeach
+                            <option value="no_location" {{ request('location') == 'no_location' ? 'selected' : '' }}>
+                                (No Location)
+                            </option>
+                        </select>
+                    </div>
+
+                    <!-- Search Type Dropdown (Hidden by default, shows when searching) -->
+                    <div id="searchTypeContainer" class="mr-2" style="display: none; min-width: 150px;">
+                        <select id="searchType" class="form-control form-control-sm">
+                            <option value="all" {{ request('search_type', 'all') == 'all' ? 'selected' : '' }}>All Fields</option>
+                            <option value="department" {{ request('search_type') == 'department' ? 'selected' : '' }}>Department Only</option>
+                            <option value="name" {{ request('search_type') == 'name' ? 'selected' : '' }}>Name Only</option>
+                            <option value="company" {{ request('search_type') == 'company' ? 'selected' : '' }}>Company Only</option>
+                            <option value="email" {{ request('search_type') == 'email' ? 'selected' : '' }}>Email Only</option>
+                        </select>
+                    </div>
+                </div>
             </div>
-            <div class="col-md-10 text-right">
+
+            <div class="col-md-6 text-right">
                 <div class="d-inline-flex align-items-center">
                     <div class="input-group input-group-sm mr-2" style="width: 350px;">
                         <input type="text"
@@ -86,7 +148,7 @@
                             value="{{ request('search') }}"
                             autocomplete="off">
                         <div class="input-group-append">
-                            <button class="btn btn-outline-secondary" type="button" id="clearSearch" title="Clear search">
+                            <button class="btn btn-outline-secondary" type="button" id="clearSearch" title="Clear all filters">
                                 <i class="fas fa-times"></i>
                             </button>
                             <span class="input-group-text"><i class="fas fa-search"></i></span>
@@ -100,6 +162,7 @@
         </div>
     </div>
 
+    <!-- Rest of your table code remains the same -->
     <div class="card-body table-responsive p-0">
         <table class="table table-hover text-nowrap">
             <thead>
@@ -175,7 +238,7 @@
                     <td colspan="8" class="text-center text-muted py-4">
                         <i class="fas fa-users fa-3x mb-3"></i>
                         <p>No users found</p>
-                        @if(request('search') || request('status'))
+                        @if(request('search') || request('status') || request('department') || request('company') || request('location'))
                         <button class="btn btn-sm btn-outline-primary" onclick="clearAllFilters()">
                             <i class="fas fa-redo"></i> Clear Filters
                         </button>
@@ -259,6 +322,135 @@
     </div>
     @endif
 </div>
+
+<!-- Add this JavaScript to handle the filters -->
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Get filter elements
+        const statusFilter = document.getElementById('statusFilter');
+        const departmentFilter = document.getElementById('departmentFilter');
+        const companyFilter = document.getElementById('companyFilter');
+        const locationFilter = document.getElementById('locationFilter');
+        const searchUsers = document.getElementById('searchUsers');
+        const searchType = document.getElementById('searchType');
+        const searchTypeContainer = document.getElementById('searchTypeContainer');
+        const clearSearchBtn = document.getElementById('clearSearch');
+
+        // Show search type dropdown when typing in search box
+        searchUsers.addEventListener('input', function() {
+            if (this.value.trim().length > 0) {
+                searchTypeContainer.style.display = 'block';
+            } else {
+                searchTypeContainer.style.display = 'none';
+            }
+        });
+
+        // Handle Enter key in search box
+        searchUsers.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                applyFilters();
+            }
+        });
+
+        // Handle filter changes
+        [statusFilter, departmentFilter, companyFilter, locationFilter].forEach(filter => {
+            filter.addEventListener('change', applyFilters);
+        });
+
+        // Clear search button - resets everything and reloads page
+        clearSearchBtn.addEventListener('click', function() {
+            // Navigate to base URL without any query parameters
+            window.location.href = window.location.pathname;
+        });
+
+        // Apply all filters
+        function applyFilters() {
+            const url = new URL(window.location.href.split('?')[0]);
+            const params = new URLSearchParams();
+
+            // Add status filter
+            if (statusFilter.value) {
+                params.append('status', statusFilter.value);
+            }
+
+            // Add department filter
+            if (departmentFilter.value) {
+                params.append('department', departmentFilter.value);
+            }
+
+            // Add company filter
+            if (companyFilter.value) {
+                params.append('company', companyFilter.value);
+            }
+
+            // Add location filter
+            if (locationFilter.value) {
+                params.append('location', locationFilter.value);
+            }
+
+            // Add search term and type
+            const searchValue = searchUsers.value.trim();
+            if (searchValue) {
+                params.append('search', searchValue);
+                if (searchType && searchType.value !== 'all') {
+                    params.append('search_type', searchType.value);
+                }
+            }
+
+            // Redirect with filters
+            const queryString = params.toString();
+            window.location.href = queryString ? `${url}?${queryString}` : url;
+        }
+
+        // Clear all filters
+        window.clearAllFilters = function() {
+            window.location.href = window.location.pathname;
+        };
+
+        // Initialize search type container based on current search
+        if (searchUsers.value.trim().length > 0) {
+            searchTypeContainer.style.display = 'block';
+        }
+    });
+</script>
+
+<style>
+    .user-avatar {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background-color: #3498db;
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        font-size: 12px;
+    }
+
+    .badge {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+    }
+
+    /* Adjust dropdown widths for better layout */
+    @media (min-width: 768px) {
+        .card-header .col-md-6 .d-flex {
+            flex-wrap: nowrap;
+        }
+    }
+
+    @media (max-width: 767px) {
+        .card-header .col-md-6 .d-flex {
+            flex-wrap: wrap;
+        }
+
+        .card-header .mr-2 {
+            margin-bottom: 5px;
+            min-width: 100% !important;
+        }
+    }
+</style>
 
 @stop
 
@@ -368,13 +560,15 @@
 
     // Clear search button
     document.getElementById('clearSearch').addEventListener('click', function() {
-        document.getElementById('searchUsers').value = '';
-        performSearch();
+        window.location.href = window.location.pathname;
     });
 
     function performSearch() {
         const search = document.getElementById('searchUsers').value.trim();
         const status = document.getElementById('statusFilter').value;
+        const department = document.getElementById('departmentFilter').value;
+        const company = document.getElementById('companyFilter').value;
+        const location = document.getElementById('locationFilter').value;
 
         const url = new URL(window.location.href);
 
@@ -390,18 +584,30 @@
             url.searchParams.delete('status');
         }
 
+        if (department) {
+            url.searchParams.set('department', department);
+        } else {
+            url.searchParams.delete('department');
+        }
+
+        if (company) {
+            url.searchParams.set('company', company);
+        } else {
+            url.searchParams.delete('company');
+        }
+
+        if (location) {
+            url.searchParams.set('location', location);
+        } else {
+            url.searchParams.delete('location');
+        }
+
         url.searchParams.delete('page');
         window.location.href = url.toString();
     }
 
     function clearAllFilters() {
-        document.getElementById('searchUsers').value = '';
-        document.getElementById('statusFilter').value = '';
-        const url = new URL(window.location.href);
-        url.searchParams.delete('search');
-        url.searchParams.delete('status');
-        url.searchParams.delete('page');
-        window.location.href = url.toString();
+        window.location.href = window.location.pathname;
     }
 
     function enableUser(userId) {

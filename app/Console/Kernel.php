@@ -20,7 +20,7 @@ class Kernel extends ConsoleKernel
      * @var array
      */
     // protected $commands = [
-    //     // Commands\CloseTickets::class,
+    //     // acCommands\CloseTickets::class,
     //     // Commands\RemindAssigned::class,
     // ];
 
@@ -85,15 +85,38 @@ class Kernel extends ConsoleKernel
         // ->emailOutputOnFailure('admin@yourcompany.com'); // Optional: add your email
 
         $schedule->command('z_report_json_tz')
-         ->dailyAt('10:00')
-         ->withoutOverlapping()
-         ->runInBackground();
+            ->dailyAt('10:00')
+            ->withoutOverlapping()
+            ->runInBackground();
 
-          $schedule->command('z_report_json_ar')
-         ->dailyAt('10:00')
-         ->withoutOverlapping()
-         ->runInBackground();
+        $schedule->command('z_report_json_ar')
+            ->dailyAt('10:00')
+            ->withoutOverlapping()
+            ->runInBackground();
 
+        // Sync Odoo users first (pulls user data from Odoo PostgreSQL)
+        $schedule->command('sync:odoo-users --force')
+            ->dailyAt('02:00')  // 2:00 AM
+            ->withoutOverlapping()
+            ->appendOutputTo(storage_path('logs/odoo-user-sync.log'))
+            ->onSuccess(function () {
+                Log::info('Odoo User Sync: Scheduled task completed successfully');
+            })
+            ->onFailure(function () {
+                Log::error('Odoo User Sync: Scheduled task failed');
+            });
+
+        // Then activate pending users (30 minutes after Odoo sync)
+        $schedule->command('azure:activate-pending-users --force')
+            ->dailyAt('02:30')  // 2:30 AM
+            ->withoutOverlapping()
+            ->appendOutputTo(storage_path('logs/user-activation.log'))
+            ->onSuccess(function () {
+                Log::info('User Activation: Scheduled task completed successfully');
+            })
+            ->onFailure(function () {
+                Log::error('User Activation: Scheduled task failed');
+            });
     }
 
     /**

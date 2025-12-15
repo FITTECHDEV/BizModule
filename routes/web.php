@@ -566,6 +566,53 @@ Route::prefix('azure')->name('azure.')->middleware(['auth'])->group(function () 
 });
 
 
+// ============================================================================
+// AZURE USER SYNC ROUTES (Manual Triggers)
+// ============================================================================
+
+Route::middleware(['auth'])->prefix('azure/sync')->name('azure.sync.')->group(function () {
+
+    // Manual Odoo User Sync (web-based trigger)
+    Route::post('/odoo-users', [App\Http\Controllers\OdooSyncController::class, 'syncUsersManual'])
+        ->name('odoo-users')
+        ->middleware('throttle:user_actions');
+
+    // Manual User Activation (web-based trigger)
+    Route::post('/activate-users', [App\Http\Controllers\AzureUserManagementController::class, 'activatePendingUsersManual'])
+        ->name('activate-users')
+        ->middleware('throttle:user_actions');
+
+    // Combined Full Sync (Odoo + Activation)
+    Route::post('/full-sync', [App\Http\Controllers\AzureUserManagementController::class, 'fullSyncManual'])
+        ->name('full')
+        ->middleware('throttle:user_actions');
+
+    // Sync status endpoint (AJAX)
+    Route::get('/status', function () {
+        try {
+            $stats = [
+                'pending_users' => DB::connection('sqlsrv')
+                    ->table('Azure_Users')
+                    ->where('Status', 'Pending')
+                    ->count(),
+                'last_sync' => Cache::get('last_odoo_sync'),
+                'last_activation' => Cache::get('last_user_activation'),
+            ];
+
+            return response()->json([
+                'success' => true,
+                'data' => $stats
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    })->name('status');
+});
+
+
 Route::get('/sync-odoo-users', [App\Http\Controllers\OdooSyncController::class, 'syncUsers']);
 Route::get('/test-odoo-columns', [App\Http\Controllers\OdooSyncController::class, 'testColumns']);
 Route::get('/test-pgsql-connection', [App\Http\Controllers\OdooSyncController::class, 'testConnection']);
@@ -836,10 +883,170 @@ Route::get('/test-azure-users', function () {
 
 
 
+// ============================================================================
+// LOGIN TRACKER SYSTEM ROUTES (User Activity Monitoring)
+// ============================================================================
+
+// Restrict the {user} parameter (supports email or GUID)
+Route::pattern('user', '[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}|\w{8}-\w{4}-\w{4}-\w{4}-\w{12}');
+
+// ----------------------
+// Reporting routes (Login Tracker)
+// ----------------------
+Route::prefix('reporting')->middleware('auth')->group(function () {
+    // Explicit show route (needed for dashboard links)
+    Route::get('/users/{user}', [\App\Http\Controllers\UserController::class, 'show'])
+        ->name('reporting.users.show');
+
+    Route::get('/users/active-this-month', [\App\Http\Controllers\UserController::class, 'activeThisMonth'])
+        ->name('reporting.users.active-this-month');
+
+    Route::get('/users/active-last-month', [\App\Http\Controllers\UserController::class, 'activeLastMonth'])
+        ->name('reporting.users.active-last-month');
+
+    Route::get('/users/inactive', [\App\Http\Controllers\UserController::class, 'inactiveUsers'])
+        ->name('reporting.users.inactive');
+
+    // Resource routes except show
+    Route::resource('/users', \App\Http\Controllers\UserController::class)
+        ->parameters(['users' => 'user'])
+        ->except(['show'])
+        ->names([
+            'index'   => 'reporting.users.index',
+            'create'  => 'reporting.users.create',
+            'store'   => 'reporting.users.store',
+            'edit'    => 'reporting.users.edit',
+            'update'  => 'reporting.users.update',
+            'destroy' => 'reporting.users.destroy',
+        ]);
+});
+
+// ----------------------
+// Dashboard route (Login Tracker Dashboard)
+// ----------------------
+Route::get('/dashboard', [\App\Http\Controllers\DashboardController::class, 'index'])
+    ->middleware('auth')
+    ->name('dashboard');
+
+Route::get('/dashboard/debug-user-logins', [\App\Http\Controllers\DashboardController::class, 'debugUserLogins'])
+    ->middleware('auth')
+    ->name('dashboard.debug-user-logins');
+
+// ----------------------
+// Imports route (Login Tracker)
+// ----------------------
+Route::get('/imports', function () {
+    return view('logintracker.imports.index');
+})->middleware('auth')->name('imports.index');
+
+// ----------------------
+// Activity report (Login Tracker)
+// ----------------------
+Route::get('/activity-report', [\App\Http\Controllers\ActivityReportController::class, 'userActivityReport'])
+    ->middleware('auth')
+    ->name('activity.report');
+
+// ----------------------
+// CSV import endpoints (Login Tracker)
+// ----------------------
+Route::post('/import/users', [\App\Http\Controllers\ImportController::class, 'importUsers'])
+    ->middleware('auth')
+    ->name('imports.users');
+
+Route::post('/import/sign-ins', [\App\Http\Controllers\ImportController::class, 'importSignIns'])
+    ->middleware('auth')
+    ->name('imports.sign_ins');
+
+Route::post('/dashboard/clear-cache', [\App\Http\Controllers\DashboardController::class, 'clearDashboardCache'])
+    ->middleware('auth')
+    ->name('dashboard.clear-cache');
+
+Route::get('/users/cleanup-empty', [\App\Http\Controllers\UserController::class, 'cleanupEmptyUsers'])
+    ->middleware('auth')
+    ->name('users.cleanup');
+
+Route::get('/debug-import-data', function () {
+    $dates = ['2025-10-10', '2025-10-23'];
+
+    $data = DB::table('Azure_LoginDetails')
+        ->selectRaw('CONVERT(DATE, date_utc) as login_date')
+        ->selectRaw('application')
+        ->selectRaw('username')
+        ->selectRaw('user_id')
+        ->selectRaw('COUNT(*) as count')
+        ->whereRaw('CONVERT(DATE, date_utc) IN (?, ?)', $dates)
+        ->groupBy(DB::raw('CONVERT(DATE, date_utc)'), 'application', 'username', 'user_id')
+        ->orderBy('login_date')
+        ->orderBy('username')
+        ->get();
+
+    $uniqueApps = $data->pluck('application')->unique()->values();
+    $systemMap = config('systemmap', []);
+
+    $appMappingStatus = [];
+    foreach ($uniqueApps as $app) {
+        $appLower = strtolower(trim($app));
+        $isMapped = isset($systemMap[$appLower]) || isset($systemMap[$app]);
+        $mappedTo = $systemMap[$appLower] ?? $systemMap[$app] ?? 'UNMAPPED';
+
+        $appMappingStatus[$app] = [
+            'is_mapped' => $isMapped,
+            'maps_to' => $mappedTo,
+            'in_display_systems' => in_array($mappedTo, [
+                'BIZ PRO',
+                'BIZ UAT',
+                'D365 LIVE',
+                'D365 UAT',
+                'FIT Express',
+                'FIT Express UAT',
+                'Odoo',
+                'OPS',
+                'OPS UAT',
+                'Windows Sign In'
+            ])
+        ];
+    }
+
+    $amayData = $data->filter(function ($record) {
+        return stripos($record->username, 'amay') !== false;
+    })->values();
+
+    return response()->json([
+        'dates_checked' => $dates,
+        'total_records' => $data->count(),
+        'unique_applications' => $uniqueApps,
+        'application_mapping_status' => $appMappingStatus,
+        'amay_records' => [
+            'count' => $amayData->count(),
+            'data' => $amayData
+
+
+        ],
+        'all_records' => $data->toArray(),
+        'display_systems' => [
+            'BIZ PRO',
+            'BIZ UAT',
+            'D365 LIVE',
+            'D365 UAT',
+            'FIT Express',
+            'FIT Express UAT',
+            'Odoo',
+            'OPS',
+            'OPS UAT',
+            'Windows Sign In'
+        ]
+    ]);
+})->middleware('auth');
+
+// ============================================================================
+// VEHICLE TRACKER SYSTEM ROUTES (GPS/Trip Tracking)
+// ============================================================================
+
 
 Route::middleware(['auth'])->prefix('tracker')->name('tracker.')->group(function () {
 
     Route::get('/dashboard', [TrackerController::class, 'dashboard'])->name('dashboard');
+    // Remove ->name('dashboard') - it's already prefixed as 'tracker.dashboard'
     Route::get('/trips/get/{filter?}', [TrackerController::class, 'getTrips']);
     Route::get('/trips/{id}', [TrackerController::class, 'getTripDetails']);
 
@@ -856,8 +1063,6 @@ Route::middleware(['auth'])->prefix('tracker')->name('tracker.')->group(function
     Route::post('/trips/{tripId}/jobs/{jobId}/start', [TrackerController::class, 'startJob']);
     Route::post('/trips/{tripId}/jobs/{jobId}/complete', [TrackerController::class, 'completeJob']);
 });
-
-
 
 Route::middleware(['auth'])->prefix('jimi-test')->group(function () {
 
@@ -1018,3 +1223,219 @@ Route::get('/azure-management/test', function () {
 
 // Route::post('/azure/users', [AzureUserManagementController::class, 'store'])
 //        ->middleware(['auth', 'permission:create-azure-users']);
+// Add at the end of the file, right before the last line
+Route::get('/spot-check-freight-users', function () {
+    // Get all users with some form of "freight" in companyName
+    $freightUsers = \App\Models\AzureUser::where('companyName', 'LIKE', '%freight%')
+        ->orderBy('displayName')
+        ->get(['displayName', 'companyName', 'department']);
+
+    $totalCount = $freightUsers->count();
+
+    // Group by companyName variations
+    $variations = $freightUsers->groupBy('companyName')->map->count();
+
+    return [
+        'total_freight_users' => $totalCount,
+        'company_name_variations' => $variations,
+        'sample_users' => $freightUsers->take(20)->values()
+    ];
+});
+
+
+
+// ============================================================================
+// DEBUG ROUTES
+// ============================================================================
+
+Route::get('/simple-debug', function () {
+    // Test searching for "IT" department - SIMPLE VERSION
+    $search = 'IT';
+
+    // 1. What's in the database
+    $dbResults = \App\Models\AzureUser::where('department', 'LIKE', '%IT%')
+        ->orderBy('displayName')
+        ->get(['displayName', 'department', 'companyName', 'mail']);
+
+    // 2. Count by exact department match
+    $exactIt = \App\Models\AzureUser::whereRaw('LOWER(department) = ?', ['it'])->count();
+    $exactItUsers = \App\Models\AzureUser::whereRaw('LOWER(department) = ?', ['it'])
+        ->get(['displayName', 'department']);
+
+    // 3. All variations with "IT" in department
+    $allItVariations = \App\Models\AzureUser::where('department', 'LIKE', '%IT%')
+        ->select('department', \Illuminate\Support\Facades\DB::raw('COUNT(*) as count'))
+        ->groupBy('department')
+        ->orderBy('department')
+        ->get();
+
+    return [
+        'search_term' => $search,
+        'database_results' => [
+            'total_users_with_IT_in_department' => $dbResults->count(),
+            'exact_IT_department_count' => $exactIt,
+            'exact_IT_users' => $exactItUsers,
+            'all_department_variations_with_IT' => $allItVariations,
+            'sample_users' => $dbResults->take(10)
+        ]
+    ];
+});
+
+Route::get('/test-department/{department}', function ($department) {
+    $users = \App\Models\AzureUser::where('department', 'LIKE', "%{$department}%")
+        ->orderBy('displayName')
+        ->get(['displayName', 'department', 'companyName']);
+
+    return [
+        'search_term' => $department,
+        'count' => $users->count(),
+        'users' => $users
+    ];
+});
+
+// Simple IT search test
+Route::get('/test-it-search', function () {
+    $search = 'IT';
+
+    $expectedUsers = \App\Models\AzureUser::where('department', 'LIKE', '%IT%')
+        ->orderBy('displayName')
+        ->get(['displayName', 'department', 'companyName']);
+
+    return [
+        'search_term' => $search,
+        'expected_count' => $expectedUsers->count(),
+        'expected_users' => $expectedUsers
+    ];
+});
+
+// Department debug route
+Route::get('/debug-department-search', function () {
+    $searchTerm = 'IT';
+
+    $dbItUsers = \App\Models\AzureUser::where('department', 'LIKE', '%IT%')
+        ->orderBy('displayName')
+        ->get(['displayName', 'department', 'companyName']);
+
+    return [
+        'search_term' => $searchTerm,
+        'database_results' => [
+            'count' => $dbItUsers->count(),
+            'users' => $dbItUsers
+        ]
+    ];
+});
+
+// Freight users check
+Route::get('/spot-check-freight-users', function () {
+    $freightUsers = \App\Models\AzureUser::where('companyName', 'LIKE', '%freight%')
+        ->orderBy('displayName')
+        ->get(['displayName', 'companyName', 'department']);
+
+    $totalCount = $freightUsers->count();
+
+    $variations = $freightUsers->groupBy('companyName')->map->count();
+
+    return [
+        'total_freight_users' => $totalCount,
+        'company_name_variations' => $variations,
+        'sample_users' => $freightUsers->take(20)->values()
+    ];
+});
+
+
+Route::get('/test-search-logic', function () {
+    $testSearches = ['IT', 'Sales', 'Commercial', 'Group IT', 'Sea Freight'];
+
+    $results = [];
+
+    foreach ($testSearches as $search) {
+        $query = \App\Models\AzureUser::query();
+        $searchLower = strtolower($search);
+
+        $query->where(function ($q) use ($search, $searchLower) {
+            // Exact department match
+            $q->whereRaw('LOWER(department) = ?', [$searchLower]);
+
+            // Whole word matching
+            $q->orWhereRaw("LOWER(department) LIKE ?", ['% ' . $searchLower . ' %']);
+            $q->orWhereRaw("LOWER(department) LIKE ?", [$searchLower . ' %']);
+            $q->orWhereRaw("LOWER(department) LIKE ?", ['% ' . $searchLower]);
+
+            // Other fields
+            $q->orWhereRaw('LOWER(companyName) LIKE ?', ['%' . $searchLower . '%'])
+                ->orWhereRaw('LOWER(displayName) LIKE ?', ['%' . $searchLower . '%']);
+        });
+
+        $users = $query->get(['displayName', 'department', 'companyName']);
+
+        $results[$search] = [
+            'count' => $users->count(),
+            'users' => $users->take(5)->values()
+        ];
+    }
+
+    return $results;
+});
+
+
+
+Route::get('/debug-search/{term}', function ($term) {
+    // Simulate the search logic
+    $search = $term;
+    $searchLower = strtolower($search);
+
+    $results = [
+        'search_term' => $search,
+        'search_lowercase' => $searchLower,
+
+        // 1. Exact department match
+        'exact_department_match' => [
+            'condition' => "LOWER(department) = '{$searchLower}'",
+            'count' => \App\Models\AzureUser::whereRaw('LOWER(department) = ?', [$searchLower])->count(),
+            'users' => \App\Models\AzureUser::whereRaw('LOWER(department) = ?', [$searchLower])
+                ->get(['displayName', 'department', 'companyName'])
+                ->values()
+        ],
+
+        // 2. Department contains as whole word
+        'department_word_middle' => [
+            'condition' => "LOWER(department) LIKE '% {$searchLower} %'",
+            'count' => \App\Models\AzureUser::whereRaw("LOWER(department) LIKE ?", ['% ' . $searchLower . ' %'])->count(),
+            'users' => \App\Models\AzureUser::whereRaw("LOWER(department) LIKE ?", ['% ' . $searchLower . ' %'])
+                ->get(['displayName', 'department', 'companyName'])
+                ->values()
+        ],
+
+        // 3. Department starts with
+        'department_starts_with' => [
+            'condition' => "LOWER(department) LIKE '{$searchLower} %'",
+            'count' => \App\Models\AzureUser::whereRaw("LOWER(department) LIKE ?", [$searchLower . ' %'])->count(),
+            'users' => \App\Models\AzureUser::whereRaw("LOWER(department) LIKE ?", [$searchLower . ' %'])
+                ->get(['displayName', 'department', 'companyName'])
+                ->values()
+        ],
+
+        // 4. All department matches (anywhere)
+        'all_department_matches' => [
+            'condition' => "LOWER(department) LIKE '%{$searchLower}%'",
+            'count' => \App\Models\AzureUser::whereRaw('LOWER(department) LIKE ?', ['%' . $searchLower . '%'])->count(),
+            'users' => \App\Models\AzureUser::whereRaw('LOWER(department) LIKE ?', ['%' . $searchLower . '%'])
+                ->get(['displayName', 'department', 'companyName'])
+                ->values()
+        ],
+
+        // 5. Company name matches
+        'company_name_matches' => [
+            'condition' => "LOWER(companyName) LIKE '%{$searchLower}%'",
+            'count' => \App\Models\AzureUser::whereRaw('LOWER(companyName) LIKE ?', ['%' . $searchLower . '%'])->count()
+        ],
+
+        // 6. Display name matches
+        'display_name_matches' => [
+            'condition' => "LOWER(displayName) LIKE '%{$searchLower}%'",
+            'count' => \App\Models\AzureUser::whereRaw('LOWER(displayName) LIKE ?', ['%' . $searchLower . '%'])->count()
+        ]
+    ];
+
+    return response()->json($results);
+});

@@ -3,8 +3,8 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
-use App\Models\SigninLog;
-use App\Models\System;
+use App\Models\Logintracker\SigninLog;
+use App\Models\Logintracker\System;
 
 class UpdateSystemMappings extends Command
 {

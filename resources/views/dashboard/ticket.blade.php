@@ -317,18 +317,45 @@
 <!-- Log In Tracker -->
 @if (Auth::user()->can('approve-all-entity-request'))
 <div class="col-md-3 col-sm-6 mb-3">
-    <a href="/dashboard">
-        <div
-            class="d-flex h-100 flex-column card card-widget widget-user shadow service-card login-tracker-card">
+    <a href="/dashboard" style="text-decoration: none; color: inherit;">
+        <div class="d-flex h-100 flex-column card card-widget widget-user shadow service-card login-tracker-card"
+            style="cursor: pointer;">
             <div class="widget-user-header bg-blue">
                 <h3 class="widget-user-username">LOG IN TRACKER</h3>
                 <h5 class="widget-user-desc">Track User Logins</h5>
             </div>
-            {{-- <div class="widget-user-image">
-                                <i class="fas fa-user-clock fa-sm"></i>
-
-                            </div> --}}
-
+            <div class="widget-user-image">
+                <img src="{{ asset('img/calendar.gif') }}" alt="Login Tracker" class="img-circle elevation-2">
+            </div>
+            {{-- Statistics Footer --}}
+            <div class="card-footer">
+                <div class="row">
+                    <div class="col-sm-4 border-right">
+                        <div class="description-block">
+                            <h5 class="description-header text-success">
+                                {{ $active_this_month ?? 0 }}
+                            </h5>
+                            <span class="description-text">Active This Month</span>
+                        </div>
+                    </div>
+                    <div class="col-sm-4 border-right">
+                        <div class="description-block">
+                            <h5 class="description-header text-primary">
+                                {{ $active_last_month ?? 0 }}
+                            </h5>
+                            <span class="description-text">Active Last Month</span>
+                        </div>
+                    </div>
+                    <div class="col-sm-4">
+                        <div class="description-block">
+                            <h5 class="description-header text-danger">
+                                {{ $inactive_users ?? 0 }}
+                            </h5>
+                            <span class="description-text">Inactive Users</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </a>
 </div>
@@ -399,13 +426,29 @@
                     style="background: white; padding: 10px;">
             </div>
             <div class="card-footer">
-                <div class="row justify-content-center">
-                    <div class="col-sm-12 text-center">
+                <div class="row">
+                    <div class="col-sm-4 border-right">
                         <div class="description-block">
-                            <h5 class="description-header">
-                                <span class="badge badge-info">Active</span>
+                            <h5 class="description-header text-success">
+                                {{ $azureStats['active'] ?? 0 }}
                             </h5>
-                            <span class="description-text small">System Status</span>
+                            <span class="description-text">Active</span>
+                        </div>
+                    </div>
+                    <div class="col-sm-4 border-right">
+                        <div class="description-block">
+                            <h5 class="description-header text-warning">
+                                {{ $azureStats['pending'] ?? 0 }}
+                            </h5>
+                            <span class="description-text">Pending</span>
+                        </div>
+                    </div>
+                    <div class="col-sm-4">
+                        <div class="description-block">
+                            <h5 class="description-header text-danger">
+                                {{ $azureStats['inactive'] ?? 0 }}
+                            </h5>
+                            <span class="description-text">Inactive</span>
                         </div>
                     </div>
                 </div>

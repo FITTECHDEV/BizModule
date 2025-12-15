@@ -8,27 +8,36 @@
 
 @section('css')
     <link rel="stylesheet" href="{{ asset('css/tracker/tracker.css') }}">
-    <!-- ADD THIS LINE -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+
+    <!-- ADD FLATPICKR CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+
     <style>
-        /* Historical job badge */
-        .historical-badge {
-            background: #9C27B0;
-            color: white;
-            font-size: 0.7rem;
-            padding: 2px 6px;
-            border-radius: 3px;
-            font-weight: bold;
-            margin-left: 5px;
+        /* Your existing styles... */
+
+        /* Flatpickr customization for better look */
+        .flatpickr-calendar {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            border-radius: 8px;
         }
 
-        /* Enhanced SweetAlert styling for validation errors */
-        .swal-wide {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        .flatpickr-time input {
+            font-size: 1.1rem !important;
+            font-weight: 600;
         }
 
-        .swal-wide .swal2-html-container {
-            text-align: left !important;
+        /* Make sure inputs look good in the yellow form */
+        #manualStartForm .form-control,
+        #backdateForm .form-control {
+            background-color: #fff !important;
+            border: 2px solid #dee2e6;
+        }
+
+        #manualStartForm .form-control:focus,
+        #backdateForm .form-control:focus {
+            border-color: #ffc107;
+            box-shadow: 0 0 0 0.2rem rgba(255, 193, 7, 0.25);
         }
     </style>
 @stop
@@ -764,6 +773,7 @@
         <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
         <!-- ADD THIS LINE -->
         <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+        <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
         <script>
             window.VEHICLE_IMEI_MAP = @json($finalMap ?? []);
 
@@ -893,8 +903,8 @@
                     initComplete: function() {
                         $("#tripsTable_filter").append(
                             `<button type="button" class="btn btn-primary btn-sm ml-2" id="createTripBtn">
-                <i class="fa fa-plus"></i> Create Trip
-            </button>`
+                 <i class="fa fa-plus"></i> Create Trip
+                    </button>`
                         );
                     },
                     drawCallback: function() {
@@ -1397,7 +1407,7 @@
                         <i class="fa fa-info-circle"></i>
                         Trip will be ended with the completion time of the last job.
                     </div>
-                `,
+                     `,
                                 icon: 'question',
                                 showCancelButton: true,
                                 confirmButtonText: '<i class="fa fa-stop-circle"></i> End Trip',
@@ -1467,97 +1477,7 @@
                         });
                 });
 
-                // // ========================================
-                // // BACKDATE TRIP FORM SUBMIT - ENHANCED ERROR HANDLING
-                // // ========================================
-                // $('#backdateTripForm').submit(function(e) {
-                //     e.preventDefault();
 
-                //     const tripId = $('#backdateTripEndId').val();
-                //     const endDate = $('#backdateTripEndDate').val();
-                //     const endTime = $('#backdateTripEndTime').val();
-
-                //     if (!endDate || !endTime) {
-                //         return Swal.fire('Error', 'Please enter both date and time', 'error');
-                //     }
-
-                //     $('#submitBackdateTrip').prop('disabled', true).html(
-                //         '<i class="fa fa-spinner fa-spin"></i> Processing...'
-                //     );
-
-                //     $.ajax({
-                //         url: `/tracker/trips/${tripId}/end`,
-                //         type: 'POST',
-                //         data: {
-                //             end_date: endDate,
-                //             end_time: endTime
-                //         },
-                //         headers: {
-                //             'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-                //         },
-                //         success: function(res) {
-                //             if (res.success) {
-                //                 $('#backdateTripModal').modal('hide');
-
-                //                 Swal.fire({
-                //                     icon: 'success',
-                //                     title: 'Trip Ended!',
-                //                     html: `
-        //         <strong>Ended:</strong> ${endDate} ${endTime}<br>
-        //         <strong>Distance:</strong> ${res.total_distance || 'N/A'} km<br>
-        //         <strong>Duration:</strong> ${res.duration_hours || 'N/A'} hours
-        //           `,
-                //                     confirmButtonText: 'OK'
-                //                 });
-
-                //                 if (typeof tripsTable !== 'undefined') {
-                //                     tripsTable.ajax.reload(null, false);
-                //                 }
-                //             } else {
-                //                 Swal.fire('Failed', res.message || 'Unknown error', 'error');
-                //             }
-                //         },
-                //         error: function(xhr) {
-                //             let errorMsg = 'Server error';
-
-                //             if (xhr.responseJSON) {
-                //                 errorMsg = xhr.responseJSON.message || 'Server error';
-
-                //                 // ✅ Show detailed error for job timing conflicts
-                //                 if (xhr.responseJSON.last_job_no && xhr.responseJSON
-                //                     .last_job_completed_at) {
-                //                     errorMsg = `
-        //         <div style="text-align: left;">
-        //             <p><strong>Cannot backdate trip to this time!</strong></p>
-        //             <hr>
-        //             <p><strong>Last Job:</strong> ${xhr.responseJSON.last_job_no}</p>
-        //             <p><strong>Completed:</strong> ${xhr.responseJSON.last_job_completed_at}</p>
-        //             <p><strong>Your Trip End:</strong> ${xhr.responseJSON.proposed_trip_end}</p>
-        //             <hr>
-        //             <p class="text-danger">Trip end time must be AFTER the last job completion.</p>
-        //         </div>
-        //         `;
-                //                 }
-                //             }
-
-                //             Swal.fire({
-                //                 icon: 'error',
-                //                 title: 'Validation Error',
-                //                 html: errorMsg,
-                //                 confirmButtonText: 'OK'
-                //             });
-                //         },
-                //         complete: function() {
-                //             $('#submitBackdateTrip').prop('disabled', false).html(
-                //                 '<i class="fa fa-check"></i> End Trip'
-                //             );
-                //         }
-                //     });
-                // });
-
-                // UPDATED SECTION: Jobs Table in View Trip Modal
-                // Find this section around line 800-900 in your blade file
-                // Replace the existing jobs table rendering code with this:
 
                 // ========================================
                 // VIEW TRIP - ✅ WITH START DATE, END DATE, DURATION, AND MILEAGE
@@ -1664,8 +1584,8 @@
                             );
                         } else {
                             let html = `<div class="table-responsive"><table class="table table-sm table-bordered" style="font-size: 0.85rem;">
-                <thead class="bg-primary text-white">
-                    <tr>
+                        <thead class="bg-primary text-white">
+                        <tr>
                         <th>Job No</th>
                         <th>Type</th>
                         <th>Route</th>
@@ -1676,8 +1596,8 @@
                         <th>Status</th>
                         <th class="text-center">Action</th>
                     </tr>
-                </thead>
-                <tbody>`;
+                    </thead>
+                    <tbody>`;
 
                             jobs.forEach(job => {
                                 const typeBadge = job.job_type === 'Internal Job' ? 'info' :
@@ -1864,7 +1784,7 @@
 
 
                 // ========================================
-                // START JOB - WITH MANUAL START OPTION
+                // START JOB - WITH INLINE BACKDATE OPTION (FLATPICKR)
                 // ========================================
                 $(document).on('click', '.startJobBtn', function(e) {
                     e.preventDefault();
@@ -1872,233 +1792,637 @@
                     const jobNo = $(this).data('job-no') || 'Internal Job';
                     const tripId = $(this).data('trip-id');
 
-                    // Show choice dialog
-                    Swal.fire({
-                        title: `Start Job: ${jobNo}?`,
-                        html: `
-            <p>Choose start method:</p>
-            <div style="margin-top: 20px;">
-                <button class="btn btn-success btn-lg btn-block" id="startNowBtn">
-                    <i class="fa fa-play-circle"></i> Start Now
-                    <br><small>Use current time</small>
-                </button>
-                <button class="btn btn-warning btn-lg btn-block mt-2" id="manualStartBtn">
-                    <i class="fa fa-clock"></i> Manual Start
-                    <br><small>Specify past start time</small>
-                </button>
-            </div>
-        `,
-                        showConfirmButton: false,
-                        showCancelButton: true,
-                        cancelButtonText: 'Cancel'
-                    });
+                    $.get(`/tracker/trips/${tripId}`, function(res) {
+                        if (!res.success) {
+                            Swal.fire('Error', 'Failed to load trip details', 'error');
+                            return;
+                        }
 
-                    // Start now - original functionality
-                    $(document).on('click', '#startNowBtn', function() {
-                        Swal.close();
+                        const trip = res.data;
+                        const now = new Date();
+                        const currentDate = moment(now).format('YYYY-MM-DD');
+                        const currentTime = moment(now).format('HH:mm');
 
-                        const $btn = $(`.startJobBtn[data-job-id="${jobId}"]`);
-                        const $row = $btn.closest('tr');
-                        const $actionCell = $btn.parent();
+                        Swal.fire({
+                            title: `Start Job: ${jobNo}?`,
+                            html: `
+                <div style="margin-top: 20px;">
+                    <button class="btn btn-success btn-lg btn-block" id="startNowBtn" type="button">
+                        <i class="fa fa-play-circle"></i> Start Now
+                        <br><small>Use current time</small>
+                    </button>
 
-                        $btn.prop('disabled', true).html(
-                            '<i class="fa fa-spinner fa-spin"></i> Starting...');
+                    <button class="btn btn-warning btn-lg btn-block mt-2" id="manualStartToggleBtn" type="button">
+                        <i class="fa fa-clock"></i> Backdate Start
+                        <br><small>Specify past start time</small>
+                    </button>
 
-                        $.ajax({
-                            url: `/tracker/trips/${tripId}/jobs/${jobId}/start`,
-                            type: 'POST',
-                            headers: {
-                                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-                            },
-                            success: function(res) {
-                                if (res.success) {
-                                    // Update button to "Stop"
-                                    const stopBtn = `
-                        <button class="btn btn-sm btn-danger stopJobBtn"
-                                data-job-id="${jobId}"
-                                data-job-no="${jobNo}"
-                                data-trip-id="${tripId}">
-                            <i class="fa fa-stop"></i> Stop
+                    <div id="manualStartForm" style="display: none; margin-top: 20px; text-align: left; padding: 15px; background: #fff3cd; border-radius: 8px; border: 2px solid #ffc107;">
+                        <div class="alert alert-warning mb-3" style="padding: 8px 12px; font-size: 0.9rem;">
+                            <i class="fa fa-exclamation-triangle"></i> <strong>Backdating:</strong>
+                            Enter the actual time this job was started in the past.
+                        </div>
+
+                        ${trip.start_date ? `
+                                        <div class="alert alert-info mb-3" style="padding: 8px 12px; font-size: 0.9rem;">
+                                            <strong>Trip Started:</strong> ${moment(trip.start_date).format('DD/MM/YY HH:mm')}
+                                        </div>
+                                        ` : ''}
+
+                        <div class="form-group mb-3">
+                            <label style="font-weight: 600; margin-bottom: 5px;">
+                                <i class="fa fa-calendar-alt"></i> Start Date & Time
+                                <span style="color: #dc3545;">*</span>
+                            </label>
+                            <input
+                                type="text"
+                                class="form-control"
+                                id="startJobDateTimeInput"
+                                placeholder="Select date and time"
+                                readonly
+                                style="font-size: 1rem; background-color: #fff; cursor: pointer;"
+                                required
+                            >
+                            <small class="text-muted">Cannot be in the future • Nairobi timezone (EAT)</small>
+                        </div>
+
+                        ${!trip.start_date ? `
+                                        <div class="alert alert-info mb-3" style="padding: 8px 12px; font-size: 0.85rem;">
+                                            <i class="fa fa-info-circle"></i>
+                                            <strong>Note:</strong> This is the first job. The trip will be started automatically with this time.
+                                        </div>
+                                        ` : ''}
+
+                        <button class="btn btn-success btn-block" id="submitManualStartBtn" type="button">
+                            <i class="fa fa-play"></i> Start Job with this Time
                         </button>
-                    `;
-                                    $actionCell.html(stopBtn);
-
-                                    // Update job status badge
-                                    $row.find('td:eq(3)')
-                                        .find('.badge')
-                                        .removeClass('badge-secondary badge-info')
-                                        .addClass('badge-warning')
-                                        .text('In Transit');
-
-                                    // Show beautiful message
-                                    let message = `Job "${jobNo}" started successfully!`;
-                                    if (res.trip_auto_started) {
-                                        message +=
-                                            `\n\nTrip has been automatically started!\nLive tracking is now ACTIVE.`;
-                                    } else {
-                                        message += `\n\nTrip is already In Transit.`;
-                                    }
-
-                                    Swal.fire('Success!', message, 'success');
-
-                                    // Refresh table
-                                    if (typeof tripsTable !== 'undefined') {
-                                        tripsTable.ajax.reload(null, false);
-                                    }
-
-                                    // Re-open modal to show updated trip status
-                                    setTimeout(() => {
-                                        $(`.viewTrip[data-trip-id="${tripId}"]`)
-                                            .trigger('click');
-                                    }, 500);
-                                }
+                    </div>
+                </div>
+            `,
+                            showConfirmButton: false,
+                            showCancelButton: true,
+                            cancelButtonText: 'Cancel',
+                            width: '500px',
+                            customClass: {
+                                popup: 'swal-job-start'
                             },
-                            error: function(xhr) {
-                                let msg = 'Failed to start job';
-                                if (xhr.responseJSON?.message) {
-                                    msg = xhr.responseJSON.message;
-                                }
-                                Swal.fire('Error', msg, 'error');
-                                $btn.prop('disabled', false).html(
-                                    '<i class="fa fa-play"></i> Start');
+                            didOpen: () => {
+                                // Initialize Flatpickr after SweetAlert opens
+                                const startDateTimePicker = flatpickr(
+                                    "#startJobDateTimeInput", {
+                                        enableTime: true,
+                                        dateFormat: "Y-m-d H:i",
+                                        time_24hr: true,
+                                        maxDate: "today",
+                                        defaultDate: now,
+                                        minuteIncrement: 1,
+                                        allowInput: false,
+                                        clickOpens: true
+                                    });
                             }
                         });
+
+                        // Toggle manual start form
+                        $(document).off('click', '#manualStartToggleBtn').on('click',
+                            '#manualStartToggleBtn',
+                            function() {
+                                const $form = $('#manualStartForm');
+                                const $btn = $(this);
+
+                                if ($form.is(':visible')) {
+                                    $form.slideUp(300);
+                                    $btn.html(
+                                        '<i class="fa fa-clock"></i> Backdate Start<br><small>Specify past start time</small>'
+                                    );
+                                    $('#startNowBtn').prop('disabled', false).removeClass(
+                                        'btn-secondary').addClass('btn-success');
+                                } else {
+                                    $form.slideDown(300);
+                                    $btn.html(
+                                        '<i class="fa fa-times"></i> Cancel Backdate<br><small>Hide date/time selection</small>'
+                                    );
+                                    $('#startNowBtn').prop('disabled', true).addClass(
+                                        'btn-secondary').removeClass('btn-success');
+                                }
+                            });
+
+                        // Start now handler
+                        $(document).off('click', '#startNowBtn').on('click', '#startNowBtn',
+                            function() {
+                                if ($(this).prop('disabled')) return;
+
+                                Swal.close();
+
+                                const $btn = $(`.startJobBtn[data-job-id="${jobId}"]`);
+                                const $row = $btn.closest('tr');
+                                const $actionCell = $btn.parent();
+
+                                $btn.prop('disabled', true).html(
+                                    '<i class="fa fa-spinner fa-spin"></i> Starting...');
+
+                                $.ajax({
+                                    url: `/tracker/trips/${tripId}/jobs/${jobId}/start`,
+                                    type: 'POST',
+                                    headers: {
+                                        'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr(
+                                            'content')
+                                    },
+                                    success: function(res) {
+                                        if (res.success) {
+                                            const stopBtn = `
+                            <button class="btn btn-sm btn-danger stopJobBtn"
+                                    data-job-id="${jobId}"
+                                    data-job-no="${jobNo}"
+                                    data-trip-id="${tripId}">
+                                <i class="fa fa-stop"></i> Stop
+                            </button>
+                        `;
+                                            $actionCell.html(stopBtn);
+
+                                            $row.find('td:eq(7)')
+                                                .find('.badge')
+                                                .removeClass(
+                                                    'badge-secondary badge-info')
+                                                .addClass('badge-warning')
+                                                .text('In Transit');
+
+                                            let message =
+                                                `Job "${jobNo}" started successfully!`;
+                                            if (res.trip_auto_started) {
+                                                message +=
+                                                    `\n\nTrip has been automatically started!\nLive tracking is now ACTIVE.`;
+                                            } else {
+                                                message +=
+                                                    `\n\nTrip is already In Transit.`;
+                                            }
+
+                                            Swal.fire('Success!', message, 'success');
+
+                                            if (typeof tripsTable !== 'undefined') {
+                                                tripsTable.ajax.reload(null, false);
+                                            }
+
+                                            setTimeout(() => {
+                                                $(`.viewTrip[data-trip-id="${tripId}"]`)
+                                                    .trigger('click');
+                                            }, 500);
+                                        }
+                                    },
+                                    error: function(xhr) {
+                                        let msg = 'Failed to start job';
+                                        if (xhr.responseJSON?.message) {
+                                            msg = xhr.responseJSON.message;
+                                        }
+                                        Swal.fire('Error', msg, 'error');
+                                        $btn.prop('disabled', false).html(
+                                            '<i class="fa fa-play"></i> Start');
+                                    }
+                                });
+                            });
+
+                        // Submit manual start handler
+                        $(document).off('click', '#submitManualStartBtn').on('click',
+                            '#submitManualStartBtn',
+                            function() {
+                                const startDateTime = $('#startJobDateTimeInput').val();
+
+                                console.log('Start DateTime:', startDateTime);
+
+                                if (!startDateTime) {
+                                    Swal.fire('Error', 'Please select a date and time', 'error');
+                                    return;
+                                }
+
+                                // Split into date and time
+                                const [startDate, startTime] = startDateTime.split(' ');
+
+                                const $submitBtn = $(this);
+                                $submitBtn.prop('disabled', true).html(
+                                    '<i class="fa fa-spinner fa-spin"></i> Processing...');
+
+                                $.ajax({
+                                    url: `/tracker/trips/${tripId}/jobs/${jobId}/start`,
+                                    type: 'POST',
+                                    data: {
+                                        start_date: startDate,
+                                        start_time: startTime
+                                    },
+                                    headers: {
+                                        'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr(
+                                            'content')
+                                    },
+                                    success: function(res) {
+                                        if (res.success) {
+                                            Swal.close();
+
+                                            let message =
+                                                `Started: ${moment(startDateTime).format('DD/MM/YY HH:mm')}`;
+                                            if (res.trip_auto_started) {
+                                                message +=
+                                                    `<br><br><strong>Trip was automatically started!</strong>`;
+                                            }
+
+                                            Swal.fire({
+                                                icon: 'success',
+                                                title: 'Job Started!',
+                                                html: message,
+                                                confirmButtonText: 'OK'
+                                            });
+
+                                            setTimeout(() => {
+                                                $(`.viewTrip[data-trip-id="${tripId}"]`)
+                                                    .trigger('click');
+                                            }, 500);
+
+                                            if (typeof tripsTable !== 'undefined') {
+                                                tripsTable.ajax.reload(null, false);
+                                            }
+                                        } else {
+                                            Swal.fire('Failed', res.message ||
+                                                'Unknown error', 'error');
+                                        }
+                                    },
+                                    error: function(xhr) {
+                                        let errorMsg = 'Server error';
+                                        let errorTitle = 'Validation Error';
+
+                                        if (xhr.responseJSON) {
+                                            errorMsg = xhr.responseJSON.message ||
+                                                'Server error';
+
+                                            if (xhr.responseJSON.validation_type ===
+                                                'overlap') {
+                                                errorTitle = 'Job Timeline Conflict';
+                                                errorMsg = `
+                                <div style="text-align: left; font-size: 0.95rem;">
+                                    <p style="font-size: 1.1rem; margin-bottom: 15px;">
+                                        <strong><i class="fa fa-exclamation-triangle"></i> ${xhr.responseJSON.message}</strong>
+                                    </p>
+
+                                    <div style="background: #fff3cd; padding: 12px; border-left: 4px solid #ffc107; border-radius: 5px; margin: 15px 0;">
+                                        <p style="margin: 5px 0; color: #856404;">
+                                            <i class="fa fa-briefcase"></i> <strong>Conflicting Job:</strong>
+                                            ${xhr.responseJSON.conflicting_job}
+                                        </p>
+                                        <p style="margin: 5px 0; color: #856404;">
+                                            <i class="fa fa-clock"></i> <strong>Was In Transit:</strong><br>
+                                            ${xhr.responseJSON.conflicting_job_start} → ${xhr.responseJSON.conflicting_job_end}
+                                        </p>
+                                    </div>
+
+                                    <div style="background: #f8d7da; padding: 12px; border-left: 4px solid #dc3545; border-radius: 5px; margin: 15px 0;">
+                                        <p style="margin: 5px 0; color: #721c24;">
+                                            <i class="fa fa-times-circle"></i> <strong>Your Start Time:</strong>
+                                            ${xhr.responseJSON.your_start_time}
+                                        </p>
+                                    </div>
+
+                                    <div style="background: #d1ecf1; padding: 12px; border-left: 4px solid #17a2b8; border-radius: 5px; margin: 15px 0;">
+                                        <p style="margin: 5px 0; color: #0c5460;">
+                                            <i class="fa fa-lightbulb"></i> <strong>Solution:</strong><br>
+                                            ${xhr.responseJSON.suggestion}
+                                        </p>
+                                    </div>
+                                </div>
+                            `;
+                                            } else if (xhr.responseJSON
+                                                .validation_type === 'trip_start') {
+                                                errorTitle = 'Trip Timeline Conflict';
+                                                errorMsg = `
+                                <div style="text-align: left; font-size: 0.95rem;">
+                                    <p style="font-size: 1.1rem; margin-bottom: 15px;">
+                                        <strong><i class="fa fa-exclamation-triangle"></i> ${xhr.responseJSON.message}</strong>
+                                    </p>
+
+                                    <div style="background: #d1ecf1; padding: 12px; border-left: 4px solid #17a2b8; border-radius: 5px; margin: 15px 0;">
+                                        <p style="margin: 5px 0; color: #0c5460;">
+                                            <i class="fa fa-truck"></i> <strong>Trip Started:</strong>
+                                            ${xhr.responseJSON.trip_started_at}
+                                        </p>
+                                    </div>
+
+                                    <div style="background: #f8d7da; padding: 12px; border-left: 4px solid #dc3545; border-radius: 5px; margin: 15px 0;">
+                                        <p style="margin: 5px 0; color: #721c24;">
+                                            <i class="fa fa-times-circle"></i> <strong>Your Start Time:</strong>
+                                            ${xhr.responseJSON.your_start_time}
+                                        </p>
+                                    </div>
+
+                                    <div style="background: #fff3cd; padding: 12px; border-left: 4px solid #ffc107; border-radius: 5px; margin: 15px 0;">
+                                        <p style="margin: 5px 0; color: #856404;">
+                                            <i class="fa fa-info-circle"></i> Jobs must start at or after the trip start time.
+                                        </p>
+                                    </div>
+                                </div>
+                            `;
+                                            }
+                                        }
+
+                                        Swal.fire({
+                                            icon: 'error',
+                                            title: errorTitle,
+                                            html: errorMsg,
+                                            confirmButtonText: 'OK',
+                                            width: '600px',
+                                            customClass: {
+                                                popup: 'swal-wide'
+                                            }
+                                        });
+                                    },
+                                    complete: function() {
+                                        $submitBtn.prop('disabled', false).html(
+                                            '<i class="fa fa-play"></i> Start Job with this Time'
+                                        );
+                                    }
+                                });
+                            });
                     });
-
-                    // Manual start - new functionality
-                    $(document).on('click', '#manualStartBtn', function() {
-                        Swal.close();
-
-                        $('#manualStartJobId').val(jobId);
-                        $('#manualStartTripId').val(tripId);
-                        $('#manualStartJobNo').text(jobNo);
-
-                        // Set default to current date/time
-                        const now = new Date();
-                        $('#manualStartJobDate').val(now.toISOString().split('T')[0]);
-                        $('#manualStartJobTime').val(now.toTimeString().slice(0, 5));
-
-                        $('#viewTripModal').modal('hide');
-                        setTimeout(() => {
-                            $('#manualStartJobModal').modal('show');
-                        }, 300);
-                    });
-
                 });
 
 
-
                 // ========================================
-                // STOP JOB - WITH BACKDATE OPTION
+                // STOP JOB - WITH INLINE BACKDATE OPTION (FLATPICKR)
                 // ========================================
                 $(document).on('click', '.stopJobBtn', function() {
                     const jobId = $(this).data('job-id');
                     const jobNo = $(this).data('job-no');
                     const tripId = $(this).data('trip-id');
 
-                    // Show choice dialog
-                    Swal.fire({
-                        title: `Complete Job: ${jobNo}?`,
-                        html: `
-            <p>Choose completion method:</p>
-            <div style="margin-top: 20px;">
-                <button class="btn btn-success btn-lg btn-block" id="completeNowBtn">
-                    <i class="fa fa-check-circle"></i> Complete Now
-                    <br><small>Use current time</small>
-                </button>
-                <button class="btn btn-warning btn-lg btn-block mt-2" id="backdateBtn">
-                    <i class="fa fa-clock"></i> Backdate Completion
-                    <br><small>Specify past completion time</small>
-                </button>
-            </div>
-        `,
-                        showConfirmButton: false,
-                        showCancelButton: true,
-                        cancelButtonText: 'Cancel'
-                    });
+                    $.get(`/tracker/trips/${tripId}`, function(res) {
+                        if (!res.success) {
+                            Swal.fire('Error', 'Failed to load job details', 'error');
+                            return;
+                        }
 
-                    // Complete now - EXACT SAME AS BEFORE
-                    $(document).on('click', '#completeNowBtn', function() {
-                        Swal.close();
+                        const job = res.data.jobs.find(j => j.job_id == jobId);
+                        if (!job || !job.start_date) {
+                            Swal.fire('Error', 'Job start date not found', 'error');
+                            return;
+                        }
 
-                        const $btn = $(`.stopJobBtn[data-job-id="${jobId}"]`);
-                        $btn.prop('disabled', true).html(
-                            '<i class="fa fa-spinner fa-spin"></i> Completing...');
+                        const jobStartDateTime = moment(job.start_date).format('YYYY-MM-DD HH:mm');
+                        const now = new Date();
 
-                        $.ajax({
-                            url: `/tracker/trips/${tripId}/jobs/${jobId}/complete`,
-                            type: 'POST',
-                            headers: {
-                                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                        Swal.fire({
+                            title: `Complete Job: ${jobNo}?`,
+                            html: `
+                <div style="margin-top: 20px;">
+                    <button class="btn btn-success btn-lg btn-block" id="completeNowBtn" type="button">
+                        <i class="fa fa-check-circle"></i> Complete Now
+                        <br><small>Use current time</small>
+                    </button>
+
+                    <button class="btn btn-warning btn-lg btn-block mt-2" id="backdateToggleBtn" type="button">
+                        <i class="fa fa-clock"></i> Backdate Completion
+                        <br><small>Specify past completion time</small>
+                    </button>
+
+                    <div id="backdateForm" style="display: none; margin-top: 20px; text-align: left; padding: 15px; background: #fff3cd; border-radius: 8px; border: 2px solid #ffc107;">
+                        <div class="alert alert-info mb-3" style="padding: 8px 12px; font-size: 0.9rem;">
+                            <strong>Job Started:</strong> ${moment(job.start_date).format('DD/MM/YY HH:mm')}
+                        </div>
+
+                        <div class="form-group mb-3">
+                            <label style="font-weight: 600; margin-bottom: 5px;">
+                                <i class="fa fa-calendar-alt"></i> Completion Date & Time
+                                <span style="color: #dc3545;">*</span>
+                            </label>
+                            <input
+                                type="text"
+                                class="form-control"
+                                id="stopJobDateTimeInput"
+                                placeholder="Select date and time"
+                                readonly
+                                style="font-size: 1rem; background-color: #fff; cursor: pointer;"
+                                required
+                            >
+                            <small class="text-muted">Must be on or after job start • Nairobi timezone (EAT)</small>
+                        </div>
+
+                        <button class="btn btn-warning btn-block" id="submitBackdateBtn" type="button">
+                            <i class="fa fa-check"></i> Complete with this Time
+                        </button>
+                    </div>
+                </div>
+            `,
+                            showConfirmButton: false,
+                            showCancelButton: true,
+                            cancelButtonText: 'Cancel',
+                            width: '500px',
+                            customClass: {
+                                popup: 'swal-job-complete'
                             },
-                            success: function(res) {
-                                if (res.success) {
-                                    Swal.fire({
-                                        icon: 'success',
-                                        title: 'Job Completed!',
-                                        html: `
-                            <strong>Distance:</strong> ${res.total_distance || '0'} km<br>
-                            <strong>Duration:</strong> ${res.duration_hours || '0'} hours<br>
-                            <strong>Avg Speed:</strong> ${res.avg_speed || '0'} km/h
-                        `,
-                                        confirmButtonText: 'OK'
+                            didOpen: () => {
+                                // Initialize Flatpickr after SweetAlert opens
+                                const stopDateTimePicker = flatpickr(
+                                    "#stopJobDateTimeInput", {
+                                        enableTime: true,
+                                        dateFormat: "Y-m-d H:i",
+                                        time_24hr: true,
+                                        minDate: jobStartDateTime,
+                                        defaultDate: now,
+                                        minuteIncrement: 1,
+                                        allowInput: false,
+                                        clickOpens: true
                                     });
+                            }
+                        });
 
-                                    $('#viewTripModal').modal('hide');
-                                    setTimeout(() => {
-                                        $(`.viewTrip[data-trip-id="${tripId}"]`)
-                                            .trigger('click');
-                                    }, 400);
+                        $(document).off('click', '#backdateToggleBtn').on('click', '#backdateToggleBtn',
+                            function() {
+                                const $form = $('#backdateForm');
+                                const $btn = $(this);
 
-                                    if (typeof tripsTable !== 'undefined') {
-                                        tripsTable.ajax.reload(null, false);
-                                    }
+                                if ($form.is(':visible')) {
+                                    $form.slideUp(300);
+                                    $btn.html(
+                                        '<i class="fa fa-clock"></i> Backdate Completion<br><small>Specify past completion time</small>'
+                                    );
+                                    $('#completeNowBtn').prop('disabled', false).removeClass(
+                                        'btn-secondary').addClass('btn-success');
                                 } else {
-                                    Swal.fire('Failed', res.message || 'Unknown error',
-                                        'error');
-                                    $btn.prop('disabled', false).html(
-                                        '<i class="fa fa-stop"></i> Stop');
+                                    $form.slideDown(300);
+                                    $btn.html(
+                                        '<i class="fa fa-times"></i> Cancel Backdate<br><small>Hide date/time selection</small>'
+                                    );
+                                    $('#completeNowBtn').prop('disabled', true).addClass(
+                                        'btn-secondary').removeClass('btn-success');
                                 }
-                            },
-                            error: function() {
-                                Swal.fire('Error', 'Server error occurred', 'error');
-                                $btn.prop('disabled', false).html(
-                                    '<i class="fa fa-stop"></i> Stop');
-                            }
-                        });
-                    });
+                            });
 
-                    // Backdate completion - NEW FUNCTIONALITY
-                    $(document).on('click', '#backdateBtn', function() {
-                        Swal.close();
+                        $(document).off('click', '#completeNowBtn').on('click', '#completeNowBtn',
+                            function() {
+                                if ($(this).prop('disabled')) return;
 
-                        // Get job details
-                        $.get(`/tracker/trips/${tripId}`, function(res) {
-                            if (res.success) {
-                                const job = res.data.jobs.find(j => j.job_id == jobId);
-                                if (job && job.start_date) {
-                                    $('#backdateJobId').val(jobId);
-                                    $('#backdateTripId').val(tripId);
-                                    $('#backdateJobNo').text(jobNo);
-                                    $('#backdateJobStart').text(moment(job.start_date).format(
-                                        'DD/MM/YY HH:mm'));
+                                Swal.close();
 
-                                    // Set default to current date/time
-                                    const now = new Date();
-                                    $('#backdateJobDate').val(now.toISOString().split('T')[0]);
-                                    $('#backdateJobTime').val(now.toTimeString().slice(0, 5));
+                                const $btn = $(`.stopJobBtn[data-job-id="${jobId}"]`);
+                                $btn.prop('disabled', true).html(
+                                    '<i class="fa fa-spinner fa-spin"></i> Completing...');
 
-                                    // Set min date to job start date
-                                    $('#backdateJobDate').attr('min', job.start_date.split(' ')[
-                                        0]);
+                                $.ajax({
+                                    url: `/tracker/trips/${tripId}/jobs/${jobId}/complete`,
+                                    type: 'POST',
+                                    headers: {
+                                        'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr(
+                                            'content')
+                                    },
+                                    success: function(res) {
+                                        if (res.success) {
+                                            Swal.fire({
+                                                icon: 'success',
+                                                title: 'Job Completed!',
+                                                html: `
+                                <strong>Distance:</strong> ${res.total_distance || '0'} km<br>
+                                <strong>Duration:</strong> ${res.duration_hours || '0'} hours<br>
+                                <strong>Avg Speed:</strong> ${res.avg_speed || '0'} km/h
+                                `,
+                                                confirmButtonText: 'OK'
+                                            });
 
-                                    $('#viewTripModal').modal('hide');
-                                    setTimeout(() => {
-                                        $('#backdateJobModal').modal('show');
-                                    }, 300);
+                                            $('#viewTripModal').modal('hide');
+                                            setTimeout(() => {
+                                                $(`.viewTrip[data-trip-id="${tripId}"]`)
+                                                    .trigger('click');
+                                            }, 400);
+
+                                            if (typeof tripsTable !== 'undefined') {
+                                                tripsTable.ajax.reload(null, false);
+                                            }
+                                        } else {
+                                            Swal.fire('Failed', res.message ||
+                                                'Unknown error', 'error');
+                                            $btn.prop('disabled', false).html(
+                                                '<i class="fa fa-stop"></i> Stop');
+                                        }
+                                    },
+                                    error: function() {
+                                        Swal.fire('Error', 'Server error occurred',
+                                            'error');
+                                        $btn.prop('disabled', false).html(
+                                            '<i class="fa fa-stop"></i> Stop');
+                                    }
+                                });
+                            });
+
+                        $(document).off('click', '#submitBackdateBtn').on('click', '#submitBackdateBtn',
+                            function() {
+                                const endDateTime = $('#stopJobDateTimeInput').val();
+
+                                console.log('End DateTime:', endDateTime);
+
+                                if (!endDateTime) {
+                                    Swal.fire('Error', 'Please select a date and time', 'error');
+                                    return;
                                 }
-                            }
-                        });
+
+                                // Split into date and time
+                                const [endDate, endTime] = endDateTime.split(' ');
+
+                                const $submitBtn = $(this);
+                                $submitBtn.prop('disabled', true).html(
+                                    '<i class="fa fa-spinner fa-spin"></i> Processing...');
+
+                                $.ajax({
+                                    url: `/tracker/trips/${tripId}/jobs/${jobId}/complete`,
+                                    type: 'POST',
+                                    data: {
+                                        end_date: endDate,
+                                        end_time: endTime
+                                    },
+                                    headers: {
+                                        'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr(
+                                            'content')
+                                    },
+                                    success: function(res) {
+                                        if (res.success) {
+                                            Swal.close();
+
+                                            Swal.fire({
+                                                icon: 'success',
+                                                title: 'Job Completed!',
+                                                html: `
+                                <strong>Completed:</strong> ${moment(endDateTime).format('DD/MM/YY HH:mm')}<br>
+                                <strong>Distance:</strong> ${res.total_distance || '0'} km<br>
+                                <strong>Duration:</strong> ${res.duration_hours || '0'} hours
+                                `,
+                                                confirmButtonText: 'OK'
+                                            });
+
+                                            setTimeout(() => {
+                                                $(`.viewTrip[data-trip-id="${tripId}"]`)
+                                                    .trigger('click');
+                                            }, 500);
+
+                                            if (typeof tripsTable !== 'undefined') {
+                                                tripsTable.ajax.reload(null, false);
+                                            }
+                                        } else {
+                                            Swal.fire('Failed', res.message ||
+                                                'Unknown error', 'error');
+                                        }
+                                    },
+                                    error: function(xhr) {
+                                        let errorMsg = 'Server error';
+                                        let errorTitle = 'Validation Error';
+
+                                        if (xhr.responseJSON) {
+                                            errorMsg = xhr.responseJSON.message ||
+                                                'Server error';
+
+                                            if (xhr.responseJSON.validation_type ===
+                                                'overlap_end') {
+                                                errorTitle = 'Job Timeline Conflict';
+                                                errorMsg = `
+                                <div style="text-align: left; font-size: 0.95rem;">
+                                    <p style="font-size: 1.1rem; margin-bottom: 15px;">
+                                        <strong><i class="fa fa-exclamation-triangle"></i> ${xhr.responseJSON.message}</strong>
+                                    </p>
+
+                                    <div style="background: #fff3cd; padding: 12px; border-left: 4px solid #ffc107; border-radius: 5px; margin: 15px 0;">
+                                        <p style="margin: 5px 0; color: #856404;">
+                                            <i class="fa fa-briefcase"></i> <strong>Conflicting Job:</strong>
+                                            ${xhr.responseJSON.conflicting_job}
+                                        </p>
+                                        <p style="margin: 5px 0; color: #856404;">
+                                            <i class="fa fa-clock"></i> <strong>Was In Transit:</strong><br>
+                                            ${xhr.responseJSON.conflicting_job_start} → ${xhr.responseJSON.conflicting_job_end}
+                                        </p>
+                                    </div>
+
+                                    <div style="background: #f8d7da; padding: 12px; border-left: 4px solid #dc3545; border-radius: 5px; margin: 15px 0;">
+                                        <p style="margin: 5px 0; color: #721c24;">
+                                            <i class="fa fa-times-circle"></i> <strong>Your End Time:</strong>
+                                            ${xhr.responseJSON.your_end_time}
+                                        </p>
+                                    </div>
+
+                                    <div style="background: #d1ecf1; padding: 12px; border-left: 4px solid #17a2b8; border-radius: 5px; margin: 15px 0;">
+                                        <p style="margin: 5px 0; color: #0c5460;">
+                                            <i class="fa fa-lightbulb"></i> <strong>Solution:</strong><br>
+                                            ${xhr.responseJSON.suggestion}
+                                        </p>
+                                    </div>
+                                </div>
+                            `;
+                                            }
+                                        }
+
+                                        Swal.fire({
+                                            icon: 'error',
+                                            title: errorTitle,
+                                            html: errorMsg,
+                                            confirmButtonText: 'OK',
+                                            width: '600px'
+                                        });
+                                    },
+                                    complete: function() {
+                                        $submitBtn.prop('disabled', false).html(
+                                            '<i class="fa fa-check"></i> Complete with this Time'
+                                        );
+                                    }
+                                });
+                            });
                     });
                 });
 

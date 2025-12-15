@@ -1,6 +1,7 @@
 <?php
 // UpdateUserLoginStatus.php
 namespace App\Console\Commands;
+
 use Illuminate\Console\Command;
 use App\Models\Logintracker\AzureUser;
 use App\Models\Logintracker\SigninLog;
@@ -23,10 +24,10 @@ class UpdateUserLoginStatus extends Command
         $usersWithRecentLogins = DB::table('Azure_Users')
             ->whereExists(function ($query) use ($dateThreshold) {
                 $query->select(DB::raw(1))
-                      ->from('Azure_LoginDetails')
-                      ->whereColumn('Azure_LoginDetails.user_id', 'Azure_Users.id')
-                      ->where('Azure_LoginDetails.status', 'Success')
-                      ->where('Azure_LoginDetails.date_utc', '>=', $dateThreshold);
+                    ->from('Azure_LoginDetails')
+                    ->whereColumn('Azure_LoginDetails.user_id', 'Azure_Users.id')
+                    ->where('Azure_LoginDetails.status', 'Success')
+                    ->where('Azure_LoginDetails.date_utc', '>=', $dateThreshold);
             })
             ->get(['id', 'userPrincipalName', 'displayName']);
 
@@ -55,14 +56,14 @@ class UpdateUserLoginStatus extends Command
         }
 
         $this->info('✅ User login status check completed!');
-        
+
         return Command::SUCCESS;
     }
 
     private function showDetailedLoginInfo($activeUsers, $dateThreshold)
     {
         $this->info("\n📋 Detailed login information:");
-        
+
         foreach ($activeUsers as $user) {
             $latestLogin = DB::table('Azure_LoginDetails')
                 ->where('user_id', $user->id)

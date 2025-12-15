@@ -3,10 +3,9 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
-use App\Models\SigninLog;
-use App\Models\User;
+use App\Models\Logintracker\SigninLog;
+use App\Models\Logintracker\AzureUser;
 use League\Csv\Reader;
-use League\Csv\Exception;
 use Carbon\Carbon;
 
 class ImportSignInsCommand extends Command
@@ -26,7 +25,7 @@ class ImportSignInsCommand extends Command
         try {
             $csv = Reader::createFromPath($filePath, 'r');
             $csv->setHeaderOffset(0);
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             $this->error("❌ Failed to read CSV file: " . $e->getMessage());
             return Command::FAILURE;
         }
@@ -37,9 +36,7 @@ class ImportSignInsCommand extends Command
         foreach ($records as $rawRecord) {
             $record = $this->normalizeRecord($rawRecord);
 
-            // Debug: show actual keys
-
-            $user = User::where('userPrincipalName', $record['username'])->first();
+            $user = AzureUser::where('userPrincipalName', $record['username'])->first();
 
             if (!$user) {
                 $this->warn("No matching user for username: {$record['username']}. Skipping.");

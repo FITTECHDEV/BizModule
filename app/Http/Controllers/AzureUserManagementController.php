@@ -17,6 +17,7 @@ use App\Services\AzureModuleAssignmentService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 
 class AzureUserManagementController extends Controller
 {
@@ -59,13 +60,13 @@ class AzureUserManagementController extends Controller
             }
 
             // Apply search filter if provided
+            // Apply search filter if provided
             if ($search = $request->get('search')) {
+                Log::info('Search query received', ['search' => $search]); // ADD THIS LINE
+
                 $query->where(function ($q) use ($search) {
                     // Search in name fields
                     $q->where('displayName', 'like', "%{$search}%")
-                        // Search in email username part only (before @)
-                        ->orWhereRaw("LEFT(mail, CHARINDEX('@', mail) - 1) LIKE ?", ["%{$search}%"])
-                        ->orWhereRaw("LEFT(userPrincipalName, CHARINDEX('@', userPrincipalName) - 1) LIKE ?", ["%{$search}%"])
                         // Search in other fields
                         ->orWhere('EmployeCode', 'like', "%{$search}%")
                         ->orWhere('department', 'like', "%{$search}%")
@@ -73,9 +74,23 @@ class AzureUserManagementController extends Controller
                         ->orWhere('officeLocation', 'like', "%{$search}%")
                         ->orWhere('city', 'like', "%{$search}%")
                         ->orWhere('country', 'like', "%{$search}%")
-                        ->orWhere('jobTitle', 'like', "%{$search}%");
+                        ->orWhere('jobTitle', 'like', "%{$search}%")
+                        ->orWhereExists(function ($subquery) use ($search) {
+                            $subquery->select(DB::raw(1))
+                                ->from('Azure_Application_UserMapping')
+                                ->whereColumn('Azure_Application_UserMapping.user_id', 'Azure_Users.userPrincipalName')
+                                ->where('Azure_Application_UserMapping.ApplicationName', 'like', "%{$search}%")
+                                ->where('Azure_Application_UserMapping.IsActive', 1)
+                                ->where('Azure_Application_UserMapping.IsDelete', 0);
+                        });
                 });
-            }
+
+                // Log the SQL query - ADD THIS BEFORE THE CLOSING BRACE
+                Log::info('Generated SQL', [
+                    'sql' => $query->toSql(),
+                    'bindings' => $query->getBindings()
+                ]);
+            } // THIS CLOSES THE IF STATEMENT
 
             // Order by Id and paginate (preserving query parameters)
             $users = $query->orderBy('Id', 'desc')
@@ -113,8 +128,6 @@ class AzureUserManagementController extends Controller
             if ($search = $request->get('search')) {
                 $query->where(function ($q) use ($search) {
                     $q->where('displayName', 'like', "%{$search}%")
-                        ->orWhereRaw("LEFT(mail, CHARINDEX('@', mail) - 1) LIKE ?", ["%{$search}%"])
-                        ->orWhereRaw("LEFT(userPrincipalName, CHARINDEX('@', userPrincipalName) - 1) LIKE ?", ["%{$search}%"])
                         ->orWhere('EmployeCode', 'like', "%{$search}%")
                         ->orWhere('department', 'like', "%{$search}%")
                         ->orWhere('companyName', 'like', "%{$search}%")
@@ -151,8 +164,6 @@ class AzureUserManagementController extends Controller
             if ($search = $request->get('search')) {
                 $query->where(function ($q) use ($search) {
                     $q->where('displayName', 'like', "%{$search}%")
-                        ->orWhereRaw("LEFT(mail, CHARINDEX('@', mail) - 1) LIKE ?", ["%{$search}%"])
-                        ->orWhereRaw("LEFT(userPrincipalName, CHARINDEX('@', userPrincipalName) - 1) LIKE ?", ["%{$search}%"])
                         ->orWhere('EmployeCode', 'like', "%{$search}%")
                         ->orWhere('department', 'like', "%{$search}%")
                         ->orWhere('companyName', 'like', "%{$search}%")
@@ -189,8 +200,6 @@ class AzureUserManagementController extends Controller
             if ($search = $request->get('search')) {
                 $query->where(function ($q) use ($search) {
                     $q->where('displayName', 'like', "%{$search}%")
-                        ->orWhereRaw("LEFT(mail, CHARINDEX('@', mail) - 1) LIKE ?", ["%{$search}%"])
-                        ->orWhereRaw("LEFT(userPrincipalName, CHARINDEX('@', userPrincipalName) - 1) LIKE ?", ["%{$search}%"])
                         ->orWhere('EmployeCode', 'like', "%{$search}%")
                         ->orWhere('department', 'like', "%{$search}%")
                         ->orWhere('companyName', 'like', "%{$search}%")
@@ -2502,5 +2511,207 @@ class AzureUserManagementController extends Controller
                 ] : null
             ], 500);
         }
+    }
+
+    /**
+     * Manual activation of pending users (called from web UI)
+     * 
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function activatePendingUsersManual()
+    {
+        try {
+            Log::info('=== MANUAL USER ACTIVATION STARTED ===', [
+                'initiated_by' => Auth::id(),
+                'timestamp' => now()->toDateTimeString()
+            ]);
+
+            $stats = [
+                'total_pending' => 0,
+                'activated' => 0,
+                'skipped' => 0,
+                'errors' => []
+            ];
+
+            // Fetch all pending users
+            $pendingUsers = DB::connection('sqlsrv')
+                ->table('Azure_Users')
+                ->where('Status', 'Pending')
+                ->get();
+
+            $stats['total_pending'] = $pendingUsers->count();
+
+            if ($stats['total_pending'] === 0) {
+                return redirect()->back()
+                    ->with('info', 'No pending users found.');
+            }
+
+            // Process each pending user
+            foreach ($pendingUsers as $user) {
+                try {
+                    // Check eligibility
+                    $eligible = $this->checkUserEligibility($user);
+
+                    if ($eligible['can_activate']) {
+                        // Activate user
+                        DB::connection('sqlsrv')
+                            ->table('Azure_Users')
+                            ->where('Id', $user->Id)
+                            ->update([
+                                'Status' => 'Active',
+                                'LastModifiedOn' => DB::raw('GETDATE()'),
+                                'LastModifiedBy' => Auth::id()
+                            ]);
+
+                        $stats['activated']++;
+
+                        Log::info('User activated', [
+                            'user_id' => $user->Id,
+                            'upn' => $user->userPrincipalName,
+                            'reason' => $eligible['reason']
+                        ]);
+                    } else {
+                        $stats['skipped']++;
+
+                        Log::debug('User skipped', [
+                            'user_id' => $user->Id,
+                            'upn' => $user->userPrincipalName,
+                            'reason' => $eligible['reason']
+                        ]);
+                    }
+                } catch (\Exception $e) {
+                    $stats['errors'][] = [
+                        'user' => $user->userPrincipalName,
+                        'error' => $e->getMessage()
+                    ];
+
+                    Log::error('Failed to activate user', [
+                        'user_id' => $user->Id,
+                        'error' => $e->getMessage()
+                    ]);
+                }
+            }
+
+            Log::info('=== MANUAL USER ACTIVATION COMPLETED ===', $stats);
+
+            // Build success message
+            $message = sprintf(
+                '✓ Sync completed! Processed: %d | Activated: %d | Skipped: %d',
+                $stats['total_pending'],
+                $stats['activated'],
+                $stats['skipped']
+            );
+
+            if (!empty($stats['errors'])) {
+                $message .= sprintf(' | Errors: %d', count($stats['errors']));
+            }
+
+            return redirect()->back()
+                ->with('success', $message);
+        } catch (\Exception $e) {
+            Log::error('=== MANUAL USER ACTIVATION FAILED ===', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return redirect()->back()
+                ->withErrors(['error' => 'Activation failed: ' . $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Full sync: Odoo sync + User activation (called from web UI)
+     * 
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function fullSyncManual()
+    {
+        try {
+            Log::info('=== FULL MANUAL SYNC STARTED ===', [
+                'initiated_by' => Auth::id(),
+                'timestamp' => now()->toDateTimeString()
+            ]);
+
+            // Step 1: Sync Odoo users
+            $odooController = new \App\Http\Controllers\OdooSyncController();
+            // Note: syncUsers() returns HTML output, we'll capture it
+            ob_start();
+            $odooController->syncUsers();
+            $odooOutput = ob_get_clean();
+
+            Log::info('Odoo sync completed in full sync');
+
+            // Step 2: Activate pending users
+            return $this->activatePendingUsersManual();
+        } catch (\Exception $e) {
+            Log::error('=== FULL MANUAL SYNC FAILED ===', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return redirect()->back()
+                ->withErrors(['error' => 'Full sync failed: ' . $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Check if a user is eligible for activation
+     * 
+     * @param object $user
+     * @return array ['can_activate' => bool, 'reason' => string]
+     */
+    private function checkUserEligibility($user): array
+    {
+        // Check 1: Azure AD provisioning
+        if (empty($user->AzureId)) {
+            return [
+                'can_activate' => false,
+                'reason' => 'Not provisioned to Azure AD'
+            ];
+        }
+
+        // Check 2: External system synchronization
+        $syncedSystems = [];
+        if (!empty($user->OdooUserId)) {
+            $syncedSystems[] = 'Odoo';
+        }
+        if (!empty($user->SCMUserID)) {
+            $syncedSystems[] = 'SCM';
+        }
+        if (!empty($user->BizUserID)) {
+            $syncedSystems[] = 'BIZ';
+        }
+
+        if (empty($syncedSystems)) {
+            return [
+                'can_activate' => false,
+                'reason' => 'No external system IDs populated'
+            ];
+        }
+
+        // Check 3: Module assignments
+        $moduleCount = DB::connection('sqlsrv')
+            ->table('Azure_Application_UserMapping')
+            ->where('user_id', $user->userPrincipalName)
+            ->where('IsActive', 1)
+            ->where('IsDelete', 0)
+            ->count();
+
+        if ($moduleCount === 0) {
+            return [
+                'can_activate' => false,
+                'reason' => 'No module assignments'
+            ];
+        }
+
+        // All checks passed
+        return [
+            'can_activate' => true,
+            'reason' => sprintf(
+                'Synced with %s (%d modules)',
+                implode(', ', $syncedSystems),
+                $moduleCount
+            )
+        ];
     }
 }
