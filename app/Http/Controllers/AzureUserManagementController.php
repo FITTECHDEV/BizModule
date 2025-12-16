@@ -33,10 +33,7 @@ class AzureUserManagementController extends Controller
     }
 
     /**
-     * Display a listing of users with statistics
-     */
-    /**
-     * Display a listing of users with statistics
+     * Display a listing of users with statistics and filters
      */
     public function index(Request $request)
     {
@@ -56,6 +53,48 @@ class AzureUserManagementController extends Controller
                     case 'inactive':
                         $query->whereIn('Status', ['Inactive', null]);
                         break;
+                }
+            }
+
+            // ====================================================================
+            // Apply department (group) filter
+            // ====================================================================
+            if ($department = $request->get('department')) {
+                if ($department === 'no_department') {
+                    $query->where(function ($q) {
+                        $q->whereNull('department')
+                            ->orWhere('department', '');
+                    });
+                } else {
+                    $query->where('department', $department);
+                }
+            }
+
+            // ====================================================================
+            // Apply company filter
+            // ====================================================================
+            if ($company = $request->get('company')) {
+                if ($company === 'no_company') {
+                    $query->where(function ($q) {
+                        $q->whereNull('companyName')
+                            ->orWhere('companyName', '');
+                    });
+                } else {
+                    $query->where('companyName', $company);
+                }
+            }
+
+            // ====================================================================
+            // Apply location filter
+            // ====================================================================
+            if ($location = $request->get('location')) {
+                if ($location === 'no_location') {
+                    $query->where(function ($q) {
+                        $q->whereNull('officeLocation')
+                            ->orWhere('officeLocation', '');
+                    });
+                } else {
+                    $query->where('officeLocation', $location);
                 }
             }
 
@@ -84,12 +123,12 @@ class AzureUserManagementController extends Controller
                         });
                 });
 
-                // Log the SQL query - ADD THIS BEFORE THE CLOSING BRACE
+                // Log the SQL query
                 Log::info('Generated SQL', [
                     'sql' => $query->toSql(),
                     'bindings' => $query->getBindings()
                 ]);
-            } // THIS CLOSES THE IF STATEMENT
+            }
 
             // Order by Id and paginate (preserving query parameters)
             $users = $query->orderBy('Id', 'desc')
@@ -104,7 +143,50 @@ class AzureUserManagementController extends Controller
                 'inactive' => AzureUser::whereIn('Status', ['Inactive', null])->count(),
             ];
 
-            return view('azure-management.users.index', compact('users', 'stats'));
+            // ====================================================================
+            // Fetch unique values for all filter dropdowns
+            // ====================================================================
+
+            // Get unique departments (groups)
+            $departments = AzureUser::select('department')
+                ->whereNotNull('department')
+                ->where('department', '!=', '')
+                ->distinct()
+                ->orderBy('department')
+                ->pluck('department');
+
+            // Get unique companies
+            $companies = AzureUser::select('companyName')
+                ->whereNotNull('companyName')
+                ->where('companyName', '!=', '')
+                ->distinct()
+                ->orderBy('companyName')
+                ->pluck('companyName');
+
+            // Get unique locations
+            $locations = AzureUser::select('officeLocation')
+                ->whereNotNull('officeLocation')
+                ->where('officeLocation', '!=', '')
+                ->distinct()
+                ->orderBy('officeLocation')
+                ->pluck('officeLocation');
+
+            Log::info('Filter data loaded', [
+                'departments_count' => $departments->count(),
+                'companies_count' => $companies->count(),
+                'locations_count' => $locations->count()
+            ]);
+
+            // ====================================================================
+            // Return view with all data including filter arrays
+            // ====================================================================
+            return view('azure-management.users.index', compact(
+                'users',
+                'stats',
+                'departments',
+                'companies',
+                'locations'
+            ));
         } catch (\Exception $e) {
             Log::error('Azure Dashboard Error: ' . $e->getMessage());
 

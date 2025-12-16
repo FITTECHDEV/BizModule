@@ -95,7 +95,7 @@
                         </select>
                     </div>
 
-                    <!-- Company Name Filter -->
+                    <!-- Company Filter -->
                     <div class="mr-2" style="min-width: 180px;">
                         <select id="companyFilter" class="form-control form-control-sm">
                             <option value="">All Companies</option>
@@ -126,13 +126,14 @@
                     </div>
 
                     <!-- Search Type Dropdown (Hidden by default, shows when searching) -->
-                    <div id="searchTypeContainer" class="mr-2" style="display: none; min-width: 150px;">
+                    <div id="searchTypeContainer" class="mr-2" style="display: none; min-width: 180px;">
                         <select id="searchType" class="form-control form-control-sm">
-                            <option value="all" {{ request('search_type', 'all') == 'all' ? 'selected' : '' }}>All Fields</option>
-                            <option value="department" {{ request('search_type') == 'department' ? 'selected' : '' }}>Department Only</option>
+                            <option value="all" {{ request('search_type', 'all') == 'all' ? 'selected' : '' }}>Search All Fields</option>
                             <option value="name" {{ request('search_type') == 'name' ? 'selected' : '' }}>Name Only</option>
-                            <option value="company" {{ request('search_type') == 'company' ? 'selected' : '' }}>Company Only</option>
                             <option value="email" {{ request('search_type') == 'email' ? 'selected' : '' }}>Email Only</option>
+                            <option value="department" {{ request('search_type') == 'department' ? 'selected' : '' }}>Department Only</option>
+                            <option value="company" {{ request('search_type') == 'company' ? 'selected' : '' }}>Company Only</option>
+                            <option value="location" {{ request('search_type') == 'location' ? 'selected' : '' }}>Location Only</option>
                         </select>
                     </div>
                 </div>
@@ -144,7 +145,7 @@
                         <input type="text"
                             id="searchUsers"
                             class="form-control form-control-sm"
-                            placeholder="Search... (Press Enter)"
+                            placeholder="Search by name, email, department, company, location... (Press Enter)"
                             value="{{ request('search') }}"
                             autocomplete="off">
                         <div class="input-group-append">
@@ -162,7 +163,7 @@
         </div>
     </div>
 
-    <!-- Rest of your table code remains the same -->
+    <!-- Users Table -->
     <div class="card-body table-responsive p-0">
         <table class="table table-hover text-nowrap">
             <thead>
@@ -171,7 +172,8 @@
                     <th>Email</th>
                     <th>Login ID</th>
                     <th>Employee ID</th>
-                    <th>Group</th>
+                    <th>Department</th>
+                    <th>Company</th>
                     <th>Location</th>
                     <th>Status</th>
                     <th style="width: 120px;">Actions</th>
@@ -191,7 +193,8 @@
                     <td>{{ $user->mail ?? $user->userPrincipalName ?? 'N/A' }}</td>
                     <td>{{ $user->userPrincipalName ?? 'N/A' }}</td>
                     <td>{{ $user->EmployeCode ?? 'N/A' }}</td>
-                    <td>{{ $user->department ?? $user->companyName ?? 'N/A' }}</td>
+                    <td>{{ $user->department ?? 'N/A' }}</td>
+                    <td>{{ $user->companyName ?? 'N/A' }}</td>
                     <td>{{ $user->officeLocation ?? $user->city ?? 'N/A' }}</td>
                     <td>
                         @php
@@ -235,7 +238,7 @@
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="8" class="text-center text-muted py-4">
+                    <td colspan="9" class="text-center text-muted py-4">
                         <i class="fas fa-users fa-3x mb-3"></i>
                         <p>No users found</p>
                         @if(request('search') || request('status') || request('department') || request('company') || request('location'))
@@ -323,7 +326,7 @@
     @endif
 </div>
 
-<!-- Add this JavaScript to handle the filters -->
+<!-- JavaScript for Filters -->
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         // Get filter elements
@@ -359,7 +362,6 @@
 
         // Clear search button - resets everything and reloads page
         clearSearchBtn.addEventListener('click', function() {
-            // Navigate to base URL without any query parameters
             window.location.href = window.location.pathname;
         });
 
@@ -555,6 +557,21 @@
 
     // Status filter
     document.getElementById('statusFilter').addEventListener('change', function() {
+        performSearch();
+    });
+
+    // Department filter
+    document.getElementById('departmentFilter').addEventListener('change', function() {
+        performSearch();
+    });
+
+    // Company filter
+    document.getElementById('companyFilter').addEventListener('change', function() {
+        performSearch();
+    });
+
+    // Location filter
+    document.getElementById('locationFilter').addEventListener('change', function() {
         performSearch();
     });
 
