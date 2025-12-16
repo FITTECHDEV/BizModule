@@ -71,24 +71,10 @@ class DashboardStatsService
                 if (!empty($filters['endDate'])) {
                     $q->where('date_utc', '<=', $filters['endDate']);
                 }
-                // FIXED: Apply improved system filter
+                // Apply system filter
                 if (!empty($filters['system'])) {
                     $this->applySystemFilter($q, $filters['system']);
                 }
-            }])
-            ->with(['signIns' => function ($q) use ($filters) {
-                // Show recent logins filtered by date and system
-                if (!empty($filters['startDate'])) {
-                    $q->where('date_utc', '>=', $filters['startDate']);
-                }
-                if (!empty($filters['endDate'])) {
-                    $q->where('date_utc', '<=', $filters['endDate']);
-                }
-                // FIXED: Apply improved system filter
-                if (!empty($filters['system'])) {
-                    $this->applySystemFilter($q, $filters['system']);
-                }
-                $q->orderByDesc('date_utc')->limit(5);
             }]);
 
         if ($search) {
@@ -101,6 +87,28 @@ class DashboardStatsService
 
         $users = $usersQuery->orderBy('displayName')->paginate(17);
 
+        // FIXED: Load signIns separately after pagination to avoid eager loading issues
+        $users->getCollection()->transform(function ($user) use ($filters) {
+            $signInsQuery = SigninLog::where('user_id', $user->id);
+            
+            // Apply date filters
+            if (!empty($filters['startDate'])) {
+                $signInsQuery->where('date_utc', '>=', $filters['startDate']);
+            }
+            if (!empty($filters['endDate'])) {
+                $signInsQuery->where('date_utc', '<=', $filters['endDate']);
+            }
+            
+            // Apply system filter
+            if (!empty($filters['system'])) {
+                $this->applySystemFilter($signInsQuery, $filters['system']);
+            }
+            
+            $user->setRelation('signIns', $signInsQuery->orderByDesc('date_utc')->limit(5)->get());
+            return $user;
+        });
+
+        // Calculate missed days and last login for each user
         foreach ($users as $user) {
             $uniqueDays = $user->signIns->pluck('date_utc')
                 ->map(fn($d) => Carbon::parse($d)->toDateString())
@@ -121,7 +129,7 @@ class DashboardStatsService
             if (!empty($filters['endDate'])) {
                 $q->where('date_utc', '<=', $filters['endDate']);
             }
-            // FIXED: Apply improved system filter
+            // Apply system filter
             if (!empty($filters['system'])) {
                 $this->applySystemFilter($q, $filters['system']);
             }
@@ -147,7 +155,7 @@ class DashboardStatsService
             ->whereBetween('Azure_LoginDetails.date_utc', [$startDate, $endDate]);
 
         if ($system) {
-            // FIXED: Apply improved system filter to the join query
+            // Apply system filter to the join query
             $rawSystemNames = $this->getRawSystemNames($system);
             
             $signInsQuery->where(function ($query) use ($rawSystemNames, $system) {

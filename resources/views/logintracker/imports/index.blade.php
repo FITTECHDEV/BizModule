@@ -1,96 +1,19 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Import Data</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <style>
-        .import-status {
-            display: none;
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            z-index: 9999;
-            background: white;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 0 30px rgba(0,0,0,0.4);
-            min-width: 600px;
-            max-width: 90vw;
-            max-height: 80vh;
-            overflow-y: auto;
-        }
-        .import-status.show {
-            display: block;
-        }
-        .overlay {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.7);
-            z-index: 9998;
-        }
-        .overlay.show {
-            display: block;
-        }
-        .spinner-border {
-            width: 3rem;
-            height: 3rem;
-        }
-        .progress-table {
-            font-size: 0.9rem;
-        }
-        .status-badge {
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 0.8rem;
-            font-weight: bold;
-        }
-        .status-pending {
-            background: #ffc107;
-            color: #000;
-        }
-        .status-running {
-            background: #17a2b8;
-            color: #fff;
-        }
-        .status-complete {
-            background: #28a745;
-            color: #fff;
-        }
-        .pulse {
-            animation: pulse 1.5s infinite;
-        }
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
-        .file-size-badge {
-            display: inline-block;
-            padding: 2px 8px;
-            background: #e3f2fd;
-            border-radius: 4px;
-            font-size: 0.85rem;
-            color: #1976d2;
-            margin-left: 5px;
-        }
-    </style>
-</head>
-<body>
-<div class="container mt-5">
-   {{-- Page Title and Back Button on same line --}}
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="mb-0">Import Data</h1>
-        <a href="{{ route('dashboard') }}" class="btn btn-secondary">← Back to Dashboard</a>
-    </div>
-    
-    <p class="lead">Import users and sign-in logs. User-system associations and login status are automatically updated when importing sign-in data.</p>
+@extends('adminlte::page')
 
+@section('title', 'Import Data')
+
+@section('content_header')
+<div class="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-3 mb-3">
+    <h1 class="page-title mb-0">Import Data</h1>
+    <a href="{{ route('dashboard') }}" class="btn btn-secondary">
+        <i class="fas fa-arrow-left me-1 me-sm-2"></i> <span class="d-none d-sm-inline">Back to </span>Dashboard
+    </a>
+</div>
+@stop
+
+@section('content')
+<div class="container-fluid">
+    <p class="lead mb-4">Import users and sign-in logs. User-system associations and login status are automatically updated when importing sign-in data.</p>
 
     {{-- Flash Messages --}}
     @if (session('success'))
@@ -123,29 +46,25 @@
     @endif
 
     {{-- Import Forms --}}
-    <div class="row">
+    <div class="row g-3 g-lg-4">
         {{-- Users Import --}}
-        <div class="col-md-6">
-            <div class="card">
+        <div class="col-12 col-lg-6">
+            <div class="card h-100 shadow-sm">
                 <div class="card-header bg-primary text-white">
-                    <h3 class="mb-0">Import Users</h3>
+                    <h3 class="mb-0 h5"><i class="fas fa-users me-2"></i>Import Users</h3>
                 </div>
                 <div class="card-body">
                     <form action="{{ route('imports.users') }}" method="POST" enctype="multipart/form-data" id="users-import-form">
                         @csrf
                         <div class="mb-3">
-                            <label for="userFile" class="form-label">Upload Users CSV</label>
+                            <label for="userFile" class="form-label fw-bold">Upload Users CSV</label>
                             <input type="file" class="form-control" id="userFile" name="import_file" accept=".csv,.txt" required>
-                            <!-- <div class="form-text">
-                                Accepted formats: CSV, TXT<br>
-                                Maximum size: 250MB
-                            </div> -->
                             <div class="mt-2" id="user-file-info" style="display:none;">
-                                <small>Selected: <span id="user-file-name"></span> <span id="user-file-size" class="file-size-badge"></span></small>
+                                <small class="text-muted">Selected: <span id="user-file-name"></span> <span id="user-file-size" class="file-size-badge"></span></small>
                             </div>
                         </div>
-                        <button type="submit" class="btn btn-primary">
-                            <span class="btn-text">Import Users</span>
+                        <button type="submit" class="btn btn-primary btn-lg w-100">
+                            <i class="fas fa-upload me-2"></i><span class="btn-text">Import Users</span>
                         </button>
                     </form>
                 </div>
@@ -153,27 +72,23 @@
         </div>
 
         {{-- Sign-Ins Import --}}
-        <div class="col-md-6">
-            <div class="card">
+        <div class="col-12 col-lg-6">
+            <div class="card h-100 shadow-sm">
                 <div class="card-header bg-success text-white">
-                    <h3 class="mb-0">Import Sign-Ins</h3>
+                    <h3 class="mb-0 h5"><i class="fas fa-sign-in-alt me-2"></i>Import Sign-Ins</h3>
                 </div>
                 <div class="card-body">
                     <form action="{{ route('imports.sign_ins') }}" method="POST" enctype="multipart/form-data" id="signin-import-form">
                         @csrf
                         <div class="mb-3">
-                            <label for="signInFile" class="form-label">Upload Sign-Ins CSV</label>
+                            <label for="signInFile" class="form-label fw-bold">Upload Sign-Ins CSV</label>
                             <input type="file" class="form-control" id="signInFile" name="import_file" accept=".csv,.txt" required>
-                            <!-- <div class="form-text">
-                                Accepted formats: CSV, TXT<br>
-                                Maximum size: 250MB
-                            </div> -->
                             <div class="mt-2" id="signin-file-info" style="display:none;">
-                                <small>Selected: <span id="signin-file-name"></span> <span id="signin-file-size" class="file-size-badge"></span></small>
+                                <small class="text-muted">Selected: <span id="signin-file-name"></span> <span id="signin-file-size" class="file-size-badge"></span></small>
                             </div>
                         </div>
-                        <button type="submit" class="btn btn-success">
-                            <span class="btn-text">Import Sign-Ins</span>
+                        <button type="submit" class="btn btn-success btn-lg w-100">
+                            <i class="fas fa-upload me-2"></i><span class="btn-text">Import Sign-Ins</span>
                         </button>
                     </form>
                 </div>
@@ -259,8 +174,214 @@
         </a>
     </div>
 </div>
+@endsection
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+@section('css')
+<style>
+    .page-title {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: #1f1f1f;
+    }
+
+    @media (min-width: 768px) {
+        .page-title {
+            font-size: 2rem;
+        }
+    }
+
+    .import-status {
+        display: none;
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 9999;
+        background: white;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 0 30px rgba(0,0,0,0.4);
+        width: 95vw;
+        max-width: 600px;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+
+    @media (min-width: 768px) {
+        .import-status {
+            padding: 30px;
+            width: 90vw;
+        }
+    }
+
+    .import-status.show {
+        display: block;
+    }
+    .overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.7);
+        z-index: 9998;
+    }
+    .overlay.show {
+        display: block;
+    }
+    .spinner-border {
+        width: 2.5rem;
+        height: 2.5rem;
+    }
+
+    @media (min-width: 768px) {
+        .spinner-border {
+            width: 3rem;
+            height: 3rem;
+        }
+    }
+
+    .progress-table {
+        font-size: 0.8rem;
+    }
+
+    @media (min-width: 768px) {
+        .progress-table {
+            font-size: 0.9rem;
+        }
+    }
+
+    .status-badge {
+        padding: 3px 6px;
+        border-radius: 4px;
+        font-size: 0.7rem;
+        font-weight: bold;
+        display: inline-block;
+    }
+
+    @media (min-width: 768px) {
+        .status-badge {
+            padding: 4px 8px;
+            font-size: 0.8rem;
+        }
+    }
+
+    .status-pending {
+        background: #ffc107;
+        color: #000;
+    }
+    .status-running {
+        background: #17a2b8;
+        color: #fff;
+    }
+    .status-complete {
+        background: #28a745;
+        color: #fff;
+    }
+    .pulse {
+        animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+    }
+    .file-size-badge {
+        display: inline-block;
+        padding: 2px 8px;
+        background: #e3f2fd;
+        border-radius: 4px;
+        font-size: 0.85rem;
+        color: #1976d2;
+        margin-left: 5px;
+    }
+
+    /* Responsive card improvements */
+    .card {
+        border: 1px solid #dee2e6;
+    }
+
+    .card-header h3 {
+        font-size: 1.1rem;
+    }
+
+    @media (min-width: 768px) {
+        .card-header h3 {
+            font-size: 1.25rem;
+        }
+    }
+
+    /* Responsive button improvements */
+    .btn-lg {
+        font-size: 1rem;
+        padding: 0.75rem 1rem;
+    }
+
+    @media (min-width: 768px) {
+        .btn-lg {
+            font-size: 1.125rem;
+            padding: 0.875rem 1.25rem;
+        }
+    }
+
+    /* Alert responsiveness */
+    .alert {
+        font-size: 0.9rem;
+    }
+
+    @media (min-width: 768px) {
+        .alert {
+            font-size: 1rem;
+        }
+    }
+
+    /* Progress table mobile optimization */
+    .progress-table td:first-child {
+        max-width: 120px;
+        word-wrap: break-word;
+    }
+
+    @media (min-width: 576px) {
+        .progress-table td:first-child {
+            max-width: none;
+        }
+    }
+
+    /* Status message responsiveness */
+    #status-title {
+        font-size: 1.25rem;
+    }
+
+    @media (min-width: 768px) {
+        #status-title {
+            font-size: 1.5rem;
+        }
+    }
+
+    #status-message {
+        font-size: 0.875rem;
+    }
+
+    @media (min-width: 768px) {
+        #status-message {
+            font-size: 1rem;
+        }
+    }
+
+    /* Timer stats responsiveness */
+    .row.text-center.mt-3 {
+        font-size: 0.85rem;
+    }
+
+    @media (min-width: 768px) {
+        .row.text-center.mt-3 {
+            font-size: 1rem;
+        }
+    }
+</style>
+@endsection
+
+@section('js')
 <script>
 // ============================================
 // FILE SIZE DISPLAY - Show file size when selected
@@ -527,7 +648,7 @@ function showCompletionMessage() {
     const timeString = minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
     
     title.innerHTML = '✅ Import Complete!';
-    message.innerHTML = `Your data has been successfully imported in ${timeString}. If the page doesn\'t redirect automatically, click the button below.`;
+    message.innerHTML = `Your data has been successfully imported in ${timeString}. If the page doesn't redirect automatically, click the button below.`;
     
     if (spinner) spinner.style.display = 'none';
     if (actionContainer) actionContainer.style.display = 'block';
@@ -561,5 +682,4 @@ window.addEventListener('beforeunload', function(e) {
 
 console.log('🚀 Import progress tracker initialized - Ready for large file imports (up to 60 minutes)');
 </script>
-</body>
-</html>
+@endsection

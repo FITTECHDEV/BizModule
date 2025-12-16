@@ -18,7 +18,7 @@ return [
     // 🔥 CRITICAL FIX: FIT ERP maps to BIZ PRO (was incorrectly mapping to Odoo)
     // ========================================================================
     'FIT ERP' => 'BIZ PRO',
-    'fit erp' => 'BIZ PRO',    // ✅ FIXED: This was mapping to Odoo
+    'fit erp' => 'BIZ PRO',
     'FitERP' => 'BIZ PRO',
     'fiterp' => 'BIZ PRO',
     'fit_erp' => 'BIZ PRO',
@@ -104,11 +104,26 @@ return [
     'operations uat' => 'OPS UAT',
     
     // ========================================================================
-    // Odoo variations - REMOVED FIT ERP mappings (moved to BIZ PRO above)
+    // 🔥 FIXED: Enhanced Odoo variations with robust mappings
     // ========================================================================
     'Odoo' => 'Odoo',
     'odoo' => 'Odoo',
     'ODOO' => 'Odoo',
+    ' Odoo' => 'Odoo',          // with leading space
+    'Odoo ' => 'Odoo',          // with trailing space
+    ' Odoo ' => 'Odoo',         // with both spaces
+    ' odoo' => 'Odoo',          // lowercase with leading space
+    'odoo ' => 'Odoo',          // lowercase with trailing space
+    ' odoo ' => 'Odoo',         // lowercase with both spaces
+    'Odoo ERP' => 'Odoo',
+    'odoo erp' => 'Odoo',
+    'ODOO ERP' => 'Odoo',
+    'Odoo System' => 'Odoo',
+    'odoo system' => 'Odoo',
+    'Odoo Production' => 'Odoo',
+    'odoo production' => 'Odoo',
+    'Odoo Live' => 'Odoo',
+    'odoo live' => 'Odoo',
     
     // GeNeSIS variations
     'GeNeSIS' => 'GeNeSIS',
@@ -146,21 +161,19 @@ return [
     'Microsoft App Access Panel' => 'Office 365',
     'microsoft app access panel' => 'Office 365',
 
-
-
     // Microsoft Office 365 Portal variations
-'Microsoft Office 365 Portal' => 'Office 365',
-'microsoft office 365 portal' => 'Office 365',
-'Office 365 Portal' => 'Office 365',
-'office 365 portal' => 'Office 365',
+    'Microsoft Office 365 Portal' => 'Office 365',
+    'microsoft office 365 portal' => 'Office 365',
+    'Office 365 Portal' => 'Office 365',
+    'office 365 portal' => 'Office 365',
 
-// Microsoft AAD App Registration
-'Microsoft_AAD_RegisteredApps' => 'IT Infrastructure',
-'microsoft_aad_registeredapps' => 'IT Infrastructure',
-'Microsoft AAD RegisteredApps' => 'IT Infrastructure',
-'microsoft aad registeredapps' => 'IT Infrastructure',
-'Azure AD App Registration' => 'IT Infrastructure',
-'azure ad app registration' => 'IT Infrastructure',
+    // Microsoft AAD App Registration
+    'Microsoft_AAD_RegisteredApps' => 'IT Infrastructure',
+    'microsoft_aad_registeredapps' => 'IT Infrastructure',
+    'Microsoft AAD RegisteredApps' => 'IT Infrastructure',
+    'microsoft aad registeredapps' => 'IT Infrastructure',
+    'Azure AD App Registration' => 'IT Infrastructure',
+    'azure ad app registration' => 'IT Infrastructure',
     
     // Microsoft Teams variations
     'Microsoft Teams' => 'Microsoft Teams',

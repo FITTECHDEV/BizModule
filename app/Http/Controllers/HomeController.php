@@ -73,20 +73,115 @@ class HomeController extends Controller
                 $rra_stats = [];
             }
 
+            // ========================================
+            // NEW: Get Login Tracker Statistics
+            // ========================================
+            try {
+                $loginTrackerStats = $this->getLoginTrackerStats();
+            } catch (\Exception $e) {
+                \Log::error('Login Tracker Stats Error: ' . $e->getMessage());
+                $loginTrackerStats = [
+                    'total_users' => 0,
+                    'active_this_month' => 0,
+                    'active_last_month' => 0,
+                    'inactive_users' => 0,
+                ];
+            }
+
+            // Extract login tracker variables for easy access in view
+            $active_this_month = $loginTrackerStats['active_this_month'];
+            $active_last_month = $loginTrackerStats['active_last_month'];
+            $inactive_users = $loginTrackerStats['inactive_users'];
+            $total_users = $loginTrackerStats['total_users'];
+
             // // LOG BEFORE RETURNING VIEW
             // \Log::info('About to return view with data', [
             //     'ticketStatistics' => $ticketStatistics,
             //     'efris_stats' => $efris_stats,
             //     'traStatsTZ' => $traStatsTZ,
+            //     'loginTrackerStats' => $loginTrackerStats, // NEW
             // ]);
 
             return view(
                 'dashboard.ticket',
-                compact('ticketStatistics', 'entityStatistics', 'tims_stats', 'efris_stats', 'traStatsTZ', 'traStatsADL', 'rra_stats')
+                compact(
+                    'ticketStatistics', 
+                    'entityStatistics', 
+                    'tims_stats', 
+                    'efris_stats', 
+                    'traStatsTZ', 
+                    'traStatsADL', 
+                    'rra_stats',
+                    // NEW: Add login tracker variables
+                    'active_this_month',
+                    'active_last_month',
+                    'inactive_users',
+                    'total_users'
+                )
             );
         } catch (\Exception $e) {
             \Log::error('Home Controller Error: ' . $e->getMessage());
             return 'Controller Error: ' . $e->getMessage();
+        }
+    }
+
+    /**
+     * Get Login Tracker statistics from stored procedure
+     * 
+     * @return array
+     */
+    private function getLoginTrackerStats()
+    {
+        try {
+            $pdo = DB::connection()->getPdo();
+            $stmt = $pdo->prepare("SET NOCOUNT ON; EXEC dbo.sp_Azure_UserSummary;");
+            $stmt->execute();
+
+            $results = $stmt->fetchAll(\PDO::FETCH_OBJ);
+
+            // Clear any additional result sets
+            while ($stmt->nextRowset()) {
+                // Clear buffer
+            }
+
+            \Log::info('Login Tracker Stats Retrieved', [
+                'count' => count($results),
+                'first_result' => !empty($results) ? $results[0] : null,
+            ]);
+
+            if (!empty($results) && is_object($results[0])) {
+                $firstRow = $results[0];
+
+                // Use actual column names from stored procedure
+                return [
+                    'total_users' => $firstRow->Totaluser ?? 0,
+                    'active_this_month' => $firstRow->ActiveThisMonth ?? 0,
+                    'active_last_month' => $firstRow->ActiveLastMonth ?? 0,
+                    'inactive_users' => $firstRow->InActiveUser ?? 0,
+                ];
+            }
+
+            \Log::warning('SP UserSummary returned no data');
+
+            return [
+                'total_users' => 0,
+                'active_this_month' => 0,
+                'active_last_month' => 0,
+                'inactive_users' => 0,
+            ];
+        } catch (\Exception $e) {
+            \Log::error('Failed to get login tracker stats in HomeController', [
+                'error' => $e->getMessage(),
+                'line' => $e->getLine(),
+            ]);
+
+            // Return zero values on error
+            return [
+                'total_users' => 0,
+                'active_this_month' => 0,
+                'active_last_month' => 0,
+                'inactive_users' => 0,
+            ];
         }
     }
 

@@ -16,7 +16,7 @@ class GenerateJsonReportTZ extends Command
     public function handle()
     {
         Log::info('AR ZReport command triggered by scheduler at ' . now()); // Add this line
-        
+
         $officeCode = 'AR';
         $inputDate  = $this->argument('date');
         $backfillStart = $this->option('backfill');

@@ -13,7 +13,7 @@
             <div class="col-md-7">
                 <form action="">
                     @csrf
-                    <table style="" class="table table-sm text-center">
+                    <table class="table table-sm text-center">
                         <tr>
                             <td>
                                 <label for="filter_date">Date</label> &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;

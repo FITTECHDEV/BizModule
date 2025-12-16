@@ -6,6 +6,9 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ActivityReportController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\ImportController;
+use App\Http\Controllers\TrackerController;
+use App\Http\Controllers\JimiTestController;
+
 
 use App\Models\Category;
 use App\Models\ClientParty;
@@ -323,8 +326,46 @@ Route::get('/', function () {
     return redirect()->route('home');
 });
 
+Route::middleware(['auth'])->prefix('tracker')->name('tracker.')->group(function () {
 
+    Route::get('/dashboard', [TrackerController::class, 'dashboard'])->name('dashboard');
+    Route::get('/trips/get/{filter?}', [TrackerController::class, 'getTrips']);
+    Route::get('/trips/{id}', [TrackerController::class, 'getTripDetails']);
 
+    Route::get('/vehicles/list', [TrackerController::class, 'getVehicles']);
+    Route::get('/jobs/available', [TrackerController::class, 'getAvailableJobs']);
+    Route::get('/locations', [TrackerController::class, 'getLocations']);
+
+    Route::post('/trips/create', [TrackerController::class, 'createTrip']);
+    Route::post('/trips/{tripId}/start', [TrackerController::class, 'startTrip']);
+    Route::post('/trips/{tripId}/end', [TrackerController::class, 'endTrip']);
+    Route::post('/trips/{tripId}/jobs/add', [TrackerController::class, 'addJobToTrip']);
+
+    // Correct job actions — require both tripId and jobId
+    Route::post('/trips/{tripId}/jobs/{jobId}/start', [TrackerController::class, 'startJob']);
+    Route::post('/trips/{tripId}/jobs/{jobId}/complete', [TrackerController::class, 'completeJob']);
+});
+
+Route::middleware(['auth'])->prefix('jimi-test')->group(function () {
+
+    // Test page
+    Route::get('/', [JimiTestController::class, 'testPage'])->name('jimi.test');
+
+    // Test connection
+    Route::get('/connection', [JimiTestController::class, 'testConnection'])->name('jimi.test.connection');
+
+    // Get all vehicles
+    Route::get('/vehicles', [JimiTestController::class, 'getVehicles'])->name('jimi.test.vehicles');
+
+    // Get current location
+    Route::get('/location/{imei}', [JimiTestController::class, 'getCurrentLocation'])->name('jimi.test.location');
+
+    // Get mileage
+    Route::post('/mileage', [JimiTestController::class, 'getMileage'])->name('jimi.test.mileage');
+
+    // Get track data
+    Route::post('/track', [JimiTestController::class, 'getTrackData'])->name('jimi.test.track');
+});
 
 
 
