@@ -2428,8 +2428,7 @@ class AzureUserManagementController extends Controller
     // }
 
     /**
-     * Update the specified user - Enhanced with 1-to-1 method (separate roles and functions tables)
-     * FIXED: Handles duplicate PRIMARY KEY violations properly
+     * Update the specified user - Enhanced with proper delete tracking
      */
     public function update(Request $request, AzureUser $user)
     {
@@ -2438,6 +2437,7 @@ class AzureUserManagementController extends Controller
                 'user_id' => $user->Id,
                 'azure_id' => $user->AzureId,
                 'has_modules' => $request->has('modules'),
+                'modules_count' => is_array($request->modules) ? count($request->modules) : 0,
             ]);
 
             // Validate
@@ -2458,7 +2458,26 @@ class AzureUserManagementController extends Controller
 
             try {
                 // ====================================================================
-                // STEP 1: HARD DELETE existing assignments (avoid PRIMARY KEY issues)
+                // STEP 1: Count existing assignments BEFORE deletion
+                // ====================================================================
+                $existingRolesCount = DB::connection('sqlsrv')
+                    ->table('Azure_Application_UserMapping')
+                    ->where('user_id', $user->userPrincipalName)
+                    ->count();
+
+                $existingFunctionsCount = DB::connection('sqlsrv')
+                    ->table('Azure_Application_UserFunction')
+                    ->where('user_id', $user->userPrincipalName)
+                    ->count();
+
+                Log::info('Existing assignments before update', [
+                    'roles' => $existingRolesCount,
+                    'functions' => $existingFunctionsCount,
+                    'total' => $existingRolesCount + $existingFunctionsCount
+                ]);
+
+                // ====================================================================
+                // STEP 2: HARD DELETE existing assignments
                 // ====================================================================
                 $deletedRoles = DB::connection('sqlsrv')
                     ->table('Azure_Application_UserMapping')
@@ -2470,27 +2489,69 @@ class AzureUserManagementController extends Controller
                     ->where('user_id', $user->userPrincipalName)
                     ->delete();
 
-                Log::info('Deleted existing assignments', [
+                Log::info('✅ DELETED existing assignments', [
                     'roles_deleted' => $deletedRoles,
                     'functions_deleted' => $deletedFunctions,
+                    'total_deleted' => $deletedRoles + $deletedFunctions
                 ]);
 
                 // ====================================================================
-                // STEP 2: Check if we're clearing all modules
+                // STEP 3: Verify deletion was successful
+                // ====================================================================
+                $remainingRoles = DB::connection('sqlsrv')
+                    ->table('Azure_Application_UserMapping')
+                    ->where('user_id', $user->userPrincipalName)
+                    ->count();
+
+                $remainingFunctions = DB::connection('sqlsrv')
+                    ->table('Azure_Application_UserFunction')
+                    ->where('user_id', $user->userPrincipalName)
+                    ->count();
+
+                if ($remainingRoles > 0 || $remainingFunctions > 0) {
+                    Log::error('❌ DELETION FAILED - Records still exist!', [
+                        'remaining_roles' => $remainingRoles,
+                        'remaining_functions' => $remainingFunctions
+                    ]);
+
+                    throw new \Exception("Failed to delete existing assignments. Please try again.");
+                }
+
+                Log::info('✅ Deletion verified - all old records removed');
+
+                // ====================================================================
+                // STEP 4: Check if we're clearing all modules (DELETE ONLY mode)
                 // ====================================================================
                 if ($request->has('modules_empty') && $request->modules_empty == '1') {
                     DB::connection('sqlsrv')->commit();
-                    Log::info('All modules cleared');
+
+                    Log::info('✅ All modules cleared successfully', [
+                        'user_id' => $user->Id,
+                        'deleted_roles' => $deletedRoles,
+                        'deleted_functions' => $deletedFunctions
+                    ]);
 
                     return response()->json([
                         'success' => true,
-                        'message' => 'All module assignments cleared successfully',
-                        'data' => ['user_id' => $user->Id]
+                        'message' => "All assignments removed! Deleted {$deletedRoles} roles and {$deletedFunctions} functions.",
+                        'data' => [
+                            'user_id' => $user->Id,
+                            'deleted' => [
+                                'roles' => $deletedRoles,
+                                'functions' => $deletedFunctions,
+                                'total' => $deletedRoles + $deletedFunctions
+                            ],
+                            'inserted' => [
+                                'roles' => 0,
+                                'functions' => 0,
+                                'total' => 0
+                            ]
+                        ]
                     ]);
                 }
 
                 // ====================================================================
-                // STEP 3: Prepare new assignments
+                // STEP 5: Prepare new assignments (if any)
                 // ====================================================================
                 $modules = $request->modules;
 
@@ -2499,8 +2560,20 @@ class AzureUserManagementController extends Controller
 
                     return response()->json([
                         'success' => true,
-                        'message' => 'All module assignments removed',
-                        'data' => ['user_id' => $user->Id]
+                        'message' => "All assignments removed! Deleted {$deletedRoles} roles and {$deletedFunctions} functions.",
+                        'data' => [
+                            'user_id' => $user->Id,
+                            'deleted' => [
+                                'roles' => $deletedRoles,
+                                'functions' => $deletedFunctions,
+                                'total' => $deletedRoles + $deletedFunctions
+                            ],
+                            'inserted' => [
+                                'roles' => 0,
+                                'functions' => 0,
+                                'total' => 0
+                            ]
+                        ]
                     ]);
                 }
 
@@ -2509,7 +2582,7 @@ class AzureUserManagementController extends Controller
 
                 // Build records arrays
                 foreach ($modules as $module) {
-                    // Get location with explicit column selection
+                    // Get location
                     $location = DB::connection('sqlsrv')
                         ->table('Cust_Office')
                         ->select(DB::raw('Id as LocationId, code as LocationCode, Name as LocationName'))
@@ -2525,8 +2598,12 @@ class AzureUserManagementController extends Controller
                         continue;
                     }
 
-                    // Get application name once
-                    $appName = $this->getApplicationName($module['application_id']);
+                    // ✅ Get application name (FIXED)
+                    $appName = $module['application_name'] ?? null;
+
+                    if (empty($appName) || $appName === 'Unknown') {
+                        $appName = $this->getApplicationName($module['application_id']);
+                    }
 
                     // If has role, add to role records
                     if (!empty($module['role_id']) && !empty($module['role_code'])) {
@@ -2579,40 +2656,31 @@ class AzureUserManagementController extends Controller
                 ]);
 
                 // ====================================================================
-                // STEP 4: Insert role records
+                // STEP 6: Insert role records
                 // ====================================================================
                 $rolesInserted = 0;
 
                 if (count($roleRecords) > 0) {
-                    // Insert in chunks to avoid SQL limits
                     $chunks = array_chunk($roleRecords, 100);
 
                     foreach ($chunks as $chunk) {
-                        try {
-                            DB::connection('sqlsrv')
-                                ->table('Azure_Application_UserMapping')
-                                ->insert($chunk);
+                        DB::connection('sqlsrv')
+                            ->table('Azure_Application_UserMapping')
+                            ->insert($chunk);
 
-                            $rolesInserted += count($chunk);
-                        } catch (\Exception $e) {
-                            Log::error('Failed to insert role chunk', [
-                                'error' => $e->getMessage(),
-                                'chunk_size' => count($chunk)
-                            ]);
-                            throw $e;
-                        }
+                        $rolesInserted += count($chunk);
                     }
 
-                    Log::info('Inserted role records', ['count' => $rolesInserted]);
+                    Log::info('✅ Inserted role records', ['count' => $rolesInserted]);
                 }
 
                 // ====================================================================
-                // STEP 5: Insert function records (with duplicate prevention)
+                // STEP 7: Insert function records (with deduplication)
                 // ====================================================================
                 $functionsInserted = 0;
 
                 if (count($functionRecords) > 0) {
-                    // Remove duplicates within the submission itself
+                    // Remove duplicates within submission
                     $uniqueFunctionRecords = [];
                     $seenKeys = [];
 
@@ -2624,90 +2692,90 @@ class AzureUserManagementController extends Controller
                         if (!in_array($key, $seenKeys)) {
                             $uniqueFunctionRecords[] = $funcRecord;
                             $seenKeys[] = $key;
-                        } else {
-                            Log::debug('Skipping duplicate function in submission', [
-                                'function' => $funcRecord['FunctionCode'],
-                                'office' => $funcRecord['OfficeCode']
-                            ]);
                         }
                     }
 
-                    Log::info('Deduplicated function records', [
-                        'original_count' => count($functionRecords),
-                        'unique_count' => count($uniqueFunctionRecords)
-                    ]);
-
-                    // Insert in chunks
                     $chunks = array_chunk($uniqueFunctionRecords, 100);
 
                     foreach ($chunks as $chunk) {
-                        try {
-                            DB::connection('sqlsrv')
-                                ->table('Azure_Application_UserFunction')
-                                ->insert($chunk);
+                        DB::connection('sqlsrv')
+                            ->table('Azure_Application_UserFunction')
+                            ->insert($chunk);
 
-                            $functionsInserted += count($chunk);
-                        } catch (\Exception $e) {
-                            Log::error('Failed to insert function chunk', [
-                                'error' => $e->getMessage(),
-                                'chunk_size' => count($chunk)
-                            ]);
-                            throw $e;
-                        }
+                        $functionsInserted += count($chunk);
                     }
 
-                    Log::info('Inserted function records', ['count' => $functionsInserted]);
+                    Log::info('✅ Inserted function records', ['count' => $functionsInserted]);
                 }
 
                 // ====================================================================
-                // STEP 6: Commit transaction
+                // STEP 8: Commit transaction
                 // ====================================================================
                 DB::connection('sqlsrv')->commit();
 
-                Log::info('Update completed successfully', [
-                    'roles_inserted' => $rolesInserted,
-                    'functions_inserted' => $functionsInserted,
-                    'total' => $rolesInserted + $functionsInserted
-                ]);
-
                 // ====================================================================
-                // STEP 7: Verify data was saved
+                // STEP 9: Final verification
                 // ====================================================================
-                $verifyRolesCount = DB::connection('sqlsrv')
+                $finalRolesCount = DB::connection('sqlsrv')
                     ->table('Azure_Application_UserMapping')
                     ->where('user_id', $user->userPrincipalName)
                     ->count();
 
-                $verifyFunctionsCount = DB::connection('sqlsrv')
+                $finalFunctionsCount = DB::connection('sqlsrv')
                     ->table('Azure_Application_UserFunction')
                     ->where('user_id', $user->userPrincipalName)
                     ->count();
 
-                Log::info('Verification check', [
-                    'expected_roles' => $rolesInserted,
-                    'actual_roles' => $verifyRolesCount,
-                    'expected_functions' => $functionsInserted,
-                    'actual_functions' => $verifyFunctionsCount,
-                    'match' => ($rolesInserted === $verifyRolesCount &&
-                        $functionsInserted === $verifyFunctionsCount) ? 'YES' : 'NO'
+                Log::info('✅ Update completed successfully', [
+                    'before' => [
+                        'roles' => $existingRolesCount,
+                        'functions' => $existingFunctionsCount,
+                        'total' => $existingRolesCount + $existingFunctionsCount
+                    ],
+                    'deleted' => [
+                        'roles' => $deletedRoles,
+                        'functions' => $deletedFunctions,
+                        'total' => $deletedRoles + $deletedFunctions
+                    ],
+                    'inserted' => [
+                        'roles' => $rolesInserted,
+                        'functions' => $functionsInserted,
+                        'total' => $rolesInserted + $functionsInserted
+                    ],
+                    'after' => [
+                        'roles' => $finalRolesCount,
+                        'functions' => $finalFunctionsCount,
+                        'total' => $finalRolesCount + $finalFunctionsCount
+                    ]
                 ]);
+
+                // Build success message
+                $changeMsg = "Deleted: {$deletedRoles} roles + {$deletedFunctions} functions. ";
+                $changeMsg .= "Added: {$rolesInserted} roles + {$functionsInserted} functions.";
 
                 return response()->json([
                     'success' => true,
-                    'message' => 'User updated successfully. Assignments saved to database.',
+                    'message' => "User updated successfully! {$changeMsg}",
                     'data' => [
                         'user_id' => $user->Id,
-                        'roles_count' => $rolesInserted,
-                        'functions_count' => $functionsInserted,
-                        'total_count' => $rolesInserted + $functionsInserted,
-                        'verified' => [
-                            'roles' => $verifyRolesCount,
-                            'functions' => $verifyFunctionsCount
+                        'deleted' => [
+                            'roles' => $deletedRoles,
+                            'functions' => $deletedFunctions,
+                            'total' => $deletedRoles + $deletedFunctions
+                        ],
+                        'inserted' => [
+                            'roles' => $rolesInserted,
+                            'functions' => $functionsInserted,
+                            'total' => $rolesInserted + $functionsInserted
+                        ],
+                        'final_count' => [
+                            'roles' => $finalRolesCount,
+                            'functions' => $finalFunctionsCount,
+                            'total' => $finalRolesCount + $finalFunctionsCount
                         ]
                     ]
                 ]);
             } catch (\Exception $e) {
-                // Rollback on any error
                 DB::connection('sqlsrv')->rollBack();
 
                 Log::error('Transaction failed, rolled back', [
@@ -2735,20 +2803,14 @@ class AzureUserManagementController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Update failed: ' . $e->getMessage(),
-                'error_details' => config('app.debug') ? [
-                    'file' => $e->getFile(),
-                    'line' => $e->getLine(),
-                    'message' => $e->getMessage()
-                ] : null
+                'message' => 'Update failed: ' . $e->getMessage()
             ], 500);
         }
     }
 
-
-
     /**
      * Helper to get application name from ID
+     * FIXED: Queries by ApplicationId instead of Id
      */
     private function getApplicationName($applicationId)
     {
@@ -2758,17 +2820,15 @@ class AzureUserManagementController extends Controller
             return $cache[$applicationId];
         }
 
-        // ✅ FIXED: Query by ApplicationId (not Id)
         $app = DB::connection('sqlsrv')
             ->table('Azure_SoftwareMaster')
-            ->where('ApplicationId', $applicationId)  // ✅ Changed from 'Id' to 'ApplicationId'
+            ->where('ApplicationId', $applicationId)  // ✅ FIXED
             ->where('IsActive', 1)
             ->where('IsDeleted', 0)
             ->first();
 
         $cache[$applicationId] = $app->Name ?? 'Unknown';
 
-        // ✅ Add logging to debug
         if (!$app) {
             Log::warning('Application not found', [
                 'application_id' => $applicationId
