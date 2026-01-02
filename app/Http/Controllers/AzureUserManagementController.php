@@ -183,10 +183,10 @@ class AzureUserManagementController extends Controller
                 'locations'
             ));
         } catch (\Exception $e) {
-            Log::error('Azure Dashboard Error: '.$e->getMessage());
+            Log::error('Azure Dashboard Error: ' . $e->getMessage());
 
             return redirect()->back()
-                ->withErrors(['error' => 'Failed to load dashboard: '.$e->getMessage()]);
+                ->withErrors(['error' => 'Failed to load dashboard: ' . $e->getMessage()]);
         }
     }
 
@@ -220,10 +220,10 @@ class AzureUserManagementController extends Controller
 
             return view('azure-management.users.active', compact('users'));
         } catch (\Exception $e) {
-            Log::error('Active Users Page Error: '.$e->getMessage());
+            Log::error('Active Users Page Error: ' . $e->getMessage());
 
             return redirect()->route('azure.dashboard.index')
-                ->withErrors(['error' => 'Failed to load active users: '.$e->getMessage()]);
+                ->withErrors(['error' => 'Failed to load active users: ' . $e->getMessage()]);
         }
     }
 
@@ -257,10 +257,10 @@ class AzureUserManagementController extends Controller
 
             return view('azure-management.users.pending', compact('users'));
         } catch (\Exception $e) {
-            Log::error('Pending Users Page Error: '.$e->getMessage());
+            Log::error('Pending Users Page Error: ' . $e->getMessage());
 
             return redirect()->route('azure.dashboard.index')
-                ->withErrors(['error' => 'Failed to load pending users: '.$e->getMessage()]);
+                ->withErrors(['error' => 'Failed to load pending users: ' . $e->getMessage()]);
         }
     }
 
@@ -294,10 +294,10 @@ class AzureUserManagementController extends Controller
 
             return view('azure-management.users.inactive', compact('users'));
         } catch (\Exception $e) {
-            Log::error('Inactive Users Page Error: '.$e->getMessage());
+            Log::error('Inactive Users Page Error: ' . $e->getMessage());
 
             return redirect()->route('azure.dashboard.index')
-                ->withErrors(['error' => 'Failed to load inactive users: '.$e->getMessage()]);
+                ->withErrors(['error' => 'Failed to load inactive users: ' . $e->getMessage()]);
         }
     }
 
@@ -377,7 +377,7 @@ class AzureUserManagementController extends Controller
             ]);
 
             return redirect()->route('azure.dashboard.index')
-                ->withErrors(['error' => 'Failed to load form: '.$e->getMessage()]);
+                ->withErrors(['error' => 'Failed to load form: ' . $e->getMessage()]);
         }
     }
 
@@ -439,14 +439,14 @@ class AzureUserManagementController extends Controller
                 ]);
 
                 $errorMessage = sprintf(
-                    'A user with email "%s" already exists!<br>'.
-                    '<strong>Name:</strong> %s<br>'.
-                    '<strong>Created:</strong> %s<br>'.
-                    '<strong>User ID:</strong> %s',
+                    'A user with email "%s" already exists!<br>' .
+                        '<strong>Name:</strong> %s<br>' .
+                        '<strong>Created:</strong> %s<br>' .
+                        '<strong>User ID:</strong> %s',
                     $userEmail,
                     $existingByUPN->displayName ?? 'Unknown',
                     $existingByUPN->CreatedAt ?? 'Unknown',
-                    substr($existingByUPN->Id ?? '', 0, 8).'...'
+                    substr($existingByUPN->Id ?? '', 0, 8) . '...'
                 );
 
                 if ($request->wantsJson() || $request->ajax()) {
@@ -483,9 +483,9 @@ class AzureUserManagementController extends Controller
                 ]);
 
                 $errorMessage = sprintf(
-                    'A user with email "%s" already exists under a different username!<br>'.
-                    '<strong>Name:</strong> %s<br>'.
-                    '<strong>Username:</strong> %s',
+                    'A user with email "%s" already exists under a different username!<br>' .
+                        '<strong>Name:</strong> %s<br>' .
+                        '<strong>Username:</strong> %s',
                     $userEmail,
                     $existingByMail->displayName ?? 'Unknown',
                     $existingByMail->userPrincipalName ?? 'Unknown'
@@ -525,9 +525,9 @@ class AzureUserManagementController extends Controller
                         ]);
 
                         $errorMessage = sprintf(
-                            'This user already exists in both Azure AD and our system!<br>'.
-                            '<strong>Name:</strong> %s<br>'.
-                            '<strong>Email:</strong> %s',
+                            'This user already exists in both Azure AD and our system!<br>' .
+                                '<strong>Name:</strong> %s<br>' .
+                                '<strong>Email:</strong> %s',
                             $linkedUser->displayName ?? 'Unknown',
                             $linkedUser->userPrincipalName ?? $userEmail
                         );
@@ -611,7 +611,7 @@ class AzureUserManagementController extends Controller
                 $modulesData = json_decode($request->input('modules_json'), true);
 
                 if (json_last_error() !== JSON_ERROR_NONE) {
-                    throw new \Exception('Invalid modules JSON format: '.json_last_error_msg());
+                    throw new \Exception('Invalid modules JSON format: ' . json_last_error_msg());
                 }
 
                 Log::info('✓ Modules JSON decoded successfully', [
@@ -1036,7 +1036,7 @@ class AzureUserManagementController extends Controller
 
             // Check if expansion failed
             if (! empty($expansionErrors)) {
-                $errorMessage = "Failed to expand module assignments:\n".implode("\n", $expansionErrors);
+                $errorMessage = "Failed to expand module assignments:\n" . implode("\n", $expansionErrors);
                 Log::error('Expansion errors occurred', [
                     'errors' => $expansionErrors,
                     'expanded_count' => count($expandedAssignments),
@@ -1083,7 +1083,7 @@ class AzureUserManagementController extends Controller
                 $dataCheck = $this->verifyReferencedData($validation['data']);
 
                 if (! $dataCheck['valid']) {
-                    $validationErrors[] = "Assignment {$index}: ".implode(', ', $dataCheck['errors']);
+                    $validationErrors[] = "Assignment {$index}: " . implode(', ', $dataCheck['errors']);
                     Log::error('Referenced data validation failed', [
                         'index' => $index,
                         'errors' => $dataCheck['errors'],
@@ -1098,11 +1098,11 @@ class AzureUserManagementController extends Controller
 
             // Check if validation failed
             if (! empty($validationErrors)) {
-                $errorMessage = 'Validation failed for '.count($validationErrors)." assignment(s):\n".
+                $errorMessage = 'Validation failed for ' . count($validationErrors) . " assignment(s):\n" .
                     implode("\n", array_slice($validationErrors, 0, 5));
 
                 if (count($validationErrors) > 5) {
-                    $errorMessage .= "\n... and ".(count($validationErrors) - 5).' more errors.';
+                    $errorMessage .= "\n... and " . (count($validationErrors) - 5) . ' more errors.';
                 }
 
                 Log::error('Assignment validation failed', [
@@ -1280,84 +1280,13 @@ class AzureUserManagementController extends Controller
             // STEP 11: Provision user to D365 (if applicable)
             // ====================================================================
 
-            // Check if user has D365 LIVE module assignments
-            $hasD365Assignment = collect($validatedAssignments)
-                ->contains(function ($assignment) {
-                    return strtoupper($assignment['application_name']) === 'D365 LIVE';
-                });
-
-            if ($hasD365Assignment) {
-                Log::info('→ Step 11: Provisioning user to D365...', [
-                    'user_id' => $userId,
-                    'azure_id' => $azureId,
-                    'user_principal' => $userPrincipalName,
-                ]);
-
-                try {
-                    $d365Result = DB::connection('sqlsrv')->select('
-                    SET NOCOUNT ON;
-                    DECLARE @Status VARCHAR(15), @Remark VARCHAR(200);
-                    EXEC sp_Azure_D365UserCreation
-                        @AzureUserID = ?,
-                        @Status = @Status OUTPUT,
-                        @Remark = @Remark OUTPUT;
-                    SELECT @Status as Status, @Remark as Remark;
-                ', [$azureId]);
-
-                    $d365Status = $d365Result[0]->Status ?? 'Failed';
-                    $d365Remark = $d365Result[0]->Remark ?? 'Unknown error';
-
-                    if ($d365Status === 'Success') {
-                        Log::info('✓ Step 11: D365 user created successfully', [
-                            'user_id' => $userId,
-                            'azure_id' => $azureId,
-                            'remark' => $d365Remark,
-                        ]);
-
-                        $d365ProvisioningStatus = [
-                            'success' => true,
-                            'status' => $d365Status,
-                            'message' => $d365Remark,
-                        ];
-                    } else {
-                        Log::warning('⚠ Step 11: D365 user creation failed (non-critical)', [
-                            'user_id' => $userId,
-                            'azure_id' => $azureId,
-                            'status' => $d365Status,
-                            'remark' => $d365Remark,
-                        ]);
-
-                        $d365ProvisioningStatus = [
-                            'success' => false,
-                            'status' => $d365Status,
-                            'message' => $d365Remark,
-                        ];
-                    }
-                } catch (\Exception $e) {
-                    Log::error('✗ Step 11: D365 stored procedure error (non-critical)', [
-                        'user_id' => $userId,
-                        'azure_id' => $azureId,
-                        'error' => $e->getMessage(),
-                    ]);
-
-                    $d365ProvisioningStatus = [
-                        'success' => false,
-                        'status' => 'Error',
-                        'message' => 'Exception: '.$e->getMessage(),
-                    ];
-                }
-            } else {
-                Log::info('⊘ Step 11: D365 provisioning skipped (no D365 LIVE assignments)', [
-                    'user_id' => $userId,
-                    'azure_id' => $azureId,
-                ]);
-
-                $d365ProvisioningStatus = [
-                    'success' => true,
-                    'status' => 'Skipped',
-                    'message' => 'No D365 LIVE module assignments',
-                ];
-            }
+            // ====================================================================
+            // STEP 11: External provisioning disabled - storing in database only
+            // ====================================================================
+            Log::info('✓ Step 11: External system provisioning skipped (disabled)', [
+                'user_id' => $userId,
+                'azure_id' => $azureId,
+            ]);
 
             // ====================================================================
             // STEP 12: Commit transaction - everything succeeded!
@@ -1385,11 +1314,11 @@ class AzureUserManagementController extends Controller
 
             // Build success message
             $successMessage = sprintf(
-                '✓ User created successfully!<br>'.
-                    'Azure ID: %s<br>'.
-                    'Status: <strong>Pending</strong><br>'.
+                '✓ User created successfully!<br>' .
+                    'Azure ID: %s<br>' .
+                    'Status: <strong>Pending</strong><br>' .
                     '%d role(s) and %d function(s) created across %d module(s): %s',
-                substr($azureId, 0, 8).'...',
+                substr($azureId, 0, 8) . '...',
                 $insertedRolesCount,
                 $insertedFunctionsCount,
                 count($uniqueModules),
@@ -1397,14 +1326,17 @@ class AzureUserManagementController extends Controller
             );
 
             // Add D365 status to message
-            if ($d365ProvisioningStatus && $d365ProvisioningStatus['status'] !== 'Skipped') {
-                if ($d365ProvisioningStatus['success']) {
-                    $successMessage .= '<br>✓ D365: User provisioned successfully';
-                } else {
-                    $successMessage .= '<br>⚠ D365: Provisioning failed - '.$d365ProvisioningStatus['message'];
-                }
-            }
-
+            $successMessage = sprintf(
+                '✓ User created successfully!<br>' .
+                    'Azure ID: %s<br>' .
+                    'Status: <strong>Pending</strong><br>' .
+                    '%d role(s) and %d function(s) created across %d module(s): %s',
+                substr($azureId, 0, 8) . '...',
+                $insertedRolesCount,
+                $insertedFunctionsCount,
+                count($uniqueModules),
+                implode(', ', $uniqueModules)
+            );
             // Return appropriate response
             if ($request->wantsJson() || $request->ajax() || $request->header('X-Requested-With') === 'XMLHttpRequest') {
                 return response()->json([
@@ -1426,7 +1358,6 @@ class AzureUserManagementController extends Controller
 
             return redirect()->route('azure.dashboard.index')
                 ->with('success', $successMessage);
-
         } catch (\Exception $e) {
             // ====================================================================
             // ERROR HANDLING & ROLLBACK
@@ -1462,12 +1393,12 @@ class AzureUserManagementController extends Controller
 
                     $cleanupWarning = sprintf(
                         '<br><strong>WARNING:</strong> Azure user (ID: %s) may still exist and require manual cleanup.',
-                        substr($azureId, 0, 8).'...'
+                        substr($azureId, 0, 8) . '...'
                     );
                 }
             }
 
-            $errorMessage = 'Failed to create user: '.$e->getMessage().$cleanupWarning;
+            $errorMessage = 'Failed to create user: ' . $e->getMessage() . $cleanupWarning;
 
             Log::error('=== USER CREATION FAILED ===', [
                 'error' => $e->getMessage(),
@@ -1518,7 +1449,7 @@ class AzureUserManagementController extends Controller
         $password .= $special[random_int(0, strlen($special) - 1)];
 
         // Fill remaining length with random characters from all sets
-        $allChars = $uppercase.$lowercase.$numbers.$special;
+        $allChars = $uppercase . $lowercase . $numbers . $special;
         for ($i = 4; $i < $length; $i++) {
             $password .= $allChars[random_int(0, strlen($allChars) - 1)];
         }
@@ -1566,47 +1497,54 @@ class AzureUserManagementController extends Controller
                 ];
             }
 
-            // Fetch from main mapping table (has roles, no functions)
+            // Fetch from main mapping table (has roles, no functions) - WITH MODULE JOIN
             $mappingAssignments = DB::connection('sqlsrv')
-                ->table('Azure_Application_UserMapping')
-                ->where('user_id', $user->userPrincipalName)
-                ->where('IsActive', 1)
-                ->where('IsDelete', 0)
+                ->table('Azure_Application_UserMapping as aaum')
+                ->join('Azure_SoftwareMaster as asm', 'aaum.application_id', '=', 'asm.ApplicationId')
+                ->where('aaum.user_id', $user->userPrincipalName)
+                ->where('aaum.IsActive', 1)
+                ->where('aaum.IsDelete', 0)
+                ->where('asm.IsActive', 1)
+                ->where('asm.IsDeleted', 0)
                 ->select([
-                    'application_id',
-                    'ApplicationName',
-                    'OfficeCode',
-                    'OfficeID',
-                    'RoleCode',
-                    'RoleID',
+                    'aaum.application_id',
+                    'asm.Name as ApplicationName',  // Get actual module name from master table
+                    'aaum.OfficeCode',
+                    'aaum.OfficeID',
+                    'aaum.RoleCode',
+                    'aaum.RoleID',
                     DB::raw('CAST(NULL AS VARCHAR(50)) as FunctionCode'),
                     DB::raw('CAST(NULL AS UNIQUEIDENTIFIER) as FunctionID'),
                 ])
                 ->get();
 
-            // Fetch from function table (has functions, NO roles - we'll need to join to get roles)
+            // Fetch from function table (has functions) - WITH MODULE JOIN
             $functionAssignments = DB::connection('sqlsrv')
                 ->select('
-                SELECT
-                    aauf.application_id,
-                    aauf.ApplicationName,
-                    aauf.OfficeCode,
-                    aauf.OfficeID,
-                    aaum.RoleCode,
-                    aaum.RoleID,
-                    aauf.FunctionCode,
-                    aauf.FunctionID
-                FROM Azure_Application_UserFunction aauf
-                INNER JOIN Azure_Application_UserMapping aaum
-                    ON aaum.user_id = aauf.user_id
-                    AND aaum.application_id = aauf.application_id
-                    AND aaum.OfficeCode = aauf.OfficeCode
-                    AND aaum.IsActive = 1
-                    AND aaum.IsDelete = 0
-                WHERE aauf.user_id = ?
-                    AND aauf.IsActive = 1
-                    AND aauf.IsDelete = 0
-            ', [$user->userPrincipalName]);
+        SELECT
+            aauf.application_id,
+            asm.Name as ApplicationName,
+            aauf.OfficeCode,
+            aauf.OfficeID,
+            aaum.RoleCode,
+            aaum.RoleID,
+            aauf.FunctionCode,
+            aauf.FunctionID
+        FROM Azure_Application_UserFunction aauf
+        INNER JOIN Azure_Application_UserMapping aaum
+            ON aaum.user_id = aauf.user_id
+            AND aaum.application_id = aauf.application_id
+            AND aaum.OfficeCode = aauf.OfficeCode
+            AND aaum.IsActive = 1
+            AND aaum.IsDelete = 0
+        INNER JOIN Azure_SoftwareMaster asm
+            ON aauf.application_id = asm.ApplicationId
+            AND asm.IsActive = 1
+            AND asm.IsDeleted = 0
+        WHERE aauf.user_id = ?
+            AND aauf.IsActive = 1
+            AND aauf.IsDelete = 0
+    ', [$user->userPrincipalName]);
 
             // Convert to collection
             $functionAssignments = collect($functionAssignments);
@@ -1618,6 +1556,7 @@ class AzureUserManagementController extends Controller
                 'mapping_count' => $mappingAssignments->count(),
                 'function_count' => $functionAssignments->count(),
                 'total_count' => $assignmentsRaw->count(),
+                'sample_assignment' => $assignmentsRaw->first(), // Log sample for debugging
             ]);
 
             // Group assignments by module
@@ -1633,12 +1572,14 @@ class AzureUserManagementController extends Controller
                             'id' => $assignment->RoleID,
                             'code' => $assignment->RoleCode,
                         ];
+                    })->filter(function ($role) {
+                        return !empty($role['code']); // Filter out empty role codes
                     })->unique('code')->values();
 
                     // Get unique functions
                     $functions = $assignments
                         ->filter(function ($assignment) {
-                            return ! empty($assignment->FunctionCode);
+                            return !empty($assignment->FunctionCode);
                         })
                         ->map(function ($assignment) {
                             return [
@@ -1668,6 +1609,7 @@ class AzureUserManagementController extends Controller
                 'user_id' => $user->Id,
                 'modules_count' => $moduleAssignments->count(),
                 'total_assignments' => $assignmentsRaw->count(),
+                'module_names' => $moduleAssignments->pluck('module_name')->toArray(), // Log all module names
             ]);
 
             return view('azure-management.users.show', compact(
@@ -1683,7 +1625,7 @@ class AzureUserManagementController extends Controller
             ]);
 
             return redirect()->route('azure.users.index')
-                ->withErrors(['error' => 'Failed to load user details: '.$e->getMessage()]);
+                ->withErrors(['error' => 'Failed to load user details: ' . $e->getMessage()]);
         }
     }
 
@@ -1760,32 +1702,37 @@ class AzureUserManagementController extends Controller
 
             // Fetch from mapping table (has roles, no functions)
             $mappingAssignments = DB::connection('sqlsrv')
-                ->table('Azure_Application_UserMapping')
-                ->where('user_id', $user->userPrincipalName)
-                ->where('IsActive', 1)
-                ->where('IsDelete', 0)
+                ->table('Azure_Application_UserMapping as aaum')
+                ->join('Azure_SoftwareMaster as asm', 'aaum.application_id', '=', 'asm.ApplicationId')
+                ->where('aaum.user_id', $user->userPrincipalName)
+                ->where('aaum.IsActive', 1)
+                ->where('aaum.IsDelete', 0)
+                ->where('asm.IsActive', 1)
+                ->where('asm.IsDeleted', 0)
                 ->select([
-                    'Id',
-                    'user_id',
-                    'application_id',
-                    'ApplicationName as module_name',
-                    'RoleCode as role_code',
-                    'RoleID as role_id',
-                    'OfficeCode as location',
-                    'OfficeID as location_id',
+                    'aaum.Id',
+                    'aaum.user_id',
+                    'aaum.application_id',
+                    'asm.Id as module_id',  // Get module_id from master table
+                    'asm.Name as module_name',  // Get module name from master table
+                    'aaum.RoleCode as role_code',
+                    'aaum.RoleID as role_id',
+                    'aaum.OfficeCode as location',
+                    'aaum.OfficeID as location_id',
                     DB::raw('CAST(NULL AS VARCHAR(50)) as function_code'),
                     DB::raw('CAST(NULL AS UNIQUEIDENTIFIER) as function_id'),
                 ])
                 ->get();
 
-            // Fetch from function table with JOIN to get roles
+            // Fetch from function table with JOIN to get roles AND module info
             $functionAssignments = DB::connection('sqlsrv')
                 ->select('
         SELECT
             aauf.Id,
             aauf.user_id,
             aauf.application_id,
-            aauf.ApplicationName as module_name,
+            asm.Id as module_id,
+            asm.Name as module_name,
             aauf.FunctionCode as function_code,
             aauf.FunctionID as function_id,
             aaum.RoleCode as role_code,
@@ -1799,6 +1746,10 @@ class AzureUserManagementController extends Controller
             AND aaum.OfficeCode = aauf.OfficeCode
             AND aaum.IsActive = 1
             AND aaum.IsDelete = 0
+        INNER JOIN Azure_SoftwareMaster asm
+            ON aauf.application_id = asm.ApplicationId
+            AND asm.IsActive = 1
+            AND asm.IsDeleted = 0
         WHERE aauf.user_id = ?
             AND aauf.IsActive = 1
             AND aauf.IsDelete = 0
@@ -1807,27 +1758,14 @@ class AzureUserManagementController extends Controller
             // Merge both collections
             $userAssignmentsRaw = $mappingAssignments->merge(collect($functionAssignments));
 
-            // Get module IDs for the assignments
-            $moduleIds = $userAssignmentsRaw->pluck('application_id')->unique()->filter();
-            $modulesLookup = collect([]);
-
-            if ($moduleIds->isNotEmpty()) {
-                $modulesLookup = DB::connection('sqlsrv')
-                    ->table('Azure_SoftwareMaster')
-                    ->whereIn('ApplicationId', $moduleIds->toArray())
-                    ->get()
-                    ->keyBy('ApplicationId');
-            }
-
-            // Map assignments with module IDs
-            $userModuleAssignments = $userAssignmentsRaw->map(function ($assignment) use ($modulesLookup) {
+            // Map assignments - no need for additional lookup since we already have module_id and module_name
+            $userModuleAssignments = $userAssignmentsRaw->map(function ($assignment) {
                 $assignment = (object) $assignment; // Ensure it's an object
-                $module = $modulesLookup[$assignment->application_id] ?? null;
 
                 return [
                     'id' => $assignment->Id,
-                    'module_id' => $module ? $module->Id : null,
-                    'module_name' => $assignment->module_name,
+                    'module_id' => $assignment->module_id,  // Already fetched from JOIN
+                    'module_name' => $assignment->module_name,  // Already fetched from JOIN
                     'application_id' => $assignment->application_id,
                     'location' => $assignment->location,
                     'location_id' => $assignment->location_id,
@@ -1842,6 +1780,7 @@ class AzureUserManagementController extends Controller
                 'user_id' => $user->Id,
                 'assignments_count' => $userModuleAssignments->count(),
                 'unique_modules' => $userModuleAssignments->pluck('module_name')->unique()->count(),
+                'sample_assignment' => $userModuleAssignments->first(), // Log first assignment for debugging
             ]);
 
             // ====================================================================
@@ -1878,615 +1817,1074 @@ class AzureUserManagementController extends Controller
             ]);
 
             return redirect()->route('azure.dashboard.index')
-                ->withErrors(['error' => 'Failed to load edit form: '.$e->getMessage()]);
+                ->withErrors(['error' => 'Failed to load edit form: ' . $e->getMessage()]);
         }
     }
 
     /**
      * Update the specified user - Enhanced with 1-to-1 method (separate roles and functions tables)
      */
+    // public function update(Request $request, AzureUser $user)
+    // {
+    //     set_time_limit(120);
+    //     error_reporting(E_ALL);
+    //     ini_set('display_errors', 1);
+
+    //     Log::info('=== UPDATE METHOD ENTRY - FULL REQUEST DEBUG ===', [
+    //         'request_class' => get_class($request),
+    //         'request_method' => $request->method(),
+    //         'is_ajax' => $request->ajax(),
+    //         'expects_json' => $request->expectsJson(),
+    //         'content_type' => $request->header('Content-Type'),
+    //         'all_input_keys' => array_keys($request->all()),
+    //         'has_modules' => $request->has('modules'),
+    //         'has_modules_empty' => $request->has('modules_empty'),
+    //         'route_parameters' => ['user_id' => $user->Id],
+    //     ]);
+
+    //     try {
+    //         Log::info('=== UPDATE USER REQUEST RECEIVED ===', [
+    //             'user_id' => $user->Id,
+    //             'user_principal' => $user->userPrincipalName,
+    //             'request_method' => $request->method(),
+    //             'is_ajax' => $request->ajax(),
+    //         ]);
+
+    //         // ====================================================================
+    //         // STEP 1: Process modules data with proper error handling
+    //         // ====================================================================
+    //         $modulesData = $request->input('modules', []);
+
+    //         Log::info('Processing modules data', [
+    //             'raw_input' => $request->input('modules'),
+    //             'modules_empty_flag' => $request->has('modules_empty'),
+    //             'is_array' => is_array($modulesData),
+    //             'is_string' => is_string($modulesData),
+    //         ]);
+
+    //         // Handle empty modules case
+    //         if ($request->has('modules_empty')) {
+    //             $modulesData = [];
+    //             Log::info('Empty modules marker detected - deleting all assignments');
+    //         } elseif (is_string($modulesData)) {
+    //             if ($modulesData === '[]' || $modulesData === '{}' || $modulesData === '' || $modulesData === 'null') {
+    //                 $modulesData = [];
+    //                 Log::info('Empty string detected - converting to empty array');
+    //             } else {
+    //                 try {
+    //                     $decoded = json_decode($modulesData, true);
+    //                     if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+    //                         $modulesData = $decoded;
+    //                         Log::info('Decoded JSON string to array', ['count' => count($modulesData)]);
+    //                     } else {
+    //                         $modulesData = [];
+    //                         Log::warning('Invalid JSON string - converting to empty array');
+    //                     }
+    //                 } catch (\Exception $e) {
+    //                     Log::warning('Failed to decode modules string', [
+    //                         'string' => substr($modulesData, 0, 100),
+    //                         'error' => $e->getMessage(),
+    //                     ]);
+    //                     $modulesData = [];
+    //                 }
+    //             }
+    //         }
+
+    //         if (! is_array($modulesData)) {
+    //             Log::warning('Modules data is not an array, converting to empty array', [
+    //                 'type' => gettype($modulesData),
+    //                 'value' => $modulesData,
+    //             ]);
+    //             $modulesData = [];
+    //         }
+
+    //         Log::info('Final modules data', [
+    //             'count' => count($modulesData),
+    //             'is_empty' => empty($modulesData),
+    //             'type' => gettype($modulesData),
+    //         ]);
+
+    //         // ====================================================================
+    //         // STEP 2: Validate modules only if we have them
+    //         // ====================================================================
+    //         if (! empty($modulesData)) {
+    //             try {
+    //                 // Updated validation - role_id and function_id are now nullable
+    //                 $validated = $request->validate([
+    //                     'modules' => 'required|array|min:1',
+    //                     'modules.*.module_id' => 'required|string',
+    //                     'modules.*.application_id' => 'required|string',
+    //                     'modules.*.location_id' => 'required|string',
+    //                     'modules.*.location_code' => 'required|string',
+    //                     'modules.*.role_id' => 'nullable|string',  // ← Changed to nullable
+    //                     'modules.*.role_code' => 'nullable|string',  // ← Changed to nullable
+    //                     'modules.*.function_id' => 'nullable|string',
+    //                     'modules.*.function_code' => 'nullable|string',
+    //                 ]);
+
+    //                 Log::info('Validation passed', ['modules_count' => count($modulesData)]);
+    //             } catch (\Illuminate\Validation\ValidationException $e) {
+    //                 Log::error('Validation failed', ['errors' => $e->errors()]);
+
+    //                 return response()->json([
+    //                     'success' => false,
+    //                     'message' => 'Validation failed',
+    //                     'errors' => $e->errors(),
+    //                 ], 422);
+    //             }
+    //         } else {
+    //             Log::info('No modules to validate - proceeding with empty array');
+    //         }
+
+    //         // ====================================================================
+    //         // STEP 3: Start database transaction
+    //         // ====================================================================
+    //         DB::connection('sqlsrv')->beginTransaction();
+
+    //         try {
+    //             Log::info('📦 Processing modules for update', [
+    //                 'total_assignments' => count($modulesData),
+    //                 'user_principal' => $user->userPrincipalName,
+    //             ]);
+
+    //             if (count($modulesData) > 0) {
+    //                 Log::info('📝 Sample assignments (first 2):', [
+    //                     'samples' => array_slice($modulesData, 0, 2),
+    //                 ]);
+    //             } else {
+    //                 Log::info('📝 No module assignments - all existing modules will be deleted');
+    //             }
+
+    //             // ====================================================================
+    //             // STEP 4: Soft delete existing assignments FROM BOTH TABLES
+    //             // ====================================================================
+
+    //             // Delete from roles table
+    //             $deletedRolesCount = DB::connection('sqlsrv')
+    //                 ->table('Azure_Application_UserMapping')
+    //                 ->where('user_id', $user->userPrincipalName)
+    //                 ->where('IsDelete', 0)
+    //                 ->update([
+    //                     'IsDelete' => 1,
+    //                     'IsActive' => 0,
+    //                     'LastModifiedBy' => Auth::id() ?? 'system',
+    //                     'LastModifiedOn' => DB::raw('GETDATE()'),
+    //                 ]);
+
+    //             // Delete from functions table
+    //             $deletedFunctionsCount = DB::connection('sqlsrv')
+    //                 ->table('Azure_Application_UserFunction')
+    //                 ->where('user_id', $user->userPrincipalName)
+    //                 ->where('IsDelete', 0)
+    //                 ->update([
+    //                     'IsDelete' => 1,
+    //                     'IsActive' => 0,
+    //                     'LastModifiedBy' => Auth::id() ?? 'system',
+    //                     'LastModifiedOn' => DB::raw('GETDATE()'),
+    //                 ]);
+
+    //             $totalDeleted = $deletedRolesCount + $deletedFunctionsCount;
+
+    //             Log::info('🗑️ Marked existing assignments as deleted', [
+    //                 'user_principal' => $user->userPrincipalName,
+    //                 'deleted_roles_count' => $deletedRolesCount,
+    //                 'deleted_functions_count' => $deletedFunctionsCount,
+    //                 'total_deleted' => $totalDeleted,
+    //             ]);
+
+    //             // ====================================================================
+    //             // STEP 5: If no new modules, commit and return success
+    //             // ====================================================================
+    //             if (empty($modulesData)) {
+    //                 DB::connection('sqlsrv')->commit();
+
+    //                 Log::info('=== UPDATE COMPLETED (ALL MODULES DELETED) ===', [
+    //                     'user_principal' => $user->userPrincipalName,
+    //                     'deleted_assignments' => $totalDeleted,
+    //                 ]);
+
+    //                 return response()->json([
+    //                     'success' => true,
+    //                     'message' => "All module assignments removed successfully! {$totalDeleted} assignments deleted.",
+    //                     'data' => [
+    //                         'deleted' => $totalDeleted,
+    //                         'inserted' => 0,
+    //                     ],
+    //                 ]);
+    //             }
+
+    //             // ====================================================================
+    //             // STEP 6: Separate roles and functions (1-to-1 method)
+    //             // ====================================================================
+
+    //             $roleAssignments = [];
+    //             $functionAssignments = [];
+
+    //             Log::info('→ Step 6: Separating roles and functions (1-to-1 method)...', [
+    //                 'total_assignments' => count($modulesData),
+    //             ]);
+
+    //             foreach ($modulesData as $index => $moduleData) {
+    //                 // Determine if this is a role or function record
+    //                 $hasRole = ! empty($moduleData['role_id']);
+    //                 $hasFunction = ! empty($moduleData['function_id']);
+
+    //                 if (! $hasRole && ! $hasFunction) {
+    //                     Log::warning('Assignment has neither role nor function - skipping', [
+    //                         'index' => $index,
+    //                         'data' => $moduleData,
+    //                     ]);
+
+    //                     continue;
+    //                 }
+
+    //                 if ($hasRole) {
+    //                     $roleAssignments[] = $moduleData;
+    //                 }
+
+    //                 if ($hasFunction) {
+    //                     $functionAssignments[] = $moduleData;
+    //                 }
+    //             }
+
+    //             Log::info('✓ Step 6: Separated assignments', [
+    //                 'role_assignments' => count($roleAssignments),
+    //                 'function_assignments' => count($functionAssignments),
+    //                 'total' => count($roleAssignments) + count($functionAssignments),
+    //             ]);
+
+    //             // ====================================================================
+    //             // STEP 7: Validate and insert ROLES
+    //             // ====================================================================
+
+    //             $validatedRoles = [];
+    //             $roleValidationErrors = [];
+
+    //             Log::info('→ Step 7a: Validating role assignments...', [
+    //                 'total_roles' => count($roleAssignments),
+    //             ]);
+
+    //             foreach ($roleAssignments as $index => $roleData) {
+    //                 $validation = $this->validateAssignment($roleData, $index);
+
+    //                 if (! $validation['valid']) {
+    //                     $roleValidationErrors[] = $validation['error'];
+    //                     Log::error('Role assignment validation failed', [
+    //                         'index' => $index,
+    //                         'error' => $validation['error'],
+    //                     ]);
+
+    //                     continue;
+    //                 }
+
+    //                 $dataCheck = $this->verifyReferencedData($validation['data']);
+
+    //                 if (! $dataCheck['valid']) {
+    //                     $roleValidationErrors[] = "Role assignment {$index}: ".implode(', ', $dataCheck['errors']);
+    //                     Log::error('Referenced data validation failed for role', [
+    //                         'index' => $index,
+    //                         'errors' => $dataCheck['errors'],
+    //                     ]);
+
+    //                     continue;
+    //                 }
+
+    //                 // Get module name
+    //                 $module = DB::connection('sqlsrv')
+    //                     ->table('Azure_SoftwareMaster')
+    //                     ->where('Id', $validation['data']['module_id'])
+    //                     ->first();
+
+    //                 $validation['data']['application_name'] = $module->Name;
+
+    //                 $validatedRoles[] = $validation['data'];
+    //             }
+
+    //             if (! empty($roleValidationErrors)) {
+    //                 Log::error('Role validation failed - rolling back', [
+    //                     'total_errors' => count($roleValidationErrors),
+    //                     'errors' => $roleValidationErrors,
+    //                 ]);
+
+    //                 DB::connection('sqlsrv')->rollBack();
+
+    //                 return response()->json([
+    //                     'success' => false,
+    //                     'message' => 'Role validation failed: '.implode(', ', array_slice($roleValidationErrors, 0, 3)),
+    //                     'errors' => $roleValidationErrors,
+    //                 ], 422);
+    //             }
+
+    //             Log::info('✓ Step 7a: Role assignments validated', [
+    //                 'valid_roles' => count($validatedRoles),
+    //             ]);
+
+    //             // ====================================================================
+    //             // STEP 8: Validate and insert FUNCTIONS
+    //             // ====================================================================
+
+    //             $validatedFunctions = [];
+    //             $functionValidationErrors = [];
+
+    //             Log::info('→ Step 8a: Validating function assignments...', [
+    //                 'total_functions' => count($functionAssignments),
+    //             ]);
+
+    //             foreach ($functionAssignments as $index => $funcData) {
+    //                 $validation = $this->validateAssignment($funcData, $index);
+
+    //                 if (! $validation['valid']) {
+    //                     $functionValidationErrors[] = $validation['error'];
+    //                     Log::error('Function assignment validation failed', [
+    //                         'index' => $index,
+    //                         'error' => $validation['error'],
+    //                     ]);
+
+    //                     continue;
+    //                 }
+
+    //                 $dataCheck = $this->verifyReferencedData($validation['data']);
+
+    //                 if (! $dataCheck['valid']) {
+    //                     $functionValidationErrors[] = "Function assignment {$index}: ".implode(', ', $dataCheck['errors']);
+    //                     Log::error('Referenced data validation failed for function', [
+    //                         'index' => $index,
+    //                         'errors' => $dataCheck['errors'],
+    //                     ]);
+
+    //                     continue;
+    //                 }
+
+    //                 // Get module name
+    //                 $module = DB::connection('sqlsrv')
+    //                     ->table('Azure_SoftwareMaster')
+    //                     ->where('Id', $validation['data']['module_id'])
+    //                     ->first();
+
+    //                 $validation['data']['application_name'] = $module->Name;
+
+    //                 $validatedFunctions[] = $validation['data'];
+    //             }
+
+    //             if (! empty($functionValidationErrors)) {
+    //                 Log::error('Function validation failed - rolling back', [
+    //                     'total_errors' => count($functionValidationErrors),
+    //                     'errors' => $functionValidationErrors,
+    //                 ]);
+
+    //                 DB::connection('sqlsrv')->rollBack();
+
+    //                 return response()->json([
+    //                     'success' => false,
+    //                     'message' => 'Function validation failed: '.implode(', ', array_slice($functionValidationErrors, 0, 3)),
+    //                     'errors' => $functionValidationErrors,
+    //                 ], 422);
+    //             }
+
+    //             Log::info('✓ Step 8a: Function assignments validated', [
+    //                 'valid_functions' => count($validatedFunctions),
+    //             ]);
+
+    //             // ====================================================================
+    //             // STEP 9: Insert ROLES to Azure_Application_UserMapping
+    //             // ====================================================================
+
+    //             Log::info('→ Step 9: Inserting role assignments...', [
+    //                 'total_roles' => count($validatedRoles),
+    //             ]);
+
+    //             $insertedRolesCount = 0;
+    //             $roleInsertErrors = [];
+
+    //             foreach ($validatedRoles as $roleData) {
+    //                 try {
+    //                     DB::connection('sqlsrv')
+    //                         ->table('Azure_Application_UserMapping')
+    //                         ->insert([
+    //                             'Id' => \Illuminate\Support\Str::uuid()->toString(),
+    //                             'AzureUserID' => $user->AzureId,
+    //                             'user_id' => $user->userPrincipalName,
+    //                             'application_id' => $roleData['application_id'],
+    //                             'ApplicationName' => $roleData['application_name'],
+    //                             'RoleID' => $roleData['role_id'],
+    //                             'RoleCode' => $roleData['role_code'],
+    //                             'OfficeID' => $roleData['location_id'],
+    //                             'OfficeCode' => $roleData['location_code'],
+    //                             'IsActive' => 1,
+    //                             'IsDelete' => 0,
+    //                             'CreatedBy' => Auth::user()->name ?? 'system',
+    //                             'CreatedOn' => DB::raw('GETDATE()'),
+    //                             'LastModifiedBy' => Auth::user()->name ?? 'system',
+    //                             'LastModifiedOn' => DB::raw('GETDATE()'),
+    //                         ]);
+
+    //                     $insertedRolesCount++;
+    //                 } catch (\Exception $e) {
+    //                     $roleInsertErrors[] = [
+    //                         'data' => $roleData,
+    //                         'error' => $e->getMessage(),
+    //                     ];
+    //                     Log::error('Failed to insert role assignment', [
+    //                         'role_data' => $roleData,
+    //                         'error' => $e->getMessage(),
+    //                     ]);
+    //                 }
+    //             }
+
+    //             Log::info('✓ Step 9: Role assignments inserted', [
+    //                 'inserted' => $insertedRolesCount,
+    //                 'failed' => count($roleInsertErrors),
+    //             ]);
+
+    //             // ====================================================================
+    //             // STEP 10: Insert FUNCTIONS to Azure_Application_UserFunction
+    //             // ====================================================================
+
+    //             Log::info('→ Step 10: Inserting function assignments...', [
+    //                 'total_functions' => count($validatedFunctions),
+    //             ]);
+
+    //             $insertedFunctionsCount = 0;
+    //             $functionInsertErrors = [];
+
+    //             foreach ($validatedFunctions as $funcData) {
+    //                 try {
+    //                     DB::connection('sqlsrv')
+    //                         ->table('Azure_Application_UserFunction')
+    //                         ->insert([
+    //                             'Id' => \Illuminate\Support\Str::uuid()->toString(),
+    //                             'AzureUserID' => $user->AzureId,
+    //                             'user_id' => $user->userPrincipalName,
+    //                             'application_id' => $funcData['application_id'],
+    //                             'ApplicationName' => $funcData['application_name'],
+    //                             'FunctionID' => $funcData['function_id'],
+    //                             'FunctionCode' => $funcData['function_code'],
+    //                             'OfficeID' => $funcData['location_id'],
+    //                             'OfficeCode' => $funcData['location_code'],
+    //                             'IsActive' => 1,
+    //                             'IsDelete' => 0,
+    //                             'CreatedBy' => Auth::user()->name ?? 'system',
+    //                             'CreatedOn' => DB::raw('GETDATE()'),
+    //                             'LastModifiedBy' => Auth::user()->name ?? 'system',
+    //                             'LastModifiedOn' => DB::raw('GETDATE()'),
+    //                         ]);
+
+    //                     $insertedFunctionsCount++;
+    //                 } catch (\Exception $e) {
+    //                     $functionInsertErrors[] = [
+    //                         'data' => $funcData,
+    //                         'error' => $e->getMessage(),
+    //                     ];
+    //                     Log::error('Failed to insert function assignment', [
+    //                         'function_data' => $funcData,
+    //                         'error' => $e->getMessage(),
+    //                     ]);
+    //                 }
+    //             }
+
+    //             Log::info('✓ Step 10: Function assignments inserted', [
+    //                 'inserted' => $insertedFunctionsCount,
+    //                 'failed' => count($functionInsertErrors),
+    //             ]);
+
+    //             // ====================================================================
+    //             // STEP 11: Check for insertion errors
+    //             // ====================================================================
+
+    //             $allInsertErrors = array_merge($roleInsertErrors, $functionInsertErrors);
+
+    //             if (! empty($allInsertErrors)) {
+    //                 $errorMessage = sprintf(
+    //                     'Failed to save %d assignments. First error: %s',
+    //                     count($allInsertErrors),
+    //                     $allInsertErrors[0]['error'] ?? 'Unknown error'
+    //                 );
+
+    //                 Log::error('Assignment insertion failed - rolling back', [
+    //                     'failed_count' => count($allInsertErrors),
+    //                     'failed_records' => $allInsertErrors,
+    //                 ]);
+
+    //                 DB::connection('sqlsrv')->rollBack();
+
+    //                 return response()->json([
+    //                     'success' => false,
+    //                     'message' => $errorMessage,
+    //                     'errors' => array_column($allInsertErrors, 'error'),
+    //                 ], 422);
+    //             }
+
+    //             // ====================================================================
+    //             // STEP 12: Commit transaction
+    //             // ====================================================================
+
+    //             DB::connection('sqlsrv')->commit();
+
+    //             $totalInserted = $insertedRolesCount + $insertedFunctionsCount;
+
+    //             Log::info('=== UPDATE COMPLETED SUCCESSFULLY ===', [
+    //                 'user_principal' => $user->userPrincipalName,
+    //                 'roles_inserted' => $insertedRolesCount,
+    //                 'functions_inserted' => $insertedFunctionsCount,
+    //                 'total_inserted' => $totalInserted,
+    //                 'total_deleted' => $totalDeleted,
+    //             ]);
+
+    //             // ====================================================================
+    //             // STEP 13: Verify data was saved
+    //             // ====================================================================
+
+    //             $verifyRolesCount = DB::connection('sqlsrv')
+    //                 ->table('Azure_Application_UserMapping')
+    //                 ->where('user_id', $user->userPrincipalName)
+    //                 ->where('IsActive', 1)
+    //                 ->where('IsDelete', 0)
+    //                 ->count();
+
+    //             $verifyFunctionsCount = DB::connection('sqlsrv')
+    //                 ->table('Azure_Application_UserFunction')
+    //                 ->where('user_id', $user->userPrincipalName)
+    //                 ->where('IsActive', 1)
+    //                 ->where('IsDelete', 0)
+    //                 ->count();
+
+    //             Log::info('✅ Verification check', [
+    //                 'expected_roles' => $insertedRolesCount,
+    //                 'actual_roles_in_db' => $verifyRolesCount,
+    //                 'expected_functions' => $insertedFunctionsCount,
+    //                 'actual_functions_in_db' => $verifyFunctionsCount,
+    //                 'roles_match' => $insertedRolesCount === $verifyRolesCount ? 'YES' : 'NO',
+    //                 'functions_match' => $insertedFunctionsCount === $verifyFunctionsCount ? 'YES' : 'NO',
+    //             ]);
+
+    //             // ====================================================================
+    //             // STEP 14: Return success response
+    //             // ====================================================================
+
+    //             return response()->json([
+    //                 'success' => true,
+    //                 'message' => "User updated successfully! {$insertedRolesCount} roles and {$insertedFunctionsCount} functions saved.",
+    //                 'data' => [
+    //                     'roles_inserted' => $insertedRolesCount,
+    //                     'functions_inserted' => $insertedFunctionsCount,
+    //                     'total_inserted' => $totalInserted,
+    //                     'deleted' => $totalDeleted,
+    //                     'roles_verified' => $verifyRolesCount,
+    //                     'functions_verified' => $verifyFunctionsCount,
+    //                     'user_id' => $user->Id,
+    //                 ],
+    //             ]);
+
+    //         } catch (\Exception $e) {
+    //             // ====================================================================
+    //             // STEP 15: Rollback on any database error
+    //             // ====================================================================
+
+    //             if (DB::connection('sqlsrv')->transactionLevel() > 0) {
+    //                 DB::connection('sqlsrv')->rollBack();
+    //             }
+
+    //             Log::error('❌ Database transaction failed', [
+    //                 'user_id' => $user->Id,
+    //                 'error' => $e->getMessage(),
+    //                 'file' => $e->getFile(),
+    //                 'line' => $e->getLine(),
+    //                 'trace' => $e->getTraceAsString(),
+    //             ]);
+
+    //             return response()->json([
+    //                 'success' => false,
+    //                 'message' => 'Database error: '.$e->getMessage(),
+    //                 'error_details' => config('app.debug') ? [
+    //                     'file' => $e->getFile(),
+    //                     'line' => $e->getLine(),
+    //                     'message' => $e->getMessage(),
+    //                 ] : null,
+    //             ], 500);
+    //         }
+
+    //     } catch (\Exception $e) {
+    //         // ====================================================================
+    //         // STEP 16: Catch any other unexpected errors
+    //         // ====================================================================
+
+    //         Log::error('❌ Unexpected error in update method', [
+    //             'user_id' => $user->Id ?? null,
+    //             'error' => $e->getMessage(),
+    //             'file' => $e->getFile(),
+    //             'line' => $e->getLine(),
+    //             'trace' => $e->getTraceAsString(),
+    //         ]);
+
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => 'Server Error: '.$e->getMessage(),
+    //             'error_details' => config('app.debug') ? [
+    //                 'file' => $e->getFile(),
+    //                 'line' => $e->getLine(),
+    //             ] : null,
+    //         ], 500);
+    //     }
+    // }
+
+    /**
+     * Update the specified user - Enhanced with 1-to-1 method (separate roles and functions tables)
+     * FIXED: Handles duplicate PRIMARY KEY violations properly
+     */
     public function update(Request $request, AzureUser $user)
     {
-        set_time_limit(120);
-        error_reporting(E_ALL);
-        ini_set('display_errors', 1);
-
-        Log::info('=== UPDATE METHOD ENTRY - FULL REQUEST DEBUG ===', [
-            'request_class' => get_class($request),
-            'request_method' => $request->method(),
-            'is_ajax' => $request->ajax(),
-            'expects_json' => $request->expectsJson(),
-            'content_type' => $request->header('Content-Type'),
-            'all_input_keys' => array_keys($request->all()),
-            'has_modules' => $request->has('modules'),
-            'has_modules_empty' => $request->has('modules_empty'),
-            'route_parameters' => ['user_id' => $user->Id],
-        ]);
-
         try {
-            Log::info('=== UPDATE USER REQUEST RECEIVED ===', [
+            Log::info('Update user request', [
                 'user_id' => $user->Id,
-                'user_principal' => $user->userPrincipalName,
-                'request_method' => $request->method(),
-                'is_ajax' => $request->ajax(),
+                'azure_id' => $user->AzureId,
+                'has_modules' => $request->has('modules'),
             ]);
 
-            // ====================================================================
-            // STEP 1: Process modules data with proper error handling
-            // ====================================================================
-            $modulesData = $request->input('modules', []);
-
-            Log::info('Processing modules data', [
-                'raw_input' => $request->input('modules'),
-                'modules_empty_flag' => $request->has('modules_empty'),
-                'is_array' => is_array($modulesData),
-                'is_string' => is_string($modulesData),
+            // Validate
+            $request->validate([
+                'modules' => 'sometimes|array',
+                'modules.*.module_id' => 'required',
+                'modules.*.application_id' => 'required',
+                'modules.*.location_id' => 'required',
+                'modules.*.location_code' => 'required|string',
+                'modules.*.role_id' => 'nullable',
+                'modules.*.role_code' => 'nullable|string',
+                'modules.*.function_id' => 'nullable',
+                'modules.*.function_code' => 'nullable|string',
             ]);
 
-            // Handle empty modules case
-            if ($request->has('modules_empty')) {
-                $modulesData = [];
-                Log::info('Empty modules marker detected - deleting all assignments');
-            } elseif (is_string($modulesData)) {
-                if ($modulesData === '[]' || $modulesData === '{}' || $modulesData === '' || $modulesData === 'null') {
-                    $modulesData = [];
-                    Log::info('Empty string detected - converting to empty array');
-                } else {
-                    try {
-                        $decoded = json_decode($modulesData, true);
-                        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-                            $modulesData = $decoded;
-                            Log::info('Decoded JSON string to array', ['count' => count($modulesData)]);
-                        } else {
-                            $modulesData = [];
-                            Log::warning('Invalid JSON string - converting to empty array');
-                        }
-                    } catch (\Exception $e) {
-                        Log::warning('Failed to decode modules string', [
-                            'string' => substr($modulesData, 0, 100),
-                            'error' => $e->getMessage(),
-                        ]);
-                        $modulesData = [];
-                    }
-                }
-            }
-
-            if (! is_array($modulesData)) {
-                Log::warning('Modules data is not an array, converting to empty array', [
-                    'type' => gettype($modulesData),
-                    'value' => $modulesData,
-                ]);
-                $modulesData = [];
-            }
-
-            Log::info('Final modules data', [
-                'count' => count($modulesData),
-                'is_empty' => empty($modulesData),
-                'type' => gettype($modulesData),
-            ]);
-
-            // ====================================================================
-            // STEP 2: Validate modules only if we have them
-            // ====================================================================
-            if (! empty($modulesData)) {
-                try {
-                    // Updated validation - role_id and function_id are now nullable
-                    $validated = $request->validate([
-                        'modules' => 'required|array|min:1',
-                        'modules.*.module_id' => 'required|string',
-                        'modules.*.application_id' => 'required|string',
-                        'modules.*.location_id' => 'required|string',
-                        'modules.*.location_code' => 'required|string',
-                        'modules.*.role_id' => 'nullable|string',  // ← Changed to nullable
-                        'modules.*.role_code' => 'nullable|string',  // ← Changed to nullable
-                        'modules.*.function_id' => 'nullable|string',
-                        'modules.*.function_code' => 'nullable|string',
-                    ]);
-
-                    Log::info('Validation passed', ['modules_count' => count($modulesData)]);
-                } catch (\Illuminate\Validation\ValidationException $e) {
-                    Log::error('Validation failed', ['errors' => $e->errors()]);
-
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Validation failed',
-                        'errors' => $e->errors(),
-                    ], 422);
-                }
-            } else {
-                Log::info('No modules to validate - proceeding with empty array');
-            }
-
-            // ====================================================================
-            // STEP 3: Start database transaction
-            // ====================================================================
+            // Start transaction
             DB::connection('sqlsrv')->beginTransaction();
 
             try {
-                Log::info('📦 Processing modules for update', [
-                    'total_assignments' => count($modulesData),
-                    'user_principal' => $user->userPrincipalName,
-                ]);
-
-                if (count($modulesData) > 0) {
-                    Log::info('📝 Sample assignments (first 2):', [
-                        'samples' => array_slice($modulesData, 0, 2),
-                    ]);
-                } else {
-                    Log::info('📝 No module assignments - all existing modules will be deleted');
-                }
-
                 // ====================================================================
-                // STEP 4: Soft delete existing assignments FROM BOTH TABLES
+                // STEP 1: HARD DELETE existing assignments (avoid PRIMARY KEY issues)
                 // ====================================================================
-
-                // Delete from roles table
-                $deletedRolesCount = DB::connection('sqlsrv')
+                $deletedRoles = DB::connection('sqlsrv')
                     ->table('Azure_Application_UserMapping')
                     ->where('user_id', $user->userPrincipalName)
-                    ->where('IsDelete', 0)
-                    ->update([
-                        'IsDelete' => 1,
-                        'IsActive' => 0,
-                        'LastModifiedBy' => Auth::id() ?? 'system',
-                        'LastModifiedOn' => DB::raw('GETDATE()'),
-                    ]);
+                    ->delete();
 
-                // Delete from functions table
-                $deletedFunctionsCount = DB::connection('sqlsrv')
+                $deletedFunctions = DB::connection('sqlsrv')
                     ->table('Azure_Application_UserFunction')
                     ->where('user_id', $user->userPrincipalName)
-                    ->where('IsDelete', 0)
-                    ->update([
-                        'IsDelete' => 1,
-                        'IsActive' => 0,
-                        'LastModifiedBy' => Auth::id() ?? 'system',
-                        'LastModifiedOn' => DB::raw('GETDATE()'),
-                    ]);
+                    ->delete();
 
-                $totalDeleted = $deletedRolesCount + $deletedFunctionsCount;
-
-                Log::info('🗑️ Marked existing assignments as deleted', [
-                    'user_principal' => $user->userPrincipalName,
-                    'deleted_roles_count' => $deletedRolesCount,
-                    'deleted_functions_count' => $deletedFunctionsCount,
-                    'total_deleted' => $totalDeleted,
+                Log::info('Deleted existing assignments', [
+                    'roles_deleted' => $deletedRoles,
+                    'functions_deleted' => $deletedFunctions,
                 ]);
 
                 // ====================================================================
-                // STEP 5: If no new modules, commit and return success
+                // STEP 2: Check if we're clearing all modules
                 // ====================================================================
-                if (empty($modulesData)) {
+                if ($request->has('modules_empty') && $request->modules_empty == '1') {
                     DB::connection('sqlsrv')->commit();
-
-                    Log::info('=== UPDATE COMPLETED (ALL MODULES DELETED) ===', [
-                        'user_principal' => $user->userPrincipalName,
-                        'deleted_assignments' => $totalDeleted,
-                    ]);
+                    Log::info('All modules cleared');
 
                     return response()->json([
                         'success' => true,
-                        'message' => "All module assignments removed successfully! {$totalDeleted} assignments deleted.",
-                        'data' => [
-                            'deleted' => $totalDeleted,
-                            'inserted' => 0,
-                        ],
+                        'message' => 'All module assignments cleared successfully',
+                        'data' => ['user_id' => $user->Id]
                     ]);
                 }
 
                 // ====================================================================
-                // STEP 6: Separate roles and functions (1-to-1 method)
+                // STEP 3: Prepare new assignments
                 // ====================================================================
+                $modules = $request->modules;
 
-                $roleAssignments = [];
-                $functionAssignments = [];
+                if (empty($modules)) {
+                    DB::connection('sqlsrv')->commit();
 
-                Log::info('→ Step 6: Separating roles and functions (1-to-1 method)...', [
-                    'total_assignments' => count($modulesData),
-                ]);
-
-                foreach ($modulesData as $index => $moduleData) {
-                    // Determine if this is a role or function record
-                    $hasRole = ! empty($moduleData['role_id']);
-                    $hasFunction = ! empty($moduleData['function_id']);
-
-                    if (! $hasRole && ! $hasFunction) {
-                        Log::warning('Assignment has neither role nor function - skipping', [
-                            'index' => $index,
-                            'data' => $moduleData,
-                        ]);
-
-                        continue;
-                    }
-
-                    if ($hasRole) {
-                        $roleAssignments[] = $moduleData;
-                    }
-
-                    if ($hasFunction) {
-                        $functionAssignments[] = $moduleData;
-                    }
+                    return response()->json([
+                        'success' => true,
+                        'message' => 'All module assignments removed',
+                        'data' => ['user_id' => $user->Id]
+                    ]);
                 }
 
-                Log::info('✓ Step 6: Separated assignments', [
-                    'role_assignments' => count($roleAssignments),
-                    'function_assignments' => count($functionAssignments),
-                    'total' => count($roleAssignments) + count($functionAssignments),
-                ]);
+                $roleRecords = [];
+                $functionRecords = [];
 
-                // ====================================================================
-                // STEP 7: Validate and insert ROLES
-                // ====================================================================
-
-                $validatedRoles = [];
-                $roleValidationErrors = [];
-
-                Log::info('→ Step 7a: Validating role assignments...', [
-                    'total_roles' => count($roleAssignments),
-                ]);
-
-                foreach ($roleAssignments as $index => $roleData) {
-                    $validation = $this->validateAssignment($roleData, $index);
-
-                    if (! $validation['valid']) {
-                        $roleValidationErrors[] = $validation['error'];
-                        Log::error('Role assignment validation failed', [
-                            'index' => $index,
-                            'error' => $validation['error'],
-                        ]);
-
-                        continue;
-                    }
-
-                    $dataCheck = $this->verifyReferencedData($validation['data']);
-
-                    if (! $dataCheck['valid']) {
-                        $roleValidationErrors[] = "Role assignment {$index}: ".implode(', ', $dataCheck['errors']);
-                        Log::error('Referenced data validation failed for role', [
-                            'index' => $index,
-                            'errors' => $dataCheck['errors'],
-                        ]);
-
-                        continue;
-                    }
-
-                    // Get module name
-                    $module = DB::connection('sqlsrv')
-                        ->table('Azure_SoftwareMaster')
-                        ->where('Id', $validation['data']['module_id'])
+                // Build records arrays
+                foreach ($modules as $module) {
+                    // Get location with explicit column selection
+                    $location = DB::connection('sqlsrv')
+                        ->table('Cust_Office')
+                        ->select(DB::raw('Id as LocationId, code as LocationCode, Name as LocationName'))
+                        ->where('code', $module['location_code'])
+                        ->where('IsActive', 1)
+                        ->where('IsDeleted', 0)
                         ->first();
 
-                    $validation['data']['application_name'] = $module->Name;
-
-                    $validatedRoles[] = $validation['data'];
-                }
-
-                if (! empty($roleValidationErrors)) {
-                    Log::error('Role validation failed - rolling back', [
-                        'total_errors' => count($roleValidationErrors),
-                        'errors' => $roleValidationErrors,
-                    ]);
-
-                    DB::connection('sqlsrv')->rollBack();
-
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Role validation failed: '.implode(', ', array_slice($roleValidationErrors, 0, 3)),
-                        'errors' => $roleValidationErrors,
-                    ], 422);
-                }
-
-                Log::info('✓ Step 7a: Role assignments validated', [
-                    'valid_roles' => count($validatedRoles),
-                ]);
-
-                // ====================================================================
-                // STEP 8: Validate and insert FUNCTIONS
-                // ====================================================================
-
-                $validatedFunctions = [];
-                $functionValidationErrors = [];
-
-                Log::info('→ Step 8a: Validating function assignments...', [
-                    'total_functions' => count($functionAssignments),
-                ]);
-
-                foreach ($functionAssignments as $index => $funcData) {
-                    $validation = $this->validateAssignment($funcData, $index);
-
-                    if (! $validation['valid']) {
-                        $functionValidationErrors[] = $validation['error'];
-                        Log::error('Function assignment validation failed', [
-                            'index' => $index,
-                            'error' => $validation['error'],
+                    if (!$location) {
+                        Log::warning('Location not found or inactive', [
+                            'code' => $module['location_code']
                         ]);
-
                         continue;
                     }
 
-                    $dataCheck = $this->verifyReferencedData($validation['data']);
+                    // Get application name once
+                    $appName = $this->getApplicationName($module['application_id']);
 
-                    if (! $dataCheck['valid']) {
-                        $functionValidationErrors[] = "Function assignment {$index}: ".implode(', ', $dataCheck['errors']);
-                        Log::error('Referenced data validation failed for function', [
-                            'index' => $index,
-                            'errors' => $dataCheck['errors'],
-                        ]);
-
-                        continue;
+                    // If has role, add to role records
+                    if (!empty($module['role_id']) && !empty($module['role_code'])) {
+                        $roleRecords[] = [
+                            'Id' => \Illuminate\Support\Str::uuid()->toString(),
+                            'user_id' => $user->userPrincipalName,
+                            'AzureUserID' => $user->Id,
+                            'Username' => $user->displayName ?? $user->userPrincipalName,
+                            'application_id' => $module['application_id'],
+                            'ApplicationName' => $appName,
+                            'OfficeID' => $location->LocationId,
+                            'OfficeCode' => $location->LocationCode,
+                            'RoleID' => $module['role_id'],
+                            'RoleCode' => $module['role_code'],
+                            'IsActive' => 1,
+                            'IsDelete' => 0,
+                            'CreatedBy' => Auth::id() ?? 'system',
+                            'CreatedOn' => DB::raw('GETDATE()'),
+                            'LastModifiedBy' => null,
+                            'LastModifiedOn' => null
+                        ];
                     }
 
-                    // Get module name
-                    $module = DB::connection('sqlsrv')
-                        ->table('Azure_SoftwareMaster')
-                        ->where('Id', $validation['data']['module_id'])
-                        ->first();
-
-                    $validation['data']['application_name'] = $module->Name;
-
-                    $validatedFunctions[] = $validation['data'];
+                    // If has function, add to function records
+                    if (!empty($module['function_id']) && !empty($module['function_code'])) {
+                        $functionRecords[] = [
+                            'Id' => \Illuminate\Support\Str::uuid()->toString(),
+                            'user_id' => $user->userPrincipalName,
+                            'AzureUserID' => $user->Id,
+                            'Username' => $user->displayName ?? $user->userPrincipalName,
+                            'application_id' => $module['application_id'],
+                            'ApplicationName' => $appName,
+                            'OfficeID' => $location->LocationId,
+                            'OfficeCode' => $location->LocationCode,
+                            'FunctionID' => $module['function_id'],
+                            'FunctionCode' => $module['function_code'],
+                            'IsActive' => 1,
+                            'IsDelete' => 0,
+                            'CreatedBy' => Auth::id() ?? 'system',
+                            'CreatedOn' => DB::raw('GETDATE()'),
+                            'LastModifiedBy' => null,
+                            'LastModifiedOn' => null
+                        ];
+                    }
                 }
 
-                if (! empty($functionValidationErrors)) {
-                    Log::error('Function validation failed - rolling back', [
-                        'total_errors' => count($functionValidationErrors),
-                        'errors' => $functionValidationErrors,
+                Log::info('Prepared records for insertion', [
+                    'role_count' => count($roleRecords),
+                    'function_count' => count($functionRecords),
+                ]);
+
+                // ====================================================================
+                // STEP 4: Insert role records
+                // ====================================================================
+                $rolesInserted = 0;
+
+                if (count($roleRecords) > 0) {
+                    // Insert in chunks to avoid SQL limits
+                    $chunks = array_chunk($roleRecords, 100);
+
+                    foreach ($chunks as $chunk) {
+                        try {
+                            DB::connection('sqlsrv')
+                                ->table('Azure_Application_UserMapping')
+                                ->insert($chunk);
+
+                            $rolesInserted += count($chunk);
+                        } catch (\Exception $e) {
+                            Log::error('Failed to insert role chunk', [
+                                'error' => $e->getMessage(),
+                                'chunk_size' => count($chunk)
+                            ]);
+                            throw $e;
+                        }
+                    }
+
+                    Log::info('Inserted role records', ['count' => $rolesInserted]);
+                }
+
+                // ====================================================================
+                // STEP 5: Insert function records (with duplicate prevention)
+                // ====================================================================
+                $functionsInserted = 0;
+
+                if (count($functionRecords) > 0) {
+                    // Remove duplicates within the submission itself
+                    $uniqueFunctionRecords = [];
+                    $seenKeys = [];
+
+                    foreach ($functionRecords as $funcRecord) {
+                        $key = $funcRecord['AzureUserID'] . '|' .
+                            $funcRecord['FunctionID'] . '|' .
+                            $funcRecord['OfficeID'];
+
+                        if (!in_array($key, $seenKeys)) {
+                            $uniqueFunctionRecords[] = $funcRecord;
+                            $seenKeys[] = $key;
+                        } else {
+                            Log::debug('Skipping duplicate function in submission', [
+                                'function' => $funcRecord['FunctionCode'],
+                                'office' => $funcRecord['OfficeCode']
+                            ]);
+                        }
+                    }
+
+                    Log::info('Deduplicated function records', [
+                        'original_count' => count($functionRecords),
+                        'unique_count' => count($uniqueFunctionRecords)
                     ]);
 
-                    DB::connection('sqlsrv')->rollBack();
+                    // Insert in chunks
+                    $chunks = array_chunk($uniqueFunctionRecords, 100);
 
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Function validation failed: '.implode(', ', array_slice($functionValidationErrors, 0, 3)),
-                        'errors' => $functionValidationErrors,
-                    ], 422);
-                }
+                    foreach ($chunks as $chunk) {
+                        try {
+                            DB::connection('sqlsrv')
+                                ->table('Azure_Application_UserFunction')
+                                ->insert($chunk);
 
-                Log::info('✓ Step 8a: Function assignments validated', [
-                    'valid_functions' => count($validatedFunctions),
-                ]);
-
-                // ====================================================================
-                // STEP 9: Insert ROLES to Azure_Application_UserMapping
-                // ====================================================================
-
-                Log::info('→ Step 9: Inserting role assignments...', [
-                    'total_roles' => count($validatedRoles),
-                ]);
-
-                $insertedRolesCount = 0;
-                $roleInsertErrors = [];
-
-                foreach ($validatedRoles as $roleData) {
-                    try {
-                        DB::connection('sqlsrv')
-                            ->table('Azure_Application_UserMapping')
-                            ->insert([
-                                'Id' => \Illuminate\Support\Str::uuid()->toString(),
-                                'AzureUserID' => $user->AzureId,
-                                'user_id' => $user->userPrincipalName,
-                                'application_id' => $roleData['application_id'],
-                                'ApplicationName' => $roleData['application_name'],
-                                'RoleID' => $roleData['role_id'],
-                                'RoleCode' => $roleData['role_code'],
-                                'OfficeID' => $roleData['location_id'],
-                                'OfficeCode' => $roleData['location_code'],
-                                'IsActive' => 1,
-                                'IsDelete' => 0,
-                                'CreatedBy' => Auth::user()->name ?? 'system',
-                                'CreatedOn' => DB::raw('GETDATE()'),
-                                'LastModifiedBy' => Auth::user()->name ?? 'system',
-                                'LastModifiedOn' => DB::raw('GETDATE()'),
+                            $functionsInserted += count($chunk);
+                        } catch (\Exception $e) {
+                            Log::error('Failed to insert function chunk', [
+                                'error' => $e->getMessage(),
+                                'chunk_size' => count($chunk)
                             ]);
-
-                        $insertedRolesCount++;
-                    } catch (\Exception $e) {
-                        $roleInsertErrors[] = [
-                            'data' => $roleData,
-                            'error' => $e->getMessage(),
-                        ];
-                        Log::error('Failed to insert role assignment', [
-                            'role_data' => $roleData,
-                            'error' => $e->getMessage(),
-                        ]);
+                            throw $e;
+                        }
                     }
-                }
 
-                Log::info('✓ Step 9: Role assignments inserted', [
-                    'inserted' => $insertedRolesCount,
-                    'failed' => count($roleInsertErrors),
-                ]);
-
-                // ====================================================================
-                // STEP 10: Insert FUNCTIONS to Azure_Application_UserFunction
-                // ====================================================================
-
-                Log::info('→ Step 10: Inserting function assignments...', [
-                    'total_functions' => count($validatedFunctions),
-                ]);
-
-                $insertedFunctionsCount = 0;
-                $functionInsertErrors = [];
-
-                foreach ($validatedFunctions as $funcData) {
-                    try {
-                        DB::connection('sqlsrv')
-                            ->table('Azure_Application_UserFunction')
-                            ->insert([
-                                'Id' => \Illuminate\Support\Str::uuid()->toString(),
-                                'AzureUserID' => $user->AzureId,
-                                'user_id' => $user->userPrincipalName,
-                                'application_id' => $funcData['application_id'],
-                                'ApplicationName' => $funcData['application_name'],
-                                'FunctionID' => $funcData['function_id'],
-                                'FunctionCode' => $funcData['function_code'],
-                                'OfficeID' => $funcData['location_id'],
-                                'OfficeCode' => $funcData['location_code'],
-                                'IsActive' => 1,
-                                'IsDelete' => 0,
-                                'CreatedBy' => Auth::user()->name ?? 'system',
-                                'CreatedOn' => DB::raw('GETDATE()'),
-                                'LastModifiedBy' => Auth::user()->name ?? 'system',
-                                'LastModifiedOn' => DB::raw('GETDATE()'),
-                            ]);
-
-                        $insertedFunctionsCount++;
-                    } catch (\Exception $e) {
-                        $functionInsertErrors[] = [
-                            'data' => $funcData,
-                            'error' => $e->getMessage(),
-                        ];
-                        Log::error('Failed to insert function assignment', [
-                            'function_data' => $funcData,
-                            'error' => $e->getMessage(),
-                        ]);
-                    }
-                }
-
-                Log::info('✓ Step 10: Function assignments inserted', [
-                    'inserted' => $insertedFunctionsCount,
-                    'failed' => count($functionInsertErrors),
-                ]);
-
-                // ====================================================================
-                // STEP 11: Check for insertion errors
-                // ====================================================================
-
-                $allInsertErrors = array_merge($roleInsertErrors, $functionInsertErrors);
-
-                if (! empty($allInsertErrors)) {
-                    $errorMessage = sprintf(
-                        'Failed to save %d assignments. First error: %s',
-                        count($allInsertErrors),
-                        $allInsertErrors[0]['error'] ?? 'Unknown error'
-                    );
-
-                    Log::error('Assignment insertion failed - rolling back', [
-                        'failed_count' => count($allInsertErrors),
-                        'failed_records' => $allInsertErrors,
-                    ]);
-
-                    DB::connection('sqlsrv')->rollBack();
-
-                    return response()->json([
-                        'success' => false,
-                        'message' => $errorMessage,
-                        'errors' => array_column($allInsertErrors, 'error'),
-                    ], 422);
+                    Log::info('Inserted function records', ['count' => $functionsInserted]);
                 }
 
                 // ====================================================================
-                // STEP 12: Commit transaction
+                // STEP 6: Commit transaction
                 // ====================================================================
-
                 DB::connection('sqlsrv')->commit();
 
-                $totalInserted = $insertedRolesCount + $insertedFunctionsCount;
-
-                Log::info('=== UPDATE COMPLETED SUCCESSFULLY ===', [
-                    'user_principal' => $user->userPrincipalName,
-                    'roles_inserted' => $insertedRolesCount,
-                    'functions_inserted' => $insertedFunctionsCount,
-                    'total_inserted' => $totalInserted,
-                    'total_deleted' => $totalDeleted,
+                Log::info('Update completed successfully', [
+                    'roles_inserted' => $rolesInserted,
+                    'functions_inserted' => $functionsInserted,
+                    'total' => $rolesInserted + $functionsInserted
                 ]);
 
                 // ====================================================================
-                // STEP 13: Verify data was saved
+                // STEP 7: Verify data was saved
                 // ====================================================================
-
                 $verifyRolesCount = DB::connection('sqlsrv')
                     ->table('Azure_Application_UserMapping')
                     ->where('user_id', $user->userPrincipalName)
-                    ->where('IsActive', 1)
-                    ->where('IsDelete', 0)
                     ->count();
 
                 $verifyFunctionsCount = DB::connection('sqlsrv')
                     ->table('Azure_Application_UserFunction')
                     ->where('user_id', $user->userPrincipalName)
-                    ->where('IsActive', 1)
-                    ->where('IsDelete', 0)
                     ->count();
 
-                Log::info('✅ Verification check', [
-                    'expected_roles' => $insertedRolesCount,
-                    'actual_roles_in_db' => $verifyRolesCount,
-                    'expected_functions' => $insertedFunctionsCount,
-                    'actual_functions_in_db' => $verifyFunctionsCount,
-                    'roles_match' => $insertedRolesCount === $verifyRolesCount ? 'YES' : 'NO',
-                    'functions_match' => $insertedFunctionsCount === $verifyFunctionsCount ? 'YES' : 'NO',
+                Log::info('Verification check', [
+                    'expected_roles' => $rolesInserted,
+                    'actual_roles' => $verifyRolesCount,
+                    'expected_functions' => $functionsInserted,
+                    'actual_functions' => $verifyFunctionsCount,
+                    'match' => ($rolesInserted === $verifyRolesCount &&
+                        $functionsInserted === $verifyFunctionsCount) ? 'YES' : 'NO'
                 ]);
-
-                // ====================================================================
-                // STEP 14: Return success response
-                // ====================================================================
 
                 return response()->json([
                     'success' => true,
-                    'message' => "User updated successfully! {$insertedRolesCount} roles and {$insertedFunctionsCount} functions saved.",
+                    'message' => 'User updated successfully. Assignments saved to database.',
                     'data' => [
-                        'roles_inserted' => $insertedRolesCount,
-                        'functions_inserted' => $insertedFunctionsCount,
-                        'total_inserted' => $totalInserted,
-                        'deleted' => $totalDeleted,
-                        'roles_verified' => $verifyRolesCount,
-                        'functions_verified' => $verifyFunctionsCount,
                         'user_id' => $user->Id,
-                    ],
+                        'roles_count' => $rolesInserted,
+                        'functions_count' => $functionsInserted,
+                        'total_count' => $rolesInserted + $functionsInserted,
+                        'verified' => [
+                            'roles' => $verifyRolesCount,
+                            'functions' => $verifyFunctionsCount
+                        ]
+                    ]
+                ]);
+            } catch (\Exception $e) {
+                // Rollback on any error
+                DB::connection('sqlsrv')->rollBack();
+
+                Log::error('Transaction failed, rolled back', [
+                    'error' => $e->getMessage(),
+                    'line' => $e->getLine(),
+                    'file' => $e->getFile()
                 ]);
 
-            } catch (\Exception $e) {
-                // ====================================================================
-                // STEP 15: Rollback on any database error
-                // ====================================================================
+                throw $e;
+            }
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            Log::error('Update failed', [
+                'error' => $e->getMessage(),
+                'line' => $e->getLine(),
+                'file' => $e->getFile(),
+                'user_id' => $user->Id ?? null,
+                'trace' => $e->getTraceAsString()
+            ]);
 
-                if (DB::connection('sqlsrv')->transactionLevel() > 0) {
-                    DB::connection('sqlsrv')->rollBack();
-                }
-
-                Log::error('❌ Database transaction failed', [
-                    'user_id' => $user->Id,
-                    'error' => $e->getMessage(),
+            return response()->json([
+                'success' => false,
+                'message' => 'Update failed: ' . $e->getMessage(),
+                'error_details' => config('app.debug') ? [
                     'file' => $e->getFile(),
                     'line' => $e->getLine(),
-                    'trace' => $e->getTraceAsString(),
-                ]);
+                    'message' => $e->getMessage()
+                ] : null
+            ], 500);
+        }
+    }
 
+
+
+    /**
+     * Helper to get application name from ID
+     */
+    private function getApplicationName($applicationId)
+    {
+        static $cache = [];
+
+        if (isset($cache[$applicationId])) {
+            return $cache[$applicationId];
+        }
+
+        // ✅ FIXED: Query by ApplicationId (not Id)
+        $app = DB::connection('sqlsrv')
+            ->table('Azure_SoftwareMaster')
+            ->where('ApplicationId', $applicationId)  // ✅ Changed from 'Id' to 'ApplicationId'
+            ->where('IsActive', 1)
+            ->where('IsDeleted', 0)
+            ->first();
+
+        $cache[$applicationId] = $app->Name ?? 'Unknown';
+
+        // ✅ Add logging to debug
+        if (!$app) {
+            Log::warning('Application not found', [
+                'application_id' => $applicationId
+            ]);
+        }
+
+        return $cache[$applicationId];
+    }
+
+    /**
+     * Provision an existing user to Azure AD
+     * This is for users created in the database but not yet in Azure AD
+     */
+    public function provisionToAzure(AzureUser $user)
+    {
+        try {
+            Log::info('=== PROVISION TO AZURE REQUEST ===', [
+                'user_id' => $user->Id,
+                'email' => $user->userPrincipalName,
+                'initiated_by' => Auth::id(),
+            ]);
+
+            // Check if already provisioned
+            if (!empty($user->AzureId)) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Database error: '.$e->getMessage(),
-                    'error_details' => config('app.debug') ? [
-                        'file' => $e->getFile(),
-                        'line' => $e->getLine(),
-                        'message' => $e->getMessage(),
-                    ] : null,
-                ], 500);
+                    'message' => 'User is already provisioned to Azure AD',
+                    'data' => ['azure_id' => $user->AzureId]
+                ], 400);
             }
 
-        } catch (\Exception $e) {
-            // ====================================================================
-            // STEP 16: Catch any other unexpected errors
-            // ====================================================================
+            // Initialize Azure service
+            $azureService = app(\App\Services\AzureGraphService::class);
 
-            Log::error('❌ Unexpected error in update method', [
+            // Prepare user data for Azure
+            $nameParts = explode(' ', trim($user->displayName), 2);
+            $givenName = $nameParts[0];
+            $surname = $nameParts[1] ?? $nameParts[0];
+
+            $azureUserData = [
+                'accountEnabled' => true,
+                'displayName' => $user->displayName,
+                'mailNickname' => explode('@', $user->userPrincipalName)[0],
+                'userPrincipalName' => $user->userPrincipalName,
+                'givenName' => $givenName,
+                'surname' => $surname,
+                'mail' => $user->mail ?? $user->userPrincipalName,
+                'usageLocation' => 'KE',
+                'passwordProfile' => [
+                    'forceChangePasswordNextSignIn' => true,
+                    'password' => $this->generateSecurePassword(),
+                ],
+            ];
+
+            // Add optional fields
+            if ($user->mobilePhone) {
+                $azureUserData['mobilePhone'] = $user->mobilePhone;
+            }
+            if ($user->telephoneNumber) {
+                $azureUserData['businessPhones'] = [$user->telephoneNumber];
+            }
+            if ($user->jobTitle) {
+                $azureUserData['jobTitle'] = $user->jobTitle;
+            }
+            if ($user->department) {
+                $azureUserData['department'] = $user->department;
+            }
+            if ($user->officeLocation) {
+                $azureUserData['officeLocation'] = $user->officeLocation;
+            }
+
+            // Create user in Azure AD
+            $azureResult = $azureService->createUser($azureUserData);
+            $azureId = $azureResult['id'];
+
+            // Update database with Azure ID
+            DB::connection('sqlsrv')->update('
+            UPDATE Azure_Users
+            SET AzureId = ?,
+                LastModifiedBy = ?,
+                LastModifiedOn = GETDATE()
+            WHERE Id = ?
+        ', [
+                $azureId,
+                Auth::id() ?? 'system',
+                $user->Id
+            ]);
+
+            Log::info('=== AZURE PROVISIONING COMPLETED ===', [
+                'user_id' => $user->Id,
+                'azure_id' => $azureId,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'User successfully provisioned to Azure AD! You can now assign modules.',
+                'data' => [
+                    'user_id' => $user->Id,
+                    'azure_id' => $azureId,
+                ]
+            ]);
+        } catch (\Exception $e) {
+            Log::error('=== AZURE PROVISIONING FAILED ===', [
                 'user_id' => $user->Id ?? null,
                 'error' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
                 'trace' => $e->getTraceAsString(),
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Server Error: '.$e->getMessage(),
-                'error_details' => config('app.debug') ? [
-                    'file' => $e->getFile(),
-                    'line' => $e->getLine(),
-                ] : null,
+                'message' => 'Failed to provision user to Azure AD: ' . $e->getMessage()
             ], 500);
         }
     }
+
+
 
     /**
      * Test endpoint for debugging
@@ -2532,7 +2930,7 @@ class AzureUserManagementController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Test failed: '.$e->getMessage(),
+                'message' => 'Test failed: ' . $e->getMessage(),
                 'trace' => config('app.debug') ? $e->getTraceAsString() : null,
             ], 500);
         }
@@ -2675,7 +3073,7 @@ class AzureUserManagementController extends Controller
                 : ' <em>(No external systems synced yet)</em>';
 
             return redirect()->back()
-                ->with('success', '✓ User activated successfully!'.$systemsList);
+                ->with('success', '✓ User activated successfully!' . $systemsList);
         } catch (\Exception $e) {
             Log::error('=== USER SYNC FAILED ===', [
                 'user_id' => $user->Id ?? null,
@@ -2684,7 +3082,7 @@ class AzureUserManagementController extends Controller
             ]);
 
             return redirect()->back()
-                ->with('error', 'Failed to sync user: '.$e->getMessage());
+                ->with('error', 'Failed to sync user: ' . $e->getMessage());
         }
     }
 
@@ -2727,7 +3125,7 @@ class AzureUserManagementController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to get sync status: '.$e->getMessage(),
+                'message' => 'Failed to get sync status: ' . $e->getMessage(),
             ], 500);
         }
     }
@@ -2905,7 +3303,7 @@ class AzureUserManagementController extends Controller
 
                 return response()->json([
                     'success' => false,
-                    'message' => 'Failed to disable user in Azure AD: '.$azureError->getMessage(),
+                    'message' => 'Failed to disable user in Azure AD: ' . $azureError->getMessage(),
                     'error' => $azureError->getMessage(),
                 ], 500);
             }
@@ -2943,7 +3341,7 @@ class AzureUserManagementController extends Controller
                     return response()->json([
                         'success' => false,
                         'message' => 'Database update failed. User remains enabled (rollback successful).',
-                        'error' => 'Database error: '.$dbError->getMessage(),
+                        'error' => 'Database error: ' . $dbError->getMessage(),
                     ], 500);
                 } catch (\Exception $rollbackError) {
                     Log::critical('✗ ROLLBACK FAILED: User disabled in Azure but database not updated!', [
@@ -3001,7 +3399,7 @@ class AzureUserManagementController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'An unexpected error occurred: '.$e->getMessage(),
+                'message' => 'An unexpected error occurred: ' . $e->getMessage(),
             ], 500);
         }
     }
@@ -3069,7 +3467,7 @@ class AzureUserManagementController extends Controller
 
                 return response()->json([
                     'success' => false,
-                    'message' => 'Failed to enable user in Azure AD: '.$azureError->getMessage(),
+                    'message' => 'Failed to enable user in Azure AD: ' . $azureError->getMessage(),
                     'error' => $azureError->getMessage(),
                 ], 500);
             }
@@ -3107,7 +3505,7 @@ class AzureUserManagementController extends Controller
                     return response()->json([
                         'success' => false,
                         'message' => 'Database update failed. User remains disabled (rollback successful).',
-                        'error' => 'Database error: '.$dbError->getMessage(),
+                        'error' => 'Database error: ' . $dbError->getMessage(),
                     ], 500);
                 } catch (\Exception $rollbackError) {
                     Log::critical('✗ ROLLBACK FAILED: User enabled in Azure but database not updated!', [
@@ -3179,12 +3577,12 @@ class AzureUserManagementController extends Controller
                     $systems[] = 'SCM';
                 }
 
-                $provisioningMessage = "\n\nNote: User may need to be re-provisioned to: ".implode(', ', $systems).'. Please visit the user detail page to provision.';
+                $provisioningMessage = "\n\nNote: User may need to be re-provisioned to: " . implode(', ', $systems) . '. Please visit the user detail page to provision.';
             }
 
             return response()->json([
                 'success' => true,
-                'message' => 'User has been enabled successfully. They can now access systems.'.$provisioningMessage,
+                'message' => 'User has been enabled successfully. They can now access systems.' . $provisioningMessage,
                 'requires_provisioning' => $hasD365 || $hasOPS,
                 'systems' => [
                     'd365' => $hasD365,
@@ -3200,7 +3598,7 @@ class AzureUserManagementController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'An unexpected error occurred: '.$e->getMessage(),
+                'message' => 'An unexpected error occurred: ' . $e->getMessage(),
             ], 500);
         }
     }
@@ -3270,7 +3668,7 @@ class AzureUserManagementController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to process password reset: '.$e->getMessage(),
+                'message' => 'Failed to process password reset: ' . $e->getMessage(),
             ], 500);
         }
     }
@@ -3311,12 +3709,12 @@ class AzureUserManagementController extends Controller
             if (request()->expectsJson()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Failed to delete user: '.$e->getMessage(),
+                    'message' => 'Failed to delete user: ' . $e->getMessage(),
                 ], 500);
             }
 
             return redirect()->back()
-                ->withErrors(['error' => 'Failed to delete user: '.$e->getMessage()]);
+                ->withErrors(['error' => 'Failed to delete user: ' . $e->getMessage()]);
         }
     }
 
@@ -3328,7 +3726,7 @@ class AzureUserManagementController extends Controller
         try {
             $results = $this->provisioningService->retryFailedModuleAssignments($user);
 
-            $successCount = count(array_filter($results, fn ($r) => $r['success']));
+            $successCount = count(array_filter($results, fn($r) => $r['success']));
             $totalCount = count($results);
 
             $message = "Retried {$totalCount} module(s): {$successCount} succeeded.";
@@ -3347,12 +3745,12 @@ class AzureUserManagementController extends Controller
             if (request()->expectsJson()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Failed to retry module assignments: '.$e->getMessage(),
+                    'message' => 'Failed to retry module assignments: ' . $e->getMessage(),
                 ], 500);
             }
 
             return redirect()->back()
-                ->withErrors(['error' => 'Failed to retry: '.$e->getMessage()]);
+                ->withErrors(['error' => 'Failed to retry: ' . $e->getMessage()]);
         }
     }
 
@@ -3377,7 +3775,7 @@ class AzureUserManagementController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to fetch functions: '.$e->getMessage(),
+                'message' => 'Failed to fetch functions: ' . $e->getMessage(),
             ], 500);
         }
     }
@@ -3402,7 +3800,7 @@ class AzureUserManagementController extends Controller
             }
 
             // ✅ ADD CACHING - cache for 1 hour
-            $cacheKey = "roles_{$applicationCode}_".md5($filter ?? 'all');
+            $cacheKey = "roles_{$applicationCode}_" . md5($filter ?? 'all');
 
             $roles = Cache::remember($cacheKey, 3600, function () use ($applicationCode, $filter) {
                 $mapping = config('azure_modules.module_mapping', []);
@@ -3470,7 +3868,7 @@ class AzureUserManagementController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to fetch roles: '.$e->getMessage(),
+                'message' => 'Failed to fetch roles: ' . $e->getMessage(),
             ], 500);
         }
     }
@@ -3543,22 +3941,31 @@ class AzureUserManagementController extends Controller
                                 ]);
 
                                 try {
-                                    // Call the D365 stored procedure
-                                    $d365Result = DB::connection('sqlsrv')->select('
-                                    SET NOCOUNT ON;
+                                    // ❌ DISABLED: D365 provisioning temporarily disabled
+                                    // Call the stored procedure
+                                    /* COMMENTED OUT - D365 SP DISABLED
+$d365Result = DB::connection('sqlsrv')->select('
+    SET NOCOUNT ON;
 
-                                    DECLARE @Status VARCHAR(15), @Remark VARCHAR(200);
+    DECLARE @Status VARCHAR(15), @Remark VARCHAR(200);
 
-                                    EXEC sp_Azure_D365UserCreation
-                                        @AzureUserID = ?,
-                                        @Status = @Status OUTPUT,
-                                        @Remark = @Remark OUTPUT;
+    EXEC sp_Azure_D365UserCreation
+        @AzureUserID = ?,
+        @Status = @Status OUTPUT,
+        @Remark = @Remark OUTPUT;
 
-                                    SELECT @Status as Status, @Remark as Remark;
-                                ', [$user->AzureId]);
+    SELECT @Status as Status, @Remark as Remark;
+', [$user->AzureId]);
 
-                                    $d365Status = $d365Result[0]->Status ?? 'Failed';
-                                    $d365Remark = $d365Result[0]->Remark ?? 'Unknown error';
+$d365Status = $d365Result[0]->Status ?? 'Failed';
+$d365Remark = $d365Result[0]->Remark ?? 'Unknown error';
+*/
+
+                                    // Return disabled message instead
+                                    return response()->json([
+                                        'success' => false,
+                                        'message' => 'D365 provisioning is temporarily disabled for system maintenance.',
+                                    ], 503);
 
                                     if ($d365Status === 'Success') {
                                         $stats['d365_provisioned']++;
@@ -3680,7 +4087,7 @@ class AzureUserManagementController extends Controller
                 $messageParts[] = sprintf('Errors: %d', count($stats['errors']));
             }
 
-            $message = '✓ Sync completed! '.implode(' | ', $messageParts);
+            $message = '✓ Sync completed! ' . implode(' | ', $messageParts);
 
             // Add warning if there were D365 failures
             if ($stats['d365_failed'] > 0) {
@@ -3696,7 +4103,7 @@ class AzureUserManagementController extends Controller
             ]);
 
             return redirect()->back()
-                ->withErrors(['error' => 'Activation failed: '.$e->getMessage()]);
+                ->withErrors(['error' => 'Activation failed: ' . $e->getMessage()]);
         }
     }
 
@@ -3731,7 +4138,7 @@ class AzureUserManagementController extends Controller
             ]);
 
             return redirect()->back()
-                ->withErrors(['error' => 'Full sync failed: '.$e->getMessage()]);
+                ->withErrors(['error' => 'Full sync failed: ' . $e->getMessage()]);
         }
     }
 
@@ -3751,26 +4158,7 @@ class AzureUserManagementController extends Controller
             ];
         }
 
-        // Check 2: External system synchronization
-        $syncedSystems = [];
-        if (! empty($user->OdooUserId)) {
-            $syncedSystems[] = 'Odoo';
-        }
-        if (! empty($user->SCMUserID)) {
-            $syncedSystems[] = 'SCM';
-        }
-        if (! empty($user->BizUserID)) {
-            $syncedSystems[] = 'BIZ';
-        }
-
-        if (empty($syncedSystems)) {
-            return [
-                'can_activate' => false,
-                'reason' => 'No external system IDs populated',
-            ];
-        }
-
-        // Check 3: Module assignments
+        // Check 2: Module assignments
         $moduleCount = DB::connection('sqlsrv')
             ->table('Azure_Application_UserMapping')
             ->where('user_id', $user->userPrincipalName)
@@ -3785,13 +4173,13 @@ class AzureUserManagementController extends Controller
             ];
         }
 
-        // All checks passed
+        // All checks passed - no external system verification needed
         return [
             'can_activate' => true,
             'reason' => sprintf(
-                'Synced with %s (%d modules)',
-                implode(', ', $syncedSystems),
-                $moduleCount
+                'Ready to activate (%d module assignment%s)',
+                $moduleCount,
+                $moduleCount !== 1 ? 's' : ''
             ),
         ];
     }
@@ -3831,7 +4219,7 @@ class AzureUserManagementController extends Controller
             return [
                 'valid' => false,
                 'data' => null,
-                'error' => "Assignment {$index}: ".implode(', ', $errors),
+                'error' => "Assignment {$index}: " . implode(', ', $errors),
             ];
         }
 
@@ -4125,187 +4513,197 @@ class AzureUserManagementController extends Controller
      *
      * @return \Illuminate\Http\JsonResponse
      */
-    public function retryD365Provisioning(AzureUser $user)
-    {
-        try {
-            Log::info('=== D365 RETRY PROVISIONING STARTED ===', [
-                'user_id' => $user->Id,
-                'azure_id' => $user->AzureId,
-                'initiated_by' => Auth::id(),
-            ]);
+    // public function retryD365Provisioning(AzureUser $user)
+    // {
+    // try {
+    //     Log::info('=== D365 RETRY PROVISIONING STARTED ===', [
+    //         'user_id' => $user->Id,
+    //         'azure_id' => $user->AzureId,
+    //         'initiated_by' => Auth::id(),
+    //     ]);
 
-            // Validation 1: Check if Azure ID exists
-            if (empty($user->AzureId)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Cannot provision to D365: User not provisioned to Azure AD',
-                ], 400);
-            }
+    // Validation 1: Check if Azure ID exists
+    // if (empty($user->AzureId)) {
+    //     return response()->json([
+    //         'success' => false,
+    //         'message' => 'Cannot provision to D365: User not provisioned to Azure AD',
+    //     ], 400);
+    // }
 
-            // Validation 2: Check if user already has D365UserID
-            if (! empty($user->D365UserID)) {
-                Log::info('User already provisioned to D365', [
-                    'user_id' => $user->Id,
-                    'd365_user_id' => $user->D365UserID,
-                ]);
+    // Validation 2: Check if user already has D365UserID
+    // if (! empty($user->D365UserID)) {
+    //     Log::info('User already provisioned to D365', [
+    //         'user_id' => $user->Id,
+    //         'd365_user_id' => $user->D365UserID,
+    //     ]);
 
-                return response()->json([
-                    'success' => false,
-                    'message' => 'User is already provisioned to D365',
-                ], 400);
-            }
+    //     return response()->json([
+    //         'success' => false,
+    //         'message' => 'User is already provisioned to D365',
+    //     ], 400);
+    // }
 
-            // Validation 3: Check if user has D365 LIVE module assignments
-            $hasD365Assignment = DB::connection('sqlsrv')
-                ->table('Azure_Application_UserMapping')
-                ->where('AzureUserID', $user->AzureId)
-                ->where('ApplicationName', 'D365 LIVE')
-                ->where('IsActive', 1)
-                ->where('IsDelete', 0)
-                ->exists();
+    // Validation 3: Check if user has D365 LIVE module assignments
+    // $hasD365Assignment = DB::connection('sqlsrv')
+    //     ->table('Azure_Application_UserMapping')
+    //     ->where('AzureUserID', $user->AzureId)
+    //     ->where('ApplicationName', 'D365 LIVE')
+    //     ->where('IsActive', 1)
+    //     ->where('IsDelete', 0)
+    //     ->exists();
 
-            if (! $hasD365Assignment) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'User has no D365 LIVE module assignments',
-                ], 400);
-            }
+    // if (! $hasD365Assignment) {
+    //     return response()->json([
+    //         'success' => false,
+    //         'message' => 'User has no D365 LIVE module assignments',
+    //     ], 400);
+    // }
 
-            // Call the stored procedure
-            $d365Result = DB::connection('sqlsrv')->select('
-            SET NOCOUNT ON;
+    //    try {
+    // ❌ DISABLED: D365 provisioning temporarily disabled
+    /* COMMENTED OUT - D365 SP DISABLED
+    // Call the D365 stored procedure
+    $d365Result = DB::connection('sqlsrv')->select('
+    SET NOCOUNT ON;
 
-            DECLARE @Status VARCHAR(15), @Remark VARCHAR(200);
+    DECLARE @Status VARCHAR(15), @Remark VARCHAR(200);
 
-            EXEC sp_Azure_D365UserCreation
-                @AzureUserID = ?,
-                @Status = @Status OUTPUT,
-                @Remark = @Remark OUTPUT;
+    EXEC sp_Azure_D365UserCreation
+        @AzureUserID = ?,
+        @Status = @Status OUTPUT,
+        @Remark = @Remark OUTPUT;
 
-            SELECT @Status as Status, @Remark as Remark;
-        ', [$user->AzureId]);
+    SELECT @Status as Status, @Remark as Remark;
+', [$user->AzureId]);
+    */
 
-            $d365Status = $d365Result[0]->Status ?? 'Failed';
-            $d365Remark = $d365Result[0]->Remark ?? 'Unknown error';
+    // Skip D365 provisioning - just count as skipped
+    // $stats['d365_skipped']++;
+    // Log::info('D365 provisioning skipped - feature disabled', [
+    //     'user_id' => $user->Id,
+    //     'upn' => $user->userPrincipalName,
+    // ]);
+    // continue; // Skip to next user
 
-            if ($d365Status === 'Success') {
-                Log::info('=== D365 RETRY PROVISIONING SUCCESSFUL ===', [
-                    'user_id' => $user->Id,
-                    'azure_id' => $user->AzureId,
-                    'remark' => $d365Remark,
-                ]);
+    //         $d365Status = $d365Result[0]->Status ?? 'Failed';
+    //         $d365Remark = $d365Result[0]->Remark ?? 'Unknown error';
 
-                // Log activity
-                $this->logUserActivity(
-                    $user->Id,
-                    'user.d365_provisioned',
-                    'User provisioned to D365',
-                    [
-                        'azure_id' => $user->AzureId,
-                        'remark' => $d365Remark,
-                        'provisioned_by' => Auth::id(),
-                    ]
-                );
+    //         if ($d365Status === 'Success') {
+    //             Log::info('=== D365 RETRY PROVISIONING SUCCESSFUL ===', [
+    //                 'user_id' => $user->Id,
+    //                 'azure_id' => $user->AzureId,
+    //                 'remark' => $d365Remark,
+    //             ]);
 
-                return response()->json([
-                    'success' => true,
-                    'message' => 'D365 provisioning successful: '.$d365Remark,
-                    'data' => [
-                        'status' => $d365Status,
-                        'remark' => $d365Remark,
-                    ],
-                ]);
-            } else {
-                Log::error('=== D365 RETRY PROVISIONING FAILED ===', [
-                    'user_id' => $user->Id,
-                    'azure_id' => $user->AzureId,
-                    'status' => $d365Status,
-                    'remark' => $d365Remark,
-                ]);
+    //             // Log activity
+    //             $this->logUserActivity(
+    //                 $user->Id,
+    //                 'user.d365_provisioned',
+    //                 'User provisioned to D365',
+    //                 [
+    //                     'azure_id' => $user->AzureId,
+    //                     'remark' => $d365Remark,
+    //                     'provisioned_by' => Auth::id(),
+    //                 ]
+    //             );
 
-                return response()->json([
-                    'success' => false,
-                    'message' => 'D365 provisioning failed: '.$d365Remark,
-                    'data' => [
-                        'status' => $d365Status,
-                        'remark' => $d365Remark,
-                    ],
-                ], 422);
-            }
-        } catch (\Exception $e) {
-            Log::error('=== D365 RETRY PROVISIONING ERROR ===', [
-                'user_id' => $user->Id ?? null,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
+    //             return response()->json([
+    //                 'success' => true,
+    //                 'message' => 'D365 provisioning successful: ' . $d365Remark,
+    //                 'data' => [
+    //                     'status' => $d365Status,
+    //                     'remark' => $d365Remark,
+    //                 ],
+    //             ]);
+    //         } else {
+    //             Log::error('=== D365 RETRY PROVISIONING FAILED ===', [
+    //                 'user_id' => $user->Id,
+    //                 'azure_id' => $user->AzureId,
+    //                 'status' => $d365Status,
+    //                 'remark' => $d365Remark,
+    //             ]);
 
-            return response()->json([
-                'success' => false,
-                'message' => 'D365 provisioning error: '.$e->getMessage(),
-            ], 500);
-        }
-    }
+    //             return response()->json([
+    //                 'success' => false,
+    //                 'message' => 'D365 provisioning failed: ' . $d365Remark,
+    //                 'data' => [
+    //                     'status' => $d365Status,
+    //                     'remark' => $d365Remark,
+    //                 ],
+    //             ], 422);
+    //         }
+    //     } catch (\Exception $e) {
+    //         Log::error('=== D365 RETRY PROVISIONING ERROR ===', [
+    //             'user_id' => $user->Id ?? null,
+    //             'error' => $e->getMessage(),
+    //             'trace' => $e->getTraceAsString(),
+    //         ]);
 
-    /**
-     * Retry SCM provisioning for a user
-     */
-    public function retrySCMProvisioning(AzureUser $user)
-    {
-        try {
-            Log::info('Attempting SCM provisioning', [
-                'user_id' => $user->Id,
-                'azure_id' => $user->AzureId,
-            ]);
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => 'D365 provisioning error: ' . $e->getMessage(),
+    //         ], 500);
+    //     }
+    // }
 
-            // Call stored procedure
-            $result = DB::connection('sqlsrv')->select(
-                'EXEC sp_Azure_SCMUserCreation ?, @Status = ? OUTPUT, @Remark = ? OUTPUT',
-                [
-                    $user->AzureId,
-                    ['', \PDO::PARAM_STR | \PDO::PARAM_INPUT_OUTPUT, 15],
-                    ['', \PDO::PARAM_STR | \PDO::PARAM_INPUT_OUTPUT, 200],
-                ]
-            );
 
-            $status = $result[0]->Status ?? 'UNKNOWN';
-            $remark = $result[0]->Remark ?? 'No remark';
+    // public function retrySCMProvisioning(AzureUser $user)
+    // {
+    //     try {
+    //         Log::info('Attempting SCM provisioning', [
+    //             'user_id' => $user->Id,
+    //             'azure_id' => $user->AzureId,
+    //         ]);
 
-            if ($status === 'SUCCESS') {
-                Log::info('SCM provisioning succeeded', [
-                    'user_id' => $user->Id,
-                    'status' => $status,
-                    'remark' => $remark,
-                ]);
+    //         // Call stored procedure
+    //         $result = DB::connection('sqlsrv')->select(
+    //             'EXEC sp_Azure_SCMUserCreation ?, @Status = ? OUTPUT, @Remark = ? OUTPUT',
+    //             [
+    //                 $user->AzureId,
+    //                 ['', \PDO::PARAM_STR | \PDO::PARAM_INPUT_OUTPUT, 15],
+    //                 ['', \PDO::PARAM_STR | \PDO::PARAM_INPUT_OUTPUT, 200],
+    //             ]
+    //         );
 
-                return response()->json([
-                    'success' => true,
-                    'message' => "SCM provisioning successful!\n\n{$remark}",
-                ]);
-            } else {
-                Log::error('SCM provisioning failed', [
-                    'user_id' => $user->Id,
-                    'status' => $status,
-                    'remark' => $remark,
-                ]);
+    //         $status = $result[0]->Status ?? 'UNKNOWN';
+    //         $remark = $result[0]->Remark ?? 'No remark';
 
-                return response()->json([
-                    'success' => false,
-                    
-                    'message' => "SCM provisioning failed.\n\nStatus: {$status}\nRemark: {$remark}",
-                ], 400);
-            }
-        } catch (\Exception $e) {
-            Log::error('SCM provisioning exception', [
-                'user_id' => $user->Id,
-                'error' => $e->getMessage(),
-            ]);
+    //         if ($status === 'SUCCESS') {
+    //             Log::info('SCM provisioning succeeded', [
+    //                 'user_id' => $user->Id,
+    //                 'status' => $status,
+    //                 'remark' => $remark,
+    //             ]);
 
-            return response()->json([
-                'success' => false,
-                'message' => 'SCM provisioning failed: '.$e->getMessage(),
-            ], 500);
-        }
-    }
+    //             return response()->json([
+    //                 'success' => true,
+    //                 'message' => "SCM provisioning successful!\n\n{$remark}",
+    //             ]);
+    //         } else {
+    //             Log::error('SCM provisioning failed', [
+    //                 'user_id' => $user->Id,
+    //                 'status' => $status,
+    //                 'remark' => $remark,
+    //             ]);
+
+    //             return response()->json([
+    //                 'success' => false,
+
+    //                 'message' => "SCM provisioning failed.\n\nStatus: {$status}\nRemark: {$remark}",
+    //             ], 400);
+    //         }
+    //     } catch (\Exception $e) {
+    //         Log::error('SCM provisioning exception', [
+    //             'user_id' => $user->Id,
+    //             'error' => $e->getMessage(),
+    //         ]);
+
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => 'SCM provisioning failed: ' . $e->getMessage(),
+    //         ], 500);
+    //     }
+    // }
 
     public function configureOfficeAssignments(Request $request, AzureUser $user)
     {
@@ -4399,7 +4797,7 @@ class AzureUserManagementController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed: '.$e->getMessage(),
+                'message' => 'Failed: ' . $e->getMessage(),
             ], 500);
         }
     }
@@ -4527,14 +4925,14 @@ class AzureUserManagementController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => "Successfully created {$insertedCount} assignments across ".count($validated['office_codes']).' office(s)',
+                'message' => "Successfully created {$insertedCount} assignments across " . count($validated['office_codes']) . ' office(s)',
             ]);
         } catch (\Exception $e) {
             DB::connection('sqlsrv')->rollBack();
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed: '.$e->getMessage(),
+                'message' => 'Failed: ' . $e->getMessage(),
             ], 500);
         }
     }
@@ -4559,8 +4957,8 @@ class AzureUserManagementController extends Controller
                 'success' => true,
                 'data' => [
                     'offices' => $assignments->pluck('OfficeCode')->unique()->values(),
-                    'roles' => $assignments->map(fn ($a) => ['id' => $a->RoleID, 'code' => $a->RoleCode])->unique('id')->values(),
-                    'functions' => $assignments->filter(fn ($a) => ! empty($a->FunctionCode))->map(fn ($a) => ['id' => $a->FunctionID, 'code' => $a->FunctionCode])->unique('id')->values(),
+                    'roles' => $assignments->map(fn($a) => ['id' => $a->RoleID, 'code' => $a->RoleCode])->unique('id')->values(),
+                    'functions' => $assignments->filter(fn($a) => ! empty($a->FunctionCode))->map(fn($a) => ['id' => $a->FunctionID, 'code' => $a->FunctionCode])->unique('id')->values(),
                 ],
             ]);
         } catch (\Exception $e) {
@@ -4574,166 +4972,174 @@ class AzureUserManagementController extends Controller
     /**
      * Retry BIZ/FITSYS provisioning for a user
      */
-    public function retryBIZProvisioning(AzureUser $user)
-    {
-        try {
-            Log::info('Attempting BIZ/FITSYS provisioning', [
-                'user_id' => $user->Id,
-                'azure_id' => $user->AzureId,
-            ]);
+    // public function retryBIZProvisioning(AzureUser $user)
+    // {
+    //     try {
+    //         Log::info('Attempting BIZ/FITSYS provisioning', [
+    //             'user_id' => $user->Id,
+    //             'azure_id' => $user->AzureId,
+    //         ]);
 
-            // Check if user already provisioned
-            if (! empty($user->BizUserID)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'User already provisioned to BIZ/FITSYS',
-                ], 400);
-            }
+    //         // Check if user already provisioned
+    //         if (! empty($user->BizUserID)) {
+    //             return response()->json([
+    //                 'success' => false,
+    //                 'message' => 'User already provisioned to BIZ/FITSYS',
+    //             ], 400);
+    //         }
 
-            // Get the FITSYS/BIZ application ID
-            $bizApp = DB::connection('sqlsrv')
-                ->table('Azure_SoftwareMaster')
-                ->where('Name', 'LIKE', '%FITSYS%')
-                ->orWhere('Name', 'LIKE', '%BIZ%')
-                ->first();
+    //         // Get the FITSYS/BIZ application ID
+    //         $bizApp = DB::connection('sqlsrv')
+    //             ->table('Azure_SoftwareMaster')
+    //             ->where('Name', 'LIKE', '%FITSYS%')
+    //             ->orWhere('Name', 'LIKE', '%BIZ%')
+    //             ->first();
 
-            if (! $bizApp) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'BIZ/FITSYS application not found in system',
-                ], 400);
-            }
+    //         if (! $bizApp) {
+    //             return response()->json([
+    //                 'success' => false,
+    //                 'message' => 'BIZ/FITSYS application not found in system',
+    //             ], 400);
+    //         }
 
-            // Call stored procedure
-            $statement = DB::connection('sqlsrv')->getPdo()->prepare(
-                'EXEC sp_Azure_FITSYSUserCreation ?, ?, @Status OUTPUT, @Remark OUTPUT'
-            );
+    // ❌ DISABLED: BIZ/FITSYS provisioning temporarily disabled
+    /* COMMENTED OUT - FITSYS SP DISABLED
+// Call stored procedure
+$statement = DB::connection('sqlsrv')->getPdo()->prepare(
+    'EXEC sp_Azure_FITSYSUserCreation ?, ?, @Status OUTPUT, @Remark OUTPUT'
+);
 
-            $statement->bindParam(1, $user->AzureId, \PDO::PARAM_STR);
-            $statement->bindParam(2, $bizApp->Id, \PDO::PARAM_STR);
-            $statement->bindParam(3, $status, \PDO::PARAM_STR | \PDO::PARAM_INPUT_OUTPUT, 15);
-            $statement->bindParam(4, $remark, \PDO::PARAM_STR | \PDO::PARAM_INPUT_OUTPUT, 200);
+$statement->bindParam(1, $user->AzureId, \PDO::PARAM_STR);
+$statement->bindParam(2, $bizApp->Id, \PDO::PARAM_STR);
+$statement->bindParam(3, $status, \PDO::PARAM_STR | \PDO::PARAM_INPUT_OUTPUT, 15);
+$statement->bindParam(4, $remark, \PDO::PARAM_STR | \PDO::PARAM_INPUT_OUTPUT, 200);
 
-            $status = '';
-            $remark = '';
+$status = '';
+$remark = '';
 
-            $statement->execute();
+$statement->execute();
+*/
 
-            if (strtolower($status) === 'success') {
-                // Refresh user model to get updated BizUserID
-                $user->refresh();
+    // Return disabled message instead
+    // return response()->json([
+    //     'success' => false,
+    //     'message' => 'BIZ/FITSYS provisioning is temporarily disabled for system maintenance.',
+    // ], 503);
+    //             if (strtolower($status) === 'success') {
+    //                 // Refresh user model to get updated BizUserID
+    //                 $user->refresh();
 
-                Log::info('BIZ/FITSYS provisioning succeeded', [
-                    'user_id' => $user->Id,
-                    'status' => $status,
-                    'remark' => $remark,
-                    'biz_user_id' => $user->BizUserID,
-                ]);
+    //                 Log::info('BIZ/FITSYS provisioning succeeded', [
+    //                     'user_id' => $user->Id,
+    //                     'status' => $status,
+    //                     'remark' => $remark,
+    //                     'biz_user_id' => $user->BizUserID,
+    //                 ]);
 
-                return response()->json([
-                    'success' => true,
-                    'message' => "BIZ/FITSYS provisioning successful!\n\nEmployee Code: {$user->EmployeCode}\n{$remark}",
-                ]);
-            } else {
-                Log::error('BIZ/FITSYS provisioning failed', [
-                    'user_id' => $user->Id,
-                    'status' => $status,
-                    'remark' => $remark,
-                ]);
+    //                 return response()->json([
+    //                     'success' => true,
+    //                     'message' => "BIZ/FITSYS provisioning successful!\n\nEmployee Code: {$user->EmployeCode}\n{$remark}",
+    //                 ]);
+    //             } else {
+    //                 Log::error('BIZ/FITSYS provisioning failed', [
+    //                     'user_id' => $user->Id,
+    //                     'status' => $status,
+    //                     'remark' => $remark,
+    //                 ]);
 
-                return response()->json([
-                    'success' => false,
-                    'message' => "BIZ/FITSYS provisioning failed.\n\nStatus: {$status}\nRemark: {$remark}",
-                ], 400);
-            }
-        } catch (\Exception $e) {
-            Log::error('BIZ/FITSYS provisioning exception', [
-                'user_id' => $user->Id,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
+    //                 return response()->json([
+    //                     'success' => false,
+    //                     'message' => "BIZ/FITSYS provisioning failed.\n\nStatus: {$status}\nRemark: {$remark}",
+    //                 ], 400);
+    //             }
+    //         } catch (\Exception $e) {
+    //             Log::error('BIZ/FITSYS provisioning exception', [
+    //                 'user_id' => $user->Id,
+    //                 'error' => $e->getMessage(),
+    //                 'trace' => $e->getTraceAsString(),
+    //             ]);
 
-            return response()->json([
-                'success' => false,
-                'message' => 'BIZ/FITSYS provisioning failed: '.$e->getMessage(),
-            ], 500);
-        }
-    }
+    //             return response()->json([
+    //                 'success' => false,
+    //                 'message' => 'BIZ/FITSYS provisioning failed: ' . $e->getMessage(),
+    //             ], 500);
+    //         }
+    //     }
 
     /**
-     * Retry FIT Express provisioning for a user
-     */
-    public function retryFITExpressProvisioning(AzureUser $user)
-    {
-        try {
-            Log::info('Attempting FIT Express provisioning', [
-                'user_id' => $user->Id,
-                'azure_id' => $user->AzureId,
-            ]);
+ * Retry FIT Express provisioning for a user
+ */
+    // public function retryFITExpressProvisioning(AzureUser $user)
+    // {
+    //     try {
+    //         Log::info('Attempting FIT Express provisioning', [
+    //             'user_id' => $user->Id,
+    //             'azure_id' => $user->AzureId,
+    //         ]);
 
-            // Get the FIT Express application ID
-            $fitExpressApp = DB::connection('sqlsrv')
-                ->table('Azure_SoftwareMaster')
-                ->where('Name', 'LIKE', '%FIT Express%')
-                ->orWhere('Name', 'LIKE', '%FITEXPRESS%')
-                ->first();
+    //         // Get the FIT Express application ID
+    //         $fitExpressApp = DB::connection('sqlsrv')
+    //             ->table('Azure_SoftwareMaster')
+    //             ->where('Name', 'LIKE', '%FIT Express%')
+    //             ->orWhere('Name', 'LIKE', '%FITEXPRESS%')
+    //             ->first();
 
-            if (! $fitExpressApp) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'FIT Express application not found in system',
-                ], 400);
-            }
+    //         if (! $fitExpressApp) {
+    //             return response()->json([
+    //                 'success' => false,
+    //                 'message' => 'FIT Express application not found in system',
+    //             ], 400);
+    //         }
 
-            // Call stored procedure (using same FITSYS SP with different ApplicationID)
-            $statement = DB::connection('sqlsrv')->getPdo()->prepare(
-                'EXEC sp_Azure_FITSYSUserCreation ?, ?, @Status OUTPUT, @Remark OUTPUT'
-            );
+    //         // Call stored procedure (using same FITSYS SP with different ApplicationID)
+    //         $statement = DB::connection('sqlsrv')->getPdo()->prepare(
+    //             'EXEC sp_Azure_FITSYSUserCreation ?, ?, @Status OUTPUT, @Remark OUTPUT'
+    //         );
 
-            $statement->bindParam(1, $user->AzureId, \PDO::PARAM_STR);
-            $statement->bindParam(2, $fitExpressApp->Id, \PDO::PARAM_STR);
-            $statement->bindParam(3, $status, \PDO::PARAM_STR | \PDO::PARAM_INPUT_OUTPUT, 15);
-            $statement->bindParam(4, $remark, \PDO::PARAM_STR | \PDO::PARAM_INPUT_OUTPUT, 200);
+    //         $statement->bindParam(1, $user->AzureId, \PDO::PARAM_STR);
+    //         $statement->bindParam(2, $fitExpressApp->Id, \PDO::PARAM_STR);
+    //         $statement->bindParam(3, $status, \PDO::PARAM_STR | \PDO::PARAM_INPUT_OUTPUT, 15);
+    //         $statement->bindParam(4, $remark, \PDO::PARAM_STR | \PDO::PARAM_INPUT_OUTPUT, 200);
 
-            $status = '';
-            $remark = '';
+    //         $status = '';
+    //         $remark = '';
 
-            $statement->execute();
+    //         $statement->execute();
 
-            if (strtolower($status) === 'success') {
-                Log::info('FIT Express provisioning succeeded', [
-                    'user_id' => $user->Id,
-                    'status' => $status,
-                    'remark' => $remark,
-                ]);
+    //         if (strtolower($status) === 'success') {
+    //             Log::info('FIT Express provisioning succeeded', [
+    //                 'user_id' => $user->Id,
+    //                 'status' => $status,
+    //                 'remark' => $remark,
+    //             ]);
 
-                return response()->json([
-                    'success' => true,
-                    'message' => "FIT Express provisioning successful!\n\n{$remark}",
-                ]);
-            } else {
-                Log::error('FIT Express provisioning failed', [
-                    'user_id' => $user->Id,
-                    'status' => $status,
-                    'remark' => $remark,
-                ]);
+    //             return response()->json([
+    //                 'success' => true,
+    //                 'message' => "FIT Express provisioning successful!\n\n{$remark}",
+    //             ]);
+    //         } else {
+    //             Log::error('FIT Express provisioning failed', [
+    //                 'user_id' => $user->Id,
+    //                 'status' => $status,
+    //                 'remark' => $remark,
+    //             ]);
 
-                return response()->json([
-                    'success' => false,
-                    'message' => "FIT Express provisioning failed.\n\nStatus: {$status}\nRemark: {$remark}",
-                ], 400);
-            }
-        } catch (\Exception $e) {
-            Log::error('FIT Express provisioning exception', [
-                'user_id' => $user->Id,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
+    //             return response()->json([
+    //                 'success' => false,
+    //                 'message' => "FIT Express provisioning failed.\n\nStatus: {$status}\nRemark: {$remark}",
+    //             ], 400);
+    //         }
+    //     } catch (\Exception $e) {
+    //         Log::error('FIT Express provisioning exception', [
+    //             'user_id' => $user->Id,
+    //             'error' => $e->getMessage(),
+    //             'trace' => $e->getTraceAsString(),
+    //         ]);
 
-            return response()->json([
-                'success' => false,
-                'message' => 'FIT Express provisioning failed: '.$e->getMessage(),
-            ], 500);
-        }
-    }
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => 'FIT Express provisioning failed: ' . $e->getMessage(),
+    //         ], 500);
+    //     }
+    // }
 }
