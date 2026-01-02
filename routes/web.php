@@ -1,33 +1,27 @@
 <?php
 
-use Adldap\Laravel\Facades\Adldap;
 use App\Http\Controllers\ClientPartyController;
-use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\ActivityReportController;
-use App\Http\Controllers\UserController;
+use App\Http\Controllers\EmailAccountController;
 use App\Http\Controllers\ImportController;
-use App\Http\Controllers\TrackerController;
 use App\Http\Controllers\JimiTestController;
-
+use App\Http\Controllers\TrackerController;
+use App\Http\Controllers\AzureUserManagementController;
+use App\Http\Controllers\OdooSyncController;
 use App\Models\Category;
-use App\Models\ClientParty;
 use App\Models\Office;
 use App\Models\User;
+use App\Services\AzureGraphService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
-use App\Services\AzureGraphService;
-
-
-
-use Illuminate\Support\Facades\Crypt;
 
 Route::get('/test-pgsql', function () {
     try {
         DB::connection('pgsql')->getPdo();
-        return response()->json(["message" => "✅ PostgreSQL is connected!"]);
+
+        return response()->json(['message' => '✅ PostgreSQL is connected!']);
     } catch (\Exception $e) {
-        return response()->json(["error" => "❌ PostgreSQL Connection Failed: " . $e->getMessage()]);
+        return response()->json(['error' => '❌ PostgreSQL Connection Failed: '.$e->getMessage()]);
     }
 });
 
@@ -42,6 +36,7 @@ Route::get('/login', function () {
     if (config('app.env') == 'Local') {
         return view('auth.login');
     }
+
     return view('auth.azure.login');
     // return redirect('/login/azure');
 })->name('login');
@@ -55,8 +50,9 @@ Route::get('/logout', function () {
 Route::get('quote-logger', function () {
 
     $auth_user = Auth::user();
-    //todo: permissions
-    return redirect()->away("https://quotesuat.freightintime.com/?username=" . $auth_user->LoginID . "&code=" . $auth_user->password . "&email=" . $auth_user->Email, 302, ['enc_data' => ""]);
+
+    // todo: permissions
+    return redirect()->away('https://quotesuat.freightintime.com/?username='.$auth_user->LoginID.'&code='.$auth_user->password.'&email='.$auth_user->Email, 302, ['enc_data' => '']);
 
     // return Http::post('https://quotes.freightintime.com/', [
     //     'enc_data' => $enc_user
@@ -85,7 +81,7 @@ Route::get('forget-password', [App\Http\Controllers\ForgotPasswordController::cl
 Route::post('forget-password', [App\Http\Controllers\ForgotPasswordController::class, 'submitForgetPasswordForm'])->name('forget.password.post');
 Route::get('reset-password/{token}', [App\Http\Controllers\ForgotPasswordController::class, 'showResetPasswordForm'])->name('reset.password.get');
 Route::post('reset-password', [App\Http\Controllers\ForgotPasswordController::class, 'submitResetPasswordForm'])->name('reset.password.post');
-//, 'change.password'
+// , 'change.password'
 
 // logs
 Route::get('logs', '\Rap2hpoutre\LaravelLogViewer\LogViewerController@index');
@@ -193,7 +189,7 @@ Route::group(['middleware' => ['auth', 'HtmlMinifier']], function () {
 
     Route::get('messages', 'App\Http\Controllers\ChatsController@fetchMessages');
     Route::post('messages', 'App\Http\Controllers\ChatsController@sendMessage');
-    //Notify Route
+    // Notify Route
     // Route::get('/notify', [App\Http\Controllers\NotificationController::class, 'notifyUser']);
     // Route::get('/markAsRead/{id?}', [App\Http\Controllers\NotificationController::class, 'markAsRead'])->name('mark');
     /**
@@ -211,7 +207,7 @@ Route::group(['middleware' => ['auth', 'HtmlMinifier']], function () {
     Route::get('categories/get-category/{id?}/{type?}', [App\Http\Controllers\CategoryController::class, 'getCategory'])->name('getCategory');
     Route::post('categories/save-category', [App\Http\Controllers\CategoryController::class, 'store'])->name('saveCategory');
     Route::post('categories/update/submodule', [App\Http\Controllers\CategoryController::class, 'subModuleUpdateAjax'])->name('submodule.update_ajax');
-    //* push notification
+    // * push notification
     Route::post('/push', [App\Http\Controllers\PushController::class, 'store']);
     Route::get('/push', [App\Http\Controllers\PushController::class, 'push'])->name('push');
 
@@ -239,7 +235,6 @@ Route::group(['middleware' => ['auth', 'HtmlMinifier']], function () {
 
     Route::get('/get-notify-party-list/{type}', [App\Http\Controllers\ClientPartyController::class, 'getNotifyPartyList'])->name('clientParty.getNotifyPartyList');
     Route::get('/get-plo-pld/{type}', [App\Http\Controllers\ClientPartyController::class, 'getPOLPOD'])->name('clientParty.getPOLPOD');
-
 
     Route::get('client-party', [App\Http\Controllers\ClientPartyController::class, 'index'])->name('client-party.index');
     Route::get('client-party/show/{clientParty}', [App\Http\Controllers\ClientPartyController::class, 'show'])->name('client-party.show');
@@ -286,8 +281,8 @@ Route::group(['middleware' => ['auth', 'HtmlMinifier']], function () {
         Route::get('/', [App\Http\Controllers\TraADLController::class, 'index'])->name('traADL.index');
         Route::get('/get-stats', [App\Http\Controllers\TraADLController::class, 'getStats'])->name('traADL.get_stats');
         Route::get('re-trigger/{docNo}', [App\Http\Controllers\TraADLController::class, 'reTrigger'])->name('traADL.reTrigger');
-        Route::get('json/{id}', [App\Http\Controllers\TraADLController::class, 'jsonGenerate'])->name('tims.json');
-        Route::get('invoice/download/{id}', [App\Http\Controllers\TraADLController::class, 'invoiceDownload'])->name('tims.invoiceDownload')->middleware(['signed']);
+        Route::get('json/{id}', [App\Http\Controllers\TraADLController::class, 'jsonGenerate'])->name('traADL.json');
+        Route::get('invoice/download/{id}', [App\Http\Controllers\TraADLController::class, 'invoiceDownload'])->name('traADL.invoiceDownload')->middleware(['signed']);
     });
 
     /**!SECTION RRA */
@@ -322,9 +317,6 @@ Route::get('/api/company-details', [ClientPartyController::class, 'getCompanyDet
 Route::post('/client-party/fetch-address-details', [ClientPartyController::class, 'fetchAddressDetails'])->name('client-party.fetch-address-details');
 Route::get('/api/clients', [ClientPartyController::class, 'getClients'])->name('clients');
 Route::post('/create-client-party-scm', [ClientPartyController::class, 'CreateClientPartySCM'])->middleware('auth:api')->name('client.create-party-scm');
-
-
-
 
 // ============================================================================
 // AZURE MANAGEMENT SYSTEM ROUTES
@@ -365,7 +357,6 @@ Route::prefix('azure')->name('azure.')->middleware(['auth'])->group(function () 
         Route::get('/pending', [App\Http\Controllers\AzureUserManagementController::class, 'pending'])->name('pending');
         Route::get('/inactive', [App\Http\Controllers\AzureUserManagementController::class, 'inactive'])->name('inactive');
 
-
         // POST: Create user (rate limited - 10 per minute)
         Route::post('/', [App\Http\Controllers\AzureUserManagementController::class, 'store'])
             ->name('store')
@@ -391,6 +382,45 @@ Route::prefix('azure')->name('azure.')->middleware(['auth'])->group(function () 
         Route::post('/{user}/reset-password', [App\Http\Controllers\AzureUserManagementController::class, 'resetPassword'])
             ->name('reset-password')
             ->middleware('throttle:user_actions');
+
+        Route::post('/{user}/retry-d365', [App\Http\Controllers\AzureUserManagementController::class, 'retryD365Provisioning'])
+            ->name('retry-d365')
+            ->middleware('throttle:user_actions');
+
+        Route::post('/{user}/retry-scm', [App\Http\Controllers\AzureUserManagementController::class, 'retrySCMProvisioning'])
+            ->name('retry-scm')
+            ->middleware('throttle:user_actions');
+
+        // BIZ/FITSYS Provisioning
+        Route::post('/{user}/retry-biz', [App\Http\Controllers\AzureUserManagementController::class, 'retryBIZProvisioning'])
+            ->name('retry-biz')
+            ->middleware('throttle:user_actions');
+
+        // FIT Express Provisioning
+        Route::post('/{user}/retry-fitexpress', [App\Http\Controllers\AzureUserManagementController::class, 'retryFITExpressProvisioning'])
+            ->name('retry-fitexpress')
+            ->middleware('throttle:user_actions');
+
+        Route::post('/users/{user}/retry-scm', [AzureUserManagementController::class, 'retrySCMProvisioning'])
+            ->name('azure.users.retry-scm');
+
+        // Office-specific assignment configuration
+        Route::post('/{user}/configure-office', [App\Http\Controllers\AzureUserManagementController::class, 'configureOfficeAssignments'])
+            ->name('configure-office')
+            ->middleware('throttle:user_actions');
+
+        Route::get('/{user}/offices/{office}/assignments', [App\Http\Controllers\AzureUserManagementController::class, 'getOfficeAssignments'])
+            ->name('office-assignments')
+            ->middleware('throttle:api');
+
+        // Quick module assignment
+        Route::post('/{user}/quick-assign-module', [App\Http\Controllers\AzureUserManagementController::class, 'quickAssignModule'])
+            ->name('quick-assign-module')
+            ->middleware('throttle:user_actions');
+
+        Route::get('/{user}/modules/{module}/assignments', [App\Http\Controllers\AzureUserManagementController::class, 'getUserModuleAssignments'])
+            ->name('module-assignments')
+            ->middleware('throttle:api');
 
         // Generic CRUD routes (come after specific actions)
         Route::get('/{user}', [App\Http\Controllers\AzureUserManagementController::class, 'show'])
@@ -481,7 +511,6 @@ Route::prefix('azure')->name('azure.')->middleware(['auth'])->group(function () 
             Route::get('/', [App\Http\Controllers\AzureUserManagementController::class, 'index'])->name('index');
             Route::get('/create', [App\Http\Controllers\AzureUserManagementController::class, 'create'])->name('create');
 
-
             // POST: Create user (rate limited - 10 per minute)
             Route::post('/', [App\Http\Controllers\AzureUserManagementController::class, 'store'])
                 ->name('store')
@@ -565,7 +594,6 @@ Route::prefix('azure')->name('azure.')->middleware(['auth'])->group(function () 
     })->name('health');
 });
 
-
 // ============================================================================
 // AZURE USER SYNC ROUTES (Manual Triggers)
 // ============================================================================
@@ -576,6 +604,10 @@ Route::middleware(['auth'])->prefix('azure/sync')->name('azure.sync.')->group(fu
     Route::post('/odoo-users', [App\Http\Controllers\OdooSyncController::class, 'syncUsersManual'])
         ->name('odoo-users')
         ->middleware('throttle:user_actions');
+
+    // Odoo Sync Routes
+    Route::post('/odoo/sync-users-ajax', [OdooSyncController::class, 'syncUsersAjax'])
+        ->name('odoo.sync.ajax');
 
     // Manual User Activation (web-based trigger)
     Route::post('/activate-users', [App\Http\Controllers\AzureUserManagementController::class, 'activatePendingUsersManual'])
@@ -601,31 +633,25 @@ Route::middleware(['auth'])->prefix('azure/sync')->name('azure.sync.')->group(fu
 
             return response()->json([
                 'success' => true,
-                'data' => $stats
+                'data' => $stats,
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => $e->getMessage()
+                'message' => $e->getMessage(),
             ], 500);
         }
     })->name('status');
 });
-
 
 Route::get('/sync-odoo-users', [App\Http\Controllers\OdooSyncController::class, 'syncUsers']);
 Route::get('/test-odoo-columns', [App\Http\Controllers\OdooSyncController::class, 'testColumns']);
 Route::get('/test-pgsql-connection', [App\Http\Controllers\OdooSyncController::class, 'testConnection']);
 Route::get('/check-view-definition', [App\Http\Controllers\OdooSyncController::class, 'checkViewDefinition']);
 
-
-
-
-
-
 Route::get('/test-stored-procedures', function () {
     try {
-        echo "<html><head><title>Stored Procedures Test</title>";
+        echo '<html><head><title>Stored Procedures Test</title>';
         echo "<style>
             body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
             .container { max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
@@ -643,15 +669,15 @@ Route::get('/test-stored-procedures', function () {
         </style></head><body>";
 
         echo "<div class='container'>";
-        echo "<h1>🔍 Stored Procedures Test</h1>";
+        echo '<h1>🔍 Stored Procedures Test</h1>';
         echo "<p class='info'>Testing: <strong>sp_UserCreation_Resourcefunction</strong> and <strong>sp_UserCreation_ResourceRole</strong></p>";
-        echo "<hr>";
+        echo '<hr>';
 
         // ================================================================
         // TEST 1: Check if sp_UserCreation_Resourcefunction exists
         // ================================================================
         echo "<div class='section'>";
-        echo "<h2>Test 1: sp_UserCreation_Resourcefunction (SCM Functions)</h2>";
+        echo '<h2>Test 1: sp_UserCreation_Resourcefunction (SCM Functions)</h2>';
 
         try {
             // Check if procedure exists
@@ -669,46 +695,46 @@ Route::get('/test-stored-procedures', function () {
 
                 $functions = DB::connection('sqlsrv')->select('EXEC sp_UserCreation_Resourcefunction');
 
-                echo "<p class='success'>✅ Execution successful! Found " . count($functions) . " functions</p>";
+                echo "<p class='success'>✅ Execution successful! Found ".count($functions).' functions</p>';
 
                 if (count($functions) > 0) {
-                    echo "<table>";
-                    echo "<thead><tr>";
+                    echo '<table>';
+                    echo '<thead><tr>';
 
                     // Get column names from first row
                     $firstRow = $functions[0];
                     foreach ($firstRow as $key => $value) {
-                        echo "<th>" . htmlspecialchars($key) . "</th>";
+                        echo '<th>'.htmlspecialchars($key).'</th>';
                     }
-                    echo "</tr></thead><tbody>";
+                    echo '</tr></thead><tbody>';
 
                     // Display all rows
                     foreach ($functions as $function) {
-                        echo "<tr>";
+                        echo '<tr>';
                         foreach ($function as $value) {
-                            echo "<td>" . htmlspecialchars($value ?? 'NULL') . "</td>";
+                            echo '<td>'.htmlspecialchars($value ?? 'NULL').'</td>';
                         }
-                        echo "</tr>";
+                        echo '</tr>';
                     }
-                    echo "</tbody></table>";
+                    echo '</tbody></table>';
                 } else {
                     echo "<p class='info'>⚠️ No functions returned (empty result set)</p>";
                 }
             } else {
                 echo "<p class='error'>❌ Stored procedure DOES NOT EXIST</p>";
-                echo "<p>Please create the stored procedure first.</p>";
+                echo '<p>Please create the stored procedure first.</p>';
             }
         } catch (\Exception $e) {
-            echo "<p class='error'>❌ Error: " . htmlspecialchars($e->getMessage()) . "</p>";
-            echo "<pre style='background: #fff3cd; padding: 10px; border-radius: 4px;'>" . htmlspecialchars($e->getTraceAsString()) . "</pre>";
+            echo "<p class='error'>❌ Error: ".htmlspecialchars($e->getMessage()).'</p>';
+            echo "<pre style='background: #fff3cd; padding: 10px; border-radius: 4px;'>".htmlspecialchars($e->getTraceAsString()).'</pre>';
         }
-        echo "</div>";
+        echo '</div>';
 
         // ================================================================
         // TEST 2: Check if sp_UserCreation_ResourceRole exists
         // ================================================================
         echo "<div class='section'>";
-        echo "<h2>Test 2: sp_UserCreation_ResourceRole (Roles by Application Code)</h2>";
+        echo '<h2>Test 2: sp_UserCreation_ResourceRole (Roles by Application Code)</h2>';
 
         try {
             // Check if procedure exists
@@ -734,144 +760,141 @@ Route::get('/test-stored-procedures', function () {
                             [$appCode]
                         );
 
-                        echo "<p class='success'>✅ Execution successful! Found " . count($roles) . " roles</p>";
+                        echo "<p class='success'>✅ Execution successful! Found ".count($roles).' roles</p>';
 
                         if (count($roles) > 0) {
-                            echo "<table>";
-                            echo "<thead><tr>";
+                            echo '<table>';
+                            echo '<thead><tr>';
 
                             // Get column names from first row
                             $firstRow = $roles[0];
                             foreach ($firstRow as $key => $value) {
-                                echo "<th>" . htmlspecialchars($key) . "</th>";
+                                echo '<th>'.htmlspecialchars($key).'</th>';
                             }
-                            echo "</tr></thead><tbody>";
+                            echo '</tr></thead><tbody>';
 
                             // Display all rows
                             foreach ($roles as $role) {
-                                echo "<tr>";
+                                echo '<tr>';
                                 foreach ($role as $value) {
-                                    echo "<td>" . htmlspecialchars($value ?? 'NULL') . "</td>";
+                                    echo '<td>'.htmlspecialchars($value ?? 'NULL').'</td>';
                                 }
-                                echo "</tr>";
+                                echo '</tr>';
                             }
-                            echo "</tbody></table>";
+                            echo '</tbody></table>';
                         } else {
                             echo "<p class='info'>⚠️ No roles returned for {$appCode}</p>";
                         }
                     } catch (\Exception $e) {
-                        echo "<p class='error'>❌ Error for {$appCode}: " . htmlspecialchars($e->getMessage()) . "</p>";
+                        echo "<p class='error'>❌ Error for {$appCode}: ".htmlspecialchars($e->getMessage()).'</p>';
                     }
                 }
             } else {
                 echo "<p class='error'>❌ Stored procedure DOES NOT EXIST</p>";
-                echo "<p>Please create the stored procedure first.</p>";
+                echo '<p>Please create the stored procedure first.</p>';
             }
         } catch (\Exception $e) {
-            echo "<p class='error'>❌ Error: " . htmlspecialchars($e->getMessage()) . "</p>";
-            echo "<pre style='background: #fff3cd; padding: 10px; border-radius: 4px;'>" . htmlspecialchars($e->getTraceAsString()) . "</pre>";
+            echo "<p class='error'>❌ Error: ".htmlspecialchars($e->getMessage()).'</p>';
+            echo "<pre style='background: #fff3cd; padding: 10px; border-radius: 4px;'>".htmlspecialchars($e->getTraceAsString()).'</pre>';
         }
-        echo "</div>";
+        echo '</div>';
 
         // ================================================================
         // TEST 3: Check available modules
         // ================================================================
         echo "<div class='section'>";
-        echo "<h2>Test 3: Available Modules (Azure_SoftwareMaster)</h2>";
+        echo '<h2>Test 3: Available Modules (Azure_SoftwareMaster)</h2>';
 
         try {
-            $modules = DB::connection('sqlsrv')->select("
+            $modules = DB::connection('sqlsrv')->select('
                 SELECT Id, Name, ApplicationId
                 FROM Azure_SoftwareMaster
                 WHERE IsActive = 1 AND IsDeleted = 0
                 ORDER BY Name
-            ");
+            ');
 
-            echo "<p class='success'>✅ Found " . count($modules) . " active modules</p>";
+            echo "<p class='success'>✅ Found ".count($modules).' active modules</p>';
 
             if (count($modules) > 0) {
-                echo "<table>";
-                echo "<thead><tr><th>ID</th><th>Name</th><th>Application ID</th><th>Is SCM?</th></tr></thead>";
-                echo "<tbody>";
+                echo '<table>';
+                echo '<thead><tr><th>ID</th><th>Name</th><th>Application ID</th><th>Is SCM?</th></tr></thead>';
+                echo '<tbody>';
 
                 foreach ($modules as $module) {
                     $isSCM = in_array($module->ApplicationId, ['OPS', 'OPSUAT']);
-                    $scmBadge = $isSCM ? "<span style='background: #27ae60; color: white; padding: 2px 8px; border-radius: 3px; font-size: 0.85em;'>SCM</span>" : "";
+                    $scmBadge = $isSCM ? "<span style='background: #27ae60; color: white; padding: 2px 8px; border-radius: 3px; font-size: 0.85em;'>SCM</span>" : '';
 
-                    echo "<tr>";
-                    echo "<td>" . htmlspecialchars($module->Id) . "</td>";
-                    echo "<td>" . htmlspecialchars($module->Name) . "</td>";
-                    echo "<td><strong>" . htmlspecialchars($module->ApplicationId) . "</strong> {$scmBadge}</td>";
-                    echo "<td>" . ($isSCM ? "Yes" : "No") . "</td>";
-                    echo "</tr>";
+                    echo '<tr>';
+                    echo '<td>'.htmlspecialchars($module->Id).'</td>';
+                    echo '<td>'.htmlspecialchars($module->Name).'</td>';
+                    echo '<td><strong>'.htmlspecialchars($module->ApplicationId)."</strong> {$scmBadge}</td>";
+                    echo '<td>'.($isSCM ? 'Yes' : 'No').'</td>';
+                    echo '</tr>';
                 }
 
-                echo "</tbody></table>";
+                echo '</tbody></table>';
             }
         } catch (\Exception $e) {
-            echo "<p class='error'>❌ Error: " . htmlspecialchars($e->getMessage()) . "</p>";
+            echo "<p class='error'>❌ Error: ".htmlspecialchars($e->getMessage()).'</p>';
         }
-        echo "</div>";
+        echo '</div>';
 
         // ================================================================
         // TEST 4: Check available locations
         // ================================================================
         echo "<div class='section'>";
-        echo "<h2>Test 4: Available Locations (Cust_Office)</h2>";
+        echo '<h2>Test 4: Available Locations (Cust_Office)</h2>';
 
         try {
-            $locations = DB::connection('sqlsrv')->select("
+            $locations = DB::connection('sqlsrv')->select('
                 SELECT Id, Name, code
                 FROM Cust_Office
                 WHERE IsActive = 1 AND IsDeleted = 0
                 ORDER BY Name
-            ");
+            ');
 
-            echo "<p class='success'>✅ Found " . count($locations) . " active locations</p>";
+            echo "<p class='success'>✅ Found ".count($locations).' active locations</p>';
 
             if (count($locations) > 0) {
-                echo "<table>";
-                echo "<thead><tr><th>ID</th><th>Name</th><th>Code</th></tr></thead>";
-                echo "<tbody>";
+                echo '<table>';
+                echo '<thead><tr><th>ID</th><th>Name</th><th>Code</th></tr></thead>';
+                echo '<tbody>';
 
                 foreach ($locations as $location) {
-                    echo "<tr>";
-                    echo "<td>" . htmlspecialchars($location->Id) . "</td>";
-                    echo "<td>" . htmlspecialchars($location->Name) . "</td>";
-                    echo "<td><strong>" . htmlspecialchars($location->code) . "</strong></td>";
-                    echo "</tr>";
+                    echo '<tr>';
+                    echo '<td>'.htmlspecialchars($location->Id).'</td>';
+                    echo '<td>'.htmlspecialchars($location->Name).'</td>';
+                    echo '<td><strong>'.htmlspecialchars($location->code).'</strong></td>';
+                    echo '</tr>';
                 }
 
-                echo "</tbody></table>";
+                echo '</tbody></table>';
             }
         } catch (\Exception $e) {
-            echo "<p class='error'>❌ Error: " . htmlspecialchars($e->getMessage()) . "</p>";
+            echo "<p class='error'>❌ Error: ".htmlspecialchars($e->getMessage()).'</p>';
         }
-        echo "</div>";
+        echo '</div>';
 
         // Summary
-        echo "<hr>";
-        echo "<h2>Summary</h2>";
-        echo "<p><strong>Next Steps:</strong></p>";
-        echo "<ul>";
+        echo '<hr>';
+        echo '<h2>Summary</h2>';
+        echo '<p><strong>Next Steps:</strong></p>';
+        echo '<ul>';
         echo "<li>If stored procedures don't exist, create them in SQL Server</li>";
-        echo "<li>If stored procedures exist but return no data, populate the underlying tables</li>";
-        echo "<li>If everything works, deploy the updated create user form</li>";
-        echo "</ul>";
+        echo '<li>If stored procedures exist but return no data, populate the underlying tables</li>';
+        echo '<li>If everything works, deploy the updated create user form</li>';
+        echo '</ul>';
 
-        echo "</div></body></html>";
+        echo '</div></body></html>';
     } catch (\Exception $e) {
         echo "<div style='padding: 20px; background: #fee; border: 2px solid #e74c3c; border-radius: 4px;'>";
         echo "<h2 style='color: #e74c3c;'>Critical Error</h2>";
-        echo "<p><strong>Error:</strong> " . htmlspecialchars($e->getMessage()) . "</p>";
-        echo "<p><strong>File:</strong> " . htmlspecialchars($e->getFile()) . "</p>";
-        echo "<p><strong>Line:</strong> " . htmlspecialchars($e->getLine()) . "</p>";
-        echo "</div>";
+        echo '<p><strong>Error:</strong> '.htmlspecialchars($e->getMessage()).'</p>';
+        echo '<p><strong>File:</strong> '.htmlspecialchars($e->getFile()).'</p>';
+        echo '<p><strong>Line:</strong> '.htmlspecialchars($e->getLine()).'</p>';
+        echo '</div>';
     }
 });
-
-
-
 
 Route::get('/test-azure-users', function () {
     dd([
@@ -880,8 +903,6 @@ Route::get('/test-azure-users', function () {
         'first_user' => App\Models\AzureUser::first(),
     ]);
 });
-
-
 
 // ============================================================================
 // LOGIN TRACKER SYSTEM ROUTES (User Activity Monitoring)
@@ -912,11 +933,11 @@ Route::prefix('reporting')->middleware('auth')->group(function () {
         ->parameters(['users' => 'user'])
         ->except(['show'])
         ->names([
-            'index'   => 'reporting.users.index',
-            'create'  => 'reporting.users.create',
-            'store'   => 'reporting.users.store',
-            'edit'    => 'reporting.users.edit',
-            'update'  => 'reporting.users.update',
+            'index' => 'reporting.users.index',
+            'create' => 'reporting.users.create',
+            'store' => 'reporting.users.store',
+            'edit' => 'reporting.users.edit',
+            'update' => 'reporting.users.update',
             'destroy' => 'reporting.users.destroy',
         ]);
 });
@@ -961,6 +982,11 @@ Route::post('/dashboard/clear-cache', [\App\Http\Controllers\DashboardController
     ->middleware('auth')
     ->name('dashboard.clear-cache');
 
+// ✅ NEW: Import status monitoring endpoint (optional but useful)
+Route::get('/imports/status', [ImportController::class, 'getImportStatus'])
+    ->name('imports.status')
+    ->middleware('auth'); // Add your auth middleware
+
 Route::get('/users/cleanup-empty', [\App\Http\Controllers\UserController::class, 'cleanupEmptyUsers'])
     ->middleware('auth')
     ->name('users.cleanup');
@@ -1002,8 +1028,8 @@ Route::get('/debug-import-data', function () {
                 'Odoo',
                 'OPS',
                 'OPS UAT',
-                'Windows Sign In'
-            ])
+                'Windows Sign In',
+            ]),
         ];
     }
 
@@ -1018,8 +1044,7 @@ Route::get('/debug-import-data', function () {
         'application_mapping_status' => $appMappingStatus,
         'amay_records' => [
             'count' => $amayData->count(),
-            'data' => $amayData
-
+            'data' => $amayData,
 
         ],
         'all_records' => $data->toArray(),
@@ -1033,15 +1058,14 @@ Route::get('/debug-import-data', function () {
             'Odoo',
             'OPS',
             'OPS UAT',
-            'Windows Sign In'
-        ]
+            'Windows Sign In',
+        ],
     ]);
 })->middleware('auth');
 
 // ============================================================================
 // VEHICLE TRACKER SYSTEM ROUTES (GPS/Trip Tracking)
 // ============================================================================
-
 
 Route::middleware(['auth'])->prefix('tracker')->name('tracker.')->group(function () {
 
@@ -1085,10 +1109,6 @@ Route::middleware(['auth'])->prefix('jimi-test')->group(function () {
     Route::post('/track', [JimiTestController::class, 'getTrackData'])->name('jimi.test.track');
 });
 
-
-
-
-
 Route::get('/azure-management/test', function () {
     $results = [
         'config' => [],
@@ -1112,7 +1132,7 @@ Route::get('/azure-management/test', function () {
     } catch (\Exception $e) {
         $results['config'] = [
             'status' => 'failed',
-            'error' => $e->getMessage()
+            'error' => $e->getMessage(),
         ];
     }
 
@@ -1125,15 +1145,15 @@ Route::get('/azure-management/test', function () {
 
         $results['token'] = [
             'status' => 'success',
-            'token_preview' => substr($token, 0, 50) . '...',
+            'token_preview' => substr($token, 0, 50).'...',
             'token_length' => strlen($token),
-            'message' => '✅ Successfully obtained Azure AD token!'
+            'message' => '✅ Successfully obtained Azure AD token!',
         ];
     } catch (\Exception $e) {
         $results['token'] = [
             'status' => 'failed',
             'error' => $e->getMessage(),
-            'message' => '❌ Failed to get token'
+            'message' => '❌ Failed to get token',
         ];
 
         // Stop here if token fails
@@ -1155,19 +1175,19 @@ Route::get('/azure-management/test', function () {
                     'azure_id' => $existingUser['id'],
                     'upn' => $existingUser['userPrincipalName'],
                     'display_name' => $existingUser['displayName'],
-                    'message' => '✅ Test user already exists (will not create duplicate)'
+                    'message' => '✅ Test user already exists (will not create duplicate)',
                 ];
             } else {
                 $results['find_user'] = [
                     'status' => 'success',
                     'found' => false,
-                    'message' => 'Test user not found (ready to create)'
+                    'message' => 'Test user not found (ready to create)',
                 ];
             }
         } catch (\Exception $e) {
             $results['find_user'] = [
                 'status' => 'failed',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ];
         }
     }
@@ -1178,7 +1198,7 @@ Route::get('/azure-management/test', function () {
     if (
         $results['token']['status'] === 'success' &&
         isset($results['find_user']['found']) &&
-        !$results['find_user']['found']
+        ! $results['find_user']['found']
     ) {
         try {
             $randomId = rand(1000, 9999);
@@ -1189,7 +1209,7 @@ Route::get('/azure-management/test', function () {
                 'employee_id' => "TEST{$randomId}",
                 'phone' => '+254712345678',
                 'job_title' => 'Test Engineer',
-                'department' => 'IT Testing'
+                'department' => 'IT Testing',
             ];
 
             $result = $service->createUser($userData);
@@ -1199,15 +1219,15 @@ Route::get('/azure-management/test', function () {
                 'azure_id' => $result['azure_id'],
                 'azure_upn' => $result['azure_upn'],
                 'display_name' => $result['azure_display_name'],
-                'password_generated' => !empty($result['temporary_password']),
+                'password_generated' => ! empty($result['temporary_password']),
                 'message' => '✅ Test user created successfully in Azure AD!',
-                'note' => 'This is a real user - you may want to delete it from Azure AD portal'
+                'note' => 'This is a real user - you may want to delete it from Azure AD portal',
             ];
         } catch (\Exception $e) {
             $results['create_user'] = [
                 'status' => 'failed',
                 'error' => $e->getMessage(),
-                'message' => '❌ Failed to create test user'
+                'message' => '❌ Failed to create test user',
             ];
         }
     }
@@ -1223,219 +1243,52 @@ Route::get('/azure-management/test', function () {
 
 // Route::post('/azure/users', [AzureUserManagementController::class, 'store'])
 //        ->middleware(['auth', 'permission:create-azure-users']);
-// Add at the end of the file, right before the last line
-Route::get('/spot-check-freight-users', function () {
-    // Get all users with some form of "freight" in companyName
-    $freightUsers = \App\Models\AzureUser::where('companyName', 'LIKE', '%freight%')
-        ->orderBy('displayName')
-        ->get(['displayName', 'companyName', 'department']);
 
-    $totalCount = $freightUsers->count();
+/*
+|--------------------------------------------------------------------------
+| Email Account API Routes
+|--------------------------------------------------------------------------
+|
+| These routes handle all email account management operations.
+| All routes return JSON responses.
+|
+*/
 
-    // Group by companyName variations
-    $variations = $freightUsers->groupBy('companyName')->map->count();
+Route::prefix('email-accounts')->group(function () {
 
-    return [
-        'total_freight_users' => $totalCount,
-        'company_name_variations' => $variations,
-        'sample_users' => $freightUsers->take(20)->values()
-    ];
+    // Create new email account
+    // POST /api/email-accounts
+    Route::post('/', [EmailAccountController::class, 'store']);
+
+    // List all email accounts (with optional domain filter)
+    // GET /api/email-accounts?domain=example.com
+    Route::get('/', [EmailAccountController::class, 'index']);
+
+    // Get specific email account details
+    // GET /api/email-accounts/{email}
+    Route::get('/{email}', [EmailAccountController::class, 'show']);
+
+    // Update email password
+    // PATCH /api/email-accounts/password
+    Route::patch('/password', [EmailAccountController::class, 'updatePassword']);
+
+    // Delete email account
+    // DELETE /api/email-accounts
+    Route::delete('/', [EmailAccountController::class, 'destroy']);
 });
 
+/*
+|--------------------------------------------------------------------------
+| Alternative RESTful Route (if preferred)
+|--------------------------------------------------------------------------
+|
+| You can also use Laravel's resource routing:
+| Route::apiResource('email-accounts', EmailAccountController::class);
+|
+| But the custom routes above give you more control over the endpoints.
+|
+*/
 
-
-// ============================================================================
-// DEBUG ROUTES
-// ============================================================================
-
-Route::get('/simple-debug', function () {
-    // Test searching for "IT" department - SIMPLE VERSION
-    $search = 'IT';
-
-    // 1. What's in the database
-    $dbResults = \App\Models\AzureUser::where('department', 'LIKE', '%IT%')
-        ->orderBy('displayName')
-        ->get(['displayName', 'department', 'companyName', 'mail']);
-
-    // 2. Count by exact department match
-    $exactIt = \App\Models\AzureUser::whereRaw('LOWER(department) = ?', ['it'])->count();
-    $exactItUsers = \App\Models\AzureUser::whereRaw('LOWER(department) = ?', ['it'])
-        ->get(['displayName', 'department']);
-
-    // 3. All variations with "IT" in department
-    $allItVariations = \App\Models\AzureUser::where('department', 'LIKE', '%IT%')
-        ->select('department', \Illuminate\Support\Facades\DB::raw('COUNT(*) as count'))
-        ->groupBy('department')
-        ->orderBy('department')
-        ->get();
-
-    return [
-        'search_term' => $search,
-        'database_results' => [
-            'total_users_with_IT_in_department' => $dbResults->count(),
-            'exact_IT_department_count' => $exactIt,
-            'exact_IT_users' => $exactItUsers,
-            'all_department_variations_with_IT' => $allItVariations,
-            'sample_users' => $dbResults->take(10)
-        ]
-    ];
-});
-
-Route::get('/test-department/{department}', function ($department) {
-    $users = \App\Models\AzureUser::where('department', 'LIKE', "%{$department}%")
-        ->orderBy('displayName')
-        ->get(['displayName', 'department', 'companyName']);
-
-    return [
-        'search_term' => $department,
-        'count' => $users->count(),
-        'users' => $users
-    ];
-});
-
-// Simple IT search test
-Route::get('/test-it-search', function () {
-    $search = 'IT';
-
-    $expectedUsers = \App\Models\AzureUser::where('department', 'LIKE', '%IT%')
-        ->orderBy('displayName')
-        ->get(['displayName', 'department', 'companyName']);
-
-    return [
-        'search_term' => $search,
-        'expected_count' => $expectedUsers->count(),
-        'expected_users' => $expectedUsers
-    ];
-});
-
-// Department debug route
-Route::get('/debug-department-search', function () {
-    $searchTerm = 'IT';
-
-    $dbItUsers = \App\Models\AzureUser::where('department', 'LIKE', '%IT%')
-        ->orderBy('displayName')
-        ->get(['displayName', 'department', 'companyName']);
-
-    return [
-        'search_term' => $searchTerm,
-        'database_results' => [
-            'count' => $dbItUsers->count(),
-            'users' => $dbItUsers
-        ]
-    ];
-});
-
-// Freight users check
-Route::get('/spot-check-freight-users', function () {
-    $freightUsers = \App\Models\AzureUser::where('companyName', 'LIKE', '%freight%')
-        ->orderBy('displayName')
-        ->get(['displayName', 'companyName', 'department']);
-
-    $totalCount = $freightUsers->count();
-
-    $variations = $freightUsers->groupBy('companyName')->map->count();
-
-    return [
-        'total_freight_users' => $totalCount,
-        'company_name_variations' => $variations,
-        'sample_users' => $freightUsers->take(20)->values()
-    ];
-});
-
-
-Route::get('/test-search-logic', function () {
-    $testSearches = ['IT', 'Sales', 'Commercial', 'Group IT', 'Sea Freight'];
-
-    $results = [];
-
-    foreach ($testSearches as $search) {
-        $query = \App\Models\AzureUser::query();
-        $searchLower = strtolower($search);
-
-        $query->where(function ($q) use ($search, $searchLower) {
-            // Exact department match
-            $q->whereRaw('LOWER(department) = ?', [$searchLower]);
-
-            // Whole word matching
-            $q->orWhereRaw("LOWER(department) LIKE ?", ['% ' . $searchLower . ' %']);
-            $q->orWhereRaw("LOWER(department) LIKE ?", [$searchLower . ' %']);
-            $q->orWhereRaw("LOWER(department) LIKE ?", ['% ' . $searchLower]);
-
-            // Other fields
-            $q->orWhereRaw('LOWER(companyName) LIKE ?', ['%' . $searchLower . '%'])
-                ->orWhereRaw('LOWER(displayName) LIKE ?', ['%' . $searchLower . '%']);
-        });
-
-        $users = $query->get(['displayName', 'department', 'companyName']);
-
-        $results[$search] = [
-            'count' => $users->count(),
-            'users' => $users->take(5)->values()
-        ];
-    }
-
-    return $results;
-});
-
-
-
-Route::get('/debug-search/{term}', function ($term) {
-    // Simulate the search logic
-    $search = $term;
-    $searchLower = strtolower($search);
-
-    $results = [
-        'search_term' => $search,
-        'search_lowercase' => $searchLower,
-
-        // 1. Exact department match
-        'exact_department_match' => [
-            'condition' => "LOWER(department) = '{$searchLower}'",
-            'count' => \App\Models\AzureUser::whereRaw('LOWER(department) = ?', [$searchLower])->count(),
-            'users' => \App\Models\AzureUser::whereRaw('LOWER(department) = ?', [$searchLower])
-                ->get(['displayName', 'department', 'companyName'])
-                ->values()
-        ],
-
-        // 2. Department contains as whole word
-        'department_word_middle' => [
-            'condition' => "LOWER(department) LIKE '% {$searchLower} %'",
-            'count' => \App\Models\AzureUser::whereRaw("LOWER(department) LIKE ?", ['% ' . $searchLower . ' %'])->count(),
-            'users' => \App\Models\AzureUser::whereRaw("LOWER(department) LIKE ?", ['% ' . $searchLower . ' %'])
-                ->get(['displayName', 'department', 'companyName'])
-                ->values()
-        ],
-
-        // 3. Department starts with
-        'department_starts_with' => [
-            'condition' => "LOWER(department) LIKE '{$searchLower} %'",
-            'count' => \App\Models\AzureUser::whereRaw("LOWER(department) LIKE ?", [$searchLower . ' %'])->count(),
-            'users' => \App\Models\AzureUser::whereRaw("LOWER(department) LIKE ?", [$searchLower . ' %'])
-                ->get(['displayName', 'department', 'companyName'])
-                ->values()
-        ],
-
-        // 4. All department matches (anywhere)
-        'all_department_matches' => [
-            'condition' => "LOWER(department) LIKE '%{$searchLower}%'",
-            'count' => \App\Models\AzureUser::whereRaw('LOWER(department) LIKE ?', ['%' . $searchLower . '%'])->count(),
-            'users' => \App\Models\AzureUser::whereRaw('LOWER(department) LIKE ?', ['%' . $searchLower . '%'])
-                ->get(['displayName', 'department', 'companyName'])
-                ->values()
-        ],
-
-        // 5. Company name matches
-        'company_name_matches' => [
-            'condition' => "LOWER(companyName) LIKE '%{$searchLower}%'",
-            'count' => \App\Models\AzureUser::whereRaw('LOWER(companyName) LIKE ?', ['%' . $searchLower . '%'])->count()
-        ],
-
-        // 6. Display name matches
-        'display_name_matches' => [
-            'condition' => "LOWER(displayName) LIKE '%{$searchLower}%'",
-            'count' => \App\Models\AzureUser::whereRaw('LOWER(displayName) LIKE ?', ['%' . $searchLower . '%'])->count()
-        ]
-    ];
-
-    return response()->json($results);
+Route::get('/test-simple', function () {
+    return 'Hello! Routing works!';
 });

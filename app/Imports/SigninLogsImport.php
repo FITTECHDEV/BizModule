@@ -108,6 +108,25 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
         ]);
     }
 
+    private function verifyCachedUsersHaveIds(): void
+    {
+        $usersWithoutIds = [];
+
+        foreach ($this->userCache as $username => $user) {
+            if (empty($user->id)) {
+                $usersWithoutIds[] = $username;
+                unset($this->userCache[$username]); // Remove invalid users from cache
+            }
+        }
+
+        if (!empty($usersWithoutIds)) {
+            Log::warning('⚠️ Removed users with null IDs from cache', [
+                'count' => count($usersWithoutIds),
+                'sample' => array_slice($usersWithoutIds, 0, 5)
+            ]);
+        }
+    }
+
     private function checkAndSetLock(): void
     {
         if (Cache::has(self::$lockKey)) {
@@ -1775,7 +1794,10 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
         if (empty($usernames)) return;
 
         foreach (array_chunk($usernames, 500) as $chunk) {
+            // ✅ ENHANCED: Only load users with valid IDs
             $existingUsers = AzureUser::whereIn('userPrincipalName', $chunk)
+                ->whereNotNull('id')      // ✅ NEW: Filter out null IDs
+                ->where('id', '!=', '')   // ✅ NEW: Filter out empty IDs
                 ->get()
                 ->keyBy('userPrincipalName');
 
@@ -1784,7 +1806,13 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
             }
         }
 
-        Log::info('Preloaded users', ['count' => count($this->userCache)]);
+        // ✅ NEW: Verify cached users have valid IDs
+        $this->verifyCachedUsersHaveIds();
+
+        Log::info('Preloaded users', [
+            'count' => count($this->userCache),
+            'verified_valid_ids' => true  // ✅ NEW: Indicate verification ran
+        ]);
     }
 
 // private function preloadSystems(array $systemNames)
@@ -2915,11 +2943,22 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
                 ->where('id', '!=', '') // Additional safety check
                 ->first();
 
+            // ✅ NEW: Double-check the user has a valid UUID format
+            if ($user && !$this->isValidUuid($user->id)) {
+                Log::warning('⚠️ User found but ID is not valid UUID format', [
+                    'username' => $userPrincipalName,
+                    'invalid_id' => $user->id,
+                    'strategy' => 'username_match'
+                ]);
+                $user = null; // Treat as not found
+            }
+
             if ($user) {
                 Log::debug('User found via username with valid ID', [
                     'username' => $userPrincipalName,
                     'found_username' => $user->userPrincipalName,
-                    'user_id' => $user->id
+                    'user_id' => $user->id,
+                    'id_validated' => true  // ✅ NEW: Indicate UUID validation passed
                 ]);
                 $this->stats['users_matched_by_strategy']['username']++;
                 return $user;
@@ -2927,11 +2966,27 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
 
             // Strategy 2: Try by exact ID if provided
             if (!empty($userIdFromCsv) && $this->isValidUuid($userIdFromCsv)) {
-                $user = AzureUser::where('id', $userIdFromCsv)->first();
+                $user = AzureUser::where('id', $userIdFromCsv)
+                    ->whereNotNull('id')  // ✅ NEW: Extra safety check
+                    ->where('id', '!=', '') // ✅ NEW: Extra safety check
+                    ->first();
+
+                // ✅ NEW: Validate UUID format even though we already checked input
+                if ($user && !$this->isValidUuid($user->id)) {
+                    Log::warning('⚠️ User found by ID but stored ID is not valid UUID format', [
+                        'username' => $userPrincipalName,
+                        'search_id' => $userIdFromCsv,
+                        'stored_id' => $user->id,
+                        'strategy' => 'exact_id_match'
+                    ]);
+                    $user = null;
+                }
+
                 if ($user) {
                     Log::debug('User found via exact ID', [
                         'username' => $userPrincipalName,
-                        'user_id' => $user->id
+                        'user_id' => $user->id,
+                        'id_validated' => true  // ✅ NEW
                     ]);
                     $this->stats['users_matched_by_strategy']['exact_id']++;
                     return $user;
@@ -2945,19 +3000,49 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
                     ->where('id', '!=', '')
                     ->first();
 
+                // ✅ NEW: Validate UUID format
+                if ($user && !$this->isValidUuid($user->id)) {
+                    Log::warning('⚠️ User found by email but ID is not valid UUID format', [
+                        'email' => $userPrincipalName,
+                        'invalid_id' => $user->id,
+                        'strategy' => 'email_match'
+                    ]);
+                    $user = null;
+                }
+
                 if ($user) {
                     Log::debug('User found via email with valid ID', [
                         'username' => $userPrincipalName,
-                        'user_id' => $user->id
+                        'user_id' => $user->id,
+                        'id_validated' => true  // ✅ NEW
                     ]);
                     $this->stats['users_matched_by_strategy']['email']++;
                     return $user;
                 }
             }
+
+            // ✅ NEW: Log failed lookup attempt for debugging (only first few times)
+            static $failureCount = 0;
+            $failureCount++;
+
+            if ($failureCount <= 10) {
+                Log::debug('User lookup failed - no match found', [
+                    'username' => $userPrincipalName,
+                    'user_id_from_csv' => $userIdFromCsv,
+                    'is_email_format' => filter_var($userPrincipalName, FILTER_VALIDATE_EMAIL) ? 'yes' : 'no',
+                    'strategies_attempted' => ['username', 'exact_id', 'email'],
+                    'failure_number' => $failureCount
+                ]);
+            } elseif ($failureCount == 11) {
+                Log::info('Suppressing detailed user lookup failure logs after 10 failures');
+            }
         } catch (\Exception $e) {
             Log::error('Error in user lookup', [
                 'username' => $userPrincipalName,
-                'error' => $e->getMessage()
+                'user_id_from_csv' => $userIdFromCsv,
+                'error' => $e->getMessage(),
+                'error_class' => get_class($e),
+                'trace' => substr($e->getTraceAsString(), 0, 500)  // ✅ NEW: Include partial trace
             ]);
         }
 

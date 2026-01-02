@@ -23,13 +23,13 @@ class UserController extends Controller
      */
     protected $excludedSystems = [
         // 'Import-Unknown',
-        // 'Unknown', 
+        // 'Unknown',
         // 'Microsoft Teams',
         // 'Office 365',
-        // 'Windows Authentication',  
-        // 'IT Infrastructure',       
-        // 'FITerp UAT',             
-        // 'Web Browser',           
+        // 'Windows Authentication',
+        // 'IT Infrastructure',
+        // 'FITerp UAT',
+        // 'Web Browser',
         // 'Mobile/Desktop Client'
         // 'all'
     ];
@@ -1002,7 +1002,7 @@ class UserController extends Controller
 
     /**
      * Build clean to raw system name mapping
-     * 
+     *
      * @param array $systemMap
      * @return array
      */
@@ -1032,7 +1032,7 @@ class UserController extends Controller
 
     /**
      * Process raw login data and map to clean system names
-     * 
+     *
      * @param \Illuminate\Support\Collection $loginDataRaw
      * @param array $cleanToRawMap
      * @return array
@@ -1095,7 +1095,7 @@ class UserController extends Controller
     /**
      * Build monthly summary rows from processed data
      * NOW INCLUDES ALL DATES IN RANGE, NOT JUST DATES WITH ACTIVITY
-     * 
+     *
      * @param array $processedData
      * @param \Carbon\Carbon $start
      * @param \Carbon\Carbon $end
@@ -1159,7 +1159,7 @@ class UserController extends Controller
 
     /**
      * Get systems that have data across all rows
-     * 
+     *
      * @param array $monthlySummary
      * @return array
      */
@@ -1199,22 +1199,22 @@ class UserController extends Controller
 //         // Helper function to get raw system names
 //         $getRawSystemNames = function($cleanSystemName) {
 //             $systemMap = config('systemmap', []);
-            
+
 //             if (empty($systemMap)) {
 //                 Log::warning('System map configuration not found');
 //                 return [$cleanSystemName]; // Return the clean name as fallback
 //             }
-            
+
 //             $rawNames = collect($systemMap)
 //                 ->filter(fn($mappedName) => $mappedName === $cleanSystemName)
 //                 ->keys()
 //                 ->toArray();
-            
+
 //             // If no mappings found, return the clean system name itself
 //             if (empty($rawNames)) {
 //                 return [$cleanSystemName];
 //             }
-            
+
 //             return $rawNames;
 //         };
 
@@ -1223,19 +1223,19 @@ class UserController extends Controller
 //             if (empty($systemName)) {
 //                 return $query;
 //             }
-            
+
 //             $rawSystemNames = $getRawSystemNames($systemName);
-            
+
 //             return $query->where(function ($q) use ($rawSystemNames, $systemName) {
 //                 // Start with OR conditions from the beginning
 //                 $q->where(DB::raw('LOWER(application)'), strtolower($systemName));
-                
+
 //                 // Add all raw system variations as OR conditions
 //                 foreach ($rawSystemNames as $rawSystem) {
 //                     $q->orWhere(DB::raw('LOWER(application)'), strtolower($rawSystem))
 //                       ->orWhere('application', 'LIKE', "%{$rawSystem}%");
 //                 }
-                
+
 //                 // Also try direct application field match for the clean name
 //                 $q->orWhere(DB::raw('LOWER(application)'), 'like', '%' . strtolower($systemName) . '%');
 //             });
@@ -1244,7 +1244,7 @@ class UserController extends Controller
 //         // Main query
 //         $query = AzureUser::valid()->whereHas('signIns', function ($q) use ($filters, $applySystemFilter) {
 //             $q->whereBetween('date_utc', [$filters['startDate'], $filters['endDate']]);
-            
+
 //             // FIXED: Apply system filter correctly
 //             if (!empty($filters['system'])) {
 //                 $applySystemFilter($q, $filters['system']);
@@ -1262,7 +1262,7 @@ class UserController extends Controller
 
 //         $query->withCount(['signIns as login_count' => function ($q) use ($filters, $applySystemFilter) {
 //             $q->whereBetween('date_utc', [$filters['startDate'], $filters['endDate']]);
-            
+
 //             // FIXED: Same system filtering logic for count
 //             if (!empty($filters['system'])) {
 //                 $applySystemFilter($q, $filters['system']);
@@ -1270,12 +1270,12 @@ class UserController extends Controller
 //         }])
 //         ->with(['signIns' => function ($q) use ($filters, $applySystemFilter) {
 //             $q->whereBetween('date_utc', [$filters['startDate'], $filters['endDate']]);
-            
+
 //             // FIXED: Same system filtering logic for relations
 //             if (!empty($filters['system'])) {
 //                 $applySystemFilter($q, $filters['system']);
 //             }
-            
+
 //             $q->orderByDesc('date_utc')->limit(5);
 //         }])
 //         ->orderBy('displayName');
@@ -1319,21 +1319,21 @@ class UserController extends Controller
 //         // Helper functions (same as before)
 //         $getRawSystemNames = function($cleanSystemName) {
 //             $systemMap = config('systemmap', []);
-            
+
 //             if (empty($systemMap)) {
 //                 Log::warning('System map configuration not found');
 //                 return [$cleanSystemName];
 //             }
-            
+
 //             $rawNames = collect($systemMap)
 //                 ->filter(fn($mappedName) => $mappedName === $cleanSystemName)
 //                 ->keys()
 //                 ->toArray();
-            
+
 //             if (empty($rawNames)) {
 //                 return [$cleanSystemName];
 //             }
-            
+
 //             return $rawNames;
 //         };
 
@@ -1341,17 +1341,17 @@ class UserController extends Controller
 //             if (empty($systemName)) {
 //                 return $query;
 //             }
-            
+
 //             $rawSystemNames = $getRawSystemNames($systemName);
-            
+
 //             return $query->where(function ($q) use ($rawSystemNames, $systemName) {
 //                 $q->where(DB::raw('LOWER(application)'), strtolower($systemName));
-                
+
 //                 foreach ($rawSystemNames as $rawSystem) {
 //                     $q->orWhere(DB::raw('LOWER(application)'), strtolower($rawSystem))
 //                       ->orWhere('application', 'LIKE', "%{$rawSystem}%");
 //                 }
-                
+
 //                 $q->orWhere(DB::raw('LOWER(application)'), 'like', '%' . strtolower($systemName) . '%');
 //             });
 //         };
@@ -1403,7 +1403,7 @@ class UserController extends Controller
 //         ]);
 
 //         return view('logintracker.users.not-logged-in', compact('users', 'filters', 'search', 'systems'));
-        
+
 //     } catch (\Exception $e) {
 //         Log::error('Error in notLoggedInUsers', [
 //             'error' => $e->getMessage(),
