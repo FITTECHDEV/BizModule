@@ -1102,7 +1102,13 @@
         }
 
         function deepClone(obj) {
-            return JSON.parse(JSON.stringify(obj));
+            const cloned = JSON.parse(JSON.stringify(obj));
+            console.log('🔄 Deep clone:', {
+                original: obj,
+                cloned: cloned,
+                same: JSON.stringify(obj) === JSON.stringify(cloned)
+            });
+            return cloned;
         }
 
         function getApplicationCodeForSP(module) {
@@ -1223,24 +1229,11 @@
         }
 
         function initializeModules() {
-
             moduleCards = {};
 
             console.log('=== EXISTING MODULES FROM BACKEND ===');
             console.log('Total count:', existingModules.length);
             console.log('Data:', existingModules);
-            console.log('Module IDs breakdown:', existingModules.map(m => ({
-                module_id: m.module_id,
-                module_name: m.module_name,
-                location: m.location,
-                role_code: m.role_code
-            })));
-
-            // Check for duplicates
-            const moduleIds = existingModules.map(m => m.module_id);
-            const uniqueModuleIds = [...new Set(moduleIds)];
-            console.log('Unique modules:', uniqueModuleIds.length);
-            console.log('Total assignment records from backend:', existingModules.length);
 
             const grouped = {};
             existingModules.forEach(m => {
@@ -1254,7 +1247,12 @@
                     };
                 }
 
-                // Check if we already have an assignment - if so, merge into it
+                // ← IMPORTANT: Check if this module is SCM
+                const module = modulesData.find(mod => mod.id == moduleId);
+                const applicationCode = module ? getApplicationCodeForSP(module) : '';
+                const isSCM = applicationCode === 'OPS' || applicationCode === 'OPS UAT' || applicationCode ===
+                    'OPSUAT';
+
                 const existingAssignment = grouped[moduleId].assignments[0];
 
                 if (!existingAssignment) {
@@ -1267,12 +1265,12 @@
                         role_id: m.role_id,
                         roleIds: [m.role_id],
                         roleCodes: [m.role_code || ''],
-                        function_id: m.function_id || undefined,
-                        functionIds: m.function_id ? [m.function_id] : undefined,
-                        functionCodes: m.function_code ? [m.function_code] : undefined
+                        // ← FIX: Always initialize function fields for SCM modules
+                        function_id: isSCM ? (m.function_id || '') : undefined,
+                        functionIds: isSCM ? (m.function_id ? [String(m.function_id)] : []) : undefined,
+                        functionCodes: isSCM ? (m.function_code ? [m.function_code] : []) : undefined
                     });
                 } else {
-
                     // Add location if not already present
                     if (!existingAssignment.locationIds.includes(m.location_id)) {
                         existingAssignment.locationIds.push(m.location_id);
@@ -1285,11 +1283,28 @@
                         existingAssignment.roleCodes.push(m.role_code || '');
                     }
 
-                    // Add function if not already present (for SCM modules)
-                    if (m.function_id && existingAssignment.functionIds) {
-                        if (!existingAssignment.functionIds.includes(m.function_id)) {
-                            existingAssignment.functionIds.push(m.function_id);
+                    // ← FIX: Add function if not already present (for SCM modules)
+                    if (isSCM && m.function_id) {
+                        // Initialize function arrays if they don't exist
+                        if (!existingAssignment.functionIds) {
+                            existingAssignment.functionIds = [];
+                        }
+                        if (!existingAssignment.functionCodes) {
+                            existingAssignment.functionCodes = [];
+                        }
+                        if (!existingAssignment.function_id) {
+                            existingAssignment.function_id = '';
+                        }
+
+                        const funcIdStr = String(m.function_id);
+                        if (!existingAssignment.functionIds.map(String).includes(funcIdStr)) {
+                            existingAssignment.functionIds.push(funcIdStr);
                             existingAssignment.functionCodes.push(m.function_code);
+
+                            // Set function_id to first one if not set
+                            if (!existingAssignment.function_id) {
+                                existingAssignment.function_id = funcIdStr;
+                            }
                         }
                     }
                 }
@@ -1303,6 +1318,16 @@
                     ...data
                 };
             });
+
+            // ← ADD DEBUG: Log what was created
+            console.log('📦 Initialized module cards:', Object.values(moduleCards).map(c => ({
+                module: c.module_name,
+                assignments: c.assignments.map(a => ({
+                    id: a.id,
+                    functionIds: a.functionIds,
+                    locationCodes: a.locationCodes
+                }))
+            })));
 
             // Store initial state for comparison
             initialModuleState = deepClone(moduleCards);
@@ -1376,6 +1401,18 @@
         window.openModal = async (cardId) => {
             currentModalCardId = cardId;
             const card = moduleCards[cardId];
+
+            // ← ADD DETAILED LOGGING
+            console.log('🔍 Opening modal for card:', cardId);
+            console.log('📦 Full card data:', JSON.stringify(card, null, 2));
+            console.log('📋 Assignments detail:', card.assignments.map(a => ({
+                id: a.id,
+                functionIds: a.functionIds,
+                functionCodes: a.functionCodes,
+                locationCodes: a.locationCodes,
+                roleIds: a.roleIds
+            })));
+
             originalCardState = deepClone(card);
 
             // Set edit mode based on whether it's a new module
@@ -1401,6 +1438,9 @@
                 }
 
                 await Promise.all(promises);
+
+                // ← ADD THIS: Log data AFTER fetching
+                console.log('✅ Data fetched, card assignments:', card.assignments);
             }
 
             renderModalAssignments();
@@ -1485,10 +1525,16 @@
             console.log('📦 Current card:', card);
             console.log('🆕 Is new module?', card?.isNew);
 
+            // ← ADD THIS: Log the data BEFORE saving
+            console.log('📊 Assignment data BEFORE save:', JSON.stringify(card.assignments, null, 2));
+
             // For NEW modules: mark as not new and show Update User button
             if (card && card.isNew) {
                 console.log('✅ Processing NEW module');
                 card.isNew = false;
+
+                // ← ADD THIS: Verify data is still there
+                console.log('📊 Assignment data AFTER marking as not new:', JSON.stringify(card.assignments, null, 2));
 
                 // Close modal
                 document.getElementById('moduleModal').classList.remove('active');
@@ -1499,7 +1545,7 @@
                 // Re-render cards
                 renderAllCards();
 
-                // ✅ SHOW THE UPDATE USER BUTTON
+                // Show the Update User button
                 console.log('🔘 Calling toggleFormActions(true)');
                 toggleFormActions(true);
 
@@ -1614,63 +1660,72 @@
                             </div>
                         </div>
                         <div class="checkboxes-grid">
-                            ${locationsData.map(l => {
-                                const locCode = l.code.trim();
-                                const isChecked = a.locationCodes && a.locationCodes.includes(locCode);
-                                return `
-                                                                                                <div class="checkbox-option ${isAllLocations || !isEditMode ? 'disabled' : ''}">
-                                                                                                    <input type="checkbox"
-                                                                                                           id="${a.id}_loc_${locCode}"
-                                                                                                           class="location-checkbox"
-                                                                                                           data-location-id="${l.id}"
-                                                                                                           data-location-code="${locCode}"
-                                                                                                           data-location-name="${escapeHtml(l.name)}"
-                                                                                                           value="${locCode}"
-                                                                                                           ${isChecked || isAllLocations ? 'checked' : ''}
-                                                                                                           ${isAllLocations || !isEditMode ? 'disabled' : ''}
-                                                                                                           onchange="handleLocationCheckboxChange('${a.id}')">
-                                                                                                    <label for="${a.id}_loc_${locCode}">${escapeHtml(l.name)}</label>
-                                                                                                </div>
-                                                                                            `;
-                            }).join('')}
+${locationsData.map(l => {
+    const locCode = l.code.trim();
+    // ← Fix: ensure proper comparison
+    const isChecked = isAllLocations || 
+                      (a.locationCodes && a.locationCodes.map(c => c.trim()).includes(locCode));
+    
+    return `
+                                                            <div class="checkbox-option ${isAllLocations || !isEditMode ? 'disabled' : ''}">
+                                                                <input type="checkbox"
+                                                                       id="${a.id}_loc_${locCode}"
+                                                                       class="location-checkbox"
+                                                                       data-location-id="${l.id}"
+                                                                       data-location-code="${locCode}"
+                                                                       data-location-name="${escapeHtml(l.name)}"
+                                                                       value="${locCode}"
+                                                                       ${isChecked ? 'checked' : ''}
+                                                                       ${isAllLocations || !isEditMode ? 'disabled' : ''}
+                                                                       onchange="handleLocationCheckboxChange('${a.id}')">
+                                                                <label for="${a.id}_loc_${locCode}">${escapeHtml(l.name)}</label>
+                                                            </div>
+                                                        `;
+}).join('')}
                         </div>
                     </div>
 
                     <!-- SCM FUNCTIONS (Only for OPS/OPSUAT) -->
                     ${isSCM ? `
-                                                                                <div class="info-field">
-                                                                                    <div class="field-label"><i class="fas fa-cog"></i> Function (SCM)</div>
-                                                                                    <div class="radio-group">
-                                                                                        <div class="radio-option ${disabledClass}">
-                                                                                            <input type="radio" id="${a.id}_all_functions" name="${a.id}_function_type" class="all-functions-radio" ${isAllFunctions ? 'checked' : ''} ${disabled} onchange="handleFunctionRadioChange('${a.id}')">
-                                                                                            <label for="${a.id}_all_functions">All Functions</label>
-                                                                                        </div>
-                                                                                        <div class="radio-option ${disabledClass}">
-                                                                                            <input type="radio" id="${a.id}_specific_functions" name="${a.id}_function_type" class="specific-functions-radio" ${!isAllFunctions ? 'checked' : ''} ${disabled} onchange="handleFunctionRadioChange('${a.id}')">
-                                                                                            <label for="${a.id}_specific_functions">Specific Function</label>
-                                                                                        </div>
-                                                                                    </div>
-                                                                                    <div class="checkboxes-grid">
-                                                                                        ${availableFunctions.length > 0 ? availableFunctions.map(f => {
-                                                                                            const isChecked = a.functionIds && a.functionIds.includes(String(f.id));
-                                                                                            return `
-                                    <div class="checkbox-option ${isAllFunctions || !isEditMode ? 'disabled' : ''}">
-                                        <input type="checkbox"
-                                            id="${a.id}_func_${f.id}"
-                                            class="function-checkbox"
-                                            data-function-id="${f.id}"
-                                            data-function-code="${escapeHtml(f.code)}"
-                                            value="${f.id}"
-                                            ${isChecked || isAllFunctions ? 'checked' : ''}
-                                            ${isAllFunctions || !isEditMode ? 'disabled' : ''}
-                                            onchange="handleFunctionCheckboxChange('${a.id}')">
-                                        <label for="${a.id}_func_${f.id}">${escapeHtml(f.name)}</label>
-                                    </div>
-                                `;
-                                                                                        }).join('') : '<p style="padding: 10px; color: #666;">No functions available</p>'}
-                                                                                    </div>
-                                                                                </div>
-                                                                                ` : ''}
+                                                                                                                                                <div class="info-field">
+                                                                                                                                                    <div class="field-label"><i class="fas fa-cog"></i> Function (SCM)</div>
+                                                                                                                                                    <div class="radio-group">
+                                                                                                                                                        <div class="radio-option ${disabledClass}">
+                                                                                                                                                            <input type="radio" id="${a.id}_all_functions" name="${a.id}_function_type" class="all-functions-radio" ${isAllFunctions ? 'checked' : ''} ${disabled} onchange="handleFunctionRadioChange('${a.id}')">
+                                                                                                                                                            <label for="${a.id}_all_functions">All Functions</label>
+                                                                                                                                                        </div>
+                                                                                                                                                        <div class="radio-option ${disabledClass}">
+                                                                                                                                                            <input type="radio" id="${a.id}_specific_functions" name="${a.id}_function_type" class="specific-functions-radio" ${!isAllFunctions ? 'checked' : ''} ${disabled} onchange="handleFunctionRadioChange('${a.id}')">
+                                                                                                                                                            <label for="${a.id}_specific_functions">Specific Function</label>
+                                                                                                                                                        </div>
+                                                                                                                                                    </div>
+                                                                                                                                                    <div class="checkboxes-grid">
+                                    ${availableFunctions.length > 0 ? availableFunctions.map(f => {
+                                        // ← FIX: Normalize IDs to uppercase strings for comparison
+                                        const functionId = String(f.id).toUpperCase();
+                                        const normalizedFunctionIds = (a.functionIds || []).map(id => String(id).toUpperCase());
+                                        const isChecked = isAllFunctions || normalizedFunctionIds.includes(functionId);
+                                        
+                                        console.log('Rendering function:', f.name, 'ID:', functionId, 'Is checked:', isChecked, 'Available IDs:', normalizedFunctionIds); // ← DEBUG
+                                        
+                                        return `
+        <div class="checkbox-option ${isAllFunctions || !isEditMode ? 'disabled' : ''}">
+            <input type="checkbox"
+                id="${a.id}_func_${f.id}"
+                class="function-checkbox"
+                data-function-id="${f.id}"
+                data-function-code="${escapeHtml(f.code)}"
+                value="${f.id}"
+                ${isChecked ? 'checked' : ''}
+                ${isAllFunctions || !isEditMode ? 'disabled' : ''}
+                onchange="handleFunctionCheckboxChange('${a.id}')">
+            <label for="${a.id}_func_${f.id}">${escapeHtml(f.name)}</label>
+        </div>
+    `;
+                                    }).join('') : '<p style="padding: 10px; color: #666;">No functions available</p>'}
+                                                                                                                                                    </div>
+                                                                                                                                                </div>
+                                                                                                                                                ` : ''}
 
                                         <!-- ROLES -->
                                     <div class="info-field">
@@ -1679,19 +1734,19 @@
                                             ${availableRoles.length > 0 ? availableRoles.map(r => {
                                                 const isChecked = a.roleIds && a.roleIds.map(String).includes(String(r.id));
                                                 return `
-                                                                        <div class="checkbox-option ${!isEditMode ? 'disabled' : ''}">
-                                                                            <input type="checkbox"
-                                                                                    id="${a.id}_role_${r.id}"
-                                                                                    class="role-checkbox"
-                                                                                    data-role-id="${r.id}"
-                                                                                    data-role-code="${escapeHtml(r.code)}"
-                                                                                    value="${r.id}"
-                                                                                    ${isChecked ? 'checked' : ''}
-                                                                                    ${!isEditMode ? 'disabled' : ''}
-                                                                                    onchange="handleRoleCheckboxChange('${a.id}')">
-                                                                            <label for="${a.id}_role_${r.id}">${escapeHtml(r.name)}</label>
-                                                                        </div>
-                                                                    `;
+                                                                                                                                        <div class="checkbox-option ${!isEditMode ? 'disabled' : ''}">
+                                                                                                                                            <input type="checkbox"
+                                                                                                                                                    id="${a.id}_role_${r.id}"
+                                                                                                                                                    class="role-checkbox"
+                                                                                                                                                    data-role-id="${r.id}"
+                                                                                                                                                    data-role-code="${escapeHtml(r.code)}"
+                                                                                                                                                    value="${r.id}"
+                                                                                                                                                    ${isChecked ? 'checked' : ''}
+                                                                                                                                                    ${!isEditMode ? 'disabled' : ''}
+                                                                                                                                                    onchange="handleRoleCheckboxChange('${a.id}')">
+                                                                                                                                            <label for="${a.id}_role_${r.id}">${escapeHtml(r.name)}</label>
+                                                                                                                                        </div>
+                                                                                                                                    `;
                                             }).join('') : '<p style="padding: 10px; color: #666;">No roles available for ' + escapeHtml(applicationCode) + '</p>'}
                                         </div>
                                     </div>
@@ -1754,13 +1809,16 @@
 
                 checkboxes.forEach(cb => {
                     const locId = cb.getAttribute('data-location-id');
-                    const locCode = cb.getAttribute('data-location-code');
+                    const locCode = cb.getAttribute('data-location-code').trim(); // ← Add trim()
 
                     assignment.locationIds.push(locId);
                     assignment.locationCodes.push(locCode);
                 });
 
+                // Update the main location field
                 assignment.location = assignment.locationCodes.length > 0 ? assignment.locationCodes[0] : '';
+
+                console.log('✅ Updated locations:', assignment.locationCodes); // ← Add logging
             }
         };
 
@@ -1800,6 +1858,7 @@
             }
         };
 
+
         window.handleFunctionCheckboxChange = (assignId) => {
             if (!isEditMode) return;
             const container = document.getElementById(assignId);
@@ -1814,7 +1873,8 @@
                 assignment.functionCodes = [];
 
                 checkboxes.forEach(cb => {
-                    const funcId = cb.getAttribute('data-function-id');
+                    // ← Store as strings (consistent with how they're stored initially)
+                    const funcId = String(cb.getAttribute('data-function-id'));
                     const funcCode = cb.getAttribute('data-function-code');
 
                     assignment.functionIds.push(funcId);
@@ -1822,6 +1882,11 @@
                 });
 
                 assignment.function_id = assignment.functionIds.length > 0 ? assignment.functionIds[0] : '';
+
+                console.log('✅ Updated functions:', {
+                    functionIds: assignment.functionIds,
+                    functionCodes: assignment.functionCodes
+                });
             }
         };
 
@@ -1902,14 +1967,14 @@
                 const disabledAttr = isAssigned ? 'data-disabled="true"' : '';
 
                 return `
-                                                                                <div class="module-selector-card ${disabledClass}"
-                                                                                    data-module-id="${escapeHtml(String(m.id))}"
-                                                                                    ${disabledAttr}>
-                                                                                    <i class="fas fa-cube"></i>
-                                                                                    <div class="module-name">${escapeHtml(m.name)}</div>
-                                                                                    ${isAssigned ? '<div class="already-assigned-badge">Already Assigned</div>' : ''}
-                                                                                </div>
-                                                                            `;
+                                                                                                                                                <div class="module-selector-card ${disabledClass}"
+                                                                                                                                                    data-module-id="${escapeHtml(String(m.id))}"
+                                                                                                                                                    ${disabledAttr}>
+                                                                                                                                                    <i class="fas fa-cube"></i>
+                                                                                                                                                    <div class="module-name">${escapeHtml(m.name)}</div>
+                                                                                                                                                    ${isAssigned ? '<div class="already-assigned-badge">Already Assigned</div>' : ''}
+                                                                                                                                                </div>
+                                                                                                                                            `;
             }).join('')}
         </div>
     `;
