@@ -2325,14 +2325,14 @@
                 const disabledAttr = isAssigned ? 'data-disabled="true"' : '';
 
                 return `
-                                                                                                                                                                                                    <div class="module-selector-card ${disabledClass}"
-                                                                                                                                                                                                        data-module-id="${escapeHtml(String(m.id))}"
-                                                                                                                                                                                                        ${disabledAttr}>
-                                                                                                                                                                                                        <i class="fas fa-cube"></i>
-                                                                                                                                                                                                        <div class="module-name">${escapeHtml(m.name)}</div>
-                                                                                                                                                                                                        ${isAssigned ? '<div class="already-assigned-badge">Already Assigned</div>' : ''}
-                                                                                                                                                                                                        </div>
-                                                                                                                                                                                                `;
+                    <div class="module-selector-card ${disabledClass}"
+                        data-module-id="${escapeHtml(String(m.id))}"
+                        ${disabledAttr}>
+                        <i class="fas fa-cube"></i>
+                        <div class="module-name">${escapeHtml(m.name)}</div>
+                        ${isAssigned ? '<div class="already-assigned-badge">Already Assigned</div>' : ''}
+                    </div>
+                `;
             }).join('')}
         </div>
     `;
