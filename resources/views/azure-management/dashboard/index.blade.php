@@ -715,7 +715,7 @@
 
             if (!confirm(
                     'Sync users from Odoo?\n\nThis will:\n• Import new users (Status: Pending)\n• Update existing users (Status: Active)\n\nContinue?'
-                    )) {
+                )) {
                 return;
             }
 
@@ -723,17 +723,69 @@
             btn.disabled = true;
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Syncing...';
 
-            fetch('/odoo/sync-users-ajax', {
+            // Get CSRF token
+            const csrfToken = document.querySelector('meta[name="csrf-token"]');
+
+            if (!csrfToken) {
+                console.error('❌ CSRF token not found in page!');
+                alert('Error: CSRF token missing. Please refresh the page.');
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+                return;
+            }
+
+            console.log('🔄 Starting sync...', {
+                url: '/azure/sync/odoo/sync-users-ajax',
+                csrf: csrfToken.content.substring(0, 10) + '...',
+                timestamp: new Date().toISOString()
+            });
+
+            fetch('/azure/sync/odoo/sync-users-ajax', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'Accept': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'X-CSRF-TOKEN': csrfToken.content,
                         'X-Requested-With': 'XMLHttpRequest'
                     }
                 })
-                .then(response => response.json())
+                .then(response => {
+                    console.log('📡 Response received:', {
+                        status: response.status,
+                        statusText: response.statusText,
+                        ok: response.ok,
+                        headers: Object.fromEntries(response.headers.entries())
+                    });
+
+                    // Check if response is JSON
+                    const contentType = response.headers.get('content-type');
+                    if (!contentType || !contentType.includes('application/json')) {
+                        console.error('❌ Response is not JSON!', {
+                            contentType,
+                            status: response.status
+                        });
+
+                        // Try to get the actual response text for debugging
+                        return response.text().then(text => {
+                            console.error('📄 Actual response:', text.substring(0, 500));
+                            throw new Error(
+                                `Server returned ${response.status}: Expected JSON but got ${contentType}. Check console for details.`
+                            );
+                        });
+                    }
+
+                    if (!response.ok) {
+                        return response.json().then(err => {
+                            throw new Error(err.message ||
+                                `HTTP ${response.status}: ${response.statusText}`);
+                        });
+                    }
+
+                    return response.json();
+                })
                 .then(data => {
+                    console.log('✅ Sync completed:', data);
+
                     if (data.success) {
                         alert(`Sync completed successfully!\n\n` +
                             `✅ Inserted: ${data.stats.inserted} (Pending)\n` +
@@ -748,8 +800,8 @@
                     }
                 })
                 .catch(error => {
-                    console.error('Sync error:', error);
-                    alert('Sync failed: ' + error.message);
+                    console.error('❌ Sync error:', error);
+                    alert(`Sync failed!\n\nError: ${error.message}\n\nCheck browser console (F12) for details.`);
                     btn.disabled = false;
                     btn.innerHTML = originalHtml;
                 });

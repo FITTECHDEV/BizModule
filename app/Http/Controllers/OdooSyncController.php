@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use Exception;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 
 class OdooSyncController extends Controller
@@ -286,7 +288,7 @@ class OdooSyncController extends Controller
                 companyName, creationType, directorySynced, invitationState,
                 identityIssuer, OdooUserId, OdooEmployeeId,
                 OdooLoginId, OdooCreatedOn, EmployeCode, OdooLoginType,
-                Status, CreatedAt, UpdatedAt
+                Status, CreatedDateTime
             )
             VALUES (
                 NEWID(), ?, ?, ?, ?, ?,
@@ -297,7 +299,7 @@ class OdooSyncController extends Controller
                 ?, ?, ?, ?,
                 ?, ?, ?,
                 ?, ?, ?, ?,
-                'Pending', GETDATE(), GETDATE()
+                'Pending', GETDATE()
             )
         ", array_values($data));
     }
@@ -347,8 +349,7 @@ class OdooSyncController extends Controller
                 OdooCreatedOn = ?,
                 EmployeCode = ?,
                 OdooLoginType = ?,
-                Status = 'Active',
-                UpdatedAt = GETDATE()
+                Status = 'Active'
             WHERE userPrincipalName = ?
         ", array_merge(array_values($data), [$upn]));
     }
