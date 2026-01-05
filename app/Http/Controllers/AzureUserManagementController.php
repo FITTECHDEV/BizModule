@@ -1696,7 +1696,7 @@ class AzureUserManagementController extends Controller
                     'mobilePhone' => $user->mobilePhone ?? 'NULL',
                     'companyName' => $user->companyName ?? 'NULL',
                     'jobTitle' => $user->jobTitle ?? 'NULL',
-                    'SCMBaseOfficeCode' => $user->SCMBaseOfficeCode ?? 'Not Set',
+                    'BaseOfficeCode' => $user->BaseOfficeCode ?? 'Not Set',
                 ],
             ]);
 
@@ -1871,12 +1871,12 @@ class AzureUserManagementController extends Controller
 
             // Get current base office name for display
             $currentBaseOffice = null;
-            if ($user->SCMBaseOfficeCode) {
-                $currentBaseOffice = $offices->firstWhere('Code', $user->SCMBaseOfficeCode);
+            if ($user->BaseOfficeCode) {
+                $currentBaseOffice = $offices->firstWhere('Code', $user->BaseOfficeCode);
             }
 
             Log::info('Current base office info', [
-                'code' => $user->SCMBaseOfficeCode,
+                'code' => $user->BaseOfficeCode,
                 'office' => $currentBaseOffice ? $currentBaseOffice->Name : 'Not set',
             ]);
 
@@ -1889,7 +1889,7 @@ class AzureUserManagementController extends Controller
                 'user_name' => $user->displayName,
                 'user_status' => $user->Status,
                 'user_company' => $user->companyName ?? 'Not Set',
-                'scm_base_office' => $user->SCMBaseOfficeCode ?? 'Not Set',
+                'scm_base_office' => $user->BaseOfficeCode ?? 'Not Set',
                 'modules_count' => $modules->count(),
                 'locations_count' => $locations->count(),
                 'offices_count' => $offices->count(),
@@ -2575,8 +2575,8 @@ class AzureUserManagementController extends Controller
             }
 
             // Save base office
-            $previousBaseOffice = $user->SCMBaseOfficeCode;
-            $user->SCMBaseOfficeCode = $baseOfficeCode;
+            $previousBaseOffice = $user->BaseOfficeCode;
+            $user->BaseOfficeCode = $baseOfficeCode;
             $user->save();
 
             Log::info('SCM Base Office updated', [
@@ -4786,7 +4786,7 @@ class AzureUserManagementController extends Controller
                 'initiated_by' => Auth::id(),
             ]);
 
-            // Validation 1: Check if Azure ID exists
+            // Validation - Check if Azure ID exists
             if (empty($user->AzureId)) {
                 return response()->json([
                     'success' => false,
@@ -5501,7 +5501,7 @@ $statement->execute();
             Log::info('Updating SCM Base Office', [
                 'user_id' => $user->Id,
                 'user_email' => $user->userPrincipalName,
-                'current_base_office' => $user->SCMBaseOfficeCode,
+                'current_base_office' => $user->BaseOfficeCode,
                 'new_base_office' => $request->scm_base_office,
                 'updated_by' => Auth::id(),
             ]);
@@ -5533,8 +5533,8 @@ $statement->execute();
                 ], 422);
             }
 
-            $previousBaseOffice = $user->SCMBaseOfficeCode;
-            $user->SCMBaseOfficeCode = $baseOfficeCode;
+            $previousBaseOffice = $user->BaseOfficeCode;
+            $user->BaseOfficeCode = $baseOfficeCode;
             $user->save();
 
             Log::info('SCM Base Office updated successfully', [

@@ -110,11 +110,11 @@
                 </div>
             </div>
 
-            {{-- SCM Base Office Card --}}
+            {{-- Base Office Card --}}
             {{-- <div class="card card-warning">
                 <div class="card-header">
                     <h3 class="card-title">
-                        <i class="fas fa-building"></i> SCM Base Office
+                        <i class="fas fa-building"></i> Base Office
                     </h3>
                 </div>
                 <div class="card-body">
@@ -122,7 +122,7 @@
                         @csrf
                         <div class="form-group">
                             <label for="scm_base_office">
-                                SCM Base Office <span class="text-danger">*</span>
+                                Base Office <span class="text-danger">*</span>
                             </label>
                             <select name="scm_base_office" id="scm_base_office" class="form-control" required>
                                 @foreach ($offices as $office)
@@ -132,7 +132,7 @@
                                         </option>
                                     @else
                                         <option value="{{ $office->Code }}"
-                                            {{ ($user->SCMBaseOfficeCode ?? 'KE') == $office->Code ? 'selected' : '' }}>
+                                            {{ ($user->BaseOfficeCode ?? 'KE') == $office->Code ? 'selected' : '' }}>
                                             {{ $office->Name }}
                                         </option>
                                     @endif
@@ -642,7 +642,7 @@ END OF DISABLED PROVISIONING CARDS
                 </div>
                 <div class="card-body">
                     <div class="row">
-                        <!-- Row 1: User Principal Name | Employee ID | SCM Base Office -->
+                        <!-- Row 1: User Principal Name | Employee ID | Base Office -->
                         <div class="col-md-4">
                             <div class="info-item">
                                 <label>User Principal Name</label>
@@ -657,10 +657,10 @@ END OF DISABLED PROVISIONING CARDS
                         </div>
                         <div class="col-md-4">
                             <div class="info-item">
-                                <label>SCM Base Office</label>
+                                <label>Base Office</label>
                                 <p>
-                                    @if ($user->SCMBaseOfficeCode)
-                                        <span class="badge badge-warning">{{ $user->SCMBaseOfficeCode }}</span>
+                                    @if ($user->BaseOfficeCode)
+                                        <span class="badge badge-warning">{{ $user->BaseOfficeCode }}</span>
                                     @else
                                         <span class="text-muted">Not Set</span>
                                     @endif
@@ -1801,7 +1801,7 @@ END OF DISABLED PROVISIONING CARDS
         // Show save button only when a different office is selected
         $('#scm_base_office').on('change', function() {
             const selectedValue = $(this).val();
-            const currentValue = '{{ $user->SCMBaseOfficeCode ?? 'KE' }}';
+            const currentValue = '{{ $user->BaseOfficeCode ?? 'KE' }}';
 
             // Show button only if:
             // 1. A value is selected AND
@@ -1816,7 +1816,7 @@ END OF DISABLED PROVISIONING CARDS
         // Initialize button visibility on page load
         $(document).ready(function() {
             const selectedValue = $('#scm_base_office').val();
-            const currentValue = '{{ $user->SCMBaseOfficeCode ?? 'KE' }}';
+            const currentValue = '{{ $user->BaseOfficeCode ?? 'KE' }}';
 
             if (selectedValue && selectedValue !== currentValue) {
                 $('#saveBaseOfficeBtn').show();

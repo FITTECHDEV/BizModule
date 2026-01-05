@@ -79,7 +79,7 @@ class AzureUser extends Authenticatable
         'LastModifiedBy',
         'LastModifiedOn',
         'AzureId',
-        'SCMBaseOfficeCode',               // Using existing column name
+        'BaseOfficeCode',               // Using existing column name
     ];
 
     /**
