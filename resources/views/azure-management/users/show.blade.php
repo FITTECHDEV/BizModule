@@ -208,14 +208,14 @@
 
                         <hr class="my-2">
 
-                        {{-- B12 --}}
+                        {{-- BIZ --}}
                         <div class="module-row mb-3">
                             <div class="row align-items-center">
                                 <div class="col-md-3">
                                     <div class="custom-control custom-checkbox">
                                         <input type="checkbox" class="custom-control-input" id="module_b12">
                                         <label class="custom-control-label font-weight-bold" for="module_b12">
-                                            B12
+                                            BIZ
                                         </label>
                                     </div>
                                 </div>
