@@ -6,6 +6,7 @@ use App\Http\Controllers\EmailAccountController;
 use App\Http\Controllers\ImportController;
 use App\Http\Controllers\JimiTestController;
 use App\Http\Controllers\OdooSyncController;
+use App\Http\Controllers\StoredProcedureTestController;
 use App\Http\Controllers\TrackerController;
 use App\Models\Category;
 use App\Models\Office;
@@ -1300,3 +1301,41 @@ Route::prefix('email-accounts')->group(function () {
 Route::get('/test-simple', function () {
     return 'Hello! Routing works!';
 });
+
+
+Route::prefix('admin/sp-test')->middleware(['auth'])->group(function () {
+    Route::get('/', [StoredProcedureTestController::class, 'index'])->name('sp-test.index');
+    Route::get('/user/{user}', [StoredProcedureTestController::class, 'testUser'])->name('sp-test.user');
+    Route::post('/d365/{user}', [StoredProcedureTestController::class, 'testD365'])->name('sp-test.d365');
+    Route::post('/scm/{user}', [StoredProcedureTestController::class, 'testSCM'])->name('sp-test.scm');
+    Route::post('/biz/{user}', [StoredProcedureTestController::class, 'testBIZ'])->name('sp-test.biz');
+    Route::get('/check-sp-exists/{spName}', [StoredProcedureTestController::class, 'checkSPExists'])->name('sp-test.check-exists');
+});
+
+
+
+
+
+// Stored Procedure Testing Routes (Admin only)
+Route::prefix('admin/sp-test')
+    ->middleware(['auth']) // Add more middleware if needed
+    ->name('sp-test.')
+    ->group(function () {
+        Route::get('/', [\App\Http\Controllers\StoredProcedureTestController::class, 'index'])
+            ->name('index');
+        
+        Route::get('/user/{user}', [\App\Http\Controllers\StoredProcedureTestController::class, 'testUser'])
+            ->name('user');
+        
+        Route::post('/d365/{user}', [\App\Http\Controllers\StoredProcedureTestController::class, 'testD365'])
+            ->name('d365');
+        
+        Route::post('/scm/{user}', [\App\Http\Controllers\StoredProcedureTestController::class, 'testSCM'])
+            ->name('scm');
+        
+        Route::post('/biz/{user}', [\App\Http\Controllers\StoredProcedureTestController::class, 'testBIZ'])
+            ->name('biz');
+        
+        Route::get('/check-sp-exists/{spName}', [\App\Http\Controllers\StoredProcedureTestController::class, 'checkSPExists'])
+            ->name('check-exists');
+    });
