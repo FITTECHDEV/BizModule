@@ -402,6 +402,10 @@ Route::prefix('azure')->name('azure.')->middleware(['auth'])->group(function () 
             ->name('retry-fitexpress')
             ->middleware('throttle:user_actions');
 
+        Route::post('/{user}/sync-external', [App\Http\Controllers\AzureUserManagementController::class, 'syncToExternalSystemsManual'])
+            ->name('sync-external')
+            ->middleware('throttle:user_actions');
+
         Route::post('/users/{user}/retry-scm', [AzureUserManagementController::class, 'retrySCMProvisioning'])
             ->name('azure.users.retry-scm');
 
@@ -1323,47 +1327,228 @@ Route::prefix('admin/sp-test')
     ->group(function () {
         Route::get('/', [\App\Http\Controllers\StoredProcedureTestController::class, 'index'])
             ->name('index');
-        
+
         Route::get('/user/{user}', [\App\Http\Controllers\StoredProcedureTestController::class, 'testUser'])
             ->name('user');
-        
+
         Route::post('/d365/{user}', [\App\Http\Controllers\StoredProcedureTestController::class, 'testD365'])
             ->name('d365');
-        
+
         Route::post('/scm/{user}', [\App\Http\Controllers\StoredProcedureTestController::class, 'testSCM'])
             ->name('scm');
-        
+
         Route::post('/biz/{user}', [\App\Http\Controllers\StoredProcedureTestController::class, 'testBIZ'])
             ->name('biz');
-        
+
         Route::get('/check-sp-exists/{spName}', [\App\Http\Controllers\StoredProcedureTestController::class, 'checkSPExists'])
             ->name('check-exists');
     });
 
 
-Route::get('/test/azure-provision-email/{email}', function ($email) {
+
+
+
+
+Route::get('/test/azure-sync-status/{email}', function ($email) {
     try {
-        $user = App\Models\AzureUser::where('userPrincipalName', $email)->firstOrFail();
-        
-        if (!empty($user->AzureId)) {
-            return response()->json([
-                'status' => 'SKIPPED',
-                'message' => 'User already provisioned',
-                'azure_id' => $user->AzureId,
-            ]);
+        // 1. Get user from local database
+        $user = App\Models\AzureUser::where('userPrincipalName', $email)
+            ->orWhere('mail', $email)
+            ->firstOrFail();
+
+        Log::info('=== AZURE SYNC DIAGNOSTIC ===', ['email' => $email]);
+
+        // ✅ FIX: Use email as user_id (not UUID)
+        $userId = $user->mail ?? $user->userPrincipalName;
+
+        // 2. Get all module assignments from database
+        $roleAssignments = DB::table('Azure_Application_UserMapping')
+            ->join('Azure_SoftwareMaster', 'Azure_Application_UserMapping.application_id', '=', 'Azure_SoftwareMaster.ApplicationId')
+            ->where('Azure_Application_UserMapping.user_id', $userId) // ✅ FIXED
+            ->where('Azure_Application_UserMapping.IsActive', 1)
+            ->where('Azure_Application_UserMapping.IsDelete', 0)
+            ->select(
+                'Azure_SoftwareMaster.Name as module_name',
+                'Azure_Application_UserMapping.OfficeCode',
+                'Azure_Application_UserMapping.RoleCode',
+                'Azure_Application_UserMapping.RoleID'
+            )
+            ->get();
+
+        $functionAssignments = DB::table('Azure_Application_UserFunction')
+            ->join('Azure_SoftwareMaster', 'Azure_Application_UserFunction.application_id', '=', 'Azure_SoftwareMaster.ApplicationId')
+            ->where('Azure_Application_UserFunction.user_id', $userId) // ✅ FIXED
+            ->where('Azure_Application_UserFunction.IsActive', 1)
+            ->where('Azure_Application_UserFunction.IsDelete', 0)
+            ->select(
+                'Azure_SoftwareMaster.Name as module_name',
+                'Azure_Application_UserFunction.OfficeCode',
+                'Azure_Application_UserFunction.FunctionCode',
+                'Azure_Application_UserFunction.FunctionID'
+            )
+            ->get();
+
+        Log::info('Database Assignments', [
+            'user_id_used' => $userId,
+            'roles_count' => $roleAssignments->count(),
+            'functions_count' => $functionAssignments->count()
+        ]);
+
+        // 3. Check Azure provisioning status
+        $azureStatus = [
+            'azure_id' => $user->AzureId,
+            'is_provisioned' => !empty($user->AzureId),
+            'last_updated' => $user->updated_at ?? 'Never'
+        ];
+
+        // 4. Group assignments by module for better readability
+        $rolesByModule = $roleAssignments->groupBy('module_name')->map(function ($roles) {
+            return [
+                'count' => $roles->count(),
+                'assignments' => $roles->map(function ($role) {
+                    return [
+                        'office' => trim($role->OfficeCode),
+                        'role' => $role->RoleCode
+                    ];
+                })->toArray()
+            ];
+        })->toArray();
+
+        $functionsByModule = $functionAssignments->groupBy('module_name')->map(function ($functions) {
+            return [
+                'count' => $functions->count(),
+                'assignments' => $functions->map(function ($func) {
+                    return [
+                        'office' => trim($func->OfficeCode),
+                        'function' => $func->FunctionCode
+                    ];
+                })->toArray()
+            ];
+        })->toArray();
+
+        // 5. Summary
+        $totalDbAssignments = $roleAssignments->count() + $functionAssignments->count();
+
+        $summary = [
+            'total_roles' => $roleAssignments->count(),
+            'total_functions' => $functionAssignments->count(),
+            'total_assignments' => $totalDbAssignments,
+            'unique_modules' => count(array_unique(array_merge(
+                $roleAssignments->pluck('module_name')->toArray(),
+                $functionAssignments->pluck('module_name')->toArray()
+            ))),
+            'modules_with_roles' => array_keys($rolesByModule),
+            'modules_with_functions' => array_keys($functionsByModule)
+        ];
+
+        // Build recommendation
+        $recommendation = '';
+        if (empty($user->AzureId)) {
+            $recommendation = '⚠️ User NOT provisioned to Azure - Run provision script';
+        } else {
+            $recommendation = "✅ User is provisioned to Azure (Azure ID: {$user->AzureId}). Database has {$totalDbAssignments} assignments ready to sync.";
         }
-        
-        $controller = new App\Http\Controllers\AzureUserManagementController(
-            app(App\Services\AzureUserProvisioningService::class),
-            app(App\Services\AzureModuleAssignmentService::class)
-        );
-        
-        return $controller->provisionToAzure($user);
-        
-    } catch (\Exception $e) {
+
         return response()->json([
-            'status' => 'FAILED',
+            'success' => true,
+            'user' => [
+                'id' => $user->Id,
+                'name' => $user->displayName,
+                'email' => $userId,
+                'azure_id' => $user->AzureId,
+                'status' => $user->Status ?? 'unknown',
+                'base_office' => $user->BaseOfficeCode ?? 'Not set'
+            ],
+            'summary' => $summary,
+            'roles_by_module' => $rolesByModule,
+            'functions_by_module' => $functionsByModule,
+            'azure_status' => $azureStatus,
+            'recommendation' => $recommendation
+        ], 200);
+    } catch (\Exception $e) {
+        Log::error('Azure sync diagnostic failed', [
+            'email' => $email,
             'error' => $e->getMessage(),
+            'line' => $e->getLine()
+        ]);
+
+        return response()->json([
+            'success' => false,
+            'error' => $e->getMessage()
         ], 500);
     }
 });
+
+
+
+Route::get('/test/check-biz-sync/{email}', function ($email) {
+    try {
+        $user = App\Models\AzureUser::where('userPrincipalName', $email)
+            ->orWhere('mail', $email)
+            ->firstOrFail();
+
+        $userId = $user->mail ?? $user->userPrincipalName;
+
+        Log::info('=== CHECKING BIZ PRO SYNC ===', ['user' => $userId]);
+
+        // 1. Get BIZ PRO assignments from database
+        $bizRoles = DB::table('Azure_Application_UserMapping as aaum')
+            ->join('Azure_SoftwareMaster as asm', 'aaum.application_id', '=', 'asm.ApplicationId')
+            ->where('aaum.user_id', $userId)
+            ->where('asm.Name', 'BIZ PRO')
+            ->where('aaum.IsActive', 1)
+            ->where('aaum.IsDelete', 0)
+            ->select(
+                'aaum.*',
+                'asm.Name as ApplicationName',
+                'asm.ApplicationId'
+            )
+            ->get();
+
+        // 2. Check if BIZ user ID exists
+        $bizUserId = $user->BizUserID;
+        $bizLoginId = $user->BizLoginId;
+        $bizCreatedOn = $user->BizCreatedOn;
+
+        // 3. Check for sync status or provisioning flags
+        $provisioningStatus = DB::table('Azure_Application_UserProvisioningStatus')
+            ->where('user_id', $user->Id)
+            ->orWhere('user_id', $userId)
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'user' => [
+                'email' => $userId,
+                'azure_id' => $user->AzureId,
+                'biz_user_id' => $bizUserId,
+                'biz_login_id' => $bizLoginId,
+                'biz_created_on' => $bizCreatedOn
+            ],
+            'biz_assignments_in_database' => [
+                'count' => $bizRoles->count(),
+                'roles' => $bizRoles->map(function ($role) {
+                    return [
+                        'office' => trim($role->OfficeCode),
+                        'role' => $role->RoleCode,
+                        'role_id' => $role->RoleID,
+                        'created_at' => $role->created_at ?? 'Unknown',
+                        'updated_at' => $role->updated_at ?? 'Unknown'
+                    ];
+                })->toArray()
+            ],
+            'provisioning_status' => $provisioningStatus->toArray(),
+            'diagnosis' => [
+                'has_biz_user_id' => !empty($bizUserId),
+                'roles_in_database' => $bizRoles->count(),
+                'needs_sync' => empty($bizUserId) || $bizRoles->isEmpty()
+            ]
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'error' => $e->getMessage()
+        ], 500);
+    }
+});
+

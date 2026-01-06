@@ -810,6 +810,13 @@ class AzureUserManagementController extends Controller
             $companies = collect([]);
             $roles = collect([]);
 
+            // Log::info('Returning edit view with base office', [
+            //     'user_id' => $user->Id,
+            //     'BaseOfficeCode_raw' => $user->BaseOfficeCode,
+            //     'BaseOfficeCode_trimmed' => $user->BaseOfficeCode ? trim($user->BaseOfficeCode) : null,
+            //     'BaseOfficeCode_length' => $user->BaseOfficeCode ? strlen($user->BaseOfficeCode) : 0,
+            // ]);
+
             return view('azure-management.users.edit', [
                 'user' => $user,
                 'companies' => $companies,
@@ -1891,7 +1898,26 @@ class AzureUserManagementController extends Controller
                 ]);
 
                 // ====================================================================
-                // STEP 14: Return success response
+                // ✅ NEW: STEP 14: AUTO-SYNC TO EXTERNAL SYSTEMS
+                // ====================================================================
+                try {
+                    Log::info('→ Starting automatic sync to external systems...');
+                    $syncResults = $this->syncToExternalSystems($user);
+
+                    Log::info('✓ External systems sync completed', [
+                        'user_id' => $user->Id,
+                        'results' => $syncResults
+                    ]);
+                } catch (\Exception $syncError) {
+                    // Log but don't fail the whole update
+                    Log::warning('⚠️ External sync failed but database updated', [
+                        'user_id' => $user->Id,
+                        'error' => $syncError->getMessage()
+                    ]);
+                }
+
+                // ====================================================================
+                // STEP 15: Return success response
                 // ====================================================================
                 return response()->json([
                     'success' => true,
@@ -5904,75 +5930,549 @@ class AzureUserManagementController extends Controller
         }
     }
 
+    /**
+     * Update SCM Base Office only (separate from module assignments)
+     * 
+     * Route: PUT /azure/users/{user}/update-base-office
+     * 
+     * @param Request $request
+     * @param AzureUser $user
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function updateBaseOffice(Request $request, AzureUser $user)
     {
         try {
-            Log::info('Updating SCM Base Office', [
+            Log::info('=== UPDATE BASE OFFICE REQUEST ===', [
                 'user_id' => $user->Id,
                 'user_email' => $user->userPrincipalName,
                 'current_base_office' => $user->BaseOfficeCode,
-                'new_base_office' => $request->scm_base_office,
+                'requested_base_office' => $request->scm_base_office,
                 'updated_by' => Auth::id(),
             ]);
 
+            // ====================================================================
+            // STEP 1: Validate request
+            // ====================================================================
             $request->validate([
                 'scm_base_office' => 'required|string|max:10',
             ]);
 
             $baseOfficeCode = strtoupper(trim($request->scm_base_office));
 
-            // Validate that the office exists in the database
-            $officeExists = DB::connection('sqlsrv')
+            // ====================================================================
+            // STEP 2: Verify office exists and is active
+            // ====================================================================
+            $office = DB::connection('sqlsrv')
                 ->table('Cust_Office')
+                ->select('Id', 'code', 'Name', 'IsActive', 'IsDeleted')
                 ->where('code', $baseOfficeCode)
-                ->where('IsActive', 1)
-                ->where('IsDeleted', 0)
-                ->exists();
+                ->first();
 
-            if (! $officeExists) {
-                Log::error('Invalid office code provided for base office update', [
+            if (!$office) {
+                Log::error('Office not found', [
                     'office_code' => $baseOfficeCode,
                     'user_id' => $user->Id,
                 ]);
 
                 return response()->json([
                     'success' => false,
-                    'message' => 'Invalid office code. Please select a valid office.',
-                    'errors' => ['scm_base_office' => 'Invalid office code'],
+                    'message' => "Office with code '{$baseOfficeCode}' not found in the system.",
+                    'errors' => ['scm_base_office' => 'Office not found'],
                 ], 422);
             }
 
-            $previousBaseOffice = $user->BaseOfficeCode;
-            $user->BaseOfficeCode = $baseOfficeCode;
-            $user->save();
+            if ($office->IsActive != 1 || $office->IsDeleted != 0) {
+                Log::error('Office is inactive or deleted', [
+                    'office_code' => $baseOfficeCode,
+                    'office_name' => $office->Name,
+                    'is_active' => $office->IsActive,
+                    'is_deleted' => $office->IsDeleted,
+                ]);
 
-            Log::info('SCM Base Office updated successfully', [
+                return response()->json([
+                    'success' => false,
+                    'message' => "Office '{$office->Name}' is not active.",
+                    'errors' => ['scm_base_office' => 'Office is not active'],
+                ], 422);
+            }
+
+            // ====================================================================
+            // STEP 3: Check if already set to this office (optimization)
+            // ====================================================================
+            if ($user->BaseOfficeCode === $baseOfficeCode) {
+                Log::info('Base office already set to requested value', [
+                    'user_id' => $user->Id,
+                    'base_office' => $baseOfficeCode,
+                ]);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => "Base office is already set to {$office->Name}.",
+                    'data' => [
+                        'user_id' => $user->Id,
+                        'base_office_code' => $baseOfficeCode,
+                        'base_office_name' => $office->Name,
+                        'changed' => false,
+                    ],
+                ]);
+            }
+
+            // ====================================================================
+            // STEP 4: Update database
+            // ====================================================================
+            $previousBaseOffice = $user->BaseOfficeCode;
+
+            $updated = DB::connection('sqlsrv')
+                ->table('Azure_Users')
+                ->where('Id', $user->Id)
+                ->update([
+                    'BaseOfficeCode' => $baseOfficeCode
+                ]);
+
+            if (!$updated) {
+                throw new \Exception('Failed to update database');
+            }
+
+            Log::info('✅ Base office updated successfully', [
                 'user_id' => $user->Id,
                 'previous' => $previousBaseOffice,
                 'new' => $baseOfficeCode,
+                'office_name' => $office->Name,
+                'updated_by' => Auth::id(),
                 'updated_at' => now()->toDateTimeString(),
             ]);
 
+            // ====================================================================
+            // STEP 5: Log audit trail (async - don't wait for it)
+            // ====================================================================
+            try {
+                $this->logUserActivity(
+                    $user->Id,
+                    'user.base_office_updated',
+                    'SCM Base Office updated',
+                    [
+                        'previous_base_office' => $previousBaseOffice ?? 'Not Set',
+                        'new_base_office' => $baseOfficeCode,
+                        'office_name' => $office->Name,
+                        'updated_by' => Auth::id(),
+                    ]
+                );
+            } catch (\Exception $auditError) {
+                // Don't fail the request if audit logging fails
+                Log::warning('Failed to log base office update audit', [
+                    'error' => $auditError->getMessage(),
+                ]);
+            }
+
+            // ====================================================================
+            // STEP 6: Return success response IMMEDIATELY
+            // ====================================================================
             return response()->json([
                 'success' => true,
-                'message' => 'SCM Base Office updated successfully',
+                'message' => "Base office successfully updated to {$office->Name}.",
                 'data' => [
                     'user_id' => $user->Id,
-                    'previous_base_office' => $previousBaseOffice,
+                    'previous_base_office' => $previousBaseOffice ?? 'Not Set',
                     'new_base_office' => $baseOfficeCode,
-                    'updated_at' => $user->updated_at,
+                    'office_name' => $office->Name,
+                    'office_id' => $office->Id,
+                    'updated_at' => now()->toDateTimeString(),
+                    'updated_by' => Auth::id(),
+                    'changed' => true,
                 ],
             ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            Log::error('Validation failed for base office update', [
+                'user_id' => $user->Id,
+                'errors' => $e->errors(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $e->errors(),
+            ], 422);
         } catch (\Exception $e) {
-            Log::error('Failed to update SCM Base Office', [
+            Log::error('=== UPDATE BASE OFFICE FAILED ===', [
                 'user_id' => $user->Id,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
             ]);
 
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to update base office: ' . $e->getMessage(),
+                'error_details' => config('app.debug') ? [
+                    'message' => $e->getMessage(),
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                ] : null,
+            ], 500);
+        }
+    }
+
+    /**
+     * Sync user to external systems
+     */
+    public function syncToExternalSystems(AzureUser $user)
+    {
+        try {
+            Log::info('=== SYNCING TO EXTERNAL SYSTEMS ===', [
+                'user_id' => $user->Id,
+                'user_email' => $user->userPrincipalName ?? $user->mail
+            ]);
+
+            // Get all active assignments grouped by module
+            $allAssignments = DB::connection('sqlsrv')
+                ->table('Azure_Application_UserMapping as aaum')
+                ->join('Azure_SoftwareMaster as asm', 'aaum.application_id', '=', 'asm.ApplicationId')
+                ->leftJoin('Azure_Application_UserFunction as aauf', function ($join) use ($user) {
+                    $join->on('aauf.AzureUserID', '=', 'aaum.AzureUserID')
+                        ->on('aauf.application_id', '=', 'aaum.application_id');
+                })
+                ->where('aaum.AzureUserID', $user->Id)
+                ->where('aaum.IsActive', 1)
+                ->where('aaum.IsDelete', 0)
+                ->select(
+                    'asm.Name as module_name',
+                    'asm.ApplicationId',
+                    'aaum.OfficeCode',
+                    'aaum.OfficeID',
+                    'aaum.RoleCode',
+                    'aaum.RoleID',
+                    'aauf.FunctionCode',
+                    'aauf.FunctionID'
+                )
+                ->get();
+
+            $results = [];
+            $byModule = $allAssignments->groupBy('module_name');
+
+            // Sync BIZ PRO
+            if ($byModule->has('BIZ PRO')) {
+                $results['biz_pro'] = $this->syncToBizPro($user, $byModule['BIZ PRO']);
+            }
+
+            // Sync OPS/SCM
+            if ($byModule->has('OPS')) {
+                $results['ops'] = $this->syncToOPS($user, $byModule['OPS']);
+            }
+
+            // Sync D365
+            if ($byModule->has('D365 LIVE')) {
+                $results['d365'] = $this->syncToD365($user, $byModule['D365 LIVE']);
+            }
+
+            // Sync FIT Express
+            $fitExpressModules = $byModule->filter(function ($items, $name) {
+                return stripos($name, 'FIT Express') !== false || stripos($name, 'FITEXPRESS') !== false;
+            });
+
+            if ($fitExpressModules->isNotEmpty()) {
+                $results['fit_express'] = $this->syncToFitExpress($user, $fitExpressModules->flatten(1));
+            }
+
+            Log::info('=== EXTERNAL SYNC COMPLETED ===', [
+                'user_id' => $user->Id,
+                'results' => $results
+            ]);
+
+            return $results;
+        } catch (\Exception $e) {
+            Log::error('External systems sync failed', [
+                'user_id' => $user->Id,
+                'error' => $e->getMessage()
+            ]);
+            throw $e;
+        }
+    }
+
+    /**
+     * Sync to BIZ PRO
+     */
+    private function syncToBizPro(AzureUser $user, $assignments)
+    {
+        try {
+            // ✅ ONLY call stored procedure for NEW users
+            if (empty($user->BizUserID)) {
+                Log::info('BIZ PRO: Creating new user');
+
+                $bizApp = DB::connection('sqlsrv')
+                    ->table('Azure_SoftwareMaster')
+                    ->where(function ($q) {
+                        $q->where('Name', 'LIKE', '%BIZ PRO%')
+                            ->orWhere('Name', 'LIKE', '%FITSYS%');
+                    })
+                    ->where('IsActive', 1)
+                    ->where('IsDeleted', 0)
+                    ->first();
+
+                if (!$bizApp) {
+                    return ['status' => 'error', 'message' => 'BIZ PRO application not found'];
+                }
+
+                $statement = DB::connection('sqlsrv')->getPdo()->prepare('
+                SET NOCOUNT ON;
+                DECLARE @Status VARCHAR(15), @Remark VARCHAR(200);
+                EXEC sp_Azure_FITSYSUserCreation ?, ?, @Status OUTPUT, @Remark OUTPUT;
+                SELECT @Status as Status, @Remark as Remark;
+            ');
+
+                $statement->execute([$user->Id, $bizApp->ApplicationId]);
+                $result = $statement->fetchAll(\PDO::FETCH_OBJ);
+
+                $status = $result[0]->Status ?? 'Failed';
+                $remark = $result[0]->Remark ?? 'Unknown error';
+
+                if (strtolower($status) === 'success') {
+                    Log::info('BIZ PRO: New user created successfully');
+                    return [
+                        'status' => 'success',
+                        'message' => 'User created in BIZ PRO with ' . $assignments->count() . ' role(s)',
+                        'roles_synced' => $assignments->count()
+                    ];
+                } else {
+                    return ['status' => 'error', 'message' => $remark];
+                }
+            }
+
+            // ✅ User already exists - roles are already in database
+            // BIZ PRO reads from Cust_Model_Has_Roles which is populated via database triggers/views
+            Log::info('BIZ PRO: User already exists, roles updated in database', [
+                'biz_user_id' => $user->BizUserID,
+                'roles_count' => $assignments->count()
+            ]);
+
+            return [
+                'status' => 'success',
+                'message' => 'Roles updated in database. Changes will reflect in BIZ PRO on next login.',
+                'roles_synced' => $assignments->count(),
+                'note' => 'User may need to logout and login to see changes immediately'
+            ];
+        } catch (\Exception $e) {
+            Log::error('BIZ PRO sync failed', ['error' => $e->getMessage()]);
+            return ['status' => 'error', 'message' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * Sync to OPS/SCM
+     */
+    private function syncToOPS(AzureUser $user, $assignments)
+    {
+        try {
+            // ✅ ONLY call stored procedure for NEW users
+            if (empty($user->SCMUserID)) {
+                Log::info('OPS/SCM: Creating new user');
+
+                $statement = DB::connection('sqlsrv')->getPdo()->prepare('
+                SET NOCOUNT ON;
+                DECLARE @Status VARCHAR(15), @Remark VARCHAR(200);
+                EXEC sp_Azure_SCMUserCreation ?, @Status OUTPUT, @Remark OUTPUT;
+                SELECT @Status as Status, @Remark as Remark;
+            ');
+
+                $statement->execute([$user->Id]);
+                $result = $statement->fetchAll(\PDO::FETCH_OBJ);
+
+                $status = $result[0]->Status ?? 'Failed';
+                $remark = $result[0]->Remark ?? 'Unknown error';
+
+                if (strtolower($status) === 'success') {
+                    Log::info('OPS/SCM: New user created successfully');
+
+                    $rolesCount = $assignments->where('FunctionID', null)->count();
+                    $functionsCount = $assignments->whereNotNull('FunctionID')->count();
+
+                    return [
+                        'status' => 'success',
+                        'message' => 'User created in OPS/SCM',
+                        'roles_synced' => $rolesCount,
+                        'functions_synced' => $functionsCount
+                    ];
+                } else {
+                    return ['status' => 'error', 'message' => $remark];
+                }
+            }
+
+            // ✅ User already exists - roles are already in database
+            // OPS/SCM reads from Azure_Application_UserMapping and Azure_Application_UserFunction
+            Log::info('OPS/SCM: User already exists, roles updated in database', [
+                'scm_user_id' => $user->SCMUserID,
+                'roles_count' => $assignments->where('FunctionID', null)->count(),
+                'functions_count' => $assignments->whereNotNull('FunctionID')->count()
+            ]);
+
+            return [
+                'status' => 'success',
+                'message' => 'Roles updated in database. Changes are immediately available in OPS/SCM.',
+                'roles_synced' => $assignments->where('FunctionID', null)->count(),
+                'functions_synced' => $assignments->whereNotNull('FunctionID')->count()
+            ];
+        } catch (\Exception $e) {
+            Log::error('OPS/SCM sync failed', ['error' => $e->getMessage()]);
+            return ['status' => 'error', 'message' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * Sync to D365
+     */
+    private function syncToD365(AzureUser $user, $assignments)
+    {
+        try {
+            // ✅ ONLY call stored procedure for NEW users
+            if (empty($user->D365UserID)) {
+                Log::info('D365: Creating new user');
+
+                $statement = DB::connection('sqlsrv')->getPdo()->prepare('
+                SET NOCOUNT ON;
+                DECLARE @Status VARCHAR(15), @Remark VARCHAR(200);
+                EXEC sp_Azure_D365UserCreation ?, @Status OUTPUT, @Remark OUTPUT;
+                SELECT @Status as Status, @Remark as Remark;
+            ');
+
+                $statement->execute([$user->Id]);
+                $result = $statement->fetchAll(\PDO::FETCH_OBJ);
+
+                $status = $result[0]->Status ?? 'Failed';
+                $remark = $result[0]->Remark ?? 'Unknown error';
+
+                if (strtolower($status) === 'success') {
+                    Log::info('D365: New user created successfully');
+                    return [
+                        'status' => 'success',
+                        'message' => 'User created in D365',
+                        'roles_synced' => $assignments->count()
+                    ];
+                } else {
+                    return ['status' => 'error', 'message' => $remark];
+                }
+            }
+
+            // ✅ User already exists - roles are already in database
+            // D365 reads from Azure_Application_UserMapping
+            Log::info('D365: User already exists, roles updated in database', [
+                'd365_user_id' => $user->D365UserID,
+                'roles_count' => $assignments->count()
+            ]);
+
+            return [
+                'status' => 'success',
+                'message' => 'Roles updated in database. Changes are immediately available in D365.',
+                'roles_synced' => $assignments->count()
+            ];
+        } catch (\Exception $e) {
+            Log::error('D365 sync failed', ['error' => $e->getMessage()]);
+            return ['status' => 'error', 'message' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * Sync to FIT Express
+     */
+    private function syncToFitExpress(AzureUser $user, $assignments)
+    {
+        try {
+            $fitExpressApp = DB::connection('sqlsrv')
+                ->table('Azure_SoftwareMaster')
+                ->where(function ($q) {
+                    $q->where('Name', 'LIKE', '%FIT Express%')
+                        ->orWhere('Name', 'LIKE', '%FITEXPRESS%');
+                })
+                ->where('IsActive', 1)
+                ->where('IsDeleted', 0)
+                ->first();
+
+            if (!$fitExpressApp) {
+                return ['status' => 'error', 'message' => 'FIT Express application not found'];
+            }
+
+            // Check if user has FIT Express assignments
+            $hasAssignments = DB::connection('sqlsrv')
+                ->table('Azure_Application_UserMapping')
+                ->where('AzureUserID', $user->Id)
+                ->where('application_id', $fitExpressApp->ApplicationId)
+                ->where('IsActive', 1)
+                ->where('IsDelete', 0)
+                ->exists();
+
+            if (!$hasAssignments) {
+                return [
+                    'status' => 'skipped',
+                    'message' => 'No FIT Express assignments'
+                ];
+            }
+
+            // ✅ ONLY call stored procedure for NEW users
+            if (empty($user->BizUserID)) {
+                // FIT Express uses same user account as BIZ PRO
+                // If no BizUserID, call the SP to create the user
+                Log::info('FIT Express: Creating new user (shares BIZ user account)');
+
+                $statement = DB::connection('sqlsrv')->getPdo()->prepare('
+                SET NOCOUNT ON;
+                DECLARE @Status VARCHAR(15), @Remark VARCHAR(200);
+                EXEC sp_Azure_FITSYSUserCreation ?, ?, @Status OUTPUT, @Remark OUTPUT;
+                SELECT @Status as Status, @Remark as Remark;
+            ');
+
+                $statement->execute([$user->Id, $fitExpressApp->ApplicationId]);
+                $result = $statement->fetchAll(\PDO::FETCH_OBJ);
+
+                $status = $result[0]->Status ?? 'Failed';
+                $remark = $result[0]->Remark ?? 'Unknown error';
+
+                if (strtolower($status) === 'success') {
+                    Log::info('FIT Express: New user created successfully');
+                    return [
+                        'status' => 'success',
+                        'message' => 'User created in FIT Express',
+                        'roles_synced' => $assignments->count()
+                    ];
+                } else {
+                    return ['status' => 'error', 'message' => $remark];
+                }
+            }
+
+            // ✅ User already exists (has BizUserID) - roles are already in database
+            Log::info('FIT Express: User already exists, roles updated in database', [
+                'biz_user_id' => $user->BizUserID,
+                'roles_count' => $assignments->count()
+            ]);
+
+            return [
+                'status' => 'success',
+                'message' => 'Roles updated in database. Changes will reflect in FIT Express on next login.',
+                'roles_synced' => $assignments->count(),
+                'note' => 'FIT Express shares BIZ user account'
+            ];
+        } catch (\Exception $e) {
+            Log::error('FIT Express sync failed', ['error' => $e->getMessage()]);
+            return ['status' => 'error', 'message' => $e->getMessage()];
+        }
+    }
+
+
+    /**
+     * Manual trigger for external sync (for testing or retry)
+     */
+    public function syncToExternalSystemsManual(AzureUser $user)
+    {
+        try {
+            $results = $this->syncToExternalSystems($user);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'External systems sync completed',
+                'results' => $results
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Sync failed: ' . $e->getMessage()
             ], 500);
         }
     }
