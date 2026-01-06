@@ -2980,7 +2980,7 @@ class AzureUserManagementController extends Controller
                             ->insert([
                                 'Id' => $mappingId,
                                 'AzureUserID' => $azureId,  // ✅ Use Azure ID (GUID)
-                                'user_id' => $azureId,  // ✅ CHANGED: Use Azure ID instead of email
+                                'user_id' => $userPrincipalName,  
                                 'application_id' => $roleData['application_id'],
                                 'Username' => $request->name,
                                 'ApplicationName' => $roleData['application_name'],
@@ -3037,7 +3037,7 @@ class AzureUserManagementController extends Controller
                             ->insert([
                                 'Id' => $functionId,
                                 'AzureUserID' => $azureId,  // ✅ Use Azure ID (GUID)
-                                'user_id' => $azureId,  // ✅ CHANGED: Use Azure ID instead of email
+                                'user_id' => $userPrincipalName,
                                 'application_id' => $funcData['application_id'],
                                 'Username' => $request->name,
                                 'ApplicationName' => $funcData['application_name'],
