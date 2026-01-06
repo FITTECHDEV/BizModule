@@ -1439,6 +1439,19 @@ class AzureUserManagementController extends Controller
     //     }
     // }
 
+
+    /**
+     * Update the specified user - FIXED VERSION
+     * 
+     * Key fixes:
+     * 1. ALWAYS delete ALL existing assignments (removed conditional whereIn logic)
+     * 2. Use $user->Id consistently (local database primary key)
+     * 3. Simplified "replace all" approach - no more partial updates
+     * 
+     * @param Request $request
+     * @param AzureUser $user
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function update(Request $request, AzureUser $user)
     {
         try {
@@ -1494,10 +1507,13 @@ class AzureUserManagementController extends Controller
             ]);
 
             // ====================================================================
-            // STEP 2: Validate Azure ID
+            // STEP 2: Validate User ID exists
             // ====================================================================
             if (empty($user->Id)) {
-                Log::error('User ID is missing', ['user' => $user]);
+                Log::error('User ID is missing', [
+                    'user' => $user,
+                ]);
+
                 return response()->json([
                     'success' => false,
                     'message' => 'User ID is missing - cannot update assignments'
@@ -1579,54 +1595,29 @@ class AzureUserManagementController extends Controller
 
             try {
                 // ====================================================================
-                // STEP 6: Delete existing assignments using AzureUserID
+                // STEP 6: ✅ FIXED - Delete ALL existing assignments (no conditional logic)
                 // ====================================================================
-                Log::info('Deleting existing assignments for modules being updated', [
+                Log::info('Deleting ALL existing assignments', [
                     'user_id' => $user->Id,
                 ]);
 
-                // Get modules from request
-                $modulesData = $request->input('modules', []);
+                // ✅ ALWAYS delete ALL roles (no whereIn clause)
+                $deletedRoles = DB::connection('sqlsrv')
+                    ->table('Azure_Application_UserMapping')
+                    ->where('AzureUserID', $user->Id)  // ✅ Use $user->Id (local DB ID)
+                    ->delete();
 
-                if (empty($modulesData)) {
-                    Log::info('No modules in request - deleting ALL assignments');
+                // ✅ ALWAYS delete ALL functions (no whereIn clause)
+                $deletedFunctions = DB::connection('sqlsrv')
+                    ->table('Azure_Application_UserFunction')
+                    ->where('AzureUserID', $user->Id)  // ✅ Use $user->Id (local DB ID)
+                    ->delete();
 
-                    // If clearing all modules (modules_empty flag or empty array)
-                    $deletedRoles = DB::connection('sqlsrv')
-                        ->table('Azure_Application_UserMapping')
-                        ->where('AzureUserID', $user->Id)
-                        ->delete();
-
-                    $deletedFunctions = DB::connection('sqlsrv')
-                        ->table('Azure_Application_UserFunction')
-                        ->where('AzureUserID', $user->Id)
-                        ->delete();
-                } else {
-                    // Get unique application IDs from the modules being updated
-                    $moduleIds = collect($modulesData)->pluck('application_id')->unique()->toArray();
-
-                    Log::info('Deleting assignments for specific modules only', [
-                        'module_ids' => $moduleIds,
-                        'module_count' => count($moduleIds),
-                    ]);
-
-                    $deletedRoles = DB::connection('sqlsrv')
-                        ->table('Azure_Application_UserMapping')
-                        ->where('AzureUserID', $user->Id)
-                        ->whereIn('application_id', $moduleIds)
-                        ->delete();
-
-                    $deletedFunctions = DB::connection('sqlsrv')
-                        ->table('Azure_Application_UserFunction')
-                        ->where('AzureUserID', $user->Id)
-                        ->whereIn('application_id', $moduleIds)
-                        ->delete();
-                }
-
-                Log::info('Deleted existing assignments', [
-                    'azure_id' => $user->Id,              // ✅ Fixed: removed extra 'd'
-                    'roles_deleted' => $deletedRoles,     // ✅ Fixed: changed from $deleteRoles
+                Log::info('Deleted ALL existing assignments', [
+                    'user_id' => $user->Id,
+                    'roles_deleted' => $deletedRoles,
                     'functions_deleted' => $deletedFunctions,
+                    'total_deleted' => $deletedRoles + $deletedFunctions,
                 ]);
 
                 // ====================================================================
@@ -1698,14 +1689,12 @@ class AzureUserManagementController extends Controller
 
                     if (!$location) {
                         $recordValidationErrors[] = "Location '{$module['location_code']}' not found or inactive";
-
                         continue;
                     }
 
                     // Validate location has valid ID
                     if (empty($location->LocationId)) {
                         $recordValidationErrors[] = "Location '{$module['location_code']}' has no valid ID";
-
                         continue;
                     }
 
@@ -1720,19 +1709,17 @@ class AzureUserManagementController extends Controller
                         // Validate required fields
                         if (empty($module['role_id'])) {
                             $recordValidationErrors[] = "Module {$index}: Role ID is empty";
-
                             continue;
                         }
                         if (empty($module['role_code'])) {
                             $recordValidationErrors[] = "Module {$index}: Role code is empty";
-
                             continue;
                         }
 
                         $roleRecords[] = [
                             'Id' => \Illuminate\Support\Str::uuid()->toString(),
-                            'user_id' => $user->userPrincipalName,  // ✅ ADD THIS LINE
-                            'AzureUserID' => $user->Id,
+                            'user_id' => $user->userPrincipalName,  // ✅ Email (for user_id column)
+                            'AzureUserID' => $user->Id,  // ✅ Local DB ID (for AzureUserID column)
                             'Username' => $user->displayName ?? $user->userPrincipalName,
                             'application_id' => $module['application_id'],
                             'ApplicationName' => $appName,
@@ -1754,19 +1741,17 @@ class AzureUserManagementController extends Controller
                         // Validate required fields
                         if (empty($module['function_id'])) {
                             $recordValidationErrors[] = "Module {$index}: Function ID is empty";
-
                             continue;
                         }
                         if (empty($module['function_code'])) {
                             $recordValidationErrors[] = "Module {$index}: Function code is empty";
-
                             continue;
                         }
 
                         $functionRecords[] = [
                             'Id' => \Illuminate\Support\Str::uuid()->toString(),
-                            'user_id' => $user->userPrincipalName,
-                            'AzureUserID' => $user->Id,
+                            'user_id' => $user->userPrincipalName,  // ✅ Email (for user_id column)
+                            'AzureUserID' => $user->Id,  // ✅ Local DB ID (for AzureUserID column)
                             'Username' => $user->displayName ?? $user->userPrincipalName,
                             'application_id' => $module['application_id'],
                             'ApplicationName' => $appName,
@@ -1887,20 +1872,14 @@ class AzureUserManagementController extends Controller
                 }
 
                 // ====================================================================
-                // STEP 13: Commit transaction (assignments saved)
+                // STEP 13: Commit transaction
                 // ====================================================================
                 DB::connection('sqlsrv')->commit();
 
                 $totalInserted = $rolesInserted + $functionsInserted;
 
-                Log::info('Transaction committed - assignments saved successfully', [
-                    'roles_inserted' => $rolesInserted,
-                    'functions_inserted' => $functionsInserted,
-                ]);
-
-                Log::info('=== USER ASSIGNMENTS SAVED ===', [
+                Log::info('=== USER UPDATE COMPLETED SUCCESSFULLY ===', [
                     'user_id' => $user->Id,
-                    'azure_id' => $user->AzureId,
                     'scm_base_office' => $baseOfficeCode,
                     'roles_inserted' => $rolesInserted,
                     'functions_inserted' => $functionsInserted,
@@ -1912,240 +1891,14 @@ class AzureUserManagementController extends Controller
                 ]);
 
                 // ====================================================================
-                // STEP 14: AUTO-PROVISION TO EXTERNAL SYSTEMS
-                // ====================================================================
-
-                Log::info('=== AUTO-PROVISIONING STARTED ===', [
-                    'user_id' => $user->Id,
-                    'user_principal' => $user->userPrincipalName,
-                ]);
-
-                $provisioningResults = [];
-                $provisioningErrors = [];
-
-                // Refresh user model to get latest data
-                $user->refresh();
-
-                // ----------------------------------------------------------------
-                // 14.1: Determine which systems need provisioning
-                // ----------------------------------------------------------------
-                $assignedModules = DB::connection('sqlsrv')
-                    ->table('Azure_Application_UserMapping')
-                    ->where('AzureUserID', $user->Id)
-                    ->where('IsActive', 1)
-                    ->where('IsDelete', 0)
-                    ->distinct()
-                    ->pluck('ApplicationName');
-
-                Log::info('Assigned modules detected', [
-                    'modules' => $assignedModules->toArray(),
-                ]);
-
-                // ----------------------------------------------------------------
-                // 14.2: Provision to D365 (if has D365 LIVE modules and not provisioned)
-                // ----------------------------------------------------------------
-                if ($assignedModules->contains('D365 LIVE') && empty($user->D365UserID)) {
-                    try {
-                        Log::info('→ Provisioning to D365...');
-
-                        $statement = DB::connection('sqlsrv')->getPdo()->prepare('
-                        SET NOCOUNT ON;
-                        DECLARE @Status VARCHAR(15), @Remark VARCHAR(200);
-                        EXEC sp_Azure_D365UserCreation ?, @Status OUTPUT, @Remark OUTPUT;
-                        SELECT @Status as Status, @Remark as Remark;
-                    ');
-
-                        $statement->execute([$user->Id]);
-                        $result = $statement->fetchAll(\PDO::FETCH_OBJ);
-
-                        $status = $result[0]->Status ?? 'Failed';
-                        $remark = $result[0]->Remark ?? 'Unknown error';
-
-                        if (strtolower($status) === 'success') {
-                            $provisioningResults['d365'] = ['status' => 'Success', 'remark' => $remark];
-                            Log::info('✓ D365 provisioning successful');
-                        } else {
-                            $provisioningErrors[] = 'D365: ' . $remark;
-                            $provisioningResults['d365'] = ['status' => 'Failed', 'remark' => $remark];
-                            Log::warning('⚠ D365 provisioning failed', ['remark' => $remark]);
-                        }
-                    } catch (\Exception $e) {
-                        Log::error('✗ D365 provisioning error', ['error' => $e->getMessage()]);
-                        $provisioningErrors[] = 'D365: ' . $e->getMessage();
-                        $provisioningResults['d365'] = ['status' => 'Error', 'error' => $e->getMessage()];
-                    }
-                } elseif ($assignedModules->contains('D365 LIVE')) {
-                    $provisioningResults['d365'] = ['status' => 'Skipped', 'reason' => 'Already provisioned'];
-                    Log::info('⊘ D365 provisioning skipped - already provisioned');
-                }
-
-                // ----------------------------------------------------------------
-                // 14.3: Provision to SCM (if has OPS modules and not provisioned)
-                // ----------------------------------------------------------------
-                if ($assignedModules->contains('OPS') && empty($user->SCMUserID)) {
-                    try {
-                        Log::info('→ Provisioning to SCM...');
-
-                        $statement = DB::connection('sqlsrv')->getPdo()->prepare('
-                        SET NOCOUNT ON;
-                        DECLARE @Status VARCHAR(15), @Remark VARCHAR(200);
-                        EXEC sp_Azure_SCMUserCreation ?, @Status OUTPUT, @Remark OUTPUT;
-                        SELECT @Status as Status, @Remark as Remark;
-                    ');
-
-                        $statement->execute([$user->Id]);
-                        $result = $statement->fetchAll(\PDO::FETCH_OBJ);
-
-                        $status = $result[0]->Status ?? 'Failed';
-                        $remark = $result[0]->Remark ?? 'Unknown error';
-
-                        if (strtoupper($status) === 'SUCCESS') {
-                            $provisioningResults['scm'] = ['status' => 'Success', 'remark' => $remark];
-                            Log::info('✓ SCM provisioning successful');
-                        } else {
-                            $provisioningErrors[] = 'SCM: ' . $remark;
-                            $provisioningResults['scm'] = ['status' => 'Failed', 'remark' => $remark];
-                            Log::warning('⚠ SCM provisioning failed', ['remark' => $remark]);
-                        }
-                    } catch (\Exception $e) {
-                        Log::error('✗ SCM provisioning error', ['error' => $e->getMessage()]);
-                        $provisioningErrors[] = 'SCM: ' . $e->getMessage();
-                        $provisioningResults['scm'] = ['status' => 'Error', 'error' => $e->getMessage()];
-                    }
-                } elseif ($assignedModules->contains('OPS')) {
-                    $provisioningResults['scm'] = ['status' => 'Skipped', 'reason' => 'Already provisioned'];
-                    Log::info('⊘ SCM provisioning skipped - already provisioned');
-                }
-
-                // ----------------------------------------------------------------
-                // 14.4: Provision to BIZ/FITSYS (if has BIZ modules and not provisioned)
-                // ----------------------------------------------------------------
-                $bizModules = $assignedModules->filter(function ($name) {
-                    return str_contains($name, 'BIZ') || str_contains($name, 'FITSYS') || str_contains($name, 'FIT Express');
-                });
-
-                if ($bizModules->isNotEmpty() && empty($user->BizUserID)) {
-                    try {
-                        Log::info('→ Provisioning to BIZ/FITSYS...', ['modules' => $bizModules->toArray()]);
-
-                        $bizApp = DB::connection('sqlsrv')
-                            ->table('Azure_SoftwareMaster')
-                            ->where(function ($q) {
-                                $q->where('Name', 'LIKE', '%BIZ PRO%')
-                                    ->orWhere('Name', 'LIKE', '%FITSYS%')
-                                    ->orWhere('Name', 'LIKE', '%FIT Express%');
-                            })
-                            ->where('IsActive', 1)
-                            ->where('IsDeleted', 0)
-                            ->first();
-
-                        if ($bizApp) {
-                            $applicationId = $bizApp->ApplicationId;
-
-                            // Validate EmployeeCode
-                            $employeeCode = $user->EmployeCode;
-                            if (!empty($employeeCode)) {
-                                $numericCode = preg_replace('/[^0-9]/', '', $employeeCode);
-                                if (empty($numericCode)) {
-                                    throw new \Exception("EmployeeCode '{$employeeCode}' is not numeric");
-                                }
-                            }
-
-                            $statement = DB::connection('sqlsrv')->getPdo()->prepare('
-                            SET NOCOUNT ON;
-                            DECLARE @Status VARCHAR(15), @Remark VARCHAR(200);
-                            EXEC sp_Azure_FITSYSUserCreation ?, ?, @Status OUTPUT, @Remark OUTPUT;
-                            SELECT @Status as Status, @Remark as Remark;
-                        ');
-
-                            $statement->execute([$user->Id, $applicationId]);
-                            $result = $statement->fetchAll(\PDO::FETCH_OBJ);
-
-                            $status = $result[0]->Status ?? 'Failed';
-                            $remark = $result[0]->Remark ?? 'Unknown error';
-
-                            if (strtolower($status) === 'success') {
-                                $provisioningResults['biz'] = ['status' => 'Success', 'remark' => $remark];
-                                Log::info('✓ BIZ/FITSYS provisioning successful');
-                            } else {
-                                $provisioningErrors[] = 'BIZ: ' . $remark;
-                                $provisioningResults['biz'] = ['status' => 'Failed', 'remark' => $remark];
-                                Log::warning('⚠ BIZ provisioning failed', ['remark' => $remark]);
-                            }
-                        }
-                    } catch (\Exception $e) {
-                        Log::error('✗ BIZ provisioning error', ['error' => $e->getMessage()]);
-                        $provisioningErrors[] = 'BIZ: ' . $e->getMessage();
-                        $provisioningResults['biz'] = ['status' => 'Error', 'error' => $e->getMessage()];
-                    }
-                } elseif ($bizModules->isNotEmpty()) {
-                    $provisioningResults['biz'] = ['status' => 'Skipped', 'reason' => 'Already provisioned'];
-                    Log::info('⊘ BIZ provisioning skipped - already provisioned');
-                }
-
-                // ----------------------------------------------------------------
-                // 14.5: Log completion (user remains Pending for admin approval)
-                // ----------------------------------------------------------------
-                if (collect($provisioningResults)->every(function ($result) {
-                    return in_array($result['status'], ['Success', 'Skipped']);
-                })) {
-                    Log::info('✓ All provisioning completed - user remains Pending for admin approval', [
-                        'user_id' => $user->Id,
-                        'status' => 'Pending',
-                    ]);
-                } else {
-                    Log::warning('⚠ Some provisioning failed - user remains Pending', [
-                        'errors' => $provisioningErrors,
-                    ]);
-                }
-
-                Log::info('=== AUTO-PROVISIONING COMPLETED ===', [
-                    'results' => $provisioningResults,
-                    'errors' => $provisioningErrors,
-                ]);
-
-                // ====================================================================
-                // STEP 15: Build enhanced success message
-                // ====================================================================
-
-                $successMessage = "User updated successfully! " .
-                    "Base office set to: {$baseOfficeCode}. " .
-                    "{$rolesInserted} role(s) and {$functionsInserted} function(s) saved.";
-
-                // Add provisioning summary
-                if (!empty($provisioningResults)) {
-                    $successMessage .= "<br><br><strong>Auto-Provisioning Results:</strong><br>";
-
-                    foreach ($provisioningResults as $system => $result) {
-                        $systemName = strtoupper(str_replace('_', ' ', $system));
-                        $icon = $result['status'] === 'Success' ? '✅' : ($result['status'] === 'Skipped' ? '⊘' : '⚠️');
-
-                        $successMessage .= "{$icon} {$systemName}: {$result['status']}";
-
-                        if (isset($result['reason'])) {
-                            $successMessage .= " ({$result['reason']})";
-                        }
-
-                        $successMessage .= "<br>";
-                    }
-
-                    // Show activation status
-                    $allProvisioned = collect($provisioningResults)->every(fn($r) => in_array($r['status'], ['Success', 'Skipped']));
-
-                    if ($allProvisioned) {
-                        $successMessage .= "<br><strong>✅ User provisioned to all systems!</strong><br>";
-                        $successMessage .= "<em>Status remains <strong>Pending</strong> - you can activate the user when ready.</em>";
-                    } else {
-                        $successMessage .= "<br><em>⚠️ User remains <strong>Pending</strong>. Fix provisioning errors before activation.</em>";
-                    }
-                }
-
-                // ====================================================================
-                // STEP 16: Return success response
+                // STEP 14: Return success response
                 // ====================================================================
                 return response()->json([
                     'success' => true,
-                    'message' => $successMessage,
+                    'message' => 'User updated successfully! ' .
+                        'Base office set to: ' . $baseOfficeCode . '. ' .
+                        $rolesInserted . ' role(s) and ' .
+                        $functionsInserted . ' function(s) saved.',
                     'data' => [
                         'user_id' => $user->Id,
                         'scm_base_office' => $baseOfficeCode,
@@ -2153,8 +1906,6 @@ class AzureUserManagementController extends Controller
                         'functions_count' => $functionsInserted,
                         'total_assignments' => $totalInserted,
                         'deleted_assignments' => $deletedRoles + $deletedFunctions,
-                        'provisioning_results' => $provisioningResults,
-                        'provisioning_errors' => $provisioningErrors,
                         'updated_at' => now()->toDateTimeString(),
                     ],
                 ]);
@@ -2980,7 +2731,7 @@ class AzureUserManagementController extends Controller
                             ->insert([
                                 'Id' => $mappingId,
                                 'AzureUserID' => $azureId,  // ✅ Use Azure ID (GUID)
-                                'user_id' => $userPrincipalName,  
+                                'user_id' => $userPrincipalName,
                                 'application_id' => $roleData['application_id'],
                                 'Username' => $request->name,
                                 'ApplicationName' => $roleData['application_name'],
@@ -3482,7 +3233,7 @@ class AzureUserManagementController extends Controller
 
     /**
      * Provision an existing user to Azure AD
-     * This is for users created in the database but not yet in Azure AD
+     * This is for users created in the database but not yet in Azure ADupdate()
      */
     public function provisionToAzure(AzureUser $user)
     {
