@@ -1339,3 +1339,31 @@ Route::prefix('admin/sp-test')
         Route::get('/check-sp-exists/{spName}', [\App\Http\Controllers\StoredProcedureTestController::class, 'checkSPExists'])
             ->name('check-exists');
     });
+
+
+Route::get('/test/azure-provision-email/{email}', function ($email) {
+    try {
+        $user = App\Models\AzureUser::where('userPrincipalName', $email)->firstOrFail();
+        
+        if (!empty($user->AzureId)) {
+            return response()->json([
+                'status' => 'SKIPPED',
+                'message' => 'User already provisioned',
+                'azure_id' => $user->AzureId,
+            ]);
+        }
+        
+        $controller = new App\Http\Controllers\AzureUserManagementController(
+            app(App\Services\AzureUserProvisioningService::class),
+            app(App\Services\AzureModuleAssignmentService::class)
+        );
+        
+        return $controller->provisionToAzure($user);
+        
+    } catch (\Exception $e) {
+        return response()->json([
+            'status' => 'FAILED',
+            'error' => $e->getMessage(),
+        ], 500);
+    }
+});

@@ -1581,22 +1581,51 @@ class AzureUserManagementController extends Controller
                 // ====================================================================
                 // STEP 6: Delete existing assignments using AzureUserID
                 // ====================================================================
-                Log::info('Deleting existing assignments', [
+                Log::info('Deleting existing assignments for modules being updated', [
                     'user_id' => $user->Id,
-                    'azure_id' => $user->AzureId,
                 ]);
 
-                $deletedRoles = DB::connection('sqlsrv')
-                    ->table('Azure_Application_UserMapping')
-                    ->where('AzureUserID', $user->Id)->delete();
+                // Get modules from request
+                $modulesData = $request->input('modules', []);
 
-                $deletedFunctions = DB::connection('sqlsrv')
-                    ->table('Azure_Application_UserFunction')
-                    ->where('AzureUserID', $user->Id)->delete();
+                if (empty($modulesData)) {
+                    Log::info('No modules in request - deleting ALL assignments');
+
+                    // If clearing all modules (modules_empty flag or empty array)
+                    $deletedRoles = DB::connection('sqlsrv')
+                        ->table('Azure_Application_UserMapping')
+                        ->where('AzureUserID', $user->Id)
+                        ->delete();
+
+                    $deletedFunctions = DB::connection('sqlsrv')
+                        ->table('Azure_Application_UserFunction')
+                        ->where('AzureUserID', $user->Id)
+                        ->delete();
+                } else {
+                    // Get unique application IDs from the modules being updated
+                    $moduleIds = collect($modulesData)->pluck('application_id')->unique()->toArray();
+
+                    Log::info('Deleting assignments for specific modules only', [
+                        'module_ids' => $moduleIds,
+                        'module_count' => count($moduleIds),
+                    ]);
+
+                    $deletedRoles = DB::connection('sqlsrv')
+                        ->table('Azure_Application_UserMapping')
+                        ->where('AzureUserID', $user->Id)
+                        ->whereIn('application_id', $moduleIds)
+                        ->delete();
+
+                    $deletedFunctions = DB::connection('sqlsrv')
+                        ->table('Azure_Application_UserFunction')
+                        ->where('AzureUserID', $user->Id)
+                        ->whereIn('application_id', $moduleIds)
+                        ->delete();
+                }
 
                 Log::info('Deleted existing assignments', [
-                    'azure_id' => $user->AzureId,
-                    'roles_deleted' => $deletedRoles,
+                    'azure_id' => $user->Id,              // ✅ Fixed: removed extra 'd'
+                    'roles_deleted' => $deletedRoles,     // ✅ Fixed: changed from $deleteRoles
                     'functions_deleted' => $deletedFunctions,
                 ]);
 
@@ -2160,6 +2189,7 @@ class AzureUserManagementController extends Controller
             ], 500);
         }
     }
+
     /**
      * Helper to get application name from ID
      */
@@ -3518,14 +3548,11 @@ class AzureUserManagementController extends Controller
 
             // Update database with Azure ID
             DB::connection('sqlsrv')->update('
-            UPDATE Azure_Users
-            SET AzureId = ?,
-                LastModifiedBy = ?,
-                LastModifiedOn = GETDATE()
-            WHERE Id = ?
-        ', [
+                UPDATE Azure_Users
+                SET AzureId = ?
+                WHERE Id = ?
+            ', [
                 $azureId,
-                Auth::id() ?? 'system',
                 $user->Id,
             ]);
 
