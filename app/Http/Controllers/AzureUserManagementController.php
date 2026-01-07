@@ -3282,8 +3282,26 @@ class AzureUserManagementController extends Controller
                 'email' => $user->userPrincipalName,
                 'current_status' => $user->Status,
                 'azure_id' => $user->AzureId,
+                'base_office' => $user->BaseOfficeCode,
                 'initiated_by' => Auth::id(),
             ]);
+
+            // ✅ NEW: Check if base office is set
+            if (empty($user->BaseOfficeCode)) {
+                Log::warning('Cannot enable user - no base office set', [
+                    'user_id' => $user->Id,
+                    'email' => $user->userPrincipalName,
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cannot enable user: Base office is not set.',
+                    'instructions' => 'Please go to the user\'s edit page and select a base office before enabling.',
+                    'requires_base_office' => true,
+                    'user_id' => $user->Id,
+                    'user_email' => $user->userPrincipalName,
+                ], 422);
+            }
 
             // Check if user is already active
             if ($user->Status === 'Active') {
@@ -3402,7 +3420,10 @@ class AzureUserManagementController extends Controller
                     $user->Id,
                     'user.enabled',
                     'User account enabled',
-                    ['enabled_by' => Auth::user()->name ?? Auth::id() ?? 'system']
+                    [
+                        'enabled_by' => Auth::user()->name ?? Auth::id() ?? 'system',
+                        'base_office' => $user->BaseOfficeCode,
+                    ]
                 );
             } catch (\Exception $e) {
                 Log::warning('Failed to log user activity', [
@@ -3414,6 +3435,7 @@ class AzureUserManagementController extends Controller
             Log::info('=== USER ENABLED SUCCESSFULLY ===', [
                 'user_id' => $user->Id,
                 'azure_id' => $user->AzureId,
+                'base_office' => $user->BaseOfficeCode,
                 'enabled_by' => Auth::user()->name ?? Auth::id() ?? 'system',
             ]);
 

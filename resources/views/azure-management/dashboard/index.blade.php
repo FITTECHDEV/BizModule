@@ -664,8 +664,49 @@
             window.location.href = window.location.pathname;
         }
 
+        // ✅ UPDATED: Enable user with base office check
         function enableUser(userId) {
-            toggleUserStatus(userId, 'enable');
+            if (!confirm(
+                    'Enable User\n\nAre you sure you want to enable this user? They will regain access to all systems.')) {
+                return;
+            }
+
+            const url = `/azure/users/${userId}/enable`;
+
+            fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert(data.message || 'User has been enabled successfully');
+                        window.location.reload();
+                    } else {
+                        // ✅ Check if it's a base office error
+                        if (data.requires_base_office) {
+                            const errorMessage = data.message + '\n\n' + data.instructions +
+                                '\n\nClick OK to go to the user\'s edit page and set the base office.';
+
+                            if (confirm(errorMessage)) {
+                                // Redirect to edit page
+                                window.location.href = `/azure/users/${userId}/edit`;
+                            }
+                        } else {
+                            // Other errors
+                            alert(data.message || 'Failed to enable user');
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Error enabling user:', error);
+                    alert('Failed to enable user. ' + error.message);
+                });
         }
 
         function disableUser(userId) {

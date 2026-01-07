@@ -6,6 +6,7 @@ use Exception;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Database\QueryException;
 
 class OdooSyncController extends Controller
 {
@@ -128,10 +129,12 @@ class OdooSyncController extends Controller
      */
     public function syncUsersAjax()
     {
+        $startTime = now();
+
         try {
             Log::info('=== MANUAL ODOO SYNC STARTED ===', [
                 'initiated_by' => Auth::id(),
-                'time' => now(),
+                'time' => $startTime,
             ]);
 
             $stats = [
@@ -142,55 +145,238 @@ class OdooSyncController extends Controller
                 'errors' => [],
             ];
 
-            // Fetch users from Odoo
-            $odooUsers = DB::connection('pgsql')->select('SELECT * FROM vw_getuserdetails');
+            // ====================================================================
+            // STEP 1: CONNECT TO ODOO DATABASE
+            // ====================================================================
+            try {
+                Log::info('Step 1: Connecting to Odoo database...');
 
-            if (empty($odooUsers)) {
+                // Test connection
+                DB::connection('pgsql')->getPdo();
+
+                Log::info('✓ Step 1: Connected to Odoo successfully');
+            } catch (\PDOException $e) {
+                Log::error('✗ Step 1 FAILED: Could not connect to Odoo database', [
+                    'error' => $e->getMessage(),
+                    'code' => $e->getCode(),
+                ]);
+
                 return response()->json([
                     'success' => false,
-                    'message' => 'No users found in Odoo',
-                ], 404);
+                    'error_type' => 'odoo_connection_failed',
+                    'retry_possible' => true,
+                    'step_failed' => 'odoo_connection',
+                    'message' => 'Could not connect to Odoo database',
+                    'technical_details' => $e->getMessage(),
+                    'troubleshooting' => [
+                        'Verify Odoo (PostgreSQL) server is running',
+                        'Check DB_PGSQL_HOST, DB_PGSQL_DATABASE in .env file',
+                        'Test network connectivity to Odoo server',
+                        'Verify database credentials are correct',
+                        'Check firewall rules allow connection to PostgreSQL port',
+                    ],
+                ], 500);
+            } catch (\Exception $e) {
+                Log::error('✗ Step 1 FAILED: Unexpected connection error', [
+                    'error' => $e->getMessage(),
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'error_type' => 'connection_error',
+                    'retry_possible' => true,
+                    'step_failed' => 'odoo_connection',
+                    'message' => 'Failed to connect to Odoo',
+                    'technical_details' => $e->getMessage(),
+                    'troubleshooting' => [
+                        'Check your internet connection',
+                        'Verify VPN is connected if required',
+                        'Contact IT support if issue persists',
+                    ],
+                ], 500);
             }
 
-            // Process users in transaction
-            DB::connection('sqlsrv')->transaction(function () use ($odooUsers, &$stats) {
-                foreach ($odooUsers as $user) {
-                    $stats['processed']++;
+            // ====================================================================
+            // STEP 2: FETCH USERS FROM ODOO
+            // ====================================================================
+            try {
+                Log::info('Step 2: Fetching users from Odoo view...');
 
-                    try {
-                        $userData = $this->normalizeUserData($user);
+                $odooUsers = DB::connection('pgsql')->select('SELECT * FROM vw_getuserdetails');
 
-                        $existingUser = DB::connection('sqlsrv')
-                            ->table('Azure_Users')
-                            ->where('userPrincipalName', $userData['userPrincipalName'])
-                            ->first();
+                if (empty($odooUsers)) {
+                    Log::warning('No users found in Odoo view');
 
-                        if (! $existingUser) {
-                            // NEW USER: Insert with Status = "Pending"
-                            $this->insertUserImproved($userData);
-                            $stats['inserted']++;
-                        } else {
-                            // EXISTING USER: Update and set to "Active"
-                            $this->updateUserImproved($userData);
-                            $stats['updated']++;
-                        }
-                    } catch (Exception $e) {
-                        $stats['failed']++;
-                        $stats['errors'][] = [
-                            'user' => $userData['userPrincipalName'] ?? 'Unknown',
-                            'error' => $e->getMessage(),
-                        ];
-
-                        Log::error('Failed to sync user', [
-                            'user' => $userData['userPrincipalName'] ?? 'Unknown',
-                            'error' => $e->getMessage(),
-                        ]);
-                    }
+                    return response()->json([
+                        'success' => false,
+                        'error_type' => 'no_data',
+                        'retry_possible' => false,
+                        'step_failed' => 'data_fetch',
+                        'message' => 'No users found in Odoo',
+                        'technical_details' => 'vw_getuserdetails returned 0 rows',
+                        'troubleshooting' => [
+                            'Check if vw_getuserdetails view exists in Odoo database',
+                            'Verify the view has data: SELECT COUNT(*) FROM vw_getuserdetails',
+                            'Check if view permissions are correct',
+                            'Verify employees exist in Odoo HR module',
+                        ],
+                    ], 404);
                 }
-            });
+
+                Log::info('✓ Step 2: Fetched users from Odoo', [
+                    'count' => count($odooUsers),
+                ]);
+            } catch (\Exception $e) {
+                Log::error('✗ Step 2 FAILED: Could not fetch users from Odoo', [
+                    'error' => $e->getMessage(),
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'error_type' => 'odoo_query_failed',
+                    'retry_possible' => true,
+                    'step_failed' => 'data_fetch',
+                    'message' => 'Failed to fetch users from Odoo view',
+                    'technical_details' => $e->getMessage(),
+                    'troubleshooting' => [
+                        'Check if vw_getuserdetails view exists',
+                        'Verify database user has SELECT permission on the view',
+                        'Run query manually in pgAdmin to test: SELECT * FROM vw_getuserdetails',
+                        'Check Odoo database logs for errors',
+                    ],
+                ], 500);
+            }
+
+            // ====================================================================
+            // STEP 3: CONNECT TO SQL SERVER
+            // ====================================================================
+            try {
+                Log::info('Step 3: Connecting to SQL Server...');
+
+                // Test connection
+                DB::connection('sqlsrv')->getPdo();
+
+                Log::info('✓ Step 3: Connected to SQL Server successfully');
+            } catch (\Exception $e) {
+                Log::error('✗ Step 3 FAILED: Could not connect to SQL Server', [
+                    'error' => $e->getMessage(),
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'error_type' => 'sqlserver_connection_failed',
+                    'retry_possible' => true,
+                    'step_failed' => 'sqlserver_connection',
+                    'message' => 'Could not connect to SQL Server database',
+                    'technical_details' => $e->getMessage(),
+                    'troubleshooting' => [
+                        'Verify SQL Server is running',
+                        'Check DB_HOST, DB_DATABASE in .env file',
+                        'Verify SQL Server credentials are correct',
+                        'Check SQL Server allows remote connections',
+                        'Verify SQL Server service is started',
+                    ],
+                ], 500);
+            }
+
+            // ====================================================================
+            // STEP 4: PROCESS USERS IN TRANSACTION
+            // ====================================================================
+            try {
+                Log::info('Step 4: Processing users...');
+
+                DB::connection('sqlsrv')->transaction(function () use ($odooUsers, &$stats) {
+                    foreach ($odooUsers as $user) {
+                        $stats['processed']++;
+
+                        try {
+                            $userData = $this->normalizeUserData($user);
+
+                            $existingUser = DB::connection('sqlsrv')
+                                ->table('Azure_Users')
+                                ->where('userPrincipalName', $userData['userPrincipalName'])
+                                ->first();
+
+                            if (!$existingUser) {
+                                // NEW USER: Insert with Status = "Pending"
+                                $this->insertUserImproved($userData);
+                                $stats['inserted']++;
+
+                                Log::debug('Inserted new user', [
+                                    'email' => $userData['userPrincipalName'],
+                                ]);
+                            } else {
+                                // EXISTING USER: Update and set to "Active"
+                                $this->updateUserImproved($userData);
+                                $stats['updated']++;
+
+                                Log::debug('Updated existing user', [
+                                    'email' => $userData['userPrincipalName'],
+                                ]);
+                            }
+                        } catch (QueryException $e) {
+                            $stats['failed']++;
+                            $errorDetails = [
+                                'user' => $userData['userPrincipalName'] ?? 'Unknown',
+                                'error' => $e->getMessage(),
+                                'sql_state' => $e->getCode(),
+                            ];
+
+                            $stats['errors'][] = $errorDetails;
+
+                            Log::error('Database error syncing user', $errorDetails);
+                        } catch (Exception $e) {
+                            $stats['failed']++;
+                            $errorDetails = [
+                                'user' => $userData['userPrincipalName'] ?? 'Unknown',
+                                'error' => $e->getMessage(),
+                            ];
+
+                            $stats['errors'][] = $errorDetails;
+
+                            Log::error('Failed to sync user', $errorDetails);
+                        }
+                    }
+                });
+
+                Log::info('✓ Step 4: Users processed successfully', [
+                    'processed' => $stats['processed'],
+                    'inserted' => $stats['inserted'],
+                    'updated' => $stats['updated'],
+                    'failed' => $stats['failed'],
+                ]);
+            } catch (\Exception $e) {
+                Log::error('✗ Step 4 FAILED: Transaction failed', [
+                    'error' => $e->getMessage(),
+                    'stats_before_failure' => $stats,
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'error_type' => 'database_transaction_failed',
+                    'retry_possible' => true,
+                    'step_failed' => 'user_processing',
+                    'message' => 'Database transaction failed while processing users',
+                    'technical_details' => $e->getMessage(),
+                    'stats' => $stats,
+                    'troubleshooting' => [
+                        'Check SQL Server transaction log for details',
+                        'Verify database has enough space',
+                        'Check for database locks or deadlocks',
+                        'Review error details above for specific user failures',
+                        'If issue persists, try syncing users in smaller batches',
+                    ],
+                ], 500);
+            }
+
+            // ====================================================================
+            // STEP 5: CALCULATE DURATION AND RETURN SUCCESS
+            // ====================================================================
+            $duration = $startTime->diffInSeconds(now());
 
             Log::info('=== MANUAL ODOO SYNC COMPLETED ===', [
                 'stats' => $stats,
+                'duration_seconds' => $duration,
                 'initiated_by' => Auth::id(),
             ]);
 
@@ -198,17 +384,33 @@ class OdooSyncController extends Controller
                 'success' => true,
                 'message' => 'Sync completed successfully',
                 'stats' => $stats,
+                'duration_seconds' => $duration,
+                'error_type' => null,
+                'retry_possible' => false,
             ]);
+        } catch (\Exception $e) {
+            $duration = $startTime->diffInSeconds(now());
 
-        } catch (Exception $e) {
             Log::error('=== MANUAL ODOO SYNC FAILED ===', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
+                'duration_seconds' => $duration,
+                'initiated_by' => Auth::id(),
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Sync failed: '.$e->getMessage(),
+                'error_type' => 'unexpected_error',
+                'retry_possible' => true,
+                'step_failed' => 'unknown',
+                'message' => 'An unexpected error occurred during sync',
+                'technical_details' => $e->getMessage(),
+                'troubleshooting' => [
+                    'Check Laravel logs at storage/logs/laravel.log for full error trace',
+                    'Verify all database connections are properly configured',
+                    'Contact IT support with the error details below',
+                    'Try running sync again - this may be a temporary issue',
+                ],
             ], 500);
         }
     }
@@ -372,7 +574,7 @@ class OdooSyncController extends Controller
 
         echo '<h2>🔄 Odoo to Azure User Sync</h2>';
         echo "<div class='stat-box'>";
-        echo '<strong>Start Time:</strong> '.$startTime->format('Y-m-d H:i:s').'<br>';
+        echo '<strong>Start Time:</strong> ' . $startTime->format('Y-m-d H:i:s') . '<br>';
         echo '<strong>Source:</strong> PostgreSQL (Odoo) - vw_getuserdetails<br>';
         echo '<strong>Destination:</strong> SQL Server - Azure_Users';
         echo '</div><hr>';
@@ -402,7 +604,7 @@ class OdooSyncController extends Controller
 
         echo '<hr><h3>📊 Sync Summary</h3>';
         echo "<div class='stat-box'>";
-        echo '<strong>End Time:</strong> '.$endTime->format('Y-m-d H:i:s').'<br>';
+        echo '<strong>End Time:</strong> ' . $endTime->format('Y-m-d H:i:s') . '<br>';
         echo "<strong>Duration:</strong> {$duration} seconds<br><br>";
         echo "<strong>Total Processed:</strong> {$stats['processed']}<br>";
         echo "<strong class='success'>✅ Inserted (Status: Pending):</strong> {$stats['inserted']}<br>";
@@ -424,9 +626,9 @@ class OdooSyncController extends Controller
     {
         echo "<div class='error'>";
         echo '<h3>❌ Critical Error</h3>';
-        echo '<p><strong>Error:</strong> '.$e->getMessage().'</p>';
-        echo '<p><strong>File:</strong> '.$e->getFile().'</p>';
-        echo '<p><strong>Line:</strong> '.$e->getLine().'</p>';
+        echo '<p><strong>Error:</strong> ' . $e->getMessage() . '</p>';
+        echo '<p><strong>File:</strong> ' . $e->getFile() . '</p>';
+        echo '<p><strong>Line:</strong> ' . $e->getLine() . '</p>';
         echo '</div>';
     }
 
