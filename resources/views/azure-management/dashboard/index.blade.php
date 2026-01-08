@@ -165,9 +165,20 @@
                                 <span class="input-group-text"><i class="fas fa-search"></i></span>
                             </div>
                         </div>
-                        <button onclick="syncOdooUsers()" class="btn btn-success btn-sm mr-2" id="syncBtn">
+
+                        {{-- Sync from Odoo Button --}}
+                        <button onclick="syncOdooUsers()" class="btn btn-success btn-sm mr-2" id="syncBtn"
+                            title="Import/update users from Odoo">
                             <i class="fas fa-sync-alt"></i> Sync from Odoo
                         </button>
+
+                        {{-- ✅ NEW: Bulk Sync to External Systems --}}
+                        <button onclick="bulkSyncToExternalSystems()" class="btn btn-info btn-sm mr-2" id="bulkSyncBtn"
+                            title="Sync all active users to D365, SCM, BIZ, FIT Express">
+                            <i class="fas fa-cloud-upload-alt"></i> Sync All Systems
+                        </button>
+
+                        {{-- Add User Button --}}
                         <a href="{{ route('azure.users.create') }}" class="btn btn-primary btn-sm">
                             <i class="fas fa-user-plus"></i> Add User
                         </a>
@@ -843,6 +854,69 @@
                 .catch(error => {
                     console.error('❌ Sync error:', error);
                     alert(`Sync failed!\n\nError: ${error.message}\n\nCheck browser console (F12) for details.`);
+                    btn.disabled = false;
+                    btn.innerHTML = originalHtml;
+                });
+        }
+
+        /**
+         * Sync user to all external systems using unified SP
+         */
+        function syncUserToExternalSystems(userId) {
+            if (!confirm(
+                    'Sync User to External Systems\n\n' +
+                    'This will sync the user to:\n' +
+                    '• D365 (if assigned)\n' +
+                    '• SCM/OPS (if assigned)\n' +
+                    '• BIZ PRO (if assigned)\n' +
+                    '• FIT Express (if assigned)\n\n' +
+                    'Continue?'
+                )) {
+                return;
+            }
+
+            // Show loading state
+            const btn = event.target.closest('button');
+            const originalHtml = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+            fetch(`/azure/users/${userId}/sync-unified`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Build detailed message
+                        let message = '✅ Sync Completed!\n\n';
+
+                        if (data.results) {
+                            for (const [system, result] of Object.entries(data.results)) {
+                                const icon = result.status === 'success' ? '✅' : '❌';
+                                const systemName = system.toUpperCase().replace('_', ' ');
+                                message += `${icon} ${systemName}: ${result.message}\n`;
+                            }
+                        }
+
+                        alert(message);
+
+                        // Reload to show updated status
+                        window.location.reload();
+                    } else {
+                        alert('❌ Sync Failed\n\n' + (data.message || 'Unknown error'));
+                        btn.disabled = false;
+                        btn.innerHTML = originalHtml;
+                    }
+                })
+                .catch(error => {
+                    console.error('Sync error:', error);
+                    alert('❌ Sync Failed\n\n' + error.message);
                     btn.disabled = false;
                     btn.innerHTML = originalHtml;
                 });

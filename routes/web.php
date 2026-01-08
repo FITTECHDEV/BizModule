@@ -409,6 +409,13 @@ Route::prefix('azure')->name('azure.')->middleware(['auth'])->group(function () 
         Route::post('/users/{user}/retry-scm', [AzureUserManagementController::class, 'retrySCMProvisioning'])
             ->name('azure.users.retry-scm');
 
+        // Unified provisioning retry (replaces individual retry routes)
+        Route::post(
+            '/azure/users/{user}/retry-provisioning',
+            [AzureUserManagementController::class, 'retryUnifiedProvisioning']
+        )
+            ->name('azure.users.retry-provisioning');
+
         // Office-specific assignment configuration
         Route::post('/{user}/configure-office', [App\Http\Controllers\AzureUserManagementController::class, 'configureOfficeAssignments'])
             ->name('configure-office')
@@ -1551,4 +1558,3 @@ Route::get('/test/check-biz-sync/{email}', function ($email) {
         ], 500);
     }
 });
-

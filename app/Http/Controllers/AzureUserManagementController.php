@@ -1290,12 +1290,11 @@ class AzureUserManagementController extends Controller
                     'updated_by' => Auth::id(),
                 ]);
 
-                // ====================================================================
-                // ✅ NEW: STEP 14: AUTO-SYNC TO EXTERNAL SYSTEMS
+                // ✅ STEP 14: AUTO-SYNC TO EXTERNAL SYSTEMS (UNIFIED SP)
                 // ====================================================================
                 try {
-                    Log::info('→ Starting automatic sync to external systems...');
-                    $syncResults = $this->syncToExternalSystems($user);
+                    Log::info('→ Starting automatic sync to external systems (unified)...');
+                    $syncResults = $this->syncToExternalSystemsUnified($user);
 
                     Log::info('✓ External systems sync completed', [
                         'user_id' => $user->Id,
@@ -2281,13 +2280,48 @@ class AzureUserManagementController extends Controller
             // STEP 12: AUTO-PROVISION TO EXTERNAL SYSTEMS
             // ====================================================================
 
-            Log::info('=== AUTO-PROVISIONING STARTED ===', [
+            Log::info('=== AUTO-PROVISIONING STARTED (UNIFIED) ===', [
                 'user_id' => $userId,
                 'azure_id' => $azureId,
             ]);
 
             $provisioningResults = [];
             $provisioningErrors = [];
+
+            // Refresh user model to get the inserted record
+            $user = AzureUser::find($userId);
+
+            if ($user) {
+                try {
+                    $syncResults = $this->syncToExternalSystemsUnified($user);
+
+                    foreach ($syncResults as $system => $result) {
+                        $provisioningResults[$system] = [
+                            'status' => $result['status'] === 'success' ? 'Success' : 'Failed',
+                            'remark' => $result['message']
+                        ];
+
+                        if ($result['status'] !== 'success') {
+                            $provisioningErrors[] = "{$system}: {$result['message']}";
+                        }
+                    }
+
+                    Log::info('✓ Unified provisioning completed', [
+                        'systems_processed' => count($syncResults),
+                        'errors' => count($provisioningErrors)
+                    ]);
+                } catch (\Exception $e) {
+                    Log::error('Unified provisioning failed', [
+                        'error' => $e->getMessage()
+                    ]);
+                    $provisioningErrors[] = 'Provisioning error: ' . $e->getMessage();
+                }
+            } else {
+                Log::error('Could not find user for provisioning', ['user_id' => $userId]);
+            }
+
+            // Continue with existing activation status logic...
+            $finalStatus = 'Pending';
 
             // Azure AD is already provisioned in Step 4, just log it
             $provisioningResults['azure_ad'] = [
@@ -4386,167 +4420,6 @@ class AzureUserManagementController extends Controller
         ];
     }
 
-    // /**
-    //  * Bulk insert assignments with proper error handling
-    //  *
-    //  * @return array ['success' => int, 'failed' => array, 'skipped' => int]
-    //  */
-    // private function bulkInsertAssignments(
-    //     string $userPrincipalName,
-    //     string $displayName,
-    //     array $assignments,
-    //     ?string $azureUserId = null
-    // ): array {
-    //     $stats = [
-    //         'success' => 0,
-    //         'failed' => [],
-    //         'skipped' => 0,
-    //     ];
-
-    //     // Prepare bulk insert data
-    //     $insertData = [];
-
-    //     foreach ($assignments as $index => $assignment) {
-    //         // Skip if already exists
-    //         if ($this->assignmentExists($userPrincipalName, $assignment)) {
-    //             $stats['skipped']++;
-    //             Log::debug('Skipping duplicate assignment', [
-    //                 'user' => $userPrincipalName,
-    //                 'module' => $assignment['application_name'] ?? 'unknown',
-    //                 'location' => $assignment['location_code'],
-    //                 'role' => $assignment['role_code'],
-    //             ]);
-
-    //             continue;
-    //         }
-
-    //         // Generate new GUID
-    //         $mappingId = DB::connection('sqlsrv')
-    //             ->selectOne('SELECT NEWID() as newId')->newId;
-
-    //         $insertData[] = [
-    //             'Id' => $mappingId,
-    //             'AzureUserID' => $azureUserId,
-    //             'user_id' => $userPrincipalName,
-    //             'application_id' => $assignment['application_id'],
-    //             'Username' => $displayName,
-    //             'ApplicationName' => $assignment['application_name'],
-    //             'RoleCode' => $assignment['role_code'],
-    //             'RoleID' => $assignment['role_id'],
-    //             'OfficeCode' => $assignment['location_code'],
-    //             'OfficeID' => $assignment['location_id'],
-    //             'IsActive' => 1,
-    //             'IsDelete' => 0,
-    //             'CreatedBy' => Auth::id() ?? 'system',
-    //             'CreatedOn' => DB::raw('GETDATE()'),
-    //             'LastModifiedBy' => null,
-    //             'LastModifiedOn' => null,
-    //             // Remove FunctionCode and FunctionID from here
-    //         ];
-    //     }
-
-    //     // Batch insert (chunks of 100 to avoid SQL limits)
-    //     if (! empty($insertData)) {
-    //         $chunks = array_chunk($insertData, 100);
-
-    //         foreach ($chunks as $chunkIndex => $chunk) {
-    //             try {
-    //                 DB::connection('sqlsrv')
-    //                     ->table('Azure_Application_UserMapping')
-    //                     ->insert($chunk);
-
-    //                 $stats['success'] += count($chunk);
-
-    //                 Log::info('Bulk insert chunk completed', [
-    //                     'chunk' => $chunkIndex + 1,
-    //                     'records' => count($chunk),
-    //                 ]);
-    //             } catch (\Exception $e) {
-    //                 // If bulk fails, try individual inserts to identify problem record
-    //                 foreach ($chunk as $record) {
-    //                     try {
-    //                         DB::connection('sqlsrv')
-    //                             ->table('Azure_Application_UserMapping')
-    //                             ->insert($record);
-
-    //                         $stats['success']++;
-    //                     } catch (\Exception $individualError) {
-    //                         $stats['failed'][] = [
-    //                             'record' => $record,
-    //                             'error' => $individualError->getMessage(),
-    //                         ];
-    //                     }
-    //                 }
-    //             }
-    //         }
-    //     }
-
-    //     // ============================================================================
-    //     // INSERT FUNCTIONS INTO SEPARATE TABLE (Azure_Application_UserFunction)
-    //     // ============================================================================
-    //     $functionInsertData = [];
-    //     $functionsAdded = []; // Track which office+module combinations already have functions
-
-    //     foreach ($assignments as $assignment) {
-    //         // Only insert if function exists
-    //         if (! empty($assignment['function_id']) && ! empty($assignment['function_code'])) {
-
-    //             // Create unique key for this office+module combination
-    //             $key = $assignment['location_code'].'|'.$assignment['application_id'].'|'.$assignment['function_code'];
-
-    //             // Only add function once per office+module (not per role)
-    //             if (! in_array($key, $functionsAdded)) {
-    //                 $functionId = DB::connection('sqlsrv')->selectOne('SELECT NEWID() as newId')->newId;
-
-    //                 $functionInsertData[] = [
-    //                     'Id' => $functionId,
-    //                     'AzureUserID' => $azureUserId,
-    //                     'user_id' => $userPrincipalName,
-    //                     'application_id' => $assignment['application_id'],
-    //                     'Username' => $displayName,
-    //                     'ApplicationName' => $assignment['application_name'],
-    //                     'FunctionCode' => $assignment['function_code'],
-    //                     'FunctionID' => $assignment['function_id'],
-    //                     'OfficeCode' => $assignment['location_code'],
-    //                     'OfficeID' => $assignment['location_id'],
-    //                     'IsActive' => 1,
-    //                     'IsDelete' => 0,
-    //                     'CreatedBy' => Auth::id() ?? 'system',
-    //                     'CreatedOn' => DB::raw('GETDATE()'),
-    //                     'LastModifiedBy' => null,
-    //                     'LastModifiedOn' => null,
-    //                 ];
-
-    //                 $functionsAdded[] = $key;
-    //             }
-    //         }
-    //     }
-
-    //     // Insert functions if any
-    //     if (! empty($functionInsertData)) {
-    //         try {
-    //             $chunks = array_chunk($functionInsertData, 100);
-
-    //             foreach ($chunks as $chunk) {
-    //                 DB::connection('sqlsrv')
-    //                     ->table('Azure_Application_UserFunction')
-    //                     ->insert($chunk);
-    //             }
-
-    //             Log::info('Functions inserted successfully', [
-    //                 'count' => count($functionInsertData),
-    //             ]);
-    //         } catch (\Exception $e) {
-    //             Log::error('Failed to insert functions', [
-    //                 'error' => $e->getMessage(),
-    //                 'count' => count($functionInsertData),
-    //             ]);
-    //         }
-    //     }
-
-    //     return $stats;
-    // }
-
     /**
      * Retry D365 provisioning for a specific user
      */
@@ -5182,6 +5055,48 @@ class AzureUserManagementController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'BIZ/FITSYS provisioning failed: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Unified retry for all external systems
+     */
+    public function retryUnifiedProvisioning(AzureUser $user)
+    {
+        try {
+            Log::info('=== UNIFIED PROVISIONING RETRY ===', [
+                'user_id' => $user->Id,
+                'initiated_by' => Auth::id(),
+            ]);
+
+            $results = $this->syncToExternalSystemsUnified($user);
+
+            $successCount = collect($results)->where('status', 'success')->count();
+            $totalCount = count($results);
+
+            if ($successCount === $totalCount) {
+                return response()->json([
+                    'success' => true,
+                    'message' => "All {$totalCount} system(s) provisioned successfully!",
+                    'results' => $results
+                ]);
+            } else {
+                return response()->json([
+                    'success' => false,
+                    'message' => "Provisioned {$successCount} of {$totalCount} system(s). Check details for failures.",
+                    'results' => $results
+                ], 422);
+            }
+        } catch (\Exception $e) {
+            Log::error('Unified provisioning retry failed', [
+                'user_id' => $user->Id,
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Provisioning failed: ' . $e->getMessage()
             ], 500);
         }
     }
@@ -5882,6 +5797,123 @@ class AzureUserManagementController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'External systems sync completed',
+                'results' => $results
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Sync failed: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Sync user to external systems using unified SP
+     * @param AzureUser $user
+     * @return array
+     */
+    private function syncToExternalSystemsUnified(AzureUser $user)
+    {
+        try {
+            Log::info('=== UNIFIED SYNC TO EXTERNAL SYSTEMS ===', [
+                'user_id' => $user->Id,
+                'user_email' => $user->userPrincipalName ?? $user->mail
+            ]);
+
+            // Call the unified stored procedure
+            $statement = DB::connection('sqlsrv')->getPdo()->prepare('
+            SET NOCOUNT ON;
+            DECLARE @sp_Remark VARCHAR(2000);
+            EXEC sp_Azure_UserCreationorUpdate ?, @sp_Remark OUTPUT;
+            SELECT @sp_Remark as Remark;
+        ');
+
+            $statement->execute([$user->Id]);
+            $result = $statement->fetchAll(\PDO::FETCH_OBJ);
+
+            $remark = $result[0]->Remark ?? 'No response from stored procedure';
+
+            // Parse the multi-line response
+            $lines = explode("\n", $remark);
+            $results = [];
+
+            foreach ($lines as $line) {
+                $line = trim($line);
+                if (empty($line)) continue;
+
+                // Parse: "For Application - D365 - Status Failed - Remark - User has been already created..."
+                if (preg_match('/For Application - (.+?) - Status (.+?) - Remark - (.+)/', $line, $matches)) {
+                    $application = trim($matches[1]);
+                    $status = trim($matches[2]);
+                    $remarkText = trim($matches[3]);
+
+                    $results[$application] = [
+                        'status' => strtolower($status) === 'success' ? 'success' : 'error',
+                        'message' => $remarkText
+                    ];
+                }
+            }
+
+            // If no results parsed, check if it was a general error
+            if (empty($results)) {
+                if (stripos($remark, 'User ID shared does not exists') !== false) {
+                    return [
+                        'error' => [
+                            'status' => 'error',
+                            'message' => 'User not found in database'
+                        ]
+                    ];
+                }
+
+                // Return raw remark if can't parse
+                return [
+                    'unknown' => [
+                        'status' => 'error',
+                        'message' => $remark
+                    ]
+                ];
+            }
+
+            Log::info('✓ Unified sync completed', [
+                'user_id' => $user->Id,
+                'systems_processed' => count($results),
+                'results' => $results
+            ]);
+
+            return $results;
+        } catch (\Exception $e) {
+            Log::error('Unified sync failed', [
+                'user_id' => $user->Id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return [
+                'error' => [
+                    'status' => 'error',
+                    'message' => $e->getMessage()
+                ]
+            ];
+        }
+    }
+
+    /**
+     * Manual trigger for unified external sync
+     * 
+     * @param AzureUser $user
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function syncToExternalSystemsUnifiedManual(AzureUser $user)
+    {
+        try {
+            $results = $this->syncToExternalSystemsUnified($user);
+
+            $successCount = collect($results)->where('status', 'success')->count();
+            $totalCount = count($results);
+
+            return response()->json([
+                'success' => $totalCount > 0 && $successCount > 0,
+                'message' => "Processed {$totalCount} system(s): {$successCount} succeeded",
                 'results' => $results
             ]);
         } catch (\Exception $e) {
