@@ -39,7 +39,7 @@ Route::get('/login', function () {
     }
 
     return view('auth.azure.login');
-    // return redirect('/login/azure');
+    // return redirec t('/login/azure');
 })->name('login');
 
 Route::post('/logout', [App\Http\Controllers\Auth\LoginController::class, 'logout'])->name('logout');

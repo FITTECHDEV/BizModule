@@ -500,7 +500,7 @@ class AzureUserManagementController extends Controller
         WHERE aauf.user_id = ?
             AND aauf.IsActive = 1
             AND aauf.IsDelete = 0
-    ', [$user->userPrincipalName]);
+        ', [$user->userPrincipalName]);
 
             // Convert to collection
             $functionAssignments = collect($functionAssignments);
@@ -585,9 +585,6 @@ class AzureUserManagementController extends Controller
         }
     }
 
-    /**
-     * Show the form for editing the specified user
-     */
     /**
      * Show the form for editing the specified user
      */
@@ -691,8 +688,6 @@ class AzureUserManagementController extends Controller
             // ====================================================================
             // 4. Fetch user's existing module assignments
             // ====================================================================
-
-            // Fetch from mapping table (has roles, no functions)
             $mappingAssignments = DB::connection('sqlsrv')
                 ->table('Azure_Application_UserMapping as aaum')
                 ->join('Azure_SoftwareMaster as asm', 'aaum.application_id', '=', 'asm.ApplicationId')
@@ -2915,29 +2910,12 @@ class AzureUserManagementController extends Controller
                 $syncedSystemNames[] = 'BIZ';
             }
 
-            // Optional: Warn if no external systems have synced
-            // (Uncomment this block if you want to require at least one external system)
-            /*
-        if (empty($syncedSystemNames)) {
-            Log::warning('No external systems have synced this user', [
-                'user_id' => $user->Id,
-                'email' => $user->userPrincipalName
-            ]);
-
-            return redirect()->back()
-                ->with('warning',
-                    'Warning: No external systems (SCM, Odoo, BIZ) have synced this user yet. ' .
-                    'The user can login to Azure AD but may not have access to application modules.'
-                );
-        }
-        */
-
             // Update status to Active
             DB::connection('sqlsrv')->update("
             UPDATE Azure_Users
             SET Status = 'Active'
             WHERE Id = ?
-        ", [
+            ", [
                 $user->Id,
             ]);
 
@@ -3870,14 +3848,14 @@ class AzureUserManagementController extends Controller
 
                                 try {
                                     $d365Result = DB::connection('sqlsrv')->select('
-                SET NOCOUNT ON;
-                DECLARE @Status VARCHAR(15), @Remark VARCHAR(200);
-                EXEC sp_Azure_D365UserCreation
-                    @AzureUserID = ?,
-                    @Status = @Status OUTPUT,
-                    @Remark = @Remark OUTPUT;
-                SELECT @Status as Status, @Remark as Remark;
-            ', [$user->AzureId]);
+                                    SET NOCOUNT ON;
+                                    DECLARE @Status VARCHAR(15), @Remark VARCHAR(200);
+                                    EXEC sp_Azure_D365UserCreation
+                                        @AzureUserID = ?,
+                                        @Status = @Status OUTPUT,
+                                        @Remark = @Remark OUTPUT;
+                                        SELECT @Status as Status, @Remark as Remark;
+                                    ', [$user->AzureId]);
 
                                     $d365Status = $d365Result[0]->Status ?? 'Failed';
                                     $d365Remark = $d365Result[0]->Remark ?? 'Unknown error';
@@ -3954,11 +3932,11 @@ class AzureUserManagementController extends Controller
 
                                 try {
                                     $statement = DB::connection('sqlsrv')->getPdo()->prepare('
-                SET NOCOUNT ON;
-                DECLARE @Status VARCHAR(15), @Remark VARCHAR(200);
-                EXEC sp_Azure_SCMUserCreation ?, @Status OUTPUT, @Remark OUTPUT;
-                SELECT @Status as Status, @Remark as Remark;
-            ');
+                                    SET NOCOUNT ON;
+                                    DECLARE @Status VARCHAR(15), @Remark VARCHAR(200);
+                                    EXEC sp_Azure_SCMUserCreation ?, @Status OUTPUT, @Remark OUTPUT;
+                                    SELECT @Status as Status, @Remark as Remark;
+                                    ');
 
                                     $statement->execute([$user->AzureId]);
                                     $scmResult = $statement->fetchAll(\PDO::FETCH_OBJ);
@@ -4037,11 +4015,11 @@ class AzureUserManagementController extends Controller
 
                                     try {
                                         $statement = DB::connection('sqlsrv')->getPdo()->prepare('
-                    SET NOCOUNT ON;
-                    DECLARE @Status VARCHAR(15), @Remark VARCHAR(200);
-                    EXEC sp_Azure_FITSYSUserCreation ?, ?, @Status OUTPUT, @Remark OUTPUT;
-                    SELECT @Status as Status, @Remark as Remark;
-                ');
+                                            SET NOCOUNT ON;
+                                            DECLARE @Status VARCHAR(15), @Remark VARCHAR(200);
+                                            EXEC sp_Azure_FITSYSUserCreation ?, ?, @Status OUTPUT, @Remark OUTPUT;
+                                            SELECT @Status as Status, @Remark as Remark;
+                                        ');
 
                                         $statement->execute([$user->AzureId, $bizApp->ApplicationId]);
                                         $bizResult = $statement->fetchAll(\PDO::FETCH_OBJ);
@@ -5812,6 +5790,7 @@ class AzureUserManagementController extends Controller
      * @param AzureUser $user
      * @return array
      */
+
     private function syncToExternalSystemsUnified(AzureUser $user)
     {
         try {
@@ -5820,8 +5799,16 @@ class AzureUserManagementController extends Controller
                 'user_email' => $user->userPrincipalName ?? $user->mail
             ]);
 
-            // Call the unified stored procedure
-            $statement = DB::connection('sqlsrv')->getPdo()->prepare('
+            Log::info('Calling SP with parameters', [
+                'user_id' => $user->Id,
+                'user_id_type' => gettype($user->Id),
+                'user_id_length' => strlen($user->Id),
+                'is_valid_guid' => preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $user->Id)
+            ]);
+
+            // ✅ FIXED: Use nextRowset() to handle multiple result sets
+            $pdo = DB::connection('sqlsrv')->getPdo();
+            $statement = $pdo->prepare('
             SET NOCOUNT ON;
             DECLARE @sp_Remark VARCHAR(2000);
             EXEC sp_Azure_UserCreationorUpdate ?, @sp_Remark OUTPUT;
@@ -5829,9 +5816,49 @@ class AzureUserManagementController extends Controller
         ');
 
             $statement->execute([$user->Id]);
-            $result = $statement->fetchAll(\PDO::FETCH_OBJ);
 
-            $remark = $result[0]->Remark ?? 'No response from stored procedure';
+            $errorInfo = $statement->errorInfo();
+            if ($errorInfo[0] !== '00000') {
+                Log::error('SQL Server Error in SP', [
+                    'user_id' => $user->Id,
+                    'sqlstate' => $errorInfo[0],
+                    'error_code' => $errorInfo[1],
+                    'error_message' => $errorInfo[2]
+                ]);
+            }
+
+            // ✅ NEW: Skip any intermediate result sets from the SP
+            $remark = null;
+            do {
+                $result = $statement->fetchAll(\PDO::FETCH_OBJ);
+                if (!empty($result) && isset($result[0]->Remark)) {
+                    $remark = $result[0]->Remark;
+                    break;
+                }
+            } while ($statement->nextRowset());
+
+            // If still no remark, try fetching without loop
+            if (empty($remark)) {
+                $statement = $pdo->prepare('
+                SET NOCOUNT ON;
+                DECLARE @sp_Remark VARCHAR(2000);
+                EXEC sp_Azure_UserCreationorUpdate ?, @sp_Remark OUTPUT;
+                SELECT @sp_Remark as Remark;
+            ');
+                $statement->execute([$user->Id]);
+                $result = $statement->fetch(\PDO::FETCH_OBJ);
+                $remark = $result->Remark ?? null;
+            }
+
+            $remark = $remark ?? 'No response from stored procedure';
+
+            Log::info('Raw SP Response', [
+                'user_id' => $user->Id,
+                'raw_remark' => $remark,
+                'remark_length' => strlen($remark),
+                'has_content' => !empty(trim($remark)),
+                'first_50_chars' => substr($remark, 0, 50)
+            ]);
 
             // Parse the multi-line response
             $lines = explode("\n", $remark);
@@ -5846,6 +5873,15 @@ class AzureUserManagementController extends Controller
                     $application = trim($matches[1]);
                     $status = trim($matches[2]);
                     $remarkText = trim($matches[3]);
+
+                    // ✅ TREAT "already created" as success for updates
+                    if (
+                        strtolower($status) === 'failed' &&
+                        stripos($remarkText, 'already created') !== false
+                    ) {
+                        $status = 'Success';
+                        $remarkText = 'User already exists - roles updated in database';
+                    }
 
                     $results[$application] = [
                         'status' => strtolower($status) === 'success' ? 'success' : 'error',
@@ -5879,6 +5915,24 @@ class AzureUserManagementController extends Controller
                 'systems_processed' => count($results),
                 'results' => $results
             ]);
+
+            if (isset($results['D365'])) {
+                Log::info('D365 Sync Details', [
+                    'user_id' => $user->Id,
+                    'status' => $results['D365']['status'],
+                    'message' => $results['D365']['message'],
+                    'full_remark' => $remark  // Log full SP response
+                ]);
+            }
+
+            if (isset($results['BIZ PRO'])) {
+                Log::info('BIZ PRO Sync Details', [
+                    'user_id' => $user->Id,
+                    'status' => $results['BIZ PRO']['status'],
+                    'message' => $results['BIZ PRO']['message'],
+                    'full_remark' => $remark
+                ]);
+            }
 
             return $results;
         } catch (\Exception $e) {

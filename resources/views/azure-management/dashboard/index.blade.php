@@ -73,16 +73,6 @@
             <div class="row align-items-center">
                 <div class="col-md-6">
                     <div class="d-flex align-items-center">
-                        <!-- Status Filter -->
-                        {{-- <div class="mr-2" style="min-width: 150px;">
-                        <select id="statusFilter" class="form-control form-control-sm">
-                            <option value="">All Status</option>
-                            <option value="active" {{ request('status') == 'active' ? 'selected' : '' }}>Active</option>
-                            <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>Pending</option>
-                            <option value="inactive" {{ request('status') == 'inactive' ? 'selected' : '' }}>Inactive</option>
-                        </select>
-                    </div> --}}
-
                         <!-- Department Filter -->
                         <div class="mr-2" style="min-width: 180px;">
                             <select id="departmentFilter" class="form-control form-control-sm">
@@ -117,19 +107,20 @@
                         </div>
 
                         <!-- Office Location Filter -->
-                        {{-- <div class="mr-2" style="min-width: 180px;">
-                        <select id="locationFilter" class="form-control form-control-sm">
-                            <option value="">All Locations</option>
-                            @foreach ($locations as $location)
-                            <option value="{{ $location }}" {{ request('location') == $location ? 'selected' : '' }}>
-                                {{ $location }}
-                            </option>
-                            @endforeach
-                            <option value="no_location" {{ request('location') == 'no_location' ? 'selected' : '' }}>
-                                (No Location)
-                            </option>
-                        </select>
-                    </div> --}}
+                        <div class="mr-2" style="min-width: 180px;">
+                            <select id="locationFilter" class="form-control form-control-sm">
+                                <option value="">All Locations</option>
+                                @foreach ($locations as $location)
+                                    <option value="{{ $location }}"
+                                        {{ request('location') == $location ? 'selected' : '' }}>
+                                        {{ $location }}
+                                    </option>
+                                @endforeach
+                                <option value="no_location" {{ request('location') == 'no_location' ? 'selected' : '' }}>
+                                    (No Location)
+                                </option>
+                            </select>
+                        </div>
 
                         <!-- Search Type Dropdown (Hidden by default, shows when searching) -->
                         <div id="searchTypeContainer" class="mr-2" style="display: none; min-width: 180px;">
@@ -173,10 +164,10 @@
                         </button>
 
                         {{-- ✅ NEW: Bulk Sync to External Systems --}}
-                        <button onclick="bulkSyncToExternalSystems()" class="btn btn-info btn-sm mr-2" id="bulkSyncBtn"
+                        {{-- <button onclick="bulkSyncToExternalSystems()" class="btn btn-info btn-sm mr-2" id="bulkSyncBtn"
                             title="Sync all active users to D365, SCM, BIZ, FIT Express">
                             <i class="fas fa-cloud-upload-alt"></i> Sync All Systems
-                        </button>
+                        </button> --}}
 
                         {{-- Add User Button --}}
                         <a href="{{ route('azure.users.create') }}" class="btn btn-primary btn-sm">
