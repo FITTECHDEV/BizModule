@@ -163,11 +163,11 @@
                             <i class="fas fa-sync-alt"></i> Sync from Odoo
                         </button>
 
-                        {{-- ✅ NEW: Bulk Sync to External Systems --}}
-                        {{-- <button onclick="bulkSyncToExternalSystems()" class="btn btn-info btn-sm mr-2" id="bulkSyncBtn"
-                            title="Sync all active users to D365, SCM, BIZ, FIT Express">
-                            <i class="fas fa-cloud-upload-alt"></i> Sync All Systems
-                        </button> --}}
+                        {{-- Retry Provisioning for Pending Users --}}
+                        <button onclick="retryAllPendingUsers()" class="btn btn-warning btn-sm mr-2"
+                            id="retryProvisioningBtn" title="Retry provisioning for all pending users">
+                            <i class="fas fa-redo-alt"></i> Retry Pending
+                        </button>
 
                         {{-- Add User Button --}}
                         <a href="{{ route('azure.users.create') }}" class="btn btn-primary btn-sm">
@@ -845,6 +845,58 @@
                 .catch(error => {
                     console.error('❌ Sync error:', error);
                     alert(`Sync failed!\n\nError: ${error.message}\n\nCheck browser console (F12) for details.`);
+                    btn.disabled = false;
+                    btn.innerHTML = originalHtml;
+                });
+        }
+
+        /**
+         * ✅ NEW: Retry provisioning for all pending users
+         */
+        function retryAllPendingUsers() {
+            if (!confirm(
+                    'Retry Provisioning for All Pending Users\n\n' +
+                    'This will:\n' +
+                    '• Find all users with Status = Pending\n' +
+                    '• Create Azure accounts if missing\n' +
+                    '• Provision to external systems (D365, SCM, BIZ, FIT Express)\n' +
+                    '• Update status to Active if successful\n\n' +
+                    'This may take a few minutes.\n\n' +
+                    'Continue?'
+                )) {
+                return;
+            }
+
+            const btn = document.getElementById('retryProvisioningBtn');
+            const originalHtml = btn.innerHTML;
+
+            // Disable button and show loading
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+
+            fetch('/azure/sync/activate-users', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('✅ Retry Provisioning Completed!\n\n' + data.message);
+                        window.location.reload();
+                    } else {
+                        alert('⚠️ Provisioning completed with errors:\n\n' + data.message);
+                        btn.disabled = false;
+                        btn.innerHTML = originalHtml;
+                    }
+                })
+                .catch(error => {
+                    console.error('Retry provisioning error:', error);
+                    alert('❌ Retry Failed\n\n' + error.message);
                     btn.disabled = false;
                     btn.innerHTML = originalHtml;
                 });

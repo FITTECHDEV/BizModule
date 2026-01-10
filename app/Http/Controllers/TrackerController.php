@@ -1247,9 +1247,7 @@ class TrackerController extends Controller
             return response()->json(['success' => false, 'message' => 'Server error'], 500);
         }
     }
-    /**
-     * Complete job
-     */
+
 
     /**
      * Complete job (supports both current time and backdating)
@@ -1834,12 +1832,12 @@ class TrackerController extends Controller
                 ], 400);
             }
 
-            if ($trip->EndDate) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Trip has already been ended',
-                ], 400);
-            }
+            // if ($trip->EndDate) {
+            //     return response()->json([
+            //         'success' => false,
+            //         'message' => 'Trip has already been ended',
+            //     ], 400);
+            // }
 
             // Check all jobs are completed
             $incompleteJobs = DB::table('Trip_TripJobMapping')

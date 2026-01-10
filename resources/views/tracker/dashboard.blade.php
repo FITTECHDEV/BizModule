@@ -131,6 +131,7 @@
 
                         <div class="modal-body">
                             <!-- Trip Summary -->
+                            <!-- Inside the row with Trip No / Vehicle / Driver / Status -->
                             <div class="row mb-3">
                                 <div class="col-md-3">
                                     <small class="text-muted">Trip No</small><br>
@@ -149,6 +150,12 @@
                                         style="font-size: 0.95rem; padding: 8px 16px;">
                                         <span id="viewStatus">-</span>
                                     </span>
+
+                                    <!-- ADD HERE -->
+                                    <button type="button" class="btn btn-danger btn-sm mt-2" id="endTripAgainBtn"
+                                        style="display:none;">
+                                        <i class="fa fa-redo"></i> End Trip Again
+                                    </button>
                                 </div>
                             </div>
 
@@ -1477,6 +1484,85 @@
                         });
                 });
 
+                // ... your existing .endTrip handler ends here ...
+
+                // ─────────────────────────────────────────────────────────────
+                // NEW: END TRIP AGAIN HANDLER
+                // ─────────────────────────────────────────────────────────────
+                $(document).on('click', '#endTripAgainBtn', function() {
+                    const tripId = $('#viewTripModal').data('trip-id');
+                    const tripNo = $('#viewTripNo').text();
+
+                    Swal.fire({
+                        title: 'Re-end & Recalculate Trip?',
+                        html: `
+            <div class="alert alert-warning mb-3">
+                <strong>Warning:</strong><br>
+                This will <b>overwrite</b> current end time and<br>
+                <b>recalculate</b> distance, duration, speeds, etc.<br><br>
+                <small>Use only after correcting the last job's time.</small>
+            </div>
+            <p><strong>Trip No:</strong> ${tripNo}</p>
+            <p>Are you sure?</p>
+        `,
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonColor: '#d33',
+                        cancelButtonColor: '#6c757d',
+                        confirmButtonText: 'Yes, Re-End & Recalculate',
+                        cancelButtonText: 'No'
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            Swal.fire({
+                                title: 'Processing...',
+                                allowOutsideClick: false,
+                                didOpen: () => {
+                                    Swal.showLoading();
+
+                                    $.ajax({
+                                        url: `/tracker/trips/${tripId}/end`,
+                                        type: 'POST',
+                                        headers: {
+                                            'X-CSRF-TOKEN': $(
+                                                'meta[name="csrf-token"]').attr(
+                                                'content')
+                                        },
+                                        success: function(res) {
+                                            if (res.success) {
+                                                Swal.fire({
+                                                    icon: 'success',
+                                                    title: 'Trip Re-Ended!',
+                                                    html: `End time updated: ${moment(res.end_date).format('DD/MM/YY HH:mm')}<br><br>` +
+                                                        `Distance: ${res.total_distance || 'N/A'} km<br>` +
+                                                        `Duration: ${res.duration_hours || 'N/A'} h`,
+                                                    confirmButtonText: 'OK'
+                                                });
+
+                                                tripsTable?.ajax.reload(null,
+                                                    false);
+                                                setTimeout(() => {
+                                                    $(`.viewTrip[data-trip-id="${tripId}"]`)
+                                                        .trigger(
+                                                            'click');
+                                                }, 800);
+                                            } else {
+                                                Swal.fire('Failed', res
+                                                    .message || 'Error',
+                                                    'error');
+                                            }
+                                        },
+                                        error: function(xhr) {
+                                            Swal.fire('Error', xhr.responseJSON
+                                                ?.message || 'Server error',
+                                                'error');
+                                        }
+                                    });
+                                }
+                            });
+                        }
+                    });
+                });
+
 
 
                 // ========================================
@@ -1556,6 +1642,19 @@
                         $('#viewStatusBadge')
                             .removeClass('badge-info badge-warning badge-success badge-secondary')
                             .addClass(badge.class);
+                        const $endAgainBtn = $('#endTripAgainBtn');
+
+                        if (status === 'Completed') {
+                            $endAgainBtn
+                                .prop('disabled', false)
+                                .removeClass('btn-secondary btn-info')
+                                .addClass('btn-danger')
+                                .html('<i class="fa fa-redo"></i> End Trip Again')
+                                .attr('title', 'Recalculate trip after correcting last job timing')
+                                .show();
+                        } else {
+                            $endAgainBtn.hide();
+                        }
 
                         // Update "Add Historical Job" button based on trip status
                         const $histBtn = $('#addManualJobBtn');
@@ -1824,10 +1923,10 @@
                         </div>
 
                         ${trip.start_date ? `
-                                        <div class="alert alert-info mb-3" style="padding: 8px 12px; font-size: 0.9rem;">
-                                            <strong>Trip Started:</strong> ${moment(trip.start_date).format('DD/MM/YY HH:mm')}
-                                        </div>
-                                        ` : ''}
+                                                        <div class="alert alert-info mb-3" style="padding: 8px 12px; font-size: 0.9rem;">
+                                                            <strong>Trip Started:</strong> ${moment(trip.start_date).format('DD/MM/YY HH:mm')}
+                                                        </div>
+                                                        ` : ''}
 
                         <div class="form-group mb-3">
                             <label style="font-weight: 600; margin-bottom: 5px;">
@@ -1847,11 +1946,11 @@
                         </div>
 
                         ${!trip.start_date ? `
-                                        <div class="alert alert-info mb-3" style="padding: 8px 12px; font-size: 0.85rem;">
-                                            <i class="fa fa-info-circle"></i>
-                                            <strong>Note:</strong> This is the first job. The trip will be started automatically with this time.
-                                        </div>
-                                        ` : ''}
+                                                        <div class="alert alert-info mb-3" style="padding: 8px 12px; font-size: 0.85rem;">
+                                                            <i class="fa fa-info-circle"></i>
+                                                            <strong>Note:</strong> This is the first job. The trip will be started automatically with this time.
+                                                        </div>
+                                                        ` : ''}
 
                         <button class="btn btn-success btn-block" id="submitManualStartBtn" type="button">
                             <i class="fa fa-play"></i> Start Job with this Time

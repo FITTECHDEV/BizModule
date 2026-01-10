@@ -363,6 +363,12 @@ Route::prefix('azure')->name('azure.')->middleware(['auth'])->group(function () 
             ->name('store')
             ->middleware('throttle:user_actions');
 
+        Route::post('/{userId}/retry-provisioning', [
+            App\Http\Controllers\AzureUserManagementController::class,
+            'retryProvisioning'
+        ])->name('retry-provisioning')
+            ->middleware('throttle:user_actions');
+
         // Stats endpoint (must come before {user} parameter)
         Route::get('/stats', [App\Http\Controllers\AzureUserManagementController::class, 'stats'])->name('stats');
 
@@ -405,16 +411,6 @@ Route::prefix('azure')->name('azure.')->middleware(['auth'])->group(function () 
         Route::post('/{user}/sync-external', [App\Http\Controllers\AzureUserManagementController::class, 'syncToExternalSystemsManual'])
             ->name('sync-external')
             ->middleware('throttle:user_actions');
-
-        Route::post('/users/{user}/retry-scm', [AzureUserManagementController::class, 'retrySCMProvisioning'])
-            ->name('azure.users.retry-scm');
-
-        // Unified provisioning retry (replaces individual retry routes)
-        Route::post(
-            '/azure/users/{user}/retry-provisioning',
-            [AzureUserManagementController::class, 'retryUnifiedProvisioning']
-        )
-            ->name('azure.users.retry-provisioning');
 
         // Office-specific assignment configuration
         Route::post('/{user}/configure-office', [App\Http\Controllers\AzureUserManagementController::class, 'configureOfficeAssignments'])
