@@ -288,8 +288,8 @@ class AzureSignInImportService
                     'userPrincipalName' => trim($row['username']),
                     'displayName' => $row['user'] ?? trim($row['username']),
                     'mail' => filter_var($row['username'], FILTER_VALIDATE_EMAIL) ? $row['username'] : null,
-                    // 'created_at' => now(),
-                    // 'updated_at' => now()
+                    'created_at' => now(),
+                    'updated_at' => now()
                 ];
 
                 // Use user_id if it looks like a valid UUID

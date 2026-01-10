@@ -1,33 +1,27 @@
 <?php
 
-use Adldap\Laravel\Facades\Adldap;
 use App\Http\Controllers\ClientPartyController;
-use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\ActivityReportController;
-use App\Http\Controllers\UserController;
+use App\Http\Controllers\EmailAccountController;
 use App\Http\Controllers\ImportController;
-use App\Http\Controllers\TrackerController;
 use App\Http\Controllers\JimiTestController;
-
-
+use App\Http\Controllers\TrackerController;
+use App\Http\Controllers\AzureUserManagementController;
+use App\Http\Controllers\OdooSyncController;
 use App\Models\Category;
-use App\Models\ClientParty;
 use App\Models\Office;
 use App\Models\User;
+use App\Services\AzureGraphService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 
-
-use Illuminate\Support\Facades\Crypt;
-use App\Http\Controllers\TripController;
-
 Route::get('/test-pgsql', function () {
     try {
         DB::connection('pgsql')->getPdo();
-        return response()->json(["message" => "✅ PostgreSQL is connected!"]);
+
+        return response()->json(['message' => '✅ PostgreSQL is connected!']);
     } catch (\Exception $e) {
-        return response()->json(["error" => "❌ PostgreSQL Connection Failed: " . $e->getMessage()]);
+        return response()->json(['error' => '❌ PostgreSQL Connection Failed: '.$e->getMessage()]);
     }
 });
 
@@ -42,6 +36,7 @@ Route::get('/login', function () {
     if (config('app.env') == 'Local') {
         return view('auth.login');
     }
+
     return view('auth.azure.login');
     // return redirect('/login/azure');
 })->name('login');
@@ -50,13 +45,14 @@ Route::post('/logout', [App\Http\Controllers\Auth\LoginController::class, 'logou
 
 Route::get('/logout', function () {
     return redirect('/login');
-})->name('logout');
+});
 
 Route::get('quote-logger', function () {
 
     $auth_user = Auth::user();
-    //todo: permissions
-    return redirect()->away("https://quotesuat.freightintime.com/?username=" . $auth_user->LoginID . "&code=" . $auth_user->password . "&email=" . $auth_user->Email, 302, ['enc_data' => ""]);
+
+    // todo: permissions
+    return redirect()->away('https://quotesuat.freightintime.com/?username='.$auth_user->LoginID.'&code='.$auth_user->password.'&email='.$auth_user->Email, 302, ['enc_data' => '']);
 
     // return Http::post('https://quotes.freightintime.com/', [
     //     'enc_data' => $enc_user
@@ -85,7 +81,7 @@ Route::get('forget-password', [App\Http\Controllers\ForgotPasswordController::cl
 Route::post('forget-password', [App\Http\Controllers\ForgotPasswordController::class, 'submitForgetPasswordForm'])->name('forget.password.post');
 Route::get('reset-password/{token}', [App\Http\Controllers\ForgotPasswordController::class, 'showResetPasswordForm'])->name('reset.password.get');
 Route::post('reset-password', [App\Http\Controllers\ForgotPasswordController::class, 'submitResetPasswordForm'])->name('reset.password.post');
-//, 'change.password'
+// , 'change.password'
 
 // logs
 Route::get('logs', '\Rap2hpoutre\LaravelLogViewer\LogViewerController@index');
@@ -193,7 +189,7 @@ Route::group(['middleware' => ['auth', 'HtmlMinifier']], function () {
 
     Route::get('messages', 'App\Http\Controllers\ChatsController@fetchMessages');
     Route::post('messages', 'App\Http\Controllers\ChatsController@sendMessage');
-    //Notify Route
+    // Notify Route
     // Route::get('/notify', [App\Http\Controllers\NotificationController::class, 'notifyUser']);
     // Route::get('/markAsRead/{id?}', [App\Http\Controllers\NotificationController::class, 'markAsRead'])->name('mark');
     /**
@@ -211,7 +207,7 @@ Route::group(['middleware' => ['auth', 'HtmlMinifier']], function () {
     Route::get('categories/get-category/{id?}/{type?}', [App\Http\Controllers\CategoryController::class, 'getCategory'])->name('getCategory');
     Route::post('categories/save-category', [App\Http\Controllers\CategoryController::class, 'store'])->name('saveCategory');
     Route::post('categories/update/submodule', [App\Http\Controllers\CategoryController::class, 'subModuleUpdateAjax'])->name('submodule.update_ajax');
-    //* push notification
+    // * push notification
     Route::post('/push', [App\Http\Controllers\PushController::class, 'store']);
     Route::get('/push', [App\Http\Controllers\PushController::class, 'push'])->name('push');
 
@@ -239,7 +235,6 @@ Route::group(['middleware' => ['auth', 'HtmlMinifier']], function () {
 
     Route::get('/get-notify-party-list/{type}', [App\Http\Controllers\ClientPartyController::class, 'getNotifyPartyList'])->name('clientParty.getNotifyPartyList');
     Route::get('/get-plo-pld/{type}', [App\Http\Controllers\ClientPartyController::class, 'getPOLPOD'])->name('clientParty.getPOLPOD');
-
 
     Route::get('client-party', [App\Http\Controllers\ClientPartyController::class, 'index'])->name('client-party.index');
     Route::get('client-party/show/{clientParty}', [App\Http\Controllers\ClientPartyController::class, 'show'])->name('client-party.show');
@@ -286,8 +281,8 @@ Route::group(['middleware' => ['auth', 'HtmlMinifier']], function () {
         Route::get('/', [App\Http\Controllers\TraADLController::class, 'index'])->name('traADL.index');
         Route::get('/get-stats', [App\Http\Controllers\TraADLController::class, 'getStats'])->name('traADL.get_stats');
         Route::get('re-trigger/{docNo}', [App\Http\Controllers\TraADLController::class, 'reTrigger'])->name('traADL.reTrigger');
-        Route::get('json/{id}', [App\Http\Controllers\TraADLController::class, 'jsonGenerate'])->name('tims.json');
-        Route::get('invoice/download/{id}', [App\Http\Controllers\TraADLController::class, 'invoiceDownload'])->name('tims.invoiceDownload')->middleware(['signed']);
+        Route::get('json/{id}', [App\Http\Controllers\TraADLController::class, 'jsonGenerate'])->name('traADL.json');
+        Route::get('invoice/download/{id}', [App\Http\Controllers\TraADLController::class, 'invoiceDownload'])->name('traADL.invoiceDownload')->middleware(['signed']);
     });
 
     /**!SECTION RRA */
@@ -323,13 +318,759 @@ Route::post('/client-party/fetch-address-details', [ClientPartyController::class
 Route::get('/api/clients', [ClientPartyController::class, 'getClients'])->name('clients');
 Route::post('/create-client-party-scm', [ClientPartyController::class, 'CreateClientPartySCM'])->middleware('auth:api')->name('client.create-party-scm');
 
-Route::get('/', function () {
-    return redirect()->route('home');
+// ============================================================================
+// AZURE MANAGEMENT SYSTEM ROUTES
+// ============================================================================
+
+Route::prefix('azure')->name('azure.')->middleware(['auth'])->group(function () {
+    // Root redirect
+    Route::get('/', function () {
+        return redirect()->route('azure.dashboard.index');
+    })->name('home');
+
+    // ============================================================================
+    // DASHBOARD ROUTES
+    // ============================================================================
+
+    Route::prefix('dashboard')->name('dashboard.')->group(function () {
+        Route::get('/', [App\Http\Controllers\AzureDashboardController::class, 'index'])->name('index');
+        Route::get('/stats', [App\Http\Controllers\AzureDashboardController::class, 'getStats'])
+            ->name('stats')
+            ->middleware('throttle:dashboard');
+        Route::get('/reports', [App\Http\Controllers\AzureDashboardController::class, 'reports'])->name('reports');
+        Route::get('/activity', [App\Http\Controllers\AzureDashboardController::class, 'getRecentActivity'])
+            ->name('activity')
+            ->middleware('throttle:dashboard');
+    });
+
+    // ============================================================================
+    // USER MANAGEMENT ROUTES (with rate limiting)
+    // ============================================================================
+
+    Route::prefix('users')->name('users.')->group(function () {
+        // List and create routes
+        Route::get('/', [App\Http\Controllers\AzureUserManagementController::class, 'index'])->name('index');
+        Route::get('/create', [App\Http\Controllers\AzureUserManagementController::class, 'create'])->name('create');
+
+        // ✅ ADD THESE THREE ROUTES HERE (after 'create', before 'store'):
+        Route::get('/active', [App\Http\Controllers\AzureUserManagementController::class, 'active'])->name('active');
+        Route::get('/pending', [App\Http\Controllers\AzureUserManagementController::class, 'pending'])->name('pending');
+        Route::get('/inactive', [App\Http\Controllers\AzureUserManagementController::class, 'inactive'])->name('inactive');
+
+        // POST: Create user (rate limited - 10 per minute)
+        Route::post('/', [App\Http\Controllers\AzureUserManagementController::class, 'store'])
+            ->name('store')
+            ->middleware('throttle:user_actions');
+
+        // Stats endpoint (must come before {user} parameter)
+        Route::get('/stats', [App\Http\Controllers\AzureUserManagementController::class, 'stats'])->name('stats');
+
+        // User-specific action routes (MUST come before generic {user} routes)
+        // These are rate limited to prevent abuse
+        Route::post('/{user}/disable', [App\Http\Controllers\AzureUserManagementController::class, 'disable'])
+            ->name('disable')
+            ->middleware('throttle:user_actions');
+
+        Route::post('/{user}/enable', [App\Http\Controllers\AzureUserManagementController::class, 'enable'])
+            ->name('enable')
+            ->middleware('throttle:user_actions');
+
+        Route::post('/{user}/retry-modules', [App\Http\Controllers\AzureUserManagementController::class, 'retryModuleAssignments'])
+            ->name('retry-modules')
+            ->middleware('throttle:user_actions');
+
+        Route::post('/{user}/reset-password', [App\Http\Controllers\AzureUserManagementController::class, 'resetPassword'])
+            ->name('reset-password')
+            ->middleware('throttle:user_actions');
+
+        Route::post('/{user}/retry-d365', [App\Http\Controllers\AzureUserManagementController::class, 'retryD365Provisioning'])
+            ->name('retry-d365')
+            ->middleware('throttle:user_actions');
+
+        Route::post('/{user}/retry-scm', [App\Http\Controllers\AzureUserManagementController::class, 'retrySCMProvisioning'])
+            ->name('retry-scm')
+            ->middleware('throttle:user_actions');
+
+        // BIZ/FITSYS Provisioning
+        Route::post('/{user}/retry-biz', [App\Http\Controllers\AzureUserManagementController::class, 'retryBIZProvisioning'])
+            ->name('retry-biz')
+            ->middleware('throttle:user_actions');
+
+        // FIT Express Provisioning
+        Route::post('/{user}/retry-fitexpress', [App\Http\Controllers\AzureUserManagementController::class, 'retryFITExpressProvisioning'])
+            ->name('retry-fitexpress')
+            ->middleware('throttle:user_actions');
+
+        Route::post('/users/{user}/retry-scm', [AzureUserManagementController::class, 'retrySCMProvisioning'])
+            ->name('azure.users.retry-scm');
+
+        // Office-specific assignment configuration
+        Route::post('/{user}/configure-office', [App\Http\Controllers\AzureUserManagementController::class, 'configureOfficeAssignments'])
+            ->name('configure-office')
+            ->middleware('throttle:user_actions');
+
+        Route::get('/{user}/offices/{office}/assignments', [App\Http\Controllers\AzureUserManagementController::class, 'getOfficeAssignments'])
+            ->name('office-assignments')
+            ->middleware('throttle:api');
+
+        // Quick module assignment
+        Route::post('/{user}/quick-assign-module', [App\Http\Controllers\AzureUserManagementController::class, 'quickAssignModule'])
+            ->name('quick-assign-module')
+            ->middleware('throttle:user_actions');
+
+        Route::get('/{user}/modules/{module}/assignments', [App\Http\Controllers\AzureUserManagementController::class, 'getUserModuleAssignments'])
+            ->name('module-assignments')
+            ->middleware('throttle:api');
+
+        // Generic CRUD routes (come after specific actions)
+        Route::get('/{user}', [App\Http\Controllers\AzureUserManagementController::class, 'show'])
+            ->name('show');
+
+        Route::get('/{user}/edit', [App\Http\Controllers\AzureUserManagementController::class, 'edit'])
+            ->name('edit');
+
+        // PUT/PATCH: Update user (rate limited - 10 per minute)
+        Route::put('/{user}', [App\Http\Controllers\AzureUserManagementController::class, 'update'])
+            ->name('update')
+            ->middleware('throttle:user_actions');
+
+        Route::patch('/{user}', [App\Http\Controllers\AzureUserManagementController::class, 'update'])
+            ->name('patch')
+            ->middleware('throttle:user_actions');
+
+        // DELETE: Remove user (rate limited)
+        Route::delete('/{user}', [App\Http\Controllers\AzureUserManagementController::class, 'destroy'])
+            ->name('destroy')
+            ->middleware('throttle:user_actions');
+    });
+
+    // ============================================================================
+    // MODULE MANAGEMENT ROUTES
+    // ============================================================================
+
+    Route::prefix('modules')->name('modules.')->group(function () {
+        Route::get('/', function () {
+            return view('azure-management.modules.index');
+        })->name('index');
+
+        Route::get('/assign', function () {
+            return view('azure-management.modules.assign');
+        })->name('assign');
+
+        // API endpoints for dynamic module assignment
+        Route::get('/scm-functions', [App\Http\Controllers\AzureUserManagementController::class, 'getSCMFunctions'])
+            ->name('scm-functions')
+            ->middleware('throttle:api');
+
+        Route::get('/roles', [App\Http\Controllers\AzureUserManagementController::class, 'getModuleRolesByCode'])
+            ->name('roles')
+            ->middleware('throttle:api');
+    });
+
+    // ============================================================================
+    // REPORTS ROUTES (with rate limiting for exports)
+    // ============================================================================
+
+    Route::prefix('reports')->name('reports.')->group(function () {
+        Route::get('/', [App\Http\Controllers\AzureReportController::class, 'index'])->name('index');
+        Route::get('/users', [App\Http\Controllers\AzureReportController::class, 'users'])->name('users');
+        Route::get('/activity', [App\Http\Controllers\AzureReportController::class, 'activity'])->name('activity');
+        Route::get('/provisioning', [App\Http\Controllers\AzureReportController::class, 'provisioning'])->name('provisioning');
+
+        // Export is a heavy operation - limit to 5 per minute
+        Route::get('/export/{type}', [App\Http\Controllers\AzureReportController::class, 'export'])
+            ->name('export')
+            ->middleware('throttle:heavy_operations');
+    });
+
+    // ============================================================================
+    // AZURE AUTHENTICATION ROUTES
+    // ============================================================================
+
+    Route::prefix('auth')->name('auth.')->group(function () {
+        Route::get('/', [App\Http\Controllers\AzureAuthController::class, 'redirectToProvider'])->name('redirect');
+        Route::get('/callback', [App\Http\Controllers\AzureAuthController::class, 'handleProviderCallback'])->name('callback');
+        Route::post('/test-connection', [App\Http\Controllers\AzureAuthController::class, 'testConnection'])->name('test');
+        Route::post('/disconnect', [App\Http\Controllers\AzureAuthController::class, 'disconnect'])->name('disconnect');
+    });
+
+    // ============================================================================
+    // API ROUTES (AJAX/JSON endpoints with rate limiting)
+    // ============================================================================
+
+    Route::prefix('api')->name('api.')->group(function () {
+
+        // Company API
+        Route::get('/companies/{location}', [App\Http\Controllers\Api\AzureCompanyController::class, 'getByLocation'])
+            ->name('companies.by-location')
+            ->middleware('throttle:api');
+
+        // User Management API (for AJAX operations)
+        Route::prefix('users')->name('users.')->group(function () {
+            // List and create routes
+            Route::get('/', [App\Http\Controllers\AzureUserManagementController::class, 'index'])->name('index');
+            Route::get('/create', [App\Http\Controllers\AzureUserManagementController::class, 'create'])->name('create');
+
+            // POST: Create user (rate limited - 10 per minute)
+            Route::post('/', [App\Http\Controllers\AzureUserManagementController::class, 'store'])
+                ->name('store')
+                ->middleware('throttle:user_actions');
+
+            // Stats endpoint (must come before {user} parameter)
+            Route::get('/stats', [App\Http\Controllers\AzureUserManagementController::class, 'stats'])->name('stats');
+
+            // User-specific action routes (MUST come before generic {user} routes)
+            // These are rate limited to prevent abuse
+            Route::post('/{user}/disable', [App\Http\Controllers\AzureUserManagementController::class, 'disable'])
+                ->name('disable')
+                ->middleware('throttle:user_actions');
+
+            Route::post('/{user}/enable', [App\Http\Controllers\AzureUserManagementController::class, 'enable'])
+                ->name('enable')
+                ->middleware('throttle:user_actions');
+
+            Route::post('/{user}/retry-modules', [App\Http\Controllers\AzureUserManagementController::class, 'retryModuleAssignments'])
+                ->name('retry-modules')
+                ->middleware('throttle:user_actions');
+
+            // Generic CRUD routes (come after specific actions)
+            Route::get('/{user}', [App\Http\Controllers\AzureUserManagementController::class, 'show'])
+                ->name('show');
+
+            Route::get('/{user}/edit', [App\Http\Controllers\AzureUserManagementController::class, 'edit'])
+                ->name('edit');
+
+            // PUT/PATCH: Update user (rate limited - 10 per minute)
+            Route::put('/{user}', [App\Http\Controllers\AzureUserManagementController::class, 'update'])
+                ->name('update')
+                ->middleware('throttle:user_actions');
+
+            Route::patch('/{user}', [App\Http\Controllers\AzureUserManagementController::class, 'update'])
+                ->name('patch')
+                ->middleware('throttle:user_actions');
+
+            // DELETE: Remove user (rate limited)
+            Route::delete('/{user}', [App\Http\Controllers\AzureUserManagementController::class, 'destroy'])
+                ->name('destroy')
+                ->middleware('throttle:user_actions');
+        });
+
+        // Dashboard API (rate limited)
+        Route::prefix('dashboard')->name('dashboard.')->group(function () {
+            Route::get('/stats', [App\Http\Controllers\AzureDashboardController::class, 'getStats'])
+                ->name('stats')
+                ->middleware('throttle:dashboard');
+            Route::get('/activity', [App\Http\Controllers\AzureDashboardController::class, 'getRecentActivity'])
+                ->name('activity')
+                ->middleware('throttle:dashboard');
+        });
+    });
+
+    // ============================================================================
+    // PROFILE ROUTES
+    // ============================================================================
+
+    Route::prefix('profile')->name('profile.')->group(function () {
+        Route::get('/', [App\Http\Controllers\AzureProfileController::class, 'edit'])->name('edit');
+        Route::patch('/', [App\Http\Controllers\AzureProfileController::class, 'update'])
+            ->name('update')
+            ->middleware('throttle:user_actions');
+        Route::delete('/', [App\Http\Controllers\AzureProfileController::class, 'destroy'])
+            ->name('destroy')
+            ->middleware('throttle:user_actions');
+    });
+
+    // ============================================================================
+    // HEALTH CHECK
+    // ============================================================================
+
+    Route::get('/health', function () {
+        return response()->json([
+            'status' => 'ok',
+            'system' => 'Azure Management',
+            'timestamp' => now()->toIso8601String(),
+            'environment' => app()->environment(),
+        ]);
+    })->name('health');
 });
+
+// ============================================================================
+// AZURE USER SYNC ROUTES (Manual Triggers)
+// ============================================================================
+
+Route::middleware(['auth'])->prefix('azure/sync')->name('azure.sync.')->group(function () {
+
+    // Manual Odoo User Sync (web-based trigger)
+    Route::post('/odoo-users', [OdooSyncController::class, 'syncUsersManual'])
+        ->name('odoo-users')
+        ->middleware('throttle:user_actions');
+
+    // Odoo Sync Routes
+    Route::post('/odoo/sync-users-ajax', [OdooSyncController::class, 'syncUsersAjax'])
+        ->name('odoo.sync.ajax');
+
+    // Manual User Activation (web-based trigger)
+    Route::post('/activate-users', [App\Http\Controllers\AzureUserManagementController::class, 'activatePendingUsersManual'])
+        ->name('activate-users')
+        ->middleware('throttle:user_actions');
+
+    // Combined Full Sync (Odoo + Activation)
+    Route::post('/full-sync', [App\Http\Controllers\AzureUserManagementController::class, 'fullSyncManual'])
+        ->name('full')
+        ->middleware('throttle:user_actions');
+
+    // Sync status endpoint (AJAX)
+    Route::get('/status', function () {
+        try {
+            $stats = [
+                'pending_users' => DB::connection('sqlsrv')
+                    ->table('Azure_Users')
+                    ->where('Status', 'Pending')
+                    ->count(),
+                'last_sync' => Cache::get('last_odoo_sync'),
+                'last_activation' => Cache::get('last_user_activation'),
+            ];
+
+            return response()->json([
+                'success' => true,
+                'data' => $stats,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    })->name('status');
+});
+
+Route::get('/sync-odoo-users', [App\Http\Controllers\OdooSyncController::class, 'syncUsers']);
+Route::get('/test-odoo-columns', [App\Http\Controllers\OdooSyncController::class, 'testColumns']);
+Route::get('/test-pgsql-connection', [App\Http\Controllers\OdooSyncController::class, 'testConnection']);
+Route::get('/check-view-definition', [App\Http\Controllers\OdooSyncController::class, 'checkViewDefinition']);
+
+Route::get('/test-stored-procedures', function () {
+    try {
+        echo '<html><head><title>Stored Procedures Test</title>';
+        echo "<style>
+            body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+            .container { max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+            h1 { color: #2c3e50; border-bottom: 3px solid #3498db; padding-bottom: 10px; }
+            h2 { color: #34495e; margin-top: 30px; }
+            .success { color: #27ae60; font-weight: bold; }
+            .error { color: #e74c3c; font-weight: bold; }
+            .info { color: #3498db; }
+            table { border-collapse: collapse; width: 100%; margin: 15px 0; }
+            th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+            th { background-color: #3498db; color: white; font-weight: bold; }
+            tr:nth-child(even) { background-color: #f2f2f2; }
+            .section { background: #ecf0f1; padding: 15px; border-radius: 5px; margin: 15px 0; }
+            .code { background: #2c3e50; color: #ecf0f1; padding: 10px; border-radius: 4px; font-family: 'Courier New', monospace; margin: 10px 0; }
+        </style></head><body>";
+
+        echo "<div class='container'>";
+        echo '<h1>🔍 Stored Procedures Test</h1>';
+        echo "<p class='info'>Testing: <strong>sp_UserCreation_Resourcefunction</strong> and <strong>sp_UserCreation_ResourceRole</strong></p>";
+        echo '<hr>';
+
+        // ================================================================
+        // TEST 1: Check if sp_UserCreation_Resourcefunction exists
+        // ================================================================
+        echo "<div class='section'>";
+        echo '<h2>Test 1: sp_UserCreation_Resourcefunction (SCM Functions)</h2>';
+
+        try {
+            // Check if procedure exists
+            $procedureExists = DB::connection('sqlsrv')->select("
+                SELECT COUNT(*) as count
+                FROM sys.procedures
+                WHERE name = 'sp_UserCreation_Resourcefunction'
+            ");
+
+            if ($procedureExists[0]->count > 0) {
+                echo "<p class='success'>✅ Stored procedure EXISTS</p>";
+
+                // Try to execute it
+                echo "<p>Executing: <code class='code'>EXEC sp_UserCreation_Resourcefunction</code></p>";
+
+                $functions = DB::connection('sqlsrv')->select('EXEC sp_UserCreation_Resourcefunction');
+
+                echo "<p class='success'>✅ Execution successful! Found ".count($functions).' functions</p>';
+
+                if (count($functions) > 0) {
+                    echo '<table>';
+                    echo '<thead><tr>';
+
+                    // Get column names from first row
+                    $firstRow = $functions[0];
+                    foreach ($firstRow as $key => $value) {
+                        echo '<th>'.htmlspecialchars($key).'</th>';
+                    }
+                    echo '</tr></thead><tbody>';
+
+                    // Display all rows
+                    foreach ($functions as $function) {
+                        echo '<tr>';
+                        foreach ($function as $value) {
+                            echo '<td>'.htmlspecialchars($value ?? 'NULL').'</td>';
+                        }
+                        echo '</tr>';
+                    }
+                    echo '</tbody></table>';
+                } else {
+                    echo "<p class='info'>⚠️ No functions returned (empty result set)</p>";
+                }
+            } else {
+                echo "<p class='error'>❌ Stored procedure DOES NOT EXIST</p>";
+                echo '<p>Please create the stored procedure first.</p>';
+            }
+        } catch (\Exception $e) {
+            echo "<p class='error'>❌ Error: ".htmlspecialchars($e->getMessage()).'</p>';
+            echo "<pre style='background: #fff3cd; padding: 10px; border-radius: 4px;'>".htmlspecialchars($e->getTraceAsString()).'</pre>';
+        }
+        echo '</div>';
+
+        // ================================================================
+        // TEST 2: Check if sp_UserCreation_ResourceRole exists
+        // ================================================================
+        echo "<div class='section'>";
+        echo '<h2>Test 2: sp_UserCreation_ResourceRole (Roles by Application Code)</h2>';
+
+        try {
+            // Check if procedure exists
+            $procedureExists = DB::connection('sqlsrv')->select("
+                SELECT COUNT(*) as count
+                FROM sys.procedures
+                WHERE name = 'sp_UserCreation_ResourceRole'
+            ");
+
+            if ($procedureExists[0]->count > 0) {
+                echo "<p class='success'>✅ Stored procedure EXISTS</p>";
+
+                // Test with different application codes
+                $testCodes = ['OPS', 'OPSUAT', 'ERP', 'CRM'];
+
+                foreach ($testCodes as $appCode) {
+                    echo "<h3>Testing with ApplicationCode: <strong>{$appCode}</strong></h3>";
+                    echo "<p>Executing: <code class='code'>EXEC sp_UserCreation_ResourceRole @ApplicationCode = '{$appCode}'</code></p>";
+
+                    try {
+                        $roles = DB::connection('sqlsrv')->select(
+                            'EXEC sp_UserCreation_ResourceRole @ApplicationCode = ?',
+                            [$appCode]
+                        );
+
+                        echo "<p class='success'>✅ Execution successful! Found ".count($roles).' roles</p>';
+
+                        if (count($roles) > 0) {
+                            echo '<table>';
+                            echo '<thead><tr>';
+
+                            // Get column names from first row
+                            $firstRow = $roles[0];
+                            foreach ($firstRow as $key => $value) {
+                                echo '<th>'.htmlspecialchars($key).'</th>';
+                            }
+                            echo '</tr></thead><tbody>';
+
+                            // Display all rows
+                            foreach ($roles as $role) {
+                                echo '<tr>';
+                                foreach ($role as $value) {
+                                    echo '<td>'.htmlspecialchars($value ?? 'NULL').'</td>';
+                                }
+                                echo '</tr>';
+                            }
+                            echo '</tbody></table>';
+                        } else {
+                            echo "<p class='info'>⚠️ No roles returned for {$appCode}</p>";
+                        }
+                    } catch (\Exception $e) {
+                        echo "<p class='error'>❌ Error for {$appCode}: ".htmlspecialchars($e->getMessage()).'</p>';
+                    }
+                }
+            } else {
+                echo "<p class='error'>❌ Stored procedure DOES NOT EXIST</p>";
+                echo '<p>Please create the stored procedure first.</p>';
+            }
+        } catch (\Exception $e) {
+            echo "<p class='error'>❌ Error: ".htmlspecialchars($e->getMessage()).'</p>';
+            echo "<pre style='background: #fff3cd; padding: 10px; border-radius: 4px;'>".htmlspecialchars($e->getTraceAsString()).'</pre>';
+        }
+        echo '</div>';
+
+        // ================================================================
+        // TEST 3: Check available modules
+        // ================================================================
+        echo "<div class='section'>";
+        echo '<h2>Test 3: Available Modules (Azure_SoftwareMaster)</h2>';
+
+        try {
+            $modules = DB::connection('sqlsrv')->select('
+                SELECT Id, Name, ApplicationId
+                FROM Azure_SoftwareMaster
+                WHERE IsActive = 1 AND IsDeleted = 0
+                ORDER BY Name
+            ');
+
+            echo "<p class='success'>✅ Found ".count($modules).' active modules</p>';
+
+            if (count($modules) > 0) {
+                echo '<table>';
+                echo '<thead><tr><th>ID</th><th>Name</th><th>Application ID</th><th>Is SCM?</th></tr></thead>';
+                echo '<tbody>';
+
+                foreach ($modules as $module) {
+                    $isSCM = in_array($module->ApplicationId, ['OPS', 'OPSUAT']);
+                    $scmBadge = $isSCM ? "<span style='background: #27ae60; color: white; padding: 2px 8px; border-radius: 3px; font-size: 0.85em;'>SCM</span>" : '';
+
+                    echo '<tr>';
+                    echo '<td>'.htmlspecialchars($module->Id).'</td>';
+                    echo '<td>'.htmlspecialchars($module->Name).'</td>';
+                    echo '<td><strong>'.htmlspecialchars($module->ApplicationId)."</strong> {$scmBadge}</td>";
+                    echo '<td>'.($isSCM ? 'Yes' : 'No').'</td>';
+                    echo '</tr>';
+                }
+
+                echo '</tbody></table>';
+            }
+        } catch (\Exception $e) {
+            echo "<p class='error'>❌ Error: ".htmlspecialchars($e->getMessage()).'</p>';
+        }
+        echo '</div>';
+
+        // ================================================================
+        // TEST 4: Check available locations
+        // ================================================================
+        echo "<div class='section'>";
+        echo '<h2>Test 4: Available Locations (Cust_Office)</h2>';
+
+        try {
+            $locations = DB::connection('sqlsrv')->select('
+                SELECT Id, Name, code
+                FROM Cust_Office
+                WHERE IsActive = 1 AND IsDeleted = 0
+                ORDER BY Name
+            ');
+
+            echo "<p class='success'>✅ Found ".count($locations).' active locations</p>';
+
+            if (count($locations) > 0) {
+                echo '<table>';
+                echo '<thead><tr><th>ID</th><th>Name</th><th>Code</th></tr></thead>';
+                echo '<tbody>';
+
+                foreach ($locations as $location) {
+                    echo '<tr>';
+                    echo '<td>'.htmlspecialchars($location->Id).'</td>';
+                    echo '<td>'.htmlspecialchars($location->Name).'</td>';
+                    echo '<td><strong>'.htmlspecialchars($location->code).'</strong></td>';
+                    echo '</tr>';
+                }
+
+                echo '</tbody></table>';
+            }
+        } catch (\Exception $e) {
+            echo "<p class='error'>❌ Error: ".htmlspecialchars($e->getMessage()).'</p>';
+        }
+        echo '</div>';
+
+        // Summary
+        echo '<hr>';
+        echo '<h2>Summary</h2>';
+        echo '<p><strong>Next Steps:</strong></p>';
+        echo '<ul>';
+        echo "<li>If stored procedures don't exist, create them in SQL Server</li>";
+        echo '<li>If stored procedures exist but return no data, populate the underlying tables</li>';
+        echo '<li>If everything works, deploy the updated create user form</li>';
+        echo '</ul>';
+
+        echo '</div></body></html>';
+    } catch (\Exception $e) {
+        echo "<div style='padding: 20px; background: #fee; border: 2px solid #e74c3c; border-radius: 4px;'>";
+        echo "<h2 style='color: #e74c3c;'>Critical Error</h2>";
+        echo '<p><strong>Error:</strong> '.htmlspecialchars($e->getMessage()).'</p>';
+        echo '<p><strong>File:</strong> '.htmlspecialchars($e->getFile()).'</p>';
+        echo '<p><strong>Line:</strong> '.htmlspecialchars($e->getLine()).'</p>';
+        echo '</div>';
+    }
+});
+
+Route::get('/test-azure-users', function () {
+    dd([
+        'raw_count' => DB::connection('sqlsrv')->table('Azure_Users')->count(),
+        'model_count' => App\Models\AzureUser::count(),
+        'first_user' => App\Models\AzureUser::first(),
+    ]);
+});
+
+// ============================================================================
+// LOGIN TRACKER SYSTEM ROUTES (User Activity Monitoring)
+// ============================================================================
+
+// Restrict the {user} parameter (supports email or GUID)
+Route::pattern('user', '[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}|\w{8}-\w{4}-\w{4}-\w{4}-\w{12}');
+
+// ----------------------
+// Reporting routes (Login Tracker)
+// ----------------------
+Route::prefix('reporting')->middleware('auth')->group(function () {
+    // Explicit show route (needed for dashboard links)
+    Route::get('/users/{user}', [\App\Http\Controllers\UserController::class, 'show'])
+        ->name('reporting.users.show');
+
+    Route::get('/users/active-this-month', [\App\Http\Controllers\UserController::class, 'activeThisMonth'])
+        ->name('reporting.users.active-this-month');
+
+    Route::get('/users/active-last-month', [\App\Http\Controllers\UserController::class, 'activeLastMonth'])
+        ->name('reporting.users.active-last-month');
+
+    Route::get('/users/inactive', [\App\Http\Controllers\UserController::class, 'inactiveUsers'])
+        ->name('reporting.users.inactive');
+
+    // Resource routes except show
+    Route::resource('/users', \App\Http\Controllers\UserController::class)
+        ->parameters(['users' => 'user'])
+        ->except(['show'])
+        ->names([
+            'index' => 'reporting.users.index',
+            'create' => 'reporting.users.create',
+            'store' => 'reporting.users.store',
+            'edit' => 'reporting.users.edit',
+            'update' => 'reporting.users.update',
+            'destroy' => 'reporting.users.destroy',
+        ]);
+});
+
+// ----------------------
+// Dashboard route (Login Tracker Dashboard)
+// ----------------------
+Route::get('/dashboard', [\App\Http\Controllers\DashboardController::class, 'index'])
+    ->middleware('auth')
+    ->name('dashboard');
+
+Route::get('/dashboard/debug-user-logins', [\App\Http\Controllers\DashboardController::class, 'debugUserLogins'])
+    ->middleware('auth')
+    ->name('dashboard.debug-user-logins');
+
+// ----------------------
+// Imports route (Login Tracker)
+// ----------------------
+Route::get('/imports', function () {
+    return view('logintracker.imports.index');
+})->middleware('auth')->name('imports.index');
+
+// ----------------------
+// Activity report (Login Tracker)
+// ----------------------
+Route::get('/activity-report', [\App\Http\Controllers\ActivityReportController::class, 'userActivityReport'])
+    ->middleware('auth')
+    ->name('activity.report');
+
+// ----------------------
+// CSV import endpoints (Login Tracker)
+// ----------------------
+Route::post('/import/users', [\App\Http\Controllers\ImportController::class, 'importUsers'])
+    ->middleware('auth')
+    ->name('imports.users');
+
+Route::post('/import/sign-ins', [\App\Http\Controllers\ImportController::class, 'importSignIns'])
+    ->middleware('auth')
+    ->name('imports.sign_ins');
+
+Route::post('/dashboard/clear-cache', [\App\Http\Controllers\DashboardController::class, 'clearDashboardCache'])
+    ->middleware('auth')
+    ->name('dashboard.clear-cache');
+
+// ✅ NEW: Import status monitoring endpoint (optional but useful)
+Route::get('/imports/status', [ImportController::class, 'getImportStatus'])
+    ->name('imports.status')
+    ->middleware('auth'); // Add your auth middleware
+
+Route::get('/users/cleanup-empty', [\App\Http\Controllers\UserController::class, 'cleanupEmptyUsers'])
+    ->middleware('auth')
+    ->name('users.cleanup');
+
+Route::get('/debug-import-data', function () {
+    $dates = ['2025-10-10', '2025-10-23'];
+
+    $data = DB::table('Azure_LoginDetails')
+        ->selectRaw('CONVERT(DATE, date_utc) as login_date')
+        ->selectRaw('application')
+        ->selectRaw('username')
+        ->selectRaw('user_id')
+        ->selectRaw('COUNT(*) as count')
+        ->whereRaw('CONVERT(DATE, date_utc) IN (?, ?)', $dates)
+        ->groupBy(DB::raw('CONVERT(DATE, date_utc)'), 'application', 'username', 'user_id')
+        ->orderBy('login_date')
+        ->orderBy('username')
+        ->get();
+
+    $uniqueApps = $data->pluck('application')->unique()->values();
+    $systemMap = config('systemmap', []);
+
+    $appMappingStatus = [];
+    foreach ($uniqueApps as $app) {
+        $appLower = strtolower(trim($app));
+        $isMapped = isset($systemMap[$appLower]) || isset($systemMap[$app]);
+        $mappedTo = $systemMap[$appLower] ?? $systemMap[$app] ?? 'UNMAPPED';
+
+        $appMappingStatus[$app] = [
+            'is_mapped' => $isMapped,
+            'maps_to' => $mappedTo,
+            'in_display_systems' => in_array($mappedTo, [
+                'BIZ PRO',
+                'BIZ UAT',
+                'D365 LIVE',
+                'D365 UAT',
+                'FIT Express',
+                'FIT Express UAT',
+                'Odoo',
+                'OPS',
+                'OPS UAT',
+                'Windows Sign In',
+            ]),
+        ];
+    }
+
+    $amayData = $data->filter(function ($record) {
+        return stripos($record->username, 'amay') !== false;
+    })->values();
+
+    return response()->json([
+        'dates_checked' => $dates,
+        'total_records' => $data->count(),
+        'unique_applications' => $uniqueApps,
+        'application_mapping_status' => $appMappingStatus,
+        'amay_records' => [
+            'count' => $amayData->count(),
+            'data' => $amayData,
+
+        ],
+        'all_records' => $data->toArray(),
+        'display_systems' => [
+            'BIZ PRO',
+            'BIZ UAT',
+            'D365 LIVE',
+            'D365 UAT',
+            'FIT Express',
+            'FIT Express UAT',
+            'Odoo',
+            'OPS',
+            'OPS UAT',
+            'Windows Sign In',
+        ],
+    ]);
+})->middleware('auth');
+
+// ============================================================================
+// VEHICLE TRACKER SYSTEM ROUTES (GPS/Trip Tracking)
+// ============================================================================
 
 Route::middleware(['auth'])->prefix('tracker')->name('tracker.')->group(function () {
 
     Route::get('/dashboard', [TrackerController::class, 'dashboard'])->name('dashboard');
+    // Remove ->name('dashboard') - it's already prefixed as 'tracker.dashboard'
     Route::get('/trips/get/{filter?}', [TrackerController::class, 'getTrips']);
     Route::get('/trips/{id}', [TrackerController::class, 'getTripDetails']);
 
@@ -367,367 +1108,187 @@ Route::middleware(['auth'])->prefix('jimi-test')->group(function () {
     // Get track data
     Route::post('/track', [JimiTestController::class, 'getTrackData'])->name('jimi.test.track');
 });
-// routes/api.php
-Route::delete('/trips', [TrackerController::class, 'deleteTrips']);
 
+Route::get('/azure-management/test', function () {
+    $results = [
+        'config' => [],
+        'token' => [],
+        'create_user' => [],
+        'find_user' => [],
+    ];
 
-
-
-// Restrict the {user} parameter (supports email or GUID)
-Route::pattern('user', '[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}|\w{8}-\w{4}-\w{4}-\w{4}-\w{12}');
-
-// ----------------------
-// Authentication routes
-// ----------------------
-// Route::post('/login', [AuthController::class, 'login'])->name('login');
-// Route::get('/auth/azure/callback', [AuthController::class, 'handleAzureCallback'])->name('azure.callback');
-// Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth')->name('logout');
-
-// ----------------------
-// Reporting routes (Login Tracker)
-// ----------------------
-Route::prefix('reporting')->middleware('auth')->group(function () {
-    // Route::get('/logged-in-users', [UserController::class, 'loggedInUsers'])
-    //     ->name('reporting.users.logged-in');
-
-    // Route::get('/not-logged-in-users', [UserController::class, 'notLoggedInUsers'])
-    //     ->name('reporting.users.not-logged-in');
-
-    // Explicit show route (needed for dashboard links)
-    Route::get('/users/{user}', [UserController::class, 'show'])
-        ->name('reporting.users.show');
-
-
-    Route::get('/users/active-this-month', [UserController::class, 'activeThisMonth'])
-        ->name('reporting.users.active-this-month');
-
-    Route::get('/users/active-last-month', [UserController::class, 'activeLastMonth'])
-        ->name('reporting.users.active-last-month');
-
-    Route::get('/users/inactive', [UserController::class, 'inactiveUsers'])
-        ->name('reporting.users.inactive');
-
-    // Resource routes except show
-    Route::resource('/users', UserController::class)
-        ->parameters(['users' => 'user'])
-        ->except(['show'])
-        ->names([
-            'index'   => 'reporting.users.index',
-            'create'  => 'reporting.users.create',
-            'store'   => 'reporting.users.store',
-            'edit'    => 'reporting.users.edit',
-            'update'  => 'reporting.users.update',
-            'destroy' => 'reporting.users.destroy',
-        ]);
-});
-
-// ----------------------
-// Dashboard route
-// ----------------------
-Route::get('/dashboard', [DashboardController::class, 'index'])
-    ->middleware('auth')
-    ->name('dashboard');
-
-Route::get('/dashboard/debug-user-logins', [DashboardController::class, 'debugUserLogins'])
-    ->name('dashboard.debug-user-logins');
-
-// ----------------------
-// Imports route
-// ----------------------
-Route::get('/imports', function () {
-    return view('logintracker.imports.index');
-})->middleware('auth')->name('imports.index');
-
-// ----------------------
-// Activity report
-// ----------------------
-Route::get('/activity-report', [ActivityReportController::class, 'userActivityReport'])
-    ->middleware('auth')
-    ->name('activity.report');
-
-// ----------------------
-// CSV import endpoints
-// ----------------------
-Route::post('/import/users', [ImportController::class, 'importUsers'])
-    ->middleware('auth')
-    ->name('imports.users');
-
-Route::post('/import/sign-ins', [ImportController::class, 'importSignIns'])
-    ->middleware('auth')
-    ->name('imports.sign_ins');
-
-Route::get('/import/progress', [ImportController::class, 'getImportProgress'])->name('import.progress');
-
-
-Route::post('/dashboard/clear-cache', [DashboardController::class, 'clearDashboardCache'])
-    ->name('dashboard.clear-cache');
-
-Route::get('/users/cleanup-empty', [UserController::class, 'cleanupEmptyUsers'])->name('users.cleanup');
-
-Route::get('/debug-import-data', function () {
-    $dates = ['2025-10-10', '2025-10-23'];
-
-    // Get all data for those dates
-    $data = DB::table('Azure_LoginDetails')
-        ->selectRaw('CONVERT(DATE, date_utc) as login_date')
-        ->selectRaw('application')
-        ->selectRaw('username')
-        ->selectRaw('user_id')  // ADD THIS - helps identify users
-        ->selectRaw('COUNT(*) as count')
-        ->whereRaw('CONVERT(DATE, date_utc) IN (?, ?)', $dates)
-        ->groupBy(DB::raw('CONVERT(DATE, date_utc)'), 'application', 'username', 'user_id')
-        ->orderBy('login_date')
-        ->orderBy('username')
-        ->get();
-
-    // Get unique applications found
-    $uniqueApps = $data->pluck('application')->unique()->values();
-
-    // Get system map to check which are mapped
-    $systemMap = config('systemmap', []);
-
-    // Check mapping status for each app
-    $appMappingStatus = [];
-    foreach ($uniqueApps as $app) {
-        $appLower = strtolower(trim($app));
-        $isMapped = isset($systemMap[$appLower]) || isset($systemMap[$app]);
-        $mappedTo = $systemMap[$appLower] ?? $systemMap[$app] ?? 'UNMAPPED';
-
-        $appMappingStatus[$app] = [
-            'is_mapped' => $isMapped,
-            'maps_to' => $mappedTo,
-            'in_display_systems' => in_array($mappedTo, [
-                'BIZ PRO',
-                'BIZ UAT',
-                'D365 LIVE',
-                'D365 UAT',
-                'FIT Express',
-                'FIT Express UAT',
-                'Odoo',
-                'OPS',
-                'OPS UAT',
-                'Windows Sign In'
-            ])
-        ];
-    }
-
-    // Get Amay's specific data
-    $amayData = $data->filter(function ($record) {
-        return stripos($record->username, 'amay') !== false;
-    })->values();
-
-    return response()->json([
-        'dates_checked' => $dates,
-        'total_records' => $data->count(),
-        'unique_applications' => $uniqueApps,
-        'application_mapping_status' => $appMappingStatus,
-        'amay_records' => [
-            'count' => $amayData->count(),
-            'data' => $amayData
-        ],
-        'all_records' => $data->toArray(),
-        'display_systems' => [
-            'BIZ PRO',
-            'BIZ UAT',
-            'D365 LIVE',
-            'D365 UAT',
-            'FIT Express',
-            'FIT Express UAT',
-            'Odoo',
-            'OPS',
-            'OPS UAT',
-            'Windows Sign In'
-        ]
-    ]);
-})->middleware('auth');
-
-
-
-Route::get('/test-sp-direct', function() {
-
-    $inputJson = '{"OperationType":"TripStatusUpdate","SubmittedDatetime":"20251224165700","SubmittedBy":"system","Action":"Add","TransactionType":"Job","TransactionNo":"KE-RE-25-00077","ActionType":"End","ActionDate":"20251224165700"}';
-
-    // Simplified test data with "unknown" values
-    $tripMileage = '{"result":[{"imei":"865784055074028","startTime":"2025-12-24 12:17:45","endTime":"2025-12-24 12:32:04","startLat":"-4.002968","startLng":"39.569098","endLat":"-4.041527","endLng":"39.604062","distance":8499.0}]}';
-
-    // This is the problematic one - contains "unknown"
-    $tripTrack = '{"result":[{"lat":-4.044615,"lng":39.618889,"gpsTime":"2025-12-16 23:37:16","direction":5,"gpsSpeed":0,"posType":0,"satellite":0,"ignition":"unknown","accStatus":"unknown","confidence":"high"}]}';
-
+    // ============================================
+    // TEST 1: Configuration Check
+    // ============================================
     try {
-        $pdo = DB::connection()->getPdo();
-
-        $stmt = $pdo->prepare("
-            SET NOCOUNT ON;
-            DECLARE @OutputJson VARCHAR(MAX) = NULL;
-
-            EXEC dbo.sp_TripMain
-                @InputJson = :inputJson,
-                @TripMileage = :tripMileage,
-                @TripTrack = :tripTrack,
-                @OutputJson = @OutputJson OUTPUT;
-
-            SELECT ISNULL(@OutputJson, '') AS OutputJson;
-        ");
-
-        $stmt->bindParam(':inputJson', $inputJson, PDO::PARAM_STR);
-        $stmt->bindParam(':tripMileage', $tripMileage, PDO::PARAM_STR);
-        $stmt->bindParam(':tripTrack', $tripTrack, PDO::PARAM_STR);
-        $stmt->execute();
-
-        // Get output
-        $outputJson = '';
-        do {
-            if ($stmt->columnCount() > 0) {
-                while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-                    if (isset($row['OutputJson'])) {
-                        $outputJson = $row['OutputJson'];
-                        break 2;
-                    }
-                }
-            }
-        } while ($stmt->nextRowset());
-
-        return response()->json([
+        $results['config'] = [
             'status' => 'success',
-            'output' => $outputJson,
-            'decoded' => json_decode($outputJson, true)
-        ]);
-
+            'tenant_id' => config('azure.tenant_id') ? 'Set ✅' : 'Missing ❌',
+            'client_id' => config('azure.client_id') ? 'Set ✅' : 'Missing ❌',
+            'client_secret' => config('azure.client_secret') ? 'Set ✅' : 'Missing ❌',
+            'domain' => config('azure.default_domain'),
+            'graph_url' => config('azure.graph_api_base_url'),
+        ];
     } catch (\Exception $e) {
-        return response()->json([
-            'status' => 'error',
-            'message' => $e->getMessage(),
-            'line' => $e->getLine()
-        ]);
-    }
-});
-
-
-
-Route::get('/test-sp-production-data', function() {
-
-    // Use the EXACT JSON from your production logs
-    $inputJson = '{"OperationType":"TripStatusUpdate","SubmittedDatetime":"20251224165700","SubmittedBy":"system","Action":"Add","TransactionType":"Job","TransactionNo":"KE-RE-25-00077","ActionType":"End","ActionDate":"20251224165700"}';
-
-    // Get the ACTUAL trip and job IDs from database
-    $job = DB::table('Trip_TripJobMapping as tjm')
-        ->join('Trip_TripInfomation as t', 'tjm.TripInfoID', '=', 't.Id')
-        ->select('tjm.Id as job_id', 'tjm.JobNo', 't.TripNo', 't.Id as trip_id')
-        ->where('tjm.JobNo', 'KE-RE-25-00077')
-        ->first();
-
-    if (!$job) {
-        return response()->json([
-            'error' => 'Job KE-RE-25-00077 not found in database',
-            'check' => 'This is why SP is failing - the job does not exist'
-        ]);
-    }
-
-    // Use realistic mileage data
-    $tripMileage = '{"result":[{"imei":"865784055074028","startTime":"2025-12-24 12:17:45","endTime":"2025-12-24 12:32:04","startLat":"-4.002968","startLng":"39.569098","endLat":"-4.041527","endLng":"39.604062","distance":8499.0,"avgSpeed":"35.67","runTimeSecond":858,"startMileage":0,"endMileage":0}],"data":[{"imei":"865784055074028","totalMileage":2232250}]}';
-
-    // Create realistic track data
-    $trackPoints = [];
-    for ($i = 0; $i < 100; $i++) {
-        $trackPoints[] = [
-            'lat' => -4.044615,
-            'lng' => 39.618889,
-            'gpsTime' => '2025-12-16 23:37:16',
-            'direction' => 5,
-            'gpsSpeed' => 0,
-            'posType' => 0,
-            'satellite' => 0,
-            'ignition' => 'unknown',
-            'accStatus' => 'unknown',
-            'confidence' => 'high'
+        $results['config'] = [
+            'status' => 'failed',
+            'error' => $e->getMessage(),
         ];
     }
 
-    $tripTrack = json_encode(['result' => $trackPoints]);
-
+    // ============================================
+    // TEST 2: Get Access Token
+    // ============================================
     try {
-        $pdo = DB::connection()->getPdo();
+        $service = app(AzureGraphService::class);
+        $token = $service->getAccessToken();
 
-        $stmt = $pdo->prepare("
-            SET NOCOUNT ON;
-            DECLARE @OutputJson VARCHAR(MAX) = NULL;
-
-            EXEC dbo.sp_TripMain
-                @InputJson = :inputJson,
-                @TripMileage = :tripMileage,
-                @TripTrack = :tripTrack,
-                @OutputJson = @OutputJson OUTPUT;
-
-            SELECT ISNULL(@OutputJson, '') AS OutputJson;
-        ");
-
-        $stmt->bindParam(':inputJson', $inputJson, PDO::PARAM_STR);
-        $stmt->bindParam(':tripMileage', $tripMileage, PDO::PARAM_STR);
-        $stmt->bindParam(':tripTrack', $tripTrack, PDO::PARAM_STR);
-        $stmt->execute();
-
-        $outputJson = '';
-        do {
-            if ($stmt->columnCount() > 0) {
-                while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-                    if (isset($row['OutputJson'])) {
-                        $outputJson = $row['OutputJson'];
-                        break 2;
-                    }
-                }
-            }
-        } while ($stmt->nextRowset());
-
-        return response()->json([
-            'job_info' => [
-                'job_no' => $job->JobNo,
-                'job_id' => $job->job_id,
-                'trip_no' => $job->TripNo,
-                'trip_id' => $job->trip_id
-            ],
-            'sp_response' => [
-                'raw_output' => $outputJson,
-                'decoded' => json_decode($outputJson, true)
-            ],
-            'test_data_info' => [
-                'track_points_count' => count($trackPoints),
-                'track_data_size_bytes' => strlen($tripTrack),
-                'mileage_data_size_bytes' => strlen($tripMileage)
-            ]
-        ]);
-
+        $results['token'] = [
+            'status' => 'success',
+            'token_preview' => substr($token, 0, 50).'...',
+            'token_length' => strlen($token),
+            'message' => '✅ Successfully obtained Azure AD token!',
+        ];
     } catch (\Exception $e) {
-        return response()->json([
-            'error' => [
-                'message' => $e->getMessage(),
-                'code' => $e->getCode(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine()
-            ],
-            'job_info' => [
-                'job_no' => $job->JobNo ?? 'N/A',
-                'job_id' => $job->job_id ?? 'N/A',
-                'trip_no' => $job->TripNo ?? 'N/A'
-            ]
-        ]);
+        $results['token'] = [
+            'status' => 'failed',
+            'error' => $e->getMessage(),
+            'message' => '❌ Failed to get token',
+        ];
+
+        // Stop here if token fails
+        return view('azure-management.test', compact('results'));
     }
+
+    // ============================================
+    // TEST 3: Check if Test User Exists
+    // ============================================
+    if ($results['token']['status'] === 'success') {
+        try {
+            $testUpn = 'azuretest@freight-in-time.com';
+            $existingUser = $service->findUserByUPN($testUpn);
+
+            if ($existingUser) {
+                $results['find_user'] = [
+                    'status' => 'success',
+                    'found' => true,
+                    'azure_id' => $existingUser['id'],
+                    'upn' => $existingUser['userPrincipalName'],
+                    'display_name' => $existingUser['displayName'],
+                    'message' => '✅ Test user already exists (will not create duplicate)',
+                ];
+            } else {
+                $results['find_user'] = [
+                    'status' => 'success',
+                    'found' => false,
+                    'message' => 'Test user not found (ready to create)',
+                ];
+            }
+        } catch (\Exception $e) {
+            $results['find_user'] = [
+                'status' => 'failed',
+                'error' => $e->getMessage(),
+            ];
+        }
+    }
+
+    // ============================================
+    // TEST 4: Create Test User (Only if not exists)
+    // ============================================
+    if (
+        $results['token']['status'] === 'success' &&
+        isset($results['find_user']['found']) &&
+        ! $results['find_user']['found']
+    ) {
+        try {
+            $randomId = rand(1000, 9999);
+
+            $userData = [
+                'name' => "Azure Test User {$randomId}",
+                'email' => "azuretest{$randomId}@freight-in-time.com",
+                'employee_id' => "TEST{$randomId}",
+                'phone' => '+254712345678',
+                'job_title' => 'Test Engineer',
+                'department' => 'IT Testing',
+            ];
+
+            $result = $service->createUser($userData);
+
+            $results['create_user'] = [
+                'status' => 'success',
+                'azure_id' => $result['azure_id'],
+                'azure_upn' => $result['azure_upn'],
+                'display_name' => $result['azure_display_name'],
+                'password_generated' => ! empty($result['temporary_password']),
+                'message' => '✅ Test user created successfully in Azure AD!',
+                'note' => 'This is a real user - you may want to delete it from Azure AD portal',
+            ];
+        } catch (\Exception $e) {
+            $results['create_user'] = [
+                'status' => 'failed',
+                'error' => $e->getMessage(),
+                'message' => '❌ Failed to create test user',
+            ];
+        }
+    }
+
+    return view('azure-management.test', compact('results'));
+})->name('azure.test');
+
+// Route::post('/azure/users/{user}/sync', [AzureUserManagementController::class, 'sync'])
+//     ->name('azure.users.sync');
+
+// Route::get('/azure/users/{user}/sync-status', [AzureUserManagementController::class, 'syncStatus'])
+//     ->name('azure.users.sync-status');
+
+// Route::post('/azure/users', [AzureUserManagementController::class, 'store'])
+//        ->middleware(['auth', 'permission:create-azure-users']);
+
+/*
+|--------------------------------------------------------------------------
+| Email Account API Routes
+|--------------------------------------------------------------------------
+|
+| These routes handle all email account management operations.
+| All routes return JSON responses.
+|
+*/
+
+Route::prefix('email-accounts')->group(function () {
+
+    // Create new email account
+    // POST /api/email-accounts
+    Route::post('/', [EmailAccountController::class, 'store']);
+
+    // List all email accounts (with optional domain filter)
+    // GET /api/email-accounts?domain=example.com
+    Route::get('/', [EmailAccountController::class, 'index']);
+
+    // Get specific email account details
+    // GET /api/email-accounts/{email}
+    Route::get('/{email}', [EmailAccountController::class, 'show']);
+
+    // Update email password
+    // PATCH /api/email-accounts/password
+    Route::patch('/password', [EmailAccountController::class, 'updatePassword']);
+
+    // Delete email account
+    // DELETE /api/email-accounts
+    Route::delete('/', [EmailAccountController::class, 'destroy']);
 });
 
+/*
+|--------------------------------------------------------------------------
+| Alternative RESTful Route (if preferred)
+|--------------------------------------------------------------------------
+|
+| You can also use Laravel's resource routing:
+| Route::apiResource('email-accounts', EmailAccountController::class);
+|
+| But the custom routes above give you more control over the endpoints.
+|
+*/
 
-// Jimi Test Routes
-Route::prefix('jimi-test')->group(function () {
-    Route::get('/connection', [JimiTestController::class, 'testConnection']);
-    Route::get('/vehicles', [JimiTestController::class, 'getVehicles']);
-    Route::get('/location/{imei}', [JimiTestController::class, 'getCurrentLocation']);
-    Route::post('/mileage', [JimiTestController::class, 'getMileage']);
-    Route::post('/track', [JimiTestController::class, 'getTrackData']);
-    Route::get('/test-page', [JimiTestController::class, 'testPage']);
-
-    // ✅ Test complete job formatting - both GET and POST
-    Route::get('/test-formatting', [JimiTestController::class, 'testCompleteJobFormatting']);
-    Route::post('/test-formatting', [JimiTestController::class, 'testCompleteJobFormatting']);
+Route::get('/test-simple', function () {
+    return 'Hello! Routing works!';
 });
-
-
-Route::get('/jimi-test/complete-data', [JimiTestController::class, 'testCompleteData']);
-
