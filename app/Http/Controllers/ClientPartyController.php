@@ -118,8 +118,8 @@ class ClientPartyController extends Controller
             try {
                 $response = DB::select(
                     'SET NOCOUNT ON;
-                 DECLARE @OfficeCode AS VARCHAR(5);
-                 EXEC [dbo].[sp_PaymentTerms] @OfficeCode = ?',
+                    DECLARE @OfficeCode AS VARCHAR(5);
+                    EXEC [dbo].[sp_PaymentTerms] @OfficeCode = ?',
                     [$officeCode]
                 );
                 if (empty($response) || (isset($response[0]->Failed))) {

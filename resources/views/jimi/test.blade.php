@@ -385,7 +385,7 @@
                     <option value="865784055076759">KDN 347Y - 865784055076759</option>
                     <option value="865784055073996">KDN 348Y - 865784055073996</option>
                     <option value="865784055074077">KDN 349Y - 865784055074077</option>
-                    <option value="865784055073303">KDN 351Y - 865784055073303</option>
+                    <option value="865784055074028">KDN 351Y - 865784055074028</option>
                     <option value="865784055082542">KDN 352Y - 865784055082542</option>
                 </select>
             </div>
@@ -407,7 +407,7 @@
                         <label>IMEI:</label>
                         <select id="mileageImei" class="form-control">
                             <option value="865784055073301">KDN 345Y</option>
-                            <option value="865784055082542">KDN 352Y</option>
+                            <option value="865784055074028">KDN 351Y</option>
                         </select>
                     </div>
                 </div>
@@ -443,7 +443,7 @@
                         <label>IMEI:</label>
                         <select id="trackImei" class="form-control">
                             <option value="865784055073301">KDN 345Y</option>
-                            <option value="865784055082542">KDN 352Y</option>
+                            <option value="865784055074028">KDN 351Y</option>
                         </select>
                     </div>
                 </div>
@@ -483,7 +483,7 @@
         function testConnection() {
             $('#connectionResult').html('<div class="loading-overlay"><div class="spinner"></div></div>').addClass('show');
 
-            $.get('/jimi-test/connection', function (res) {
+            $.get('/jimi-test/connection', function(res) {
                 if (res.success) {
                     $('#connectionResult').html(`
                         <div class="text-center">
@@ -512,7 +512,7 @@
                         </div>
                     `);
                 }
-            }).fail(function () {
+            }).fail(function() {
                 $('#connectionResult').html(`
                     <div class="text-center">
                         <i class="fas fa-exclamation-triangle text-warning" style="font-size: 3rem;"></i>
@@ -526,7 +526,7 @@
         function getVehicles() {
             $('#vehiclesResult').html('<div class="loading-overlay"><div class="spinner"></div></div>').addClass('show');
 
-            $.get('/jimi-test/vehicles', function (res) {
+            $.get('/jimi-test/vehicles', function(res) {
                 console.log('Vehicles Response:', res); // Debug log
 
                 let vehicles = [];
@@ -550,7 +550,8 @@
                     const now = new Date();
                     const minutesSinceGPS = (now - gpsTime) / (1000 * 60);
                     // Trust backend's is_online status
-                    const isOnline = vehicle.is_online === true || vehicle.is_online === 'true' || vehicle.status === '1';
+                    const isOnline = vehicle.is_online === true || vehicle.is_online === 'true' || vehicle
+                        .status === '1';
 
                     const speed = vehicle.speed || '0';
                     const mileage = vehicle.current_mileage || vehicle.currentMileage || '0';
@@ -593,7 +594,7 @@
 
                 html += `</div><pre class="mt-3">${JSON.stringify(vehicles, null, 2)}</pre>`;
                 $('#vehiclesResult').html(html);
-            }).fail(function () {
+            }).fail(function() {
                 $('#vehiclesResult').html(`
                     <div class="text-center">
                         <i class="fas fa-exclamation-circle text-danger" style="font-size: 2rem;"></i>
@@ -607,7 +608,7 @@
             const imei = $('#locationImei').val();
             $('#locationResult').html('<div class="loading-overlay"><div class="spinner"></div></div>').addClass('show');
 
-            $.get('/jimi-test/location/' + imei, function (res) {
+            $.get('/jimi-test/location/' + imei, function(res) {
                 console.log('Location Response:', res); // Debug log
 
                 let vehicle = null;
@@ -619,14 +620,16 @@
                     rawData = res.data;
                     vehicle = {
                         imei: res.data.imei,
-                        deviceName: res.data.device_name || res.data.deviceName || $('#locationImei option:selected').text().split(' - ')[0],
+                        deviceName: res.data.device_name || res.data.deviceName || $(
+                            '#locationImei option:selected').text().split(' - ')[0],
                         mcType: 'VG03',
                         icon: 'other',
                         status: (res.data.is_online === true || res.data.is_online === 'true') ? '1' : '0',
                         posType: 'GPS',
                         lat: parseFloat(res.data.lat),
                         lng: parseFloat(res.data.lng),
-                        hbTime: res.data.hb_time || res.data.gps_time || new Date().toISOString().slice(0, 19).replace('T', ' '),
+                        hbTime: res.data.hb_time || res.data.gps_time || new Date().toISOString().slice(0, 19)
+                            .replace('T', ' '),
                         accStatus: res.data.acc_status || '0',
                         gpsSignal: res.data.gps_signal || '4',
                         powerValue: res.data.power_value || null,
@@ -670,7 +673,8 @@
                         posType: 'GPS',
                         lat: parseFloat(res.lat),
                         lng: parseFloat(res.lng),
-                        hbTime: res.hb_time || res.gps_time || new Date().toISOString().slice(0, 19).replace('T', ' '),
+                        hbTime: res.hb_time || res.gps_time || new Date().toISOString().slice(0, 19).replace(
+                            'T', ' '),
                         accStatus: res.acc_status || '0',
                         gpsSignal: res.gps_signal || '4',
                         powerValue: res.power_value || null,
@@ -719,7 +723,7 @@
                         </div>
                     `);
                 }
-            }).fail(function () {
+            }).fail(function() {
                 $('#locationResult').html(`
                     <div class="text-center">
                         <i class="fas fa-exclamation-circle text-danger" style="font-size: 2rem;"></i>
@@ -757,11 +761,11 @@
                         </div>
                     </div>
                     ${minutesSinceGPS > 60 && isOnline ? `
-                        <div class="alert alert-warning mb-0">
-                            <i class="fas fa-satellite-dish"></i> <strong>Stale GPS Data</strong>
-                            <p class="mb-0">Device is online but last GPS update was ${formatTimeDifference(minutesSinceGPS)} ago. Vehicle may be in poor signal area or stationary.</p>
-                        </div>
-                    ` : ''}
+                            <div class="alert alert-warning mb-0">
+                                <i class="fas fa-satellite-dish"></i> <strong>Stale GPS Data</strong>
+                                <p class="mb-0">Device is online but last GPS update was ${formatTimeDifference(minutesSinceGPS)} ago. Vehicle may be in poor signal area or stationary.</p>
+                            </div>
+                        ` : ''}
                 </div>
 
                 <!-- Data Cards Grid -->
@@ -794,111 +798,177 @@
                         <div class="value">${gpsSignal}/5</div>
                         <div class="signal-bars mt-2 justify-content-center">
                             ${Array.from({length: 5}, (_, i) =>
-                                `<div class="signal-bar ${i < gpsSignal ? 'active' : ''}"></div>`
-                            ).join('')}
-                        </div>
-                    </div>
+                                ` < div class = "signal-bar ${i < gpsSignal ? 'active' : ''}" > < /div>`
+    ).join('')
+    } <
+    /div> <
+    /div>
 
-                    <!-- GPS Satellites -->
-                    <div class="data-card">
-                        <div class="icon text-secondary"><i class="fas fa-satellite-dish"></i></div>
-                        <div class="label">GPS Satellites</div>
-                        <div class="value">${vehicle.gpsNum}</div>
-                        <div class="subvalue">Connected</div>
-                    </div>
+    <
+    !--GPS Satellites-- >
+    <
+    div class = "data-card" >
+    <
+    div class = "icon text-secondary" > < i class = "fas fa-satellite-dish" > < /i></div >
+    <
+    div class = "label" > GPS Satellites < /div> <
+        div class = "value" > $ {
+            vehicle.gpsNum
+        } < /div> <
+        div class = "subvalue" > Connected < /div> <
+        /div>
 
-                    <!-- Direction -->
-                    <div class="data-card">
-                        <div class="icon text-danger"><i class="fas fa-compass"></i></div>
-                        <div class="label">Direction</div>
-                        <div class="value">${vehicle.direction}°</div>
-                        <div class="subvalue">${getDirection(vehicle.direction)}</div>
-                    </div>
+        <
+        !--Direction-- >
+        <
+        div class = "data-card" >
+        <
+        div class = "icon text-danger" > < i class = "fas fa-compass" > < /i></div >
+        <
+        div class = "label" > Direction < /div> <
+        div class = "value" > $ {
+            vehicle.direction
+        }° < /div> <
+        div class = "subvalue" > $ {
+            getDirection(vehicle.direction)
+        } < /div> <
+        /div>
 
-                    <!-- Mileage -->
-                    <div class="data-card">
-                        <div class="icon text-primary"><i class="fas fa-route"></i></div>
-                        <div class="label">Total Mileage</div>
-                        <div class="value">${parseFloat(vehicle.currentMileage).toFixed(2)}</div>
-                        <div class="subvalue">km</div>
-                    </div>
+        <
+        !--Mileage-- >
+        <
+        div class = "data-card" >
+        <
+        div class = "icon text-primary" > < i class = "fas fa-route" > < /i></div >
+        <
+        div class = "label" > Total Mileage < /div> <
+        div class = "value" > $ {
+            parseFloat(vehicle.currentMileage).toFixed(2)
+        } < /div> <
+        div class = "subvalue" > km < /div> <
+        /div>
 
-                    <!-- Battery -->
-                    <div class="data-card">
-                        <div class="icon ${getBatteryColor(batteryLevel)}"><i class="fas fa-battery-half"></i></div>
-                        <div class="label">Battery</div>
-                        <div class="value">${batteryLevel.toFixed(2)}</div>
-                        <div class="subvalue">V</div>
-                    </div>
+        <
+        !--Battery-- >
+        <
+        div class = "data-card" >
+        <
+        div class = "icon ${getBatteryColor(batteryLevel)}" > < i class = "fas fa-battery-half" > < /i></div >
+        <
+        div class = "label" > Battery < /div> <
+        div class = "value" > $ {
+            batteryLevel.toFixed(2)
+        } < /div> <
+        div class = "subvalue" > V < /div> <
+        /div>
 
-                    <!-- ACC Status -->
-                    <div class="data-card">
-                        <div class="icon ${vehicle.accStatus === '1' ? 'text-success' : 'text-secondary'}">
-                            <i class="fas fa-key"></i>
-                        </div>
-                        <div class="label">Ignition</div>
-                        <div class="value">${vehicle.accStatus === '1' ? 'ON' : 'OFF'}</div>
-                    </div>
+        <
+        !--ACC Status-- >
+        <
+        div class = "data-card" >
+        <
+        div class = "icon ${vehicle.accStatus === '1' ? 'text-success' : 'text-secondary'}" >
+        <
+        i class = "fas fa-key" > < /i> <
+        /div> <
+        div class = "label" > Ignition < /div> <
+        div class = "value" > $ {
+            vehicle.accStatus === '1' ? 'ON' : 'OFF'
+        } < /div> <
+        /div>
 
-                    <!-- Last Update -->
-                    <div class="data-card">
-                        <div class="icon text-info"><i class="fas fa-clock"></i></div>
-                        <div class="label">Last GPS Time</div>
-                        <div class="value" style="font-size: 1rem;">${formatDateTime(vehicle.gpsTime)}</div>
-                    </div>
+        <
+        !--Last Update-- >
+        <
+        div class = "data-card" >
+        <
+        div class = "icon text-info" > < i class = "fas fa-clock" > < /i></div >
+        <
+        div class = "label" > Last GPS Time < /div> <
+        div class = "value"
+    style = "font-size: 1rem;" > $ {
+            formatDateTime(vehicle.gpsTime)
+        } < /div> <
+        /div>
 
-                    <!-- Heartbeat -->
-                    <div class="data-card">
-                        <div class="icon text-danger"><i class="fas fa-heartbeat"></i></div>
-                        <div class="label">Last Heartbeat</div>
-                        <div class="value" style="font-size: 1rem;">${formatDateTime(vehicle.hbTime)}</div>
-                    </div>
+        <
+        !--Heartbeat-- >
+        <
+        div class = "data-card" >
+        <
+        div class = "icon text-danger" > < i class = "fas fa-heartbeat" > < /i></div >
+        <
+        div class = "label" > Last Heartbeat < /div> <
+        div class = "value"
+    style = "font-size: 1rem;" > $ {
+            formatDateTime(vehicle.hbTime)
+        } < /div> <
+        /div>
 
-                    <!-- SIM Card -->
-                    <div class="data-card">
-                        <div class="icon text-success"><i class="fas fa-sim-card"></i></div>
-                        <div class="label">SIM ICCID</div>
-                        <div class="value" style="font-size: 0.9rem;">${vehicle.iccid}</div>
-                    </div>
-                </div>
+        <
+        !--SIM Card-- >
+        <
+        div class = "data-card" >
+        <
+        div class = "icon text-success" > < i class = "fas fa-sim-card" > < /i></div >
+        <
+        div class = "label" > SIM ICCID < /div> <
+        div class = "value"
+    style = "font-size: 0.9rem;" > $ {
+            vehicle.iccid
+        } < /div> <
+        /div> <
+        /div>
 
-                <!-- Map -->
-                <div id="map"></div>
+        <
+        !--Map-- >
+        <
+        div id = "map" > < /div>
 
-                <!-- Raw JSON -->
-                <h5 class="mt-4"><i class="fas fa-code"></i> Raw JSON Data</h5>
-                <pre>${JSON.stringify(rawData || vehicle, null, 2)}</pre>
-            `;
+        <
+        !--Raw JSON-- >
+        <
+        h5 class = "mt-4" > < i class = "fas fa-code" > < /i> Raw JSON Data</h5 >
+        <
+        pre > $ {
+            JSON.stringify(rawData || vehicle, null, 2)
+        } < /pre>
+    `;
 
-            $('#locationResult').html(html);
+                $('#locationResult').html(html);
 
-            // Initialize map
-            setTimeout(() => initMap(vehicle.lat, vehicle.lng, vehicle.deviceName || vehicle.device_name, speed, isOnline), 100);
-        }
-
-        function initMap(lat, lng, name, speed, isOnline) {
-            if (map) {
-                map.remove();
+                // Initialize map
+                setTimeout(() => initMap(vehicle.lat, vehicle.lng, vehicle.deviceName || vehicle.device_name, speed, isOnline), 100);
             }
 
-            map = L.map('map').setView([lat, lng], 15);
+            function initMap(lat, lng, name, speed, isOnline) {
+                if (map) {
+                    map.remove();
+                }
 
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '© OpenStreetMap contributors'
-            }).addTo(map);
+                map = L.map('map').setView([lat, lng], 15);
 
-            const iconColor = isOnline ? 'green' : 'red';
-            const customIcon = L.divIcon({
-                html: `<div style="background: ${iconColor}; width: 30px; height: 30px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center;">
-                    <i class="fas fa-car" style="color: white; font-size: 14px;"></i>
-                </div>`,
-                className: 'custom-marker',
-                iconSize: [30, 30],
-                iconAnchor: [15, 15]
-            });
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© OpenStreetMap contributors'
+                }).addTo(map);
 
-            marker = L.marker([lat, lng], { icon: customIcon }).addTo(map);
-            marker.bindPopup(`
+                const iconColor = isOnline ? 'green' : 'red';
+                const customIcon = L.divIcon({
+                    html: ` < div style =
+        "background: ${iconColor}; width: 30px; height: 30px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center;" >
+        <
+        i class = "fas fa-car"
+    style = "color: white; font-size: 14px;" > < /i> <
+        /div>`,
+        className: 'custom-marker',
+            iconSize: [30, 30],
+            iconAnchor: [15, 15]
+        });
+
+        marker = L.marker([lat, lng], {
+            icon: customIcon
+        }).addTo(map);
+        marker.bindPopup(`
                 <div style="text-align: center;">
                     <strong>${name}</strong><br>
                     Speed: ${speed} km/h<br>
@@ -907,13 +977,13 @@
                 </div>
             `).openPopup();
 
-            // Add circle around vehicle
-            L.circle([lat, lng], {
-                color: iconColor,
-                fillColor: iconColor,
-                fillOpacity: 0.1,
-                radius: 100
-            }).addTo(map);
+        // Add circle around vehicle
+        L.circle([lat, lng], {
+            color: iconColor,
+            fillColor: iconColor,
+            fillOpacity: 0.1,
+            radius: 100
+        }).addTo(map);
         }
 
         function getMileage() {
@@ -927,7 +997,7 @@
                 imei: imei,
                 start_time: startTime,
                 end_time: endTime
-            }, function (res) {
+            }, function(res) {
                 if (res.success) {
                     let html = `
                         <div class="data-grid">
@@ -961,7 +1031,7 @@
                         </div>
                     `);
                 }
-            }).fail(function () {
+            }).fail(function() {
                 $('#mileageResult').html(`
                     <div class="text-center">
                         <i class="fas fa-times-circle text-danger" style="font-size: 2rem;"></i>
@@ -982,27 +1052,46 @@
                 imei: imei,
                 start_time: startTime,
                 end_time: endTime
-            }, function (res) {
+            }, function(res) {
+                // Create download button
                 let html = `
-                    <h5><i class="fas fa-map"></i> ${res.count} GPS Points Recorded</h5>
-                    <div id="trackMap" style="height: 400px; border-radius: 15px; margin: 20px 0;"></div>
-                    <pre>${JSON.stringify(res.data.slice(0, 10), null, 2)}</pre>
-                `;
+            <h5><i class="fas fa-map"></i> ${res.count} GPS Points Recorded</h5>
+            <button class="btn btn-success mb-3" onclick='downloadJSON(${JSON.stringify(res)}, "track_data_${imei}.json")'>
+                <i class="fas fa-download"></i> Download Complete JSON (${res.count} points)
+            </button>
+            <div id="trackMap" style="height: 400px; border-radius: 15px; margin: 20px 0;"></div>
+            <pre>${JSON.stringify(res.data.slice(0, 10), null, 2)}</pre>
+        `;
                 if (res.count > 10) {
-                    html += `<p class="text-muted">Showing first 10 of ${res.count} points in JSON</p>`;
+                    html +=
+                        `<p class="text-muted">Showing first 10 of ${res.count} points in JSON preview. Click download button to get all data.</p>`;
                 }
                 $('#trackResult').html(html);
 
-                // Initialize track map
                 setTimeout(() => initTrackMap(res.data), 100);
-            }).fail(function () {
+            }).fail(function() {
                 $('#trackResult').html(`
-                    <div class="text-center">
-                        <i class="fas fa-times-circle text-danger" style="font-size: 2rem;"></i>
-                        <p class="mt-2">Failed to load track data</p>
-                    </div>
-                `);
+            <div class="text-center">
+                <i class="fas fa-times-circle text-danger" style="font-size: 2rem;"></i>
+                <p class="mt-2">Failed to load track data</p>
+            </div>
+        `);
             });
+        }
+
+        // Add this function to enable JSON download
+        function downloadJSON(data, filename) {
+            const blob = new Blob([JSON.stringify(data, null, 2)], {
+                type: 'application/json'
+            });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
         }
 
         function initTrackMap(trackData) {
@@ -1028,7 +1117,9 @@
                     className: '',
                     iconSize: [30, 30]
                 });
-                L.marker(latLngs[0], { icon: startIcon }).addTo(trackMap).bindPopup('Start');
+                L.marker(latLngs[0], {
+                    icon: startIcon
+                }).addTo(trackMap).bindPopup('Start');
 
                 // Add end marker
                 const endIcon = L.divIcon({
@@ -1036,7 +1127,9 @@
                     className: '',
                     iconSize: [30, 30]
                 });
-                L.marker(latLngs[latLngs.length - 1], { icon: endIcon }).addTo(trackMap).bindPopup('End');
+                L.marker(latLngs[latLngs.length - 1], {
+                    icon: endIcon
+                }).addTo(trackMap).bindPopup('End');
 
                 // Fit bounds
                 trackMap.fitBounds(latLngs);

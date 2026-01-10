@@ -308,22 +308,22 @@
                                 </div>
 
                                 <!-- Start Location -->
-<div class="form-group">
-    <label>Start Location <span class="text-danger">*</span></label>
-    <select id="tripStartLocation" name="start_location_code" required>
-        <option value="">Type to search locations...</option>
-    </select>
-    <small class="text-muted">Where the trip begins</small>
-</div>
+                                <div class="form-group">
+                                    <label>Start Location <span class="text-danger">*</span></label>
+                                    <select id="tripStartLocation" name="start_location_code" required>
+                                        <option value="">Type to search locations...</option>
+                                    </select>
+                                    <small class="text-muted">Where the trip begins</small>
+                                </div>
 
-<!-- End Location -->
-<div class="form-group">
-    <label>End Location <span class="text-danger">*</span></label>
-    <select id="tripEndLocation" name="end_location_code" required>
-        <option value="">Type to search locations...</option>
-    </select>
-    <small class="text-muted">Final destination of the trip</small>
-</div>
+                                <!-- End Location -->
+                                <div class="form-group">
+                                    <label>End Location <span class="text-danger">*</span></label>
+                                    <select id="tripEndLocation" name="end_location_code" required>
+                                        <option value="">Type to search locations...</option>
+                                    </select>
+                                    <small class="text-muted">Final destination of the trip</small>
+                                </div>
 
                                 <!-- Info Alert -->
                                 <div class="alert alert-info mt-3">
@@ -1865,10 +1865,10 @@
                         </div>
 
                         ${trip.start_date ? `
-                                                <div class="alert alert-info mb-3" style="padding: 8px 12px; font-size: 0.9rem;">
-                                                    <strong>Trip Started:</strong> ${moment(trip.start_date).format('DD/MM/YY HH:mm')}
-                                                </div>
-                                                ` : ''}
+                                                        <div class="alert alert-info mb-3" style="padding: 8px 12px; font-size: 0.9rem;">
+                                                            <strong>Trip Started:</strong> ${moment(trip.start_date).format('DD/MM/YY HH:mm')}
+                                                        </div>
+                                                        ` : ''}
 
                         <div class="form-group mb-3">
                             <label style="font-weight: 600; margin-bottom: 5px;">
@@ -1888,11 +1888,11 @@
                         </div>
 
                         ${!trip.start_date ? `
-                                                <div class="alert alert-info mb-3" style="padding: 8px 12px; font-size: 0.85rem;">
-                                                    <i class="fa fa-info-circle"></i>
-                                                    <strong>Note:</strong> This is the first job. The trip will be started automatically with this time.
-                                                </div>
-                                                ` : ''}
+                                                        <div class="alert alert-info mb-3" style="padding: 8px 12px; font-size: 0.85rem;">
+                                                            <i class="fa fa-info-circle"></i>
+                                                            <strong>Note:</strong> This is the first job. The trip will be started automatically with this time.
+                                                        </div>
+                                                        ` : ''}
 
                         <button class="btn btn-success btn-block" id="submitManualStartBtn" type="button">
                             <i class="fa fa-play"></i> Start Job with this Time

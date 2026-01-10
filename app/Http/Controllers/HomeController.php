@@ -73,9 +73,6 @@ class HomeController extends Controller
                 $rra_stats = [];
             }
 
-            // ========================================
-            // NEW: Get Login Tracker Statistics
-            // ========================================
             try {
                 $loginTrackerStats = $this->getLoginTrackerStats();
             } catch (\Exception $e) {
@@ -88,40 +85,91 @@ class HomeController extends Controller
                 ];
             }
 
-            // Extract login tracker variables for easy access in view
+            // ✅ ADD THIS: Get GPS Tracker Statistics
+            try {
+                $tracker_stats = $this->getTrackerStats();
+            } catch (\Exception $e) {
+                \Log::error('Tracker Stats Error: ' . $e->getMessage());
+                $tracker_stats = (object)[
+                    'Planned' => 0,
+                    'in_progress' => 0,
+                    'completed' => 0,
+                    'total' => 0,
+                ];
+            }
+
             $active_this_month = $loginTrackerStats['active_this_month'];
             $active_last_month = $loginTrackerStats['active_last_month'];
             $inactive_users = $loginTrackerStats['inactive_users'];
             $total_users = $loginTrackerStats['total_users'];
 
-            // // LOG BEFORE RETURNING VIEW
-            // \Log::info('About to return view with data', [
-            //     'ticketStatistics' => $ticketStatistics,
-            //     'efris_stats' => $efris_stats,
-            //     'traStatsTZ' => $traStatsTZ,
-            //     'loginTrackerStats' => $loginTrackerStats, // NEW
-            // ]);
-
             return view(
                 'dashboard.ticket',
                 compact(
-                    'ticketStatistics', 
-                    'entityStatistics', 
-                    'tims_stats', 
-                    'efris_stats', 
-                    'traStatsTZ', 
-                    'traStatsADL', 
+                    'ticketStatistics',
+                    'entityStatistics',
+                    'tims_stats',
+                    'efris_stats',
+                    'traStatsTZ',
+                    'traStatsADL',
                     'rra_stats',
-                    // NEW: Add login tracker variables
                     'active_this_month',
                     'active_last_month',
                     'inactive_users',
-                    'total_users'
+                    'total_users',
+                    'tracker_stats' // ✅ ADD THIS
                 )
             );
         } catch (\Exception $e) {
             \Log::error('Home Controller Error: ' . $e->getMessage());
             return 'Controller Error: ' . $e->getMessage();
+        }
+    }
+
+    /**
+     * Get GPS Tracker statistics
+     * 
+     * @return object
+     */
+    private function getTrackerStats()
+    {
+        try {
+            // Base query for trips (same logic as TrackerController)
+            $baseQuery = function () {
+                return DB::table('Trip_TripInfomation')
+                    ->where('IsActive', true)
+                    ->where('IsDeleted', false)
+                    ->where('OfficeCode', 'KE');
+            };
+
+            $stats = (object) [
+                'Planned' => $baseQuery()->whereNull('StartDate')->count(),
+                'in_progress' => $baseQuery()->whereNotNull('StartDate')->whereNull('EndDate')->count(),
+                'completed' => $baseQuery()->whereNotNull('EndDate')->count(),
+                'total' => $baseQuery()->count(),
+            ];
+
+            \Log::info('Tracker Stats Retrieved', [
+                'Planned' => $stats->Planned,
+                'in_progress' => $stats->in_progress,
+                'completed' => $stats->completed,
+                'total' => $stats->total,
+            ]);
+
+            return $stats;
+        } catch (\Exception $e) {
+            \Log::error('Failed to get tracker stats in HomeController', [
+                'error' => $e->getMessage(),
+                'line' => $e->getLine(),
+            ]);
+
+            // Return zero values on error
+            return (object)[
+                'Planned' => 0,
+                'in_progress' => 0,
+                'completed' => 0,
+                'total' => 0,
+            ];
         }
     }
 

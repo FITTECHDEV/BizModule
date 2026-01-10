@@ -157,7 +157,7 @@ class TrackerController extends Controller
                         'gps_points' => 0,
                         'total_duration' => $trip->TotalDuration ?? 0,
                         'status' => $status,
-                        'DT_RowId' => 'row_'.$trip->Id,
+                        'DT_RowId' => 'row_' . $trip->Id,
                         'DT_RowData' => ['trip_id' => $trip->Id],
                     ];
                 });
@@ -166,7 +166,6 @@ class TrackerController extends Controller
                 'success' => true,
                 'data' => $trips,
             ]);
-
         } catch (\Exception $e) {
             Log::error('Error fetching trips', [
                 'error' => $e->getMessage(),
@@ -175,7 +174,7 @@ class TrackerController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Error fetching trips: '.$e->getMessage(),
+                'message' => 'Error fetching trips: ' . $e->getMessage(),
             ], 500);
         }
     }
@@ -303,7 +302,6 @@ class TrackerController extends Controller
                 'success' => true,
                 'data' => $trip,
             ]);
-
         } catch (\Exception $e) {
             Log::error('Error fetching trip details', [
                 'trip_id' => $id,
@@ -313,7 +311,7 @@ class TrackerController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Error fetching trip details: '.$e->getMessage(),
+                'message' => 'Error fetching trip details: ' . $e->getMessage(),
             ], 500);
         }
     }
@@ -348,7 +346,7 @@ class TrackerController extends Controller
                     'vehicle_no' => $vehicle->VehicleNo,  // ← FULL: "KDN 345Y - ZH 3383" (for SP)
                     'display_name' => $cleanVehicleNo,     // ← CLEAN: "KDN 345Y" (for display)
                     'imei' => $this->getIMEIFromVehicleNo($cleanVehicleNo),
-                    'device_name' => 'Tracker - '.$cleanVehicleNo,
+                    'device_name' => 'Tracker - ' . $cleanVehicleNo,
                 ];
             }, $vehicles);
 
@@ -356,9 +354,8 @@ class TrackerController extends Controller
                 'success' => true,
                 'data' => $formattedVehicles,
             ]);
-
         } catch (\Exception $e) {
-            Log::error('Get Vehicles Error: '.$e->getMessage());
+            Log::error('Get Vehicles Error: ' . $e->getMessage());
 
             return response()->json([
                 'success' => false,
@@ -397,7 +394,7 @@ class TrackerController extends Controller
                 'EndLocationCode' => $request->end_location_code,
             ], JSON_UNESCAPED_SLASHES);
 
-            Log::info('Creating trip with JSON: '.$inputJson);
+            Log::info('Creating trip with JSON: ' . $inputJson);
 
             $pdo = DB::connection()->getPdo();
 
@@ -431,7 +428,7 @@ class TrackerController extends Controller
                 }
             } while ($stmt->nextRowset());
 
-            Log::info('SP OutputJson: '.$outputJson);
+            Log::info('SP OutputJson: ' . $outputJson);
 
             // Empty response → something went wrong in SP routing
             if (trim($outputJson) === '') {
@@ -445,7 +442,7 @@ class TrackerController extends Controller
             $response = json_decode($outputJson, true);
 
             if (json_last_error() !== JSON_ERROR_NONE) {
-                Log::warning('SP returned invalid JSON: '.$outputJson);
+                Log::warning('SP returned invalid JSON: ' . $outputJson);
 
                 return response()->json([
                     'success' => false,
@@ -488,10 +485,9 @@ class TrackerController extends Controller
                 'message' => 'Failed to create trip',
                 'errors' => $errors,
             ], 422);
-
         } catch (\Exception $e) {
-            Log::error('Trip Creation Exception: '.$e->getMessage());
-            Log::error('Stack trace: '.$e->getTraceAsString());
+            Log::error('Trip Creation Exception: ' . $e->getMessage());
+            Log::error('Stack trace: ' . $e->getTraceAsString());
 
             return response()->json([
                 'success' => false,
@@ -504,21 +500,21 @@ class TrackerController extends Controller
     /**
      * Get locations from sp_LocationList stored procedure
      */
-  public function getLocations(Request $request)
-{
-    try {
-        $locationType   = $request->input('type', 'Road');
-        $includeCountry = (int) $request->input('include_country', 1);
-        $filter         = $request->input('filter', null);
+    public function getLocations(Request $request)
+    {
+        try {
+            $locationType   = $request->input('type', 'Road');
+            $includeCountry = (int) $request->input('include_country', 1);
+            $filter         = $request->input('filter', null);
 
-        // Only set country code if includeCountry = 1
-        $countryCode = $includeCountry === 1
-            ? $request->input('country_code', 'KE')
-            : null;
+            // Only set country code if includeCountry = 1
+            $countryCode = $includeCountry === 1
+                ? $request->input('country_code', 'KE')
+                : null;
 
-        $pdo = DB::connection()->getPdo();
+            $pdo = DB::connection()->getPdo();
 
-        $stmt = $pdo->prepare('
+            $stmt = $pdo->prepare('
             SET NOCOUNT ON;
             EXEC sp_LocationList
                 @LocationType = :locationType,
@@ -527,50 +523,49 @@ class TrackerController extends Controller
                 @Filter = :filter
         ');
 
-        $stmt->bindParam(':locationType', $locationType, PDO::PARAM_STR);
-        $stmt->bindParam(':includeCountry', $includeCountry, PDO::PARAM_INT);
+            $stmt->bindParam(':locationType', $locationType, PDO::PARAM_STR);
+            $stmt->bindParam(':includeCountry', $includeCountry, PDO::PARAM_INT);
 
-        // Bind NULL properly when country is not included
-        if ($includeCountry === 1) {
-            $stmt->bindParam(':countryCode', $countryCode, PDO::PARAM_STR);
-        } else {
-            $stmt->bindValue(':countryCode', null, PDO::PARAM_NULL);
+            // Bind NULL properly when country is not included
+            if ($includeCountry === 1) {
+                $stmt->bindParam(':countryCode', $countryCode, PDO::PARAM_STR);
+            } else {
+                $stmt->bindValue(':countryCode', null, PDO::PARAM_NULL);
+            }
+
+            // Bind filter safely
+            if ($filter !== null) {
+                $stmt->bindParam(':filter', $filter, PDO::PARAM_STR);
+            } else {
+                $stmt->bindValue(':filter', null, PDO::PARAM_NULL);
+            }
+
+            $stmt->execute();
+
+            $locations = $stmt->fetchAll(PDO::FETCH_OBJ);
+
+            $formattedLocations = array_map(function ($location) {
+                return [
+                    'id'   => $location->LocationID,
+                    'code' => $location->LocationCode,
+                    'name' => $location->LocationName,
+                ];
+            }, $locations);
+
+            return response()->json([
+                'success' => true,
+                'data'    => $formattedLocations,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Get Locations Error: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to load locations',
+                'error'   => $e->getMessage(),
+            ], 500);
         }
-
-        // Bind filter safely
-        if ($filter !== null) {
-            $stmt->bindParam(':filter', $filter, PDO::PARAM_STR);
-        } else {
-            $stmt->bindValue(':filter', null, PDO::PARAM_NULL);
-        }
-
-        $stmt->execute();
-
-        $locations = $stmt->fetchAll(PDO::FETCH_OBJ);
-
-        $formattedLocations = array_map(function ($location) {
-            return [
-                'id'   => $location->LocationID,
-                'code' => $location->LocationCode,
-                'name' => $location->LocationName,
-            ];
-        }, $locations);
-
-        return response()->json([
-            'success' => true,
-            'data'    => $formattedLocations,
-        ]);
-
-    } catch (\Exception $e) {
-        Log::error('Get Locations Error: ' . $e->getMessage());
-
-        return response()->json([
-            'success' => false,
-            'message' => 'Failed to load locations',
-            'error'   => $e->getMessage(),
-        ], 500);
     }
-}
 
     /**
      * Add job to trip using stored procedure
@@ -622,7 +617,7 @@ class TrackerController extends Controller
                 'Jobs' => $jobs,
             ], JSON_UNESCAPED_SLASHES);
 
-            Log::info('Adding jobs to trip with JSON: '.$inputJson);
+            Log::info('Adding jobs to trip with JSON: ' . $inputJson);
 
             $pdo = DB::connection()->getPdo();
 
@@ -655,7 +650,7 @@ class TrackerController extends Controller
                 }
             } while ($stmt->nextRowset());
 
-            Log::info('SP OutputJson: '.$outputJson);
+            Log::info('SP OutputJson: ' . $outputJson);
 
             if (trim($outputJson) === '') {
                 return response()->json([
@@ -667,7 +662,7 @@ class TrackerController extends Controller
             $response = json_decode($outputJson, true);
 
             if (json_last_error() !== JSON_ERROR_NONE) {
-                Log::warning('SP returned invalid JSON: '.$outputJson);
+                Log::warning('SP returned invalid JSON: ' . $outputJson);
 
                 return response()->json([
                     'success' => false,
@@ -699,10 +694,9 @@ class TrackerController extends Controller
                 'message' => 'Failed to add jobs to trip',
                 'errors' => $errors,
             ], 422);
-
         } catch (\Exception $e) {
-            Log::error('Add Job Error: '.$e->getMessage());
-            Log::error('Stack trace: '.$e->getTraceAsString());
+            Log::error('Add Job Error: ' . $e->getMessage());
+            Log::error('Stack trace: ' . $e->getTraceAsString());
 
             return response()->json([
                 'success' => false,
@@ -721,7 +715,7 @@ class TrackerController extends Controller
             $vehicleNo = $request->input('vehicle_no', null);
 
             Log::info('=== GET AVAILABLE JOBS CALLED ===');
-            Log::info('Vehicle No received: '.($vehicleNo ?? 'NULL'));
+            Log::info('Vehicle No received: ' . ($vehicleNo ?? 'NULL'));
 
             if (! $vehicleNo) {
                 Log::warning('Vehicle number not provided');
@@ -732,17 +726,17 @@ class TrackerController extends Controller
                 ], 400);
             }
 
-            Log::info('Calling SP: sp_Trip_JobList with VehicleNo = '.$vehicleNo);
+            Log::info('Calling SP: sp_Trip_JobList with VehicleNo = ' . $vehicleNo);
 
             // Call the stored procedure
             $jobs = DB::select('EXEC sp_Trip_JobList @VehicleNo = ?', [$vehicleNo]);
 
             Log::info('SP executed successfully');
-            Log::info('Number of jobs returned: '.count($jobs));
-            Log::info('Raw SP response: '.json_encode($jobs));
+            Log::info('Number of jobs returned: ' . count($jobs));
+            Log::info('Raw SP response: ' . json_encode($jobs));
 
             if (empty($jobs)) {
-                Log::info('No jobs found for vehicle: '.$vehicleNo);
+                Log::info('No jobs found for vehicle: ' . $vehicleNo);
 
                 return response()->json([
                     'success' => true,
@@ -753,7 +747,7 @@ class TrackerController extends Controller
 
             // Check if first result is an error message
             if (isset($jobs[0]->Err_Message)) {
-                Log::error('SP returned error: '.$jobs[0]->Err_Message);
+                Log::error('SP returned error: ' . $jobs[0]->Err_Message);
 
                 return response()->json([
                     'success' => false,
@@ -764,11 +758,11 @@ class TrackerController extends Controller
             // Check if it's a failed message from the SP
             $firstResult = (array) $jobs[0];
             $firstKey = array_key_first($firstResult);
-            Log::info('First result key: '.$firstKey);
-            Log::info('First result value: '.($firstResult[$firstKey] ?? 'NULL'));
+            Log::info('First result key: ' . $firstKey);
+            Log::info('First result value: ' . ($firstResult[$firstKey] ?? 'NULL'));
 
             if (strpos($firstResult[$firstKey] ?? '', 'Failed') === 0) {
-                Log::error('SP validation failed: '.$firstResult[$firstKey]);
+                Log::error('SP validation failed: ' . $firstResult[$firstKey]);
 
                 return response()->json([
                     'success' => false,
@@ -792,17 +786,16 @@ class TrackerController extends Controller
             }, $jobs);
 
             Log::info('Jobs formatted successfully');
-            Log::info('Formatted jobs: '.json_encode($formattedJobs));
+            Log::info('Formatted jobs: ' . json_encode($formattedJobs));
 
             return response()->json([
                 'success' => true,
                 'data' => $formattedJobs,
             ]);
-
         } catch (\Exception $e) {
             Log::error('=== GET AVAILABLE JOBS EXCEPTION ===');
-            Log::error('Error message: '.$e->getMessage());
-            Log::error('Stack trace: '.$e->getTraceAsString());
+            Log::error('Error message: ' . $e->getMessage());
+            Log::error('Stack trace: ' . $e->getTraceAsString());
 
             return response()->json([
                 'success' => false,
@@ -899,7 +892,7 @@ class TrackerController extends Controller
                 'ActionDate' => $actionDate,
             ], JSON_UNESCAPED_SLASHES);
 
-            Log::info('Starting trip with JSON: '.$inputJson);
+            Log::info('Starting trip with JSON: ' . $inputJson);
 
             $pdo = DB::connection()->getPdo();
             $stmt = $pdo->prepare("
@@ -927,7 +920,7 @@ class TrackerController extends Controller
                 }
             } while ($stmt->nextRowset());
 
-            Log::info('SP OutputJson: '.$outputJson);
+            Log::info('SP OutputJson: ' . $outputJson);
 
             if (trim($outputJson) === '') {
                 return response()->json([
@@ -962,9 +955,8 @@ class TrackerController extends Controller
                 'message' => 'Failed to start trip',
                 'errors' => $errors,
             ], 422);
-
         } catch (\Exception $e) {
-            Log::error('Start Trip Exception: '.$e->getMessage());
+            Log::error('Start Trip Exception: ' . $e->getMessage());
 
             return response()->json([
                 'success' => false,
@@ -993,7 +985,7 @@ class TrackerController extends Controller
                     'start_time' => 'required|date_format:H:i',
                 ]);
 
-                $customStartDate = $request->start_date.' '.$request->start_time;
+                $customStartDate = $request->start_date . ' ' . $request->start_time;
 
                 if (Carbon::parse($customStartDate, 'Africa/Nairobi')->isFuture()) {
                     return response()->json([
@@ -1120,7 +1112,7 @@ class TrackerController extends Controller
                         'conflicting_job_start' => $jobStartTime->format('Y-m-d H:i'),
                         'conflicting_job_end' => $jobEndTime->format('Y-m-d H:i'),
                         'your_start_time' => $manualStartDateTime->format('Y-m-d H:i'),
-                        'suggestion' => 'Job must start at or after '.$jobEndTime->format('Y-m-d H:i'),
+                        'suggestion' => 'Job must start at or after ' . $jobEndTime->format('Y-m-d H:i'),
                         'validation_type' => 'overlap',
                     ], 400);
                 }
@@ -1228,7 +1220,7 @@ class TrackerController extends Controller
                 }
             } while ($stmt->nextRowset());
 
-            Log::info('SP OutputJson: '.$outputJson);
+            Log::info('SP OutputJson: ' . $outputJson);
 
             $response = json_decode($outputJson, true);
 
@@ -1253,9 +1245,8 @@ class TrackerController extends Controller
                 'message' => 'Failed to start job',
                 'errors' => $errors,
             ], 422);
-
         } catch (\Exception $e) {
-            Log::error('Start Job Exception: '.$e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            Log::error('Start Job Exception: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
 
             return response()->json(['success' => false, 'message' => 'Server error'], 500);
         }
@@ -1268,7 +1259,7 @@ class TrackerController extends Controller
      * Complete job (supports both current time and backdating)
      * WITH VALIDATION: Cannot complete during another job's execution
      */
-   /**
+    /**
      * Complete job (supports both current time and backdating)
      * WITH VALIDATION: Cannot complete during another job's execution
      */
@@ -1285,7 +1276,7 @@ class TrackerController extends Controller
                     'end_time' => 'required|date_format:H:i',
                 ]);
 
-                $customEndDate = $request->end_date.' '.$request->end_time;
+                $customEndDate = $request->end_date . ' ' . $request->end_time;
 
                 // Validate end date is not in the future
                 if (Carbon::parse($customEndDate, 'Africa/Nairobi')->isFuture()) {
@@ -1302,7 +1293,7 @@ class TrackerController extends Controller
 
             // Use backdated end date if provided, otherwise use custom_end_date (for historical) or current time
             if ($isBackdated) {
-                $customEndDate = $request->end_date.' '.$request->end_time;
+                $customEndDate = $request->end_date . ' ' . $request->end_time;
             } else {
                 $customEndDate = $request->input('custom_end_date', null);
             }
@@ -1415,7 +1406,6 @@ class TrackerController extends Controller
                     'start_time_utc' => $startTime,
                     'end_time_utc' => $endTime,
                 ]);
-
             } elseif ($isBackdated && $customEndDate) {
                 // ✅ FIXED: DB already stores UTC time correctly - no adjustment needed
                 $startTime = Carbon::parse($job->job_start_date, 'UTC')
@@ -1445,13 +1435,12 @@ class TrackerController extends Controller
                 if ($proposedEndTime->lessThanOrEqualTo($jobStartTime)) {
                     return response()->json([
                         'success' => false,
-                        'message' => 'End date must be after job start date ('.
-                            $jobStartTime->format('Y-m-d H:i').')',
+                        'message' => 'End date must be after job start date (' .
+                            $jobStartTime->format('Y-m-d H:i') . ')',
                         'job_started_at' => $jobStartTime->format('Y-m-d H:i'),
                         'your_end_time' => $proposedEndTime->format('Y-m-d H:i'),
                     ], 400);
                 }
-
             } else {
                 // Current time completion - DB already has correct UTC time
                 $startTime = Carbon::parse($job->job_start_date, 'UTC')
@@ -1512,8 +1501,8 @@ class TrackerController extends Controller
                         'conflicting_job_start' => $jobStartTime->format('Y-m-d H:i'),
                         'conflicting_job_end' => $jobEndTime->format('Y-m-d H:i'),
                         'your_end_time' => $proposedEndDateTime->format('Y-m-d H:i'),
-                        'suggestion' => 'Job must end at or before '.$jobStartTime->format('Y-m-d H:i').
-                                       ' OR at or after '.$jobEndTime->format('Y-m-d H:i'),
+                        'suggestion' => 'Job must end at or before ' . $jobStartTime->format('Y-m-d H:i') .
+                            ' OR at or after ' . $jobEndTime->format('Y-m-d H:i'),
                         'validation_type' => 'overlap_end',
                     ], 400);
                 }
@@ -1567,22 +1556,23 @@ class TrackerController extends Controller
                 'gps_points' => $gpsPointsCount,
             ]);
 
-            // Format mileage data for SP
+            // Format mileage data for SP - USE JIMI'S CUMULATIVE VALUES
             $tripsFormatted = [];
+
             foreach ($mileageResult['trips'] ?? [] as $trip) {
                 $tripsFormatted[] = [
-                    'imei' => $realImei,
-                    'startTime' => $trip['start_time'],
-                    'endTime' => $trip['end_time'],
-                    'startLat' => $trip['start_lat'],
-                    'startLng' => $trip['start_lng'],
+                    'avgSpeed' => (string) $trip['avg_speed'],
+                    'distance' => (string) $trip['distance'],
                     'endLat' => $trip['end_lat'],
                     'endLng' => $trip['end_lng'],
-                    'distance' => $trip['distance'],
-                    'avgSpeed' => $trip['avg_speed'],
-                    'runTimeSecond' => $trip['duration'],
-                    'startMileage' => 0,
-                    'endMileage' => 0,
+                    'endTime' => $trip['end_time'],
+                    'imei' => $realImei,
+                    'runTimeSecond' => (string) $trip['duration'],
+                    'startLat' => $trip['start_lat'],
+                    'startLng' => $trip['start_lng'],
+                    'startTime' => $trip['start_time'],
+                    'startMileage' => $trip['start_mileage'] ?? 0,    
+                    'endMileage' => $trip['end_mileage'] ?? 0,
                 ];
             }
 
@@ -1591,30 +1581,39 @@ class TrackerController extends Controller
                 'data' => [
                     [
                         'imei' => $realImei,
-                        'totalMileage' => (int) round($totalDistance),
+                        'totalMileage' => isset($mileageResult['total_mileage'])
+                            ? (int) $mileageResult['total_mileage']
+                            : (int) round($totalDistance),
                     ],
                 ],
             ], JSON_UNESCAPED_SLASHES);
 
-            // Format track data for SP
+            // Format track data for SP - MATCH JIMI API FORMAT EXACTLY
             $trackPointsFormatted = [];
             foreach ($trackResult as $point) {
+                // Determine ignition status based on speed
+                $speed = (float) ($point['speed'] ?? 0.0);
+                $ignitionStatus = ($speed > 0) ? 'ON' : 'OFF';
+
                 $trackPointsFormatted[] = [
-                    'lat' => $point['lat'],
-                    'lng' => $point['lng'],
-                    'gpsTime' => $point['gps_time'],
-                    'direction' => $point['direction'],
-                    'gpsSpeed' => $point['speed'],
-                    'posType' => 0,
-                    'satellite' => 0,
-                    'ignition' => 'unknown',
-                    'accStatus' => 'unknown',
-                    'confidence' => 'high',
+                    'lat' => (float) $point['lat'],                    // Float, not string
+                    'lng' => (float) $point['lng'],                    // Float, not string
+                    'gpsTime' => $point['gps_time'],                   // "2025-11-26 02:13:00"
+                    'direction' => (int) ($point['direction'] ?? 0),   // Integer
+                    'gpsSpeed' => $speed,                              // Float
+                    'posType' => 1,                                    // Always 1
+                    'satellite' => 0,                                  // Always 0
+                    'ignition' => $ignitionStatus,                     // "ON" or "OFF"
+                    'accStatus' => $ignitionStatus,                    // "ON" or "OFF"
+                    'confidence' => null,                              // Always null
                 ];
             }
 
             $tripTrack = json_encode([
                 'result' => $trackPointsFormatted,
+                'data' => [
+                    'mileage' => (float) ($totalDistance ?? 0),
+                ],
             ], JSON_UNESCAPED_SLASHES);
 
             Log::info('Formatted data for SP', [
@@ -1682,7 +1681,7 @@ class TrackerController extends Controller
 
                     return response()->json([
                         'success' => false,
-                        'message' => 'Failed to start job: '.($startResponse['Remarks'][0]['Remark'] ?? 'Unknown error'),
+                        'message' => 'Failed to start job: ' . ($startResponse['Remarks'][0]['Remark'] ?? 'Unknown error'),
                         'errors' => $startResponse['Remarks'] ?? [],
                     ], 422);
                 }
@@ -1708,8 +1707,8 @@ class TrackerController extends Controller
                 'JobNo' => $job->job_no,
                 'ActionDate' => $adjustedEndActionDate,
                 'SubmittedDatetime' => $adjustedEndActionDate,
-                'TripMileage_sample' => substr($tripMileage, 0, 200).'...',
-                'TripTrack_sample' => substr($tripTrack, 0, 200).'...',
+                'TripMileage_sample' => substr($tripMileage, 0, 200) . '...',
+                'TripTrack_sample' => substr($tripTrack, 0, 200) . '...',
             ]);
 
             $pdo = DB::connection()->getPdo();
@@ -1796,7 +1795,6 @@ class TrackerController extends Controller
                 'message' => 'Failed to complete job',
                 'errors' => $errors,
             ], 422);
-
         } catch (\Exception $e) {
             Log::error('completeJob Exception', [
                 'job_id' => $jobId,
@@ -1816,7 +1814,7 @@ class TrackerController extends Controller
      * End trip - automatically uses last job's end date
      * FIXED: Adds +3 hours to job end date from DB before processing
      */
-   /**
+    /**
      * End trip - automatically uses last job's end date
      * FIXED: Uses UTC directly from DB without unnecessary timezone conversions
      */
@@ -1977,55 +1975,72 @@ class TrackerController extends Controller
             if ($gpsPointsCount > 0) {
                 $speeds = array_column($trackResult, 'speed');
                 $maxSpeed = max($speeds);
-                $movingSpeeds = array_filter($speeds, fn ($speed) => $speed > 0);
+                $movingSpeeds = array_filter($speeds, fn($speed) => $speed > 0);
 
                 if (! empty($movingSpeeds)) {
                     $avgSpeed = round(array_sum($movingSpeeds) / count($movingSpeeds), 2);
                 }
             }
 
-            // Format mileage data for SP
+            // Format mileage data for SP - USE JIMI'S CUMULATIVE VALUES
             $tripsFormatted = [];
+
             foreach ($mileageResult['trips'] ?? [] as $tripData) {
                 $tripsFormatted[] = [
-                    'imei' => $realImei,
-                    'startTime' => $tripData['start_time'],
-                    'endTime' => $tripData['end_time'],
-                    'startLat' => $tripData['start_lat'],
-                    'startLng' => $tripData['start_lng'],
+                    'avgSpeed' => (string) $tripData['avg_speed'],
+                    'distance' => (string) $tripData['distance'],
                     'endLat' => $tripData['end_lat'],
                     'endLng' => $tripData['end_lng'],
-                    'distance' => $tripData['distance'],
-                    'avgSpeed' => $tripData['avg_speed'],
-                    'runTimeSecond' => $tripData['duration'],
-                    'startMileage' => 0,
-                    'endMileage' => 0,
+                    'endTime' => $tripData['end_time'],
+                    'imei' => $realImei,
+                    'runTimeSecond' => (string) $tripData['duration'],
+                    'startLat' => $tripData['start_lat'],
+                    'startLng' => $tripData['start_lng'],
+                    'startTime' => $tripData['start_time'],
+                    'startMileage' => $tripData['start_mileage'] ?? 0,   // ✅ Use from Jimi API
+                    'endMileage' => $tripData['end_mileage'] ?? 0,       // ✅ Use from Jimi API
                 ];
             }
 
             $tripMileage = json_encode([
                 'result' => $tripsFormatted,
-                'data' => [[
-                    'imei' => $realImei,
-                    'totalMileage' => (int) round($totalDistance),
-                ]],
+                'data' => [
+                    [
+                        'imei' => $realImei,
+                        'totalMileage' => isset($mileageResult['total_mileage'])
+                            ? (int) $mileageResult['total_mileage']
+                            : (int) round($totalDistance),
+                    ],
+                ],
             ], JSON_UNESCAPED_SLASHES);
 
-            // Format track data for SP
-            $trackPointsFormatted = array_map(fn ($point) => [
-                'lat' => $point['lat'],
-                'lng' => $point['lng'],
-                'gpsTime' => $point['gps_time'],
-                'direction' => $point['direction'],
-                'gpsSpeed' => $point['speed'],
-                'posType' => 0,
-                'satellite' => 0,
-                'ignition' => 'unknown',
-                'accStatus' => 'unknown',
-                'confidence' => 'high',
-            ], $trackResult);
+            // Format track data for SP - MATCH JIMI API FORMAT EXACTLY
+            $trackPointsFormatted = [];
+            foreach ($trackResult as $point) {
+                // Determine ignition status based on speed
+                $speed = (float) ($point['speed'] ?? 0.0);
+                $ignitionStatus = ($speed > 0) ? 'ON' : 'OFF';
 
-            $tripTrack = json_encode(['result' => $trackPointsFormatted], JSON_UNESCAPED_SLASHES);
+                $trackPointsFormatted[] = [
+                    'lat' => (float) $point['lat'],                    // Float, not string
+                    'lng' => (float) $point['lng'],                    // Float, not string
+                    'gpsTime' => $point['gps_time'],                   // "2025-11-26 02:13:00"
+                    'direction' => (int) ($point['direction'] ?? 0),   // Integer
+                    'gpsSpeed' => $speed,                              // Float
+                    'posType' => 1,                                    // Always 1
+                    'satellite' => 0,                                  // Always 0
+                    'ignition' => $ignitionStatus,                     // "ON" or "OFF"
+                    'accStatus' => $ignitionStatus,                    // "ON" or "OFF"
+                    'confidence' => null,                              // Always null
+                ];
+            }
+
+            $tripTrack = json_encode([
+                'result' => $trackPointsFormatted,
+                'data' => [
+                    'mileage' => (float) ($totalDistance ?? 0),
+                ],
+            ], JSON_UNESCAPED_SLASHES);
 
             // ✅ FIXED: Convert UTC to YmdHis format for SP (DB expects UTC in this format)
             $actionDate = $tripEndDateTime->format('YmdHis');
@@ -2134,7 +2149,6 @@ class TrackerController extends Controller
                 'message' => 'Failed to end trip',
                 'errors' => $errors,
             ], 422);
-
         } catch (\Exception $e) {
             Log::error('endTrip Exception', [
                 'trip_id' => $tripId,
@@ -2179,5 +2193,46 @@ class TrackerController extends Controller
         ];
 
         return $imeiMap[$vehicleNo] ?? null;
+    }
+
+
+    public function deleteTrips(Request $request)
+    {
+        $request->validate([
+            'trip_nos' => 'required|array|min:1',
+            'trip_nos.*' => 'required|string',
+        ]);
+
+        try {
+            DB::transaction(function () use ($request) {
+
+                // Delete child records first
+                DB::table('Trip_TripJobMapping')
+                    ->whereIn('TripInfoID', function ($query) use ($request) {
+                        $query->select('Id')
+                            ->from('Trip_TripInfomation')
+                            ->whereIn('TripNo', $request->trip_nos);
+                    })
+                    ->delete();
+
+                // Delete trips
+                DB::table('Trip_TripInfomation')
+                    ->whereIn('TripNo', $request->trip_nos)
+                    ->delete();
+            });
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Trips deleted successfully',
+                'trip_nos' => $request->trip_nos,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Trip deletion failed: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to delete trips',
+            ], 500);
+        }
     }
 }

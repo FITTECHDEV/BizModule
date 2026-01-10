@@ -20,6 +20,7 @@ use Illuminate\Support\Facades\Route;
 
 
 use Illuminate\Support\Facades\Crypt;
+use App\Http\Controllers\TripController;
 
 Route::get('/test-pgsql', function () {
     try {
@@ -320,7 +321,7 @@ Route::get('/api/companies', [ClientPartyController::class, 'getCompanies'])->na
 Route::get('/api/company-details', [ClientPartyController::class, 'getCompanyDetails'])->name('company.details');
 Route::post('/client-party/fetch-address-details', [ClientPartyController::class, 'fetchAddressDetails'])->name('client-party.fetch-address-details');
 Route::get('/api/clients', [ClientPartyController::class, 'getClients'])->name('clients');
-Route::post('/create-client-party-scm', [ClientPartyController::class, 'CreateClientPartySCM']) ->middleware('auth:api')->name('client.create-party-scm');
+Route::post('/create-client-party-scm', [ClientPartyController::class, 'CreateClientPartySCM'])->middleware('auth:api')->name('client.create-party-scm');
 
 Route::get('/', function () {
     return redirect()->route('home');
@@ -366,23 +367,8 @@ Route::middleware(['auth'])->prefix('jimi-test')->group(function () {
     // Get track data
     Route::post('/track', [JimiTestController::class, 'getTrackData'])->name('jimi.test.track');
 });
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+// routes/api.php
+Route::delete('/trips', [TrackerController::class, 'deleteTrips']);
 
 
 
@@ -412,7 +398,7 @@ Route::prefix('reporting')->middleware('auth')->group(function () {
         ->name('reporting.users.show');
 
 
-        Route::get('/users/active-this-month', [UserController::class, 'activeThisMonth'])
+    Route::get('/users/active-this-month', [UserController::class, 'activeThisMonth'])
         ->name('reporting.users.active-this-month');
 
     Route::get('/users/active-last-month', [UserController::class, 'activeLastMonth'])
@@ -442,7 +428,7 @@ Route::get('/dashboard', [DashboardController::class, 'index'])
     ->middleware('auth')
     ->name('dashboard');
 
-    Route::get('/dashboard/debug-user-logins', [DashboardController::class, 'debugUserLogins'])
+Route::get('/dashboard/debug-user-logins', [DashboardController::class, 'debugUserLogins'])
     ->name('dashboard.debug-user-logins');
 
 // ----------------------
@@ -470,14 +456,15 @@ Route::post('/import/sign-ins', [ImportController::class, 'importSignIns'])
     ->middleware('auth')
     ->name('imports.sign_ins');
 
+Route::get('/import/progress', [ImportController::class, 'getImportProgress'])->name('import.progress');
 
 
 Route::post('/dashboard/clear-cache', [DashboardController::class, 'clearDashboardCache'])
     ->name('dashboard.clear-cache');
 
-    Route::get('/users/cleanup-empty', [UserController::class, 'cleanupEmptyUsers'])->name('users.cleanup');
+Route::get('/users/cleanup-empty', [UserController::class, 'cleanupEmptyUsers'])->name('users.cleanup');
 
-Route::get('/debug-import-data', function() {
+Route::get('/debug-import-data', function () {
     $dates = ['2025-10-10', '2025-10-23'];
 
     // Get all data for those dates
@@ -510,15 +497,22 @@ Route::get('/debug-import-data', function() {
             'is_mapped' => $isMapped,
             'maps_to' => $mappedTo,
             'in_display_systems' => in_array($mappedTo, [
-                'BIZ PRO', 'BIZ UAT', 'D365 LIVE', 'D365 UAT',
-                'FIT Express', 'FIT Express UAT', 'Odoo',
-                'OPS', 'OPS UAT', 'Windows Sign In'
+                'BIZ PRO',
+                'BIZ UAT',
+                'D365 LIVE',
+                'D365 UAT',
+                'FIT Express',
+                'FIT Express UAT',
+                'Odoo',
+                'OPS',
+                'OPS UAT',
+                'Windows Sign In'
             ])
         ];
     }
 
     // Get Amay's specific data
-    $amayData = $data->filter(function($record) {
+    $amayData = $data->filter(function ($record) {
         return stripos($record->username, 'amay') !== false;
     })->values();
 
@@ -533,9 +527,207 @@ Route::get('/debug-import-data', function() {
         ],
         'all_records' => $data->toArray(),
         'display_systems' => [
-            'BIZ PRO', 'BIZ UAT', 'D365 LIVE', 'D365 UAT',
-            'FIT Express', 'FIT Express UAT', 'Odoo',
-            'OPS', 'OPS UAT', 'Windows Sign In'
+            'BIZ PRO',
+            'BIZ UAT',
+            'D365 LIVE',
+            'D365 UAT',
+            'FIT Express',
+            'FIT Express UAT',
+            'Odoo',
+            'OPS',
+            'OPS UAT',
+            'Windows Sign In'
         ]
     ]);
 })->middleware('auth');
+
+
+
+Route::get('/test-sp-direct', function() {
+
+    $inputJson = '{"OperationType":"TripStatusUpdate","SubmittedDatetime":"20251224165700","SubmittedBy":"system","Action":"Add","TransactionType":"Job","TransactionNo":"KE-RE-25-00077","ActionType":"End","ActionDate":"20251224165700"}';
+
+    // Simplified test data with "unknown" values
+    $tripMileage = '{"result":[{"imei":"865784055074028","startTime":"2025-12-24 12:17:45","endTime":"2025-12-24 12:32:04","startLat":"-4.002968","startLng":"39.569098","endLat":"-4.041527","endLng":"39.604062","distance":8499.0}]}';
+
+    // This is the problematic one - contains "unknown"
+    $tripTrack = '{"result":[{"lat":-4.044615,"lng":39.618889,"gpsTime":"2025-12-16 23:37:16","direction":5,"gpsSpeed":0,"posType":0,"satellite":0,"ignition":"unknown","accStatus":"unknown","confidence":"high"}]}';
+
+    try {
+        $pdo = DB::connection()->getPdo();
+
+        $stmt = $pdo->prepare("
+            SET NOCOUNT ON;
+            DECLARE @OutputJson VARCHAR(MAX) = NULL;
+
+            EXEC dbo.sp_TripMain
+                @InputJson = :inputJson,
+                @TripMileage = :tripMileage,
+                @TripTrack = :tripTrack,
+                @OutputJson = @OutputJson OUTPUT;
+
+            SELECT ISNULL(@OutputJson, '') AS OutputJson;
+        ");
+
+        $stmt->bindParam(':inputJson', $inputJson, PDO::PARAM_STR);
+        $stmt->bindParam(':tripMileage', $tripMileage, PDO::PARAM_STR);
+        $stmt->bindParam(':tripTrack', $tripTrack, PDO::PARAM_STR);
+        $stmt->execute();
+
+        // Get output
+        $outputJson = '';
+        do {
+            if ($stmt->columnCount() > 0) {
+                while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                    if (isset($row['OutputJson'])) {
+                        $outputJson = $row['OutputJson'];
+                        break 2;
+                    }
+                }
+            }
+        } while ($stmt->nextRowset());
+
+        return response()->json([
+            'status' => 'success',
+            'output' => $outputJson,
+            'decoded' => json_decode($outputJson, true)
+        ]);
+
+    } catch (\Exception $e) {
+        return response()->json([
+            'status' => 'error',
+            'message' => $e->getMessage(),
+            'line' => $e->getLine()
+        ]);
+    }
+});
+
+
+
+Route::get('/test-sp-production-data', function() {
+
+    // Use the EXACT JSON from your production logs
+    $inputJson = '{"OperationType":"TripStatusUpdate","SubmittedDatetime":"20251224165700","SubmittedBy":"system","Action":"Add","TransactionType":"Job","TransactionNo":"KE-RE-25-00077","ActionType":"End","ActionDate":"20251224165700"}';
+
+    // Get the ACTUAL trip and job IDs from database
+    $job = DB::table('Trip_TripJobMapping as tjm')
+        ->join('Trip_TripInfomation as t', 'tjm.TripInfoID', '=', 't.Id')
+        ->select('tjm.Id as job_id', 'tjm.JobNo', 't.TripNo', 't.Id as trip_id')
+        ->where('tjm.JobNo', 'KE-RE-25-00077')
+        ->first();
+
+    if (!$job) {
+        return response()->json([
+            'error' => 'Job KE-RE-25-00077 not found in database',
+            'check' => 'This is why SP is failing - the job does not exist'
+        ]);
+    }
+
+    // Use realistic mileage data
+    $tripMileage = '{"result":[{"imei":"865784055074028","startTime":"2025-12-24 12:17:45","endTime":"2025-12-24 12:32:04","startLat":"-4.002968","startLng":"39.569098","endLat":"-4.041527","endLng":"39.604062","distance":8499.0,"avgSpeed":"35.67","runTimeSecond":858,"startMileage":0,"endMileage":0}],"data":[{"imei":"865784055074028","totalMileage":2232250}]}';
+
+    // Create realistic track data
+    $trackPoints = [];
+    for ($i = 0; $i < 100; $i++) {
+        $trackPoints[] = [
+            'lat' => -4.044615,
+            'lng' => 39.618889,
+            'gpsTime' => '2025-12-16 23:37:16',
+            'direction' => 5,
+            'gpsSpeed' => 0,
+            'posType' => 0,
+            'satellite' => 0,
+            'ignition' => 'unknown',
+            'accStatus' => 'unknown',
+            'confidence' => 'high'
+        ];
+    }
+
+    $tripTrack = json_encode(['result' => $trackPoints]);
+
+    try {
+        $pdo = DB::connection()->getPdo();
+
+        $stmt = $pdo->prepare("
+            SET NOCOUNT ON;
+            DECLARE @OutputJson VARCHAR(MAX) = NULL;
+
+            EXEC dbo.sp_TripMain
+                @InputJson = :inputJson,
+                @TripMileage = :tripMileage,
+                @TripTrack = :tripTrack,
+                @OutputJson = @OutputJson OUTPUT;
+
+            SELECT ISNULL(@OutputJson, '') AS OutputJson;
+        ");
+
+        $stmt->bindParam(':inputJson', $inputJson, PDO::PARAM_STR);
+        $stmt->bindParam(':tripMileage', $tripMileage, PDO::PARAM_STR);
+        $stmt->bindParam(':tripTrack', $tripTrack, PDO::PARAM_STR);
+        $stmt->execute();
+
+        $outputJson = '';
+        do {
+            if ($stmt->columnCount() > 0) {
+                while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                    if (isset($row['OutputJson'])) {
+                        $outputJson = $row['OutputJson'];
+                        break 2;
+                    }
+                }
+            }
+        } while ($stmt->nextRowset());
+
+        return response()->json([
+            'job_info' => [
+                'job_no' => $job->JobNo,
+                'job_id' => $job->job_id,
+                'trip_no' => $job->TripNo,
+                'trip_id' => $job->trip_id
+            ],
+            'sp_response' => [
+                'raw_output' => $outputJson,
+                'decoded' => json_decode($outputJson, true)
+            ],
+            'test_data_info' => [
+                'track_points_count' => count($trackPoints),
+                'track_data_size_bytes' => strlen($tripTrack),
+                'mileage_data_size_bytes' => strlen($tripMileage)
+            ]
+        ]);
+
+    } catch (\Exception $e) {
+        return response()->json([
+            'error' => [
+                'message' => $e->getMessage(),
+                'code' => $e->getCode(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine()
+            ],
+            'job_info' => [
+                'job_no' => $job->JobNo ?? 'N/A',
+                'job_id' => $job->job_id ?? 'N/A',
+                'trip_no' => $job->TripNo ?? 'N/A'
+            ]
+        ]);
+    }
+});
+
+
+// Jimi Test Routes
+Route::prefix('jimi-test')->group(function () {
+    Route::get('/connection', [JimiTestController::class, 'testConnection']);
+    Route::get('/vehicles', [JimiTestController::class, 'getVehicles']);
+    Route::get('/location/{imei}', [JimiTestController::class, 'getCurrentLocation']);
+    Route::post('/mileage', [JimiTestController::class, 'getMileage']);
+    Route::post('/track', [JimiTestController::class, 'getTrackData']);
+    Route::get('/test-page', [JimiTestController::class, 'testPage']);
+
+    // ✅ Test complete job formatting - both GET and POST
+    Route::get('/test-formatting', [JimiTestController::class, 'testCompleteJobFormatting']);
+    Route::post('/test-formatting', [JimiTestController::class, 'testCompleteJobFormatting']);
+});
+
+
+Route::get('/jimi-test/complete-data', [JimiTestController::class, 'testCompleteData']);
+

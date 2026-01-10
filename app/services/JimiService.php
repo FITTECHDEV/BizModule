@@ -26,26 +26,33 @@ class JimiService
     /**
      * ✅ IMPROVED: Check if cached token is still valid
      */
-    private function isTokenValid()
-    {
-        $token = Cache::get('jimi_access_token');
+   private function isTokenValid()
+{
+    $token = Cache::get('jimi_access_token');
 
-        if (!$token) {
-            return false;
-        }
-
-        // Check token expiration time from cache
-        $expiresAt = Cache::get('jimi_token_expires_at');
-
-        if ($expiresAt && now()->greaterThan($expiresAt)) {
-            Log::info('Jimi: Token expired, clearing cache');
-            Cache::forget('jimi_access_token');
-            Cache::forget('jimi_token_expires_at');
-            return false;
-        }
-
-        return true;
+    if (!$token) {
+        return false;
     }
+
+    $expiresAt = Cache::get('jimi_token_expires_at');
+
+    // ✅ If no expiration timestamp, token is invalid
+    if (!$expiresAt) {
+        Log::info('Jimi: No expiration timestamp, clearing cache');
+        Cache::forget('jimi_access_token');
+        return false;
+    }
+
+    // ✅ If expired, clear and return false
+    if (now()->greaterThan($expiresAt)) {
+        Log::info('Jimi: Token expired, clearing cache');
+        Cache::forget('jimi_access_token');
+        Cache::forget('jimi_token_expires_at');
+        return false;
+    }
+
+    return true;
+}
 
     /**
      * ✅ IMPROVED: Get access token (with automatic refresh support and health check)
@@ -150,7 +157,6 @@ class JimiService
             ]);
 
             return null;
-
         } catch (\Exception $e) {
             Log::error('Jimi: Token error - ' . $e->getMessage());
             return null;
@@ -223,7 +229,6 @@ class JimiService
             Cache::forget('jimi_refresh_token');
 
             return null;
-
         } catch (\Exception $e) {
             Log::error('Jimi: Token refresh error - ' . $e->getMessage());
             Cache::forget('jimi_refresh_token');
@@ -364,7 +369,7 @@ class JimiService
             ]);
 
             if (isset($data['result']) && is_array($data['result'])) {
-                return array_map(function($vehicle) {
+                return array_map(function ($vehicle) {
                     return [
                         'imei' => $vehicle['imei'] ?? null,
                         'device_name' => $vehicle['deviceName'] ?? 'Unknown',
@@ -381,7 +386,6 @@ class JimiService
             }
 
             return [];
-
         } catch (\Exception $e) {
             Log::error('Jimi: Get vehicles error - ' . $e->getMessage());
             return [];
@@ -424,7 +428,7 @@ class JimiService
                 $totalMileage = (float)$data['data'][0]['totalMileage'];
             }
 
-            // Get trip segments from 'result' array
+            // Get trip segments from 'result' array+
             $trips = [];
             $totalDistance = 0;
             $totalDuration = 0;
@@ -448,7 +452,9 @@ class JimiService
                         'start_lat' => $trip['startLat'] ?? null,
                         'start_lng' => $trip['startLng'] ?? null,
                         'end_lat' => $trip['endLat'] ?? null,
-                        'end_lng' => $trip['endLng'] ?? null
+                        'end_lng' => $trip['endLng'] ?? null,
+                        'start_mileage' => isset($trip['startMileage']) ? (int)$trip['startMileage'] : 0,  // ✅ ADD THIS
+                        'end_mileage' => isset($trip['endMileage']) ? (int)$trip['endMileage'] : 0,        // ✅ ADD THIS
                     ];
                 }
             }
@@ -466,7 +472,6 @@ class JimiService
                 'trips_count' => count($trips),
                 'trips' => $trips
             ];
-
         } catch (\Exception $e) {
             Log::error('Jimi: Mileage error - ' . $e->getMessage());
             return ['success' => false, 'message' => $e->getMessage()];
@@ -494,7 +499,7 @@ class JimiService
             $data = $this->makeJimiRequest($params);
 
             if (isset($data['result']) && is_array($data['result'])) {
-                return array_map(function($point) {
+                return array_map(function ($point) {
                     return [
                         'lat' => $point['lat'] ?? null,
                         'lng' => $point['lng'] ?? null,
@@ -507,7 +512,6 @@ class JimiService
             }
 
             return [];
-
         } catch (\Exception $e) {
             Log::error('Jimi: Track data error - ' . $e->getMessage());
             return [];
@@ -536,7 +540,6 @@ class JimiService
             }
 
             return null;
-
         } catch (\Exception $e) {
             Log::error('Jimi: Get location error - ' . $e->getMessage());
             return null;
@@ -546,6 +549,23 @@ class JimiService
     /**
      * Map IMEI to vehicle number
      */
+    // private function getVehicleNoFromIMEI($imei)
+    // {
+    //     $map = [
+    //         '865784055081171' => 'KDN 124Z',
+    //         '865784055077419' => 'KDN 209Y',
+    //         '865784055074523' => 'KDN 331Y',
+    //         '865784055073301' => 'KDN 345Y',
+    //         '865784055081189' => 'KDN 346Y',
+    //         '865784055076759' => 'KDN 347Y',
+    //         '865784055073996' => 'KDN 348Y',
+    //         '865784055074077' => 'KDN 349Y',
+    //         '865784055073303' => 'KDN 351Y',
+    //         '865784055082542' => 'KDN 352Y',
+    //     ];
+
+    //     return $map[$imei] ?? 'Unknown';
+    // }
     private function getVehicleNoFromIMEI($imei)
     {
         $map = [
@@ -557,12 +577,13 @@ class JimiService
             '865784055076759' => 'KDN 347Y',
             '865784055073996' => 'KDN 348Y',
             '865784055074077' => 'KDN 349Y',
-            '865784055073303' => 'KDN 351Y',
+            '865784055074028' => 'KDN 351Y', // ✅ FIXED
             '865784055082542' => 'KDN 352Y',
         ];
 
         return $map[$imei] ?? 'Unknown';
     }
+
 
     /**
      * Test connection
@@ -587,7 +608,6 @@ class JimiService
                 'success' => false,
                 'message' => 'Failed to get access token'
             ];
-
         } catch (\Exception $e) {
             return [
                 'success' => false,
