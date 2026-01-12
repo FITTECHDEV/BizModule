@@ -741,14 +741,19 @@
                 .then(data => {
                     if (data.success) {
                         alert(data.message || `User has been ${actionText}d successfully`);
-                        window.location.reload();
+                        // ✅ IMPROVED: Force reload with location.href
+                        window.location.href = window.location.href;
                     } else {
                         alert(data.message || `Failed to ${actionText} user`);
+                        // ✅ NEW: Also reload on failure to show correct state
+                        window.location.href = window.location.href;
                     }
                 })
                 .catch(error => {
                     console.error(`Error ${actionText}ing user:`, error);
                     alert(`Failed to ${actionText} user. ${error.message}`);
+                    // ✅ NEW: Reload even on error to show correct state
+                    window.location.href = window.location.href;
                 });
         }
 

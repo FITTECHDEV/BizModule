@@ -166,7 +166,7 @@
                                             @endforeach
                                         </select>
 
-                                        <button type="button" class="btn btn-primary" id="saveBaseOfficeBtn"
+                                        {{-- <button type="button" class="btn btn-primary" id="saveBaseOfficeBtn"
                                             onclick="saveBaseOffice()"
                                             style="white-space: nowrap; min-width: 150px; display: none;">
                                             <i class="fas fa-save"></i>
@@ -178,13 +178,13 @@
                                             style="white-space: nowrap; min-width: 120px; display: none;">
                                             <i class="fas fa-times"></i>
                                             Cancel
-                                        </button>
+                                        </button> --}}
                                     </div>
 
                                     <small class="form-text text-muted">
                                         <i class="fas fa-info-circle"></i>
                                         Current: <strong>{{ $currentBaseOffice ?? 'Not Set' }}</strong> |
-                                        Click "Save Base Office" to update.
+                                        Changes will be saved when you click "Update User".
                                     </small>
 
                                     @error('scm_base_office')
@@ -1924,29 +1924,29 @@
                 ${
                     isOPSModule
                     ? `
-                                                                                                                <!-- SPECIAL LAYOUT FOR OPS MODULES -->
-                                                                                                                <div class="ops-module-layout">
-                                                                                                                    <div class="ops-top-section">
-                                                                                                                        <!-- OFFICE LOCATION -->
-                                                                                                                        <div class="ops-form-section">
-                                                                                                                            <div class="field-label"><i class="fas fa-map-marker-alt"></i> Office Location</div>
-                                                                                                                            <div class="radio-group">
-                                                                                                                                <div class="radio-option ${disabledClass}">
-                                                                                                                                    <input type="radio" id="${a.id}_all_locations" name="${a.id}_location_type" class="all-locations-radio" ${isAllLocations ? 'checked' : ''} ${disabled} onchange="handleLocationRadioChange('${a.id}')">
-                                                                                                                                    <label for="${a.id}_all_locations">All Locations</label>
-                                                                                                                                </div>
-                                                                                                                                <div class="radio-option ${disabledClass}">
-                                                                                                                                    <input type="radio" id="${a.id}_specific_locations" name="${a.id}_location_type" class="specific-locations-radio" ${!isAllLocations ? 'checked' : ''} ${disabled} onchange="handleLocationRadioChange('${a.id}')">
-                                                                                                                                    <label for="${a.id}_specific_locations">Specific Location</label>
-                                                                                                                                </div>
-                                                                                                                            </div>
-                                                                                                                            <div class="checkboxes-grid">
-                                                                                                                                ${locationsData.map(l => {
-                                                                                                                                    const locCode = l.code.trim();
-                                                                                                                                    const isChecked = isAllLocations ||
-                                                                                                                                        (a.locationCodes && a.locationCodes.map(c => c.trim()).includes(locCode));
+                                                                                                                        <!-- SPECIAL LAYOUT FOR OPS MODULES -->
+                                                                                                                        <div class="ops-module-layout">
+                                                                                                                            <div class="ops-top-section">
+                                                                                                                                <!-- OFFICE LOCATION -->
+                                                                                                                                <div class="ops-form-section">
+                                                                                                                                    <div class="field-label"><i class="fas fa-map-marker-alt"></i> Office Location</div>
+                                                                                                                                    <div class="radio-group">
+                                                                                                                                        <div class="radio-option ${disabledClass}">
+                                                                                                                                            <input type="radio" id="${a.id}_all_locations" name="${a.id}_location_type" class="all-locations-radio" ${isAllLocations ? 'checked' : ''} ${disabled} onchange="handleLocationRadioChange('${a.id}')">
+                                                                                                                                            <label for="${a.id}_all_locations">All Locations</label>
+                                                                                                                                        </div>
+                                                                                                                                        <div class="radio-option ${disabledClass}">
+                                                                                                                                            <input type="radio" id="${a.id}_specific_locations" name="${a.id}_location_type" class="specific-locations-radio" ${!isAllLocations ? 'checked' : ''} ${disabled} onchange="handleLocationRadioChange('${a.id}')">
+                                                                                                                                            <label for="${a.id}_specific_locations">Specific Location</label>
+                                                                                                                                        </div>
+                                                                                                                                    </div>
+                                                                                                                                    <div class="checkboxes-grid">
+                                                                                                                                        ${locationsData.map(l => {
+                                                                                                                                            const locCode = l.code.trim();
+                                                                                                                                            const isChecked = isAllLocations ||
+                                                                                                                                                (a.locationCodes && a.locationCodes.map(c => c.trim()).includes(locCode));
 
-                                                                                                                                    return `
+                                                                                                                                            return `
                                             <div class="checkbox-option ${isAllLocations || !isEditMode ? 'disabled' : ''}">
                                                 <input type="checkbox"
                                                        id="${a.id}_loc_${locCode}"
@@ -1961,30 +1961,30 @@
                                                 <label for="${a.id}_loc_${locCode}">${escapeHtml(l.name)}</label>
                                             </div>
                                         `;
-                                                                                                                                }).join('')}
-                                                                                                                            </div>
-                                                                                                                        </div>
-
-                                                                                                                        <!-- SCM FUNCTIONS -->
-                                                                                                                        <div class="ops-form-section">
-                                                                                                                            <div class="field-label"><i class="fas fa-cog"></i> Function (SCM)</div>
-                                                                                                                            <div class="radio-group">
-                                                                                                                                <div class="radio-option ${disabledClass}">
-                                                                                                                                    <input type="radio" id="${a.id}_all_functions" name="${a.id}_function_type" class="all-functions-radio" ${isAllFunctions ? 'checked' : ''} ${disabled} onchange="handleFunctionRadioChange('${a.id}')">
-                                                                                                                                    <label for="${a.id}_all_functions">All Functions</label>
+                                                                                                                                        }).join('')}
+                                                                                                                                    </div>
                                                                                                                                 </div>
-                                                                                                                                <div class="radio-option ${disabledClass}">
-                                                                                                                                    <input type="radio" id="${a.id}_specific_functions" name="${a.id}_function_type" class="specific-functions-radio" ${!isAllFunctions ? 'checked' : ''} ${disabled} onchange="handleFunctionRadioChange('${a.id}')">
-                                                                                                                                    <label for="${a.id}_specific_functions">Specific Function</label>
-                                                                                                                                </div>
-                                                                                                                            </div>
-                                                                                                                            <div class="checkboxes-grid">
-                                                                                                                                ${availableFunctions.length > 0 ? availableFunctions.map(f => {
-                                                                                                                                    const functionId = String(f.id).toUpperCase();
-                                                                                                                                    const normalizedFunctionIds = (a.functionIds || []).map(id => String(id).toUpperCase());
-                                                                                                                                    const isChecked = isAllFunctions || normalizedFunctionIds.includes(functionId);
 
-                                                                                                                                    return `
+                                                                                                                                <!-- SCM FUNCTIONS -->
+                                                                                                                                <div class="ops-form-section">
+                                                                                                                                    <div class="field-label"><i class="fas fa-cog"></i> Function (SCM)</div>
+                                                                                                                                    <div class="radio-group">
+                                                                                                                                        <div class="radio-option ${disabledClass}">
+                                                                                                                                            <input type="radio" id="${a.id}_all_functions" name="${a.id}_function_type" class="all-functions-radio" ${isAllFunctions ? 'checked' : ''} ${disabled} onchange="handleFunctionRadioChange('${a.id}')">
+                                                                                                                                            <label for="${a.id}_all_functions">All Functions</label>
+                                                                                                                                        </div>
+                                                                                                                                        <div class="radio-option ${disabledClass}">
+                                                                                                                                            <input type="radio" id="${a.id}_specific_functions" name="${a.id}_function_type" class="specific-functions-radio" ${!isAllFunctions ? 'checked' : ''} ${disabled} onchange="handleFunctionRadioChange('${a.id}')">
+                                                                                                                                            <label for="${a.id}_specific_functions">Specific Function</label>
+                                                                                                                                        </div>
+                                                                                                                                    </div>
+                                                                                                                                    <div class="checkboxes-grid">
+                                                                                                                                        ${availableFunctions.length > 0 ? availableFunctions.map(f => {
+                                                                                                                                            const functionId = String(f.id).toUpperCase();
+                                                                                                                                            const normalizedFunctionIds = (a.functionIds || []).map(id => String(id).toUpperCase());
+                                                                                                                                            const isChecked = isAllFunctions || normalizedFunctionIds.includes(functionId);
+
+                                                                                                                                            return `
                                             <div class="checkbox-option ${isAllFunctions || !isEditMode ? 'disabled' : ''}">
                                                 <input type="checkbox"
                                                     id="${a.id}_func_${f.id}"
@@ -1998,18 +1998,18 @@
                                                 <label for="${a.id}_func_${f.id}">${escapeHtml(f.name)}</label>
                                             </div>
                                         `;
-                                                                                                                                }).join('') : '<p style="padding: 10px; color: #666;">No functions available</p>'}
+                                                                                                                                        }).join('') : '<p style="padding: 10px; color: #666;">No functions available</p>'}
+                                                                                                                                    </div>
+                                                                                                                                </div>
                                                                                                                             </div>
-                                                                                                                        </div>
-                                                                                                                    </div>
 
-                                                                                                                    <!-- ROLES - FULL WIDTH FOR OPS MODULES -->
-                                                                                                                    <div class="ops-roles-section">
-                                                                                                                        <div class="field-label"><i class="fas fa-user-tag"></i> Roles</div>
-                                                                                                                        <div class="roles-grid-3col">
-                                                                                                                            ${availableRoles.length > 0 ? availableRoles.map(r => {
-                                                                                                                                const isChecked = a.roleIds && a.roleIds.map(String).includes(String(r.id));
-                                                                                                                                return `
+                                                                                                                            <!-- ROLES - FULL WIDTH FOR OPS MODULES -->
+                                                                                                                            <div class="ops-roles-section">
+                                                                                                                                <div class="field-label"><i class="fas fa-user-tag"></i> Roles</div>
+                                                                                                                                <div class="roles-grid-3col">
+                                                                                                                                    ${availableRoles.length > 0 ? availableRoles.map(r => {
+                                                                                                                                        const isChecked = a.roleIds && a.roleIds.map(String).includes(String(r.id));
+                                                                                                                                        return `
                                         <div class="checkbox-option ${!isEditMode ? 'disabled' : ''}">
                                             <input type="checkbox"
                                                     id="${a.id}_role_${r.id}"
@@ -2023,34 +2023,34 @@
                                             <label for="${a.id}_role_${r.id}">${escapeHtml(r.name)}</label>
                                         </div>
                                     `;
-                                                                                                                            }).join('') : '<p style="padding: 10px; color: #666; grid-column: 1/-1;">No roles available for ' + escapeHtml(applicationCode) + '</p>'}
+                                                                                                                                    }).join('') : '<p style="padding: 10px; color: #666; grid-column: 1/-1;">No roles available for ' + escapeHtml(applicationCode) + '</p>'}
+                                                                                                                                </div>
+                                                                                                                            </div>
                                                                                                                         </div>
-                                                                                                                    </div>
-                                                                                                                </div>
-                                                                                                                `
+                                                                                                                        `
                     : `
-                                                                                                                <!-- STANDARD LAYOUT FOR NON-OPS MODULES -->
-                                                                                                                <div class="assignment-info" style="grid-template-columns: ${isSCM ? '1fr 1fr 1fr' : '1fr 1fr'};">
-                                                                                                                    <!-- OFFICE LOCATION -->
-                                                                                                                    <div class="info-field">
-                                                                                                                        <div class="field-label"><i class="fas fa-map-marker-alt"></i> Office Location</div>
-                                                                                                                        <div class="radio-group">
-                                                                                                                            <div class="radio-option ${disabledClass}">
-                                                                                                                                <input type="radio" id="${a.id}_all_locations" name="${a.id}_location_type" class="all-locations-radio" ${isAllLocations ? 'checked' : ''} ${disabled} onchange="handleLocationRadioChange('${a.id}')">
-                                                                                                                                <label for="${a.id}_all_locations">All Locations</label>
-                                                                                                                            </div>
-                                                                                                                            <div class="radio-option ${disabledClass}">
-                                                                                                                                <input type="radio" id="${a.id}_specific_locations" name="${a.id}_location_type" class="specific-locations-radio" ${!isAllLocations ? 'checked' : ''} ${disabled} onchange="handleLocationRadioChange('${a.id}')">
-                                                                                                                                <label for="${a.id}_specific_locations">Specific Location</label>
-                                                                                                                            </div>
-                                                                                                                        </div>
-                                                                                                                        <div class="checkboxes-grid">
-                                                                                                                            ${locationsData.map(l => {
-                                                                                                                                const locCode = l.code.trim();
-                                                                                                                                const isChecked = isAllLocations ||
-                                                                                                                                    (a.locationCodes && a.locationCodes.map(c => c.trim()).includes(locCode));
+                                                                                                                        <!-- STANDARD LAYOUT FOR NON-OPS MODULES -->
+                                                                                                                        <div class="assignment-info" style="grid-template-columns: ${isSCM ? '1fr 1fr 1fr' : '1fr 1fr'};">
+                                                                                                                            <!-- OFFICE LOCATION -->
+                                                                                                                            <div class="info-field">
+                                                                                                                                <div class="field-label"><i class="fas fa-map-marker-alt"></i> Office Location</div>
+                                                                                                                                <div class="radio-group">
+                                                                                                                                    <div class="radio-option ${disabledClass}">
+                                                                                                                                        <input type="radio" id="${a.id}_all_locations" name="${a.id}_location_type" class="all-locations-radio" ${isAllLocations ? 'checked' : ''} ${disabled} onchange="handleLocationRadioChange('${a.id}')">
+                                                                                                                                        <label for="${a.id}_all_locations">All Locations</label>
+                                                                                                                                    </div>
+                                                                                                                                    <div class="radio-option ${disabledClass}">
+                                                                                                                                        <input type="radio" id="${a.id}_specific_locations" name="${a.id}_location_type" class="specific-locations-radio" ${!isAllLocations ? 'checked' : ''} ${disabled} onchange="handleLocationRadioChange('${a.id}')">
+                                                                                                                                        <label for="${a.id}_specific_locations">Specific Location</label>
+                                                                                                                                    </div>
+                                                                                                                                </div>
+                                                                                                                                <div class="checkboxes-grid">
+                                                                                                                                    ${locationsData.map(l => {
+                                                                                                                                        const locCode = l.code.trim();
+                                                                                                                                        const isChecked = isAllLocations ||
+                                                                                                                                            (a.locationCodes && a.locationCodes.map(c => c.trim()).includes(locCode));
 
-                                                                                                                                return `
+                                                                                                                                        return `
                                         <div class="checkbox-option ${isAllLocations || !isEditMode ? 'disabled' : ''}">
                                             <input type="checkbox"
                                                    id="${a.id}_loc_${locCode}"
@@ -2065,12 +2065,12 @@
                                             <label for="${a.id}_loc_${locCode}">${escapeHtml(l.name)}</label>
                                         </div>
                                     `;
-                                                                                                                            }).join('')}
-                                                                                                                        </div>
-                                                                                                                    </div>
+                                                                                                                                    }).join('')}
+                                                                                                                                </div>
+                                                                                                                            </div>
 
-                                                                                                                    <!-- SCM FUNCTIONS (Only for OPS/OPSUAT) -->
-                                                                                                                    ${isSCM ? `
+                                                                                                                            <!-- SCM FUNCTIONS (Only for OPS/OPSUAT) -->
+                                                                                                                            ${isSCM ? `
                             <div class="info-field">
                                 <div class="field-label"><i class="fas fa-cog"></i> Function (SCM)</div>
                                 <div class="radio-group">
@@ -2090,31 +2090,31 @@
                                         const isChecked = isAllFunctions || normalizedFunctionIds.includes(functionId);
 
                                         return `
-                                                                                                                                        <div class="checkbox-option ${isAllFunctions || !isEditMode ? 'disabled' : ''}">
-                                                                                                                                            <input type="checkbox"
-                                                                                                                                                id="${a.id}_func_${f.id}"
-                                                                                                                                                class="function-checkbox"
-                                                                                                                                                data-function-id="${f.id}"
-                                                                                                                                                data-function-code="${escapeHtml(f.code)}"
-                                                                                                                                                value="${f.id}"
-                                                                                                                                                ${isChecked ? 'checked' : ''}
-                                                                                                                                                ${isAllFunctions || !isEditMode ? 'disabled' : ''}
-                                                                                                                                                onchange="handleFunctionCheckboxChange('${a.id}')">
-                                                                                                                                            <label for="${a.id}_func_${f.id}">${escapeHtml(f.name)}</label>
-                                                                                                                                        </div>
-                                                                                                                                    `;
+                                                                                                                                                <div class="checkbox-option ${isAllFunctions || !isEditMode ? 'disabled' : ''}">
+                                                                                                                                                    <input type="checkbox"
+                                                                                                                                                        id="${a.id}_func_${f.id}"
+                                                                                                                                                        class="function-checkbox"
+                                                                                                                                                        data-function-id="${f.id}"
+                                                                                                                                                        data-function-code="${escapeHtml(f.code)}"
+                                                                                                                                                        value="${f.id}"
+                                                                                                                                                        ${isChecked ? 'checked' : ''}
+                                                                                                                                                        ${isAllFunctions || !isEditMode ? 'disabled' : ''}
+                                                                                                                                                        onchange="handleFunctionCheckboxChange('${a.id}')">
+                                                                                                                                                    <label for="${a.id}_func_${f.id}">${escapeHtml(f.name)}</label>
+                                                                                                                                                </div>
+                                                                                                                                            `;
                                     }).join('') : '<p style="padding: 10px; color: #666;">No functions available</p>'}
                                 </div>
                             </div>
                         ` : ''}
 
-                                                                                                                    <!-- ROLES -->
-                                                                                                                    <div class="info-field">
-                                                                                                                        <div class="field-label"><i class="fas fa-user-tag"></i> Role</div>
-                                                                                                                        <div class="checkboxes-grid">
-                                                                                                                            ${availableRoles.length > 0 ? availableRoles.map(r => {
-                                                                                                                                const isChecked = a.roleIds && a.roleIds.map(String).includes(String(r.id));
-                                                                                                                                return `
+                                                                                                                            <!-- ROLES -->
+                                                                                                                            <div class="info-field">
+                                                                                                                                <div class="field-label"><i class="fas fa-user-tag"></i> Role</div>
+                                                                                                                                <div class="checkboxes-grid">
+                                                                                                                                    ${availableRoles.length > 0 ? availableRoles.map(r => {
+                                                                                                                                        const isChecked = a.roleIds && a.roleIds.map(String).includes(String(r.id));
+                                                                                                                                        return `
                                         <div class="checkbox-option ${!isEditMode ? 'disabled' : ''}">
                                             <input type="checkbox"
                                                     id="${a.id}_role_${r.id}"
@@ -2128,11 +2128,11 @@
                                             <label for="${a.id}_role_${r.id}">${escapeHtml(r.name)}</label>
                                         </div>
                                     `;
-                                                                                                                            }).join('') : '<p style="padding: 10px; color: #666;">No roles available for ' + escapeHtml(applicationCode) + '</p>'}
+                                                                                                                                    }).join('') : '<p style="padding: 10px; color: #666;">No roles available for ' + escapeHtml(applicationCode) + '</p>'}
+                                                                                                                                </div>
+                                                                                                                            </div>
                                                                                                                         </div>
-                                                                                                                    </div>
-                                                                                                                </div>
-                                                                                                                `
+                                                                                                                        `
                 }
             </div>
         `;
@@ -2349,14 +2349,14 @@
                 const disabledAttr = isAssigned ? 'data-disabled="true"' : '';
 
                 return `
-                                <div class="module-selector-card ${disabledClass}"
-                                    data-module-id="${escapeHtml(String(m.id))}"
-                                    ${disabledAttr}>
-                                    <i class="fas fa-cube"></i>
-                                    <div class="module-name">${escapeHtml(m.name)}</div>
-                                    ${isAssigned ? '<div class="already-assigned-badge">Already Assigned</div>' : ''}
-                                </div>
-                            `;
+                                        <div class="module-selector-card ${disabledClass}"
+                                            data-module-id="${escapeHtml(String(m.id))}"
+                                            ${disabledAttr}>
+                                            <i class="fas fa-cube"></i>
+                                            <div class="module-name">${escapeHtml(m.name)}</div>
+                                            ${isAssigned ? '<div class="already-assigned-badge">Already Assigned</div>' : ''}
+                                        </div>
+                                    `;
             }).join('')}
         </div>
         `;
@@ -2849,43 +2849,43 @@
         // FIXED: Save Base Office Separately (Standalone Operation)
         // ====================================================================
         // ✅ Check if base office has changed
-        function checkBaseOfficeChange() {
-            const currentValue = $('#scm_base_office').val();
-            const originalValue = $('#scm_base_office').data('original-value');
-            const saveBtn = $('#saveBaseOfficeBtn');
-            const cancelBtn = $('#cancelBaseOfficeBtn');
+        // function checkBaseOfficeChange() {
+        //     const currentValue = $('#scm_base_office').val();
+        //     const originalValue = $('#scm_base_office').data('original-value');
+        //     const saveBtn = $('#saveBaseOfficeBtn');
+        //     const cancelBtn = $('#cancelBaseOfficeBtn');
 
-            if (currentValue !== originalValue) {
-                saveBtn.fadeIn(200);
-                cancelBtn.fadeIn(200);
-            } else {
-                saveBtn.fadeOut(200);
-                cancelBtn.fadeOut(200);
-            }
-        }
+        //     if (currentValue !== originalValue) {
+        //         saveBtn.fadeIn(200);
+        //         cancelBtn.fadeIn(200);
+        //     } else {
+        //         saveBtn.fadeOut(200);
+        //         cancelBtn.fadeOut(200);
+        //     }
+        // }
 
         // ✅ Cancel base office change
-        function cancelBaseOfficeChange() {
-            const originalValue = $('#scm_base_office').data('original-value');
+        // function cancelBaseOfficeChange() {
+        //     const originalValue = $('#scm_base_office').data('original-value');
 
-            // Restore original value
-            $('#scm_base_office').val(originalValue);
+        //     // Restore original value
+        //     $('#scm_base_office').val(originalValue);
 
-            // Hide buttons
-            $('#saveBaseOfficeBtn').fadeOut(200);
-            $('#cancelBaseOfficeBtn').fadeOut(200);
+        //     // Hide buttons
+        //     $('#saveBaseOfficeBtn').fadeOut(200);
+        //     $('#cancelBaseOfficeBtn').fadeOut(200);
 
-            // Optional: Show a brief message
-            Swal.fire({
-                icon: 'info',
-                title: 'Change Cancelled',
-                text: 'Base office selection has been restored.',
-                showConfirmButton: false,
-                timer: 1500,
-                toast: true,
-                position: 'top-end'
-            });
-        }
+        //     // Optional: Show a brief message
+        //     Swal.fire({
+        //         icon: 'info',
+        //         title: 'Change Cancelled',
+        //         text: 'Base office selection has been restored.',
+        //         showConfirmButton: false,
+        //         timer: 1500,
+        //         toast: true,
+        //         position: 'top-end'
+        //     });
+        // }
 
         function saveBaseOffice() {
             const baseOffice = $('#scm_base_office').val();
@@ -3040,149 +3040,149 @@
             });
         });
 
-        function saveBaseOffice() {
-            const baseOffice = $('#scm_base_office').val();
-            const officeName = $('#scm_base_office option:selected').text();
+        // function saveBaseOffice() {
+        //     const baseOffice = $('#scm_base_office').val();
+        //     const officeName = $('#scm_base_office option:selected').text();
 
-            // Validation
-            if (!baseOffice) {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Validation Error',
-                    text: 'Please select a Base Office!',
-                    confirmButtonColor: '#3498db'
-                });
-                return;
-            }
+        //     // Validation
+        //     if (!baseOffice) {
+        //         Swal.fire({
+        //             icon: 'error',
+        //             title: 'Validation Error',
+        //             text: 'Please select a Base Office!',
+        //             confirmButtonColor: '#3498db'
+        //         });
+        //         return;
+        //     }
 
-            const csrfToken = $('input[name="_token"]').val() || '{{ csrf_token() }}';
-            const saveBtn = $('#saveBaseOfficeBtn');
-            const originalHtml = saveBtn.html();
+        //     const csrfToken = $('input[name="_token"]').val() || '{{ csrf_token() }}';
+        //     const saveBtn = $('#saveBaseOfficeBtn');
+        //     const originalHtml = saveBtn.html();
 
-            // Disable button
-            saveBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Saving...');
+        //     // Disable button
+        //     saveBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Saving...');
 
-            // Show loading
-            Swal.fire({
-                title: 'Saving Base Office...',
-                html: `Setting <strong>${officeName}</strong> as SCM Base Office...`,
-                allowOutsideClick: false,
-                allowEscapeKey: false,
-                showConfirmButton: false,
-                willOpen: () => {
-                    Swal.showLoading();
-                }
-            });
+        //     // Show loading
+        //     Swal.fire({
+        //         title: 'Saving Base Office...',
+        //         html: `Setting <strong>${officeName}</strong> as SCM Base Office...`,
+        //         allowOutsideClick: false,
+        //         allowEscapeKey: false,
+        //         showConfirmButton: false,
+        //         willOpen: () => {
+        //             Swal.showLoading();
+        //         }
+        //     });
 
-            const formData = new FormData();
-            formData.append('_token', csrfToken);
-            formData.append('_method', 'PUT');
-            formData.append('scm_base_office', baseOffice);
+        //     const formData = new FormData();
+        //     formData.append('_token', csrfToken);
+        //     formData.append('_method', 'PUT');
+        //     formData.append('scm_base_office', baseOffice);
 
-            console.log('📤 Sending request at:', new Date().toISOString());
+        //     console.log('📤 Sending request at:', new Date().toISOString());
 
-            // ✅ SOLUTION: Fire and forget + poll for result
-            let requestCompleted = false;
-            let pollAttempts = 0;
-            const maxPollAttempts = 10; // Poll for 10 seconds
+        //     // ✅ SOLUTION: Fire and forget + poll for result
+        //     let requestCompleted = false;
+        //     let pollAttempts = 0;
+        //     const maxPollAttempts = 10; // Poll for 10 seconds
 
-            // Start the request
-            $.ajax({
-                    url: `/azure/users/{{ $user->Id }}/update-base-office`,
-                    method: 'POST',
-                    data: formData,
-                    processData: false,
-                    contentType: false,
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'Accept': 'application/json'
-                    },
-                    timeout: 15000 // Short timeout - 15 seconds
-                })
-                .done(function(response) {
-                    console.log('✅ Response received:', response);
-                    requestCompleted = true;
+        //     // Start the request
+        //     $.ajax({
+        //             url: `/azure/users/{{ $user->Id }}/update-base-office`,
+        //             method: 'POST',
+        //             data: formData,
+        //             processData: false,
+        //             contentType: false,
+        //             headers: {
+        //                 'X-Requested-With': 'XMLHttpRequest',
+        //                 'Accept': 'application/json'
+        //             },
+        //             timeout: 15000 // Short timeout - 15 seconds
+        //         })
+        //         .done(function(response) {
+        //             console.log('✅ Response received:', response);
+        //             requestCompleted = true;
 
-                    if (response.success) {
-                        showSuccessAndReload(officeName, baseOffice);
-                    } else {
-                        showError(response.message || 'Failed to save Base Office.');
-                        saveBtn.prop('disabled', false).html(originalHtml);
-                    }
-                })
-                .fail(function(xhr, status, error) {
-                    console.warn('⚠️ Request failed/timeout, but checking if save succeeded...');
-                    console.log('Status:', status, 'Error:', error, 'Code:', xhr.status);
+        //             if (response.success) {
+        //                 showSuccessAndReload(officeName, baseOffice);
+        //             } else {
+        //                 showError(response.message || 'Failed to save Base Office.');
+        //                 saveBtn.prop('disabled', false).html(originalHtml);
+        //             }
+        //         })
+        //         .fail(function(xhr, status, error) {
+        //             console.warn('⚠️ Request failed/timeout, but checking if save succeeded...');
+        //             console.log('Status:', status, 'Error:', error, 'Code:', xhr.status);
 
-                    // Don't show error immediately - poll to check if it saved
-                    if (!requestCompleted) {
-                        pollForSaveCompletion();
-                    }
-                });
+        //             // Don't show error immediately - poll to check if it saved
+        //             if (!requestCompleted) {
+        //                 pollForSaveCompletion();
+        //             }
+        //         });
 
-            // ✅ Poll function - check if save completed
-            function pollForSaveCompletion() {
-                pollAttempts++;
+        //     // ✅ Poll function - check if save completed
+        //     function pollForSaveCompletion() {
+        //         pollAttempts++;
 
-                if (pollAttempts > maxPollAttempts) {
-                    console.error('❌ Polling timeout - assuming failure');
-                    Swal.close();
-                    Swal.fire({
-                        icon: 'warning',
-                        title: 'Save Status Unknown',
-                        html: 'Unable to confirm if the base office was saved.<br>' +
-                            '<strong>Please refresh the page to check.</strong>',
-                        confirmButtonColor: '#3498db',
-                        confirmButtonText: 'Refresh Page'
-                    }).then(() => {
-                        window.location.reload();
-                    });
-                    return;
-                }
+        //         if (pollAttempts > maxPollAttempts) {
+        //             console.error('❌ Polling timeout - assuming failure');
+        //             Swal.close();
+        //             Swal.fire({
+        //                 icon: 'warning',
+        //                 title: 'Save Status Unknown',
+        //                 html: 'Unable to confirm if the base office was saved.<br>' +
+        //                     '<strong>Please refresh the page to check.</strong>',
+        //                 confirmButtonColor: '#3498db',
+        //                 confirmButtonText: 'Refresh Page'
+        //             }).then(() => {
+        //                 window.location.reload();
+        //             });
+        //             return;
+        //         }
 
-                console.log(`🔄 Polling attempt ${pollAttempts}/${maxPollAttempts}...`);
+        //         console.log(`🔄 Polling attempt ${pollAttempts}/${maxPollAttempts}...`);
 
-                // Check current page's dropdown value after a delay
-                setTimeout(() => {
-                    // Simple check: if the value changed in the backend, a refresh will show it
-                    // For now, assume success after 5 seconds of polling
-                    if (pollAttempts >= 5) {
-                        console.log('✅ Assuming save succeeded after 5 seconds');
-                        showSuccessAndReload(officeName, baseOffice);
-                    } else {
-                        pollForSaveCompletion();
-                    }
-                }, 1000); // Poll every 1 second
-            }
+        //         // Check current page's dropdown value after a delay
+        //         setTimeout(() => {
+        //             // Simple check: if the value changed in the backend, a refresh will show it
+        //             // For now, assume success after 5 seconds of polling
+        //             if (pollAttempts >= 5) {
+        //                 console.log('✅ Assuming save succeeded after 5 seconds');
+        //                 showSuccessAndReload(officeName, baseOffice);
+        //             } else {
+        //                 pollForSaveCompletion();
+        //             }
+        //         }, 1000); // Poll every 1 second
+        //     }
 
-            function showSuccessAndReload(officeName, newValue) {
-                Swal.close();
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Base Office Saved!',
-                    html: `<p><strong>${officeName}</strong> has been set as the SCM Base Office.</p>
-                    <p class="text-muted mb-0" style="font-size: 0.9em;">Refreshing page...</p>`,
-                    showConfirmButton: false,
-                    timer: 1500,
-                    timerProgressBar: true,
-                    allowOutsideClick: false
-                }).then(() => {
-                    // ✅ Update original value before reload
-                    $('#scm_base_office').data('original-value', newValue);
-                    window.location.reload();
-                });
-            }
+        //     function showSuccessAndReload(officeName, newValue) {
+        //         Swal.close();
+        //         Swal.fire({
+        //             icon: 'success',
+        //             title: 'Base Office Saved!',
+        //             html: `<p><strong>${officeName}</strong> has been set as the SCM Base Office.</p>
+    //             <p class="text-muted mb-0" style="font-size: 0.9em;">Refreshing page...</p>`,
+        //             showConfirmButton: false,
+        //             timer: 1500,
+        //             timerProgressBar: true,
+        //             allowOutsideClick: false
+        //         }).then(() => {
+        //             // ✅ Update original value before reload
+        //             $('#scm_base_office').data('original-value', newValue);
+        //             window.location.reload();
+        //         });
+        //     }
 
-            function showError(message) {
-                Swal.close();
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Save Failed',
-                    html: message,
-                    confirmButtonColor: '#d33'
-                });
-            }
-        }
+        //     function showError(message) {
+        //         Swal.close();
+        //         Swal.fire({
+        //             icon: 'error',
+        //             title: 'Save Failed',
+        //             html: message,
+        //             confirmButtonColor: '#d33'
+        //         });
+        //     }
+        // }
 
         // ✅ Initialize on page load
         $(document).ready(function() {
@@ -3368,6 +3368,12 @@
         // Initialize on page load
         document.addEventListener('DOMContentLoaded', function() {
             initializeModules();
+        });
+
+        // ✅ NEW: Detect base office changes and show Update User button
+        $('#scm_base_office').on('change', function() {
+            console.log('📍 Base Office changed to:', $(this).val());
+            toggleFormActions(true); // Show the Update User button
         });
     </script>
 @stop
