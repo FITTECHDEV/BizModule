@@ -121,24 +121,6 @@
                                 </option>
                             </select>
                         </div>
-
-                        <!-- Search Type Dropdown (Hidden by default, shows when searching) -->
-                        <div id="searchTypeContainer" class="mr-2" style="display: none; min-width: 180px;">
-                            <select id="searchType" class="form-control form-control-sm">
-                                <option value="all" {{ request('search_type', 'all') == 'all' ? 'selected' : '' }}>
-                                    Search All Fields</option>
-                                <option value="name" {{ request('search_type') == 'name' ? 'selected' : '' }}>Name Only
-                                </option>
-                                <option value="email" {{ request('search_type') == 'email' ? 'selected' : '' }}>Email Only
-                                </option>
-                                <option value="department" {{ request('search_type') == 'department' ? 'selected' : '' }}>
-                                    Department Only</option>
-                                <option value="company" {{ request('search_type') == 'company' ? 'selected' : '' }}>Company
-                                    Only</option>
-                                <option value="location" {{ request('search_type') == 'location' ? 'selected' : '' }}>
-                                    Location Only</option>
-                            </select>
-                        </div>
                     </div>
                 </div>
 
