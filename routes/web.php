@@ -21,7 +21,7 @@ Route::get('/test-pgsql', function () {
 
         return response()->json(['message' => '✅ PostgreSQL is connected!']);
     } catch (\Exception $e) {
-        return response()->json(['error' => '❌ PostgreSQL Connection Failed: '.$e->getMessage()]);
+        return response()->json(['error' => '❌ PostgreSQL Connection Failed: ' . $e->getMessage()]);
     }
 });
 
@@ -52,7 +52,7 @@ Route::get('quote-logger', function () {
     $auth_user = Auth::user();
 
     // todo: permissions
-    return redirect()->away('https://quotesuat.freightintime.com/?username='.$auth_user->LoginID.'&code='.$auth_user->password.'&email='.$auth_user->Email, 302, ['enc_data' => '']);
+    return redirect()->away('https://quotesuat.freightintime.com/?username=' . $auth_user->LoginID . '&code=' . $auth_user->password . '&email=' . $auth_user->Email, 302, ['enc_data' => '']);
 
     // return Http::post('https://quotes.freightintime.com/', [
     //     'enc_data' => $enc_user
@@ -348,24 +348,36 @@ Route::prefix('azure')->name('azure.')->middleware(['auth'])->group(function () 
     // ============================================================================
 
     Route::prefix('users')->name('users.')->group(function () {
+        // ============================================================================
+        // STATIC ROUTES - Must come first to prevent matching as {user} parameter
+        // ============================================================================
+
         // List and create routes
         Route::get('/', [App\Http\Controllers\AzureUserManagementController::class, 'index'])->name('index');
         Route::get('/create', [App\Http\Controllers\AzureUserManagementController::class, 'create'])->name('create');
 
-        // ✅ ADD THESE THREE ROUTES HERE (after 'create', before 'store'):
+        // Status filter routes - MUST come before /{user} routes
         Route::get('/active', [App\Http\Controllers\AzureUserManagementController::class, 'active'])->name('active');
         Route::get('/pending', [App\Http\Controllers\AzureUserManagementController::class, 'pending'])->name('pending');
         Route::get('/inactive', [App\Http\Controllers\AzureUserManagementController::class, 'inactive'])->name('inactive');
+
+        // Stats endpoint (must come before {user} parameter)
+        Route::get('/stats', [App\Http\Controllers\AzureUserManagementController::class, 'stats'])->name('stats');
+
+        // ============================================================================
+        // POST ROUTES - Order doesn't matter as much (different HTTP method)
+        // ============================================================================
 
         // POST: Create user (rate limited - 10 per minute)
         Route::post('/', [App\Http\Controllers\AzureUserManagementController::class, 'store'])
             ->name('store')
             ->middleware('throttle:user_actions');
 
-        // Stats endpoint (must come before {user} parameter)
-        Route::get('/stats', [App\Http\Controllers\AzureUserManagementController::class, 'stats'])->name('stats');
+        // ============================================================================
+        // DYNAMIC ROUTES - {user} parameter routes come last
+        // ============================================================================
 
-        // User-specific action routes (MUST come before generic {user} routes)
+        // User-specific action routes (POST methods with {user} parameter)
         // These are rate limited to prevent abuse
         Route::post('/{user}/disable', [App\Http\Controllers\AzureUserManagementController::class, 'disable'])
             ->name('disable')
@@ -401,9 +413,6 @@ Route::prefix('azure')->name('azure.')->middleware(['auth'])->group(function () 
             ->name('retry-fitexpress')
             ->middleware('throttle:user_actions');
 
-        Route::post('/users/{user}/retry-scm', [AzureUserManagementController::class, 'retrySCMProvisioning'])
-            ->name('azure.users.retry-scm');
-
         // Office-specific assignment configuration
         Route::post('/{user}/configure-office', [App\Http\Controllers\AzureUserManagementController::class, 'configureOfficeAssignments'])
             ->name('configure-office')
@@ -422,7 +431,10 @@ Route::prefix('azure')->name('azure.')->middleware(['auth'])->group(function () 
             ->name('module-assignments')
             ->middleware('throttle:api');
 
-        // Generic CRUD routes (come after specific actions)
+        // ============================================================================
+        // GENERIC CRUD ROUTES - Must come after all specific {user} routes
+        // ============================================================================
+
         Route::get('/{user}', [App\Http\Controllers\AzureUserManagementController::class, 'show'])
             ->name('show');
 
@@ -695,7 +707,7 @@ Route::get('/test-stored-procedures', function () {
 
                 $functions = DB::connection('sqlsrv')->select('EXEC sp_UserCreation_Resourcefunction');
 
-                echo "<p class='success'>✅ Execution successful! Found ".count($functions).' functions</p>';
+                echo "<p class='success'>✅ Execution successful! Found " . count($functions) . ' functions</p>';
 
                 if (count($functions) > 0) {
                     echo '<table>';
@@ -704,7 +716,7 @@ Route::get('/test-stored-procedures', function () {
                     // Get column names from first row
                     $firstRow = $functions[0];
                     foreach ($firstRow as $key => $value) {
-                        echo '<th>'.htmlspecialchars($key).'</th>';
+                        echo '<th>' . htmlspecialchars($key) . '</th>';
                     }
                     echo '</tr></thead><tbody>';
 
@@ -712,7 +724,7 @@ Route::get('/test-stored-procedures', function () {
                     foreach ($functions as $function) {
                         echo '<tr>';
                         foreach ($function as $value) {
-                            echo '<td>'.htmlspecialchars($value ?? 'NULL').'</td>';
+                            echo '<td>' . htmlspecialchars($value ?? 'NULL') . '</td>';
                         }
                         echo '</tr>';
                     }
@@ -725,8 +737,8 @@ Route::get('/test-stored-procedures', function () {
                 echo '<p>Please create the stored procedure first.</p>';
             }
         } catch (\Exception $e) {
-            echo "<p class='error'>❌ Error: ".htmlspecialchars($e->getMessage()).'</p>';
-            echo "<pre style='background: #fff3cd; padding: 10px; border-radius: 4px;'>".htmlspecialchars($e->getTraceAsString()).'</pre>';
+            echo "<p class='error'>❌ Error: " . htmlspecialchars($e->getMessage()) . '</p>';
+            echo "<pre style='background: #fff3cd; padding: 10px; border-radius: 4px;'>" . htmlspecialchars($e->getTraceAsString()) . '</pre>';
         }
         echo '</div>';
 
@@ -760,7 +772,7 @@ Route::get('/test-stored-procedures', function () {
                             [$appCode]
                         );
 
-                        echo "<p class='success'>✅ Execution successful! Found ".count($roles).' roles</p>';
+                        echo "<p class='success'>✅ Execution successful! Found " . count($roles) . ' roles</p>';
 
                         if (count($roles) > 0) {
                             echo '<table>';
@@ -769,7 +781,7 @@ Route::get('/test-stored-procedures', function () {
                             // Get column names from first row
                             $firstRow = $roles[0];
                             foreach ($firstRow as $key => $value) {
-                                echo '<th>'.htmlspecialchars($key).'</th>';
+                                echo '<th>' . htmlspecialchars($key) . '</th>';
                             }
                             echo '</tr></thead><tbody>';
 
@@ -777,7 +789,7 @@ Route::get('/test-stored-procedures', function () {
                             foreach ($roles as $role) {
                                 echo '<tr>';
                                 foreach ($role as $value) {
-                                    echo '<td>'.htmlspecialchars($value ?? 'NULL').'</td>';
+                                    echo '<td>' . htmlspecialchars($value ?? 'NULL') . '</td>';
                                 }
                                 echo '</tr>';
                             }
@@ -786,7 +798,7 @@ Route::get('/test-stored-procedures', function () {
                             echo "<p class='info'>⚠️ No roles returned for {$appCode}</p>";
                         }
                     } catch (\Exception $e) {
-                        echo "<p class='error'>❌ Error for {$appCode}: ".htmlspecialchars($e->getMessage()).'</p>';
+                        echo "<p class='error'>❌ Error for {$appCode}: " . htmlspecialchars($e->getMessage()) . '</p>';
                     }
                 }
             } else {
@@ -794,8 +806,8 @@ Route::get('/test-stored-procedures', function () {
                 echo '<p>Please create the stored procedure first.</p>';
             }
         } catch (\Exception $e) {
-            echo "<p class='error'>❌ Error: ".htmlspecialchars($e->getMessage()).'</p>';
-            echo "<pre style='background: #fff3cd; padding: 10px; border-radius: 4px;'>".htmlspecialchars($e->getTraceAsString()).'</pre>';
+            echo "<p class='error'>❌ Error: " . htmlspecialchars($e->getMessage()) . '</p>';
+            echo "<pre style='background: #fff3cd; padding: 10px; border-radius: 4px;'>" . htmlspecialchars($e->getTraceAsString()) . '</pre>';
         }
         echo '</div>';
 
@@ -813,7 +825,7 @@ Route::get('/test-stored-procedures', function () {
                 ORDER BY Name
             ');
 
-            echo "<p class='success'>✅ Found ".count($modules).' active modules</p>';
+            echo "<p class='success'>✅ Found " . count($modules) . ' active modules</p>';
 
             if (count($modules) > 0) {
                 echo '<table>';
@@ -825,17 +837,17 @@ Route::get('/test-stored-procedures', function () {
                     $scmBadge = $isSCM ? "<span style='background: #27ae60; color: white; padding: 2px 8px; border-radius: 3px; font-size: 0.85em;'>SCM</span>" : '';
 
                     echo '<tr>';
-                    echo '<td>'.htmlspecialchars($module->Id).'</td>';
-                    echo '<td>'.htmlspecialchars($module->Name).'</td>';
-                    echo '<td><strong>'.htmlspecialchars($module->ApplicationId)."</strong> {$scmBadge}</td>";
-                    echo '<td>'.($isSCM ? 'Yes' : 'No').'</td>';
+                    echo '<td>' . htmlspecialchars($module->Id) . '</td>';
+                    echo '<td>' . htmlspecialchars($module->Name) . '</td>';
+                    echo '<td><strong>' . htmlspecialchars($module->ApplicationId) . "</strong> {$scmBadge}</td>";
+                    echo '<td>' . ($isSCM ? 'Yes' : 'No') . '</td>';
                     echo '</tr>';
                 }
 
                 echo '</tbody></table>';
             }
         } catch (\Exception $e) {
-            echo "<p class='error'>❌ Error: ".htmlspecialchars($e->getMessage()).'</p>';
+            echo "<p class='error'>❌ Error: " . htmlspecialchars($e->getMessage()) . '</p>';
         }
         echo '</div>';
 
@@ -853,7 +865,7 @@ Route::get('/test-stored-procedures', function () {
                 ORDER BY Name
             ');
 
-            echo "<p class='success'>✅ Found ".count($locations).' active locations</p>';
+            echo "<p class='success'>✅ Found " . count($locations) . ' active locations</p>';
 
             if (count($locations) > 0) {
                 echo '<table>';
@@ -862,16 +874,16 @@ Route::get('/test-stored-procedures', function () {
 
                 foreach ($locations as $location) {
                     echo '<tr>';
-                    echo '<td>'.htmlspecialchars($location->Id).'</td>';
-                    echo '<td>'.htmlspecialchars($location->Name).'</td>';
-                    echo '<td><strong>'.htmlspecialchars($location->code).'</strong></td>';
+                    echo '<td>' . htmlspecialchars($location->Id) . '</td>';
+                    echo '<td>' . htmlspecialchars($location->Name) . '</td>';
+                    echo '<td><strong>' . htmlspecialchars($location->code) . '</strong></td>';
                     echo '</tr>';
                 }
 
                 echo '</tbody></table>';
             }
         } catch (\Exception $e) {
-            echo "<p class='error'>❌ Error: ".htmlspecialchars($e->getMessage()).'</p>';
+            echo "<p class='error'>❌ Error: " . htmlspecialchars($e->getMessage()) . '</p>';
         }
         echo '</div>';
 
@@ -889,9 +901,9 @@ Route::get('/test-stored-procedures', function () {
     } catch (\Exception $e) {
         echo "<div style='padding: 20px; background: #fee; border: 2px solid #e74c3c; border-radius: 4px;'>";
         echo "<h2 style='color: #e74c3c;'>Critical Error</h2>";
-        echo '<p><strong>Error:</strong> '.htmlspecialchars($e->getMessage()).'</p>';
-        echo '<p><strong>File:</strong> '.htmlspecialchars($e->getFile()).'</p>';
-        echo '<p><strong>Line:</strong> '.htmlspecialchars($e->getLine()).'</p>';
+        echo '<p><strong>Error:</strong> ' . htmlspecialchars($e->getMessage()) . '</p>';
+        echo '<p><strong>File:</strong> ' . htmlspecialchars($e->getFile()) . '</p>';
+        echo '<p><strong>Line:</strong> ' . htmlspecialchars($e->getLine()) . '</p>';
         echo '</div>';
     }
 });
@@ -1145,7 +1157,7 @@ Route::get('/azure-management/test', function () {
 
         $results['token'] = [
             'status' => 'success',
-            'token_preview' => substr($token, 0, 50).'...',
+            'token_preview' => substr($token, 0, 50) . '...',
             'token_length' => strlen($token),
             'message' => '✅ Successfully obtained Azure AD token!',
         ];

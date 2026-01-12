@@ -76,9 +76,8 @@ class AzureUser extends Authenticatable
         'EmployeCode',
         'companyName',
         'createdDateTime',
-        'LastModifiedBy',
-        'LastModifiedOn',
-        'AzureId',              // Using existing column name
+        'AzureId',
+        'BaseOfficeCode',
     ];
 
     /**
@@ -94,7 +93,6 @@ class AzureUser extends Authenticatable
      */
     protected $casts = [
         'createdDateTime' => 'datetime',
-        'LastModifiedOn' => 'datetime',
         'accountEnabled' => 'boolean',
     ];
 
@@ -302,7 +300,7 @@ class AzureUser extends Authenticatable
     /**
      * Check if user has been provisioned to Azure AD
      * Uses existing AzureId column
-     * 
+     *
      * @return bool
      */
     public function isProvisionedToAzure(): bool
@@ -313,7 +311,7 @@ class AzureUser extends Authenticatable
     /**
      * Check if user can be deactivated
      * User must be provisioned to Azure, currently active, and account enabled
-     * 
+     *
      * @return bool
      */
     public function canBeDeactivated(): bool
@@ -326,7 +324,7 @@ class AzureUser extends Authenticatable
     /**
      * Check if user can be reactivated
      * User must be provisioned to Azure and currently inactive
-     * 
+     *
      * @return bool
      */
     public function canBeReactivated(): bool
@@ -337,7 +335,7 @@ class AzureUser extends Authenticatable
 
     /**
      * Check if user is currently deactivated
-     * 
+     *
      * @return bool
      */
     public function isDeactivated(): bool
@@ -347,7 +345,7 @@ class AzureUser extends Authenticatable
 
     /**
      * Get the Azure provisioning status with details
-     * 
+     *
      * @return array
      */
     public function getAzureProvisioningStatus(): array
@@ -377,7 +375,7 @@ class AzureUser extends Authenticatable
     /**
      * Check if user needs Azure sync
      * Compares local data with expected Azure state
-     * 
+     *
      * @return bool
      */
     public function needsAzureSync(): bool
@@ -396,7 +394,7 @@ class AzureUser extends Authenticatable
 
     /**
      * Get a summary of Azure provisioning issues (if any)
-     * 
+     *
      * @return array
      */
     public function getAzureProvisioningIssues(): array
@@ -441,12 +439,12 @@ class AzureUser extends Authenticatable
 
     /**
      * Mark user as provisioned to Azure
-     * Updates AzureId (existing column) and status
-     * 
+     * ✅ FIXED: Removed LastModifiedBy and LastModifiedOn (columns don't exist)
+     *
      * @param string $azureId Azure AD Object ID
      * @param string|null $azureUpn Azure User Principal Name (optional, uses userPrincipalName)
      * @param string|null $azureDisplayName Display name in Azure (optional, uses displayName)
-     * @param string|null $updatedBy Who performed the update
+     * @param string|null $updatedBy Who performed the update (unused - column doesn't exist)
      * @return bool
      */
     public function markAsProvisionedToAzure(
@@ -455,38 +453,32 @@ class AzureUser extends Authenticatable
         ?string $azureDisplayName = null,
         ?string $updatedBy = null
     ): bool {
-        // Update AzureId (existing column)
-        // Note: azureUpn and azureDisplayName are already stored in userPrincipalName and displayName
         return DB::connection('sqlsrv')->update("
-            UPDATE Azure_Users 
+            UPDATE Azure_Users
             SET AzureId = ?,
-                Status = 'Active',
-                LastModifiedBy = ?,
-                LastModifiedOn = GETDATE()
+                Status = 'Active'
             WHERE Id = ?
         ", [
             $azureId,
-            $updatedBy ?? 'system',
             $this->Id
         ]) > 0;
     }
 
     /**
      * Clear Azure provisioning data (for rollback scenarios)
-     * 
-     * @param string|null $updatedBy Who performed the update
+     * ✅ FIXED: Removed LastModifiedBy and LastModifiedOn (columns don't exist)
+     *
+     * @param string|null $updatedBy Who performed the update (unused - column doesn't exist)
      * @return bool
      */
     public function clearAzureProvisioning(?string $updatedBy = null): bool
     {
         return DB::connection('sqlsrv')->update("
-            UPDATE Azure_Users 
+            UPDATE Azure_Users
             SET AzureId = NULL,
-                Status = 'Pending',
-                LastModifiedBy = ?,
-                LastModifiedOn = GETDATE()
+                Status = 'Pending'
             WHERE Id = ?
-        ", [$updatedBy ?? 'system', $this->Id]) > 0;
+        ", [$this->Id]) > 0;
     }
 
     // =================================================================
@@ -569,45 +561,42 @@ class AzureUser extends Authenticatable
 
     /**
      * Update user status
+     * ✅ FIXED: Removed LastModifiedBy and LastModifiedOn (columns don't exist)
      */
     public function updateStatus(string $status, ?string $updatedBy = null): bool
     {
         return DB::connection('sqlsrv')->update("
-            UPDATE Azure_Users 
-            SET Status = ?, 
-                LastModifiedBy = ?, 
-                LastModifiedOn = GETDATE()
+            UPDATE Azure_Users
+            SET Status = ?
             WHERE Id = ?
-        ", [$status, $updatedBy ?? 'system', $this->Id]) > 0;
+        ", [$status, $this->Id]) > 0;
     }
 
     /**
      * Disable user account
+     * ✅ FIXED: Removed LastModifiedBy and LastModifiedOn (columns don't exist)
      */
     public function disable(?string $updatedBy = null): bool
     {
         return DB::connection('sqlsrv')->update("
-            UPDATE Azure_Users 
+            UPDATE Azure_Users
             SET accountEnabled = 0,
-                Status = 'Inactive',
-                LastModifiedBy = ?, 
-                LastModifiedOn = GETDATE()
+                Status = 'Inactive'
             WHERE Id = ?
-        ", [$updatedBy ?? 'system', $this->Id]) > 0;
+        ", [$this->Id]) > 0;
     }
 
     /**
      * Enable user account
+     * ✅ FIXED: Removed LastModifiedBy and LastModifiedOn (columns don't exist)
      */
     public function enable(?string $updatedBy = null): bool
     {
         return DB::connection('sqlsrv')->update("
-            UPDATE Azure_Users 
+            UPDATE Azure_Users
             SET accountEnabled = 1,
-                Status = 'Active',
-                LastModifiedBy = ?, 
-                LastModifiedOn = GETDATE()
+                Status = 'Active'
             WHERE Id = ?
-        ", [$updatedBy ?? 'system', $this->Id]) > 0;
+        ", [$this->Id]) > 0;
     }
 }

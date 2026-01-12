@@ -73,16 +73,6 @@
             <div class="row align-items-center">
                 <div class="col-md-6">
                     <div class="d-flex align-items-center">
-                        <!-- Status Filter -->
-                        {{-- <div class="mr-2" style="min-width: 150px;">
-                        <select id="statusFilter" class="form-control form-control-sm">
-                            <option value="">All Status</option>
-                            <option value="active" {{ request('status') == 'active' ? 'selected' : '' }}>Active</option>
-                            <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>Pending</option>
-                            <option value="inactive" {{ request('status') == 'inactive' ? 'selected' : '' }}>Inactive</option>
-                        </select>
-                    </div> --}}
-
                         <!-- Department Filter -->
                         <div class="mr-2" style="min-width: 180px;">
                             <select id="departmentFilter" class="form-control form-control-sm">
@@ -117,19 +107,20 @@
                         </div>
 
                         <!-- Office Location Filter -->
-                        {{-- <div class="mr-2" style="min-width: 180px;">
-                        <select id="locationFilter" class="form-control form-control-sm">
-                            <option value="">All Locations</option>
-                            @foreach ($locations as $location)
-                            <option value="{{ $location }}" {{ request('location') == $location ? 'selected' : '' }}>
-                                {{ $location }}
-                            </option>
-                            @endforeach
-                            <option value="no_location" {{ request('location') == 'no_location' ? 'selected' : '' }}>
-                                (No Location)
-                            </option>
-                        </select>
-                    </div> --}}
+                        <div class="mr-2" style="min-width: 180px;">
+                            <select id="locationFilter" class="form-control form-control-sm">
+                                <option value="">All Locations</option>
+                                @foreach ($locations as $location)
+                                    <option value="{{ $location }}"
+                                        {{ request('location') == $location ? 'selected' : '' }}>
+                                        {{ $location }}
+                                    </option>
+                                @endforeach
+                                <option value="no_location" {{ request('location') == 'no_location' ? 'selected' : '' }}>
+                                    (No Location)
+                                </option>
+                            </select>
+                        </div>
 
                         <!-- Search Type Dropdown (Hidden by default, shows when searching) -->
                         <div id="searchTypeContainer" class="mr-2" style="display: none; min-width: 180px;">
@@ -165,9 +156,20 @@
                                 <span class="input-group-text"><i class="fas fa-search"></i></span>
                             </div>
                         </div>
-                        <button onclick="syncOdooUsers()" class="btn btn-success btn-sm mr-2" id="syncBtn">
+
+                        {{-- Sync from Odoo Button --}}
+                        <button onclick="syncOdooUsers()" class="btn btn-success btn-sm mr-2" id="syncBtn"
+                            title="Import/update users from Odoo">
                             <i class="fas fa-sync-alt"></i> Sync from Odoo
                         </button>
+
+                        {{-- Retry Provisioning for Pending Users --}}
+                        <button onclick="retryAllPendingUsers()" class="btn btn-warning btn-sm mr-2"
+                            id="retryProvisioningBtn" title="Retry provisioning for all pending users">
+                            <i class="fas fa-redo-alt"></i> Retry Pending
+                        </button>
+
+                        {{-- Add User Button --}}
                         <a href="{{ route('azure.users.create') }}" class="btn btn-primary btn-sm">
                             <i class="fas fa-user-plus"></i> Add User
                         </a>
@@ -222,34 +224,44 @@
                                 <span class="badge {{ $badgeClass }}">{{ $status }}</span>
                             </td>
                             <td>
-                                <div class="btn-group btn-group-sm" role="group">
-                                    <a href="{{ route('azure.users.show', $user->Id) }}" class="btn btn-info btn-sm"
-                                        title="View User">
-                                        <i class="fas fa-eye"></i>
-                                    </a>
-                                    @if (strtolower($user->Status ?? 'inactive') === 'inactive')
-                                        <button class="btn btn-warning btn-sm btn-disabled" disabled
-                                            title="Enable user first to edit" style="cursor: not-allowed; opacity: 0.6;">
-                                            <i class="fas fa-edit"></i>
-                                        </button>
-                                    @else
-                                        <a href="{{ route('azure.users.edit', $user->Id) }}"
-                                            class="btn btn-warning btn-sm" title="Edit User">
-                                            <i class="fas fa-edit"></i>
+                                @if ($user->Id)
+                                    {{-- User has valid ID - show normal buttons --}}
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        <a href="{{ route('azure.users.show', $user->Id) }}" class="btn btn-info btn-sm"
+                                            title="View User">
+                                            <i class="fas fa-eye"></i>
                                         </a>
-                                    @endif
-                                    @if (strtolower($user->Status ?? 'inactive') === 'active')
-                                        <button class="btn btn-danger btn-sm"
-                                            onclick="disableUser('{{ $user->Id }}')" title="Disable User">
-                                            <i class="fas fa-user-slash"></i>
-                                        </button>
-                                    @else
-                                        <button class="btn btn-success btn-sm"
-                                            onclick="enableUser('{{ $user->Id }}')" title="Enable User">
-                                            <i class="fas fa-user-check"></i>
-                                        </button>
-                                    @endif
-                                </div>
+                                        @if (strtolower($user->Status ?? 'inactive') === 'inactive')
+                                            <button class="btn btn-warning btn-sm btn-disabled" disabled
+                                                title="Enable user first to edit"
+                                                style="cursor: not-allowed; opacity: 0.6;">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                        @else
+                                            <a href="{{ route('azure.users.edit', $user->Id) }}"
+                                                class="btn btn-warning btn-sm" title="Edit User">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                        @endif
+                                        @if (strtolower($user->Status ?? 'inactive') === 'active')
+                                            <button class="btn btn-danger btn-sm"
+                                                onclick="disableUser('{{ $user->Id }}')" title="Disable User">
+                                                <i class="fas fa-user-slash"></i>
+                                            </button>
+                                        @else
+                                            <button class="btn btn-success btn-sm"
+                                                onclick="enableUser('{{ $user->Id }}')" title="Enable User">
+                                                <i class="fas fa-user-check"></i>
+                                            </button>
+                                        @endif
+                                    </div>
+                                @else
+                                    {{-- User has NULL ID - show fix button --}}
+                                    <button class="btn btn-warning btn-sm"
+                                        onclick="fixUserRecord('{{ $user->userPrincipalName }}')" title="Fix missing ID">
+                                        <i class="fas fa-wrench"></i> Fix Record
+                                    </button>
+                                @endif
                             </td>
                         </tr>
                     @empty
@@ -664,8 +676,49 @@
             window.location.href = window.location.pathname;
         }
 
+        // ✅ UPDATED: Enable user with base office check
         function enableUser(userId) {
-            toggleUserStatus(userId, 'enable');
+            if (!confirm(
+                    'Enable User\n\nAre you sure you want to enable this user? They will regain access to all systems.')) {
+                return;
+            }
+
+            const url = `/azure/users/${userId}/enable`;
+
+            fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert(data.message || 'User has been enabled successfully');
+                        window.location.reload();
+                    } else {
+                        // ✅ Check if it's a base office error
+                        if (data.requires_base_office) {
+                            const errorMessage = data.message + '\n\n' + data.instructions +
+                                '\n\nClick OK to go to the user\'s edit page and set the base office.';
+
+                            if (confirm(errorMessage)) {
+                                // Redirect to edit page
+                                window.location.href = `/azure/users/${userId}/edit`;
+                            }
+                        } else {
+                            // Other errors
+                            alert(data.message || 'Failed to enable user');
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Error enabling user:', error);
+                    alert('Failed to enable user. ' + error.message);
+                });
         }
 
         function disableUser(userId) {
@@ -698,14 +751,19 @@
                 .then(data => {
                     if (data.success) {
                         alert(data.message || `User has been ${actionText}d successfully`);
-                        window.location.reload();
+                        // ✅ IMPROVED: Force reload with location.href
+                        window.location.href = window.location.href;
                     } else {
                         alert(data.message || `Failed to ${actionText} user`);
+                        // ✅ NEW: Also reload on failure to show correct state
+                        window.location.href = window.location.href;
                     }
                 })
                 .catch(error => {
                     console.error(`Error ${actionText}ing user:`, error);
                     alert(`Failed to ${actionText} user. ${error.message}`);
+                    // ✅ NEW: Reload even on error to show correct state
+                    window.location.href = window.location.href;
                 });
         }
 
@@ -715,7 +773,7 @@
 
             if (!confirm(
                     'Sync users from Odoo?\n\nThis will:\n• Import new users (Status: Pending)\n• Update existing users (Status: Active)\n\nContinue?'
-                    )) {
+                )) {
                 return;
             }
 
@@ -723,17 +781,69 @@
             btn.disabled = true;
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Syncing...';
 
-            fetch('/odoo/sync-users-ajax', {
+            // Get CSRF token
+            const csrfToken = document.querySelector('meta[name="csrf-token"]');
+
+            if (!csrfToken) {
+                console.error('❌ CSRF token not found in page!');
+                alert('Error: CSRF token missing. Please refresh the page.');
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+                return;
+            }
+
+            console.log('🔄 Starting sync...', {
+                url: '/azure/sync/odoo/sync-users-ajax',
+                csrf: csrfToken.content.substring(0, 10) + '...',
+                timestamp: new Date().toISOString()
+            });
+
+            fetch('/azure/sync/odoo/sync-users-ajax', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'Accept': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'X-CSRF-TOKEN': csrfToken.content,
                         'X-Requested-With': 'XMLHttpRequest'
                     }
                 })
-                .then(response => response.json())
+                .then(response => {
+                    console.log('📡 Response received:', {
+                        status: response.status,
+                        statusText: response.statusText,
+                        ok: response.ok,
+                        headers: Object.fromEntries(response.headers.entries())
+                    });
+
+                    // Check if response is JSON
+                    const contentType = response.headers.get('content-type');
+                    if (!contentType || !contentType.includes('application/json')) {
+                        console.error('❌ Response is not JSON!', {
+                            contentType,
+                            status: response.status
+                        });
+
+                        // Try to get the actual response text for debugging
+                        return response.text().then(text => {
+                            console.error('📄 Actual response:', text.substring(0, 500));
+                            throw new Error(
+                                `Server returned ${response.status}: Expected JSON but got ${contentType}. Check console for details.`
+                            );
+                        });
+                    }
+
+                    if (!response.ok) {
+                        return response.json().then(err => {
+                            throw new Error(err.message ||
+                                `HTTP ${response.status}: ${response.statusText}`);
+                        });
+                    }
+
+                    return response.json();
+                })
                 .then(data => {
+                    console.log('✅ Sync completed:', data);
+
                     if (data.success) {
                         alert(`Sync completed successfully!\n\n` +
                             `✅ Inserted: ${data.stats.inserted} (Pending)\n` +
@@ -748,10 +858,160 @@
                     }
                 })
                 .catch(error => {
-                    console.error('Sync error:', error);
-                    alert('Sync failed: ' + error.message);
+                    console.error('❌ Sync error:', error);
+                    alert(`Sync failed!\n\nError: ${error.message}\n\nCheck browser console (F12) for details.`);
                     btn.disabled = false;
                     btn.innerHTML = originalHtml;
+                });
+        }
+
+        /**
+         * ✅ NEW: Retry provisioning for all pending users
+         */
+        function retryAllPendingUsers() {
+            if (!confirm(
+                    'Retry Provisioning for All Pending Users\n\n' +
+                    'This will:\n' +
+                    '• Find all users with Status = Pending\n' +
+                    '• Create Azure accounts if missing\n' +
+                    '• Provision to external systems (D365, SCM, BIZ, FIT Express)\n' +
+                    '• Update status to Active if successful\n\n' +
+                    'This may take a few minutes.\n\n' +
+                    'Continue?'
+                )) {
+                return;
+            }
+
+            const btn = document.getElementById('retryProvisioningBtn');
+            const originalHtml = btn.innerHTML;
+
+            // Disable button and show loading
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+
+            fetch('/azure/sync/activate-users', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('✅ Retry Provisioning Completed!\n\n' + data.message);
+                        window.location.reload();
+                    } else {
+                        alert('⚠️ Provisioning completed with errors:\n\n' + data.message);
+                        btn.disabled = false;
+                        btn.innerHTML = originalHtml;
+                    }
+                })
+                .catch(error => {
+                    console.error('Retry provisioning error:', error);
+                    alert('❌ Retry Failed\n\n' + error.message);
+                    btn.disabled = false;
+                    btn.innerHTML = originalHtml;
+                });
+        }
+
+        /**
+         * Sync user to all external systems using unified SP
+         */
+        function syncUserToExternalSystems(userId) {
+            if (!confirm(
+                    'Sync User to External Systems\n\n' +
+                    'This will sync the user to:\n' +
+                    '• D365 (if assigned)\n' +
+                    '• SCM/OPS (if assigned)\n' +
+                    '• BIZ PRO (if assigned)\n' +
+                    '• FIT Express (if assigned)\n\n' +
+                    'Continue?'
+                )) {
+                return;
+            }
+
+            // Show loading state
+            const btn = event.target.closest('button');
+            const originalHtml = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+            fetch(`/azure/users/${userId}/sync-unified`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Build detailed message
+                        let message = '✅ Sync Completed!\n\n';
+
+                        if (data.results) {
+                            for (const [system, result] of Object.entries(data.results)) {
+                                const icon = result.status === 'success' ? '✅' : '❌';
+                                const systemName = system.toUpperCase().replace('_', ' ');
+                                message += `${icon} ${systemName}: ${result.message}\n`;
+                            }
+                        }
+
+                        alert(message);
+
+                        // Reload to show updated status
+                        window.location.reload();
+                    } else {
+                        alert('❌ Sync Failed\n\n' + (data.message || 'Unknown error'));
+                        btn.disabled = false;
+                        btn.innerHTML = originalHtml;
+                    }
+                })
+                .catch(error => {
+                    console.error('Sync error:', error);
+                    alert('❌ Sync Failed\n\n' + error.message);
+                    btn.disabled = false;
+                    btn.innerHTML = originalHtml;
+                });
+        }
+
+        /**
+         * Fix a user record that has a NULL or missing ID
+         */
+        function fixUserRecord(userPrincipalName) {
+            if (!confirm(`Fix user record for ${userPrincipalName}?\n\nThis will generate a new GUID for this user.`)) {
+                return;
+            }
+
+            fetch(`/azure/users/fix-missing-id`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: JSON.stringify({
+                        user_principal_name: userPrincipalName
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert(`✅ User record fixed successfully!\n\nNew ID: ${data.new_id}`);
+                        window.location.reload();
+                    } else {
+                        alert(`❌ Failed to fix user record: ${data.message}`);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fixing user:', error);
+                    alert(`❌ Failed to fix user record: ${error.message}`);
                 });
         }
 

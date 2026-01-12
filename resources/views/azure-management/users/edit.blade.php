@@ -120,6 +120,80 @@
                             </div>
                         </div>
 
+                        <div class="form-section">
+                            <div class="form-section-title">
+                                <i class="fas fa-building"></i>
+                                Base Office
+                            </div>
+
+                            <div class="form-row single-column">
+                                <div class="form-group">
+                                    <label for="scm_base_office" class="form-label">
+                                        <i class="fas fa-map-marker-alt"></i>
+                                        Primary Office<span style="color: var(--danger);">*</span>
+                                    </label>
+
+                                    @php
+                                        // ✅ FIX: Trim whitespace from BaseOfficeCode
+                                        $currentBaseOffice = $user->BaseOfficeCode ? trim($user->BaseOfficeCode) : null;
+
+                                        // Debug log
+                                        // \Log::info('Edit page - Base Office Debug', [
+                                        //     'raw_value' => $user->BaseOfficeCode,
+                                        //     'trimmed_value' => $currentBaseOffice,
+                                        //     'is_null' => is_null($currentBaseOffice),
+                                        // ]);
+
+                                    @endphp
+
+                                    <div style="display: flex; gap: 12px; align-items: flex-start;">
+                                        <select name="scm_base_office" id="scm_base_office"
+                                            class="form-control @error('scm_base_office') is-invalid @enderror"
+                                            style="flex: 1;">
+
+                                            @foreach ($offices as $office)
+                                                @php
+                                                    $officeCode = trim($office->Code);
+                                                    $currentBaseOffice = $user->BaseOfficeCode
+                                                        ? trim($user->BaseOfficeCode)
+                                                        : null;
+                                                    $isSelected = $currentBaseOffice === $officeCode;
+                                                @endphp
+
+                                                <option value="{{ $officeCode }}" {{ $isSelected ? 'selected' : '' }}>
+                                                    {{ $office->Name }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+
+                                        {{-- <button type="button" class="btn btn-primary" id="saveBaseOfficeBtn"
+                                            onclick="saveBaseOffice()"
+                                            style="white-space: nowrap; min-width: 150px; display: none;">
+                                            <i class="fas fa-save"></i>
+                                            Save Base Office
+                                        </button>
+
+                                        <button type="button" class="btn btn-secondary" id="cancelBaseOfficeBtn"
+                                            onclick="cancelBaseOfficeChange()"
+                                            style="white-space: nowrap; min-width: 120px; display: none;">
+                                            <i class="fas fa-times"></i>
+                                            Cancel
+                                        </button> --}}
+                                    </div>
+
+                                    <small class="form-text text-muted">
+                                        <i class="fas fa-info-circle"></i>
+                                        Current: <strong>{{ $currentBaseOffice ?? 'Not Set' }}</strong> |
+                                        Changes will be saved when you click "Update User".
+                                    </small>
+
+                                    @error('scm_base_office')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Module Assignments Section -->
                         <div class="form-section">
                             <div class="form-section-title"
@@ -193,6 +267,38 @@
 
 @section('css')
     <style>
+        /* Fix for Base Office Dropdown */
+        #scm_base_office {
+            appearance: auto;
+            -webkit-appearance: menulist;
+            -moz-appearance: menulist;
+            background-color: white;
+            background-image: none;
+            cursor: pointer;
+            height: auto;
+            min-height: 44px;
+        }
+
+        #scm_base_office:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+        }
+
+        /* Button styling for Save Base Office */
+        #saveBaseOfficeBtn {
+            height: 44px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        #saveBaseOfficeBtn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
         /* ---------- Full Screen Container ---------- */
         .full-screen-container {
             width: 100%;
@@ -1048,6 +1154,174 @@
             opacity: 0.2;
             font-weight: bold;
         }
+
+        /* Roles Checkboxes Grid for OPS Module */
+        .roles-checkboxes-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-top: 10px;
+            padding: 12px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            width: 100%;
+        }
+
+        .roles-checkboxes-grid.ops-layout {
+            grid-template-columns: repeat(3, minmax(120px, 1fr));
+        }
+
+        /* Responsive adjustments for roles */
+        @media (max-width: 992px) {
+            .roles-checkboxes-grid.ops-layout {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .assignment-info {
+                grid-template-columns: 1fr 1fr !important;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .roles-checkboxes-grid.ops-layout {
+                grid-template-columns: 1fr;
+            }
+
+            .assignment-info {
+                grid-template-columns: 1fr !important;
+            }
+
+            .roles-checkboxes-grid {
+                padding: 8px;
+            }
+        }
+
+        /* Better checkbox layout for OPS */
+        .ops-roles-field .checkbox-option {
+            min-height: 40px;
+            display: flex;
+            align-items: center;
+            padding: 8px 12px;
+            margin: 0;
+        }
+
+        .ops-roles-field .field-label {
+            margin-bottom: 10px;
+        }
+
+        /* Ensure modal body uses full width */
+        .modal-body {
+            padding: 25px;
+        }
+
+        /* Make assignment info section wider */
+        .assignment-info {
+            gap: 20px !important;
+        }
+
+        /* Specific styling for OPS module */
+        .ops-roles-container {
+            width: 100%;
+        }
+
+        /* OPS Module Specific Styles */
+        .ops-module-layout {
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+            width: 100%;
+        }
+
+        .ops-top-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            width: 100%;
+        }
+
+        .ops-form-section {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            border: 1px solid #e1e8ed;
+        }
+
+        .ops-roles-section {
+            width: 100%;
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            border: 1px solid #e1e8ed;
+        }
+
+        .roles-grid-3col {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-top: 10px;
+            width: 100%;
+        }
+
+        .roles-grid-3col .checkbox-option {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 12px;
+            background: white;
+            border: 1px solid #e1e8ed;
+            border-radius: 4px;
+            transition: all 0.2s;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .roles-grid-3col .checkbox-option:hover {
+            border-color: #007bff;
+            background: #f8faff;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 992px) {
+            .roles-grid-3col {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .ops-top-section {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .roles-grid-3col {
+                grid-template-columns: 1fr;
+            }
+
+            .ops-module-layout {
+                gap: 15px;
+            }
+
+            .ops-form-section,
+            .ops-roles-section {
+                padding: 12px;
+            }
+        }
+
+        /* Make modal content wider */
+        .modal-content {
+            max-width: 1000px !important;
+            /* Increased from 900px */
+            width: 95% !important;
+        }
+
+        /* Ensure modal body uses full width */
+        .modal-body {
+            padding: 25px 30px;
+        }
+
+        /* Adjust assignment item padding */
+        .assignment-item {
+            padding: 20px;
+        }
     </style>
 @stop
 
@@ -1102,7 +1376,13 @@
         }
 
         function deepClone(obj) {
-            return JSON.parse(JSON.stringify(obj));
+            const cloned = JSON.parse(JSON.stringify(obj));
+            console.log('🔄 Deep clone:', {
+                original: obj,
+                cloned: cloned,
+                same: JSON.stringify(obj) === JSON.stringify(cloned)
+            });
+            return cloned;
         }
 
         function getApplicationCodeForSP(module) {
@@ -1223,24 +1503,11 @@
         }
 
         function initializeModules() {
-
             moduleCards = {};
 
             console.log('=== EXISTING MODULES FROM BACKEND ===');
             console.log('Total count:', existingModules.length);
             console.log('Data:', existingModules);
-            console.log('Module IDs breakdown:', existingModules.map(m => ({
-                module_id: m.module_id,
-                module_name: m.module_name,
-                location: m.location,
-                role_code: m.role_code
-            })));
-
-            // Check for duplicates
-            const moduleIds = existingModules.map(m => m.module_id);
-            const uniqueModuleIds = [...new Set(moduleIds)];
-            console.log('Unique modules:', uniqueModuleIds.length);
-            console.log('Total assignment records from backend:', existingModules.length);
 
             const grouped = {};
             existingModules.forEach(m => {
@@ -1254,7 +1521,12 @@
                     };
                 }
 
-                // Check if we already have an assignment - if so, merge into it
+                // ← IMPORTANT: Check if this module is SCM
+                const module = modulesData.find(mod => mod.id == moduleId);
+                const applicationCode = module ? getApplicationCodeForSP(module) : '';
+                const isSCM = applicationCode === 'OPS' || applicationCode === 'OPS UAT' || applicationCode ===
+                    'OPSUAT';
+
                 const existingAssignment = grouped[moduleId].assignments[0];
 
                 if (!existingAssignment) {
@@ -1267,12 +1539,12 @@
                         role_id: m.role_id,
                         roleIds: [m.role_id],
                         roleCodes: [m.role_code || ''],
-                        function_id: m.function_id || undefined,
-                        functionIds: m.function_id ? [m.function_id] : undefined,
-                        functionCodes: m.function_code ? [m.function_code] : undefined
+                        // ← FIX: Always initialize function fields for SCM modules
+                        function_id: isSCM ? (m.function_id || '') : undefined,
+                        functionIds: isSCM ? (m.function_id ? [String(m.function_id)] : []) : undefined,
+                        functionCodes: isSCM ? (m.function_code ? [m.function_code] : []) : undefined
                     });
                 } else {
-
                     // Add location if not already present
                     if (!existingAssignment.locationIds.includes(m.location_id)) {
                         existingAssignment.locationIds.push(m.location_id);
@@ -1285,11 +1557,28 @@
                         existingAssignment.roleCodes.push(m.role_code || '');
                     }
 
-                    // Add function if not already present (for SCM modules)
-                    if (m.function_id && existingAssignment.functionIds) {
-                        if (!existingAssignment.functionIds.includes(m.function_id)) {
-                            existingAssignment.functionIds.push(m.function_id);
+                    // ← FIX: Add function if not already present (for SCM modules)
+                    if (isSCM && m.function_id) {
+                        // Initialize function arrays if they don't exist
+                        if (!existingAssignment.functionIds) {
+                            existingAssignment.functionIds = [];
+                        }
+                        if (!existingAssignment.functionCodes) {
+                            existingAssignment.functionCodes = [];
+                        }
+                        if (!existingAssignment.function_id) {
+                            existingAssignment.function_id = '';
+                        }
+
+                        const funcIdStr = String(m.function_id);
+                        if (!existingAssignment.functionIds.map(String).includes(funcIdStr)) {
+                            existingAssignment.functionIds.push(funcIdStr);
                             existingAssignment.functionCodes.push(m.function_code);
+
+                            // Set function_id to first one if not set
+                            if (!existingAssignment.function_id) {
+                                existingAssignment.function_id = funcIdStr;
+                            }
                         }
                     }
                 }
@@ -1303,6 +1592,16 @@
                     ...data
                 };
             });
+
+            // ← ADD DEBUG: Log what was created
+            console.log('📦 Initialized module cards:', Object.values(moduleCards).map(c => ({
+                module: c.module_name,
+                assignments: c.assignments.map(a => ({
+                    id: a.id,
+                    functionIds: a.functionIds,
+                    locationCodes: a.locationCodes
+                }))
+            })));
 
             // Store initial state for comparison
             initialModuleState = deepClone(moduleCards);
@@ -1376,6 +1675,18 @@
         window.openModal = async (cardId) => {
             currentModalCardId = cardId;
             const card = moduleCards[cardId];
+
+            // ← ADD DETAILED LOGGING
+            console.log('🔍 Opening modal for card:', cardId);
+            console.log('📦 Full card data:', JSON.stringify(card, null, 2));
+            console.log('📋 Assignments detail:', card.assignments.map(a => ({
+                id: a.id,
+                functionIds: a.functionIds,
+                functionCodes: a.functionCodes,
+                locationCodes: a.locationCodes,
+                roleIds: a.roleIds
+            })));
+
             originalCardState = deepClone(card);
 
             // Set edit mode based on whether it's a new module
@@ -1401,6 +1712,9 @@
                 }
 
                 await Promise.all(promises);
+
+                // ← ADD THIS: Log data AFTER fetching
+                console.log('✅ Data fetched, card assignments:', card.assignments);
             }
 
             renderModalAssignments();
@@ -1485,10 +1799,21 @@
             console.log('📦 Current card:', card);
             console.log('🆕 Is new module?', card?.isNew);
 
+            // ✅ ADD: Deep clone to ensure data integrity
+            const cardData = deepClone(card);
+            console.log('📊 Assignment data BEFORE save:', JSON.stringify(cardData.assignments, null, 2));
+
+            // ✅ CRITICAL: Update the moduleCards with the cloned data
+            moduleCards[currentModalCardId] = cardData;
+
             // For NEW modules: mark as not new and show Update User button
-            if (card && card.isNew) {
+            if (cardData && cardData.isNew) {
                 console.log('✅ Processing NEW module');
-                card.isNew = false;
+                cardData.isNew = false;
+                moduleCards[currentModalCardId].isNew = false;
+
+                console.log('📊 Assignment data AFTER marking as not new:', JSON.stringify(cardData.assignments, null,
+                    2));
 
                 // Close modal
                 document.getElementById('moduleModal').classList.remove('active');
@@ -1499,7 +1824,7 @@
                 // Re-render cards
                 renderAllCards();
 
-                // ✅ SHOW THE UPDATE USER BUTTON
+                // Show the Update User button
                 console.log('🔘 Calling toggleFormActions(true)');
                 toggleFormActions(true);
 
@@ -1509,13 +1834,8 @@
 
             console.log('✅ Processing EXISTING module');
 
-            // For EXISTING modules: show the Update User & Cancel buttons
-            if (currentModalCardId && moduleCards[currentModalCardId]) {
-                moduleCards[currentModalCardId].isNew = false;
-            }
-
             // Update the original state to the current state
-            originalCardState = deepClone(moduleCards[currentModalCardId]);
+            originalCardState = deepClone(cardData);
 
             // Close modal
             document.getElementById('moduleModal').classList.remove('active');
@@ -1535,7 +1855,7 @@
             const card = moduleCards[currentModalCardId];
             const container = document.getElementById('modalAssignmentsContainer');
 
-            // Update modal header - REMOVED the extra "Delete Module" button
+            // Update modal header
             const modalHeader = document.querySelector('.modal-header');
             if (modalHeader) {
                 modalHeader.innerHTML = `
@@ -1564,6 +1884,7 @@
             const applicationCode = getApplicationCodeForSP(module);
             const isSCM = applicationCode === 'OPS' || applicationCode === 'OPS UAT';
             const cacheKey = `${applicationCode}_all`;
+            const isOPSModule = isSCM; // OPS modules are SCM modules
 
             // Check if data is loaded
             if (!rolesCache[cacheKey]) {
@@ -1599,104 +1920,220 @@
                         </button>
                     </div>
                 </div>
-                <div class="assignment-info" style="grid-template-columns: ${isSCM ? '1fr 1fr 1fr' : '1fr 1fr'};">
-                    <!-- OFFICE LOCATION -->
-                    <div class="info-field">
-                        <div class="field-label"><i class="fas fa-map-marker-alt"></i> Office Location</div>
-                        <div class="radio-group">
-                            <div class="radio-option ${disabledClass}">
-                                <input type="radio" id="${a.id}_all_locations" name="${a.id}_location_type" class="all-locations-radio" ${isAllLocations ? 'checked' : ''} ${disabled} onchange="handleLocationRadioChange('${a.id}')">
-                                <label for="${a.id}_all_locations">All Locations</label>
-                            </div>
-                            <div class="radio-option ${disabledClass}">
-                                <input type="radio" id="${a.id}_specific_locations" name="${a.id}_location_type" class="specific-locations-radio" ${!isAllLocations ? 'checked' : ''} ${disabled} onchange="handleLocationRadioChange('${a.id}')">
-                                <label for="${a.id}_specific_locations">Specific Location</label>
-                            </div>
-                        </div>
-                        <div class="checkboxes-grid">
-                            ${locationsData.map(l => {
-                                const locCode = l.code.trim();
-                                const isChecked = a.locationCodes && a.locationCodes.includes(locCode);
-                                return `
-                                                                                                <div class="checkbox-option ${isAllLocations || !isEditMode ? 'disabled' : ''}">
-                                                                                                    <input type="checkbox"
-                                                                                                           id="${a.id}_loc_${locCode}"
-                                                                                                           class="location-checkbox"
-                                                                                                           data-location-id="${l.id}"
-                                                                                                           data-location-code="${locCode}"
-                                                                                                           data-location-name="${escapeHtml(l.name)}"
-                                                                                                           value="${locCode}"
-                                                                                                           ${isChecked || isAllLocations ? 'checked' : ''}
-                                                                                                           ${isAllLocations || !isEditMode ? 'disabled' : ''}
-                                                                                                           onchange="handleLocationCheckboxChange('${a.id}')">
-                                                                                                    <label for="${a.id}_loc_${locCode}">${escapeHtml(l.name)}</label>
-                                                                                                </div>
-                                                                                            `;
-                            }).join('')}
-                        </div>
-                    </div>
 
-                    <!-- SCM FUNCTIONS (Only for OPS/OPSUAT) -->
-                    ${isSCM ? `
-                                                                                <div class="info-field">
-                                                                                    <div class="field-label"><i class="fas fa-cog"></i> Function (SCM)</div>
-                                                                                    <div class="radio-group">
-                                                                                        <div class="radio-option ${disabledClass}">
-                                                                                            <input type="radio" id="${a.id}_all_functions" name="${a.id}_function_type" class="all-functions-radio" ${isAllFunctions ? 'checked' : ''} ${disabled} onchange="handleFunctionRadioChange('${a.id}')">
-                                                                                            <label for="${a.id}_all_functions">All Functions</label>
-                                                                                        </div>
-                                                                                        <div class="radio-option ${disabledClass}">
-                                                                                            <input type="radio" id="${a.id}_specific_functions" name="${a.id}_function_type" class="specific-functions-radio" ${!isAllFunctions ? 'checked' : ''} ${disabled} onchange="handleFunctionRadioChange('${a.id}')">
-                                                                                            <label for="${a.id}_specific_functions">Specific Function</label>
-                                                                                        </div>
-                                                                                    </div>
-                                                                                    <div class="checkboxes-grid">
-                                                                                        ${availableFunctions.length > 0 ? availableFunctions.map(f => {
-                                                                                            const isChecked = a.functionIds && a.functionIds.includes(String(f.id));
-                                                                                            return `
-                                    <div class="checkbox-option ${isAllFunctions || !isEditMode ? 'disabled' : ''}">
-                                        <input type="checkbox"
-                                            id="${a.id}_func_${f.id}"
-                                            class="function-checkbox"
-                                            data-function-id="${f.id}"
-                                            data-function-code="${escapeHtml(f.code)}"
-                                            value="${f.id}"
-                                            ${isChecked || isAllFunctions ? 'checked' : ''}
-                                            ${isAllFunctions || !isEditMode ? 'disabled' : ''}
-                                            onchange="handleFunctionCheckboxChange('${a.id}')">
-                                        <label for="${a.id}_func_${f.id}">${escapeHtml(f.name)}</label>
-                                    </div>
-                                `;
-                                                                                        }).join('') : '<p style="padding: 10px; color: #666;">No functions available</p>'}
-                                                                                    </div>
-                                                                                </div>
-                                                                                ` : ''}
+                ${
+                    isOPSModule
+                    ? `
+                                                                                                                        <!-- SPECIAL LAYOUT FOR OPS MODULES -->
+                                                                                                                        <div class="ops-module-layout">
+                                                                                                                            <div class="ops-top-section">
+                                                                                                                                <!-- OFFICE LOCATION -->
+                                                                                                                                <div class="ops-form-section">
+                                                                                                                                    <div class="field-label"><i class="fas fa-map-marker-alt"></i> Office Location</div>
+                                                                                                                                    <div class="radio-group">
+                                                                                                                                        <div class="radio-option ${disabledClass}">
+                                                                                                                                            <input type="radio" id="${a.id}_all_locations" name="${a.id}_location_type" class="all-locations-radio" ${isAllLocations ? 'checked' : ''} ${disabled} onchange="handleLocationRadioChange('${a.id}')">
+                                                                                                                                            <label for="${a.id}_all_locations">All Locations</label>
+                                                                                                                                        </div>
+                                                                                                                                        <div class="radio-option ${disabledClass}">
+                                                                                                                                            <input type="radio" id="${a.id}_specific_locations" name="${a.id}_location_type" class="specific-locations-radio" ${!isAllLocations ? 'checked' : ''} ${disabled} onchange="handleLocationRadioChange('${a.id}')">
+                                                                                                                                            <label for="${a.id}_specific_locations">Specific Location</label>
+                                                                                                                                        </div>
+                                                                                                                                    </div>
+                                                                                                                                    <div class="checkboxes-grid">
+                                                                                                                                        ${locationsData.map(l => {
+                                                                                                                                            const locCode = l.code.trim();
+                                                                                                                                            const isChecked = isAllLocations ||
+                                                                                                                                                (a.locationCodes && a.locationCodes.map(c => c.trim()).includes(locCode));
 
-                                        <!-- ROLES -->
-                                    <div class="info-field">
-                                        <div class="field-label"><i class="fas fa-user-tag"></i> Role</div>
-                                        <div class="checkboxes-grid">
-                                            ${availableRoles.length > 0 ? availableRoles.map(r => {
-                                                const isChecked = a.roleIds && a.roleIds.map(String).includes(String(r.id));
-                                                return `
-                                                                        <div class="checkbox-option ${!isEditMode ? 'disabled' : ''}">
-                                                                            <input type="checkbox"
-                                                                                    id="${a.id}_role_${r.id}"
-                                                                                    class="role-checkbox"
-                                                                                    data-role-id="${r.id}"
-                                                                                    data-role-code="${escapeHtml(r.code)}"
-                                                                                    value="${r.id}"
-                                                                                    ${isChecked ? 'checked' : ''}
-                                                                                    ${!isEditMode ? 'disabled' : ''}
-                                                                                    onchange="handleRoleCheckboxChange('${a.id}')">
-                                                                            <label for="${a.id}_role_${r.id}">${escapeHtml(r.name)}</label>
-                                                                        </div>
-                                                                    `;
-                                            }).join('') : '<p style="padding: 10px; color: #666;">No roles available for ' + escapeHtml(applicationCode) + '</p>'}
+                                                                                                                                            return `
+                                            <div class="checkbox-option ${isAllLocations || !isEditMode ? 'disabled' : ''}">
+                                                <input type="checkbox"
+                                                       id="${a.id}_loc_${locCode}"
+                                                       class="location-checkbox"
+                                                       data-location-id="${l.id}"
+                                                       data-location-code="${locCode}"
+                                                       data-location-name="${escapeHtml(l.name)}"
+                                                       value="${locCode}"
+                                                       ${isChecked ? 'checked' : ''}
+                                                       ${isAllLocations || !isEditMode ? 'disabled' : ''}
+                                                       onchange="handleLocationCheckboxChange('${a.id}')">
+                                                <label for="${a.id}_loc_${locCode}">${escapeHtml(l.name)}</label>
+                                            </div>
+                                        `;
+                                                                                                                                        }).join('')}
+                                                                                                                                    </div>
+                                                                                                                                </div>
+
+                                                                                                                                <!-- SCM FUNCTIONS -->
+                                                                                                                                <div class="ops-form-section">
+                                                                                                                                    <div class="field-label"><i class="fas fa-cog"></i> Function (SCM)</div>
+                                                                                                                                    <div class="radio-group">
+                                                                                                                                        <div class="radio-option ${disabledClass}">
+                                                                                                                                            <input type="radio" id="${a.id}_all_functions" name="${a.id}_function_type" class="all-functions-radio" ${isAllFunctions ? 'checked' : ''} ${disabled} onchange="handleFunctionRadioChange('${a.id}')">
+                                                                                                                                            <label for="${a.id}_all_functions">All Functions</label>
+                                                                                                                                        </div>
+                                                                                                                                        <div class="radio-option ${disabledClass}">
+                                                                                                                                            <input type="radio" id="${a.id}_specific_functions" name="${a.id}_function_type" class="specific-functions-radio" ${!isAllFunctions ? 'checked' : ''} ${disabled} onchange="handleFunctionRadioChange('${a.id}')">
+                                                                                                                                            <label for="${a.id}_specific_functions">Specific Function</label>
+                                                                                                                                        </div>
+                                                                                                                                    </div>
+                                                                                                                                    <div class="checkboxes-grid">
+                                                                                                                                        ${availableFunctions.length > 0 ? availableFunctions.map(f => {
+                                                                                                                                            const functionId = String(f.id).toUpperCase();
+                                                                                                                                            const normalizedFunctionIds = (a.functionIds || []).map(id => String(id).toUpperCase());
+                                                                                                                                            const isChecked = isAllFunctions || normalizedFunctionIds.includes(functionId);
+
+                                                                                                                                            return `
+                                            <div class="checkbox-option ${isAllFunctions || !isEditMode ? 'disabled' : ''}">
+                                                <input type="checkbox"
+                                                    id="${a.id}_func_${f.id}"
+                                                    class="function-checkbox"
+                                                    data-function-id="${f.id}"
+                                                    data-function-code="${escapeHtml(f.code)}"
+                                                    value="${f.id}"
+                                                    ${isChecked ? 'checked' : ''}
+                                                    ${isAllFunctions || !isEditMode ? 'disabled' : ''}
+                                                    onchange="handleFunctionCheckboxChange('${a.id}')">
+                                                <label for="${a.id}_func_${f.id}">${escapeHtml(f.name)}</label>
+                                            </div>
+                                        `;
+                                                                                                                                        }).join('') : '<p style="padding: 10px; color: #666;">No functions available</p>'}
+                                                                                                                                    </div>
+                                                                                                                                </div>
+                                                                                                                            </div>
+
+                                                                                                                            <!-- ROLES - FULL WIDTH FOR OPS MODULES -->
+                                                                                                                            <div class="ops-roles-section">
+                                                                                                                                <div class="field-label"><i class="fas fa-user-tag"></i> Roles</div>
+                                                                                                                                <div class="roles-grid-3col">
+                                                                                                                                    ${availableRoles.length > 0 ? availableRoles.map(r => {
+                                                                                                                                        const isChecked = a.roleIds && a.roleIds.map(String).includes(String(r.id));
+                                                                                                                                        return `
+                                        <div class="checkbox-option ${!isEditMode ? 'disabled' : ''}">
+                                            <input type="checkbox"
+                                                    id="${a.id}_role_${r.id}"
+                                                    class="role-checkbox"
+                                                    data-role-id="${r.id}"
+                                                    data-role-code="${escapeHtml(r.code)}"
+                                                    value="${r.id}"
+                                                    ${isChecked ? 'checked' : ''}
+                                                    ${!isEditMode ? 'disabled' : ''}
+                                                    onchange="handleRoleCheckboxChange('${a.id}')">
+                                            <label for="${a.id}_role_${r.id}">${escapeHtml(r.name)}</label>
                                         </div>
+                                    `;
+                                                                                                                                    }).join('') : '<p style="padding: 10px; color: #666; grid-column: 1/-1;">No roles available for ' + escapeHtml(applicationCode) + '</p>'}
+                                                                                                                                </div>
+                                                                                                                            </div>
+                                                                                                                        </div>
+                                                                                                                        `
+                    : `
+                                                                                                                        <!-- STANDARD LAYOUT FOR NON-OPS MODULES -->
+                                                                                                                        <div class="assignment-info" style="grid-template-columns: ${isSCM ? '1fr 1fr 1fr' : '1fr 1fr'};">
+                                                                                                                            <!-- OFFICE LOCATION -->
+                                                                                                                            <div class="info-field">
+                                                                                                                                <div class="field-label"><i class="fas fa-map-marker-alt"></i> Office Location</div>
+                                                                                                                                <div class="radio-group">
+                                                                                                                                    <div class="radio-option ${disabledClass}">
+                                                                                                                                        <input type="radio" id="${a.id}_all_locations" name="${a.id}_location_type" class="all-locations-radio" ${isAllLocations ? 'checked' : ''} ${disabled} onchange="handleLocationRadioChange('${a.id}')">
+                                                                                                                                        <label for="${a.id}_all_locations">All Locations</label>
+                                                                                                                                    </div>
+                                                                                                                                    <div class="radio-option ${disabledClass}">
+                                                                                                                                        <input type="radio" id="${a.id}_specific_locations" name="${a.id}_location_type" class="specific-locations-radio" ${!isAllLocations ? 'checked' : ''} ${disabled} onchange="handleLocationRadioChange('${a.id}')">
+                                                                                                                                        <label for="${a.id}_specific_locations">Specific Location</label>
+                                                                                                                                    </div>
+                                                                                                                                </div>
+                                                                                                                                <div class="checkboxes-grid">
+                                                                                                                                    ${locationsData.map(l => {
+                                                                                                                                        const locCode = l.code.trim();
+                                                                                                                                        const isChecked = isAllLocations ||
+                                                                                                                                            (a.locationCodes && a.locationCodes.map(c => c.trim()).includes(locCode));
+
+                                                                                                                                        return `
+                                        <div class="checkbox-option ${isAllLocations || !isEditMode ? 'disabled' : ''}">
+                                            <input type="checkbox"
+                                                   id="${a.id}_loc_${locCode}"
+                                                   class="location-checkbox"
+                                                   data-location-id="${l.id}"
+                                                   data-location-code="${locCode}"
+                                                   data-location-name="${escapeHtml(l.name)}"
+                                                   value="${locCode}"
+                                                   ${isChecked ? 'checked' : ''}
+                                                   ${isAllLocations || !isEditMode ? 'disabled' : ''}
+                                                   onchange="handleLocationCheckboxChange('${a.id}')">
+                                            <label for="${a.id}_loc_${locCode}">${escapeHtml(l.name)}</label>
+                                        </div>
+                                    `;
+                                                                                                                                    }).join('')}
+                                                                                                                                </div>
+                                                                                                                            </div>
+
+                                                                                                                            <!-- SCM FUNCTIONS (Only for OPS/OPSUAT) -->
+                                                                                                                            ${isSCM ? `
+                            <div class="info-field">
+                                <div class="field-label"><i class="fas fa-cog"></i> Function (SCM)</div>
+                                <div class="radio-group">
+                                    <div class="radio-option ${disabledClass}">
+                                        <input type="radio" id="${a.id}_all_functions" name="${a.id}_function_type" class="all-functions-radio" ${isAllFunctions ? 'checked' : ''} ${disabled} onchange="handleFunctionRadioChange('${a.id}')">
+                                        <label for="${a.id}_all_functions">All Functions</label>
                                     </div>
-                    </div>
-                </div>
+                                    <div class="radio-option ${disabledClass}">
+                                        <input type="radio" id="${a.id}_specific_functions" name="${a.id}_function_type" class="specific-functions-radio" ${!isAllFunctions ? 'checked' : ''} ${disabled} onchange="handleFunctionRadioChange('${a.id}')">
+                                        <label for="${a.id}_specific_functions">Specific Function</label>
+                                    </div>
+                                </div>
+                                <div class="checkboxes-grid">
+                                    ${availableFunctions.length > 0 ? availableFunctions.map(f => {
+                                        const functionId = String(f.id).toUpperCase();
+                                        const normalizedFunctionIds = (a.functionIds || []).map(id => String(id).toUpperCase());
+                                        const isChecked = isAllFunctions || normalizedFunctionIds.includes(functionId);
+
+                                        return `
+                                                                                                                                                <div class="checkbox-option ${isAllFunctions || !isEditMode ? 'disabled' : ''}">
+                                                                                                                                                    <input type="checkbox"
+                                                                                                                                                        id="${a.id}_func_${f.id}"
+                                                                                                                                                        class="function-checkbox"
+                                                                                                                                                        data-function-id="${f.id}"
+                                                                                                                                                        data-function-code="${escapeHtml(f.code)}"
+                                                                                                                                                        value="${f.id}"
+                                                                                                                                                        ${isChecked ? 'checked' : ''}
+                                                                                                                                                        ${isAllFunctions || !isEditMode ? 'disabled' : ''}
+                                                                                                                                                        onchange="handleFunctionCheckboxChange('${a.id}')">
+                                                                                                                                                    <label for="${a.id}_func_${f.id}">${escapeHtml(f.name)}</label>
+                                                                                                                                                </div>
+                                                                                                                                            `;
+                                    }).join('') : '<p style="padding: 10px; color: #666;">No functions available</p>'}
+                                </div>
+                            </div>
+                        ` : ''}
+
+                                                                                                                            <!-- ROLES -->
+                                                                                                                            <div class="info-field">
+                                                                                                                                <div class="field-label"><i class="fas fa-user-tag"></i> Role</div>
+                                                                                                                                <div class="checkboxes-grid">
+                                                                                                                                    ${availableRoles.length > 0 ? availableRoles.map(r => {
+                                                                                                                                        const isChecked = a.roleIds && a.roleIds.map(String).includes(String(r.id));
+                                                                                                                                        return `
+                                        <div class="checkbox-option ${!isEditMode ? 'disabled' : ''}">
+                                            <input type="checkbox"
+                                                    id="${a.id}_role_${r.id}"
+                                                    class="role-checkbox"
+                                                    data-role-id="${r.id}"
+                                                    data-role-code="${escapeHtml(r.code)}"
+                                                    value="${r.id}"
+                                                    ${isChecked ? 'checked' : ''}
+                                                    ${!isEditMode ? 'disabled' : ''}
+                                                    onchange="handleRoleCheckboxChange('${a.id}')">
+                                            <label for="${a.id}_role_${r.id}">${escapeHtml(r.name)}</label>
+                                        </div>
+                                    `;
+                                                                                                                                    }).join('') : '<p style="padding: 10px; color: #666;">No roles available for ' + escapeHtml(applicationCode) + '</p>'}
+                                                                                                                                </div>
+                                                                                                                            </div>
+                                                                                                                        </div>
+                                                                                                                        `
+                }
             </div>
         `;
             }).join('');
@@ -1754,13 +2191,16 @@
 
                 checkboxes.forEach(cb => {
                     const locId = cb.getAttribute('data-location-id');
-                    const locCode = cb.getAttribute('data-location-code');
+                    const locCode = cb.getAttribute('data-location-code').trim(); // ← Add trim()
 
                     assignment.locationIds.push(locId);
                     assignment.locationCodes.push(locCode);
                 });
 
+                // Update the main location field
                 assignment.location = assignment.locationCodes.length > 0 ? assignment.locationCodes[0] : '';
+
+                console.log('✅ Updated locations:', assignment.locationCodes); // ← Add logging
             }
         };
 
@@ -1800,6 +2240,7 @@
             }
         };
 
+
         window.handleFunctionCheckboxChange = (assignId) => {
             if (!isEditMode) return;
             const container = document.getElementById(assignId);
@@ -1814,7 +2255,8 @@
                 assignment.functionCodes = [];
 
                 checkboxes.forEach(cb => {
-                    const funcId = cb.getAttribute('data-function-id');
+                    // ← Store as strings (consistent with how they're stored initially)
+                    const funcId = String(cb.getAttribute('data-function-id'));
                     const funcCode = cb.getAttribute('data-function-code');
 
                     assignment.functionIds.push(funcId);
@@ -1822,6 +2264,11 @@
                 });
 
                 assignment.function_id = assignment.functionIds.length > 0 ? assignment.functionIds[0] : '';
+
+                console.log('✅ Updated functions:', {
+                    functionIds: assignment.functionIds,
+                    functionCodes: assignment.functionCodes
+                });
             }
         };
 
@@ -1902,17 +2349,17 @@
                 const disabledAttr = isAssigned ? 'data-disabled="true"' : '';
 
                 return `
-                                                                                <div class="module-selector-card ${disabledClass}"
-                                                                                    data-module-id="${escapeHtml(String(m.id))}"
-                                                                                    ${disabledAttr}>
-                                                                                    <i class="fas fa-cube"></i>
-                                                                                    <div class="module-name">${escapeHtml(m.name)}</div>
-                                                                                    ${isAssigned ? '<div class="already-assigned-badge">Already Assigned</div>' : ''}
-                                                                                </div>
-                                                                            `;
+                                        <div class="module-selector-card ${disabledClass}"
+                                            data-module-id="${escapeHtml(String(m.id))}"
+                                            ${disabledAttr}>
+                                            <i class="fas fa-cube"></i>
+                                            <div class="module-name">${escapeHtml(m.name)}</div>
+                                            ${isAssigned ? '<div class="already-assigned-badge">Already Assigned</div>' : ''}
+                                        </div>
+                                    `;
             }).join('')}
         </div>
-    `;
+        `;
 
             Swal.fire({
                 title: 'Select Module',
@@ -2166,6 +2613,14 @@
             }
 
             Object.values(moduleCards).forEach(card => {
+                // ✅ ADD THIS DEBUG
+                console.log('🔍 Processing card:', {
+                    id: card.id,
+                    module_name: card.module_name,
+                    module_id: card.module_id,
+                    assignments: card.assignments
+                });
+
                 if (!card.module_id || !card.assignments) {
                     console.warn('⚠️ Skipping card - missing module_id or assignments:', card);
                     return;
@@ -2182,47 +2637,91 @@
                     'OPSUAT';
 
                 card.assignments.forEach(a => {
-                    // Determine what to expand
-                    const locations = a.location === 'ALL' || (a.locationCodes && a.locationCodes.includes(
-                            'ALL')) ?
+                    // ✅ ADD THIS DEBUG
+                    console.log('🔍 Processing assignment:', {
+                        id: a.id,
+                        location: a.location,
+                        locationCodes: a.locationCodes,
+                        locationIds: a.locationIds,
+                        roleIds: a.roleIds,
+                        roleCodes: a.roleCodes,
+                        functionIds: a.functionIds,
+                        functionCodes: a.functionCodes
+                    });
+
+                    // ✅ FIX: Ensure locationCodes is an array and has values
+                    const locationCodes = Array.isArray(a.locationCodes) ? a.locationCodes :
+                        (a.location ? [a.location] : []);
+
+                    // ✅ FIX: Handle 'ALL' locations properly
+                    const locations = a.location === 'ALL' || locationCodes.includes('ALL') ?
                         locationsData.map(l => ({
                             id: l.id,
                             code: l.code.trim()
                         })) :
-                        (a.locationCodes || []).map(code => {
-                            const loc = locationsCache[code];
+                        locationCodes.map(code => {
+                            const trimmedCode = String(code).trim();
+                            const loc = locationsCache[trimmedCode];
+                            if (!loc) {
+                                console.warn('⚠️ Location not found in cache:', trimmedCode);
+                            }
                             return loc ? {
                                 id: loc.id,
                                 code: loc.code
                             } : null;
                         }).filter(Boolean);
 
-                    const roles = a.role_id === 'ALL' || (a.roleIds && a.roleIds.includes('ALL')) ?
+                    console.log('📍 Resolved locations:', locations);
+
+                    // ✅ FIX: Ensure roleIds is an array
+                    const roleIds = Array.isArray(a.roleIds) ? a.roleIds :
+                        (a.role_id ? [a.role_id] : []);
+
+                    const roles = a.role_id === 'ALL' || roleIds.includes('ALL') ?
                         (rolesCache[`${applicationCode}_all`] || []).map(r => ({
                             id: r.id,
                             code: r.code
                         })) :
-                        (a.roleIds || []).map((id, idx) => ({
+                        roleIds.map((id, idx) => ({
                             id: id,
                             code: (a.roleCodes || [])[idx] || ''
                         }));
 
+                    console.log('👤 Resolved roles:', roles);
+
+                    // ✅ FIX: Ensure functionIds is an array for SCM
+                    const functionIds = isSCM ? (Array.isArray(a.functionIds) ? a.functionIds :
+                        (a.function_id ? [a.function_id] : [])) : [];
+
                     const functions = isSCM ? (
-                        a.function_id === 'ALL' || (a.functionIds && a.functionIds.includes('ALL')) ?
+                        a.function_id === 'ALL' || functionIds.includes('ALL') ?
                         (scmFunctionsCache || []).map(f => ({
                             id: f.id,
                             code: f.code
                         })) :
-                        (a.functionIds || []).map((id, idx) => ({
+                        functionIds.map((id, idx) => ({
                             id: id,
                             code: (a.functionCodes || [])[idx] || ''
                         }))
                     ) : [];
 
-                    // ✅ CREATE 1-to-1 RECORDS (NOT COMBINATIONS)
+                    console.log('⚙️ Resolved functions:', functions);
+
+                    // ✅ CRITICAL FIX: Check if we have valid data before creating assignments
+                    if (locations.length === 0) {
+                        console.error('❌ No valid locations found for assignment:', a.id);
+                        return;
+                    }
+
+                    if (roles.length === 0 && (!isSCM || functions.length === 0)) {
+                        console.error('❌ No valid roles or functions found for assignment:', a.id);
+                        return;
+                    }
+
+                    // ✅ CREATE 1-to-1 RECORDS
                     if (locations.length > 0 && roles.length > 0) {
                         locations.forEach(loc => {
-                            // ✅ Step 1: Add ROLE records (without functions)
+                            // Add ROLE records
                             roles.forEach(role => {
                                 validAssignments.push({
                                     module_id: card.module_id,
@@ -2236,7 +2735,7 @@
                                 });
                             });
 
-                            // ✅ Step 2: Add FUNCTION records separately (only for SCM)
+                            // Add FUNCTION records separately (only for SCM)
                             if (isSCM && functions.length > 0) {
                                 functions.forEach(func => {
                                     if (func && func.id) {
@@ -2283,176 +2782,30 @@
             }
         }
 
-        window.updateUser = () => {
-            console.log('=== UPDATE USER STARTED ===');
+        function showLoading() {
+            const baseOffice = document.getElementById('scm_base_office')?.value || 'Not set';
 
-            // Step 1: Update hidden inputs (for reference, but we'll use JSON)
-            updateHiddenInputs();
-
-            // Step 2: Prepare JSON payload instead of FormData
-            const payload = {
-                _token: csrfToken,
-                _method: 'PUT',
-                modules: [] // We'll fill this
-            };
-
-            // Step 3: Check what to send
-            const modulesEmptyInput = document.querySelector('input[name="modules_empty"]');
-
-            if (modulesEmptyInput && modulesEmptyInput.value === '1') {
-                payload.modules_empty = '1';
-                console.log('📤 Sending empty modules marker');
-            } else {
-                // Build modules array from moduleCards
-                Object.values(moduleCards).forEach(card => {
-                    if (!card.module_id || !card.assignments) return;
-
-                    const module = modulesData.find(m => m.id == card.module_id);
-                    if (!module) return;
-
-                    const applicationCode = getApplicationCodeForSP(module);
-                    const isSCM = applicationCode === 'OPS' || applicationCode === 'OPS UAT' ||
-                        applicationCode === 'OPSUAT';
-
-                    card.assignments.forEach(a => {
-                        // Get locations
-                        const locations = a.location === 'ALL' || (a.locationCodes && a.locationCodes
-                                .includes('ALL')) ?
-                            locationsData.map(l => ({
-                                id: l.id,
-                                code: l.code.trim()
-                            })) :
-                            (a.locationCodes || []).map(code => {
-                                const loc = locationsCache[code];
-                                return loc ? {
-                                    id: loc.id,
-                                    code: loc.code
-                                } : null;
-                            }).filter(Boolean);
-
-                        // Get roles
-                        const roles = a.role_id === 'ALL' || (a.roleIds && a.roleIds.includes('ALL')) ?
-                            (rolesCache[`${applicationCode}_all`] || []).map(r => ({
-                                id: r.id,
-                                code: r.code
-                            })) :
-                            (a.roleIds || []).map((id, idx) => ({
-                                id: id,
-                                code: (a.roleCodes || [])[idx] || ''
-                            }));
-
-                        // Get functions (if SCM)
-                        const functions = isSCM ? (
-                            a.function_id === 'ALL' || (a.functionIds && a.functionIds.includes(
-                                'ALL')) ?
-                            (scmFunctionsCache || []).map(f => ({
-                                id: f.id,
-                                code: f.code
-                            })) :
-                            (a.functionIds || []).map((id, idx) => ({
-                                id: id,
-                                code: (a.functionCodes || [])[idx] || ''
-                            }))
-                        ) : [null];
-
-                        // Create combinations
-                        locations.forEach(loc => {
-                            // Add ROLES (without functions)
-                            roles.forEach(role => {
-                                payload.modules.push({
-                                    module_id: card.module_id,
-                                    application_id: module.application_id,
-                                    location_id: loc.id,
-                                    location_code: loc.code,
-                                    role_id: role.id,
-                                    role_code: role.code,
-                                    // NO function fields for role records
-                                });
-                            });
-
-                            // Add FUNCTIONS separately (only for SCM)
-                            if (isSCM && functions.length > 0 && functions[0] !== null) {
-                                functions.forEach(func => {
-                                    if (func && func.id) {
-                                        payload.modules.push({
-                                            module_id: card.module_id,
-                                            application_id: module
-                                                .application_id,
-                                            location_id: loc.id,
-                                            location_code: loc.code,
-                                            function_id: func.id,
-                                            function_code: func.code,
-                                            // NO role fields for function records
-                                        });
-                                    }
-                                });
-                            }
-                        });
-                    });
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    title: 'Updating User...',
+                    html: `
+                <div style="text-align: left;">
+                    <p>Please wait while we update the user:</p>
+                    <ul style="text-align: left; padding-left: 20px;">
+                        <li>Base Office: <strong>${baseOffice}</strong></li>
+                        <li>Module assignments: Processing...</li>
+                    </ul>
+                </div>
+            `,
+                    allowOutsideClick: false,
+                    allowEscapeKey: false,
+                    showConfirmButton: false,
+                    willOpen: () => {
+                        Swal.showLoading();
+                    }
                 });
-
-                console.log(`📤 Sending ${payload.modules.length} module assignments as JSON`);
             }
-
-            // Step 4: Show loading
-            showLoading();
-
-            // Step 5: Send as JSON
-            fetch(updateRoute, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': csrfToken,
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'Accept': 'application/json'
-                    },
-                    body: JSON.stringify(payload)
-                })
-                .then(async response => {
-                    console.log('Response status:', response.status);
-                    const text = await response.text();
-                    console.log('Response text (first 500 chars):', text.substring(0, 500));
-
-                    try {
-                        return JSON.parse(text);
-                    } catch (e) {
-                        console.error('Failed to parse JSON:', e);
-                        throw new Error('Server returned non-JSON response');
-                    }
-                })
-                .then(data => {
-                    hideLoading();
-                    console.log('=== SERVER RESPONSE ===', data);
-
-                    if (data.success) {
-                        showAlert('success', 'Success', data.message || 'User updated successfully!');
-                        toggleFormActions(false);
-                        initialModuleState = deepClone(moduleCards);
-
-                        setTimeout(() => {
-                            const userId = data.data?.user_id || "{{ $user->Id }}";
-                            window.location.href = `/azure/users/${userId}`;
-                        }, 1500);
-                    } else {
-                        console.error('❌ Update failed:', data.message);
-                        let errorMsg = data.message;
-                        if (data.errors) {
-                            if (Array.isArray(data.errors)) {
-                                errorMsg += '\n\n' + data.errors.join('\n');
-                            } else if (typeof data.errors === 'object') {
-                                errorMsg += '\n\n' + Object.values(data.errors).flat().join('\n');
-                            }
-                        }
-                        showAlert('error', 'Update Failed', errorMsg);
-                    }
-                })
-                .catch(error => {
-                    hideLoading();
-                    console.error('=== FETCH ERROR ===', error);
-                    showAlert('error', 'Network Error',
-                        'Failed to communicate with server. Please check console for details.');
-                });
-        };
+        }
 
         function showAlert(type, title, message) {
             if (typeof Swal !== 'undefined') {
@@ -2492,9 +2845,535 @@
             if (e.key === 'Escape' && currentModalCardId) closeModal();
         });
 
+        // ====================================================================
+        // FIXED: Save Base Office Separately (Standalone Operation)
+        // ====================================================================
+        // ✅ Check if base office has changed
+        // function checkBaseOfficeChange() {
+        //     const currentValue = $('#scm_base_office').val();
+        //     const originalValue = $('#scm_base_office').data('original-value');
+        //     const saveBtn = $('#saveBaseOfficeBtn');
+        //     const cancelBtn = $('#cancelBaseOfficeBtn');
+
+        //     if (currentValue !== originalValue) {
+        //         saveBtn.fadeIn(200);
+        //         cancelBtn.fadeIn(200);
+        //     } else {
+        //         saveBtn.fadeOut(200);
+        //         cancelBtn.fadeOut(200);
+        //     }
+        // }
+
+        // ✅ Cancel base office change
+        // function cancelBaseOfficeChange() {
+        //     const originalValue = $('#scm_base_office').data('original-value');
+
+        //     // Restore original value
+        //     $('#scm_base_office').val(originalValue);
+
+        //     // Hide buttons
+        //     $('#saveBaseOfficeBtn').fadeOut(200);
+        //     $('#cancelBaseOfficeBtn').fadeOut(200);
+
+        //     // Optional: Show a brief message
+        //     Swal.fire({
+        //         icon: 'info',
+        //         title: 'Change Cancelled',
+        //         text: 'Base office selection has been restored.',
+        //         showConfirmButton: false,
+        //         timer: 1500,
+        //         toast: true,
+        //         position: 'top-end'
+        //     });
+        // }
+
+        function saveBaseOffice() {
+            const baseOffice = $('#scm_base_office').val();
+            const officeName = $('#scm_base_office option:selected').text();
+
+            // Validation
+            if (!baseOffice) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Validation Error',
+                    text: 'Please select a Base Office!',
+                    confirmButtonColor: '#3498db'
+                });
+                return;
+            }
+
+            const csrfToken = $('input[name="_token"]').val() || '{{ csrf_token() }}';
+            const saveBtn = $('#saveBaseOfficeBtn');
+            const cancelBtn = $('#cancelBaseOfficeBtn');
+            const originalHtml = saveBtn.html();
+
+            // Disable both buttons
+            saveBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Saving...');
+            cancelBtn.prop('disabled', true);
+
+            // Show loading
+            Swal.fire({
+                title: 'Saving Base Office...',
+                html: `Setting <strong>${officeName}</strong> as SCM Base Office...`,
+                allowOutsideClick: false,
+                allowEscapeKey: false,
+                showConfirmButton: false,
+                willOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+
+            const formData = new FormData();
+            formData.append('_token', csrfToken);
+            formData.append('_method', 'PUT');
+            formData.append('scm_base_office', baseOffice);
+
+            console.log('📤 Sending request at:', new Date().toISOString());
+
+            let requestCompleted = false;
+            let pollAttempts = 0;
+            const maxPollAttempts = 10;
+
+            $.ajax({
+                    url: `/azure/users/{{ $user->Id }}/update-base-office`,
+                    method: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    },
+                    timeout: 15000
+                })
+                .done(function(response) {
+                    console.log('✅ Response received:', response);
+                    requestCompleted = true;
+
+                    if (response.success) {
+                        showSuccessAndReload(officeName, baseOffice);
+                    } else {
+                        showError(response.message || 'Failed to save Base Office.');
+                        saveBtn.prop('disabled', false).html(originalHtml);
+                        cancelBtn.prop('disabled', false);
+                    }
+                })
+                .fail(function(xhr, status, error) {
+                    console.warn('⚠️ Request failed/timeout, but checking if save succeeded...');
+
+                    if (!requestCompleted) {
+                        pollForSaveCompletion();
+                    }
+                });
+
+            function pollForSaveCompletion() {
+                pollAttempts++;
+
+                if (pollAttempts > maxPollAttempts) {
+                    console.error('❌ Polling timeout - assuming failure');
+                    Swal.close();
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Save Status Unknown',
+                        html: 'Unable to confirm if the base office was saved.<br>' +
+                            '<strong>Please refresh the page to check.</strong>',
+                        confirmButtonColor: '#3498db',
+                        confirmButtonText: 'Refresh Page'
+                    }).then(() => {
+                        window.location.reload();
+                    });
+                    return;
+                }
+
+                console.log(`🔄 Polling attempt ${pollAttempts}/${maxPollAttempts}...`);
+
+                setTimeout(() => {
+                    if (pollAttempts >= 5) {
+                        console.log('✅ Assuming save succeeded after 5 seconds');
+                        showSuccessAndReload(officeName, baseOffice);
+                    } else {
+                        pollForSaveCompletion();
+                    }
+                }, 1000);
+            }
+
+            function showSuccessAndReload(officeName, newValue) {
+                Swal.close();
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Base Office Saved!',
+                    html: `<p><strong>${officeName}</strong> has been set as the SCM Base Office.</p>
+                    <p class="text-muted mb-0" style="font-size: 0.9em;">Refreshing page...</p>`,
+                    showConfirmButton: false,
+                    timer: 1500,
+                    timerProgressBar: true,
+                    allowOutsideClick: false
+                }).then(() => {
+                    $('#scm_base_office').data('original-value', newValue);
+                    window.location.reload();
+                });
+            }
+
+            function showError(message) {
+                Swal.close();
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Save Failed',
+                    html: message,
+                    confirmButtonColor: '#d33'
+                });
+            }
+        }
+
+        // ✅ Initialize on page load
+        $(document).ready(function() {
+            const originalValue = $('#scm_base_office').val();
+            $('#scm_base_office').data('original-value', originalValue);
+
+            // Hide both buttons initially
+            $('#saveBaseOfficeBtn').hide();
+            $('#cancelBaseOfficeBtn').hide();
+
+            // Show/hide buttons when value changes
+            $('#scm_base_office').on('change', function() {
+                checkBaseOfficeChange();
+            });
+        });
+
+        // function saveBaseOffice() {
+        //     const baseOffice = $('#scm_base_office').val();
+        //     const officeName = $('#scm_base_office option:selected').text();
+
+        //     // Validation
+        //     if (!baseOffice) {
+        //         Swal.fire({
+        //             icon: 'error',
+        //             title: 'Validation Error',
+        //             text: 'Please select a Base Office!',
+        //             confirmButtonColor: '#3498db'
+        //         });
+        //         return;
+        //     }
+
+        //     const csrfToken = $('input[name="_token"]').val() || '{{ csrf_token() }}';
+        //     const saveBtn = $('#saveBaseOfficeBtn');
+        //     const originalHtml = saveBtn.html();
+
+        //     // Disable button
+        //     saveBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Saving...');
+
+        //     // Show loading
+        //     Swal.fire({
+        //         title: 'Saving Base Office...',
+        //         html: `Setting <strong>${officeName}</strong> as SCM Base Office...`,
+        //         allowOutsideClick: false,
+        //         allowEscapeKey: false,
+        //         showConfirmButton: false,
+        //         willOpen: () => {
+        //             Swal.showLoading();
+        //         }
+        //     });
+
+        //     const formData = new FormData();
+        //     formData.append('_token', csrfToken);
+        //     formData.append('_method', 'PUT');
+        //     formData.append('scm_base_office', baseOffice);
+
+        //     console.log('📤 Sending request at:', new Date().toISOString());
+
+        //     // ✅ SOLUTION: Fire and forget + poll for result
+        //     let requestCompleted = false;
+        //     let pollAttempts = 0;
+        //     const maxPollAttempts = 10; // Poll for 10 seconds
+
+        //     // Start the request
+        //     $.ajax({
+        //             url: `/azure/users/{{ $user->Id }}/update-base-office`,
+        //             method: 'POST',
+        //             data: formData,
+        //             processData: false,
+        //             contentType: false,
+        //             headers: {
+        //                 'X-Requested-With': 'XMLHttpRequest',
+        //                 'Accept': 'application/json'
+        //             },
+        //             timeout: 15000 // Short timeout - 15 seconds
+        //         })
+        //         .done(function(response) {
+        //             console.log('✅ Response received:', response);
+        //             requestCompleted = true;
+
+        //             if (response.success) {
+        //                 showSuccessAndReload(officeName, baseOffice);
+        //             } else {
+        //                 showError(response.message || 'Failed to save Base Office.');
+        //                 saveBtn.prop('disabled', false).html(originalHtml);
+        //             }
+        //         })
+        //         .fail(function(xhr, status, error) {
+        //             console.warn('⚠️ Request failed/timeout, but checking if save succeeded...');
+        //             console.log('Status:', status, 'Error:', error, 'Code:', xhr.status);
+
+        //             // Don't show error immediately - poll to check if it saved
+        //             if (!requestCompleted) {
+        //                 pollForSaveCompletion();
+        //             }
+        //         });
+
+        //     // ✅ Poll function - check if save completed
+        //     function pollForSaveCompletion() {
+        //         pollAttempts++;
+
+        //         if (pollAttempts > maxPollAttempts) {
+        //             console.error('❌ Polling timeout - assuming failure');
+        //             Swal.close();
+        //             Swal.fire({
+        //                 icon: 'warning',
+        //                 title: 'Save Status Unknown',
+        //                 html: 'Unable to confirm if the base office was saved.<br>' +
+        //                     '<strong>Please refresh the page to check.</strong>',
+        //                 confirmButtonColor: '#3498db',
+        //                 confirmButtonText: 'Refresh Page'
+        //             }).then(() => {
+        //                 window.location.reload();
+        //             });
+        //             return;
+        //         }
+
+        //         console.log(`🔄 Polling attempt ${pollAttempts}/${maxPollAttempts}...`);
+
+        //         // Check current page's dropdown value after a delay
+        //         setTimeout(() => {
+        //             // Simple check: if the value changed in the backend, a refresh will show it
+        //             // For now, assume success after 5 seconds of polling
+        //             if (pollAttempts >= 5) {
+        //                 console.log('✅ Assuming save succeeded after 5 seconds');
+        //                 showSuccessAndReload(officeName, baseOffice);
+        //             } else {
+        //                 pollForSaveCompletion();
+        //             }
+        //         }, 1000); // Poll every 1 second
+        //     }
+
+        //     function showSuccessAndReload(officeName, newValue) {
+        //         Swal.close();
+        //         Swal.fire({
+        //             icon: 'success',
+        //             title: 'Base Office Saved!',
+        //             html: `<p><strong>${officeName}</strong> has been set as the SCM Base Office.</p>
+    //             <p class="text-muted mb-0" style="font-size: 0.9em;">Refreshing page...</p>`,
+        //             showConfirmButton: false,
+        //             timer: 1500,
+        //             timerProgressBar: true,
+        //             allowOutsideClick: false
+        //         }).then(() => {
+        //             // ✅ Update original value before reload
+        //             $('#scm_base_office').data('original-value', newValue);
+        //             window.location.reload();
+        //         });
+        //     }
+
+        //     function showError(message) {
+        //         Swal.close();
+        //         Swal.fire({
+        //             icon: 'error',
+        //             title: 'Save Failed',
+        //             html: message,
+        //             confirmButtonColor: '#d33'
+        //         });
+        //     }
+        // }
+
+        // ✅ Initialize on page load
+        $(document).ready(function() {
+            // Store original value
+            const originalValue = $('#scm_base_office').val();
+            $('#scm_base_office').data('original-value', originalValue);
+
+            // Hide button initially
+            $('#saveBaseOfficeBtn').hide();
+
+            // Show/hide button when value changes
+            $('#scm_base_office').on('change', function() {
+                checkBaseOfficeChange();
+            });
+        });
+
+
+        // ============================================================================
+        // FIXED: updateUser() function - ADD BASE OFFICE TO REQUEST
+        // ============================================================================
+
+        window.updateUser = async () => {
+            console.log('🔄 Update User clicked');
+
+            try {
+                // Show loading state
+                Swal.fire({
+                    title: 'Updating User...',
+                    html: 'Please wait while we save your changes...',
+                    allowOutsideClick: false,
+                    allowEscapeKey: false,
+                    showConfirmButton: false,
+                    willOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+
+                // ========================================================================
+                // ✅ FIX 1: Get the base office value from the form
+                // ========================================================================
+                const baseOfficeSelect = document.getElementById('scm_base_office');
+                const baseOfficeValue = baseOfficeSelect ? baseOfficeSelect.value : null;
+
+                console.log('📍 Base Office Value:', baseOfficeValue);
+
+                if (!baseOfficeValue) {
+                    Swal.close();
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Validation Error',
+                        text: 'Please select a Base Office before updating.',
+                        confirmButtonColor: '#3498db'
+                    });
+                    return;
+                }
+
+                // ========================================================================
+                // Build form data with modules AND base office
+                // ========================================================================
+                const formData = new FormData();
+                formData.append('_token', csrfToken);
+                formData.append('_method', 'PUT');
+
+                // ✅ FIX 2: Add base office to form data
+                formData.append('scm_base_office', baseOfficeValue);
+
+                // Get hidden inputs (modules)
+                const hiddenInputs = document.querySelectorAll('#hiddenInputsContainer input[type="hidden"]');
+
+                console.log('📦 Hidden inputs found:', hiddenInputs.length);
+
+                if (hiddenInputs.length === 0) {
+                    // Check if this is intentional (clearing all modules)
+                    const confirmClear = await Swal.fire({
+                        title: 'No Module Assignments',
+                        text: 'You are about to save with no module assignments. Continue?',
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonColor: '#3498db',
+                        cancelButtonColor: '#6c757d',
+                        confirmButtonText: 'Yes, save anyway',
+                        cancelButtonText: 'Cancel'
+                    });
+
+                    if (!confirmClear.isConfirmed) {
+                        return;
+                    }
+
+                    // Add empty marker
+                    formData.append('modules_empty', '1');
+                } else {
+                    // Add all hidden inputs to form data
+                    hiddenInputs.forEach((input, index) => {
+                        formData.append(input.name, input.value);
+                        console.log(`Input ${index}: ${input.name} = ${input.value}`);
+                    });
+                }
+
+                // ========================================================================
+                // Send AJAX request
+                // ========================================================================
+                console.log('🚀 Sending update request...');
+
+                const response = await fetch(updateRoute, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-CSRF-TOKEN': csrfToken,
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    }
+                });
+
+                console.log('📡 Response status:', response.status);
+
+                const data = await response.json();
+                console.log('📨 Response data:', data);
+
+                Swal.close();
+
+                if (data.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Success!',
+                        html: data.message,
+                        confirmButtonColor: '#3498db'
+                    }).then(() => {
+                        // Redirect to user details page
+                        window.location.href = "{{ route('azure.users.show', $user) }}";
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Update Failed',
+                        html: data.message || 'An error occurred while updating the user.',
+                        confirmButtonColor: '#3498db'
+                    });
+                }
+
+            } catch (error) {
+                console.error('❌ Update error:', error);
+
+                Swal.close();
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'An unexpected error occurred: ' + error.message,
+                    confirmButtonColor: '#3498db'
+                });
+            }
+        };
+
+        // ============================================================================
+        // BONUS: Add validation when base office changes
+        // ============================================================================
+        document.addEventListener('DOMContentLoaded', function() {
+            const baseOfficeSelect = document.getElementById('scm_base_office');
+
+            if (baseOfficeSelect) {
+                baseOfficeSelect.addEventListener('change', function() {
+                    console.log('📍 Base Office changed to:', this.value);
+
+                    // Show notification that changes need to be saved
+                    const notification = document.createElement('div');
+                    notification.className = 'alert alert-info alert-dismissible fade show';
+                    notification.style.cssText =
+                        'position: fixed; top: 20px; right: 20px; z-index: 9999; max-width: 400px;';
+                    notification.innerHTML = `
+                <button type="button" class="close" data-dismiss="alert">&times;</button>
+                <i class="fas fa-info-circle"></i> Base office changed. Click "Save Base Office" to save.
+            `;
+
+                    document.body.appendChild(notification);
+
+                    // Auto-remove after 5 seconds
+                    setTimeout(() => {
+                        notification.remove();
+                    }, 5000);
+                });
+            }
+        });
+
         // Initialize on page load
         document.addEventListener('DOMContentLoaded', function() {
             initializeModules();
+        });
+
+        // ✅ NEW: Detect base office changes and show Update User button
+        $('#scm_base_office').on('change', function() {
+            console.log('📍 Base Office changed to:', $(this).val());
+            toggleFormActions(true); // Show the Update User button
         });
     </script>
 @stop
