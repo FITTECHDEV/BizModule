@@ -183,10 +183,10 @@ class AzureUserManagementController extends Controller
                 'locations'
             ));
         } catch (\Exception $e) {
-            Log::error('Azure Dashboard Error: '.$e->getMessage());
+            Log::error('Azure Dashboard Error: ' . $e->getMessage());
 
             return redirect()->back()
-                ->withErrors(['error' => 'Failed to load dashboard: '.$e->getMessage()]);
+                ->withErrors(['error' => 'Failed to load dashboard: ' . $e->getMessage()]);
         }
     }
 
@@ -220,10 +220,10 @@ class AzureUserManagementController extends Controller
 
             return view('azure-management.users.active', compact('users'));
         } catch (\Exception $e) {
-            Log::error('Active Users Page Error: '.$e->getMessage());
+            Log::error('Active Users Page Error: ' . $e->getMessage());
 
             return redirect()->route('azure.dashboard.index')
-                ->withErrors(['error' => 'Failed to load active users: '.$e->getMessage()]);
+                ->withErrors(['error' => 'Failed to load active users: ' . $e->getMessage()]);
         }
     }
 
@@ -257,10 +257,10 @@ class AzureUserManagementController extends Controller
 
             return view('azure-management.users.pending', compact('users'));
         } catch (\Exception $e) {
-            Log::error('Pending Users Page Error: '.$e->getMessage());
+            Log::error('Pending Users Page Error: ' . $e->getMessage());
 
             return redirect()->route('azure.dashboard.index')
-                ->withErrors(['error' => 'Failed to load pending users: '.$e->getMessage()]);
+                ->withErrors(['error' => 'Failed to load pending users: ' . $e->getMessage()]);
         }
     }
 
@@ -294,10 +294,10 @@ class AzureUserManagementController extends Controller
 
             return view('azure-management.users.inactive', compact('users'));
         } catch (\Exception $e) {
-            Log::error('Inactive Users Page Error: '.$e->getMessage());
+            Log::error('Inactive Users Page Error: ' . $e->getMessage());
 
             return redirect()->route('azure.dashboard.index')
-                ->withErrors(['error' => 'Failed to load inactive users: '.$e->getMessage()]);
+                ->withErrors(['error' => 'Failed to load inactive users: ' . $e->getMessage()]);
         }
     }
 
@@ -377,7 +377,7 @@ class AzureUserManagementController extends Controller
             ]);
 
             return redirect()->route('azure.dashboard.index')
-                ->withErrors(['error' => 'Failed to load form: '.$e->getMessage()]);
+                ->withErrors(['error' => 'Failed to load form: ' . $e->getMessage()]);
         }
     }
 
@@ -439,14 +439,14 @@ class AzureUserManagementController extends Controller
                 ]);
 
                 $errorMessage = sprintf(
-                    'A user with email "%s" already exists!<br>'.
-                    '<strong>Name:</strong> %s<br>'.
-                    '<strong>Created:</strong> %s<br>'.
-                    '<strong>User ID:</strong> %s',
+                    'A user with email "%s" already exists!<br>' .
+                        '<strong>Name:</strong> %s<br>' .
+                        '<strong>Created:</strong> %s<br>' .
+                        '<strong>User ID:</strong> %s',
                     $userEmail,
                     $existingByUPN->displayName ?? 'Unknown',
                     $existingByUPN->CreatedAt ?? 'Unknown',
-                    substr($existingByUPN->Id ?? '', 0, 8).'...'
+                    substr($existingByUPN->Id ?? '', 0, 8) . '...'
                 );
 
                 if ($request->wantsJson() || $request->ajax()) {
@@ -483,9 +483,9 @@ class AzureUserManagementController extends Controller
                 ]);
 
                 $errorMessage = sprintf(
-                    'A user with email "%s" already exists under a different username!<br>'.
-                    '<strong>Name:</strong> %s<br>'.
-                    '<strong>Username:</strong> %s',
+                    'A user with email "%s" already exists under a different username!<br>' .
+                        '<strong>Name:</strong> %s<br>' .
+                        '<strong>Username:</strong> %s',
                     $userEmail,
                     $existingByMail->displayName ?? 'Unknown',
                     $existingByMail->userPrincipalName ?? 'Unknown'
@@ -525,9 +525,9 @@ class AzureUserManagementController extends Controller
                         ]);
 
                         $errorMessage = sprintf(
-                            'This user already exists in both Azure AD and our system!<br>'.
-                            '<strong>Name:</strong> %s<br>'.
-                            '<strong>Email:</strong> %s',
+                            'This user already exists in both Azure AD and our system!<br>' .
+                                '<strong>Name:</strong> %s<br>' .
+                                '<strong>Email:</strong> %s',
                             $linkedUser->displayName ?? 'Unknown',
                             $linkedUser->userPrincipalName ?? $userEmail
                         );
@@ -611,7 +611,7 @@ class AzureUserManagementController extends Controller
                 $modulesData = json_decode($request->input('modules_json'), true);
 
                 if (json_last_error() !== JSON_ERROR_NONE) {
-                    throw new \Exception('Invalid modules JSON format: '.json_last_error_msg());
+                    throw new \Exception('Invalid modules JSON format: ' . json_last_error_msg());
                 }
 
                 Log::info('✓ Modules JSON decoded successfully', [
@@ -1036,7 +1036,7 @@ class AzureUserManagementController extends Controller
 
             // Check if expansion failed
             if (! empty($expansionErrors)) {
-                $errorMessage = "Failed to expand module assignments:\n".implode("\n", $expansionErrors);
+                $errorMessage = "Failed to expand module assignments:\n" . implode("\n", $expansionErrors);
                 Log::error('Expansion errors occurred', [
                     'errors' => $expansionErrors,
                     'expanded_count' => count($expandedAssignments),
@@ -1083,7 +1083,7 @@ class AzureUserManagementController extends Controller
                 $dataCheck = $this->verifyReferencedData($validation['data']);
 
                 if (! $dataCheck['valid']) {
-                    $validationErrors[] = "Assignment {$index}: ".implode(', ', $dataCheck['errors']);
+                    $validationErrors[] = "Assignment {$index}: " . implode(', ', $dataCheck['errors']);
                     Log::error('Referenced data validation failed', [
                         'index' => $index,
                         'errors' => $dataCheck['errors'],
@@ -1098,11 +1098,11 @@ class AzureUserManagementController extends Controller
 
             // Check if validation failed
             if (! empty($validationErrors)) {
-                $errorMessage = 'Validation failed for '.count($validationErrors)." assignment(s):\n".
+                $errorMessage = 'Validation failed for ' . count($validationErrors) . " assignment(s):\n" .
                     implode("\n", array_slice($validationErrors, 0, 5));
 
                 if (count($validationErrors) > 5) {
-                    $errorMessage .= "\n... and ".(count($validationErrors) - 5).' more errors.';
+                    $errorMessage .= "\n... and " . (count($validationErrors) - 5) . ' more errors.';
                 }
 
                 Log::error('Assignment validation failed', [
@@ -1343,7 +1343,7 @@ class AzureUserManagementController extends Controller
                     $d365ProvisioningStatus = [
                         'success' => false,
                         'status' => 'Error',
-                        'message' => 'Exception: '.$e->getMessage(),
+                        'message' => 'Exception: ' . $e->getMessage(),
                     ];
                 }
             } else {
@@ -1385,11 +1385,11 @@ class AzureUserManagementController extends Controller
 
             // Build success message
             $successMessage = sprintf(
-                '✓ User created successfully!<br>'.
-                    'Azure ID: %s<br>'.
-                    'Status: <strong>Pending</strong><br>'.
+                '✓ User created successfully!<br>' .
+                    'Azure ID: %s<br>' .
+                    'Status: <strong>Pending</strong><br>' .
                     '%d role(s) and %d function(s) created across %d module(s): %s',
-                substr($azureId, 0, 8).'...',
+                substr($azureId, 0, 8) . '...',
                 $insertedRolesCount,
                 $insertedFunctionsCount,
                 count($uniqueModules),
@@ -1401,7 +1401,7 @@ class AzureUserManagementController extends Controller
                 if ($d365ProvisioningStatus['success']) {
                     $successMessage .= '<br>✓ D365: User provisioned successfully';
                 } else {
-                    $successMessage .= '<br>⚠ D365: Provisioning failed - '.$d365ProvisioningStatus['message'];
+                    $successMessage .= '<br>⚠ D365: Provisioning failed - ' . $d365ProvisioningStatus['message'];
                 }
             }
 
@@ -1426,7 +1426,6 @@ class AzureUserManagementController extends Controller
 
             return redirect()->route('azure.dashboard.index')
                 ->with('success', $successMessage);
-
         } catch (\Exception $e) {
             // ====================================================================
             // ERROR HANDLING & ROLLBACK
@@ -1462,12 +1461,12 @@ class AzureUserManagementController extends Controller
 
                     $cleanupWarning = sprintf(
                         '<br><strong>WARNING:</strong> Azure user (ID: %s) may still exist and require manual cleanup.',
-                        substr($azureId, 0, 8).'...'
+                        substr($azureId, 0, 8) . '...'
                     );
                 }
             }
 
-            $errorMessage = 'Failed to create user: '.$e->getMessage().$cleanupWarning;
+            $errorMessage = 'Failed to create user: ' . $e->getMessage() . $cleanupWarning;
 
             Log::error('=== USER CREATION FAILED ===', [
                 'error' => $e->getMessage(),
@@ -1518,7 +1517,7 @@ class AzureUserManagementController extends Controller
         $password .= $special[random_int(0, strlen($special) - 1)];
 
         // Fill remaining length with random characters from all sets
-        $allChars = $uppercase.$lowercase.$numbers.$special;
+        $allChars = $uppercase . $lowercase . $numbers . $special;
         for ($i = 4; $i < $length; $i++) {
             $password .= $allChars[random_int(0, strlen($allChars) - 1)];
         }
@@ -1683,7 +1682,7 @@ class AzureUserManagementController extends Controller
             ]);
 
             return redirect()->route('azure.users.index')
-                ->withErrors(['error' => 'Failed to load user details: '.$e->getMessage()]);
+                ->withErrors(['error' => 'Failed to load user details: ' . $e->getMessage()]);
         }
     }
 
@@ -1862,11 +1861,35 @@ class AzureUserManagementController extends Controller
             $companies = collect([]);
             $roles = collect([]);
 
+            // ====================================================================
+            // 5. Fetch offices for Base Office dropdown
+            // ====================================================================
+            $officesRaw = DB::connection('sqlsrv')
+                ->select("SELECT Id, Name, Code
+        FROM Cust_Office
+        WHERE IsActive = 1
+            AND IsDeleted = 0
+            AND code != 'ALL'
+        ORDER BY Name");
+
+            $offices = collect($officesRaw)->map(function ($office) {
+                return (object) [
+                    'Id' => $office->Id,
+                    'Name' => $office->Name,
+                    'Code' => $office->Code,
+                ];
+            });
+
+            Log::info('Offices loaded', [
+                'count' => $offices->count(),
+            ]);
+
             return view('azure-management.users.edit', compact(
                 'user',
                 'companies',
                 'modules',
                 'locations',
+                'offices',      // ← ADD THIS LINE
                 'roles',
                 'userModuleAssignments'
             ));
@@ -1878,7 +1901,7 @@ class AzureUserManagementController extends Controller
             ]);
 
             return redirect()->route('azure.dashboard.index')
-                ->withErrors(['error' => 'Failed to load edit form: '.$e->getMessage()]);
+                ->withErrors(['error' => 'Failed to load edit form: ' . $e->getMessage()]);
         }
     }
 
@@ -2141,7 +2164,7 @@ class AzureUserManagementController extends Controller
                     $dataCheck = $this->verifyReferencedData($validation['data']);
 
                     if (! $dataCheck['valid']) {
-                        $roleValidationErrors[] = "Role assignment {$index}: ".implode(', ', $dataCheck['errors']);
+                        $roleValidationErrors[] = "Role assignment {$index}: " . implode(', ', $dataCheck['errors']);
                         Log::error('Referenced data validation failed for role', [
                             'index' => $index,
                             'errors' => $dataCheck['errors'],
@@ -2171,7 +2194,7 @@ class AzureUserManagementController extends Controller
 
                     return response()->json([
                         'success' => false,
-                        'message' => 'Role validation failed: '.implode(', ', array_slice($roleValidationErrors, 0, 3)),
+                        'message' => 'Role validation failed: ' . implode(', ', array_slice($roleValidationErrors, 0, 3)),
                         'errors' => $roleValidationErrors,
                     ], 422);
                 }
@@ -2207,7 +2230,7 @@ class AzureUserManagementController extends Controller
                     $dataCheck = $this->verifyReferencedData($validation['data']);
 
                     if (! $dataCheck['valid']) {
-                        $functionValidationErrors[] = "Function assignment {$index}: ".implode(', ', $dataCheck['errors']);
+                        $functionValidationErrors[] = "Function assignment {$index}: " . implode(', ', $dataCheck['errors']);
                         Log::error('Referenced data validation failed for function', [
                             'index' => $index,
                             'errors' => $dataCheck['errors'],
@@ -2237,7 +2260,7 @@ class AzureUserManagementController extends Controller
 
                     return response()->json([
                         'success' => false,
-                        'message' => 'Function validation failed: '.implode(', ', array_slice($functionValidationErrors, 0, 3)),
+                        'message' => 'Function validation failed: ' . implode(', ', array_slice($functionValidationErrors, 0, 3)),
                         'errors' => $functionValidationErrors,
                     ], 422);
                 }
@@ -2435,7 +2458,6 @@ class AzureUserManagementController extends Controller
                         'user_id' => $user->Id,
                     ],
                 ]);
-
             } catch (\Exception $e) {
                 // ====================================================================
                 // STEP 15: Rollback on any database error
@@ -2455,7 +2477,7 @@ class AzureUserManagementController extends Controller
 
                 return response()->json([
                     'success' => false,
-                    'message' => 'Database error: '.$e->getMessage(),
+                    'message' => 'Database error: ' . $e->getMessage(),
                     'error_details' => config('app.debug') ? [
                         'file' => $e->getFile(),
                         'line' => $e->getLine(),
@@ -2463,7 +2485,6 @@ class AzureUserManagementController extends Controller
                     ] : null,
                 ], 500);
             }
-
         } catch (\Exception $e) {
             // ====================================================================
             // STEP 16: Catch any other unexpected errors
@@ -2479,7 +2500,7 @@ class AzureUserManagementController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Server Error: '.$e->getMessage(),
+                'message' => 'Server Error: ' . $e->getMessage(),
                 'error_details' => config('app.debug') ? [
                     'file' => $e->getFile(),
                     'line' => $e->getLine(),
@@ -2532,7 +2553,7 @@ class AzureUserManagementController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Test failed: '.$e->getMessage(),
+                'message' => 'Test failed: ' . $e->getMessage(),
                 'trace' => config('app.debug') ? $e->getTraceAsString() : null,
             ], 500);
         }
@@ -2675,7 +2696,7 @@ class AzureUserManagementController extends Controller
                 : ' <em>(No external systems synced yet)</em>';
 
             return redirect()->back()
-                ->with('success', '✓ User activated successfully!'.$systemsList);
+                ->with('success', '✓ User activated successfully!' . $systemsList);
         } catch (\Exception $e) {
             Log::error('=== USER SYNC FAILED ===', [
                 'user_id' => $user->Id ?? null,
@@ -2684,7 +2705,7 @@ class AzureUserManagementController extends Controller
             ]);
 
             return redirect()->back()
-                ->with('error', 'Failed to sync user: '.$e->getMessage());
+                ->with('error', 'Failed to sync user: ' . $e->getMessage());
         }
     }
 
@@ -2727,7 +2748,7 @@ class AzureUserManagementController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to get sync status: '.$e->getMessage(),
+                'message' => 'Failed to get sync status: ' . $e->getMessage(),
             ], 500);
         }
     }
@@ -2905,7 +2926,7 @@ class AzureUserManagementController extends Controller
 
                 return response()->json([
                     'success' => false,
-                    'message' => 'Failed to disable user in Azure AD: '.$azureError->getMessage(),
+                    'message' => 'Failed to disable user in Azure AD: ' . $azureError->getMessage(),
                     'error' => $azureError->getMessage(),
                 ], 500);
             }
@@ -2943,7 +2964,7 @@ class AzureUserManagementController extends Controller
                     return response()->json([
                         'success' => false,
                         'message' => 'Database update failed. User remains enabled (rollback successful).',
-                        'error' => 'Database error: '.$dbError->getMessage(),
+                        'error' => 'Database error: ' . $dbError->getMessage(),
                     ], 500);
                 } catch (\Exception $rollbackError) {
                     Log::critical('✗ ROLLBACK FAILED: User disabled in Azure but database not updated!', [
@@ -3001,7 +3022,7 @@ class AzureUserManagementController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'An unexpected error occurred: '.$e->getMessage(),
+                'message' => 'An unexpected error occurred: ' . $e->getMessage(),
             ], 500);
         }
     }
@@ -3069,7 +3090,7 @@ class AzureUserManagementController extends Controller
 
                 return response()->json([
                     'success' => false,
-                    'message' => 'Failed to enable user in Azure AD: '.$azureError->getMessage(),
+                    'message' => 'Failed to enable user in Azure AD: ' . $azureError->getMessage(),
                     'error' => $azureError->getMessage(),
                 ], 500);
             }
@@ -3107,7 +3128,7 @@ class AzureUserManagementController extends Controller
                     return response()->json([
                         'success' => false,
                         'message' => 'Database update failed. User remains disabled (rollback successful).',
-                        'error' => 'Database error: '.$dbError->getMessage(),
+                        'error' => 'Database error: ' . $dbError->getMessage(),
                     ], 500);
                 } catch (\Exception $rollbackError) {
                     Log::critical('✗ ROLLBACK FAILED: User enabled in Azure but database not updated!', [
@@ -3179,12 +3200,12 @@ class AzureUserManagementController extends Controller
                     $systems[] = 'SCM';
                 }
 
-                $provisioningMessage = "\n\nNote: User may need to be re-provisioned to: ".implode(', ', $systems).'. Please visit the user detail page to provision.';
+                $provisioningMessage = "\n\nNote: User may need to be re-provisioned to: " . implode(', ', $systems) . '. Please visit the user detail page to provision.';
             }
 
             return response()->json([
                 'success' => true,
-                'message' => 'User has been enabled successfully. They can now access systems.'.$provisioningMessage,
+                'message' => 'User has been enabled successfully. They can now access systems.' . $provisioningMessage,
                 'requires_provisioning' => $hasD365 || $hasOPS,
                 'systems' => [
                     'd365' => $hasD365,
@@ -3200,7 +3221,7 @@ class AzureUserManagementController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'An unexpected error occurred: '.$e->getMessage(),
+                'message' => 'An unexpected error occurred: ' . $e->getMessage(),
             ], 500);
         }
     }
@@ -3270,7 +3291,7 @@ class AzureUserManagementController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to process password reset: '.$e->getMessage(),
+                'message' => 'Failed to process password reset: ' . $e->getMessage(),
             ], 500);
         }
     }
@@ -3311,12 +3332,12 @@ class AzureUserManagementController extends Controller
             if (request()->expectsJson()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Failed to delete user: '.$e->getMessage(),
+                    'message' => 'Failed to delete user: ' . $e->getMessage(),
                 ], 500);
             }
 
             return redirect()->back()
-                ->withErrors(['error' => 'Failed to delete user: '.$e->getMessage()]);
+                ->withErrors(['error' => 'Failed to delete user: ' . $e->getMessage()]);
         }
     }
 
@@ -3328,7 +3349,7 @@ class AzureUserManagementController extends Controller
         try {
             $results = $this->provisioningService->retryFailedModuleAssignments($user);
 
-            $successCount = count(array_filter($results, fn ($r) => $r['success']));
+            $successCount = count(array_filter($results, fn($r) => $r['success']));
             $totalCount = count($results);
 
             $message = "Retried {$totalCount} module(s): {$successCount} succeeded.";
@@ -3347,12 +3368,12 @@ class AzureUserManagementController extends Controller
             if (request()->expectsJson()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Failed to retry module assignments: '.$e->getMessage(),
+                    'message' => 'Failed to retry module assignments: ' . $e->getMessage(),
                 ], 500);
             }
 
             return redirect()->back()
-                ->withErrors(['error' => 'Failed to retry: '.$e->getMessage()]);
+                ->withErrors(['error' => 'Failed to retry: ' . $e->getMessage()]);
         }
     }
 
@@ -3377,7 +3398,7 @@ class AzureUserManagementController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to fetch functions: '.$e->getMessage(),
+                'message' => 'Failed to fetch functions: ' . $e->getMessage(),
             ], 500);
         }
     }
@@ -3402,7 +3423,7 @@ class AzureUserManagementController extends Controller
             }
 
             // ✅ ADD CACHING - cache for 1 hour
-            $cacheKey = "roles_{$applicationCode}_".md5($filter ?? 'all');
+            $cacheKey = "roles_{$applicationCode}_" . md5($filter ?? 'all');
 
             $roles = Cache::remember($cacheKey, 3600, function () use ($applicationCode, $filter) {
                 $mapping = config('azure_modules.module_mapping', []);
@@ -3470,7 +3491,7 @@ class AzureUserManagementController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to fetch roles: '.$e->getMessage(),
+                'message' => 'Failed to fetch roles: ' . $e->getMessage(),
             ], 500);
         }
     }
@@ -3680,7 +3701,7 @@ class AzureUserManagementController extends Controller
                 $messageParts[] = sprintf('Errors: %d', count($stats['errors']));
             }
 
-            $message = '✓ Sync completed! '.implode(' | ', $messageParts);
+            $message = '✓ Sync completed! ' . implode(' | ', $messageParts);
 
             // Add warning if there were D365 failures
             if ($stats['d365_failed'] > 0) {
@@ -3696,7 +3717,7 @@ class AzureUserManagementController extends Controller
             ]);
 
             return redirect()->back()
-                ->withErrors(['error' => 'Activation failed: '.$e->getMessage()]);
+                ->withErrors(['error' => 'Activation failed: ' . $e->getMessage()]);
         }
     }
 
@@ -3731,7 +3752,7 @@ class AzureUserManagementController extends Controller
             ]);
 
             return redirect()->back()
-                ->withErrors(['error' => 'Full sync failed: '.$e->getMessage()]);
+                ->withErrors(['error' => 'Full sync failed: ' . $e->getMessage()]);
         }
     }
 
@@ -3831,7 +3852,7 @@ class AzureUserManagementController extends Controller
             return [
                 'valid' => false,
                 'data' => null,
-                'error' => "Assignment {$index}: ".implode(', ', $errors),
+                'error' => "Assignment {$index}: " . implode(', ', $errors),
             ];
         }
 
@@ -4209,7 +4230,7 @@ class AzureUserManagementController extends Controller
 
                 return response()->json([
                     'success' => true,
-                    'message' => 'D365 provisioning successful: '.$d365Remark,
+                    'message' => 'D365 provisioning successful: ' . $d365Remark,
                     'data' => [
                         'status' => $d365Status,
                         'remark' => $d365Remark,
@@ -4225,7 +4246,7 @@ class AzureUserManagementController extends Controller
 
                 return response()->json([
                     'success' => false,
-                    'message' => 'D365 provisioning failed: '.$d365Remark,
+                    'message' => 'D365 provisioning failed: ' . $d365Remark,
                     'data' => [
                         'status' => $d365Status,
                         'remark' => $d365Remark,
@@ -4241,7 +4262,7 @@ class AzureUserManagementController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'D365 provisioning error: '.$e->getMessage(),
+                'message' => 'D365 provisioning error: ' . $e->getMessage(),
             ], 500);
         }
     }
@@ -4290,7 +4311,7 @@ class AzureUserManagementController extends Controller
 
                 return response()->json([
                     'success' => false,
-                    
+
                     'message' => "SCM provisioning failed.\n\nStatus: {$status}\nRemark: {$remark}",
                 ], 400);
             }
@@ -4302,7 +4323,7 @@ class AzureUserManagementController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'SCM provisioning failed: '.$e->getMessage(),
+                'message' => 'SCM provisioning failed: ' . $e->getMessage(),
             ], 500);
         }
     }
@@ -4399,7 +4420,7 @@ class AzureUserManagementController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed: '.$e->getMessage(),
+                'message' => 'Failed: ' . $e->getMessage(),
             ], 500);
         }
     }
@@ -4527,14 +4548,14 @@ class AzureUserManagementController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => "Successfully created {$insertedCount} assignments across ".count($validated['office_codes']).' office(s)',
+                'message' => "Successfully created {$insertedCount} assignments across " . count($validated['office_codes']) . ' office(s)',
             ]);
         } catch (\Exception $e) {
             DB::connection('sqlsrv')->rollBack();
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed: '.$e->getMessage(),
+                'message' => 'Failed: ' . $e->getMessage(),
             ], 500);
         }
     }
@@ -4559,8 +4580,8 @@ class AzureUserManagementController extends Controller
                 'success' => true,
                 'data' => [
                     'offices' => $assignments->pluck('OfficeCode')->unique()->values(),
-                    'roles' => $assignments->map(fn ($a) => ['id' => $a->RoleID, 'code' => $a->RoleCode])->unique('id')->values(),
-                    'functions' => $assignments->filter(fn ($a) => ! empty($a->FunctionCode))->map(fn ($a) => ['id' => $a->FunctionID, 'code' => $a->FunctionCode])->unique('id')->values(),
+                    'roles' => $assignments->map(fn($a) => ['id' => $a->RoleID, 'code' => $a->RoleCode])->unique('id')->values(),
+                    'functions' => $assignments->filter(fn($a) => ! empty($a->FunctionCode))->map(fn($a) => ['id' => $a->FunctionID, 'code' => $a->FunctionCode])->unique('id')->values(),
                 ],
             ]);
         } catch (\Exception $e) {
@@ -4655,7 +4676,7 @@ class AzureUserManagementController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'BIZ/FITSYS provisioning failed: '.$e->getMessage(),
+                'message' => 'BIZ/FITSYS provisioning failed: ' . $e->getMessage(),
             ], 500);
         }
     }
@@ -4732,7 +4753,7 @@ class AzureUserManagementController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'FIT Express provisioning failed: '.$e->getMessage(),
+                'message' => 'FIT Express provisioning failed: ' . $e->getMessage(),
             ], 500);
         }
     }
