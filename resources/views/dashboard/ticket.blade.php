@@ -14,7 +14,8 @@
         -moz-transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, .1);
         -o-transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, .1);
         transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, .1);
-        margin-bottom: 10%;
+        margin-bottom: 1rem;
+        height: 100%;
     }
 
     .service-card:hover {
@@ -60,21 +61,49 @@
         transform: scaleY(1);
     }
 
-    /* .service-card h3{
-                                      margin-top: 2%;
-                                      font-size: 44px;
-                                      font-weight: bold;
-                                      color: #464646;
-                                    } */
+    /* Mobile optimizations */
+    @media (max-width: 575.98px) {
+        .widget-user-username {
+            font-size: 1.1rem !important;
+        }
+        
+        .widget-user-desc {
+            font-size: 0.85rem !important;
+        }
+        
+        .description-header {
+            font-size: 0.95rem !important;
+        }
+        
+        .description-text {
+            font-size: 0.7rem !important;
+        }
+        
+        .widget-user-image img {
+            width: 65px !important;
+            height: 65px !important;
+        }
+    }
+
+    /* Tablet optimizations */
+    @media (min-width: 576px) and (max-width: 991.98px) {
+        .widget-user-username {
+            font-size: 1.3rem !important;
+        }
+        
+        .widget-user-desc {
+            font-size: 0.95rem !important;
+        }
+    }
 </style>
 @stop
 
 @section('content')
-<div class="p-3">
-    <div class="row justify-content-center">
+<div class="container-fluid p-2 p-md-3">
+    <div class="row">
         {{-- <!-- Ticketing System -->
-            <div class="col-md-3 col-sm-6 mb-3">
-                <a href="/tickets">
+            <div class="col-12 col-sm-6 col-lg-4 col-xl-3 mb-3">
+                <a href="/tickets" style="text-decoration: none; color: inherit;">
                     <div class="d-flex h-100 flex-column card card-widget widget-user shadow service-card">
                         <div class="widget-user-header bg-info">
                             <h3 class="widget-user-username">TICKETING SYSTEM</h3>
@@ -86,7 +115,7 @@
     <div class="card-footer">
         <div class="row justify-content-center">
             @foreach ($ticketStatistics as $ticketStat)
-            <div class="col-sm-4 border">
+            <div class="col-4 border">
                 <div class="description-block">
                     <h5 class="description-header"><span
                             class="badge badge-info">{{ $ticketStat->StatusCount }}</span></h5>
@@ -101,8 +130,8 @@
 </div> --}}
 
 <!-- Client Party System -->
-<div class="col-md-3 col-sm-6 mb-3">
-    <a href="/client-party?my_request=true">
+<div class="col-12 col-sm-6 col-lg-4 col-xl-3 mb-3">
+    <a href="/client-party?my_request=true" style="text-decoration: none; color: inherit;">
         <div class="d-flex h-100 flex-column card card-widget widget-user shadow service-card">
             <div class="widget-user-header bg-primary">
                 <h3 class="widget-user-username">CLIENT PARTY SYSTEM</h3>
@@ -115,7 +144,7 @@
             <div class="card-footer">
                 <div class="row justify-content-center">
                     @foreach ($entityStatistics as $entityStats)
-                    <div class="col-sm-4 border">
+                    <div class="col-4 border">
                         <div class="description-block">
                             <h5 class="description-header"><span
                                     class="badge badge-primary">{{ $entityStats->StatusCount }}</span></h5>
@@ -131,8 +160,8 @@
 
 <!-- TIMS Integration -->
 @if (Auth::user()->can('tims-access'))
-<div class="col-md-3 col-sm-6 mb-3">
-    <a href="/tims">
+<div class="col-12 col-sm-6 col-lg-4 col-xl-3 mb-3">
+    <a href="/tims" style="text-decoration: none; color: inherit;">
         <div class="d-flex h-100 flex-column card card-widget widget-user shadow service-card">
             <div class="widget-user-header bg-maroon">
                 <h3 class="widget-user-username">TIMS INTEGRATION</h3>
@@ -145,7 +174,7 @@
             <div class="card-footer">
                 <div class="row justify-content-center">
                     @foreach ($tims_stats as $entityStats)
-                    <div class="col-sm-4 border">
+                    <div class="col-4 border">
                         <div class="description-block">
                             <h5 class="description-header"><span
                                     class="badge badge-primary">{{ $entityStats->StatusCount }}</span>
@@ -163,8 +192,8 @@
 
 <!-- EFRIS Integration -->
 @if (Auth::user()->can('efris-access'))
-<div class="col-md-3 col-sm-6 mb-3">
-    <a href="/efris">
+<div class="col-12 col-sm-6 col-lg-4 col-xl-3 mb-3">
+    <a href="/efris" style="text-decoration: none; color: inherit;">
         <div class="d-flex h-100 flex-column card card-widget widget-user shadow service-card">
             <div class="widget-user-header bg-maroon">
                 <h3 class="widget-user-username">EFRIS INTEGRATION</h3>
@@ -178,7 +207,7 @@
             <div class="card-footer">
                 <div class="row justify-content-center">
                     @foreach ($efris_stats as $entityStats)
-                    <div class="col-sm-4 border">
+                    <div class="col-4 border">
                         <div class="description-block">
                             <h5 class="description-header"><span
                                     class="badge badge-primary">{{ $entityStats->EfrisStatus }}</span>
@@ -196,8 +225,8 @@
 
 <!-- Quote Logger -->
 {{-- @if (Auth::user()->can('quote-access'))
-                <div class="col-md-3 col-sm-6 mb-3">
-                    <a href="{{ URL::signedRoute('quote-logger') }}">
+                <div class="col-12 col-sm-6 col-lg-4 col-xl-3 mb-3">
+                    <a href="{{ URL::signedRoute('quote-logger') }}" style="text-decoration: none; color: inherit;">
 <div class="d-flex h-100 flex-column card card-widget widget-user shadow service-card">
     <div class="widget-user-header bg-teal">
         <h3 class="widget-user-username">QUOTE LOGGErrrrR</h3>
@@ -219,8 +248,8 @@
 
 <!-- TRA Integration (Tanzania) -->
 @if (Auth::user()->can('tra-tz-access'))
-<div class="col-md-3 col-sm-6 mb-3">
-    <a href="/tra">
+<div class="col-12 col-sm-6 col-lg-4 col-xl-3 mb-3">
+    <a href="/tra" style="text-decoration: none; color: inherit;">
         <div class="d-flex h-100 flex-column card card-widget widget-user shadow service-card">
             <div class="widget-user-header bg-yellow">
                 <h3 class="widget-user-username">TRA INTEGRATION</h3>
@@ -234,7 +263,7 @@
             <div class="card-footer">
                 <div class="row justify-content-center">
                     @foreach ($traStatsTZ as $entityStats)
-                    <div class="col-sm-4 border">
+                    <div class="col-4 border">
                         <div class="description-block">
                             <h5 class="description-header"><span
                                     class="badge badge-primary">{{ $entityStats->StatusCount }}</span>
@@ -252,8 +281,8 @@
 
 <!-- TRA Integration (ADL) -->
 @if (Auth::user()->can('tra-adl-access'))
-<div class="col-md-3 col-sm-6 mb-3">
-    <a href="/traADL">
+<div class="col-12 col-sm-6 col-lg-4 col-xl-3 mb-3">
+    <a href="/traADL" style="text-decoration: none; color: inherit;">
         <div class="d-flex h-100 flex-column card card-widget widget-user shadow service-card">
             <div class="widget-user-header bg-info">
                 <h3 class="widget-user-username">TRA INTEGRATION</h3>
@@ -266,7 +295,7 @@
             <div class="card-footer">
                 <div class="row justify-content-center">
                     @foreach ($traStatsADL as $entityStats)
-                    <div class="col-sm-4 border">
+                    <div class="col-4 border">
                         <div class="description-block">
                             <h5 class="description-header"><span
                                     class="badge badge-primary">{{ $entityStats->StatusCount }}</span>
@@ -284,8 +313,8 @@
 
 <!-- RRA Integration -->
 @if (Auth::user()->can('rra-access'))
-<div class="col-md-3 col-sm-6 mb-3">
-    <a href="/rra">
+<div class="col-12 col-sm-6 col-lg-4 col-xl-3 mb-3">
+    <a href="/rra" style="text-decoration: none; color: inherit;">
         <div class="d-flex h-100 flex-column card card-widget widget-user shadow service-card">
             <div class="widget-user-header bg-green">
                 <h3 class="widget-user-username">RRA INTEGRATION</h3>
@@ -298,7 +327,7 @@
             <div class="card-footer">
                 <div class="row justify-content-center">
                     @foreach ($rra_stats as $entityStats)
-                    <div class="col-sm-4 border">
+                    <div class="col-4 border">
                         <div class="description-block">
                             <h5 class="description-header"><span
                                     class="badge badge-primary">{{ $entityStats->StatusCount }}</span>
@@ -316,7 +345,7 @@
 
 <!-- Log In Tracker -->
 @if (Auth::user()->can('approve-all-entity-request'))
-<div class="col-md-3 col-sm-6 mb-3">
+<div class="col-12 col-sm-6 col-lg-4 col-xl-3 mb-3">
     <a href="/dashboard" style="text-decoration: none; color: inherit;">
         <div class="d-flex h-100 flex-column card card-widget widget-user shadow service-card login-tracker-card"
             style="cursor: pointer;">
@@ -327,10 +356,9 @@
             <div class="widget-user-image">
                 <img src="{{ asset('img/calendar.gif') }}" alt="Login Tracker" class="img-circle elevation-2">
             </div>
-            {{-- Statistics Footer --}}
             <div class="card-footer">
                 <div class="row">
-                    <div class="col-sm-4 border-right">
+                    <div class="col-4 border-right">
                         <div class="description-block">
                             <h5 class="description-header text-success">
                                 {{ $active_this_month ?? 0 }}
@@ -338,7 +366,7 @@
                             <span class="description-text">Active This Month</span>
                         </div>
                     </div>
-                    <div class="col-sm-4 border-right">
+                    <div class="col-4 border-right">
                         <div class="description-block">
                             <h5 class="description-header text-primary">
                                 {{ $active_last_month ?? 0 }}
@@ -346,7 +374,7 @@
                             <span class="description-text">Active Last Month</span>
                         </div>
                     </div>
-                    <div class="col-sm-4">
+                    <div class="col-4">
                         <div class="description-block">
                             <h5 class="description-header text-danger">
                                 {{ $inactive_users ?? 0 }}
@@ -363,8 +391,8 @@
 
 <!-- GPS Tracker Card -->
 @if (Auth::user()->can('view-rate-calculator'))
-<div class="col-md-3 col-sm-6 mb-3">
-    <a href="{{ route('tracker.dashboard') }}">
+<div class="col-12 col-sm-6 col-lg-4 col-xl-3 mb-3">
+    <a href="{{ route('tracker.dashboard') }}" style="text-decoration: none; color: inherit;">
         <div class="d-flex h-100 flex-column card card-widget widget-user shadow service-card">
             <div class="widget-user-header bg-primary">
                 <h3 class="widget-user-username">GPS TRACKER</h3>
@@ -378,7 +406,7 @@
             </div>
             <div class="card-footer">
                 <div class="row justify-content-center">
-                    <div class="col-sm-4 border-right">
+                    <div class="col-4 border-right">
                         <div class="description-block">
                             <h5 class="description-header">
                                 <span class="badge badge-info">{{ $tracker_stats->created ?? 0 }}</span>
@@ -386,7 +414,7 @@
                             <span class="description-text small">Created</span>
                         </div>
                     </div>
-                    <div class="col-sm-4 border-right">
+                    <div class="col-4 border-right">
                         <div class="description-block">
                             <h5 class="description-header">
                                 <span
@@ -395,7 +423,7 @@
                             <span class="description-text small">In Transit</span>
                         </div>
                     </div>
-                    <div class="col-sm-4">
+                    <div class="col-4">
                         <div class="description-block">
                             <h5 class="description-header">
                                 <span
@@ -410,8 +438,8 @@
     </a>
 </div>
 
-<!-- Azure Management Card with Flaticon Icon -->
-<div class="col-md-3 mb-2">
+<!-- Azure Management Card -->
+<div class="col-12 col-sm-6 col-lg-4 col-xl-3 mb-3">
     <a href="{{ route('azure.dashboard.index') }}" style="text-decoration: none; color: inherit;">
         <div class="d-flex h-100 flex-column card card-widget widget-user shadow service-card"
             style="cursor: pointer;">
@@ -427,7 +455,7 @@
             </div>
             <div class="card-footer">
                 <div class="row">
-                    <div class="col-sm-4 border-right">
+                    <div class="col-4 border-right">
                         <div class="description-block">
                             <h5 class="description-header text-success">
                                 {{ $azureStats['active'] ?? 0 }}
@@ -435,7 +463,7 @@
                             <span class="description-text">Active</span>
                         </div>
                     </div>
-                    <div class="col-sm-4 border-right">
+                    <div class="col-4 border-right">
                         <div class="description-block">
                             <h5 class="description-header text-warning">
                                 {{ $azureStats['pending'] ?? 0 }}
@@ -443,7 +471,7 @@
                             <span class="description-text">Pending</span>
                         </div>
                     </div>
-                    <div class="col-sm-4">
+                    <div class="col-4">
                         <div class="description-block">
                             <h5 class="description-header text-danger">
                                 {{ $azureStats['inactive'] ?? 0 }}
@@ -456,7 +484,7 @@
         </div>
     </a>
 </div>
-<!-- @endif -->
+@endif
 
 </div>
 </div>

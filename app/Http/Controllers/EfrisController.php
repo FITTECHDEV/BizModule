@@ -19,7 +19,6 @@ class EfrisController extends Controller
     {
          toast()->info('EFRIS Dashboard !!')->persistent(false, true);
 
-
         $invoice_creds  = DB::select('EXEC EFRIS_InvoiceRegister');
 
         $efris_data = DB::select('EXEC EFRIS_InvoiceStatus');
@@ -30,26 +29,20 @@ class EfrisController extends Controller
         ];
 
         $efris_data = collect($efris_data);
-        // $efris_stats = [];
-        // foreach ($efris_data as $key => $value) {
-        //     array_push($efris_stats, $value);
-        // }
 
-        // dd($efris_data);
         return view('efris.index',compact('efris_data'));
     }
 
     function total($data){
         $total = 0;
         foreach ($data as $key => $value) {
-            // dd($value);
             $total += $value->NoOfInvoice;
         }
         return $total;
     }
 
     /**
-     * Show the form for creating a new resource.
+     * Re-trigger invoice submission
      *
      * @return \Illuminate\Http\Response
      */
@@ -70,6 +63,90 @@ class EfrisController extends Controller
         Log::notice(json_encode($feedback));
 
         return $feedback;
+    }
+
+    /**
+     * Update invoice TIN/PIN
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\Response
+     */
+    public function updateInvoice(Request $request)
+    {
+        // Log the incoming request
+        Log::info('EFRIS TIN/PIN Update Request', [
+            'user' => auth()->user()->name ?? 'guest',
+            'data' => $request->all()
+        ]);
+
+        $validated = $request->validate([
+            'InvoiceId' => "required|uuid",
+            'ChangeOption' => "required",
+            'LevelOption' => "required|in:Master,Invoice",
+            'OptionValue' => "required|string|max:50",
+        ]);
+
+        // Build the input JSON for the stored procedure
+        $inputJson = json_encode([
+            'OperationType' => 'TINPINUpdate',
+            'SubmittedDatetime' => now()->format('YmdHis'),
+            'SubmittedBy' => auth()->user()->name ?? 'system',
+            'Action' => 'Update',
+            'InvoiceID' => $validated['InvoiceId'],
+            'UpdateType' => $validated['LevelOption'],
+            'Value' => $validated['OptionValue']
+        ]);
+
+        // Log the JSON being sent to SP
+        Log::info('EFRIS SP Input JSON', ['json' => $inputJson]);
+
+        try {
+            // Execute the stored procedure
+            $result = DB::select("SET NOCOUNT ON;
+                                    DECLARE @OutputJson as varchar(1000)
+                                    EXEC sp_RevenueAuth_TINPINUpdate
+                                        @InputPutJson = ?,
+                                        @OutputJson = @OutputJson OUTPUT
+                                    SELECT @OutputJson as OutputJson
+                                   ", [$inputJson]);
+
+            // Log raw SP output
+            Log::info('EFRIS SP Raw Output', ['result' => $result]);
+
+            // Parse the output JSON
+            $output = json_decode($result[0]->OutputJson, true);
+
+            // Log parsed output
+            Log::info('EFRIS SP Parsed Output', ['output' => $output]);
+
+            // Format response for frontend
+            $response = [
+                [
+                    'Status' => $output['Status'] ?? 'Failed',
+                    'Status_Remark' => isset($output['Remarks'])
+                        ? implode(', ', array_column($output['Remarks'], 'Remark'))
+                        : 'Unknown error occurred'
+                ]
+            ];
+
+            // Log final response
+            Log::info('EFRIS Final Response', ['response' => $response]);
+
+            return response()->json($response, 200);
+
+        } catch (\Exception $e) {
+            Log::error('EFRIS TIN/PIN Update Exception', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                [
+                    'Status' => 'Failed',
+                    'Status_Remark' => 'System error: ' . $e->getMessage()
+                ]
+            ], 500);
+        }
     }
 
     /**

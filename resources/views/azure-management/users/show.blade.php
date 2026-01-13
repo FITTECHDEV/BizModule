@@ -13,7 +13,7 @@
                 <i class="fas fa-arrow-left"></i> Back to Users
             </a>
             <a href="{{ route('azure.users.edit', $user->Id) }}" class="btn btn-warning btn-sm">
-                <i class="fas fa-edit"></i> Edit User
+                <i class="fas fa-edit"></i> Edit User              
             </a>
         </div>
     </div>
