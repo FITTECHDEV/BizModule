@@ -4,6 +4,7 @@ use App\Http\Controllers\ClientPartyController;
 use App\Http\Controllers\EmailAccountController;
 use App\Http\Controllers\ImportController;
 use App\Http\Controllers\JimiTestController;
+use App\Http\Controllers\JimiWebhookController;
 use App\Http\Controllers\TrackerController;
 use App\Http\Controllers\AzureUserManagementController;
 use App\Http\Controllers\OdooSyncController;
@@ -99,12 +100,37 @@ Route::group(['middleware' => ['auth', 'HtmlMinifier']], function () {
      * USERS
      */
     // Route::get('users/profile', [App\Http\Controllers\UsersController::class, 'show'])->name('user.profile');
-    Route::post('users/profile/{user}', [App\Http\Controllers\UsersController::class, 'update'])->name('user.update');
-    Route::get('users/get-change-password', [App\Http\Controllers\UsersController::class, 'GetChangePassword'])->name('user.get_change_password')->withoutMiddleware('change.password');
-    Route::post('users/change-password', [App\Http\Controllers\UsersController::class, 'ChangePassword'])->name('user.change_password')->withoutMiddleware('change.password');
+    /**
+     * USERS
+     */
+    // ✅ SPECIFIC ROUTES FIRST (before Route::resource)
+    Route::get('users/get-change-password', [App\Http\Controllers\UsersController::class, 'GetChangePassword'])
+        ->name('user.get_change_password')
+        ->withoutMiddleware('change.password');
+
+    Route::post('users/change-password', [App\Http\Controllers\UsersController::class, 'ChangePassword'])
+        ->name('user.change_password')
+        ->withoutMiddleware('change.password');
+
+    // ✅ STATS ROUTE - Must come BEFORE Route::resource()
+    Route::get('users/stats', [App\Http\Controllers\UsersController::class, 'stats'])
+        ->name('bizpro.users.stats')
+        ->middleware('auth');
+
+    Route::post('users/ajax-update', [App\Http\Controllers\UsersController::class, 'updateAjax'])
+        ->name('users.update_ajax');
+
+    // ✅ RESOURCE ROUTES - Come AFTER specific routes
     Route::resource('users', App\Http\Controllers\UsersController::class);
-    Route::post('users/pass/{user}', [App\Http\Controllers\UsersController::class, 'pass'])->name('user.update.password');
-    Route::post('users/ajax-update', [App\Http\Controllers\UsersController::class, 'updateAjax'])->name('users.update_ajax');
+
+    // ✅ POST ROUTES WITH {user} PARAMETER - Can come after resource routes
+    Route::post('users/profile/{user}', [App\Http\Controllers\UsersController::class, 'update'])
+        ->name('user.update');
+
+    Route::post('users/pass/{user}', [App\Http\Controllers\UsersController::class, 'pass'])
+        ->name('user.update.password');
+
+
     /**
      * TICKETS
      */
@@ -251,48 +277,52 @@ Route::group(['middleware' => ['auth', 'HtmlMinifier']], function () {
         Route::get('client-party', [App\Http\Controllers\DataTablesController::class, 'allEntityRequests'])->name('datatables.allEntityRequests');
         Route::get('client-party-approval', [App\Http\Controllers\DataTablesController::class, 'approvalEntityRequests'])->name('datatables.approvalEntityRequests');
     });
-    /**!SECTION TIMS */
-    Route::group(['prefix' => 'tims', 'middleware' => ['auth', 'web']], function () {
-        Route::get('/', [App\Http\Controllers\TIMSController::class, 'index'])->name('tims.index');
-        Route::get('/get-stats', [App\Http\Controllers\TIMSController::class, 'getStats'])->name('tims.get_stats');
-        Route::get('manual', [App\Http\Controllers\TIMSController::class, 'manual']);
-        Route::get('re-trigger/{docNo}', [App\Http\Controllers\TIMSController::class, 'reTrigger']);
-        Route::get('json/{id}', [App\Http\Controllers\TIMSController::class, 'jsonGenerate'])->name('tims.json');
-        Route::get('invoice/download/{id}', [App\Http\Controllers\TIMSController::class, 'invoiceDownload'])->name('tims.invoiceDownload')->middleware(['signed']);
-        Route::get('hs-codes/{id}', [App\Http\Controllers\TIMSController::class, 'hsCodes'])->name('tims.hsCodes');
-        Route::post('update-invoice', [App\Http\Controllers\TIMSController::class, 'updateInvoice'])->name('tims.updateInvoice');
-    });
+     /**!SECTION TIMS */
+Route::group(['prefix' => 'tims', 'middleware' => ['auth', 'web']], function () {
+    Route::get('/', [App\Http\Controllers\TIMSController::class, 'index'])->name('tims.index');
+    Route::get('/get-stats', [App\Http\Controllers\TIMSController::class, 'getStats'])->name('tims.get_stats');
+    Route::get('manual', [App\Http\Controllers\TIMSController::class, 'manual']);
+    Route::get('re-trigger/{docNo}', [App\Http\Controllers\TIMSController::class, 'reTrigger']);
+    Route::get('json/{id}', [App\Http\Controllers\TIMSController::class, 'jsonGenerate'])->name('tims.json');
+    Route::get('invoice/download/{id}', [App\Http\Controllers\TIMSController::class, 'invoiceDownload'])->name('tims.invoiceDownload')->middleware(['signed']);
+    Route::post('update-invoice', [App\Http\Controllers\TIMSController::class, 'updateInvoice'])->name('tims.updateInvoice');
+});
 
-    /**!SECTION EFRIS */
-    Route::group(['prefix' => 'efris'], function () {
-        Route::get('/', [App\Http\Controllers\EfrisController::class, 'index'])->name('efris.index');
-        Route::get('re-trigger/{docNo}', [App\Http\Controllers\EfrisController::class, 'reTrigger'])->name('efris.reTrigger');
-    });
+/**!SECTION EFRIS */
+Route::group(['prefix' => 'efris'], function () {
+    Route::get('/', [App\Http\Controllers\EfrisController::class, 'index'])->name('efris.index');
+    Route::get('re-trigger/{docNo}', [App\Http\Controllers\EfrisController::class, 'reTrigger'])->name('efris.reTrigger');
+    Route::post('update-invoice', [App\Http\Controllers\EfrisController::class, 'updateInvoice'])->name('efris.updateInvoice');
+});
 
-    /**!SECTION TRA FIT*/
-    Route::group(['prefix' => 'tra'], function () {
-        Route::get('/', [App\Http\Controllers\TraController::class, 'index'])->name('tra.index');
-        Route::get('/get-stats', [App\Http\Controllers\TraController::class, 'getStats'])->name('tra.get_stats');
-        Route::get('re-trigger/{docNo}', [App\Http\Controllers\TraController::class, 'reTrigger'])->name('tra.reTrigger');
-    });
+/**!SECTION TRA FIT*/
+Route::group(['prefix' => 'tra'], function () {
+    Route::get('/', [App\Http\Controllers\TraController::class, 'index'])->name('tra.index');
+    Route::get('/get-stats', [App\Http\Controllers\TraController::class, 'getStats'])->name('tra.get_stats');
+    Route::get('re-trigger/{docNo}', [App\Http\Controllers\TraController::class, 'reTrigger'])->name('tra.reTrigger');
+    Route::post('update-invoice', [App\Http\Controllers\TraController::class, 'updateInvoice'])->name('tra.updateInvoice');
+});
 
-    /**!SECTION TRA ADL*/
-    Route::group(['prefix' => 'traADL'], function () {
-        Route::get('/', [App\Http\Controllers\TraADLController::class, 'index'])->name('traADL.index');
-        Route::get('/get-stats', [App\Http\Controllers\TraADLController::class, 'getStats'])->name('traADL.get_stats');
-        Route::get('re-trigger/{docNo}', [App\Http\Controllers\TraADLController::class, 'reTrigger'])->name('traADL.reTrigger');
-        Route::get('json/{id}', [App\Http\Controllers\TraADLController::class, 'jsonGenerate'])->name('traADL.json');
-        Route::get('invoice/download/{id}', [App\Http\Controllers\TraADLController::class, 'invoiceDownload'])->name('traADL.invoiceDownload')->middleware(['signed']);
-    });
+/**!SECTION TRA ADL*/
+Route::group(['prefix' => 'traADL'], function () {
+    Route::get('/', [App\Http\Controllers\TraADLController::class, 'index'])->name('traADL.index');
+    Route::get('/get-stats', [App\Http\Controllers\TraADLController::class, 'getStats'])->name('traADL.get_stats');
+    Route::get('re-trigger/{docNo}', [App\Http\Controllers\TraADLController::class, 'reTrigger'])->name('traADL.reTrigger');
+    Route::get('json/{id}', [App\Http\Controllers\TraADLController::class, 'jsonGenerate'])->name('traADL.json');
+    Route::get('invoice/download/{id}', [App\Http\Controllers\TraADLController::class, 'invoiceDownload'])->name('traADL.invoiceDownload')->middleware(['signed']);
+    Route::post('update-invoice', [App\Http\Controllers\TraADLController::class, 'updateInvoice'])->name('traADL.updateInvoice');
+});
 
-    /**!SECTION RRA */
-    Route::group(['prefix' => 'rra'], function () {
-        Route::get('/', [App\Http\Controllers\RRAController::class, 'index'])->name('rra.index');
-        Route::get('/get-stats', [App\Http\Controllers\RRAController::class, 'getStats'])->name('rra.get_stats');
-        Route::get('re-trigger/{docNo}', [App\Http\Controllers\RRAController::class, 'reTrigger'])->name('rra.reTrigger');
-        Route::get('json/{id}', [App\Http\Controllers\RRAController::class, 'jsonGenerate'])->name('rra.json');
-        Route::get('invoice/download/{id}', [App\Http\Controllers\RRAController::class, 'invoiceDownload'])->name('rra.invoiceDownload')->middleware(['signed']);
-    });
+/**!SECTION RRA */
+Route::group(['prefix' => 'rra'], function () {
+    Route::get('/', [App\Http\Controllers\RRAController::class, 'index'])->name('rra.index');
+    Route::get('/get-stats', [App\Http\Controllers\RRAController::class, 'getStats'])->name('rra.get_stats');
+    Route::get('re-trigger/{docNo}', [App\Http\Controllers\RRAController::class, 'reTrigger'])->name('rra.reTrigger');
+    Route::get('json/{id}', [App\Http\Controllers\RRAController::class, 'jsonGenerate'])->name('rra.json');
+    Route::get('invoice/download/{id}', [App\Http\Controllers\RRAController::class, 'invoiceDownload'])->name('rra.invoiceDownload')->middleware(['signed']);
+    Route::post('update-invoice', [App\Http\Controllers\RRAController::class, 'updateInvoice'])->name('rra.updateInvoice');
+});
+
 });
 
 // Route::get('/api/entities', function() {
@@ -1304,3 +1334,5 @@ Route::prefix('email-accounts')->group(function () {
 Route::get('/test-simple', function () {
     return 'Hello! Routing works!';
 });
+// routes/web.php or routes/api.php
+Route::post('/webhooks/jimi/notifications', [JimiWebhookController::class, 'receiveNotification']);

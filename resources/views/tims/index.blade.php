@@ -102,25 +102,13 @@
     <div class="modal-dialog" role="document">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="editModalLabel">Edit Invoice</h5>
+                <h5 class="modal-title" id="editModalLabel">Update Customer PIN</h5>
             </div>
             <div class="modal-body">
                 <form id="editForm" class="editForm">
                     <input type="hidden" name="InvoiceId" id="InvoiceId">
-                    <div class="form-group">
-                        <label for="ChangeOption">Change Option</label>
-                        <select class="custom-select" name="ChangeOption" id="ChangeOption">
-                            <option value="" selected>Choose...</option>
-                            <option value="CustomerID">CustomerID</option>
-                            <option value="HSCode">HS Code</option>
-                        </select>
-                    </div>
-                    <div class="form-group" id="HSCodeOptionsDiv">
-                        <label for="HSCodeOptions">HS Codes Option</label>
-                        <select class="custom-select " id="HSCodeOptions" name="HSCodeOptions" disabled>
-                            <option value="" selected>Choose...</option>
-                        </select>
-                    </div>
+                    <input type="hidden" name="ChangeOption" id="ChangeOption" value="CustomerID">
+
                     <div class="form-group">
                         <label for="LevelOption">Level Option</label>
                         <select class="custom-select" id="LevelOption" name="LevelOption">
@@ -130,19 +118,21 @@
                         </select>
                     </div>
                     <div class="form-group">
-                        <label for="OptionValue">Value</label>
-                        <input type="text" name="OptionValue" id="OptionValue" class="form-control">
+                        <label for="OptionValue">Customer PIN</label>
+                        <input type="text" name="OptionValue" id="OptionValue" class="form-control" placeholder="Enter Customer PIN">
                     </div>
                     <input type="hidden" name="_token" value="{{ csrf_token() }}">
                 </form>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-dismiss="modal" id="cancelModal">Cancel</button>
-                <input type="submit" class="btn btn-primary" id="saveChanges" value="Save changes">
+                <input type="submit" class="btn btn-primary" id="saveChanges" value="Update PIN">
             </div>
         </div>
     </div>
 </div>
+
+
 @stop
 
 
@@ -200,19 +190,15 @@ var invcred_table = $('#invcred-table').DataTable({
 $('#cancelModal').click(function() {
     $('#editForm')[0].reset();
     $('#editModal').modal('hide');
-    $('#hsCodeNote').remove();
-    $('#HSCodeOptions').removeClass('is-invalid').attr('disabled', true);
     $('#saveChanges').removeAttr('disabled');
 });
 
 function editInvoice(id, action, docNo = null) {
-    fetchHSCodes(id);
     //append id to modal form
     $('#InvoiceId').val(id);
     if (action === 'edit') {
         // show modal
         $('#editModal').modal('show');
-        $('#hsCodeNote').remove();
     }
     if (action === 're-trigger') {
         $.ajax({
@@ -227,56 +213,7 @@ function editInvoice(id, action, docNo = null) {
     }
 }
 
-function fetchHSCodes(id) {
-    let idx = 'D195296F-018F-4411-B3EC-AF660098F08A';
-    $('#editForm').css('filter', 'blur(4px)');
-    $('#saveChanges').attr('disabled', 'true');
-    $.ajax({
-        url: '/tims/hs-codes/' + id,
-        type: 'GET',
-        datatype: 'json',
-        success: function(response) {
-            // remove options exept the first one
-            $('#HSCodeOptions').find('option').not(':first').remove();
-            if (response.length > 0) {
-                response.forEach(element => {
-                    $('#HSCodeOptions').append('<option value=' + element.ChargeCode + '>' + element.Description + '</option>');
-                });
-            } else {
-                // disable hs code option
-                $('#ChangeOption option[value=HSCode]').prop('disabled', 'true').change();
-
-                $('#HSCodeOptionsDiv').after(
-                    '<span class="text-danger" id="hsCodeNote">No HS Codes</span>');
-            }
-            $('#editForm').css('filter', '');
-            $('#saveChanges').removeAttr('disabled');
-        },
-        error: function(error) {
-            $('#cancelModal').toggle('click');
-            $('#editForm').css('filter', '');
-            $('#saveChanges').removeAttr('disabled');
-            alert("Something went wrong. Try again !!");
-
-        }
-    });
-}
-
-// on select hs codes show codes
-$('#ChangeOption').change(function() {
-    let option = $('#ChangeOption option:selected').val();
-    if (option == "HSCode") {
-        $('#HSCodeOptions').removeAttr('disabled');
-        $('#HSCodeOptions').addClass('is-invalid');
-    } else {
-        $('#HSCodeOptions').attr('disabled', true);
-        $('#HSCodeOptions').removeClass('is-invalid');
-    }
-});
-
-
 let submit = false;
-let formData = $('#editForm').serializeArray();
 
 // form submission
 $('#saveChanges').click(function() {
@@ -287,7 +224,7 @@ $('#saveChanges').click(function() {
     // form-validation
     $.each(formData, function(k, v) {
         let el = $('#' + v.name);
-        if (el.val() == "") {
+        if (el.val() == "" && el.attr('type') !== 'hidden') {
             el.addClass('is-invalid');
             submit = false;
             return false;
@@ -296,6 +233,7 @@ $('#saveChanges').click(function() {
             submit = true;
         }
     });
+
     // submit form
     if (submit) {
         $('#editForm').css('filter', 'blur(4px)');
@@ -310,6 +248,7 @@ $('#saveChanges').click(function() {
                 $('#saveChanges').removeAttr('disabled');
                 alert(response[0].Status + " : " + response[0].Status_Remark);
                 $('#cancelModal').click();
+                refresh();
             },
             error: function(error) {
                 alert((error));

@@ -599,4 +599,64 @@ class AzureUser extends Authenticatable
             WHERE Id = ?
         ", [$this->Id]) > 0;
     }
+
+    // =================================================================
+    // STATIC METHODS
+    // =================================================================
+
+    /**
+     * Get Azure user statistics
+     * Used by dashboard to display user counts by status
+     * 
+     * @return array
+     */
+    public static function getStatistics(): array
+    {
+        try {
+            \Log::info('Azure Statistics - Starting query', [
+                'connection' => (new self())->getConnectionName(),
+                'table' => (new self())->getTable(),
+            ]);
+
+            $total = self::count();
+            $active = self::where('Status', 'Active')->count();
+            $pending = self::where('Status', 'Pending')->count();
+            $inactive = self::where('Status', 'Inactive')->count();
+
+            $stats = [
+                'total' => $total,
+                'active' => $active,
+                'pending' => $pending,
+                'inactive' => $inactive,
+            ];
+
+            \Log::info('Azure Statistics Retrieved', $stats);
+
+            // ✅ Additional check: Log first 5 users to verify Status values
+            $sampleUsers = self::select('Id', 'displayName', 'Status')
+                ->limit(5)
+                ->get()
+                ->toArray();
+
+            \Log::info('Sample Azure Users', [
+                'count' => count($sampleUsers),
+                'users' => $sampleUsers,
+            ]);
+
+            return $stats;
+        } catch (\Exception $e) {
+            \Log::error('Failed to get Azure user statistics', [
+                'error' => $e->getMessage(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return [
+                'total' => 0,
+                'active' => 0,
+                'pending' => 0,
+                'inactive' => 0,
+            ];
+        }
+    }
 }

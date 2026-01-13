@@ -10,6 +10,7 @@ use App\Models\RRABillingHeader;
 use App\Models\Ticket;
 use App\Models\Office;
 use App\Models\User;
+use App\Models\AzureUser;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
@@ -85,7 +86,7 @@ class HomeController extends Controller
                 ];
             }
 
-            // ✅ ADD THIS: Get GPS Tracker Statistics
+            // ✅ Get GPS Tracker Statistics
             try {
                 $tracker_stats = $this->getTrackerStats();
             } catch (\Exception $e) {
@@ -95,6 +96,19 @@ class HomeController extends Controller
                     'in_progress' => 0,
                     'completed' => 0,
                     'total' => 0,
+                ];
+            }
+
+            // ✅ Get Azure User Statistics
+            try {
+                $azureStats = AzureUser::getStatistics();
+            } catch (\Exception $e) {
+                \Log::error('Azure Stats Error: ' . $e->getMessage());
+                $azureStats = [  // ✅ Changed from (object) to array
+                    'total' => 0,
+                    'active' => 0,
+                    'pending' => 0,
+                    'inactive' => 0,
                 ];
             }
 
@@ -117,7 +131,8 @@ class HomeController extends Controller
                     'active_last_month',
                     'inactive_users',
                     'total_users',
-                    'tracker_stats' // ✅ ADD THIS
+                    'tracker_stats',
+                    'azureStats'
                 )
             );
         } catch (\Exception $e) {
@@ -134,7 +149,6 @@ class HomeController extends Controller
     private function getTrackerStats()
     {
         try {
-            // Base query for trips (same logic as TrackerController)
             $baseQuery = function () {
                 return DB::table('Trip_TripInfomation')
                     ->where('IsActive', true)
@@ -143,16 +157,16 @@ class HomeController extends Controller
             };
 
             $stats = (object) [
-                'Planned' => $baseQuery()->whereNull('StartDate')->count(),
-                'in_progress' => $baseQuery()->whereNotNull('StartDate')->whereNull('EndDate')->count(),
-                'completed' => $baseQuery()->whereNotNull('EndDate')->count(),
+                'created' => $baseQuery()->whereNull('StartDate')->count(),
+                'transit' => $baseQuery()->whereNotNull('StartDate')->whereNull('EndDate')->count(),
+                'complete' => $baseQuery()->whereNotNull('EndDate')->count(),
                 'total' => $baseQuery()->count(),
             ];
 
             \Log::info('Tracker Stats Retrieved', [
-                'Planned' => $stats->Planned,
-                'in_progress' => $stats->in_progress,
-                'completed' => $stats->completed,
+                'created' => $stats->created,
+                'transit' => $stats->transit,
+                'complete' => $stats->complete,
                 'total' => $stats->total,
             ]);
 
@@ -163,11 +177,10 @@ class HomeController extends Controller
                 'line' => $e->getLine(),
             ]);
 
-            // Return zero values on error
             return (object)[
-                'Planned' => 0,
-                'in_progress' => 0,
-                'completed' => 0,
+                'created' => 0,
+                'transit' => 0,
+                'complete' => 0,
                 'total' => 0,
             ];
         }

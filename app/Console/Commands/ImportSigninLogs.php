@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Exception;
 
-class ImportSigninLogsCommand extends Command
+class ImportSigninLogs extends Command
 {
     protected $signature = 'import:signin-logs {file} 
                             {--large : Use memory-efficient processing for large files} 

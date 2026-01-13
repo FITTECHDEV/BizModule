@@ -6,7 +6,7 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
-class CleanupDuplicateUsers extends Command
+class CleanupDuplicateSignins extends Command
 {
     protected $signature = 'azure:cleanup-duplicates {--dry-run : Preview changes without executing}';
     protected $description = 'Clean up duplicate Azure users keeping the most recent record';

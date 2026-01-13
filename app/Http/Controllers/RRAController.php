@@ -352,41 +352,80 @@ class RRAController extends Controller
     }
 
     public function updateInvoice(Request $request)
-    {
-        $validated = $request->validate([
-            'InvoiceId' => "required",
-            'ChangeOption' => "required", // "Customer ID" & "HS Code"
-            'HSCodeOptions' => "required_if:ChangeOption,==,HS_Code", //charge code
-            'LevelOption' => "required", // $validated['ChangeOption']
-            'OptionValue' => "required", // value
+{
+    // Log the incoming request
+    Log::info('RRA TIN/PIN Update Request', [
+        'user' => auth()->user()->name ?? 'guest',
+        'data' => $request->all()
+    ]);
+
+    $validated = $request->validate([
+        'InvoiceId' => "required|uuid",
+        'ChangeOption' => "required",
+        'LevelOption' => "required|in:Master,Invoice",
+        'OptionValue' => "required|string|max:50",
+    ]);
+
+    // Build the input JSON for the stored procedure
+    $inputJson = json_encode([
+        'OperationType' => 'TINPINUpdate',
+        'SubmittedDatetime' => now()->format('YmdHis'),
+        'SubmittedBy' => auth()->user()->name ?? 'system',
+        'Action' => 'Update',
+        'InvoiceID' => $validated['InvoiceId'],
+        'UpdateType' => $validated['LevelOption'],
+        'Value' => $validated['OptionValue']
+    ]);
+
+    // Log the JSON being sent to SP
+    Log::info('RRA SP Input JSON', ['json' => $inputJson]);
+
+    try {
+        // Execute the stored procedure
+        $result = DB::select("SET NOCOUNT ON;
+                                DECLARE @OutputJson as varchar(1000)
+                                EXEC sp_RevenueAuth_TINPINUpdate
+                                    @InputPutJson = ?,
+                                    @OutputJson = @OutputJson OUTPUT
+                                SELECT @OutputJson as OutputJson
+                               ", [$inputJson]);
+
+        // Log raw SP output
+        Log::info('RRA SP Raw Output', ['result' => $result]);
+
+        // Parse the output JSON
+        $output = json_decode($result[0]->OutputJson, true);
+
+        // Log parsed output
+        Log::info('RRA SP Parsed Output', ['output' => $output]);
+
+        // Format response for frontend
+        $response = [
+            [
+                'Status' => $output['Status'] ?? 'Failed',
+                'Status_Remark' => isset($output['Remarks'])
+                    ? implode(', ', array_column($output['Remarks'], 'Remark'))
+                    : 'Unknown error occurred'
+            ]
+        ];
+
+        // Log final response
+        Log::info('RRA Final Response', ['response' => $response]);
+
+        return response()->json($response, 200);
+
+    } catch (\Exception $e) {
+        Log::error('RRA TIN/PIN Update Exception', [
+            'message' => $e->getMessage(),
+            'trace' => $e->getTraceAsString()
         ]);
 
-        $code = $validated['HSCodeOptions'] ?? null;
-
-        //exec sp
-        $feedback = DB::select("SET NOCOUNT ON;
-                                    Declare
-                                    @Status as Varchar(50),
-                                    @Remark as Varchar(200)
-                                        Exec RRA_InfomationUpdate
-                                    @ChangeType  = ?,
-                                    @Appliable   = ?,
-                                    @ChargeCode  = ?,
-                                    @Value = ?,
-                                    @InvoiceID = ?,
-                                    @Status = @Status Output,
-                                    @Remark= @Remark Output
-                                    Select @Status as 'Status',
-                                    @Remark as 'Status_Remark'
-                                   ", [
-                                        $validated['ChangeOption'],
-                                        $validated['LevelOption'],
-                                        $code,
-                                        $validated['OptionValue'],
-                                        $validated['InvoiceId'],
-                                    ]);
-
-            return response()->json($feedback, 200);
-
+        return response()->json([
+            [
+                'Status' => 'Failed',
+                'Status_Remark' => 'System error: ' . $e->getMessage()
+            ]
+        ], 500);
     }
+}
 }
