@@ -25,7 +25,7 @@ class UsersController extends Controller
      */
     public function index(Request $request)
     {
-        if(!Auth::user()->can('users-list')){
+        if (!Auth::user()->can('users-list')) {
             abort(404);
         }
 
@@ -33,15 +33,56 @@ class UsersController extends Controller
         //     'users.index',
         //     1800,
         //     function () {
-            //    $data = User::with('roles')->latest()->paginate(300);
-            //    $data = DB::table('Cust_User')->paginate(300);
-            //    dd($data);
-            // }
+        //    $data = User::with('roles')->latest()->paginate(300);
+        //    $data = DB::table('Cust_User')->paginate(300);
+        //    dd($data);
+        // }
         // );
 
         return view('users.index');
         //$data = User::orderBy('id', 'DESC')->paginate(5);
 
+    }
+
+    /**
+     * Get user statistics for dashboard cards
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function stats()
+    {
+        try {
+            // ✅ FIXED: Changed 'IsDelete' to 'IsDeleted'
+            $stats = [
+                'total' => DB::table('Cust_User')
+                    ->where('IsDeleted', 0)
+                    ->count(),
+
+                'active' => DB::table('Cust_User')
+                    ->where('IsActive', 1)
+                    ->where('IsDeleted', 0)
+                    ->count(),
+
+                'inactive' => DB::table('Cust_User')
+                    ->where('IsActive', 0)
+                    ->where('IsDeleted', 0)
+                    ->count(),
+            ];
+
+            return response()->json($stats);
+        } catch (\Exception $e) {
+            \Log::error('Failed to fetch user stats', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'total' => 0,
+                'active' => 0,
+                'inactive' => 0,
+                'error' => 'Failed to fetch statistics'
+            ], 500);
+        }
     }
 
     /**
@@ -90,12 +131,12 @@ class UsersController extends Controller
         unset($input["confirm-password"]);
         // dd($request->input('roles'));
         // create user
-    //    dd($input);
-       $user_id = User::create($input);
+        //    dd($input);
+        $user_id = User::create($input);
 
 
         // assign roles
-        $new_user = User::where('ID',$user_id->ID)->first();
+        $new_user = User::where('ID', $user_id->ID)->first();
         $new_user->assignRole($request->input('roles'));
         // notify users via mail
 
@@ -106,10 +147,11 @@ class UsersController extends Controller
         return redirect()->route('users.index')
             ->with('success', 'User created successfully');
     }
-    public function updateAjax(Request $request){
+    public function updateAjax(Request $request)
+    {
         // ddd($request);
         if ($request->ajax()) {
-            User::where('ID',$request->pk)->first()
+            User::where('ID', $request->pk)->first()
                 ->update([
                     $request->name => $request->value
                 ]);
@@ -143,14 +185,14 @@ class UsersController extends Controller
 
             $request->validate([
                 'current_password' => ['required', new MatchUserPassword],
-                'new_password' => ['required','different:current_password'],
+                'new_password' => ['required', 'different:current_password'],
                 'new_confirm_password' => ['required', 'same:new_password'],
             ]);
 
             // $user = User::where('ID', Auth::user()->ID)->first();
             // dd($user);
             DB::table('Cust_User')->where('ID', Auth::user()->ID)->update([
-                 'password' => Hash::make($request->new_confirm_password),
+                'password' => Hash::make($request->new_confirm_password),
                 'PasswordResetAt' => Carbon::now()->toDateTimeString(),
                 'lastModifiedBy' => Auth::user()->full_name
             ]);
@@ -205,7 +247,7 @@ class UsersController extends Controller
         // dd($request);
 
         $input = $request->all();
-        unset($input['_token'],$input['_method']);
+        unset($input['_token'], $input['_method']);
 
         if (!empty($input['password'])) {
             $input['password'] = Hash::make($input['password']);
@@ -264,7 +306,6 @@ class UsersController extends Controller
         Alert::info('Password Updated !!');
 
         return redirect()->back();
-
     }
 
     /**
@@ -275,9 +316,9 @@ class UsersController extends Controller
      */
     public function destroy($id)
     {
-       $user =  User::where('ID',$id)->first();
-       $user->delete();
-        toast('User deleted successfully','success');
+        $user =  User::where('ID', $id)->first();
+        $user->delete();
+        toast('User deleted successfully', 'success');
         return redirect()->route('users.index')
             ->with('success', 'User deleted successfully');
     }

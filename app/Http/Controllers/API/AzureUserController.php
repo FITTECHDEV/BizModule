@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\User;
-use App\Models\Company;
 
 class AzureUserController extends Controller
 {
@@ -14,7 +13,7 @@ class AzureUserController extends Controller
      */
     public function index(Request $request)
     {
-        $query = User::with(['company', 'modules']);
+        $query = User::with(['modules']);
 
         // Apply search filter
         if ($request->has('search') && $request->search) {
@@ -55,10 +54,6 @@ class AzureUserController extends Controller
                 'phone' => $user->phone,
                 'location' => ucfirst($user->location),
                 'status' => $user->status,
-                'company' => $user->company ? [
-                    'id' => $user->company->id,
-                    'name' => $user->company->name
-                ] : null,
                 'modules' => $user->modules->map(function ($module) {
                     return [
                         'id' => $module->id,
@@ -85,7 +80,7 @@ class AzureUserController extends Controller
      */
     public function show(User $user)
     {
-        $user->load(['company', 'modules.roles', 'roles']);
+        $user->load(['modules.roles', 'roles']);
 
         return response()->json([
             'id' => $user->id,
@@ -95,10 +90,6 @@ class AzureUserController extends Controller
             'phone' => $user->phone,
             'location' => ucfirst($user->location),
             'status' => $user->status,
-            'company' => $user->company ? [
-                'id' => $user->company->id,
-                'name' => $user->company->name
-            ] : null,
             'modules' => $user->modules->map(function ($module) {
                 return [
                     'id' => $module->id,
@@ -135,19 +126,6 @@ class AzureUserController extends Controller
                 'message' => 'Failed to disable user: ' . $e->getMessage()
             ], 500);
         }
-    }
-
-    /**
-     * Get companies by location
-     */
-    public function getCompaniesByLocation(string $location)
-    {
-        $companies = Company::where('location', $location)
-            ->select('id', 'name', 'location')
-            ->orderBy('name')
-            ->get();
-
-        return response()->json($companies);
     }
 
     /**
