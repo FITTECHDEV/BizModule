@@ -1571,7 +1571,7 @@ class TrackerController extends Controller
                     'startLat' => $trip['start_lat'],
                     'startLng' => $trip['start_lng'],
                     'startTime' => $trip['start_time'],
-                    'startMileage' => $trip['start_mileage'] ?? 0,    
+                    'startMileage' => $trip['start_mileage'] ?? 0,
                     'endMileage' => $trip['end_mileage'] ?? 0,
                 ];
             }
@@ -1845,12 +1845,12 @@ class TrackerController extends Controller
                 ], 400);
             }
 
-            if ($trip->EndDate) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Trip has already been ended',
-                ], 400);
-            }
+            // if ($trip->EndDate) {
+            //     return response()->json([
+            //         'success' => false,
+            //         'message' => 'Trip has already been ended',
+            //     ], 400);
+            // }
 
             // Check all jobs are completed
             $incompleteJobs = DB::table('Trip_TripJobMapping')

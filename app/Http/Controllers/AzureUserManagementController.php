@@ -306,14 +306,7 @@ class AzureUserManagementController extends Controller
      */
     public function stats()
     {
-        $stats = [
-            'total' => AzureUser::count(),
-            'active' => AzureUser::where('Status', 'Active')->count(),
-            'pending' => AzureUser::where('status', 'pending')->count(),
-            'inactive' => AzureUser::where('status', 'inactive')->count(),
-        ];
-
-        return response()->json($stats);
+        return response()->json(AzureUser::getStatistics());
     }
 
     /**
@@ -2604,7 +2597,7 @@ class AzureUserManagementController extends Controller
             }
 
             // Validation 3: Check if user has been provisioned to Azure AD
-            if (empty($user->AzureId)) {
+            if (!$user->isProvisionedToAzure()) {
                 Log::error('Cannot sync - user not provisioned to Azure AD', [
                     'user_id' => $user->Id,
                     'email' => $user->userPrincipalName,
@@ -2868,6 +2861,17 @@ class AzureUserManagementController extends Controller
      */
     public function disable(AzureUser $user)
     {
+        Log::info('DEBUG Azure ID check', [
+            'user_id' => $user->Id,
+            'azure_id_model' => $user->AzureId,
+            'azure_id_type' => gettype($user->AzureId),
+            'azure_id_empty' => empty($user->AzureId),
+            'azure_id_null' => is_null($user->AzureId),
+            'azure_id_string' => is_string($user->AzureId),
+            'azure_id_length' => strlen($user->AzureId ?? ''),
+            'attributes_array' => $user->getAttributes(),
+        ]);
+
         try {
             Log::info('=== DISABLE USER REQUEST ===', [
                 'user_id' => $user->Id,
@@ -2879,113 +2883,231 @@ class AzureUserManagementController extends Controller
 
             // Check if user is already inactive
             if ($user->Status === 'Inactive') {
-                Log::info('User already inactive', [
-                    'user_id' => $user->Id,
-                    'status' => $user->Status,
-                ]);
-
                 return response()->json([
                     'success' => false,
                     'message' => 'User is already disabled',
                 ], 400);
             }
 
-            // Check if user has Azure ID
-            if (empty($user->AzureId)) {
-                Log::warning('Cannot disable user - no Azure ID', [
+            // **FIX 1: Double-check Azure ID from database directly**
+            $azureId = null;
+
+            $dbUser = DB::connection('sqlsrv')
+                ->table('Azure_Users')
+                ->select('AzureId')
+                ->where('Id', $user->Id)
+                ->first();
+
+            if ($dbUser && !empty($dbUser->AzureId)) {
+                $azureId = trim($dbUser->AzureId);
+                Log::info('Azure ID retrieved from database', [
+                    'azure_id' => $azureId,
+                    'from_model' => $user->AzureId,
+                    'match' => $azureId === trim($user->AzureId ?? ''),
+                ]);
+            } else {
+                Log::warning('No Azure ID found in database for user', [
                     'user_id' => $user->Id,
                     'email' => $user->userPrincipalName,
                 ]);
-
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Cannot disable user: User has not been provisioned to Azure AD',
-                ], 400);
             }
 
-            // STEP 1: Disable in Azure AD FIRST
-            Log::info('Step 1: Disabling user in Azure AD...', [
-                'user_id' => $user->Id,
-                'azure_id' => $user->AzureId,
-            ]);
+            // STEP 1: Attempt to disable in Azure AD
+            $azureDisabled = false;
+            $azureNotFound = false;
+            $azureIdUpdated = false;
 
-            try {
-                $azureService = app(\App\Services\AzureGraphService::class);
-                $azureService->disableUser($user->AzureId);
-
-                Log::info('✓ Step 1: User disabled in Azure AD successfully', [
+            if (!empty($azureId) && $this->isValidUuid($azureId)) {
+                Log::info('Step 1: Attempting to disable user in Azure AD...', [
                     'user_id' => $user->Id,
-                    'azure_id' => $user->AzureId,
-                ]);
-            } catch (\Exception $azureError) {
-                Log::error('✗ Step 1 FAILED: Could not disable user in Azure AD', [
-                    'user_id' => $user->Id,
-                    'azure_id' => $user->AzureId,
-                    'error' => $azureError->getMessage(),
+                    'azure_id' => $azureId,
+                    'email' => $user->userPrincipalName,
                 ]);
 
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Failed to disable user in Azure AD: ' . $azureError->getMessage(),
-                    'error' => $azureError->getMessage(),
-                ], 500);
+                try {
+                    $azureService = app(\App\Services\AzureGraphService::class);
+                    set_time_limit(120);
+
+                    try {
+                        $azureService->disableUser($azureId);
+                        $azureDisabled = true;
+
+                        Log::info('✓ Step 1: User disabled in Azure AD successfully', [
+                            'user_id' => $user->Id,
+                            'azure_id' => $azureId,
+                        ]);
+                    } catch (\Exception $directError) {
+                        if (
+                            str_contains($directError->getMessage(), '404') ||
+                            str_contains($directError->getMessage(), 'ResourceNotFound') ||
+                            str_contains($directError->getMessage(), 'Request_ResourceNotFound')
+                        ) {
+                            Log::warning('Azure ID not found, attempting lookup by email', [
+                                'user_id' => $user->Id,
+                                'stale_azure_id' => $azureId,
+                                'email' => $user->userPrincipalName,
+                            ]);
+
+                            $maxRetries = 2;
+                            $retryCount = 0;
+                            $azureUserData = null;
+
+                            // Try to find user by email (single attempt)
+                            try {
+                                $azureUserData = $azureService->findUserByUPN($user->userPrincipalName);
+                            } catch (\Exception $lookupError) {
+                                $azureUserData = null;
+                            }
+
+                            if ($azureUserData && isset($azureUserData['id'])) {
+                                $correctAzureId = trim($azureUserData['id']);
+
+                                Log::warning('Azure ID mismatch detected - updating local record', [
+                                    'user_id' => $user->Id,
+                                    'old_azure_id' => $azureId,
+                                    'correct_azure_id' => $correctAzureId,
+                                    'email' => $user->userPrincipalName,
+                                ]);
+
+                                DB::connection('sqlsrv')
+                                    ->table('Azure_Users')
+                                    ->where('Id', $user->Id)
+                                    ->update(['AzureId' => $correctAzureId]);
+
+                                $azureId = $correctAzureId;
+                                $azureIdUpdated = true;
+
+                                $azureService->disableUser($correctAzureId);
+                                $azureDisabled = true;
+
+                                Log::info('✓ Step 1: User disabled in Azure AD after ID correction', [
+                                    'user_id' => $user->Id,
+                                    'corrected_azure_id' => $correctAzureId,
+                                ]);
+                            } else {
+                                $azureNotFound = true;
+
+                                Log::warning('✓ Step 1: User not found in Azure AD (already deleted or never existed)', [
+                                    'user_id' => $user->Id,
+                                    'azure_id' => $azureId,
+                                    'email' => $user->userPrincipalName,
+                                    'treating_as' => 'already_disabled',
+                                ]);
+                            }
+                        } else {
+                            throw $directError;
+                        }
+                    }
+                } catch (\Exception $azureException) {
+                    if (
+                        str_contains($azureException->getMessage(), 'Maximum execution time') ||
+                        str_contains($azureException->getMessage(), 'timeout')
+                    ) {
+                        Log::warning('Azure operation timed out - proceeding with local disable only', [
+                            'user_id' => $user->Id,
+                            'error' => $azureException->getMessage(),
+                        ]);
+                    } else {
+                        Log::error('✗ Step 1 FAILED: Could not disable user in Azure AD', [
+                            'user_id' => $user->Id,
+                            'azure_id' => $azureId,
+                            'error' => $azureException->getMessage(),
+                        ]);
+
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Failed to disable user in Azure AD: ' . $azureException->getMessage(),
+                            'error' => $azureException->getMessage(),
+                        ], 500);
+                    }
+                }
+            } else {
+                Log::warning('User has no valid Azure ID - proceeding with local disable only', [
+                    'user_id' => $user->Id,
+                    'email' => $user->userPrincipalName,
+                    'azure_id_in_db' => $azureId,
+                    'is_valid_uuid' => $azureId ? $this->isValidUuid($azureId) : false,
+                ]);
             }
 
             // STEP 2: Update database
             Log::info('Step 2: Updating database...', [
                 'user_id' => $user->Id,
+                'azure_disabled' => $azureDisabled,
+                'azure_not_found' => $azureNotFound,
+                'azure_id_updated' => $azureIdUpdated,
             ]);
 
             try {
-                $dbSuccess = $user->disable(Auth::user()->name ?? Auth::id() ?? 'system');
+                $updateData = [
+                    'Status' => 'Inactive',
+                    'accountEnabled' => 0,
+                ];
 
-                if (! $dbSuccess) {
-                    throw new \Exception('Database update returned false');
+                if ($azureIdUpdated && !empty($azureId)) {
+                    $updateData['AzureId'] = $azureId;
+                }
+
+                $dbSuccess = DB::connection('sqlsrv')
+                    ->table('Azure_Users')
+                    ->where('Id', $user->Id)
+                    ->update($updateData);
+
+                if ($dbSuccess === false) {
+                    throw new \Exception('Database update failed');
                 }
 
                 Log::info('✓ Step 2: Database updated successfully', [
                     'user_id' => $user->Id,
+                    'rows_affected' => $dbSuccess,
                 ]);
             } catch (\Exception $dbError) {
-                Log::error('✗ Step 2 FAILED: Database update failed - ROLLING BACK Azure', [
+                Log::error('✗ Step 2 FAILED: Database update failed', [
                     'user_id' => $user->Id,
                     'error' => $dbError->getMessage(),
                 ]);
 
-                // ROLLBACK: Re-enable user in Azure AD
-                try {
-                    $azureService->enableUser($user->AzureId);
+                if ($azureDisabled && !$azureNotFound && !empty($azureId)) {
+                    try {
+                        $azureService = app(\App\Services\AzureGraphService::class);
+                        $azureService->enableUser($azureId);
 
-                    Log::warning('⚠ ROLLBACK SUCCESSFUL: User re-enabled in Azure AD', [
-                        'user_id' => $user->Id,
-                        'azure_id' => $user->AzureId,
-                    ]);
+                        Log::warning('⚠ ROLLBACK SUCCESSFUL: User re-enabled in Azure AD', [
+                            'user_id' => $user->Id,
+                            'azure_id' => $azureId,
+                        ]);
 
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Database update failed. User remains enabled (rollback successful).',
-                        'error' => 'Database error: ' . $dbError->getMessage(),
-                    ], 500);
-                } catch (\Exception $rollbackError) {
-                    Log::critical('✗ ROLLBACK FAILED: User disabled in Azure but database not updated!', [
-                        'user_id' => $user->Id,
-                        'azure_id' => $user->AzureId,
-                        'db_error' => $dbError->getMessage(),
-                        'rollback_error' => $rollbackError->getMessage(),
-                        'action_required' => 'MANUAL INTERVENTION NEEDED',
-                    ]);
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Database update failed. User remains enabled (rollback successful).',
+                            'error' => 'Database error: ' . $dbError->getMessage(),
+                        ], 500);
+                    } catch (\Exception $rollbackError) {
+                        Log::critical('✗ ROLLBACK FAILED: User disabled in Azure but database not updated!', [
+                            'user_id' => $user->Id,
+                            'azure_id' => $azureId,
+                            'db_error' => $dbError->getMessage(),
+                            'rollback_error' => $rollbackError->getMessage(),
+                            'action_required' => 'MANUAL INTERVENTION NEEDED',
+                        ]);
 
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'CRITICAL ERROR: User disabled in Azure AD but database update failed. Rollback also failed. Manual intervention required.',
-                        'error' => [
-                            'database' => $dbError->getMessage(),
-                            'rollback' => $rollbackError->getMessage(),
-                        ],
-                        'user_id' => $user->Id,
-                        'azure_id' => $user->AzureId,
-                    ], 500);
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'CRITICAL ERROR: User disabled in Azure AD but database update failed. Manual intervention required.',
+                            'error' => [
+                                'database' => $dbError->getMessage(),
+                                'rollback' => $rollbackError->getMessage(),
+                            ],
+                            'user_id' => $user->Id,
+                            'azure_id' => $azureId,
+                        ], 500);
+                    }
                 }
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to update database: ' . $dbError->getMessage(),
+                ], 500);
             }
 
             // Log activity
@@ -2994,7 +3116,13 @@ class AzureUserManagementController extends Controller
                     $user->Id,
                     'user.disabled',
                     'User account disabled',
-                    ['disabled_by' => Auth::user()->name ?? Auth::id() ?? 'system']
+                    [
+                        'disabled_by' => Auth::user()->name ?? Auth::id() ?? 'system',
+                        'azure_disabled' => $azureDisabled,
+                        'azure_not_found' => $azureNotFound,
+                        'azure_id_updated' => $azureIdUpdated,
+                        'final_azure_id' => $azureId,
+                    ]
                 );
             } catch (\Exception $e) {
                 Log::warning('Failed to log user activity', [
@@ -3005,13 +3133,34 @@ class AzureUserManagementController extends Controller
 
             Log::info('=== USER DISABLED SUCCESSFULLY ===', [
                 'user_id' => $user->Id,
-                'azure_id' => $user->AzureId,
+                'azure_id' => $azureId,
                 'disabled_by' => Auth::user()->name ?? Auth::id() ?? 'system',
+                'azure_action' => $azureDisabled ? 'disabled' : ($azureNotFound ? 'not_found' : 'skipped'),
+                'azure_id_corrected' => $azureIdUpdated,
             ]);
+
+            // Build response message
+            $message = '✅ User has been disabled successfully!';
+            if ($azureIdUpdated) {
+                $message .= ' Azure ID was corrected during the process.';
+            }
+            if ($azureNotFound) {
+                $message .= ' Note: User was not found in Azure AD (may have been previously deleted).';
+            }
+            if (!$azureDisabled && !$azureNotFound && !empty($azureId)) {
+                $message .= ' Note: Could not disable in Azure AD (timeout or error), but local status updated.';
+            }
 
             return response()->json([
                 'success' => true,
-                'message' => 'User has been disabled successfully. They no longer have access to any systems.',
+                'message' => $message,
+                'details' => [
+                    'azure_disabled' => $azureDisabled,
+                    'azure_not_found' => $azureNotFound,
+                    'azure_id_updated' => $azureIdUpdated,
+                    'local_status_updated' => true,
+                ],
+                'reload' => true  // ← ADDED: Trigger page reload
             ]);
         } catch (\Exception $e) {
             Log::error('Unexpected error disabling user', [
@@ -3022,9 +3171,26 @@ class AzureUserManagementController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'An unexpected error occurred: ' . $e->getMessage(),
+                'message' => '❌ An unexpected error occurred: ' . $e->getMessage(),
             ], 500);
         }
+    }
+
+    /**
+     * Validate UUID format
+     */
+    private function isValidUuid($uuid): bool
+    {
+        if (empty($uuid) || !is_string($uuid)) {
+            return false;
+        }
+
+        $uuid = trim($uuid);
+
+        // Check for GUID format (with or without braces)
+        $pattern = '/^\{?[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\}?$/i';
+
+        return preg_match($pattern, $uuid) === 1;
     }
 
     /**
@@ -3054,102 +3220,235 @@ class AzureUserManagementController extends Controller
                 ], 400);
             }
 
-            // Check if user has Azure ID
-            if (empty($user->AzureId)) {
-                Log::warning('Cannot enable user - no Azure ID', [
+            // Double-check Azure ID from database
+            $azureId = null;
+            $dbUser = DB::connection('sqlsrv')
+                ->table('Azure_Users')
+                ->select('AzureId')
+                ->where('Id', $user->Id)
+                ->first();
+
+            if ($dbUser && !empty($dbUser->AzureId)) {
+                $azureId = trim($dbUser->AzureId);
+                Log::info('Azure ID retrieved from database', [
+                    'azure_id' => $azureId,
+                    'from_model' => $user->AzureId,
+                    'match' => $azureId === trim($user->AzureId ?? ''),
+                ]);
+            }
+
+            // Check if user has valid Azure ID
+            if (empty($azureId) || !$this->isValidUuid($azureId)) {
+                Log::warning('Cannot enable user - no valid Azure ID', [
                     'user_id' => $user->Id,
                     'email' => $user->userPrincipalName,
+                    'azure_id_in_db' => $azureId,
                 ]);
 
                 return response()->json([
                     'success' => false,
-                    'message' => 'Cannot enable user: User has not been provisioned to Azure AD',
+                    'message' => 'Cannot enable user: User has not been provisioned to Azure AD or Azure ID is invalid',
                 ], 400);
             }
 
-            // STEP 1: Enable in Azure AD FIRST
-            Log::info('Step 1: Enabling user in Azure AD...', [
+            // STEP 1: Attempt to enable in Azure AD
+            $azureEnabled = false;
+            $azureNotFound = false;
+            $azureIdUpdated = false;
+
+            Log::info('Step 1: Attempting to enable user in Azure AD...', [
                 'user_id' => $user->Id,
-                'azure_id' => $user->AzureId,
+                'azure_id' => $azureId,
+                'email' => $user->userPrincipalName,
             ]);
 
             try {
                 $azureService = app(\App\Services\AzureGraphService::class);
-                $azureService->enableUser($user->AzureId);
+                set_time_limit(120);
 
-                Log::info('✓ Step 1: User enabled in Azure AD successfully', [
-                    'user_id' => $user->Id,
-                    'azure_id' => $user->AzureId,
-                ]);
-            } catch (\Exception $azureError) {
-                Log::error('✗ Step 1 FAILED: Could not enable user in Azure AD', [
-                    'user_id' => $user->Id,
-                    'azure_id' => $user->AzureId,
-                    'error' => $azureError->getMessage(),
-                ]);
+                try {
+                    $azureService->enableUser($azureId);
+                    $azureEnabled = true;
 
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Failed to enable user in Azure AD: ' . $azureError->getMessage(),
-                    'error' => $azureError->getMessage(),
-                ], 500);
+                    Log::info('✓ Step 1: User enabled in Azure AD successfully', [
+                        'user_id' => $user->Id,
+                        'azure_id' => $azureId,
+                    ]);
+                } catch (\Exception $directError) {
+                    if (
+                        str_contains($directError->getMessage(), '404') ||
+                        str_contains($directError->getMessage(), 'ResourceNotFound') ||
+                        str_contains($directError->getMessage(), 'Request_ResourceNotFound')
+                    ) {
+                        Log::warning('Azure ID not found, attempting lookup by email', [
+                            'user_id' => $user->Id,
+                            'stale_azure_id' => $azureId,
+                            'email' => $user->userPrincipalName,
+                        ]);
+
+                        $maxRetries = 2;
+                        $retryCount = 0;
+                        $azureUserData = null;
+
+                        while ($retryCount < $maxRetries && !$azureUserData) {
+                            try {
+                                $azureUserData = $azureService->findUserByUPN($user->userPrincipalName);
+                                break;
+                            } catch (\Exception $lookupError) {
+                                $retryCount++;
+                                if ($retryCount >= $maxRetries) {
+                                    throw $lookupError;
+                                }
+                                sleep(1);
+                            }
+                        }
+
+                        if ($azureUserData && isset($azureUserData['id'])) {
+                            $correctAzureId = trim($azureUserData['id']);
+
+                            Log::warning('Azure ID mismatch detected - updating local record', [
+                                'user_id' => $user->Id,
+                                'old_azure_id' => $azureId,
+                                'correct_azure_id' => $correctAzureId,
+                                'email' => $user->userPrincipalName,
+                            ]);
+
+                            DB::connection('sqlsrv')
+                                ->table('Azure_Users')
+                                ->where('Id', $user->Id)
+                                ->update(['AzureId' => $correctAzureId]);
+
+                            $azureId = $correctAzureId;
+                            $azureIdUpdated = true;
+
+                            $azureService->enableUser($correctAzureId);
+                            $azureEnabled = true;
+
+                            Log::info('✓ Step 1: User enabled in Azure AD after ID correction', [
+                                'user_id' => $user->Id,
+                                'corrected_azure_id' => $correctAzureId,
+                            ]);
+                        } else {
+                            $azureNotFound = true;
+
+                            Log::error('✗ Step 1: User not found in Azure AD', [
+                                'user_id' => $user->Id,
+                                'azure_id' => $azureId,
+                                'email' => $user->userPrincipalName,
+                            ]);
+
+                            return response()->json([
+                                'success' => false,
+                                'message' => 'Cannot enable user: User not found in Azure AD. Please contact IT support.',
+                            ], 404);
+                        }
+                    } else {
+                        throw $directError;
+                    }
+                }
+            } catch (\Exception $azureException) {
+                if (
+                    str_contains($azureException->getMessage(), 'Maximum execution time') ||
+                    str_contains($azureException->getMessage(), 'timeout')
+                ) {
+                    Log::warning('Azure operation timed out - proceeding with local enable only', [
+                        'user_id' => $user->Id,
+                        'error' => $azureException->getMessage(),
+                    ]);
+                } else {
+                    Log::error('✗ Step 1 FAILED: Could not enable user in Azure AD', [
+                        'user_id' => $user->Id,
+                        'azure_id' => $azureId,
+                        'error' => $azureException->getMessage(),
+                    ]);
+
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Failed to enable user in Azure AD: ' . $azureException->getMessage(),
+                        'error' => $azureException->getMessage(),
+                    ], 500);
+                }
             }
 
             // STEP 2: Update database
             Log::info('Step 2: Updating database...', [
                 'user_id' => $user->Id,
+                'azure_enabled' => $azureEnabled,
+                'azure_not_found' => $azureNotFound,
+                'azure_id_updated' => $azureIdUpdated,
             ]);
 
             try {
-                $dbSuccess = $user->enable(Auth::user()->name ?? Auth::id() ?? 'system');
+                $updateData = [
+                    'Status' => 'Active',
+                    'accountEnabled' => 1,
+                ];
 
-                if (! $dbSuccess) {
-                    throw new \Exception('Database update returned false');
+                if ($azureIdUpdated && !empty($azureId)) {
+                    $updateData['AzureId'] = $azureId;
+                }
+
+                $dbSuccess = DB::connection('sqlsrv')
+                    ->table('Azure_Users')
+                    ->where('Id', $user->Id)
+                    ->update($updateData);
+
+                if ($dbSuccess === false) {
+                    throw new \Exception('Database update failed');
                 }
 
                 Log::info('✓ Step 2: Database updated successfully', [
                     'user_id' => $user->Id,
+                    'rows_affected' => $dbSuccess,
                 ]);
             } catch (\Exception $dbError) {
-                Log::error('✗ Step 2 FAILED: Database update failed - ROLLING BACK Azure', [
+                Log::error('✗ Step 2 FAILED: Database update failed', [
                     'user_id' => $user->Id,
                     'error' => $dbError->getMessage(),
                 ]);
 
-                // ROLLBACK: Re-disable user in Azure AD
-                try {
-                    $azureService->disableUser($user->AzureId);
+                // ROLLBACK: Only if we actually enabled in Azure
+                if ($azureEnabled && !$azureNotFound && !empty($azureId)) {
+                    try {
+                        $azureService = app(\App\Services\AzureGraphService::class);
+                        $azureService->disableUser($azureId);
 
-                    Log::warning('⚠ ROLLBACK SUCCESSFUL: User re-disabled in Azure AD', [
-                        'user_id' => $user->Id,
-                        'azure_id' => $user->AzureId,
-                    ]);
+                        Log::warning('⚠ ROLLBACK SUCCESSFUL: User re-disabled in Azure AD', [
+                            'user_id' => $user->Id,
+                            'azure_id' => $azureId,
+                        ]);
 
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Database update failed. User remains disabled (rollback successful).',
-                        'error' => 'Database error: ' . $dbError->getMessage(),
-                    ], 500);
-                } catch (\Exception $rollbackError) {
-                    Log::critical('✗ ROLLBACK FAILED: User enabled in Azure but database not updated!', [
-                        'user_id' => $user->Id,
-                        'azure_id' => $user->AzureId,
-                        'db_error' => $dbError->getMessage(),
-                        'rollback_error' => $rollbackError->getMessage(),
-                        'action_required' => 'MANUAL INTERVENTION NEEDED',
-                    ]);
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Database update failed. User remains disabled (rollback successful).',
+                            'error' => 'Database error: ' . $dbError->getMessage(),
+                        ], 500);
+                    } catch (\Exception $rollbackError) {
+                        Log::critical('✗ ROLLBACK FAILED: User enabled in Azure but database not updated!', [
+                            'user_id' => $user->Id,
+                            'azure_id' => $azureId,
+                            'db_error' => $dbError->getMessage(),
+                            'rollback_error' => $rollbackError->getMessage(),
+                            'action_required' => 'MANUAL INTERVENTION NEEDED',
+                        ]);
 
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'CRITICAL ERROR: User enabled in Azure AD but database update failed. Rollback also failed. Manual intervention required.',
-                        'error' => [
-                            'database' => $dbError->getMessage(),
-                            'rollback' => $rollbackError->getMessage(),
-                        ],
-                        'user_id' => $user->Id,
-                        'azure_id' => $user->AzureId,
-                    ], 500);
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'CRITICAL ERROR: User enabled in Azure AD but database update failed. Manual intervention required.',
+                            'error' => [
+                                'database' => $dbError->getMessage(),
+                                'rollback' => $rollbackError->getMessage(),
+                            ],
+                            'user_id' => $user->Id,
+                            'azure_id' => $azureId,
+                        ], 500);
+                    }
                 }
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to update database: ' . $dbError->getMessage(),
+                ], 500);
             }
 
             // Log activity
@@ -3158,7 +3457,13 @@ class AzureUserManagementController extends Controller
                     $user->Id,
                     'user.enabled',
                     'User account enabled',
-                    ['enabled_by' => Auth::user()->name ?? Auth::id() ?? 'system']
+                    [
+                        'enabled_by' => Auth::user()->name ?? Auth::id() ?? 'system',
+                        'azure_enabled' => $azureEnabled,
+                        'azure_not_found' => $azureNotFound,
+                        'azure_id_updated' => $azureIdUpdated,
+                        'final_azure_id' => $azureId,
+                    ]
                 );
             } catch (\Exception $e) {
                 Log::warning('Failed to log user activity', [
@@ -3169,48 +3474,31 @@ class AzureUserManagementController extends Controller
 
             Log::info('=== USER ENABLED SUCCESSFULLY ===', [
                 'user_id' => $user->Id,
-                'azure_id' => $user->AzureId,
+                'azure_id' => $azureId,
                 'enabled_by' => Auth::user()->name ?? Auth::id() ?? 'system',
+                'azure_action' => $azureEnabled ? 'enabled' : ($azureNotFound ? 'not_found' : 'skipped'),
+                'azure_id_corrected' => $azureIdUpdated,
             ]);
 
-            // Get user's module assignments to inform about re-provisioning
-            $hasD365 = DB::connection('sqlsrv')
-                ->table('Azure_Application_UserMapping')
-                ->where('user_id', $user->userPrincipalName)
-                ->where('ApplicationName', 'LIKE', '%D365%')
-                ->where('IsActive', 1)
-                ->where('IsDelete', 0)
-                ->exists();
-
-            $hasOPS = DB::connection('sqlsrv')
-                ->table('Azure_Application_UserMapping')
-                ->where('user_id', $user->userPrincipalName)
-                ->where('ApplicationName', 'LIKE', '%OPS%')
-                ->where('IsActive', 1)
-                ->where('IsDelete', 0)
-                ->exists();
-
-            $provisioningMessage = '';
-            if ($hasD365 || $hasOPS) {
-                $systems = [];
-                if ($hasD365) {
-                    $systems[] = 'D365';
-                }
-                if ($hasOPS) {
-                    $systems[] = 'SCM';
-                }
-
-                $provisioningMessage = "\n\nNote: User may need to be re-provisioned to: " . implode(', ', $systems) . '. Please visit the user detail page to provision.';
+            // Build response message
+            $message = '✅ User has been enabled successfully!';
+            if ($azureIdUpdated) {
+                $message .= ' Azure ID was corrected during the process.';
+            }
+            if (!$azureEnabled && !empty($azureId)) {
+                $message .= ' Note: Could not enable in Azure AD (timeout or error), but local status updated.';
             }
 
             return response()->json([
                 'success' => true,
-                'message' => 'User has been enabled successfully. They can now access systems.' . $provisioningMessage,
-                'requires_provisioning' => $hasD365 || $hasOPS,
-                'systems' => [
-                    'd365' => $hasD365,
-                    'scm' => $hasOPS,
+                'message' => $message,
+                'details' => [
+                    'azure_enabled' => $azureEnabled,
+                    'azure_not_found' => $azureNotFound,
+                    'azure_id_updated' => $azureIdUpdated,
+                    'local_status_updated' => true,
                 ],
+                'reload' => true  // ← ADDED: Trigger page reload
             ]);
         } catch (\Exception $e) {
             Log::error('Unexpected error enabling user', [
@@ -3221,7 +3509,135 @@ class AzureUserManagementController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'An unexpected error occurred: ' . $e->getMessage(),
+                'message' => '❌ An unexpected error occurred: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Diagnostic endpoint to check Azure ID issues
+     */
+    public function diagnoseAzureId(AzureUser $user)
+    {
+        try {
+            // Get data from multiple sources
+            $modelAzureId = $user->AzureId;
+
+            $dbUser = DB::connection('sqlsrv')
+                ->table('Azure_Users')
+                ->select('AzureId', 'userPrincipalName', 'displayName')
+                ->where('Id', $user->Id)
+                ->first();
+
+            $dbAzureId = $dbUser->AzureId ?? null;
+
+            // Check Azure AD
+            $azureService = app(\App\Services\AzureGraphService::class);
+            $azureUser = null;
+
+            try {
+                if (!empty($dbAzureId) && $this->isValidUuid($dbAzureId)) {
+                    $azureUser = $azureService->getUser($dbAzureId);
+                }
+            } catch (\Exception $e) {
+                // Try by email
+                try {
+                    $azureUser = $azureService->findUserByUPN($user->userPrincipalName);
+                } catch (\Exception $e2) {
+                    // Both failed
+                }
+            }
+
+            $diagnosis = [
+                'user_id' => $user->Id,
+                'email' => $user->userPrincipalName,
+                'model_azure_id' => $modelAzureId,
+                'model_azure_id_valid' => $this->isValidUuid($modelAzureId),
+                'db_azure_id' => $dbAzureId,
+                'db_azure_id_valid' => $this->isValidUuid($dbAzureId),
+                'azure_ad_found' => !empty($azureUser),
+                'azure_ad_id' => $azureUser['id'] ?? null,
+                'match' => ($dbAzureId && $azureUser) ? trim($dbAzureId) === trim($azureUser['id'] ?? '') : false,
+                'current_status' => $user->Status,
+            ];
+
+            return response()->json([
+                'success' => true,
+                'diagnosis' => $diagnosis,
+                'recommendation' => $this->getAzureIdRecommendation($diagnosis),
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Diagnosis failed: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    private function getAzureIdRecommendation(array $diagnosis): string
+    {
+        if (!$diagnosis['db_azure_id_valid']) {
+            return 'Azure ID in database is invalid. Check data integrity.';
+        }
+
+        if (!$diagnosis['azure_ad_found']) {
+            return 'User not found in Azure AD. May have been deleted or never created.';
+        }
+
+        if (!$diagnosis['match']) {
+            return 'Azure ID mismatch. Database: ' . $diagnosis['db_azure_id'] .
+                ', Azure AD: ' . $diagnosis['azure_ad_id'];
+        }
+
+        return 'Azure ID is valid and matches.';
+    }
+
+    /**
+     * Repair Azure ID for a user
+     */
+    public function repairAzureId(AzureUser $user)
+    {
+        try {
+            $azureService = app(\App\Services\AzureGraphService::class);
+
+            // Try to find user in Azure AD
+            $azureUser = $azureService->findUserByUPN($user->userPrincipalName);
+
+            if (!$azureUser || !isset($azureUser['id'])) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'User not found in Azure AD',
+                ], 404);
+            }
+
+            $correctAzureId = trim($azureUser['id']);
+
+            // Update database
+            DB::connection('sqlsrv')
+                ->table('Azure_Users')
+                ->where('Id', $user->Id)
+                ->update([
+                    'AzureId' => $correctAzureId,
+                    'LastModifiedOn' => DB::raw('GETDATE()'),
+                    'LastModifiedBy' => Auth::id(),
+                ]);
+
+            Log::info('Azure ID repaired', [
+                'user_id' => $user->Id,
+                'old_azure_id' => $user->AzureId,
+                'new_azure_id' => $correctAzureId,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Azure ID repaired successfully',
+                'old_azure_id' => $user->AzureId,
+                'new_azure_id' => $correctAzureId,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Repair failed: ' . $e->getMessage(),
             ], 500);
         }
     }
@@ -3241,7 +3657,7 @@ class AzureUserManagementController extends Controller
             ]);
 
             // Check if user is provisioned to Azure
-            if (empty($user->AzureId)) {
+            if (!$user->isProvisionedToAzure()) {
                 Log::warning('Cannot reset password - user not provisioned to Azure', [
                     'user_id' => $user->Id,
                     'email' => $user->userPrincipalName,
@@ -3302,10 +3718,9 @@ class AzureUserManagementController extends Controller
     public function getStatus(AzureUser $user)
     {
         return response()->json([
-            'id' => $user->id,
-            'status' => $user->status,
-            'disabled_at' => $user->disabled_at,
-            'last_login_at' => $user->last_login_at,
+            'id'     => $user->Id,
+            'status' => $user->Status,
+            'email'  => $user->email,  // accessor in your model
             // 'is_provisioned' => $user->isProvisionedToAzure(),
         ]);
     }
@@ -3619,7 +4034,7 @@ class AzureUserManagementController extends Controller
                                 ]);
                             }
                         } else {
-                            if (empty($user->AzureId)) {
+                            if (!$user->isProvisionedToAzure()) {
                                 Log::debug('⊘ D365 provisioning skipped - no Azure ID', [
                                     'user_id' => $user->Id,
                                     'upn' => $user->userPrincipalName,
@@ -3765,7 +4180,7 @@ class AzureUserManagementController extends Controller
     private function checkUserEligibility($user): array
     {
         // Check 1: Azure AD provisioning
-        if (empty($user->AzureId)) {
+        if (!$user->isProvisionedToAzure()) {
             return [
                 'can_activate' => false,
                 'reason' => 'Not provisioned to Azure AD',
@@ -3980,167 +4395,6 @@ class AzureUserManagementController extends Controller
         ];
     }
 
-    // /**
-    //  * Bulk insert assignments with proper error handling
-    //  *
-    //  * @return array ['success' => int, 'failed' => array, 'skipped' => int]
-    //  */
-    // private function bulkInsertAssignments(
-    //     string $userPrincipalName,
-    //     string $displayName,
-    //     array $assignments,
-    //     ?string $azureUserId = null
-    // ): array {
-    //     $stats = [
-    //         'success' => 0,
-    //         'failed' => [],
-    //         'skipped' => 0,
-    //     ];
-
-    //     // Prepare bulk insert data
-    //     $insertData = [];
-
-    //     foreach ($assignments as $index => $assignment) {
-    //         // Skip if already exists
-    //         if ($this->assignmentExists($userPrincipalName, $assignment)) {
-    //             $stats['skipped']++;
-    //             Log::debug('Skipping duplicate assignment', [
-    //                 'user' => $userPrincipalName,
-    //                 'module' => $assignment['application_name'] ?? 'unknown',
-    //                 'location' => $assignment['location_code'],
-    //                 'role' => $assignment['role_code'],
-    //             ]);
-
-    //             continue;
-    //         }
-
-    //         // Generate new GUID
-    //         $mappingId = DB::connection('sqlsrv')
-    //             ->selectOne('SELECT NEWID() as newId')->newId;
-
-    //         $insertData[] = [
-    //             'Id' => $mappingId,
-    //             'AzureUserID' => $azureUserId,
-    //             'user_id' => $userPrincipalName,
-    //             'application_id' => $assignment['application_id'],
-    //             'Username' => $displayName,
-    //             'ApplicationName' => $assignment['application_name'],
-    //             'RoleCode' => $assignment['role_code'],
-    //             'RoleID' => $assignment['role_id'],
-    //             'OfficeCode' => $assignment['location_code'],
-    //             'OfficeID' => $assignment['location_id'],
-    //             'IsActive' => 1,
-    //             'IsDelete' => 0,
-    //             'CreatedBy' => Auth::id() ?? 'system',
-    //             'CreatedOn' => DB::raw('GETDATE()'),
-    //             'LastModifiedBy' => null,
-    //             'LastModifiedOn' => null,
-    //             // Remove FunctionCode and FunctionID from here
-    //         ];
-    //     }
-
-    //     // Batch insert (chunks of 100 to avoid SQL limits)
-    //     if (! empty($insertData)) {
-    //         $chunks = array_chunk($insertData, 100);
-
-    //         foreach ($chunks as $chunkIndex => $chunk) {
-    //             try {
-    //                 DB::connection('sqlsrv')
-    //                     ->table('Azure_Application_UserMapping')
-    //                     ->insert($chunk);
-
-    //                 $stats['success'] += count($chunk);
-
-    //                 Log::info('Bulk insert chunk completed', [
-    //                     'chunk' => $chunkIndex + 1,
-    //                     'records' => count($chunk),
-    //                 ]);
-    //             } catch (\Exception $e) {
-    //                 // If bulk fails, try individual inserts to identify problem record
-    //                 foreach ($chunk as $record) {
-    //                     try {
-    //                         DB::connection('sqlsrv')
-    //                             ->table('Azure_Application_UserMapping')
-    //                             ->insert($record);
-
-    //                         $stats['success']++;
-    //                     } catch (\Exception $individualError) {
-    //                         $stats['failed'][] = [
-    //                             'record' => $record,
-    //                             'error' => $individualError->getMessage(),
-    //                         ];
-    //                     }
-    //                 }
-    //             }
-    //         }
-    //     }
-
-    //     // ============================================================================
-    //     // INSERT FUNCTIONS INTO SEPARATE TABLE (Azure_Application_UserFunction)
-    //     // ============================================================================
-    //     $functionInsertData = [];
-    //     $functionsAdded = []; // Track which office+module combinations already have functions
-
-    //     foreach ($assignments as $assignment) {
-    //         // Only insert if function exists
-    //         if (! empty($assignment['function_id']) && ! empty($assignment['function_code'])) {
-
-    //             // Create unique key for this office+module combination
-    //             $key = $assignment['location_code'].'|'.$assignment['application_id'].'|'.$assignment['function_code'];
-
-    //             // Only add function once per office+module (not per role)
-    //             if (! in_array($key, $functionsAdded)) {
-    //                 $functionId = DB::connection('sqlsrv')->selectOne('SELECT NEWID() as newId')->newId;
-
-    //                 $functionInsertData[] = [
-    //                     'Id' => $functionId,
-    //                     'AzureUserID' => $azureUserId,
-    //                     'user_id' => $userPrincipalName,
-    //                     'application_id' => $assignment['application_id'],
-    //                     'Username' => $displayName,
-    //                     'ApplicationName' => $assignment['application_name'],
-    //                     'FunctionCode' => $assignment['function_code'],
-    //                     'FunctionID' => $assignment['function_id'],
-    //                     'OfficeCode' => $assignment['location_code'],
-    //                     'OfficeID' => $assignment['location_id'],
-    //                     'IsActive' => 1,
-    //                     'IsDelete' => 0,
-    //                     'CreatedBy' => Auth::id() ?? 'system',
-    //                     'CreatedOn' => DB::raw('GETDATE()'),
-    //                     'LastModifiedBy' => null,
-    //                     'LastModifiedOn' => null,
-    //                 ];
-
-    //                 $functionsAdded[] = $key;
-    //             }
-    //         }
-    //     }
-
-    //     // Insert functions if any
-    //     if (! empty($functionInsertData)) {
-    //         try {
-    //             $chunks = array_chunk($functionInsertData, 100);
-
-    //             foreach ($chunks as $chunk) {
-    //                 DB::connection('sqlsrv')
-    //                     ->table('Azure_Application_UserFunction')
-    //                     ->insert($chunk);
-    //             }
-
-    //             Log::info('Functions inserted successfully', [
-    //                 'count' => count($functionInsertData),
-    //             ]);
-    //         } catch (\Exception $e) {
-    //             Log::error('Failed to insert functions', [
-    //                 'error' => $e->getMessage(),
-    //                 'count' => count($functionInsertData),
-    //             ]);
-    //         }
-    //     }
-
-    //     return $stats;
-    // }
-
     /**
      * Retry D365 provisioning for a specific user
      *
@@ -4156,7 +4410,7 @@ class AzureUserManagementController extends Controller
             ]);
 
             // Validation 1: Check if Azure ID exists
-            if (empty($user->AzureId)) {
+            if (!$user->isProvisionedToAzure()) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Cannot provision to D365: User not provisioned to Azure AD',
