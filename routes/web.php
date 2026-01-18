@@ -8,6 +8,7 @@ use App\Http\Controllers\JimiWebhookController;
 use App\Http\Controllers\TrackerController;
 use App\Http\Controllers\AzureUserManagementController;
 use App\Http\Controllers\OdooSyncController;
+
 use App\Models\Category;
 use App\Models\Office;
 use App\Models\User;
@@ -129,6 +130,7 @@ Route::group(['middleware' => ['auth', 'HtmlMinifier']], function () {
 
     Route::post('users/pass/{user}', [App\Http\Controllers\UsersController::class, 'pass'])
         ->name('user.update.password');
+
 
 
     /**
@@ -462,6 +464,16 @@ Route::prefix('azure')->name('azure.')->middleware(['auth'])->group(function () 
         Route::get('/{user}/modules/{module}/assignments', [App\Http\Controllers\AzureUserManagementController::class, 'getUserModuleAssignments'])
             ->name('module-assignments')
             ->middleware('throttle:api');
+
+        // GET: Get user's current application access status
+        Route::get('/{user}/application-status', [App\Http\Controllers\AzureUserManagementController::class, 'getUserApplicationStatus'])
+            ->name('application-status')
+            ->middleware('throttle:api');
+
+        // POST: Manage user access across multiple applications
+        Route::post('/{user}/manage-access', [App\Http\Controllers\AzureUserManagementController::class, 'manageUserApplicationAccess'])
+            ->name('manage-access')
+            ->middleware('throttle:user_actions');
 
         // ============================================================================
         // GENERIC CRUD ROUTES - Must come after all specific {user} routes
@@ -1111,25 +1123,39 @@ Route::get('/debug-import-data', function () {
 // VEHICLE TRACKER SYSTEM ROUTES (GPS/Trip Tracking)
 // ============================================================================
 
+
+// Webhook route (public - no auth)
+Route::post('/webhooks/jimi/notifications', [JimiWebhookController::class, 'receiveNotification']);
+
+// Tracker routes (authenticated)
 Route::middleware(['auth'])->prefix('tracker')->name('tracker.')->group(function () {
 
+    // Dashboard
     Route::get('/dashboard', [TrackerController::class, 'dashboard'])->name('dashboard');
-    // Remove ->name('dashboard') - it's already prefixed as 'tracker.dashboard'
+
+    // Trips
     Route::get('/trips/get/{filter?}', [TrackerController::class, 'getTrips']);
     Route::get('/trips/{id}', [TrackerController::class, 'getTripDetails']);
-
-    Route::get('/vehicles/list', [TrackerController::class, 'getVehicles']);
-    Route::get('/jobs/available', [TrackerController::class, 'getAvailableJobs']);
-    Route::get('/locations', [TrackerController::class, 'getLocations']);
-
     Route::post('/trips/create', [TrackerController::class, 'createTrip']);
     Route::post('/trips/{tripId}/start', [TrackerController::class, 'startTrip']);
     Route::post('/trips/{tripId}/end', [TrackerController::class, 'endTrip']);
-    Route::post('/trips/{tripId}/jobs/add', [TrackerController::class, 'addJobToTrip']);
 
-    // Correct job actions — require both tripId and jobId
+    // Jobs
+    Route::post('/trips/{tripId}/jobs/add', [TrackerController::class, 'addJobToTrip']);
     Route::post('/trips/{tripId}/jobs/{jobId}/start', [TrackerController::class, 'startJob']);
     Route::post('/trips/{tripId}/jobs/{jobId}/complete', [TrackerController::class, 'completeJob']);
+    Route::get('/jobs/available', [TrackerController::class, 'getAvailableJobs']);
+
+    // Vehicles & Locations
+    Route::get('/vehicles/list', [TrackerController::class, 'getVehicles']);
+    Route::get('/locations', [TrackerController::class, 'getLocations']);
+
+    // Notifications
+    Route::get('/notifications/get', [TrackerController::class, 'getNotifications'])->name('notifications.get');
+    Route::get('/notifications/alarm-types', [TrackerController::class, 'getAlarmTypes'])->name('notifications.alarm-types');
+    Route::get('/notifications/stats', [TrackerController::class, 'getNotificationStats'])->name('notifications.stats');
+    Route::post('/notifications/{id}/read', [TrackerController::class, 'markNotificationAsRead'])->name('notifications.read');
+    Route::delete('/notifications/{id}', [TrackerController::class, 'deleteNotification'])->name('notifications.delete');
 });
 
 Route::middleware(['auth'])->prefix('jimi-test')->group(function () {
@@ -1321,20 +1347,725 @@ Route::prefix('email-accounts')->group(function () {
     Route::delete('/', [EmailAccountController::class, 'destroy']);
 });
 
-/*
-|--------------------------------------------------------------------------
-| Alternative RESTful Route (if preferred)
-|--------------------------------------------------------------------------
-|
-| You can also use Laravel's resource routing:
-| Route::apiResource('email-accounts', EmailAccountController::class);
-|
-| But the custom routes above give you more control over the endpoints.
-|
-*/
 
-Route::get('/test-simple', function () {
-    return 'Hello! Routing works!';
+Route::get('/test-sp-debug', function() {
+    $tests = [];
+    
+    // Test different applications
+    $apps = ['OPS', 'D365 LIVE', 'BIZ PRO', 'FIT Express'];
+    
+    foreach ($apps as $app) {
+        try {
+            // Test roles SP
+            $roles = DB::connection('sqlsrv')
+                ->select('EXEC sp_Azure_UserResourceRole @ApplicationCode = ?', [$app]);
+            
+            $tests[$app] = [
+                'roles_count' => count($roles),
+                'roles_sample' => array_slice($roles, 0, 2),
+                'error' => null
+            ];
+        } catch (\Exception $e) {
+            $tests[$app] = [
+                'roles_count' => 0,
+                'roles_sample' => [],
+                'error' => $e->getMessage()
+            ];
+        }
+    }
+    
+    // Test functions SP
+    try {
+        $functions = DB::connection('sqlsrv')
+            ->select('EXEC sp_Azure_UserResourcefunction');
+        
+        $tests['Functions'] = [
+            'count' => count($functions),
+            'sample' => array_slice($functions, 0, 2),
+            'error' => null
+        ];
+    } catch (\Exception $e) {
+        $tests['Functions'] = [
+            'count' => 0,
+            'sample' => [],
+            'error' => $e->getMessage()
+        ];
+    }
+    
+    return response()->json($tests);
 });
-// routes/web.php or routes/api.php
-Route::post('/webhooks/jimi/notifications', [JimiWebhookController::class, 'receiveNotification']);
+
+// Add this test route to your routes file (web.php or api.php)
+
+Route::get('/test-sp-debug', function() {
+    $tests = [];
+    
+    // Test different applications
+    $apps = ['OPS', 'D365 LIVE', 'BIZ PRO', 'FIT Express'];
+    
+    foreach ($apps as $app) {
+        try {
+            // Test roles SP
+            $roles = DB::connection('sqlsrv')
+                ->select('EXEC sp_Azure_UserResourceRole @ApplicationCode = ?', [$app]);
+            
+            $tests[$app] = [
+                'roles_count' => count($roles),
+                'roles_sample' => array_slice($roles, 0, 2),
+                'error' => null
+            ];
+        } catch (\Exception $e) {
+            $tests[$app] = [
+                'roles_count' => 0,
+                'roles_sample' => [],
+                'error' => $e->getMessage()
+            ];
+        }
+    }
+    
+    // Test functions SP
+    try {
+        $functions = DB::connection('sqlsrv')
+            ->select('EXEC sp_Azure_UserResourcefunction');
+        
+        $tests['Functions'] = [
+            'count' => count($functions),
+            'sample' => array_slice($functions, 0, 2),
+            'error' => null
+        ];
+    } catch (\Exception $e) {
+        $tests['Functions'] = [
+            'count' => 0,
+            'sample' => [],
+            'error' => $e->getMessage()
+        ];
+    }
+    
+    return response()->json($tests);
+});
+
+// sp_UserCreation_ResourceRole
+
+
+
+Route::get('/azure/check-user', function (Illuminate\Http\Request $request) {
+    try {
+        // Get search parameter
+        $azureId = $request->query('azure_id');
+        $email = $request->query('email');
+        $employeeId = $request->query('employee_id');
+
+        if (!$azureId && !$email && !$employeeId) {
+            return response()->json([
+                'error' => 'Please provide at least one parameter: azure_id, email, or employee_id',
+                'examples' => [
+                    'By Azure ID' => url('/azure/check-user?azure_id=824F470D-21D3-4BD5-9AA3-044861F50BA9'),
+                    'By Email' => url('/azure/check-user?email=c.c@gmail.com'),
+                    'By Employee ID' => url('/azure/check-user?employee_id=EMP001'),
+                ]
+            ], 400);
+        }
+
+        // Build the query
+        $query = DB::connection('sqlsrv')
+            ->table('Azure_Users')
+            ->select([
+                'Id',
+                'AzureId',
+                'userPrincipalName',
+                'displayName',
+                'mail',
+                'EmployeCode',
+                'Status',
+                'accountEnabled',
+                'jobTitle',
+                'department',
+                'companyName',
+                'officeLocation',
+                'mobilePhone',
+                'telephoneNumber',
+                'createdDateTime',
+                // External system IDs
+                'OdooUserId',
+                'OdooEmployeeId',
+                'SCMUserID',
+                'SCMResourceID',
+                'BizUserID',
+                'D365UserID',
+            ]);
+
+        // Apply filters based on provided parameters
+        if ($azureId) {
+            $query->where('AzureId', $azureId);
+        }
+
+        if ($email) {
+            $query->where(function($q) use ($email) {
+                $q->where('userPrincipalName', $email)
+                  ->orWhere('mail', $email);
+            });
+        }
+
+        if ($employeeId) {
+            $query->where('EmployeCode', $employeeId);
+        }
+
+        $user = $query->first();
+
+        if (!$user) {
+            Log::info('User not found in Azure_Users table', [
+                'search_params' => [
+                    'azure_id' => $azureId,
+                    'email' => $email,
+                    'employee_id' => $employeeId,
+                ]
+            ]);
+
+            return response()->json([
+                'exists' => false,
+                'message' => 'User not found in Azure_Users table',
+                'search_params' => array_filter([
+                    'azure_id' => $azureId,
+                    'email' => $email,
+                    'employee_id' => $employeeId,
+                ])
+            ], 404);
+        }
+
+        // Get module assignments
+        $moduleAssignments = DB::connection('sqlsrv')
+            ->table('Azure_Application_UserMapping')
+            ->where('user_id', $user->userPrincipalName)
+            ->where('IsActive', 1)
+            ->where('IsDelete', 0)
+            ->select([
+                'ApplicationName',
+                'RoleCode',
+                'OfficeCode',
+                'CreatedOn',
+            ])
+            ->get();
+
+        // Get function assignments (for SCM modules)
+        $functionAssignments = DB::connection('sqlsrv')
+            ->table('Azure_Application_UserFunction')
+            ->where('user_id', $user->userPrincipalName)
+            ->where('IsActive', 1)
+            ->where('IsDelete', 0)
+            ->select([
+                'ApplicationName',
+                'FunctionCode',
+                'OfficeCode',
+                'CreatedOn',
+            ])
+            ->get();
+
+        // Group modules
+        $modules = $moduleAssignments->groupBy('ApplicationName')->map(function($assignments, $moduleName) {
+            return [
+                'name' => $moduleName,
+                'roles' => $assignments->pluck('RoleCode')->unique()->values(),
+                'locations' => $assignments->pluck('OfficeCode')->unique()->values(),
+                'count' => $assignments->count(),
+            ];
+        });
+
+        $functions = $functionAssignments->groupBy('ApplicationName')->map(function($assignments, $moduleName) {
+            return [
+                'name' => $moduleName,
+                'functions' => $assignments->pluck('FunctionCode')->unique()->values(),
+                'locations' => $assignments->pluck('OfficeCode')->unique()->values(),
+                'count' => $assignments->count(),
+            ];
+        });
+
+        Log::info('User found in Azure_Users table', [
+            'user_id' => $user->Id,
+            'azure_id' => $user->AzureId,
+            'email' => $user->userPrincipalName,
+            'status' => $user->Status,
+            'modules_count' => $modules->count(),
+        ]);
+
+        return response()->json([
+            'exists' => true,
+            'message' => 'User found in database',
+            'user' => [
+                'id' => $user->Id,
+                'azure_id' => $user->AzureId,
+                'email' => $user->userPrincipalName,
+                'display_name' => $user->displayName,
+                'employee_code' => $user->EmployeCode,
+                'status' => $user->Status,
+                'account_enabled' => (bool)$user->accountEnabled,
+                'job_title' => $user->jobTitle,
+                'department' => $user->department,
+                'company' => $user->companyName,
+                'office_location' => $user->officeLocation,
+                'mobile_phone' => $user->mobilePhone,
+                'business_phone' => $user->telephoneNumber,
+                'created_date' => $user->createdDateTime,
+            ],
+            'external_systems' => [
+                'odoo' => [
+                    'provisioned' => !empty($user->OdooUserId),
+                    'user_id' => $user->OdooUserId,
+                    'employee_id' => $user->OdooEmployeeId,
+                ],
+                'scm' => [
+                    'provisioned' => !empty($user->SCMUserID),
+                    'user_id' => $user->SCMUserID,
+                    'resource_id' => $user->SCMResourceID,
+                ],
+                'biz' => [
+                    'provisioned' => !empty($user->BizUserID),
+                    'user_id' => $user->BizUserID,
+                ],
+                'd365' => [
+                    'provisioned' => !empty($user->D365UserID),
+                    'user_id' => $user->D365UserID,
+                ],
+            ],
+            'modules' => $modules->values(),
+            'functions' => $functions->values(),
+            'summary' => [
+                'total_modules' => $modules->count(),
+                'total_module_assignments' => $moduleAssignments->count(),
+                'total_function_assignments' => $functionAssignments->count(),
+                'is_active' => $user->Status === 'Active',
+                'is_provisioned_to_azure' => !empty($user->AzureId),
+            ]
+        ]);
+
+    } catch (\Exception $e) {
+        Log::error('Error checking user in database', [
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString(),
+        ]);
+
+        return response()->json([
+            'error' => 'Database error occurred',
+            'message' => $e->getMessage(),
+        ], 500);
+    }
+})->name('azure.check-user');
+
+
+
+// Route::get('/admin/repair-azure-ids', function() {
+//     $azureService = app(\App\Services\AzureGraphService::class);
+    
+//     $user = DB::connection('sqlsrv')
+//         ->table('Azure_Users')
+//         ->where('userPrincipalName', 'c.c@gmail.com')
+//         ->first();
+    
+//     if (!$user) {
+//         return 'User not found';
+//     }
+    
+//     if (!empty($user->AzureId)) {
+//         return 'User already has Azure ID: ' . $user->AzureId;
+//     }
+    
+//     try {
+//         // Look up in Azure AD
+//         $azureUser = $azureService->findUserByUPN('c.c@gmail.com');
+        
+//         if ($azureUser && isset($azureUser['id'])) {
+//             // Update database
+//             DB::connection('sqlsrv')
+//                 ->table('Azure_Users')
+//                 ->where('Id', $user->Id)
+//                 ->update([
+//                     'AzureId' => $azureUser['id'],
+//                     'Status' => 'Active',
+//                 ]);
+            
+//             return 'SUCCESS! Azure ID updated: ' . $azureUser['id'];
+//         } else {
+//             return 'User not found in Azure AD - needs provisioning';
+//         }
+//     } catch (\Exception $e) {
+//         return 'Error: ' . $e->getMessage();
+//     }
+// })->middleware('auth');
+
+// Azure ID Repair Route
+Route::get('/azure/repair-azure-id', function (Illuminate\Http\Request $request) {
+    try {
+        // Get search parameters
+        $azureId = $request->query('azure_id');
+        $email = $request->query('email');
+        $employeeId = $request->query('employee_id');
+        $userId = $request->query('user_id');
+
+        if (!$azureId && !$email && !$employeeId && !$userId) {
+            return response()->json([
+                'error' => 'Please provide at least one parameter',
+                'examples' => [
+                    'By Email' => url('/azure/repair-azure-id?email=cynthia.clarke@freight-in-time.com'),
+                    'By Employee ID' => url('/azure/repair-azure-id?employee_id=EMP001'),
+                ]
+            ], 400);
+        }
+
+        // Find user
+        $query = DB::connection('sqlsrv')->table('Azure_Users');
+
+        if ($userId) {
+            $query->where('Id', $userId);
+        } elseif ($azureId) {
+            $query->where('AzureId', $azureId);
+        } elseif ($email) {
+            $query->where(function($q) use ($email) {
+                $q->where('userPrincipalName', $email)->orWhere('mail', $email);
+            });
+        } elseif ($employeeId) {
+            $query->where('EmployeCode', $employeeId);
+        }
+
+        $user = $query->first();
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'User not found in database',
+            ], 404);
+        }
+
+        // Check Azure AD
+        $azureService = app(\App\Services\AzureGraphService::class);
+        $azureUser = null;
+
+        try {
+            $azureUser = $azureService->findUserByUPN($user->userPrincipalName);
+        } catch (\Exception $e) {
+            // Not found in Azure AD
+        }
+
+        $azureIdFromAD = $azureUser['id'] ?? null;
+        $needsRepair = (!empty($azureIdFromAD) && $user->AzureId !== $azureIdFromAD);
+
+        // Auto repair if requested
+        $autoRepair = filter_var($request->query('auto_repair', 'false'), FILTER_VALIDATE_BOOLEAN);
+        $repaired = false;
+
+        if ($needsRepair && $autoRepair && $azureIdFromAD) {
+            DB::connection('sqlsrv')
+                ->table('Azure_Users')
+                ->where('Id', $user->Id)
+                ->update(['AzureId' => $azureIdFromAD]);
+            
+            $repaired = true;
+        }
+
+        return response()->json([
+            'success' => true,
+            'user' => [
+                'id' => $user->Id,
+                'email' => $user->userPrincipalName,
+                'display_name' => $user->displayName,
+            ],
+            'database_azure_id' => $user->AzureId,
+            'azure_ad_id' => $azureIdFromAD,
+            'needs_repair' => $needsRepair,
+            'was_repaired' => $repaired,
+            'hint' => $needsRepair && !$autoRepair ? 'Add &auto_repair=true to fix' : null,
+        ]);
+
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'error' => $e->getMessage(),
+        ], 500);
+    }
+});
+
+
+
+// ============================================================================
+// ADD TO: routes/web.php
+// ============================================================================
+
+// View user data from Azure_Users table
+Route::get('/azure/view-user', function (Illuminate\Http\Request $request) {
+    try {
+        $email = $request->query('email');
+        $azureId = $request->query('azure_id');
+        $userId = $request->query('user_id');
+        $employeeId = $request->query('employee_id');
+        $name = $request->query('name');
+
+        if (!$email && !$azureId && !$userId && !$employeeId && !$name) {
+            return response()->json([
+                'error' => 'Please provide at least one search parameter',
+                'examples' => [
+                    'By Email' => url('/azure/view-user?email=cynthia.clarke@freight-in-time.com'),
+                    'By Name' => url('/azure/view-user?name=Cynthia'),
+                    'By Azure ID' => url('/azure/view-user?azure_id=7325baa6-dcea-47f3-9e96-f6cdbc690412'),
+                    'By Employee ID' => url('/azure/view-user?employee_id=EMP001'),
+                ]
+            ], 400);
+        }
+
+        // Build query
+        $query = DB::connection('sqlsrv')->table('Azure_Users');
+
+        if ($userId) {
+            $query->where('Id', $userId);
+        } elseif ($azureId) {
+            $query->where('AzureId', $azureId);
+        } elseif ($email) {
+            $query->where(function($q) use ($email) {
+                $q->where('userPrincipalName', $email)->orWhere('mail', $email);
+            });
+        } elseif ($employeeId) {
+            $query->where('EmployeCode', $employeeId);
+        } elseif ($name) {
+            $query->where('displayName', 'LIKE', "%{$name}%");
+        }
+
+        $user = $query->first();
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'User not found in Azure_Users table',
+                'search_params' => array_filter([
+                    'email' => $email,
+                    'azure_id' => $azureId,
+                    'user_id' => $userId,
+                    'employee_id' => $employeeId,
+                    'name' => $name,
+                ])
+            ], 404);
+        }
+
+        // Get module assignments
+        $modules = DB::connection('sqlsrv')
+            ->table('Azure_Application_UserMapping')
+            ->where('user_id', $user->userPrincipalName)
+            ->where('IsActive', 1)
+            ->where('IsDelete', 0)
+            ->select('ApplicationName', 'RoleCode', 'OfficeCode')
+            ->get()
+            ->groupBy('ApplicationName')
+            ->map(function($items, $module) {
+                return [
+                    'module' => $module,
+                    'roles' => $items->pluck('RoleCode')->unique()->values(),
+                    'locations' => $items->pluck('OfficeCode')->unique()->values(),
+                ];
+            })->values();
+
+        return response()->json([
+            'success' => true,
+            'user' => [
+                // Basic Info
+                'id' => $user->Id,
+                'azure_id' => $user->AzureId,
+                'status' => $user->Status,
+                'account_enabled' => (bool)$user->accountEnabled,
+                
+                // Personal Info
+                'display_name' => $user->displayName,
+                'given_name' => $user->givenName,
+                'surname' => $user->surname,
+                'email' => $user->userPrincipalName,
+                'mail' => $user->mail,
+                
+                // Contact
+                'mobile_phone' => $user->mobilePhone,
+                'telephone' => $user->telephoneNumber,
+                
+                // Work Info
+                'employee_code' => $user->EmployeCode,
+                'job_title' => $user->jobTitle,
+                'department' => $user->department,
+                'company' => $user->companyName,
+                'office_location' => $user->officeLocation,
+                'base_office_code' => $user->BaseOfficeCode,
+                
+                // Location
+                'country' => $user->country,
+                'usage_location' => $user->usageLocation,
+                
+                // External Systems
+                'odoo_user_id' => $user->OdooUserId,
+                'odoo_employee_id' => $user->OdooEmployeeId,
+                'scm_user_id' => $user->SCMUserID,
+                'scm_resource_id' => $user->SCMResourceID,
+                'biz_user_id' => $user->BizUserID,
+                'd365_user_id' => $user->D365UserID,
+                
+                // Timestamps
+                'created_datetime' => $user->createdDateTime,
+                'last_modified_on' => $user->LastModifiedOn ?? null,
+            ],
+            'modules' => $modules,
+            'summary' => [
+                'has_azure_id' => !empty($user->AzureId),
+                'is_active' => $user->Status === 'Active',
+                'modules_count' => $modules->count(),
+                'provisioned_to' => array_filter([
+                    'azure_ad' => !empty($user->AzureId),
+                    'odoo' => !empty($user->OdooUserId),
+                    'scm' => !empty($user->SCMUserID),
+                    'biz' => !empty($user->BizUserID),
+                    'd365' => !empty($user->D365UserID),
+                ]),
+            ]
+        ]);
+
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'error' => $e->getMessage(),
+        ], 500);
+    }
+});
+
+
+
+
+// ============================================================================
+// ADD TO: routes/web.php
+// ============================================================================
+
+// Fix Azure ID by manually providing both user_id and azure_id
+Route::get('/azure/fix-azure-id', function (Illuminate\Http\Request $request) {
+    try {
+        $userId = $request->query('user_id');
+        $azureId = $request->query('azure_id');
+        $verify = filter_var($request->query('verify', 'false'), FILTER_VALIDATE_BOOLEAN);
+
+        if (!$userId || !$azureId) {
+            return response()->json([
+                'error' => 'Both user_id and azure_id are required',
+                'example' => url('/azure/fix-azure-id?user_id=824F47DD-21D3-4BD5-9AA3-044B61F50BA9&azure_id=7325baa6-dcea-47f3-9e96-f6cdbc690412&verify=true'),
+            ], 400);
+        }
+
+        // Get user from database
+        $user = DB::connection('sqlsrv')
+            ->table('Azure_Users')
+            ->where('Id', $userId)
+            ->first();
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'User not found in database',
+            ], 404);
+        }
+
+        // Validate Azure ID format
+        if (!preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $azureId)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid Azure ID format',
+            ], 400);
+        }
+
+        // Check if this Azure ID already exists for another user
+        $existingUser = DB::connection('sqlsrv')
+            ->table('Azure_Users')
+            ->where('AzureId', $azureId)
+            ->where('Id', '!=', $userId)
+            ->first();
+
+        if ($existingUser) {
+            return response()->json([
+                'success' => false,
+                'message' => 'This Azure ID is already assigned to another user',
+                'existing_user' => [
+                    'id' => $existingUser->Id,
+                    'name' => $existingUser->displayName,
+                    'email' => $existingUser->userPrincipalName,
+                ]
+            ], 400);
+        }
+
+        // Verify Azure AD (optional)
+        $azureVerified = false;
+        $azureUserData = null;
+
+        try {
+            $azureService = app(\App\Services\AzureGraphService::class);
+            $azureUserData = $azureService->getUser($azureId);
+            $azureVerified = true;
+        } catch (\Exception $e) {
+            $azureVerified = false;
+        }
+
+        // If not verifying, just show what would be updated
+        if (!$verify) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Preview mode - no changes made',
+                'current_data' => [
+                    'user_id' => $user->Id,
+                    'display_name' => $user->displayName,
+                    'email' => $user->userPrincipalName,
+                    'current_azure_id' => $user->AzureId,
+                ],
+                'proposed_changes' => [
+                    'new_azure_id' => $azureId,
+                ],
+                'azure_verification' => [
+                    'verified' => $azureVerified,
+                    'azure_name' => $azureUserData['displayName'] ?? null,
+                    'azure_email' => $azureUserData['userPrincipalName'] ?? null,
+                ],
+                'warning' => $azureVerified ? null : '⚠️ Could not verify this Azure ID exists in Azure AD',
+                'next_step' => 'Add &verify=true to apply these changes'
+            ]);
+        }
+
+        // Update the database (removed LastModifiedOn)
+        DB::connection('sqlsrv')
+            ->table('Azure_Users')
+            ->where('Id', $userId)
+            ->update([
+                'AzureId' => $azureId,
+            ]);
+
+        Log::info('Azure ID manually updated', [
+            'user_id' => $userId,
+            'old_azure_id' => $user->AzureId,
+            'new_azure_id' => $azureId,
+            'user_name' => $user->displayName,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => '✅ Azure ID updated successfully!',
+            'user' => [
+                'id' => $user->Id,
+                'display_name' => $user->displayName,
+                'email' => $user->userPrincipalName,
+            ],
+            'changes' => [
+                'old_azure_id' => $user->AzureId,
+                'new_azure_id' => $azureId,
+            ],
+            'azure_verification' => [
+                'verified' => $azureVerified,
+                'azure_name' => $azureUserData['displayName'] ?? null,
+                'azure_email' => $azureUserData['userPrincipalName'] ?? null,
+            ],
+            'next_step' => 'Now try updating the user with roles/modules again'
+        ]);
+
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'error' => $e->getMessage(),
+        ], 500);
+    }
+});
+
+
+
+// 7325baa6-dcea-47f3-9e96-f6cdbc690412

@@ -41,7 +41,7 @@ class EtimsInvoices extends Command
             }
         }
 
-        Log::notice("KRA push completed");
+        // Log::notice("KRA push completed");
         return 0;
     }
 

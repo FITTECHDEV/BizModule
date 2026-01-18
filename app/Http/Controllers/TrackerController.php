@@ -2195,44 +2195,132 @@ class TrackerController extends Controller
         return $imeiMap[$vehicleNo] ?? null;
     }
 
+// ========================================
+// NOTIFICATION MANAGEMENT METHODS
+// ========================================
 
-    public function deleteTrips(Request $request)
-    {
-        $request->validate([
-            'trip_nos' => 'required|array|min:1',
-            'trip_nos.*' => 'required|string',
-        ]);
+// public function getNotifications(Request $request)
+// {
+//     try {
+//         $query = DB::connection('sqlsrv')
+//             ->table('Trip_TripNotification as tn')
+//             ->leftJoin('Trip_TripInformation as ti', 'tn.TripInfoID', '=', 'ti.Id')
+//             ->leftJoin('Trip_Jobs as j', 'tn.JobID', '=', 'j.Id')
+//             ->select(
+//                 'tn.*',
+//                 'ti.TripNo',
+//                 'ti.VehicleNo',
+//                 'j.JobNumber'
+//             )
+//             ->where('tn.IsDeleted', 0)
+//             ->orderBy('tn.AlarmTime', 'desc');
 
-        try {
-            DB::transaction(function () use ($request) {
+//         // Filters
+//         if ($request->vehicle_no) {
+//             $query->where('tn.DeviceName', 'like', '%' . $request->vehicle_no . '%');
+//         }
 
-                // Delete child records first
-                DB::table('Trip_TripJobMapping')
-                    ->whereIn('TripInfoID', function ($query) use ($request) {
-                        $query->select('Id')
-                            ->from('Trip_TripInfomation')
-                            ->whereIn('TripNo', $request->trip_nos);
-                    })
-                    ->delete();
+//         if ($request->alarm_type) {
+//             $query->where('tn.AlarmType', $request->alarm_type);
+//         }
 
-                // Delete trips
-                DB::table('Trip_TripInfomation')
-                    ->whereIn('TripNo', $request->trip_nos)
-                    ->delete();
-            });
+//         if ($request->from_date) {
+//             $query->where('tn.AlarmTime', '>=', $request->from_date . ' 00:00:00');
+//         }
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Trips deleted successfully',
-                'trip_nos' => $request->trip_nos,
-            ]);
-        } catch (\Exception $e) {
-            Log::error('Trip deletion failed: ' . $e->getMessage());
+//         if ($request->to_date) {
+//             $query->where('tn.AlarmTime', '<=', $request->to_date . ' 23:59:59');
+//         }
 
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to delete trips',
-            ], 500);
-        }
-    }
+//         if ($request->status) {
+//             $query->where('tn.Status', $request->status);
+//         }
+
+//         // Filter by alarm category
+//         if ($request->category === 'geofence') {
+//             $query->where('tn.AlarmType', '1006');
+//         } elseif ($request->category === 'ignition') {
+//             $query->whereIn('tn.AlarmType', ['1001', '1002']);
+//         } elseif ($request->category === 'power') {
+//             $query->whereIn('tn.AlarmType', ['2', '1003']);
+//         } elseif ($request->category === 'other') {
+//             $query->whereNotIn('tn.AlarmType', ['1006', '1001', '1002', '2', '1003']);
+//         }
+
+//         $notifications = $query->limit(500)->get();
+
+//         return response()->json([
+//             'success' => true,
+//             'data' => $notifications,
+//             'count' => $notifications->count()
+//         ]);
+
+//     } catch (\Exception $e) {
+//         Log::error('Error fetching notifications: ' . $e->getMessage());
+//         return response()->json([
+//             'success' => false,
+//             'message' => 'Error fetching notifications',
+//             'error' => $e->getMessage()
+//         ], 500);
+//     }
+// }
+
+// public function markNotificationAsRead($id)
+// {
+//     try {
+//         $updated = DB::connection('sqlsrv')
+//             ->table('Trip_TripNotification')
+//             ->where('Id', $id)
+//             ->update(['Status' => 'Read']);
+
+//         if ($updated) {
+//             return response()->json([
+//                 'success' => true,
+//                 'message' => 'Notification marked as read'
+//             ]);
+//         } else {
+//             return response()->json([
+//                 'success' => false,
+//                 'message' => 'Notification not found'
+//             ], 404);
+//         }
+
+//     } catch (\Exception $e) {
+//         Log::error('Error marking notification as read: ' . $e->getMessage());
+//         return response()->json([
+//             'success' => false,
+//             'message' => 'Error: ' . $e->getMessage()
+//         ], 500);
+//     }
+// }
+
+// public function deleteNotification($id)
+// {
+//     try {
+//         $updated = DB::connection('sqlsrv')
+//             ->table('Trip_TripNotification')
+//             ->where('Id', $id)
+//             ->update(['IsDeleted' => 1]);
+
+//         if ($updated) {
+//             return response()->json([
+//                 'success' => true,
+//                 'message' => 'Notification deleted'
+//             ]);
+//         } else {
+//             return response()->json([
+//                 'success' => false,
+//                 'message' => 'Notification not found'
+//             ], 404);
+//         }
+
+//     } catch (\Exception $e) {
+//         Log::error('Error deleting notification: ' . $e->getMessage());
+//         return response()->json([
+//             'success' => false,
+//             'message' => 'Error: ' . $e->getMessage()
+//         ], 500);
+//     }
+// }
+
 }

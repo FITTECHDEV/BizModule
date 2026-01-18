@@ -55,17 +55,17 @@ class UsersController extends Controller
             // Query the Cust_User table with CORRECT column name
             $stats = [
                 'total' => DB::table('Cust_User')
-                    ->where('IsDeleted', 0)  
+                    ->where('IsDeleted', 0)
                     ->count(),
 
                 'active' => DB::table('Cust_User')
                     ->where('IsActive', 1)
-                    ->where('IsDeleted', 0)  
+                    ->where('IsDeleted', 0)
                     ->count(),
 
                 'inactive' => DB::table('Cust_User')
                     ->where('IsActive', 0)
-                    ->where('IsDeleted', 0) 
+                    ->where('IsDeleted', 0)
                     ->count(),
             ];
 
@@ -321,5 +321,116 @@ class UsersController extends Controller
         toast('User deleted successfully', 'success');
         return redirect()->route('users.index')
             ->with('success', 'User deleted successfully');
+    }
+
+    /**
+     * Get users data for DataTables with filtering support
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getUsersDataTable(Request $request)
+    {
+        try {
+            // Base query - exclude deleted users
+            $query = DB::table('Cust_User')
+                ->where('IsDeleted', 0);
+
+            // Apply status filter BEFORE passing to DataTables
+            $statusFilter = $request->input('status', 'all');
+
+            if ($statusFilter !== 'all') {
+                if ($statusFilter === 'active') {
+                    $query->where('IsActive', 1);
+                } elseif ($statusFilter === 'inactive') {
+                    $query->where('IsActive', 0);
+                }
+            }
+
+            // Select columns (removed MiddleName since it doesn't exist)
+            $query->select(
+                'ID',
+                'LoginID',
+                DB::raw("CONCAT(COALESCE(FirstName, ''), ' ', COALESCE(LastName, '')) as FullName"),
+                'Email',
+                'OfficeCode as Office',
+                'Role as Roles',
+                'IsActive'
+            );
+
+            // Return DataTables response
+            return datatables()
+                ->query($query)
+
+                // ->addColumn('Action', function ($user) {
+                //     $actions = '';
+
+                //     // Show button (View User)
+                //     if (Auth::user()->can('users-show')) {
+                //         $actions .= '<a href="' . route('users.show', $user->ID) . '"
+                //                    class="btn btn-info btn-sm"
+                //                    title="View User">
+                //                    <i class="fas fa-eye"></i> Show
+                //                 </a> ';
+                //     }
+
+                //     // Edit button
+                //     if (Auth::user()->can('users-edit')) {
+                //         $actions .= '<a href="' . route('users.edit', $user->ID) . '"
+                //                    class="btn btn-primary btn-sm"
+                //                    title="Edit User">
+                //                    <i class="fas fa-edit"></i> Edit
+                //                 </a> ';
+                //     }
+
+                //     // If no permissions, show a message
+                //     if (empty($actions)) {
+                //         $actions = '<span class="text-muted">No actions available</span>';
+                //     }
+
+                //     return $actions;
+                // })
+                ->addColumn('Action', function ($user) {
+    $actions = '';
+
+    // Show button (View User) - NO permission check
+    $actions .= '<a href="' . route('users.show', $user->ID) . '"
+               class="btn btn-info btn-sm"
+               title="View User">
+               <i class="fas fa-eye"></i>
+            </a> ';
+
+    // Edit button - NO permission check
+    $actions .= '<a href="' . route('users.edit', $user->ID) . '"
+               class="btn btn-primary btn-sm"
+               title="Edit User">
+               <i class="fas fa-edit"></i>
+            </a>';
+
+    return $actions;
+})
+                ->addColumn('Status', function ($user) {
+                    if ($user->IsActive == 1) {
+                        return '<span class="badge badge-success">Active</span>';
+                    } else {
+                        return '<span class="badge badge-danger">Inactive</span>';
+                    }
+                })
+                ->rawColumns(['Action', 'Status'])
+                ->make(true);
+        } catch (\Exception $e) {
+            \Log::error('DataTables users query failed', [
+                'error' => $e->getMessage(),
+                'line' => $e->getLine(),
+                'file' => $e->getFile(),
+                'status_filter' => $request->input('status', 'none'),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'error' => 'Failed to load users data',
+                'message' => $e->getMessage()
+            ], 500);
+        }
     }
 }

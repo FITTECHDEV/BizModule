@@ -26,7 +26,7 @@ class RRAInvoices extends Command
         $pendingInvoices = $this->fetchPendingInvoices($invoiceId);
 
         if ($pendingInvoices->isEmpty()) {
-            Log::info("No pending invoices found RRA.");
+            // Log::info("No pending invoices found RRA.");
             return 0;
         }
 

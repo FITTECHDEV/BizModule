@@ -3,7 +3,13 @@
 @section('title', 'GPS Trip Tracking')
 
 @section('content_header')
-    <h1>Truck Tracking</h1>
+    <div class="header-with-notification">
+        <h1>Truck Tracking</h1>
+        <button class="btn btn-warning" id="openNotificationsBtn">
+            <i class="fa fa-bell"></i> Notifications
+            <span class="badge badge-danger" id="unreadBadge" style="display: none;">0</span>
+        </button>
+    </div>
 @stop
 
 @section('css')
@@ -39,6 +45,32 @@
         #backdateForm .form-control:focus {
             border-color: #ffc107;
             box-shadow: 0 0 0 0.2rem rgba(255, 193, 7, 0.25);
+        }
+
+        .header-with-notification {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        #openNotificationsBtn {
+            font-size: 1rem;
+            padding: 8px 20px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        #openNotificationsBtn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+            transition: all 0.2s ease;
+        }
+
+        #unreadBadge {
+            font-size: 0.75rem;
+            padding: 3px 6px;
+            border-radius: 10px;
+            margin-left: 5px;
         }
     </style>
 @stop
@@ -153,7 +185,7 @@
 
                                     <!-- ADD HERE -->
 
-                                     <button type="button" class="btn btn-danger btn-sm mt-2" id="endTripAgainBtn"
+                                    <button type="button" class="btn btn-danger btn-sm mt-2" id="endTripAgainBtn"
                                         style="display:none;">
                                         <i class="fa fa-redo"></i> End Trip Again
                                     </button>
@@ -770,6 +802,193 @@
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            </div>
+            <!-- Notifications Modal -->
+            <div class="modal fade" id="notificationsModal" tabindex="-1" data-backdrop="static" role="dialog">
+                <div class="modal-dialog modal-xl" role="document">
+                    <div class="modal-content">
+                        <div class="modal-header bg-warning text-white">
+                            <h5 class="modal-title">
+                                <i class="fa fa-bell"></i> Vehicle Notifications
+                            </h5>
+                            <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
+                        </div>
+
+                        <div class="modal-body">
+
+                            <!-- Stats Row -->
+                            <div class="row mb-3">
+                                <div class="col-md-2">
+                                    <div class="info-box bg-info">
+                                        <span class="info-box-icon"><i class="fa fa-bell"></i></span>
+                                        <div class="info-box-content">
+                                            <span class="info-box-text">Total</span>
+                                            <span class="info-box-number" id="statTotal">0</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <div class="info-box bg-danger">
+                                        <span class="info-box-icon"><i class="fa fa-exclamation-circle"></i></span>
+                                        <div class="info-box-content">
+                                            <span class="info-box-text">Unread</span>
+                                            <span class="info-box-number" id="statNew">0</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <div class="info-box bg-warning">
+                                        <span class="info-box-icon"><i class="fa fa-map-marked-alt"></i></span>
+                                        <div class="info-box-content">
+                                            <span class="info-box-text">Geofence</span>
+                                            <span class="info-box-number" id="statGeofence">0</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <div class="info-box bg-primary">
+                                        <span class="info-box-icon"><i class="fa fa-key"></i></span>
+                                        <div class="info-box-content">
+                                            <span class="info-box-text">Ignition</span>
+                                            <span class="info-box-number" id="statIgnition">0</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <div class="info-box bg-secondary">
+                                        <span class="info-box-icon"><i class="fa fa-plug"></i></span>
+                                        <div class="info-box-content">
+                                            <span class="info-box-text">Power</span>
+                                            <span class="info-box-number" id="statPower">0</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-2 text-right">
+                                    <button class="btn btn-primary btn-block" id="refreshNotificationsBtn">
+                                        <i class="fa fa-sync"></i> Refresh
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Filters -->
+                            <div class="card mb-3">
+                                <div class="card-body">
+                                    <form id="notificationFiltersForm" class="form-inline">
+                                        <div class="form-group mr-2">
+                                            <label class="mr-2">Category:</label>
+                                            <select class="form-control form-control-sm" id="filterCategory">
+                                                <option value="">All Categories</option>
+                                                <option value="geofence">Geofence</option>
+                                                <option value="ignition">Ignition (ACC)</option>
+                                                <option value="power">Power/Offline</option>
+                                                <option value="other">Other</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group mr-2">
+                                            <label class="mr-2">Vehicle:</label>
+                                            <input type="text" class="form-control form-control-sm" id="filterVehicle"
+                                                placeholder="Vehicle No">
+                                        </div>
+                                        <div class="form-group mr-2">
+                                            <label class="mr-2">From:</label>
+                                            <input type="date" class="form-control form-control-sm"
+                                                id="filterFromDate">
+                                        </div>
+                                        <div class="form-group mr-2">
+                                            <label class="mr-2">To:</label>
+                                            <input type="date" class="form-control form-control-sm" id="filterToDate">
+                                        </div>
+                                        <div class="form-group mr-2">
+                                            <label class="mr-2">Status:</label>
+                                            <select class="form-control form-control-sm" id="filterStatus">
+                                                <option value="">All</option>
+                                                <option value="New">Unread</option>
+                                                <option value="Read">Read</option>
+                                            </select>
+                                        </div>
+                                        <button type="submit" class="btn btn-primary btn-sm mr-2">
+                                            <i class="fa fa-filter"></i> Filter
+                                        </button>
+                                        <button type="button" class="btn btn-secondary btn-sm"
+                                            id="clearNotificationFilters">
+                                            <i class="fa fa-times"></i> Clear
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+
+                            <!-- Tabs for Categories -->
+                            <ul class="nav nav-tabs" id="notificationTabs" role="tablist">
+                                <li class="nav-item">
+                                    <a class="nav-link active" id="all-tab" data-toggle="tab" href="#allNotifications"
+                                        role="tab">
+                                        All <span class="badge badge-secondary" id="countAll">0</span>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link" id="geofence-tab" data-toggle="tab"
+                                        href="#geofenceNotifications" role="tab">
+                                        <i class="fa fa-map-marked-alt"></i> Geofence <span class="badge badge-warning"
+                                            id="countGeofence">0</span>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link" id="ignition-tab" data-toggle="tab"
+                                        href="#ignitionNotifications" role="tab">
+                                        <i class="fa fa-key"></i> Ignition <span class="badge badge-primary"
+                                            id="countIgnition">0</span>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link" id="power-tab" data-toggle="tab" href="#powerNotifications"
+                                        role="tab">
+                                        <i class="fa fa-plug"></i> Power <span class="badge badge-secondary"
+                                            id="countPower">0</span>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link" id="other-tab" data-toggle="tab" href="#otherNotifications"
+                                        role="tab">
+                                        <i class="fa fa-bell"></i> Other <span class="badge badge-info"
+                                            id="countOther">0</span>
+                                    </a>
+                                </li>
+                            </ul>
+
+                            <!-- Tab Content -->
+                            <div class="tab-content mt-3" id="notificationTabContent"
+                                style="max-height: 500px; overflow-y: auto;">
+                                <div class="tab-pane fade show active" id="allNotifications" role="tabpanel">
+                                    <div id="allNotificationsContainer">
+                                        <div class="text-center py-4">
+                                            <i class="fa fa-spinner fa-spin fa-2x"></i>
+                                            <p class="mt-2">Loading notifications...</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="tab-pane fade" id="geofenceNotifications" role="tabpanel">
+                                    <div id="geofenceNotificationsContainer"></div>
+                                </div>
+                                <div class="tab-pane fade" id="ignitionNotifications" role="tabpanel">
+                                    <div id="ignitionNotificationsContainer"></div>
+                                </div>
+                                <div class="tab-pane fade" id="powerNotifications" role="tabpanel">
+                                    <div id="powerNotificationsContainer"></div>
+                                </div>
+                                <div class="tab-pane fade" id="otherNotifications" role="tabpanel">
+                                    <div id="otherNotificationsContainer"></div>
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                                <i class="fa fa-times"></i> Close
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1527,73 +1746,82 @@
 
                 // ... your existing .endTrip handler ends here ...
 
-// ─────────────────────────────────────────────────────────────
-// NEW: END TRIP AGAIN HANDLER
-// ─────────────────────────────────────────────────────────────
-$(document).on('click', '#endTripAgainBtn', function() {
-    const tripId = $('#viewTripModal').data('trip-id');
-    const tripNo = $('#viewTripNo').text();
+                // ─────────────────────────────────────────────────────────────
+                // NEW: END TRIP AGAIN HANDLER
+                // ─────────────────────────────────────────────────────────────
+                $(document).on('click', '#endTripAgainBtn', function() {
+                    const tripId = $('#viewTripModal').data('trip-id');
+                    const tripNo = $('#viewTripNo').text();
 
-    Swal.fire({
-        title: 'Re-end & Recalculate Trip?',
-        html: `
-            <div class="alert alert-warning mb-3">
-                <strong>Warning:</strong><br>
-                This will <b>overwrite</b> current end time and<br>
-                <b>recalculate</b> distance, duration, speeds, etc.<br><br>
-                <small>Use only after correcting the last job's time.</small>
-            </div>
-            <p><strong>Trip No:</strong> ${tripNo}</p>
-            <p>Are you sure?</p>
-        `,
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#d33',
-        cancelButtonColor: '#6c757d',
-        confirmButtonText: 'Yes, Re-End & Recalculate',
-        cancelButtonText: 'No'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            Swal.fire({
-                title: 'Processing...',
-                allowOutsideClick: false,
-                didOpen: () => {
-                    Swal.showLoading();
+                    Swal.fire({
+                        title: 'Re-end & Recalculate Trip?',
+                        html: `
+                    <div class="alert alert-warning mb-3">
+                    <strong>Warning:</strong><br>
+                    This will <b>overwrite</b> current end time and<br>
+                    <b>recalculate</b> distance, duration, speeds, etc.<br><br>
+                    <small>Use only after correcting the last job's time.</small>
+                    </div>
+                    <p><strong>Trip No:</strong> ${tripNo}</p>
+                      <p>Are you sure?</p>
+                     `,
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonColor: '#d33',
+                        cancelButtonColor: '#6c757d',
+                        confirmButtonText: 'Yes, Re-End & Recalculate',
+                        cancelButtonText: 'No'
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            Swal.fire({
+                                title: 'Processing...',
+                                allowOutsideClick: false,
+                                didOpen: () => {
+                                    Swal.showLoading();
 
-                    $.ajax({
-                        url: `/tracker/trips/${tripId}/end`,
-                        type: 'POST',
-                        headers: {
-                            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-                        },
-                        success: function(res) {
-                            if (res.success) {
-                                Swal.fire({
-                                    icon: 'success',
-                                    title: 'Trip Re-Ended!',
-                                    html: `End time updated: ${moment(res.end_date).format('DD/MM/YY HH:mm')}<br><br>` +
-                                          `Distance: ${res.total_distance || 'N/A'} km<br>` +
-                                          `Duration: ${res.duration_hours || 'N/A'} h`,
-                                    confirmButtonText: 'OK'
-                                });
+                                    $.ajax({
+                                        url: `/tracker/trips/${tripId}/end`,
+                                        type: 'POST',
+                                        headers: {
+                                            'X-CSRF-TOKEN': $(
+                                                'meta[name="csrf-token"]').attr(
+                                                'content')
+                                        },
+                                        success: function(res) {
+                                            if (res.success) {
+                                                Swal.fire({
+                                                    icon: 'success',
+                                                    title: 'Trip Re-Ended!',
+                                                    html: `End time updated: ${moment(res.end_date).format('DD/MM/YY HH:mm')}<br><br>` +
+                                                        `Distance: ${res.total_distance || 'N/A'} km<br>` +
+                                                        `Duration: ${res.duration_hours || 'N/A'} h`,
+                                                    confirmButtonText: 'OK'
+                                                });
 
-                                tripsTable?.ajax.reload(null, false);
-                                setTimeout(() => {
-                                    $(`.viewTrip[data-trip-id="${tripId}"]`).trigger('click');
-                                }, 800);
-                            } else {
-                                Swal.fire('Failed', res.message || 'Error', 'error');
-                            }
-                        },
-                        error: function(xhr) {
-                            Swal.fire('Error', xhr.responseJSON?.message || 'Server error', 'error');
+                                                tripsTable?.ajax.reload(null,
+                                                    false);
+                                                setTimeout(() => {
+                                                    $(`.viewTrip[data-trip-id="${tripId}"]`)
+                                                        .trigger(
+                                                            'click');
+                                                }, 800);
+                                            } else {
+                                                Swal.fire('Failed', res
+                                                    .message || 'Error',
+                                                    'error');
+                                            }
+                                        },
+                                        error: function(xhr) {
+                                            Swal.fire('Error', xhr.responseJSON
+                                                ?.message || 'Server error',
+                                                'error');
+                                        }
+                                    });
+                                }
+                            });
                         }
                     });
-                }
-            });
-        }
-    });
-});
+                });
 
                 // ========================================
                 // VIEW TRIP - ✅ WITH START DATE, END DATE, DURATION, AND MILEAGE
@@ -1672,7 +1900,7 @@ $(document).on('click', '#endTripAgainBtn', function() {
                         $('#viewStatusBadge')
                             .removeClass('badge-info badge-warning badge-success badge-secondary')
                             .addClass(badge.class);
-                            const $endAgainBtn = $('#endTripAgainBtn');
+                        const $endAgainBtn = $('#endTripAgainBtn');
 
                         if (status === 'Completed') {
                             $endAgainBtn
@@ -1725,9 +1953,9 @@ $(document).on('click', '#endTripAgainBtn', function() {
                         <th>Mileage</th>
                         <th>Status</th>
                         <th class="text-center">Action</th>
-                    </tr>
-                    </thead>
-                    <tbody>`;
+                        </tr>
+                         </thead>
+                        <tbody>`;
 
                             jobs.forEach(job => {
                                 const typeBadge = job.job_type === 'Internal Job' ? 'info' :
@@ -1780,27 +2008,27 @@ $(document).on('click', '#endTripAgainBtn', function() {
                                 if (job.status === 'Allocated') {
                                     if (hasActiveJob) {
                                         actionBtn = `
-            <button class="btn btn-sm btn-secondary" disabled
-                title="Complete the active job first: ${activeJobNo}">
-            <i class="fa fa-play"></i> Start
-            </button>`;
+                    <button class="btn btn-sm btn-secondary" disabled
+                    title="Complete the active job first: ${activeJobNo}">
+                    <i class="fa fa-play"></i> Start
+                    </button>`;
                                     } else {
                                         actionBtn = `
-            <button class="btn btn-sm btn-success startJobBtn"
-                data-job-id="${job.job_id}"
-                data-job-no="${job.job_number || 'Internal Job'}"
-                data-trip-id="${tripId}">
-            <i class="fa fa-play"></i> Start
-            </button>`;
+                    <button class="btn btn-sm btn-success startJobBtn"
+                    data-job-id="${job.job_id}"
+                    data-job-no="${job.job_number || 'Internal Job'}"
+                    data-trip-id="${tripId}">
+                    <i class="fa fa-play"></i> Start
+                     </button>`;
                                     }
                                 } else if (job.status === 'In Transit') {
                                     actionBtn = `
-            <button class="btn btn-sm btn-danger stopJobBtn"
-            data-job-id="${job.job_id}"
-            data-job-no="${job.job_number || 'Internal Job'}"
-            data-trip-id="${tripId}">
-            <i class="fa fa-stop"></i> Stop
-            </button>`;
+                    <button class="btn btn-sm btn-danger stopJobBtn"
+                     data-job-id="${job.job_id}"
+                     data-job-no="${job.job_number || 'Internal Job'}"
+                     data-trip-id="${tripId}">
+                    <i class="fa fa-stop"></i> Stop
+                    </button>`;
                                 }
 
                                 html += `<tr>
@@ -1813,7 +2041,7 @@ $(document).on('click', '#endTripAgainBtn', function() {
                     <td>${mileage}</td>
                     <td><span class="badge badge-${statusBadge}">${job.status}</span></td>
                     <td class="text-center">${actionBtn}</td>
-                </tr>`;
+                     </tr>`;
                             });
                             html += '</tbody></table></div>';
                             $('#allocatedJobsContainer').html(html);
@@ -1936,7 +2164,7 @@ $(document).on('click', '#endTripAgainBtn', function() {
                         Swal.fire({
                             title: `Start Job: ${jobNo}?`,
                             html: `
-                <div style="margin-top: 20px;">
+                  <div style="margin-top: 20px;">
                     <button class="btn btn-success btn-lg btn-block" id="startNowBtn" type="button">
                         <i class="fa fa-play-circle"></i> Start Now
                         <br><small>Use current time</small>
@@ -1954,10 +2182,10 @@ $(document).on('click', '#endTripAgainBtn', function() {
                         </div>
 
                         ${trip.start_date ? `
-                                                        <div class="alert alert-info mb-3" style="padding: 8px 12px; font-size: 0.9rem;">
-                                                            <strong>Trip Started:</strong> ${moment(trip.start_date).format('DD/MM/YY HH:mm')}
-                                                        </div>
-                                                        ` : ''}
+                                                                                <div class="alert alert-info mb-3" style="padding: 8px 12px; font-size: 0.9rem;">
+                                                                                    <strong>Trip Started:</strong> ${moment(trip.start_date).format('DD/MM/YY HH:mm')}
+                                                                                </div>
+                                                                                ` : ''}
 
                         <div class="form-group mb-3">
                             <label style="font-weight: 600; margin-bottom: 5px;">
@@ -1977,18 +2205,18 @@ $(document).on('click', '#endTripAgainBtn', function() {
                         </div>
 
                         ${!trip.start_date ? `
-                                                        <div class="alert alert-info mb-3" style="padding: 8px 12px; font-size: 0.85rem;">
-                                                            <i class="fa fa-info-circle"></i>
-                                                            <strong>Note:</strong> This is the first job. The trip will be started automatically with this time.
-                                                        </div>
-                                                        ` : ''}
+                                                                                <div class="alert alert-info mb-3" style="padding: 8px 12px; font-size: 0.85rem;">
+                                                                                    <i class="fa fa-info-circle"></i>
+                                                                                    <strong>Note:</strong> This is the first job. The trip will be started automatically with this time.
+                                                                                </div>
+                                                                                ` : ''}
 
                         <button class="btn btn-success btn-block" id="submitManualStartBtn" type="button">
                             <i class="fa fa-play"></i> Start Job with this Time
                         </button>
                     </div>
-                </div>
-            `,
+                  </div>
+                  `,
                             showConfirmButton: false,
                             showCancelButton: true,
                             cancelButtonText: 'Cancel',
@@ -2296,7 +2524,7 @@ $(document).on('click', '#endTripAgainBtn', function() {
                         Swal.fire({
                             title: `Complete Job: ${jobNo}?`,
                             html: `
-                <div style="margin-top: 20px;">
+                    <div style="margin-top: 20px;">
                     <button class="btn btn-success btn-lg btn-block" id="completeNowBtn" type="button">
                         <i class="fa fa-check-circle"></i> Complete Now
                         <br><small>Use current time</small>
@@ -2333,8 +2561,8 @@ $(document).on('click', '#endTripAgainBtn', function() {
                             <i class="fa fa-check"></i> Complete with this Time
                         </button>
                     </div>
-                </div>
-            `,
+                    </div>
+                    `,
                             showConfirmButton: false,
                             showCancelButton: true,
                             cancelButtonText: 'Cancel',
@@ -2596,7 +2824,7 @@ $(document).on('click', '#endTripAgainBtn', function() {
                         <strong>Completed:</strong> ${endDate} ${endTime}<br>
                         <strong>Distance:</strong> ${res.total_distance || '0'} km<br>
                         <strong>Duration:</strong> ${res.duration_hours || '0'} hours
-                    `,
+                        `,
                                     confirmButtonText: 'OK'
                                 });
 
@@ -2623,7 +2851,7 @@ $(document).on('click', '#endTripAgainBtn', function() {
                                 if (xhr.responseJSON.validation_type === 'overlap_end') {
                                     errorTitle = 'Job Timeline Conflict';
                                     errorMsg = `
-                <div style="text-align: left; font-size: 0.95rem;">
+                    <div style="text-align: left; font-size: 0.95rem;">
                     <p style="font-size: 1.1rem; margin-bottom: 15px;">
                         <strong><i class="fa fa-exclamation-triangle"></i> ${xhr.responseJSON.message}</strong>
                     </p>
@@ -2652,8 +2880,8 @@ $(document).on('click', '#endTripAgainBtn', function() {
                             ${xhr.responseJSON.suggestion}
                         </p>
                     </div>
-                </div>
-            `;
+                    </div>
+                    `;
                                 }
                             }
 
@@ -3113,7 +3341,7 @@ $(document).on('click', '#endTripAgainBtn', function() {
                         </p>
                     </div>
                     </div>
-             `;
+                 `;
                                         }
                                     }
 
@@ -3139,6 +3367,261 @@ $(document).on('click', '#endTripAgainBtn', function() {
                             '<i class="fa fa-save"></i> Save Historical Job');
                     }
                 });
+            });
+        </script>
+
+        
+        <script>
+            $(document).ready(function() {
+                // ========================================
+                // NOTIFICATIONS MODAL
+                // ========================================
+
+                let notificationsData = [];
+
+                // Open notifications modal
+                $('#openNotificationsBtn').click(function() {
+                    $('#notificationsModal').modal('show');
+                    loadNotifications();
+                    loadNotificationStats();
+                });
+
+                // Refresh notifications
+                $('#refreshNotificationsBtn').click(function() {
+                    loadNotifications();
+                    loadNotificationStats();
+                });
+
+                // Load notification stats
+                function loadNotificationStats() {
+                    $.get('/tracker/notifications/get', {
+                        summary: true
+                    }, function(res) {
+                        if (res.success) {
+                            // Count stats from the data
+                            const all = res.data || [];
+                            const newCount = all.filter(n => n.Status === 'New').length;
+                            const geofenceCount = all.filter(n => n.AlarmType === '1006').length;
+                            const ignitionCount = all.filter(n => ['1001', '1002'].includes(n.AlarmType))
+                            .length;
+                            const powerCount = all.filter(n => ['2', '1003'].includes(n.AlarmType)).length;
+
+                            $('#statTotal').text(all.length);
+                            $('#statNew').text(newCount);
+                            $('#statGeofence').text(geofenceCount);
+                            $('#statIgnition').text(ignitionCount);
+                            $('#statPower').text(powerCount);
+
+                            // Update unread badge on button
+                            if (newCount > 0) {
+                                $('#unreadBadge').text(newCount).show();
+                            } else {
+                                $('#unreadBadge').hide();
+                            }
+                        }
+                    }).fail(function() {
+                        console.error('Failed to load notification stats');
+                    });
+                }
+
+                // Load notifications
+                function loadNotifications() {
+                    const filters = {
+                        category: $('#filterCategory').val(),
+                        vehicle_no: $('#filterVehicle').val(),
+                        from_date: $('#filterFromDate').val(),
+                        to_date: $('#filterToDate').val(),
+                        status: $('#filterStatus').val()
+                    };
+
+                    $('#refreshNotificationsBtn').html('<i class="fa fa-spinner fa-spin"></i> Loading...');
+
+                    $.get('/tracker/notifications/get', filters, function(res) {
+                        if (res.success) {
+                            notificationsData = res.data || [];
+                            renderNotifications();
+                        }
+                        $('#refreshNotificationsBtn').html('<i class="fa fa-sync"></i> Refresh');
+                    }).fail(function() {
+                        $('#refreshNotificationsBtn').html('<i class="fa fa-sync"></i> Refresh');
+                        Swal.fire('Error', 'Failed to load notifications', 'error');
+                    });
+                }
+
+                // Render notifications in tabs
+                function renderNotifications() {
+                    const all = notificationsData;
+                    const geofence = all.filter(n => n.AlarmType === '1006');
+                    const ignition = all.filter(n => ['1001', '1002'].includes(n.AlarmType));
+                    const power = all.filter(n => ['2', '1003'].includes(n.AlarmType));
+                    const other = all.filter(n => !['1006', '1001', '1002', '2', '1003'].includes(n.AlarmType));
+
+                    // Update counts
+                    $('#countAll').text(all.length);
+                    $('#countGeofence').text(geofence.length);
+                    $('#countIgnition').text(ignition.length);
+                    $('#countPower').text(power.length);
+                    $('#countOther').text(other.length);
+
+                    // Render each category
+                    $('#allNotificationsContainer').html(buildNotificationCards(all));
+                    $('#geofenceNotificationsContainer').html(buildNotificationCards(geofence));
+                    $('#ignitionNotificationsContainer').html(buildNotificationCards(ignition));
+                    $('#powerNotificationsContainer').html(buildNotificationCards(power));
+                    $('#otherNotificationsContainer').html(buildNotificationCards(other));
+                }
+
+                // Build notification cards
+                function buildNotificationCards(notifications) {
+                    if (notifications.length === 0) {
+                        return '<div class="alert alert-info text-center"><i class="fa fa-info-circle"></i> No notifications in this category</div>';
+                    }
+
+                    let html = '';
+                    notifications.forEach(notif => {
+                        const isNew = notif.Status === 'New';
+                        const bgClass = isNew ? 'bg-warning' : 'bg-light';
+                        const badgeClass = getAlarmBadge(notif.AlarmType);
+
+                        html += `
+            <div class="card mb-2 ${bgClass}" style="border-left: 4px solid ${isNew ? '#ffc107' : '#6c757d'};">
+                <div class="card-body p-2">
+                    <div class="row align-items-center">
+                        <div class="col-md-2">
+                            <small class="text-muted">
+                                <i class="fa fa-clock"></i>
+                                ${moment(notif.AlarmTime).format('DD/MM/YY HH:mm:ss')}
+                            </small>
+                        </div>
+                        <div class="col-md-2">
+                            <strong>${notif.DeviceName || notif.VehicleNo || 'Unknown'}</strong>
+                            ${notif.TripNo ? '<br><small class="text-muted">Trip: ' + notif.TripNo + '</small>' : ''}
+                        </div>
+                        <div class="col-md-3">
+                            <span class="badge ${badgeClass}">
+                                ${notif.AlarmName}
+                            </span>
+                        </div>
+                        <div class="col-md-2">
+                            <small class="text-muted">
+                                <i class="fa fa-map-marker-alt"></i>
+                                ${parseFloat(notif.Latitude).toFixed(6)}, ${parseFloat(notif.Longitude).toFixed(6)}
+                            </small>
+                        </div>
+                        <div class="col-md-3 text-right">
+                            <a href="https://www.google.com/maps?q=${notif.Latitude},${notif.Longitude}"
+                               target="_blank"
+                               class="btn btn-sm btn-info"
+                               title="View on Map">
+                                <i class="fa fa-map"></i>
+                            </a>
+                            ${isNew ? `
+                                        <button class="btn btn-sm btn-success markReadBtn"
+                                                data-id="${notif.Id}"
+                                                title="Mark as Read">
+                                            <i class="fa fa-check"></i>
+                                        </button>
+                                    ` : ''}
+                            <button class="btn btn-sm btn-danger deleteNotifBtn"
+                                    data-id="${notif.Id}"
+                                    title="Delete">
+                                <i class="fa fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+         `;
+                    });
+
+                    return html;
+                }
+
+                // Get badge class for alarm type
+                function getAlarmBadge(alarmType) {
+                    const badges = {
+                        '1006': 'badge-warning', // Geofence
+                        '1001': 'badge-secondary', // ACC OFF
+                        '1002': 'badge-primary', // ACC ON
+                        '2': 'badge-danger', // Power Cut
+                        '3': 'badge-info', // Vibration
+                        '1003': 'badge-dark', // Offline
+                        '1004': 'badge-success' // Parking
+                    };
+                    return badges[alarmType] || 'badge-secondary';
+                }
+
+                // Filter notifications
+                $('#notificationFiltersForm').submit(function(e) {
+                    e.preventDefault();
+                    loadNotifications();
+                });
+
+                // Clear filters
+                $('#clearNotificationFilters').click(function() {
+                    $('#notificationFiltersForm')[0].reset();
+                    loadNotifications();
+                });
+
+                // Mark as read
+                $(document).on('click', '.markReadBtn', function() {
+                    const id = $(this).data('id');
+
+                    $.post(`/tracker/notifications/${id}/read`, {
+                        _token: $('meta[name="csrf-token"]').attr('content')
+                    }).done(function(res) {
+                        if (res.success) {
+                            loadNotifications();
+                            loadNotificationStats();
+                        }
+                    }).fail(function() {
+                        Swal.fire('Error', 'Failed to mark as read', 'error');
+                    });
+                });
+
+                // Delete notification
+                $(document).on('click', '.deleteNotifBtn', function() {
+                    const id = $(this).data('id');
+
+                    Swal.fire({
+                        title: 'Delete Notification?',
+                        text: 'This action cannot be undone',
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonColor: '#d33',
+                        confirmButtonText: 'Yes, delete it',
+                        cancelButtonText: 'Cancel'
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            $.ajax({
+                                url: `/tracker/notifications/${id}`,
+                                type: 'DELETE',
+                                headers: {
+                                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                                },
+                                success: function(res) {
+                                    if (res.success) {
+                                        loadNotifications();
+                                        loadNotificationStats();
+                                        Swal.fire('Deleted!',
+                                            'Notification deleted successfully',
+                                            'success');
+                                    }
+                                },
+                                error: function() {
+                                    Swal.fire('Error', 'Failed to delete notification',
+                                        'error');
+                                }
+                            });
+                        }
+                    });
+                });
+
+                // Auto-refresh stats every 60 seconds
+                setInterval(loadNotificationStats, 60000);
+
+                // Load initial stats on page load
+                loadNotificationStats();
             });
         </script>
     @endsection

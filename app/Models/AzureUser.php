@@ -97,25 +97,43 @@ class AzureUser extends Authenticatable
     ];
 
     // =================================================================
-    // ATTRIBUTE ACCESSORS - Map to existing columns
-    // =================================================================
+// ATTRIBUTE ACCESSORS - Map to existing columns
+// =================================================================
 
     /**
-     * Accessor: azure_id -> AzureId (existing column)
+     * Accessor: AzureId (with proper fallback)
      */
-    public function getAzureIdAttribute()
+    public function getAzureIdAttribute($value = null)
     {
-        return $this->attributes['AzureId'] ?? null;
+        // First, try to get from attributes array
+        if (isset($this->attributes['AzureId'])) {
+            $azureId = $this->attributes['AzureId'];
+            \Log::debug('AzureId from attributes', ['value' => $azureId]);
+            return $azureId;
+        }
+
+        // Fallback: try with lowercase (in case of casing issues)
+        if (isset($this->attributes['azureId'])) {
+            $azureId = $this->attributes['azureId'];
+            \Log::debug('AzureId from attributes (lowercase)', ['value' => $azureId]);
+            return $azureId;
+        }
+
+        \Log::debug('AzureId not found in attributes', [
+            'available_keys' => array_keys($this->attributes)
+        ]);
+
+        return null;
     }
 
     /**
-     * Mutator: azure_id -> AzureId (existing column)
+     * Mutator: AzureId
      */
     public function setAzureIdAttribute($value)
     {
         $this->attributes['AzureId'] = $value;
+        \Log::debug('AzureId set via mutator', ['value' => $value]);
     }
-
     /**
      * Accessor: azure_upn -> userPrincipalName (existing column)
      * Since Azure UPN is the same as userPrincipalName

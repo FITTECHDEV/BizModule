@@ -1278,35 +1278,60 @@ class DataTablesController extends Controller
             ->make(true);
     }
 
-    public function users()
-    {
-        $users = User::with('roles')
-            ->where('IsDeleted', 0); 
+  public function users()
+{
+    $statusFilter = request()->input('status', 'all');
+    
+    $users = User::with('roles')
+        ->where('IsDeleted', 0);
 
-        return Datatables::of($users)
-            ->addColumn('FullName', function ($row) {
-                return $row->FirstName . " " . $row->LastName;
-            })
-            ->addColumn('Office', function ($row) {
-                return $row->office->Name;
-            })
-            ->addColumn('Roles', function ($row) {
-                $html = '';
-                if (!empty($row->getRoleNames())) {
-                    foreach ($row->getRoleNames() as $v) {
-                        $html .= '<label class="badge badge-success">' . $v . '</label> ';
-                    }
-                }
-                return $html;
-            })
-            ->addColumn('Action', function ($row) {
-                $rawHtml = ' <a class="btn btn-xs btn-info" href=' . route("users.show", $row->ID) . '>Show</a>
-                        <a class="btn btn-xs btn-primary" href=' . route("users.edit", $row->ID) . '>Edit</a> ';
-                return $rawHtml;
-            })
-            ->rawColumns(['FullName', 'Roles', 'Office', 'Action'])
-            ->make();
+    // Apply status filter
+    if ($statusFilter === 'active') {
+        $users->where('IsActive', 1);
+    } elseif ($statusFilter === 'inactive') {
+        $users->where('IsActive', 0);
     }
+
+    return Datatables::of($users)
+        ->addColumn('FullName', function ($row) {
+            return $row->FirstName . " " . $row->LastName;
+        })
+        ->addColumn('Office', function ($row) {
+            return $row->office->Name ?? '';
+        })
+        ->addColumn('Roles', function ($row) {
+            $html = '';
+            if (!empty($row->getRoleNames())) {
+                foreach ($row->getRoleNames() as $v) {
+                    $html .= '<label class="badge badge-success">' . $v . '</label> ';
+                }
+            }
+            return $html;
+        })
+        ->addColumn('Action', function ($row) {
+            $actions = '';
+            
+            if (Auth::user()->can('users-show')) {
+                $actions .= '<a href="' . route('users.show', $row->ID) . '" 
+                           class="btn btn-info btn-sm" 
+                           title="View User">
+                           <i class="fas fa-eye"></i> Show
+                        </a> ';
+            }
+
+            if (Auth::user()->can('users-edit')) {
+                $actions .= '<a href="' . route('users.edit', $row->ID) . '" 
+                           class="btn btn-primary btn-sm" 
+                           title="Edit User">
+                           <i class="fas fa-edit"></i> Edit
+                        </a> ';
+            }
+
+            return $actions ?: '<span class="text-muted">No actions available</span>';
+        })
+        ->rawColumns(['FullName', 'Roles', 'Office', 'Action'])
+        ->make(true);
+}
 
     public function tims()
     {

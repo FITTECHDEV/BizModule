@@ -881,7 +881,7 @@ class AzureUserManagementController extends Controller
                         try {
                             $rolesRaw = DB::connection('sqlsrv')
                                 ->select(
-                                    'EXEC sp_UserCreation_ResourceRole @ApplicationCode = ?',
+                                    'EXEC sp_Azure_UserResourceRole @ApplicationCode = ?',
                                     [$applicationCode]
                                 );
 
@@ -937,7 +937,7 @@ class AzureUserManagementController extends Controller
                         ) {
                             try {
                                 $functionsRaw = DB::connection('sqlsrv')
-                                    ->select('EXEC sp_UserCreation_Resourcefunction');
+                                    ->select('EXEC sp_Azure_UserResourcefunction');
 
                                 $functions = collect($functionsRaw)->map(function ($f) {
                                     return (object) [
@@ -1903,6 +1903,15 @@ class AzureUserManagementController extends Controller
      */
     public function update(Request $request, AzureUser $user)
     {
+
+        Log::info('=== UPDATE USER DEBUG INFO ===', [
+            'user_id' => $user->Id,
+            'user_principal' => $user->userPrincipalName,
+            'azure_id_from_model' => $user->AzureId,
+            'azure_id_raw' => $user->getAttributes()['AzureId'] ?? 'NOT SET',
+            'all_attributes' => $user->getAttributes(),
+        ]);
+
         set_time_limit(120);
         error_reporting(E_ALL);
         ini_set('display_errors', 1);
@@ -1986,15 +1995,14 @@ class AzureUserManagementController extends Controller
             // ====================================================================
             if (! empty($modulesData)) {
                 try {
-                    // Updated validation - role_id and function_id are now nullable
                     $validated = $request->validate([
                         'modules' => 'required|array|min:1',
                         'modules.*.module_id' => 'required|string',
                         'modules.*.application_id' => 'required|string',
                         'modules.*.location_id' => 'required|string',
                         'modules.*.location_code' => 'required|string',
-                        'modules.*.role_id' => 'nullable|string',  // ← Changed to nullable
-                        'modules.*.role_code' => 'nullable|string',  // ← Changed to nullable
+                        'modules.*.role_id' => 'nullable|string',
+                        'modules.*.role_code' => 'nullable|string',
                         'modules.*.function_id' => 'nullable|string',
                         'modules.*.function_code' => 'nullable|string',
                     ]);
@@ -2036,7 +2044,6 @@ class AzureUserManagementController extends Controller
                 // STEP 4: Soft delete existing assignments FROM BOTH TABLES
                 // ====================================================================
 
-                // Delete from roles table
                 $deletedRolesCount = DB::connection('sqlsrv')
                     ->table('Azure_Application_UserMapping')
                     ->where('user_id', $user->userPrincipalName)
@@ -2045,10 +2052,9 @@ class AzureUserManagementController extends Controller
                         'IsDelete' => 1,
                         'IsActive' => 0,
                         'LastModifiedBy' => Auth::id() ?? 'system',
-                        'LastModifiedOn' => DB::raw('GETDATE()'),
+                        //'LastModifiedOn' => DB::raw('GETDATE()'),
                     ]);
 
-                // Delete from functions table
                 $deletedFunctionsCount = DB::connection('sqlsrv')
                     ->table('Azure_Application_UserFunction')
                     ->where('user_id', $user->userPrincipalName)
@@ -2057,7 +2063,7 @@ class AzureUserManagementController extends Controller
                         'IsDelete' => 1,
                         'IsActive' => 0,
                         'LastModifiedBy' => Auth::id() ?? 'system',
-                        'LastModifiedOn' => DB::raw('GETDATE()'),
+                        //'LastModifiedOn' => DB::raw('GETDATE()'),
                     ]);
 
                 $totalDeleted = $deletedRolesCount + $deletedFunctionsCount;
@@ -2102,7 +2108,6 @@ class AzureUserManagementController extends Controller
                 ]);
 
                 foreach ($modulesData as $index => $moduleData) {
-                    // Determine if this is a role or function record
                     $hasRole = ! empty($moduleData['role_id']);
                     $hasFunction = ! empty($moduleData['function_id']);
 
@@ -2111,7 +2116,6 @@ class AzureUserManagementController extends Controller
                             'index' => $index,
                             'data' => $moduleData,
                         ]);
-
                         continue;
                     }
 
@@ -2150,7 +2154,6 @@ class AzureUserManagementController extends Controller
                             'index' => $index,
                             'error' => $validation['error'],
                         ]);
-
                         continue;
                     }
 
@@ -2162,18 +2165,15 @@ class AzureUserManagementController extends Controller
                             'index' => $index,
                             'errors' => $dataCheck['errors'],
                         ]);
-
                         continue;
                     }
 
-                    // Get module name
                     $module = DB::connection('sqlsrv')
                         ->table('Azure_SoftwareMaster')
                         ->where('Id', $validation['data']['module_id'])
                         ->first();
 
                     $validation['data']['application_name'] = $module->Name;
-
                     $validatedRoles[] = $validation['data'];
                 }
 
@@ -2216,7 +2216,6 @@ class AzureUserManagementController extends Controller
                             'index' => $index,
                             'error' => $validation['error'],
                         ]);
-
                         continue;
                     }
 
@@ -2228,18 +2227,15 @@ class AzureUserManagementController extends Controller
                             'index' => $index,
                             'errors' => $dataCheck['errors'],
                         ]);
-
                         continue;
                     }
 
-                    // Get module name
                     $module = DB::connection('sqlsrv')
                         ->table('Azure_SoftwareMaster')
                         ->where('Id', $validation['data']['module_id'])
                         ->first();
 
                     $validation['data']['application_name'] = $module->Name;
-
                     $validatedFunctions[] = $validation['data'];
                 }
 
@@ -2291,8 +2287,8 @@ class AzureUserManagementController extends Controller
                                 'IsDelete' => 0,
                                 'CreatedBy' => Auth::user()->name ?? 'system',
                                 'CreatedOn' => DB::raw('GETDATE()'),
-                                'LastModifiedBy' => Auth::user()->name ?? 'system',
-                                'LastModifiedOn' => DB::raw('GETDATE()'),
+                                //'LastModifiedBy' => Auth::user()->name ?? 'system',
+                                //'LastModifiedOn' => DB::raw('GETDATE()'),
                             ]);
 
                         $insertedRolesCount++;
@@ -2342,8 +2338,8 @@ class AzureUserManagementController extends Controller
                                 'IsDelete' => 0,
                                 'CreatedBy' => Auth::user()->name ?? 'system',
                                 'CreatedOn' => DB::raw('GETDATE()'),
-                                'LastModifiedBy' => Auth::user()->name ?? 'system',
-                                'LastModifiedOn' => DB::raw('GETDATE()'),
+                                //'LastModifiedBy' => Auth::user()->name ?? 'system',
+                                //'LastModifiedOn' => DB::raw('GETDATE()'),
                             ]);
 
                         $insertedFunctionsCount++;
@@ -2407,8 +2403,304 @@ class AzureUserManagementController extends Controller
                     'total_deleted' => $totalDeleted,
                 ]);
 
+                // This ensures we have the latest data before provisioning
+                try {
+                    $freshUser = AzureUser::find($user->Id);
+                    if ($freshUser) {
+                        $user = $freshUser;
+                        Log::info('Model refreshed successfully', [
+                            'user_id' => $user->Id,
+                            'azure_id' => $user->AzureId,
+                        ]);
+                    } else {
+                        Log::warning('Could not find user during refresh', ['user_id' => $user->Id]);
+                    }
+                } catch (\Exception $e) {
+                    Log::warning('Failed to refresh model', ['error' => $e->getMessage()]);
+                }
+
                 // ====================================================================
-                // STEP 13: Verify data was saved
+                // STEP 13: PROVISION TO EXTERNAL APPLICATIONS
+                // ====================================================================
+
+                $provisioningResults = [];
+                $allValidatedAssignments = array_merge($validatedRoles, $validatedFunctions);
+
+                $assignedModules = collect($allValidatedAssignments)
+                    ->pluck('application_name')
+                    ->unique()
+                    ->map(fn($name) => strtoupper(trim($name)))
+                    ->filter()
+                    ->values();
+
+                Log::info('→ Step 13: Provisioning to external applications...', [
+                    'modules' => $assignedModules->toArray(),
+                ]);
+
+
+
+
+
+                // ✅ CRITICAL FIX: Comprehensive Azure ID retrieval with multiple fallback methods
+                $azureId = null;
+
+                // Method 1: Try from the model object first
+                if (!empty($user->AzureId)) {
+                    $azureId = $this->normalizeAzureId($user->AzureId);
+                    if ($azureId) {
+                        Log::info('Method 1: Azure ID from model object', ['azure_id' => $azureId]);
+                    }
+                }
+
+                // Method 2: Refresh model and try again
+                if (!$azureId) {
+                    try {
+                        $user = $user->fresh();
+                        if ($user && !empty($user->AzureId)) {
+                            $azureId = $this->normalizeAzureId($user->AzureId);
+                            if ($azureId) {
+                                Log::info('Method 2: Azure ID after model refresh', ['azure_id' => $azureId]);
+                            }
+                        }
+                    } catch (\Exception $e) {
+                        Log::warning('Method 2 failed', ['error' => $e->getMessage()]);
+                    }
+                }
+
+                // Method 3: Direct database query (bypassing Eloquent)
+                if (!$azureId) {
+                    try {
+                        $dbResult = DB::connection('sqlsrv')
+                            ->table('Azure_Users')
+                            ->select('AzureId', 'Id', 'userPrincipalName')
+                            ->where('Id', $user->Id)
+                            ->first();
+
+                        if ($dbResult && !empty($dbResult->AzureId)) {
+                            $azureId = $this->normalizeAzureId($dbResult->AzureId);
+                            if ($azureId) {
+                                Log::info('Method 3: Azure ID from direct DB query', ['azure_id' => $azureId]);
+                            }
+                        }
+                    } catch (\Exception $e) {
+                        Log::error('Method 3 failed', ['error' => $e->getMessage()]);
+                    }
+                }
+
+                // Method 4: Look up in Azure AD by email (last resort)
+                if (!$azureId) {
+                    try {
+                        $azureService = app(\App\Services\AzureGraphService::class);
+                        $azureUser = $azureService->findUserByUPN($user->userPrincipalName);
+
+                        if ($azureUser && isset($azureUser['id']) && $this->isValidUuid($azureUser['id'])) {
+                            $azureId = trim($azureUser['id']);
+
+                            // Update the database with the correct Azure ID
+                            DB::connection('sqlsrv')
+                                ->table('Azure_Users')
+                                ->where('Id', $user->Id)
+                                ->update(['AzureId' => $azureId]);
+
+                            Log::info('Method 4: Azure ID found via Azure AD lookup', [
+                                'azure_id' => $azureId,
+                                'upn' => $user->userPrincipalName
+                            ]);
+                        }
+                    } catch (\Exception $e) {
+                        Log::error('Method 4 failed', [
+                            'error' => $e->getMessage(),
+                            'upn' => $user->userPrincipalName
+                        ]);
+                    }
+                }
+
+                $azureId = $this->getAzureIdWithFallback($user);
+
+                if (empty($azureId)) {
+                    Log::error('✗ CRITICAL: Cannot provision - no Azure ID found', [
+                        'user_id' => $user->Id,
+                        'user_principal' => $user->userPrincipalName,
+                    ]);
+
+                    $provisioningResults['ERROR'] = [
+                        'success' => false,
+                        'message' => 'User not provisioned to Azure AD - no valid Azure ID found',
+                    ];
+                } else {
+                    Log::info('✓ Using Azure ID for provisioning', ['azure_id' => $azureId]);
+
+                    // 13.1: D365 Live
+                    if ($assignedModules->contains('D365 LIVE')) {
+                        Log::info('→ Provisioning to D365 Live...');
+
+                        try {
+                            $d365Result = DB::connection('sqlsrv')->select('
+                SET NOCOUNT ON;
+                DECLARE @Status VARCHAR(15), @Remark VARCHAR(200);
+                EXEC sp_Azure_D365UserCreation
+                    @AzureUserID = ?,
+                    @Status = @Status OUTPUT,
+                    @Remark = @Remark OUTPUT;
+                SELECT @Status as Status, @Remark as Remark;
+            ', [$azureId]);
+
+                            $d365Status = $d365Result[0]->Status ?? 'Failed';
+                            $d365Remark = $d365Result[0]->Remark ?? 'Unknown error';
+
+                            $provisioningResults['D365 LIVE'] = [
+                                'success' => $d365Status === 'Success',
+                                'message' => $d365Remark,
+                            ];
+
+                            Log::info($d365Status === 'Success' ? '✓ D365 provisioned' : '⚠ D365 failed', [
+                                'status' => $d365Status,
+                                'remark' => $d365Remark,
+                            ]);
+                        } catch (\Exception $e) {
+                            $provisioningResults['D365 LIVE'] = [
+                                'success' => false,
+                                'message' => $e->getMessage(),
+                            ];
+                            Log::error('✗ D365 provisioning error', ['error' => $e->getMessage()]);
+                        }
+                    }
+
+                    // 13.2: OPS/SCM
+                    if ($assignedModules->contains('OPS') || $assignedModules->contains('OPS UAT') || $assignedModules->contains('OPSUAT')) {
+                        Log::info('→ Provisioning to OPS/SCM...');
+
+                        try {
+                            $stmt = DB::connection('sqlsrv')->getPdo()->prepare(
+                                'EXEC sp_Azure_SCMUserCreation ?, @Status OUTPUT, @Remark OUTPUT'
+                            );
+
+                            $status = '';
+                            $remark = '';
+
+                            $stmt->bindParam(1, $azureId, \PDO::PARAM_STR);
+                            $stmt->bindParam(2, $status, \PDO::PARAM_STR | \PDO::PARAM_INPUT_OUTPUT, 15);
+                            $stmt->bindParam(3, $remark, \PDO::PARAM_STR | \PDO::PARAM_INPUT_OUTPUT, 200);
+
+                            $stmt->execute();
+
+                            $provisioningResults['OPS'] = [
+                                'success' => strtoupper($status) === 'SUCCESS',
+                                'message' => $remark,
+                            ];
+
+                            Log::info(strtoupper($status) === 'SUCCESS' ? '✓ OPS provisioned' : '⚠ OPS failed', [
+                                'status' => $status,
+                                'remark' => $remark,
+                            ]);
+                        } catch (\Exception $e) {
+                            $provisioningResults['OPS'] = [
+                                'success' => false,
+                                'message' => $e->getMessage(),
+                            ];
+                            Log::error('✗ OPS provisioning error', ['error' => $e->getMessage()]);
+                        }
+                    }
+
+                    // 13.3: BIZ PRO
+                    if ($assignedModules->contains('BIZ PRO') || $assignedModules->contains('FITSYS')) {
+                        Log::info('→ Provisioning to BIZ PRO...');
+
+                        try {
+                            $bizApp = DB::connection('sqlsrv')
+                                ->table('Azure_SoftwareMaster')
+                                ->where(function ($q) {
+                                    $q->where('Name', 'LIKE', '%FITSYS%')
+                                        ->orWhere('Name', 'LIKE', '%BIZ%');
+                                })
+                                ->first();
+
+                            if ($bizApp) {
+                                $stmt = DB::connection('sqlsrv')->getPdo()->prepare(
+                                    'EXEC sp_Azure_FITSYSUserCreation ?, ?, @Status OUTPUT, @Remark OUTPUT'
+                                );
+
+                                $status = '';
+                                $remark = '';
+
+                                $stmt->bindParam(1, $azureId, \PDO::PARAM_STR);
+                                $stmt->bindParam(2, $bizApp->Id, \PDO::PARAM_STR);
+                                $stmt->bindParam(3, $status, \PDO::PARAM_STR | \PDO::PARAM_INPUT_OUTPUT, 15);
+                                $stmt->bindParam(4, $remark, \PDO::PARAM_STR | \PDO::PARAM_INPUT_OUTPUT, 200);
+
+                                $stmt->execute();
+
+                                $provisioningResults['BIZ PRO'] = [
+                                    'success' => strtolower($status) === 'success',
+                                    'message' => $remark,
+                                ];
+
+                                Log::info(strtolower($status) === 'success' ? '✓ BIZ PRO provisioned' : '⚠ BIZ PRO failed', [
+                                    'status' => $status,
+                                    'remark' => $remark,
+                                ]);
+                            }
+                        } catch (\Exception $e) {
+                            $provisioningResults['BIZ PRO'] = [
+                                'success' => false,
+                                'message' => $e->getMessage(),
+                            ];
+                            Log::error('✗ BIZ PRO provisioning error', ['error' => $e->getMessage()]);
+                        }
+                    }
+
+                    // 13.4: FIT Express  
+                    if ($assignedModules->contains('FIT EXPRESS')) {
+                        Log::info('→ Provisioning to FIT Express...');
+
+                        try {
+                            $fitApp = DB::connection('sqlsrv')
+                                ->table('Azure_SoftwareMaster')
+                                ->where('Name', 'LIKE', '%FIT Express%')
+                                ->first();
+
+                            if ($fitApp) {
+                                $stmt = DB::connection('sqlsrv')->getPdo()->prepare(
+                                    'EXEC sp_Azure_FITSYSUserCreation ?, ?, @Status OUTPUT, @Remark OUTPUT'
+                                );
+
+                                $status = '';
+                                $remark = '';
+
+                                $stmt->bindParam(1, $azureId, \PDO::PARAM_STR);
+                                $stmt->bindParam(2, $fitApp->Id, \PDO::PARAM_STR);
+                                $stmt->bindParam(3, $status, \PDO::PARAM_STR | \PDO::PARAM_INPUT_OUTPUT, 15);
+                                $stmt->bindParam(4, $remark, \PDO::PARAM_STR | \PDO::PARAM_INPUT_OUTPUT, 200);
+
+                                $stmt->execute();
+
+                                $provisioningResults['FIT Express'] = [
+                                    'success' => strtolower($status) === 'success',
+                                    'message' => $remark,
+                                ];
+
+
+                                Log::info(strtolower($status) === 'success' ? '✓ FIT Express provisioned' : '⚠ FIT Express failed', [
+                                    'status' => $status,
+                                    'remark' => $remark,
+                                ]);
+                            }
+                        } catch (\Exception $e) {
+                            $provisioningResults['FIT Express'] = [
+                                'success' => false,
+                                'message' => $e->getMessage(),
+                            ];
+                            Log::error('✗ FIT Express provisioning error', ['error' => $e->getMessage()]);
+                        }
+                    }
+                }
+
+                Log::info('✓ Step 13: Provisioning completed', [
+                    'results' => $provisioningResults,
+                ]);
+
+                // ====================================================================
+                // STEP 14: Verify data was saved
                 // ====================================================================
 
                 $verifyRolesCount = DB::connection('sqlsrv')
@@ -2435,12 +2727,25 @@ class AzureUserManagementController extends Controller
                 ]);
 
                 // ====================================================================
-                // STEP 14: Return success response
+                // STEP 15: Return success response
                 // ====================================================================
+
+                $provisioningSummary = '';
+                if (!empty($provisioningResults)) {
+                    $successCount = collect($provisioningResults)->where('success', true)->count();
+                    $totalCount = count($provisioningResults);
+
+                    $provisioningSummary = "\n\nProvisioning: {$successCount}/{$totalCount} successful";
+
+                    foreach ($provisioningResults as $module => $result) {
+                        $icon = $result['success'] ? '✓' : '⚠';
+                        $provisioningSummary .= "\n{$icon} {$module}: {$result['message']}";
+                    }
+                }
 
                 return response()->json([
                     'success' => true,
-                    'message' => "User updated successfully! {$insertedRolesCount} roles and {$insertedFunctionsCount} functions saved.",
+                    'message' => "User updated successfully! {$insertedRolesCount} roles and {$insertedFunctionsCount} functions saved.{$provisioningSummary}",
                     'data' => [
                         'roles_inserted' => $insertedRolesCount,
                         'functions_inserted' => $insertedFunctionsCount,
@@ -2449,13 +2754,10 @@ class AzureUserManagementController extends Controller
                         'roles_verified' => $verifyRolesCount,
                         'functions_verified' => $verifyFunctionsCount,
                         'user_id' => $user->Id,
+                        'provisioning_results' => $provisioningResults,
                     ],
                 ]);
             } catch (\Exception $e) {
-                // ====================================================================
-                // STEP 15: Rollback on any database error
-                // ====================================================================
-
                 if (DB::connection('sqlsrv')->transactionLevel() > 0) {
                     DB::connection('sqlsrv')->rollBack();
                 }
@@ -2466,6 +2768,7 @@ class AzureUserManagementController extends Controller
                     'file' => $e->getFile(),
                     'line' => $e->getLine(),
                     'trace' => $e->getTraceAsString(),
+
                 ]);
 
                 return response()->json([
@@ -2479,10 +2782,6 @@ class AzureUserManagementController extends Controller
                 ], 500);
             }
         } catch (\Exception $e) {
-            // ====================================================================
-            // STEP 16: Catch any other unexpected errors
-            // ====================================================================
-
             Log::error('❌ Unexpected error in update method', [
                 'user_id' => $user->Id ?? null,
                 'error' => $e->getMessage(),
@@ -2948,7 +3247,7 @@ class AzureUserManagementController extends Controller
                                 'email' => $user->userPrincipalName,
                             ]);
 
-                            $maxRetries = 2;
+                            $maxRetries = 1;
                             $retryCount = 0;
                             $azureUserData = null;
 
@@ -3194,6 +3493,45 @@ class AzureUserManagementController extends Controller
     }
 
     /**
+     * Normalize and validate Azure ID (GUID)
+     * Handles UUIDs with or without braces
+     * 
+     * @param string|null $azureId
+     * @return string|null Returns normalized UUID or null if invalid
+     */
+    private function normalizeAzureId(?string $azureId): ?string
+    {
+        if (empty($azureId) || !is_string($azureId)) {
+            Log::debug('Azure ID is empty or not a string', [
+                'value' => $azureId,
+                'type' => gettype($azureId)
+            ]);
+            return null;
+        }
+
+        // Trim whitespace
+        $azureId = trim($azureId);
+
+        // Remove braces if present
+        $azureId = trim($azureId, '{}');
+
+        // Validate format
+        $pattern = '/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i';
+
+        if (preg_match($pattern, $azureId) === 1) {
+            return strtolower($azureId); // ← Normalize to lowercase
+        }
+
+        Log::warning('Invalid Azure ID format', [
+            'original' => $azureId,
+            'length' => strlen($azureId),
+            'pattern_matched' => false
+        ]);
+
+        return null;
+    }
+
+    /**
      * Enable a disabled user (Azure AD first, then database - all-or-nothing)
      */
     public function enable(AzureUser $user)
@@ -3299,7 +3637,7 @@ class AzureUserManagementController extends Controller
                                 if ($retryCount >= $maxRetries) {
                                     throw $lookupError;
                                 }
-                                sleep(1);
+                                sleep(2);
                             }
                         }
 
@@ -3618,8 +3956,8 @@ class AzureUserManagementController extends Controller
                 ->where('Id', $user->Id)
                 ->update([
                     'AzureId' => $correctAzureId,
-                    'LastModifiedOn' => DB::raw('GETDATE()'),
-                    'LastModifiedBy' => Auth::id(),
+                    //'LastModifiedOn' => DB::raw('GETDATE()'),
+                    //'LastModifiedBy' => Auth::id(),
                 ]);
 
             Log::info('Azure ID repaired', [
@@ -3793,14 +4131,14 @@ class AzureUserManagementController extends Controller
     }
 
     /**
-     * Get functions for SCM modules (OPS/OPSUAT) using sp_UserCreation_Resourcefunction
+     * Get functions for SCM modules (OPS/OPSUAT) using sp_Azure_UserResourcefunction
      * API endpoint: GET /api/azure/modules/scm-functions
      */
     public function getSCMFunctions()
     {
         try {
             $functions = DB::connection('sqlsrv')
-                ->select('EXEC sp_UserCreation_Resourcefunction');
+                ->select('EXEC sp_Azure_UserResourcefunction');
 
             return response()->json([
                 'success' => true,
@@ -3819,7 +4157,7 @@ class AzureUserManagementController extends Controller
     }
 
     /**
-     * Get roles based on Application Code using sp_UserCreation_ResourceRole
+     * Get roles based on Application Code using sp_Azure_UserResourceRole
      * API endpoint: GET /api/azure/modules/roles?application_code=XXX&filter=YYY
      */
     public function getModuleRolesByCode(Request $request)
@@ -3838,51 +4176,54 @@ class AzureUserManagementController extends Controller
             }
 
             // ✅ ADD CACHING - cache for 1 hour
-            $cacheKey = "roles_{$applicationCode}_" . md5($filter ?? 'all');
+            // $cacheKey = "roles_{$applicationCode}_" . md5($filter ?? 'all');
 
-            $roles = Cache::remember($cacheKey, 3600, function () use ($applicationCode, $filter) {
-                $mapping = config('azure_modules.module_mapping', []);
-                $finalCode = $mapping[$applicationCode] ?? $applicationCode;
+            // $roles = Cache::remember($cacheKey, 3600, function () use ($applicationCode, $filter) {
+            $mapping = config('azure_modules.module_mapping', []);
+            $finalCode = $mapping[$applicationCode] ?? $applicationCode;
 
-                // Call stored procedure
-                if ($filter) {
-                    $roles = DB::connection('sqlsrv')
-                        ->select(
-                            'EXEC sp_UserCreation_ResourceRole @ApplicationCode = ?, @Filter = ?',
-                            [$finalCode, $filter]
-                        );
-                } else {
-                    $roles = DB::connection('sqlsrv')
-                        ->select(
-                            'EXEC sp_UserCreation_ResourceRole @ApplicationCode = ?',
-                            [$finalCode]
-                        );
-                }
+            // Call stored procedure
+            if ($filter) {
+                $roles = DB::connection('sqlsrv')
+                    ->select(
+                        'EXEC sp_Azure_UserResourceRole @ApplicationCode = ?, @Filter = ?',
+                        [$finalCode, $filter]
+                    );
+            } else {
+                $roles = DB::connection('sqlsrv')
+                    ->select(
+                        'EXEC sp_Azure_UserResourceRole @ApplicationCode = ?',
+                        [$finalCode]
+                    );
+            }
 
-                // Map RoleId to GUID
+            // Only map if RoleId is numeric (not already GUID)
+            $needsMapping = collect($roles)->contains(function ($role) {
+                return is_numeric($role->RoleId);
+            });
+
+            if ($needsMapping) {
                 $roleIds = collect($roles)->pluck('RoleId')->filter()->toArray();
 
-                if (! empty($roleIds)) {
-                    $roleMapping = DB::connection('sqlsrv')
-                        ->table('Azure_Users_Role')
-                        ->select('Id', 'RoleId', 'RoleCode', 'Role')
-                        ->where('ApplicationCode', $finalCode)
-                        ->whereIn('RoleId', $roleIds)
-                        ->where('IsActive', 1)
-                        ->where('IsDeleted', 0)
-                        ->get()
-                        ->keyBy('RoleId');
+                $roleMapping = DB::connection('sqlsrv')
+                    ->table('Azure_Users_Role')
+                    ->select('Id', 'RoleId', 'RoleCode', 'Role')
+                    ->where('ApplicationCode', $finalCode)
+                    ->whereIn('RoleId', $roleIds)
+                    ->where('IsActive', 1)
+                    ->where('IsDeleted', 0)
+                    ->get()
+                    ->keyBy('RoleId');
 
-                    foreach ($roles as &$role) {
-                        $oldRoleId = $role->RoleId;
-                        if (isset($roleMapping[$oldRoleId])) {
-                            $role->RoleId = $roleMapping[$oldRoleId]->Id;
-                        }
+                foreach ($roles as &$role) {
+                    $oldRoleId = $role->RoleId;
+                    if (isset($roleMapping[$oldRoleId])) {
+                        $role->RoleId = $roleMapping[$oldRoleId]->Id;
                     }
                 }
+            }
 
-                return $roles;
-            });
+            // });
 
             Log::info('✅ [AZURE ROLES] Roles fetched', [
                 'application_code' => $applicationCode,
@@ -4058,8 +4399,8 @@ class AzureUserManagementController extends Controller
                             ->where('Id', $user->Id)
                             ->update([
                                 'Status' => 'Active',
-                                'LastModifiedOn' => DB::raw('GETDATE()'),
-                                'LastModifiedBy' => Auth::id(),
+                                //'LastModifiedOn' => DB::raw('GETDATE()'),
+                                //'LastModifiedBy' => Auth::id(),
                             ]);
 
                         $stats['activated']++;
@@ -5010,5 +5351,547 @@ class AzureUserManagementController extends Controller
                 'message' => 'FIT Express provisioning failed: ' . $e->getMessage(),
             ], 500);
         }
+    }
+
+
+    /**
+     * Get user's current application access status
+     * Used to determine which checkboxes should be enabled/disabled in the modal
+     * 
+     * @param AzureUser $user
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getUserApplicationStatus(AzureUser $user)
+    {
+        try {
+            Log::info('=== GET USER APPLICATION STATUS ===', [
+                'user_id' => $user->Id,
+                'azure_id' => $user->AzureId,
+                'email' => $user->userPrincipalName,
+            ]);
+
+            // Check Azure AD status
+            $azureEnabled = ($user->Status === 'Active' && $user->accountEnabled);
+
+            // Check D365 Live access
+            $hasD365 = DB::connection('sqlsrv')
+                ->table('Azure_Application_UserMapping')
+                ->where('AzureUserID', $user->AzureId)
+                ->where('ApplicationName', 'D365 LIVE')
+                ->where('IsActive', 1)
+                ->where('IsDelete', 0)
+                ->exists();
+
+            // Check OPS/SCM access
+            $hasOPS = DB::connection('sqlsrv')
+                ->table('Azure_Application_UserMapping')
+                ->where('AzureUserID', $user->AzureId)
+                ->where('ApplicationName', 'LIKE', '%OPS%')
+                ->where('IsActive', 1)
+                ->where('IsDelete', 0)
+                ->exists();
+
+            // Check BIZ PRO access
+            $hasBIZ = !empty($user->BizUserID);
+
+            // Check FIT Express access
+            $hasFIT = DB::connection('sqlsrv')
+                ->table('Azure_Application_UserMapping')
+                ->where('AzureUserID', $user->AzureId)
+                ->where('ApplicationName', 'LIKE', '%FIT Express%')
+                ->where('IsActive', 1)
+                ->where('IsDelete', 0)
+                ->exists();
+
+            $status = [
+                'azure' => $azureEnabled,
+                'd365' => $hasD365,
+                'ops' => $hasOPS,
+                'biz' => $hasBIZ,
+                'fit' => $hasFIT,
+            ];
+
+            Log::info('User application status retrieved', [
+                'user_id' => $user->Id,
+                'status' => $status,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'data' => $status,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to get user application status', [
+                'user_id' => $user->Id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve application status',
+            ], 500);
+        }
+    }
+
+    /**
+     * Manage user access across multiple applications using sp_Azure_UserDisable
+     * 
+     * @param Request $request
+     * @param AzureUser $user
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function manageUserApplicationAccess(Request $request, AzureUser $user)
+    {
+        try {
+            Log::info('=== MANAGE USER APPLICATION ACCESS ===', [
+                'user_id' => $user->Id,
+                'azure_id' => $user->AzureId,
+                'email' => $user->userPrincipalName,
+                'request_data' => $request->all(),
+            ]);
+
+            // Validate request
+            $validated = $request->validate([
+                'action' => 'required|in:Disable,Enable',
+                'applications' => 'required|array|min:1',
+                'applications.*' => 'required|in:azure,d365,ops,biz,fit',
+            ]);
+
+            $action = $validated['action'];
+            $applications = $validated['applications'];
+
+            // Check if Azure AD is included
+            $includesAzureAD = in_array('azure', $applications);
+
+            // Build module list for JSON payload
+            $moduleList = [];
+
+            // Map application codes to module names and user levels
+            $applicationMapping = [
+                'd365' => ['Module' => 'D365 Live', 'UserLevel' => 'Overall'],
+                'ops' => ['Module' => 'OPS', 'UserLevel' => 'User'],
+                'biz' => ['Module' => 'BIZ PRO', 'UserLevel' => 'Overall'],
+                'fit' => ['Module' => 'FIT Express', 'UserLevel' => 'Overall'],
+            ];
+
+            foreach ($applications as $app) {
+                if ($app === 'azure') {
+                    continue; // Azure AD handled separately
+                }
+
+                if (isset($applicationMapping[$app])) {
+                    $moduleList[] = [
+                        'Module' => $applicationMapping[$app]['Module'],
+                        'UserLevel' => $applicationMapping[$app]['UserLevel'],
+                        'Status' => ($action === 'Disable') ? 1 : 0,
+                    ];
+                }
+            }
+
+            $results = [
+                'azure' => null,
+                'applications' => [],
+            ];
+
+            // Step 1: Handle Azure AD if included
+            if ($includesAzureAD) {
+                Log::info('→ Step 1: Processing Azure AD...');
+
+                try {
+                    if ($action === 'Disable') {
+                        // Use existing disable method
+                        $azureResponse = $this->performAzureDisable($user);
+                    } else {
+                        // Use existing enable method
+                        $azureResponse = $this->performAzureEnable($user);
+                    }
+
+                    $results['azure'] = [
+                        'success' => $azureResponse['success'],
+                        'message' => $azureResponse['message'],
+                    ];
+
+                    Log::info('✓ Step 1: Azure AD processed', $results['azure']);
+                } catch (\Exception $e) {
+                    $results['azure'] = [
+                        'success' => false,
+                        'message' => 'Azure AD operation failed: ' . $e->getMessage(),
+                    ];
+
+                    Log::error('✗ Step 1: Azure AD failed', [
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+
+            // Step 2: Handle other applications via stored procedure
+            if (!empty($moduleList)) {
+                Log::info('→ Step 2: Processing applications via SP...', [
+                    'module_count' => count($moduleList),
+                ]);
+
+                try {
+                    // Build JSON input for stored procedure
+                    $inputJson = [
+                        'OperationType' => $action . ' Users',
+                        'SubmittedDatetime' => now()->format('YmdHis'),
+                        'SubmittedBy' => Auth::user()->name ?? 'system',
+                        'Action' => $action,
+                        'UserID' => $user->Id,
+                        'Modulelist' => $moduleList,
+                    ];
+
+                    $inputJsonString = json_encode($inputJson);
+
+                    Log::info('Calling sp_Azure_UserDisable', [
+                        'input_json' => $inputJsonString,
+                    ]);
+
+                    // Call stored procedure
+                    $pdo = DB::connection('sqlsrv')->getPdo();
+                    $stmt = $pdo->prepare("
+                    SET NOCOUNT ON;
+                    DECLARE @OutputJson NVARCHAR(MAX);
+                    EXEC dbo.sp_Azure_UserDisable 
+                        @InputJson = ?,
+                        @OutputJson = @OutputJson OUTPUT;
+                    SELECT @OutputJson as OutputJson;
+                ");
+
+                    $stmt->execute([$inputJsonString]);
+                    $result = $stmt->fetch(\PDO::FETCH_OBJ);
+
+                    // Clear any remaining result sets
+                    while ($stmt->nextRowset()) {
+                        // Just loop through to clear
+                    }
+
+                    $outputJson = $result->OutputJson ?? null;
+
+                    Log::info('SP Response received', [
+                        'output_json' => $outputJson,
+                        'output_json_length' => strlen($outputJson ?? ''),
+                    ]);
+
+                    // Parse output JSON
+                    if ($outputJson) {
+                        $output = json_decode($outputJson, true);
+
+                        if (json_last_error() === JSON_ERROR_NONE) {
+                            Log::info('Parsed SP output', ['output' => $output]);
+
+                            // ================================================================
+                            // ENHANCED: Handle both old and new SP output formats
+                            // ================================================================
+
+                            // Check if output is in the old format (single result, no Modulelist array)
+                            if (isset($output['status']) && !isset($output['Modulelist'])) {
+                                // OLD FORMAT: Single object with status/Remark
+                                // This means SP processed one or more modules and returned directly
+
+                                Log::info('Detected old SP output format (single result)');
+
+                                // Check if this is a global failure (user doesn't exist, etc.)
+                                if (
+                                    strtolower($output['status']) === 'failed' &&
+                                    str_contains(strtolower($output['Remark'] ?? ''), 'does not exists')
+                                ) {
+
+                                    // User doesn't exist - mark all modules as failed
+                                    foreach ($moduleList as $module) {
+                                        $moduleName = $module['Module'];
+                                        $results['applications'][$moduleName] = [
+                                            'success' => false,
+                                            'message' => $output['Remark'] ?? 'User not found in system',
+                                        ];
+                                    }
+                                } else {
+                                    // Apply result to all modules in the request
+                                    foreach ($moduleList as $module) {
+                                        $moduleName = $module['Module'];
+
+                                        $results['applications'][$moduleName] = [
+                                            'success' => strtolower($output['status']) === 'success',
+                                            'message' => $output['Remark'] ?? $output['status'] ?? 'Unknown status',
+                                        ];
+                                    }
+                                }
+                            }
+                            // Check if output has the expected Modulelist format
+                            elseif (isset($output['Modulelist']) && is_array($output['Modulelist'])) {
+                                // NEW FORMAT: Array of module results
+                                Log::info('Detected new SP output format (Modulelist array)');
+
+                                foreach ($moduleList as $module) {
+                                    $moduleName = $module['Module'];
+
+                                    // Find result for this module in output
+                                    $moduleResult = collect($output['Modulelist'])->firstWhere('Module', $moduleName);
+
+                                    if ($moduleResult) {
+                                        $results['applications'][$moduleName] = [
+                                            'success' => ($moduleResult['Status'] ?? 0) === 1,
+                                            'message' => $moduleResult['Remark'] ?? 'No status returned',
+                                        ];
+                                    } else {
+                                        // Module not found in output
+                                        $results['applications'][$moduleName] = [
+                                            'success' => false,
+                                            'message' => 'No response from stored procedure for this module',
+                                        ];
+                                    }
+                                }
+                            }
+                            // Fallback: unknown format
+                            else {
+                                Log::warning('Unknown SP output format', ['output' => $output]);
+
+                                foreach ($moduleList as $module) {
+                                    $moduleName = $module['Module'];
+                                    $results['applications'][$moduleName] = [
+                                        'success' => false,
+                                        'message' => 'Unexpected response format from stored procedure',
+                                    ];
+                                }
+                            }
+                        } else {
+                            throw new \Exception('Invalid JSON response from stored procedure: ' . json_last_error_msg());
+                        }
+                    } else {
+                        throw new \Exception('No output from stored procedure');
+                    }
+
+                    Log::info('✓ Step 2: Applications processed', [
+                        'results' => $results['applications'],
+                    ]);
+                } catch (\Exception $e) {
+                    Log::error('✗ Step 2: Application processing failed', [
+                        'error' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString(),
+                    ]);
+
+                    // Mark all applications as failed
+                    foreach ($moduleList as $module) {
+                        $moduleName = $module['Module'];
+
+                        // Only mark as failed if not already processed
+                        if (!isset($results['applications'][$moduleName])) {
+                            $results['applications'][$moduleName] = [
+                                'success' => false,
+                                'message' => 'Failed: ' . $e->getMessage(),
+                            ];
+                        }
+                    }
+                }
+            }
+
+            // Build summary message
+            $summary = $this->buildSummaryMessage($results, $action);
+
+            Log::info('=== MANAGE USER APPLICATION ACCESS COMPLETED ===', [
+                'user_id' => $user->Id,
+                'summary' => $summary,
+                'results' => $results,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => $summary['message'],
+                'results' => $results,
+                'summary' => $summary,
+                'reload' => $includesAzureAD, // Reload page if Azure AD was modified
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Unexpected error in manageUserApplicationAccess', [
+                'user_id' => $user->Id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'An unexpected error occurred: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Helper: Perform Azure AD disable operation
+     */
+    private function performAzureDisable($user)
+    {
+        // Reuse existing disable logic
+        $azureId = $user->AzureId;
+
+        if (empty($azureId) || !$this->isValidUuid($azureId)) {
+            return [
+                'success' => false,
+                'message' => 'Invalid Azure ID',
+            ];
+        }
+
+        $azureService = app(\App\Services\AzureGraphService::class);
+
+        try {
+            $azureService->disableUser($azureId);
+
+            DB::connection('sqlsrv')
+                ->table('Azure_Users')
+                ->where('Id', $user->Id)
+                ->update([
+                    'Status' => 'Inactive',
+                    'accountEnabled' => 0,
+                ]);
+
+            return [
+                'success' => true,
+                'message' => 'Azure AD account disabled successfully',
+            ];
+        } catch (\Exception $e) {
+            return [
+                'success' => false,
+                'message' => 'Azure AD disable failed: ' . $e->getMessage(),
+            ];
+        }
+    }
+
+    /**
+     * Helper: Perform Azure AD enable operation
+     */
+    private function performAzureEnable($user)
+    {
+        // Reuse existing enable logic
+        $azureId = $user->AzureId;
+
+        if (empty($azureId) || !$this->isValidUuid($azureId)) {
+            return [
+                'success' => false,
+                'message' => 'Invalid Azure ID',
+            ];
+        }
+
+        $azureService = app(\App\Services\AzureGraphService::class);
+
+        try {
+            $azureService->enableUser($azureId);
+
+            DB::connection('sqlsrv')
+                ->table('Azure_Users')
+                ->where('Id', $user->Id)
+                ->update([
+                    'Status' => 'Active',
+                    'accountEnabled' => 1,
+                ]);
+
+            return [
+                'success' => true,
+                'message' => 'Azure AD account enabled successfully',
+            ];
+        } catch (\Exception $e) {
+            return [
+                'success' => false,
+                'message' => 'Azure AD enable failed: ' . $e->getMessage(),
+            ];
+        }
+    }
+
+    /**
+     * Helper: Build summary message from results
+     */
+    private function buildSummaryMessage($results, $action)
+    {
+        $successful = [];
+        $failed = [];
+
+        // Check Azure AD result
+        if ($results['azure']) {
+            if ($results['azure']['success']) {
+                $successful[] = 'Azure AD';
+            } else {
+                $failed[] = 'Azure AD: ' . $results['azure']['message'];
+            }
+        }
+
+        // Check application results
+        foreach ($results['applications'] as $module => $result) {
+            if ($result['success']) {
+                $successful[] = $module;
+            } else {
+                $failed[] = $module . ': ' . $result['message'];
+            }
+        }
+
+        $totalCount = count($successful) + count($failed);
+        $successCount = count($successful);
+
+        $message = "{$action} operation completed: {$successCount}/{$totalCount} successful";
+
+        if (!empty($successful)) {
+            $message .= "\n\n✅ Successful:\n• " . implode("\n• ", $successful);
+        }
+
+        if (!empty($failed)) {
+            $message .= "\n\n❌ Failed:\n• " . implode("\n• ", $failed);
+        }
+
+        return [
+            'message' => $message,
+            'successful' => $successful,
+            'failed' => $failed,
+            'success_count' => $successCount,
+            'total_count' => $totalCount,
+        ];
+    }
+
+    /**
+     * Get Azure ID with comprehensive fallback strategy
+     * 
+     * @param AzureUser $user
+     * @return string|null
+     */
+    private function getAzureIdWithFallback(AzureUser $user): ?string
+    {
+        // Method 1: From model
+        if (!empty($user->AzureId) && $this->isValidUuid($user->AzureId)) {
+            return trim($user->AzureId);
+        }
+
+        // Method 2: Refresh and retry
+        $user = $user->fresh();
+        if ($user && !empty($user->AzureId) && $this->isValidUuid($user->AzureId)) {
+            return trim($user->AzureId);
+        }
+
+        // Method 3: Direct DB query
+        $azureId = DB::connection('sqlsrv')
+            ->table('Azure_Users')
+            ->where('Id', $user->Id)
+            ->value('AzureId');
+
+        if (!empty($azureId) && $this->isValidUuid($azureId)) {
+            return trim($azureId);
+        }
+
+        // Method 4: Azure AD lookup
+        try {
+            $azureService = app(\App\Services\AzureGraphService::class);
+            $azureUser = $azureService->findUserByUPN($user->userPrincipalName);
+
+            if ($azureUser && isset($azureUser['id']) && $this->isValidUuid($azureUser['id'])) {
+                $azureId = trim($azureUser['id']);
+
+                // Update DB
+                DB::connection('sqlsrv')
+                    ->table('Azure_Users')
+                    ->where('Id', $user->Id)
+                    ->update(['AzureId' => $azureId]);
+
+                return $azureId;
+            }
+        } catch (\Exception $e) {
+            Log::error('Azure AD lookup failed', ['error' => $e->getMessage()]);
+        }
+
+        return null;
     }
 }

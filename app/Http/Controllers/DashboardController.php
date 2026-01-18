@@ -1251,13 +1251,13 @@ class DashboardController extends Controller
                 // FIXED: Handle the asterisk (*) value
                 $loginsLastMonth = $item->NoofLoginLastMonth ?? 0;
 
-                Log::debug('Processing user from SP', [
-                    'name' => $item->Name ?? 'N/A',
-                    'login_id' => $item->LoginID ?? 'N/A',
-                    'raw_logins_value' => $loginsLastMonth,
-                    'type' => gettype($loginsLastMonth),
-                    'is_numeric' => is_numeric($loginsLastMonth)
-                ]);
+                // Log::debug('Processing user from SP', [
+                //     'name' => $item->Name ?? 'N/A',
+                //     'login_id' => $item->LoginID ?? 'N/A',
+                //     'raw_logins_value' => $loginsLastMonth,
+                //     'type' => gettype($loginsLastMonth),
+                //     'is_numeric' => is_numeric($loginsLastMonth)
+                // ]);
 
                 // Convert to integer if it's numeric
                 if (is_numeric($loginsLastMonth)) {
