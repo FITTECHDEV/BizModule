@@ -12,8 +12,7 @@
     <div class="row">
         <!-- Active Users Card -->
         <div class="col-lg-3 col-md-6">
-            <div class="small-box bg-success" style="cursor: pointer;"
-                onclick="window.location=`{{ route('azure.users.active') }}`">
+            <div class="small-box bg-success status-filter-card" data-status="active" style="cursor: pointer;">
                 <div class="inner">
                     <h3>{{ $stats['active'] ?? 0 }}</h3>
                     <p>Active Users</p>
@@ -25,8 +24,7 @@
         </div>
         <!-- Pending Users Card -->
         <div class="col-lg-3 col-md-6">
-            <div class="small-box bg-warning" style="cursor: pointer;"
-                onclick="window.location=`{{ route('azure.users.pending') }}`">
+            <div class="small-box bg-warning status-filter-card" data-status="pending" style="cursor: pointer;">
                 <div class="inner">
                     <h3>{{ $stats['pending'] ?? 0 }}</h3>
                     <p>Pending</p>
@@ -36,10 +34,10 @@
                 </div>
             </div>
         </div>
+
         <!-- Inactive Users Card -->
         <div class="col-lg-3 col-md-6">
-            <div class="small-box bg-danger" style="cursor: pointer;"
-                onclick="window.location=`{{ route('azure.users.inactive') }}`">
+            <div class="small-box bg-danger status-filter-card" data-status="inactive" style="cursor: pointer;">
                 <div class="inner">
                     <h3>{{ $stats['inactive'] ?? 0 }}</h3>
                     <p>Inactive</p>
@@ -49,7 +47,8 @@
                 </div>
             </div>
         </div>
-        <!-- Total Users Card -->
+
+        <!-- Total Users Card - NOT CLICKABLE -->
         <div class="col-lg-3 col-md-6">
             <div class="small-box bg-info">
                 <div class="inner">
@@ -68,17 +67,14 @@
         <div class="card-header">
             <div class="row align-items-center">
                 <div class="col-md-6">
-                    <!-- Filters removed - search only -->
-                </div>
-                <div class="col-md-6 text-right">
                     <div class="d-inline-flex align-items-center">
-                        <div class="input-group input-group-sm mr-2" style="width: 350px;">
+                        <div class="input-group input-group-sm" style="width: 400px;">
                             <input type="text" id="searchUsers" class="form-control form-control-sm"
-                                placeholder="Search by name, email, department, company, location... (Press Enter)"
-                                value="{{ request('search') }}" autocomplete="off">
+                                placeholder="Search by name, email, login ID..." value="{{ request('search') }}"
+                                autocomplete="off">
                             <div class="input-group-append">
                                 <button class="btn btn-outline-secondary" type="button" id="clearSearch"
-                                    title="Clear all filters">
+                                    title="Clear search">
                                     <i class="fas fa-times"></i>
                                 </button>
                                 <button class="btn btn-primary" type="button" id="searchButton" title="Search">
@@ -86,27 +82,26 @@
                                 </button>
                             </div>
                         </div>
-                        {{-- Sync from Odoo Button --}}
+                    </div>
+                </div>
+
+                <div class="col-md-6 text-right">
+                    <div class="d-inline-flex align-items-center">
                         <button onclick="syncOdooUsers()" class="btn btn-success btn-sm mr-2" id="syncBtn"
                             title="Import/update users from Odoo">
                             <i class="fas fa-sync-alt"></i> Sync from Odoo
                         </button>
-                        {{-- Retry Provisioning for Pending Users --}}
                         <button onclick="retryAllPendingUsers()" class="btn btn-warning btn-sm mr-2"
                             id="retryProvisioningBtn" title="Retry provisioning for all pending users">
                             <i class="fas fa-redo-alt"></i> Retry Pending
                         </button>
-                        {{-- Add User Button --}}
-                        <a href="{{ route('azure.users.create') }}" class="btn btn-primary btn-sm">
-                            <i class="fas fa-user-plus"></i> Add User
-                        </a>
                     </div>
                 </div>
             </div>
         </div>
 
         <!-- Users Table -->
-        <div class="card-body table-responsive p-0">
+        <div class="card-body table-responsive p-0" id="usersTableContainer">
             <table class="table table-hover text-nowrap">
                 <thead>
                     <tr>
@@ -121,7 +116,7 @@
                         <th style="width: 120px;">Actions</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody id="usersTableBody">
                     @forelse($users as $user)
                         <tr>
                             <td>
@@ -169,14 +164,8 @@
                                                 <i class="fas fa-edit"></i>
                                             </a>
                                         @endif
-                                        @if (strtolower($user->Status ?? 'inactive') === 'active')
+                                        @if (strtolower($user->Status ?? 'inactive') === 'active' && request('status', 'active') === 'active')
                                             <button class="btn btn-danger btn-sm"
-                                                onclick="openManageAccessModal('{{ $user->Id }}', '{{ addslashes($user->displayName) }}', '{{ $user->Status }}')"
-                                                title="Manage Access">
-                                                <i class="fas fa-cog"></i>
-                                            </button>
-                                        @else
-                                            <button class="btn btn-warning btn-sm"
                                                 onclick="openManageAccessModal('{{ $user->Id }}', '{{ addslashes($user->displayName) }}', '{{ $user->Status }}')"
                                                 title="Manage Access">
                                                 <i class="fas fa-cog"></i>
@@ -196,7 +185,7 @@
                             <td colspan="9" class="text-center text-muted py-4">
                                 <i class="fas fa-users fa-3x mb-3"></i>
                                 <p>No users found</p>
-                                @if (request('search') || request('status') || request('department') || request('company') || request('location'))
+                                @if (request('search') || request('status'))
                                     <button class="btn btn-sm btn-outline-primary" onclick="clearAllFilters()">
                                         <i class="fas fa-redo"></i> Clear Filters
                                     </button>
@@ -209,10 +198,10 @@
         </div>
 
         @if ($users->hasPages())
-            <div class="card-footer clearfix">
+            <div class="card-footer clearfix" id="paginationContainer">
                 <div class="row align-items-center">
                     <div class="col-md-6">
-                        <span class="text-muted">
+                        <span class="text-muted" id="paginationInfo">
                             Showing {{ $users->firstItem() ?? 0 }} to {{ $users->lastItem() ?? 0 }} of
                             {{ $users->total() }} users
                         </span>
@@ -222,38 +211,34 @@
                             @if ($users->onFirstPage())
                                 <li class="page-item disabled"><span class="page-link">First</span></li>
                             @else
-                                <li class="page-item"><a class="page-link"
-                                        href="{{ $users->appends(request()->except('page'))->url(1) }}">First</a></li>
+                                <li class="page-item"><a class="page-link page-nav" href="#"
+                                        data-page="1">First</a></li>
                             @endif
                             @if ($users->onFirstPage())
                                 <li class="page-item disabled"><span class="page-link">&laquo;</span></li>
                             @else
-                                <li class="page-item"><a class="page-link"
-                                        href="{{ $users->appends(request()->except('page'))->previousPageUrl() }}">&laquo;</a>
-                                </li>
+                                <li class="page-item"><a class="page-link page-nav" href="#"
+                                        data-page="{{ $users->currentPage() - 1 }}">&laquo;</a></li>
                             @endif
                             @foreach ($users->getUrlRange(1, $users->lastPage()) as $page => $url)
                                 @if ($page == $users->currentPage())
                                     <li class="page-item active"><span class="page-link">{{ $page }}</span></li>
                                 @else
-                                    <li class="page-item"><a class="page-link"
-                                            href="{{ $users->appends(request()->except('page'))->url($page) }}">{{ $page }}</a>
-                                    </li>
+                                    <li class="page-item"><a class="page-link page-nav" href="#"
+                                            data-page="{{ $page }}">{{ $page }}</a></li>
                                 @endif
                             @endforeach
                             @if ($users->hasMorePages())
-                                <li class="page-item"><a class="page-link"
-                                        href="{{ $users->appends(request()->except('page'))->nextPageUrl() }}">&raquo;</a>
-                                </li>
+                                <li class="page-item"><a class="page-link page-nav" href="#"
+                                        data-page="{{ $users->currentPage() + 1 }}">&raquo;</a></li>
                             @else
                                 <li class="page-item disabled"><span class="page-link">&raquo;</span></li>
                             @endif
                             @if ($users->currentPage() == $users->lastPage())
                                 <li class="page-item disabled"><span class="page-link">Last</span></li>
                             @else
-                                <li class="page-item"><a class="page-link"
-                                        href="{{ $users->appends(request()->except('page'))->url($users->lastPage()) }}">Last</a>
-                                </li>
+                                <li class="page-item"><a class="page-link page-nav" href="#"
+                                        data-page="{{ $users->lastPage() }}">Last</a></li>
                             @endif
                         </ul>
                     </div>
@@ -262,9 +247,7 @@
         @endif
     </div>
 
-    {{-- ============================================ --}}
-    {{-- MANAGE USER ACCESS MODAL - UPDATED VERSION  --}}
-    {{-- ============================================ --}}
+    <!-- Manage Access Modal -->
     <div class="modal fade" id="manageAccessModal" tabindex="-1" role="dialog"
         aria-labelledby="manageAccessModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-lg" role="document">
@@ -283,19 +266,16 @@
                     <input type="hidden" id="modal-user-name" value="">
                     <input type="hidden" id="modal-user-status" value="">
 
-                    {{-- User Info Banner --}}
                     <div class="alert alert-info mb-3">
                         <strong><i class="fas fa-user"></i> <span id="modal-user-display"></span></strong>
                         <span class="badge badge-secondary ml-2" id="modal-status-badge">Loading...</span>
                     </div>
 
-                    {{-- Loading Indicator --}}
                     <div id="loadingApplicationStatus" class="text-center py-3" style="display: none;">
                         <i class="fas fa-spinner fa-spin fa-2x text-primary"></i>
                         <p class="mt-2 text-muted">Loading application status...</p>
                     </div>
 
-                    {{-- Azure AD Master Control --}}
                     <div class="card mb-3 border-primary">
                         <div class="card-body py-2">
                             <div class="custom-control custom-checkbox">
@@ -315,11 +295,8 @@
                         <small>───────── OR Select Applications Individually ─────────</small>
                     </div>
 
-                    {{-- Applications List (Compact) --}}
                     <div class="card" id="applicationsCard">
                         <div class="card-body p-3">
-
-                            {{-- D365 --}}
                             <div class="d-flex align-items-center justify-content-between py-2 border-bottom">
                                 <div class="d-flex align-items-center flex-grow-1">
                                     <div class="custom-control custom-checkbox mb-0">
@@ -334,7 +311,6 @@
                                 <span class="badge badge-sm ml-3" id="d365-status-badge">Checking...</span>
                             </div>
 
-                            {{-- OPS/SCM --}}
                             <div class="d-flex align-items-center justify-content-between py-2 border-bottom">
                                 <div class="d-flex align-items-center flex-grow-1">
                                     <div class="custom-control custom-checkbox mb-0">
@@ -343,14 +319,12 @@
                                         <label class="custom-control-label mb-0" for="opsCheckbox">
                                             <i class="fas fa-warehouse text-warning mr-2"></i>
                                             <strong>OPS/SCM</strong>
-                                            {{-- <span class="badge badge-info badge-sm ml-2">User Level</span> --}}
                                         </label>
                                     </div>
                                 </div>
                                 <span class="badge badge-sm ml-3" id="ops-status-badge">Checking...</span>
                             </div>
 
-                            {{-- BIZ PRO --}}
                             <div class="d-flex align-items-center justify-content-between py-2 border-bottom">
                                 <div class="d-flex align-items-center flex-grow-1">
                                     <div class="custom-control custom-checkbox mb-0">
@@ -365,7 +339,6 @@
                                 <span class="badge badge-sm ml-3" id="biz-status-badge">Checking...</span>
                             </div>
 
-                            {{-- FIT Express --}}
                             <div class="d-flex align-items-center justify-content-between py-2">
                                 <div class="d-flex align-items-center flex-grow-1">
                                     <div class="custom-control custom-checkbox mb-0">
@@ -382,7 +355,6 @@
                         </div>
                     </div>
 
-                    {{-- Summary Section --}}
                     <div class="alert alert-info mt-3" id="changesSummary" style="display: none;">
                         <strong><i class="fas fa-info-circle"></i> Summary:</strong>
                         <span id="summaryText">No changes selected</span>
@@ -431,17 +403,46 @@
             font-weight: bold;
         }
 
-        /* Clickable stats cards */
-        .small-box[onclick] {
+        .small-box.status-filter-card {
             transition: transform 0.2s, box-shadow 0.2s;
+            position: relative;
         }
 
-        .small-box[onclick]:hover {
+        .small-box.status-filter-card:hover {
             transform: translateY(-3px);
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
         }
 
-        /* Pagination Styles */
+        .small-box.status-filter-card.active::after {
+            content: '';
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 20px;
+            height: 20px;
+            background: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .small-box.status-filter-card.active::before {
+            content: '✓';
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 20px;
+            height: 20px;
+            z-index: 1;
+            color: #28a745;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+        }
+
         .pagination {
             margin-bottom: 0;
         }
@@ -453,6 +454,7 @@
 
         .page-link {
             color: #007bff;
+            cursor: pointer;
         }
 
         .page-link:hover {
@@ -464,11 +466,6 @@
             border-top: 1px solid #dee2e6;
         }
 
-        /* Compact form controls */
-        #statusFilter {
-            max-width: 150px;
-        }
-
         #clearSearch {
             border-left: 0;
         }
@@ -477,13 +474,11 @@
             background-color: #e9ecef;
         }
 
-        /* Search input focus */
         #searchUsers:focus {
             border-color: #80bdff;
             box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
         }
 
-        /* Modal Styling */
         #manageAccessModal .modal-content {
             border-radius: 10px;
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
@@ -507,29 +502,16 @@
             border-bottom: none !important;
         }
 
-        #opsRadioGroup {
-            padding: 12px;
-            background: #fff8e1;
-            border-radius: 6px;
-            border: 2px dashed #ffc107;
-        }
-
-        #opsRadioGroup .custom-radio {
-            padding: 8px;
-            background: white;
+        .azure-controlled {
+            opacity: 0.7;
+            background-color: #e3f2fd;
+            padding: 5px;
             border-radius: 4px;
-            border: 2px solid #e0e0e0;
-            transition: all 0.2s ease;
+            transition: all 0.3s ease;
         }
 
-        #opsRadioGroup .custom-radio:hover {
-            border-color: #ffc107;
-            background: #fffef7;
-        }
-
-        #opsRadioGroup .custom-radio input:checked~label {
-            color: #d68910;
-            font-weight: 600;
+        .azure-controlled label {
+            color: #1976d2 !important;
         }
 
         .badge-sm {
@@ -545,26 +527,15 @@
             background-color: #f8f9fa;
         }
 
-        /* Visual indication when checkboxes are controlled by Azure AD */
-        .azure-controlled {
-            opacity: 0.7;
-            background-color: #e3f2fd;
-            padding: 5px;
-            border-radius: 4px;
-            transition: all 0.3s ease;
-        }
-
-        .azure-controlled label {
-            color: #1976d2 !important;
+        .table-loading {
+            opacity: 0.5;
+            pointer-events: none;
         }
     </style>
 @stop
 
 @section('js')
     <script>
-        // ────────────────────────────────────────────
-        // GLOBAL VARIABLES
-        // ────────────────────────────────────────────
         let currentUserApplicationStatus = {
             azure: false,
             d365: false,
@@ -573,114 +544,168 @@
             fit: false
         };
 
+        let currentFilters = {
+            status: '{{ request('status', 'active') }}',
+            search: '{{ request('search', '') }}',
+            page: 1,
+            per_page: 15
+        };
+
         // ────────────────────────────────────────────
-        // SEARCH FUNCTIONALITY - CLEAN VERSION
+        // AJAX TABLE LOADING
         // ────────────────────────────────────────────
+        function loadUsers(filters = {}) {
+            currentFilters = {
+                ...currentFilters,
+                ...filters
+            };
 
-        let searchTimeout; // For debouncing search requests
+            $('#usersTableContainer').addClass('table-loading');
 
-        /**
-         * Real-time search as user types (with 1-second debounce)
-         */
-        document.getElementById('searchUsers').addEventListener('input', function(e) {
-            console.log('🔍 Search input changed:', e.target.value);
+            $.ajax({
+                url: '/azure/dashboard/get-users',
+                method: 'GET',
+                data: currentFilters,
+                success: function(response) {
+                    if (response.success) {
+                        $('#usersTableBody').html(response.table);
 
-            clearTimeout(searchTimeout);
+                        if (response.pagination) {
+                            $('#paginationContainer').html(response.pagination).show();
+                            $('#paginationInfo').html(
+                                `Showing ${response.from} to ${response.to} of ${response.total} users`);
+                        } else {
+                            $('#paginationContainer').hide();
+                        }
 
-            searchTimeout = setTimeout(() => {
-                console.log('⏰ Debounce timeout reached - performing search');
-                performSearch();
-            }, 1000);
-        });
+                        updateURL();
+                    }
+                    $('#usersTableContainer').removeClass('table-loading');
+                },
+                error: function(xhr) {
+                    console.error('Error loading users:', xhr);
+                    alert('Failed to load users. Please try again.');
+                    $('#usersTableContainer').removeClass('table-loading');
+                }
+            });
+        }
 
-        /**
-         * Keyboard shortcuts for search
-         */
-        document.getElementById('searchUsers').addEventListener('keydown', function(e) {
-            // Enter key - search immediately
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                console.log('⏎ Enter pressed - immediate search');
-                clearTimeout(searchTimeout);
-                performSearch();
+        function updateURL() {
+            const url = new URL(window.location.href);
+            Object.keys(currentFilters).forEach(key => {
+                if (currentFilters[key]) {
+                    url.searchParams.set(key, currentFilters[key]);
+                } else {
+                    url.searchParams.delete(key);
+                }
+            });
+            window.history.pushState({}, '', url);
+        }
+
+        // ────────────────────────────────────────────
+        // STATUS CARD FILTERING
+        // ────────────────────────────────────────────
+        $(document).ready(function() {
+            // Set the appropriate status card as active on page load
+            const currentStatus = '{{ request('status', 'active') }}'; // Default to 'active'
+
+            if (currentStatus) {
+                $(`.status-filter-card[data-status="${currentStatus}"]`).addClass('active');
             }
 
-            // Escape key - clear search
-            if (e.key === 'Escape') {
-                console.log('⎋ Escape pressed - clearing search');
-                e.target.value = '';
+            // Status card click handler
+            $('.status-filter-card').on('click', function() {
+                const status = $(this).data('status');
+
+                // Remove active from all cards
+                $('.status-filter-card').removeClass('active');
+
+                // Add active to clicked card
+                $(this).addClass('active');
+
+                // Update filters and reload
+                currentFilters.status = status;
+                loadUsers({
+                    status: status,
+                    page: 1
+                });
+            });
+        });
+
+        // ────────────────────────────────────────────
+        // PAGINATION
+        // ────────────────────────────────────────────
+        $(document).on('click', '.page-nav', function(e) {
+            e.preventDefault();
+            const page = $(this).data('page');
+            loadUsers({
+                page: page
+            });
+        });
+
+        // ────────────────────────────────────────────
+        // SEARCH
+        // ────────────────────────────────────────────
+        let searchTimeout;
+
+        $(document).ready(function() {
+            $('#searchUsers').on('input', function() {
                 clearTimeout(searchTimeout);
-                performSearch();
-            }
-        });
-
-        /**
-         * Search button click handler
-         */
-        document.getElementById('searchButton').addEventListener('click', function() {
-            console.log('🔘 Search button clicked');
-            clearTimeout(searchTimeout);
-            performSearch();
-        });
-
-        /**
-         * Clear search button
-         */
-        document.getElementById('clearSearch').addEventListener('click', function() {
-            console.log('❌ Clear button clicked - resetting search');
-            clearTimeout(searchTimeout);
-            document.getElementById('searchUsers').value = '';
-            window.location.href = window.location.pathname;
-        });
-
-        /**
-         * Main search function - builds URL and navigates
-         */
-        function performSearch() {
-            const search = document.getElementById('searchUsers').value.trim();
-
-            console.log('🔍 Performing search with:', {
-                search
+                searchTimeout = setTimeout(function() {
+                    performSearch();
+                }, 500);
             });
 
-            // Build new URL with search parameter
-            const url = new URL(window.location.href);
+            $('#searchUsers').on('keypress', function(e) {
+                if (e.which === 13) {
+                    e.preventDefault();
+                    clearTimeout(searchTimeout);
+                    performSearch();
+                }
+            });
 
-            if (search) {
-                url.searchParams.set('search', search);
-            } else {
-                url.searchParams.delete('search');
-            }
+            $('#searchUsers').on('keyup', function(e) {
+                if (e.key === 'Escape') {
+                    clearAllFilters();
+                }
+            });
 
-            // Reset to page 1 when searching
-            url.searchParams.delete('page');
+            $('#searchButton').on('click', function() {
+                clearTimeout(searchTimeout);
+                performSearch();
+            });
 
-            console.log('🔗 Navigating to:', url.toString());
-            window.location.href = url.toString();
+            $('#clearSearch').on('click', function() {
+                clearTimeout(searchTimeout);
+                clearAllFilters();
+            });
+        });
+
+        function performSearch() {
+            const search = $('#searchUsers').val().trim();
+            loadUsers({
+                search: search,
+                page: 1
+            });
         }
 
-        /**
-         * Clear all filters and return to base URL
-         */
         function clearAllFilters() {
-            console.log('🧹 Clearing all filters');
-            clearTimeout(searchTimeout);
-            window.location.href = window.location.pathname;
+            $('#searchUsers').val('');
+            $('.status-filter-card').removeClass('active');
+            $('.status-filter-card[data-status="active"]').addClass('active'); // Set Active as default
+            currentFilters = {
+                status: 'active', // Reset to active, not empty
+                search: '',
+                page: 1,
+                per_page: 15
+            };
+            loadUsers();
         }
-
-        console.log('✅ Search scripts loaded successfully');
 
         // ────────────────────────────────────────────
         // MANAGE USER ACCESS MODAL
         // ────────────────────────────────────────────
-
         function openManageAccessModal(userId, userName, userStatus) {
-            console.log('🔷 Opening Manage Access Modal', {
-                userId,
-                userName,
-                userStatus
-            });
-
             $('#modal-user-id').val(userId);
             $('#modal-user-name').val(userName);
             $('#modal-user-status').val(userStatus);
@@ -705,21 +730,15 @@
         }
 
         function loadUserApplicationStatus(userId) {
-            console.log('📡 Loading application status for user:', userId);
-
-            fetch(`/azure/users/${userId}/application-status`, {
-                    method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                    }
-                })
-                .then(response => {
-                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                    return response.json();
-                })
-                .then(data => {
+            $.ajax({
+                url: `/azure/users/${userId}/application-status`,
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                },
+                success: function(data) {
                     if (data.success) {
                         currentUserApplicationStatus = data.data;
                         updateApplicationStatusUI();
@@ -728,18 +747,17 @@
                     }
                     $('#loadingApplicationStatus').hide();
                     $('#applicationsCard').show();
-                })
-                .catch(error => {
-                    console.error('❌ Error:', error);
-                    showErrorInModal(`Network error: ${error.message}`);
+                },
+                error: function(xhr, status, error) {
+                    console.error('Error:', error);
+                    showErrorInModal(`Network error: ${error}`);
                     $('#loadingApplicationStatus').hide();
                     $('#applicationsCard').show();
-                });
+                }
+            });
         }
 
         function updateApplicationStatusUI() {
-            console.log('🎨 Updating UI with status:', currentUserApplicationStatus);
-
             const apps = ['d365', 'ops', 'biz', 'fit'];
             let allAppsActive = true;
 
@@ -786,57 +804,58 @@
 
         function showErrorInModal(message) {
             const errorHtml = `
-                <div class="alert alert-danger alert-dismissible fade show">
-                    <i class="fas fa-exclamation-triangle"></i> ${message}
-                    <button type="button" class="close" data-dismiss="alert"><span>&times;</span></button>
-                </div>
-            `;
+            <div class="alert alert-danger alert-dismissible fade show">
+                <i class="fas fa-exclamation-triangle"></i> ${message}
+                <button type="button" class="close" data-dismiss="alert"><span>&times;</span></button>
+            </div>`;
             $('#applicationsCard').before(errorHtml);
         }
 
         // ────────────────────────────────────────────
         // CHECKBOX EVENT HANDLERS
         // ────────────────────────────────────────────
+        $(document).ready(function() {
+            $('#azureCheckbox').on('change', function() {
+                const isChecked = $(this).is(':checked');
 
-        $('#azureCheckbox').on('change', function() {
-            const isChecked = $(this).is(':checked');
-
-            $('.app-checkbox').each(function() {
-                const app = $(this).data('app');
-                if (currentUserApplicationStatus[app]) {
-                    if (isChecked) {
-                        $(this).prop('checked', true).prop('disabled', true);
-                        $(this).closest('.custom-control').addClass('azure-controlled');
-                    } else {
-                        $(this).prop('checked', false).prop('disabled', false);
-                        $(this).closest('.custom-control').removeClass('azure-controlled');
+                $('.app-checkbox').each(function() {
+                    const app = $(this).data('app');
+                    if (currentUserApplicationStatus[app]) {
+                        if (isChecked) {
+                            $(this).prop('checked', true).prop('disabled', true);
+                            $(this).closest('.custom-control').addClass('azure-controlled');
+                        } else {
+                            $(this).prop('checked', false).prop('disabled', false);
+                            $(this).closest('.custom-control').removeClass('azure-controlled');
+                        }
                     }
+                });
+
+                updateChangesSummary();
+            });
+
+            $('.app-checkbox').on('change', function() {
+                const accessibleApps = $('.app-checkbox').filter(function() {
+                    return currentUserApplicationStatus[$(this).data('app')];
+                });
+                const checkedAccessibleApps = accessibleApps.filter(':checked');
+
+                if (accessibleApps.length > 0 && checkedAccessibleApps.length === accessibleApps.length) {
+                    $('#azureCheckbox').prop('checked', true);
+                    accessibleApps.each(function() {
+                        $(this).prop('disabled', true).closest('.custom-control').addClass(
+                            'azure-controlled');
+                    });
+                } else {
+                    $('#azureCheckbox').prop('checked', false);
+                    accessibleApps.each(function() {
+                        $(this).prop('disabled', false).closest('.custom-control').removeClass(
+                            'azure-controlled');
+                    });
                 }
+
+                updateChangesSummary();
             });
-
-            updateChangesSummary();
-        });
-
-        $('.app-checkbox').on('change', function() {
-            const accessibleApps = $('.app-checkbox').filter(function() {
-                return currentUserApplicationStatus[$(this).data('app')];
-            });
-            const checkedAccessibleApps = accessibleApps.filter(':checked');
-
-            if (accessibleApps.length > 0 && checkedAccessibleApps.length === accessibleApps.length) {
-                $('#azureCheckbox').prop('checked', true);
-                accessibleApps.each(function() {
-                    $(this).prop('disabled', true).closest('.custom-control').addClass('azure-controlled');
-                });
-            } else {
-                $('#azureCheckbox').prop('checked', false);
-                accessibleApps.each(function() {
-                    $(this).prop('disabled', false).closest('.custom-control').removeClass(
-                        'azure-controlled');
-                });
-            }
-
-            updateChangesSummary();
         });
 
         function updateChangesSummary() {
@@ -863,76 +882,76 @@
         // ────────────────────────────────────────────
         // APPLY CHANGES
         // ────────────────────────────────────────────
+        $(document).ready(function() {
+            $('#applyChangesBtn').on('click', function() {
+                const userId = $('#modal-user-id').val();
+                const userStatus = $('#modal-user-status').val();
+                const action = userStatus.toLowerCase() === 'active' ? 'Disable' : 'Enable';
+                const selectedApps = [];
 
-        $('#applyChangesBtn').on('click', function() {
-            const userId = $('#modal-user-id').val();
-            const userStatus = $('#modal-user-status').val();
-            const action = userStatus.toLowerCase() === 'active' ? 'Disable' : 'Enable';
-            const selectedApps = [];
+                if ($('#azureCheckbox').is(':checked')) selectedApps.push('azure');
+                $('.app-checkbox:checked').each(function() {
+                    selectedApps.push($(this).data('app'));
+                });
 
-            if ($('#azureCheckbox').is(':checked')) selectedApps.push('azure');
-            $('.app-checkbox:checked').each(function() {
-                selectedApps.push($(this).data('app'));
-            });
+                if (selectedApps.length === 0) {
+                    alert('⚠️ No Changes Selected\n\nPlease select at least one application.');
+                    return;
+                }
 
-            if (selectedApps.length === 0) {
-                alert('⚠️ No Changes Selected\n\nPlease select at least one application.');
-                return;
-            }
+                const appNames = selectedApps.map(app =>
+                    app === 'azure' ? 'Azure AD' : $(`#${app}Checkbox`).closest('label').find('strong')
+                    .text()
+                );
 
-            const appNames = selectedApps.map(app =>
-                app === 'azure' ? 'Azure AD' : $(`#${app}Checkbox`).closest('label').find('strong').text()
-            );
-
-            if (!confirm(
-                    `⚠️ Confirm ${action}\n\nYou are about to ${action.toLowerCase()}:\n${appNames.map(n => '• ' + n).join('\n')}\n\nContinue?`
+                if (!confirm(
+                        `⚠️ Confirm ${action}\n\nYou are about to ${action.toLowerCase()}:\n${appNames.map(n => '• ' + n).join('\n')}\n\nContinue?`
                     )) {
-                return;
-            }
+                    return;
+                }
 
-            $('#applyChangesBtn').prop('disabled', true).html(
-                '<i class="fas fa-spinner fa-spin"></i> Processing...');
-            applyApplicationChanges(userId, action, selectedApps);
+                $('#applyChangesBtn').prop('disabled', true).html(
+                    '<i class="fas fa-spinner fa-spin"></i> Processing...');
+                applyApplicationChanges(userId, action, selectedApps);
+            });
         });
 
         function applyApplicationChanges(userId, action, applications) {
-            fetch(`/azure/users/${userId}/manage-access`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                    },
-                    body: JSON.stringify({
-                        action,
-                        applications
-                    })
-                })
-                .then(response => {
-                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                    return response.json();
-                })
-                .then(data => {
+            $.ajax({
+                url: `/azure/users/${userId}/manage-access`,
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                },
+                data: JSON.stringify({
+                    action: action,
+                    applications: applications
+                }),
+                success: function(data) {
                     if (data.success) {
                         alert(data.message || 'Operation completed successfully');
-                        setTimeout(() => window.location.reload(), 1500);
+                        $('#manageAccessModal').modal('hide');
+                        loadUsers();
                     } else {
                         $('#applyChangesBtn').prop('disabled', false).html(
-                        '<i class="fas fa-check"></i> Apply Changes');
+                            '<i class="fas fa-check"></i> Apply Changes');
                         alert('❌ Operation Failed\n\n' + data.message);
                     }
-                })
-                .catch(error => {
-                    console.error('❌ Error:', error);
-                    $('#applyChangesBtn').prop('disabled', false).html('<i class="fas fa-check"></i> Apply Changes');
-                    alert(`❌ Network Error\n\n${error.message}`);
-                });
+                },
+                error: function(xhr, status, error) {
+                    console.error('Error:', error);
+                    $('#applyChangesBtn').prop('disabled', false).html(
+                        '<i class="fas fa-check"></i> Apply Changes');
+                    alert(`❌ Network Error\n\n${error}`);
+                }
+            });
         }
 
         // ────────────────────────────────────────────
         // SYNC & RETRY FUNCTIONS
         // ────────────────────────────────────────────
-
         function syncOdooUsers() {
             const $syncBtn = $('#syncBtn');
             const originalText = $syncBtn.html();
@@ -949,12 +968,13 @@
                 success: function(response) {
                     if (response.success) {
                         alert(
-                            `✅ Sync Completed!\n\nProcessed: ${response.stats.processed}\nInserted: ${response.stats.inserted}\nUpdated: ${response.stats.updated}`);
-                        setTimeout(() => window.location.reload(), 1500);
+                            `✅ Sync Completed!\n\nProcessed: ${response.stats.processed}\nInserted: ${response.stats.inserted}\nUpdated: ${response.stats.updated}`
+                        );
+                        loadUsers();
                     } else {
                         alert('❌ Sync Failed\n\n' + (response.message || 'Unknown error'));
-                        $syncBtn.prop('disabled', false).html(originalText);
                     }
+                    $syncBtn.prop('disabled', false).html(originalText);
                 },
                 error: function(xhr) {
                     alert('❌ Sync Failed\n\n' + (xhr.responseJSON?.message || 'Network error'));
@@ -980,7 +1000,8 @@
                 timeout: 180000,
                 success: function() {
                     alert('✅ Activation completed!');
-                    setTimeout(() => window.location.reload(), 1500);
+                    loadUsers();
+                    $retryBtn.prop('disabled', false).html(originalText);
                 },
                 error: function(xhr) {
                     alert('❌ Activation Failed\n\n' + (xhr.responseJSON?.message || 'Network error'));
@@ -992,7 +1013,6 @@
         // ────────────────────────────────────────────
         // MODAL CLEANUP
         // ────────────────────────────────────────────
-
         $('#manageAccessModal').on('hidden.bs.modal', function() {
             resetModalState();
             $('#modal-user-id, #modal-user-name, #modal-user-status').val('');
@@ -1004,7 +1024,5 @@
                 fit: false
             };
         });
-
-        console.log('✅ All scripts loaded successfully');
     </script>
 @stop

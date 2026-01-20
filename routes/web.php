@@ -372,8 +372,11 @@ Route::prefix('azure')->name('azure.')->middleware(['auth'])->group(function () 
         Route::get('/activity', [App\Http\Controllers\AzureDashboardController::class, 'getRecentActivity'])
             ->name('activity')
             ->middleware('throttle:dashboard');
-    });
 
+        // AJAX get users
+        Route::get('/get-users', [App\Http\Controllers\AzureDashboardController::class, 'getUsers'])->name('get-users');
+    });
+    
     // ============================================================================
     // USER MANAGEMENT ROUTES (with rate limiting)
     // ============================================================================
@@ -1160,7 +1163,7 @@ Route::middleware(['auth'])->prefix('tracker')->name('tracker.')->group(function
 
 
 // Temporary redirect - forwards notifications from production to UAT
-Route::post('/webhooks/jimi/notifications', function(Request $request) {
+Route::post('/webhooks/jimi/notifications', function (Request $request) {
     // Forward to UAT
     Http::post('https://bizuat.freightintime.com/webhooks/jimi/notifications', [
         'msgType' => $request->input('msgType'),
@@ -1279,9 +1282,9 @@ Route::get('/azure/check-user', function (Illuminate\Http\Request $request) {
         }
 
         if ($email) {
-            $query->where(function($q) use ($email) {
+            $query->where(function ($q) use ($email) {
                 $q->where('userPrincipalName', $email)
-                  ->orWhere('mail', $email);
+                    ->orWhere('mail', $email);
             });
         }
 
@@ -1340,7 +1343,7 @@ Route::get('/azure/check-user', function (Illuminate\Http\Request $request) {
             ->get();
 
         // Group modules
-        $modules = $moduleAssignments->groupBy('ApplicationName')->map(function($assignments, $moduleName) {
+        $modules = $moduleAssignments->groupBy('ApplicationName')->map(function ($assignments, $moduleName) {
             return [
                 'name' => $moduleName,
                 'roles' => $assignments->pluck('RoleCode')->unique()->values(),
@@ -1349,7 +1352,7 @@ Route::get('/azure/check-user', function (Illuminate\Http\Request $request) {
             ];
         });
 
-        $functions = $functionAssignments->groupBy('ApplicationName')->map(function($assignments, $moduleName) {
+        $functions = $functionAssignments->groupBy('ApplicationName')->map(function ($assignments, $moduleName) {
             return [
                 'name' => $moduleName,
                 'functions' => $assignments->pluck('FunctionCode')->unique()->values(),
@@ -1415,7 +1418,6 @@ Route::get('/azure/check-user', function (Illuminate\Http\Request $request) {
                 'is_provisioned_to_azure' => !empty($user->AzureId),
             ]
         ]);
-
     } catch (\Exception $e) {
         Log::error('Error checking user in database', [
             'error' => $e->getMessage(),
@@ -1502,7 +1504,6 @@ Route::get('/azure/view-sp-definition/{sp_name?}', function ($spName = null) {
                 'count' => count($selectMatches[1] ?? []),
                 'tables' => array_unique($selectMatches[1] ?? []),
             ];
-
         } catch (\Exception $e) {
             $results['definition'] = [
                 'exists' => false,
@@ -1525,7 +1526,6 @@ Route::get('/azure/view-sp-definition/{sp_name?}', function ($spName = null) {
             'sp_name' => $spName,
             'results' => $results,
         ]);
-
     } catch (\Exception $e) {
         return response()->json([
             'success' => false,
@@ -1657,7 +1657,6 @@ Route::get('/azure/check-sp-logic', function (Illuminate\Http\Request $request) 
             'success' => true,
             'results' => $results,
         ]);
-
     } catch (\Exception $e) {
         return response()->json([
             'success' => false,
@@ -1702,7 +1701,6 @@ Route::get('/azure/get-full-sp-source', function (Illuminate\Http\Request $reque
             'success' => true,
             'results' => $results,
         ], 200, [], JSON_PRETTY_PRINT);
-
     } catch (\Exception $e) {
         return response()->json([
             'success' => false,
@@ -1731,7 +1729,6 @@ Route::get('/azure/check-avery-data', function (Illuminate\Http\Request $request
             'success' => true,
             'user_data' => $user[0],
         ], 200, [], JSON_PRETTY_PRINT);
-
     } catch (\Exception $e) {
         return response()->json([
             'success' => false,
