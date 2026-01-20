@@ -13,7 +13,7 @@
                 <i class="fas fa-arrow-left"></i> Back to Users
             </a>
             <a href="{{ route('azure.users.edit', $user->Id) }}" class="btn btn-warning btn-sm">
-                <i class="fas fa-edit"></i> Edit User
+                <i class="fas fa-edit"></i> Edit User              
             </a>
         </div>
     </div>
@@ -22,6 +22,9 @@
 @section('content')
 
     @php
+
+        $fitKenyaOffice = DB::connection('sqlsrv')->table('Cust_Office')->where('Code', 'KE')->first();
+
         // ============================================================================
         // Fetch offices and modules once for use in both cards and modals
         // ============================================================================
@@ -106,6 +109,46 @@
                     </p>
                 </div>
             </div>
+
+            {{-- Base Office Card --}}
+            {{-- <div class="card card-warning">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-building"></i> Base Office
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <form id="baseOfficeForm">
+                        @csrf
+                        <div class="form-group">
+                            <label for="scm_base_office">
+                                Base Office <span class="text-danger">*</span>
+                            </label>
+                            <select name="scm_base_office" id="scm_base_office" class="form-control" required>
+                                @foreach ($offices as $office)
+                                    @if ($office->Code == 'KE')
+                                        <option value="{{ $office->Code }}" selected>
+                                            {{ $office->Name }} (Default)
+                                        </option>
+                                    @else
+                                        <option value="{{ $office->Code }}"
+                                            {{ ($user->BaseOfficeCode ?? 'KE') == $office->Code ? 'selected' : '' }}>
+                                            {{ $office->Name }}
+                                        </option>
+                                    @endif
+                                @endforeach
+                            </select>
+                            <small class="text-muted">Primary office for all SCM operations</small>
+                        </div>
+
+                        <button type="button" class="btn btn-warning btn-block" onclick="saveBaseOffice()"
+                            id="saveBaseOfficeBtn" style="display: none;">
+                            <i class="fas fa-save"></i> Save Base Office
+                        </button>
+                    </form>
+                </div>
+            </div> --}}
+
         </div>
 
         <!-- Right Column - Detailed Information -->
@@ -239,25 +282,40 @@
                 </div>
                 <div class="card-body">
                     <div class="row">
-                        <div class="col-md-6">
+                        <!-- Row 1: User Principal Name | Employee ID | Base Office -->
+                        <div class="col-md-4">
                             <div class="info-item">
                                 <label>User Principal Name</label>
                                 <p>{{ $user->userPrincipalName ?? 'N/A' }}</p>
                             </div>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <div class="info-item">
                                 <label>Employee ID</label>
                                 <p>{{ $user->EmployeCode ?? 'N/A' }}</p>
                             </div>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-4">
+                            <div class="info-item">
+                                <label>Base Office</label>
+                                <p>
+                                    @if ($user->BaseOfficeCode)
+                                        <span class="badge badge-warning">{{ $user->BaseOfficeCode }}</span>
+                                    @else
+                                        <span class="text-muted">Not Set</span>
+                                    @endif
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Row 2: Azure AD Object ID | Account Enabled -->
+                        <div class="col-md-4">
                             <div class="info-item">
                                 <label>Azure AD Object ID</label>
                                 <p><code>{{ $user->Id ?? 'N/A' }}</code></p>
                             </div>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <div class="info-item">
                                 <label>Account Enabled</label>
                                 <p>
@@ -269,14 +327,18 @@
                                 </p>
                             </div>
                         </div>
-                        <div class="col-md-6">
+
+                        <div class="col-md-4">
                             <div class="info-item">
                                 <label>Created Date</label>
                                 <p>{{ $user->createdDateTime ? \Carbon\Carbon::parse($user->createdDateTime)->format('M d, Y H:i') : 'N/A' }}
                                 </p>
                             </div>
                         </div>
-                        <div class="col-md-6">
+
+                        <!-- Row 3: Created Date | Last Modified -->
+
+                        <div class="col-md-4">
                             <div class="info-item">
                                 <label>Last Modified</label>
                                 <p>{{ $user->updated_at ? $user->updated_at->format('M d, Y H:i') : 'N/A' }}</p>
@@ -405,7 +467,7 @@
                             <select class="form-control" id="copyFromOffice">
                                 <option value="">-- Select office to copy --</option>
                                 @foreach ($offices as $office)
-                                    <option value="{{ $office->code ?? $office->Code }}">{{ $office->Name }}</option>
+                                    <option value="{{ $office->Code ?? $office->Code }}">{{ $office->Name }}</option>
                                 @endforeach
                             </select>
                             <div class="input-group-append">
@@ -535,10 +597,10 @@
                             @foreach ($offices as $office)
                                 <div class="custom-control custom-checkbox">
                                     <input type="checkbox" class="custom-control-input office-checkbox"
-                                        id="office_{{ $office->code ?? $office->Code }}"
-                                        value="{{ $office->code ?? $office->Code }}">
+                                        id="office_{{ $office->Code ?? $office->Code }}"
+                                        value="{{ $office->Code ?? $office->Code }}">
                                     <label class="custom-control-label"
-                                        for="office_{{ $office->code ?? $office->Code }}">
+                                        for="office_{{ $office->Code ?? $office->Code }}">
                                         {{ $office->Name }}
                                     </label>
                                 </div>
@@ -1260,7 +1322,7 @@
         function retryBIZProvisioning(userId) {
             if (!confirm(
                     'Provision this user to BIZ/FITSYS?\n\nThis will create the user in the BIZ/FITSYS system and assign roles based on their module assignments.'
-                    )) {
+                )) {
                 return;
             }
 
@@ -1337,6 +1399,71 @@
                     button.innerHTML = originalText;
                 });
         }
+
+        // ============================================================================
+        // BASE OFFICE MANAGEMENT
+        // ============================================================================
+        function saveBaseOffice() {
+            const baseOffice = $('#scm_base_office').val();
+
+            if (!baseOffice) {
+                alert('⚠️ Please select a Base Office!');
+                return;
+            }
+
+            $.post({
+                    url: `/azure/users/{{ $user->Id }}/update-base-office`,
+                    data: JSON.stringify({
+                        scm_base_office: baseOffice
+                    }),
+                    contentType: 'application/json',
+                    headers: {
+                        'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                    }
+                })
+                .done(function(response) {
+                    if (response.success) {
+                        alert('✅ Base Office saved successfully!');
+                        location.reload();
+                    }
+                })
+                .fail(function(xhr) {
+                    alert('❌ Error: ' + (xhr.responseJSON?.message || 'Failed to save'));
+                });
+        }
+
+        // ============================================================================
+        // BASE OFFICE SAVE BUTTON VISIBILITY
+        // ============================================================================
+        // Get the default/base value
+        const defaultBaseOffice = 'KE'; // FIT KENYA
+
+        // Show save button only when a different office is selected
+        $('#scm_base_office').on('change', function() {
+            const selectedValue = $(this).val();
+            const currentValue = '{{ $user->BaseOfficeCode ?? 'KE' }}';
+
+            // Show button only if:
+            // 1. A value is selected AND
+            // 2. It's different from the current/initial value
+            if (selectedValue && selectedValue !== currentValue) {
+                $('#saveBaseOfficeBtn').show();
+            } else {
+                $('#saveBaseOfficeBtn').hide();
+            }
+        });
+
+        // Initialize button visibility on page load
+        $(document).ready(function() {
+            const selectedValue = $('#scm_base_office').val();
+            const currentValue = '{{ $user->BaseOfficeCode ?? 'KE' }}';
+
+            if (selectedValue && selectedValue !== currentValue) {
+                $('#saveBaseOfficeBtn').show();
+            } else {
+                $('#saveBaseOfficeBtn').hide();
+            }
+        });
 
         console.log('User detail page loaded successfully');
     </script>

@@ -68,54 +68,7 @@
         <div class="card-header">
             <div class="row align-items-center">
                 <div class="col-md-6">
-                    <div class="d-flex align-items-center">
-                        <!-- Department Filter -->
-                        <div class="mr-2" style="min-width: 180px;">
-                            <select id="departmentFilter" class="form-control form-control-sm">
-                                <option value="">All Departments</option>
-                                @foreach ($departments as $dept)
-                                    <option value="{{ $dept }}"
-                                        {{ request('department') == $dept ? 'selected' : '' }}>
-                                        {{ $dept }}
-                                    </option>
-                                @endforeach
-                                <option value="no_department"
-                                    {{ request('department') == 'no_department' ? 'selected' : '' }}>
-                                    (No Department)
-                                </option>
-                            </select>
-                        </div>
-                        <!-- Company Filter -->
-                        <div class="mr-2" style="min-width: 180px;">
-                            <select id="companyFilter" class="form-control form-control-sm">
-                                <option value="">All Companies</option>
-                                @foreach ($companies as $company)
-                                    <option value="{{ $company }}"
-                                        {{ request('company') == $company ? 'selected' : '' }}>
-                                        {{ $company }}
-                                    </option>
-                                @endforeach
-                                <option value="no_company" {{ request('company') == 'no_company' ? 'selected' : '' }}>
-                                    (No Company)
-                                </option>
-                            </select>
-                        </div>
-                        <!-- Office Location Filter -->
-                        <div class="mr-2" style="min-width: 180px;">
-                            <select id="locationFilter" class="form-control form-control-sm">
-                                <option value="">All Locations</option>
-                                @foreach ($locations as $location)
-                                    <option value="{{ $location }}"
-                                        {{ request('location') == $location ? 'selected' : '' }}>
-                                        {{ $location }}
-                                    </option>
-                                @endforeach
-                                <option value="no_location" {{ request('location') == 'no_location' ? 'selected' : '' }}>
-                                    (No Location)
-                                </option>
-                            </select>
-                        </div>
-                    </div>
+                    <!-- Filters removed - search only -->
                 </div>
                 <div class="col-md-6 text-right">
                     <div class="d-inline-flex align-items-center">
@@ -390,7 +343,7 @@
                                         <label class="custom-control-label mb-0" for="opsCheckbox">
                                             <i class="fas fa-warehouse text-warning mr-2"></i>
                                             <strong>OPS/SCM</strong>
-                                            <span class="badge badge-info badge-sm ml-2">User Level</span>
+                                            {{-- <span class="badge badge-info badge-sm ml-2">User Level</span> --}}
                                         </label>
                                     </div>
                                 </div>
@@ -621,33 +574,30 @@
         };
 
         // ────────────────────────────────────────────
-        // SEARCH & FILTER FUNCTIONS - IMPROVED WITH REAL-TIME SEARCH
+        // SEARCH FUNCTIONALITY - CLEAN VERSION
         // ────────────────────────────────────────────
 
         let searchTimeout; // For debouncing search requests
 
         /**
-         * Real-time search as user types (with 300ms debounce)
-         * This prevents excessive requests while user is still typing
+         * Real-time search as user types (with 1-second debounce)
          */
         document.getElementById('searchUsers').addEventListener('input', function(e) {
             console.log('🔍 Search input changed:', e.target.value);
 
-            // Clear any existing timeout
             clearTimeout(searchTimeout);
 
-            // Set new timeout - will search 300ms after user stops typing
             searchTimeout = setTimeout(() => {
                 console.log('⏰ Debounce timeout reached - performing search');
                 performSearch();
-            }, 300);
+            }, 1000);
         });
 
         /**
          * Keyboard shortcuts for search
          */
         document.getElementById('searchUsers').addEventListener('keydown', function(e) {
-            // Enter key - search immediately without waiting for debounce
+            // Enter key - search immediately
             if (e.key === 'Enter') {
                 e.preventDefault();
                 console.log('⏎ Enter pressed - immediate search');
@@ -655,7 +605,7 @@
                 performSearch();
             }
 
-            // Escape key - clear search and reset
+            // Escape key - clear search
             if (e.key === 'Escape') {
                 console.log('⎋ Escape pressed - clearing search');
                 e.target.value = '';
@@ -665,7 +615,7 @@
         });
 
         /**
-         * Search button click handler - FIX: This was missing!
+         * Search button click handler
          */
         document.getElementById('searchButton').addEventListener('click', function() {
             console.log('🔘 Search button clicked');
@@ -674,76 +624,32 @@
         });
 
         /**
-         * Filter change handlers
-         */
-        document.getElementById('departmentFilter').addEventListener('change', function() {
-            console.log('🏢 Department filter changed:', this.value);
-            performSearch();
-        });
-
-        document.getElementById('companyFilter').addEventListener('change', function() {
-            console.log('🏭 Company filter changed:', this.value);
-            performSearch();
-        });
-
-        const locationFilter = document.getElementById('locationFilter');
-        if (locationFilter) {
-            locationFilter.addEventListener('change', function() {
-                console.log('📍 Location filter changed:', this.value);
-                performSearch();
-            });
-        }
-
-        /**
-         * Clear search button - clears ALL filters
+         * Clear search button
          */
         document.getElementById('clearSearch').addEventListener('click', function() {
-            console.log('❌ Clear button clicked - resetting all filters');
+            console.log('❌ Clear button clicked - resetting search');
             clearTimeout(searchTimeout);
+            document.getElementById('searchUsers').value = '';
             window.location.href = window.location.pathname;
         });
 
         /**
-         * Main search function - builds URL with all filters and navigates
+         * Main search function - builds URL and navigates
          */
         function performSearch() {
             const search = document.getElementById('searchUsers').value.trim();
-            const department = document.getElementById('departmentFilter').value;
-            const company = document.getElementById('companyFilter').value;
-            const location = locationFilter ? locationFilter.value : '';
 
             console.log('🔍 Performing search with:', {
-                search,
-                department,
-                company,
-                location
+                search
             });
 
-            // Build new URL with search parameters
+            // Build new URL with search parameter
             const url = new URL(window.location.href);
 
             if (search) {
                 url.searchParams.set('search', search);
             } else {
                 url.searchParams.delete('search');
-            }
-
-            if (department) {
-                url.searchParams.set('department', department);
-            } else {
-                url.searchParams.delete('department');
-            }
-
-            if (company) {
-                url.searchParams.set('company', company);
-            } else {
-                url.searchParams.delete('company');
-            }
-
-            if (location) {
-                url.searchParams.set('location', location);
-            } else {
-                url.searchParams.delete('location');
             }
 
             // Reset to page 1 when searching
@@ -762,15 +668,12 @@
             window.location.href = window.location.pathname;
         }
 
-        console.log('✅ Search & Filter scripts loaded successfully');
+        console.log('✅ Search scripts loaded successfully');
 
         // ────────────────────────────────────────────
-        // MANAGE USER ACCESS MODAL - NEW IMPLEMENTATION
+        // MANAGE USER ACCESS MODAL
         // ────────────────────────────────────────────
 
-        /**
-         * Open the Manage Access Modal and load user's current application status
-         */
         function openManageAccessModal(userId, userName, userStatus) {
             console.log('🔷 Opening Manage Access Modal', {
                 userId,
@@ -778,13 +681,11 @@
                 userStatus
             });
 
-            // Set basic user info
             $('#modal-user-id').val(userId);
             $('#modal-user-name').val(userName);
             $('#modal-user-status').val(userStatus);
             $('#modal-user-display').text(userName);
 
-            // Update status badge
             const statusBadge = $('#modal-status-badge');
             statusBadge.removeClass('badge-success badge-warning badge-danger');
 
@@ -796,23 +697,13 @@
                 $('#azureActionLabel').text('Enable Azure AD & All Applications');
             }
 
-            // Reset checkboxes and summary
             resetModalState();
-
-            // Show loading state
             $('#loadingApplicationStatus').show();
             $('#applicationsCard').hide();
-
-            // Open modal
             $('#manageAccessModal').modal('show');
-
-            // Load user's current application status
             loadUserApplicationStatus(userId);
         }
 
-        /**
-         * Load user's current application access status from backend
-         */
         function loadUserApplicationStatus(userId) {
             console.log('📡 Loading application status for user:', userId);
 
@@ -825,221 +716,137 @@
                     }
                 })
                 .then(response => {
-                    console.log('📥 Response status:', response.status);
-
-                    if (!response.ok) {
-                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                    }
-
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
                     return response.json();
                 })
                 .then(data => {
-                    console.log('✅ Application status loaded:', data);
-
                     if (data.success) {
                         currentUserApplicationStatus = data.data;
                         updateApplicationStatusUI();
                     } else {
-                        console.error('❌ Failed to load application status:', data.message);
-                        showErrorInModal('Failed to load application status. Please try again.');
+                        showErrorInModal('Failed to load application status');
                     }
-
                     $('#loadingApplicationStatus').hide();
                     $('#applicationsCard').show();
                 })
                 .catch(error => {
-                    console.error('❌ Error loading application status:', error);
-                    showErrorInModal(`Network error: ${error.message}. Please check your connection.`);
+                    console.error('❌ Error:', error);
+                    showErrorInModal(`Network error: ${error.message}`);
                     $('#loadingApplicationStatus').hide();
                     $('#applicationsCard').show();
                 });
         }
 
-        /**
-         * Update UI based on user's current application status
-         */
         function updateApplicationStatusUI() {
             console.log('🎨 Updating UI with status:', currentUserApplicationStatus);
 
             const apps = ['d365', 'ops', 'biz', 'fit'];
+            let allAppsActive = true;
 
             apps.forEach(app => {
                 const checkbox = $(`#${app}Checkbox`);
                 const statusBadge = $(`#${app}-status-badge`);
                 const hasAccess = currentUserApplicationStatus[app];
 
-                // Grey out checkbox if user doesn't have access
                 if (!hasAccess) {
-                    checkbox.prop('disabled', true);
+                    checkbox.prop('checked', false).prop('disabled', true);
                     checkbox.closest('.custom-control').addClass('text-muted');
-                    statusBadge.removeClass('badge-success badge-danger badge-warning')
-                        .addClass('badge-secondary')
-                        .text('No Access');
+                    statusBadge.attr('class', 'badge badge-sm badge-secondary ml-3').html('No Access');
+                    allAppsActive = false;
                 } else {
-                    checkbox.prop('disabled', false);
+                    checkbox.prop('checked', true).prop('disabled', false);
                     checkbox.closest('.custom-control').removeClass('text-muted');
-                    statusBadge.removeClass('badge-secondary badge-danger badge-warning')
-                        .addClass('badge-success')
-                        .text('Active');
+                    statusBadge.attr('class', 'badge badge-sm badge-success ml-3').html('Active');
                 }
             });
 
-            console.log('✅ UI updated successfully');
+            const azureCheckbox = $('#azureCheckbox');
+            if (allAppsActive) {
+                azureCheckbox.prop('checked', true);
+                apps.forEach(app => {
+                    if (currentUserApplicationStatus[app]) {
+                        $(`#${app}Checkbox`).prop('disabled', true);
+                        $(`#${app}Checkbox`).closest('.custom-control').addClass('azure-controlled');
+                    }
+                });
+            } else {
+                azureCheckbox.prop('checked', false);
+            }
         }
 
-        /**
-         * Reset modal to initial state
-         */
         function resetModalState() {
-            console.log('🔄 Resetting modal state');
-
-            // Uncheck all checkboxes
             $('.app-checkbox, #azureCheckbox').prop('checked', false);
-
-            // Enable all checkboxes (will be disabled later based on status)
             $('.app-checkbox').prop('disabled', false);
             $('.custom-control').removeClass('text-muted azure-controlled');
-
-            // Reset status badges
-            $('.badge-sm').removeClass('badge-success badge-danger badge-secondary')
-                .addClass('badge-warning')
-                .text('Checking...');
-
-            // Hide summary
+            $('.badge-sm').removeClass('badge-success badge-danger badge-secondary').addClass('badge-warning').text(
+                'Checking...');
             $('#changesSummary').hide();
-
-            // Enable apply button
             $('#applyChangesBtn').prop('disabled', true);
         }
 
-        /**
-         * Show error message in modal
-         */
         function showErrorInModal(message) {
             const errorHtml = `
-            <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                <i class="fas fa-exclamation-triangle"></i> ${message}
-                <button type="button" class="close" data-dismiss="alert">
-                    <span>&times;</span>
-                </button>
-            </div>
-        `;
+                <div class="alert alert-danger alert-dismissible fade show">
+                    <i class="fas fa-exclamation-triangle"></i> ${message}
+                    <button type="button" class="close" data-dismiss="alert"><span>&times;</span></button>
+                </div>
+            `;
             $('#applicationsCard').before(errorHtml);
         }
 
         // ────────────────────────────────────────────
-        // CHECKBOX EVENT HANDLERS - ENHANCED WITH SMART SYNC
+        // CHECKBOX EVENT HANDLERS
         // ────────────────────────────────────────────
 
-        /**
-         * Azure AD checkbox controls all other checkboxes
-         * FIXED: Properly checks only apps with access
-         */
         $('#azureCheckbox').on('change', function() {
             const isChecked = $(this).is(':checked');
-            console.log('🔷 Azure AD checkbox changed:', isChecked);
 
-            if (isChecked) {
-                // Check ONLY application checkboxes that user has access to
-                $('.app-checkbox').each(function() {
-                    const app = $(this).data('app');
-
-                    // Only check if user has access
-                    if (currentUserApplicationStatus[app]) {
-                        $(this).prop('checked', true);
-                        // Make it read-only/disabled while Azure AD is checked
-                        $(this).prop('disabled', true);
-                        // Add visual indication it's controlled by Azure AD
+            $('.app-checkbox').each(function() {
+                const app = $(this).data('app');
+                if (currentUserApplicationStatus[app]) {
+                    if (isChecked) {
+                        $(this).prop('checked', true).prop('disabled', true);
                         $(this).closest('.custom-control').addClass('azure-controlled');
-
-                        console.log(`  ✓ Checked and disabled: ${app}`);
-                    }
-                });
-            } else {
-                // Uncheck all and restore original state
-                $('.app-checkbox').each(function() {
-                    const app = $(this).data('app');
-
-                    // Uncheck the checkbox
-                    $(this).prop('checked', false);
-
-                    // Remove azure-controlled class
-                    $(this).closest('.custom-control').removeClass('azure-controlled');
-
-                    // Re-enable only if user has access to this application
-                    if (currentUserApplicationStatus[app]) {
-                        $(this).prop('disabled', false);
-                        console.log(`  ↻ Unchecked and enabled: ${app} (user has access)`);
                     } else {
-                        $(this).prop('disabled', true);
-                        console.log(`  ↻ Unchecked but kept disabled: ${app} (no access)`);
+                        $(this).prop('checked', false).prop('disabled', false);
+                        $(this).closest('.custom-control').removeClass('azure-controlled');
                     }
-                });
-            }
+                }
+            });
 
             updateChangesSummary();
         });
 
-        /**
-         * Individual application checkbox change handler
-         * ENHANCED: Auto-check Azure AD if all accessible apps are checked
-         */
         $('.app-checkbox').on('change', function() {
-            console.log('📦 Application checkbox changed:', $(this).data('app'));
-
-            // Count accessible apps
             const accessibleApps = $('.app-checkbox').filter(function() {
-                const app = $(this).data('app');
-                return currentUserApplicationStatus[app];
+                return currentUserApplicationStatus[$(this).data('app')];
             });
-
             const checkedAccessibleApps = accessibleApps.filter(':checked');
 
-            console.log('📊 Checkbox count:', {
-                total_accessible: accessibleApps.length,
-                checked: checkedAccessibleApps.length
-            });
-
-            // If ALL accessible apps are checked, auto-check Azure AD
             if (accessibleApps.length > 0 && checkedAccessibleApps.length === accessibleApps.length) {
-                console.log('✅ All accessible apps checked - auto-checking Azure AD');
                 $('#azureCheckbox').prop('checked', true);
-
-                // Make all accessible apps read-only
                 accessibleApps.each(function() {
-                    $(this).prop('disabled', true);
-                    $(this).closest('.custom-control').addClass('azure-controlled');
+                    $(this).prop('disabled', true).closest('.custom-control').addClass('azure-controlled');
                 });
-            }
-            // If any accessible app is unchecked, uncheck Azure AD
-            else if (checkedAccessibleApps.length < accessibleApps.length) {
-                console.log('❌ Not all apps checked - unchecking Azure AD');
+            } else {
                 $('#azureCheckbox').prop('checked', false);
-
-                // Re-enable all accessible app checkboxes
                 accessibleApps.each(function() {
-                    $(this).prop('disabled', false);
-                    $(this).closest('.custom-control').removeClass('azure-controlled');
+                    $(this).prop('disabled', false).closest('.custom-control').removeClass(
+                        'azure-controlled');
                 });
             }
 
             updateChangesSummary();
         });
 
-        /**
-         * Update the changes summary at the bottom of modal
-         */
         function updateChangesSummary() {
             const checkedApps = [];
 
-            // Check Azure AD
             if ($('#azureCheckbox').is(':checked')) {
                 checkedApps.push('Azure AD (+ All Applications)');
             } else {
-                // Check individual apps
                 $('.app-checkbox:checked').each(function() {
-                    const appName = $(this).closest('label').find('strong').text();
-                    checkedApps.push(appName);
+                    checkedApps.push($(this).closest('label').find('strong').text());
                 });
             }
 
@@ -1054,68 +861,41 @@
         }
 
         // ────────────────────────────────────────────
-        // APPLY CHANGES BUTTON
+        // APPLY CHANGES
         // ────────────────────────────────────────────
 
         $('#applyChangesBtn').on('click', function() {
             const userId = $('#modal-user-id').val();
             const userStatus = $('#modal-user-status').val();
             const action = userStatus.toLowerCase() === 'active' ? 'Disable' : 'Enable';
-
-            console.log('🚀 Apply Changes clicked', {
-                userId,
-                userStatus,
-                action
-            });
-
-            // Collect selected applications
             const selectedApps = [];
 
-            if ($('#azureCheckbox').is(':checked')) {
-                selectedApps.push('azure');
-            }
-
+            if ($('#azureCheckbox').is(':checked')) selectedApps.push('azure');
             $('.app-checkbox:checked').each(function() {
                 selectedApps.push($(this).data('app'));
             });
 
             if (selectedApps.length === 0) {
-                alert('⚠️ No Changes Selected\n\nPlease select at least one application to modify.');
+                alert('⚠️ No Changes Selected\n\nPlease select at least one application.');
                 return;
             }
 
-            // Build confirmation message
-            const appNames = selectedApps.map(app => {
-                if (app === 'azure') return 'Azure AD';
-                return $(`#${app}Checkbox`).closest('label').find('strong').text();
-            });
+            const appNames = selectedApps.map(app =>
+                app === 'azure' ? 'Azure AD' : $(`#${app}Checkbox`).closest('label').find('strong').text()
+            );
 
-            const confirmMessage =
-                `⚠️ Confirm ${action}\n\nYou are about to ${action.toLowerCase()}:\n${appNames.map(n => '• ' + n).join('\n')}\n\nContinue?`;
-
-            if (!confirm(confirmMessage)) {
-                console.log('❌ User cancelled operation');
+            if (!confirm(
+                    `⚠️ Confirm ${action}\n\nYou are about to ${action.toLowerCase()}:\n${appNames.map(n => '• ' + n).join('\n')}\n\nContinue?`
+                    )) {
                 return;
             }
 
-            // Disable button and show loading
             $('#applyChangesBtn').prop('disabled', true).html(
                 '<i class="fas fa-spinner fa-spin"></i> Processing...');
-
-            // Send request to backend
             applyApplicationChanges(userId, action, selectedApps);
         });
 
-        /**
-         * Send application changes to backend
-         */
         function applyApplicationChanges(userId, action, applications) {
-            console.log('📤 Sending request to backend', {
-                userId,
-                action,
-                applications
-            });
-
             fetch(`/azure/users/${userId}/manage-access`, {
                     method: 'POST',
                     headers: {
@@ -1124,62 +904,40 @@
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                     },
                     body: JSON.stringify({
-                        action: action,
-                        applications: applications
+                        action,
+                        applications
                     })
                 })
                 .then(response => {
-                    console.log('📥 Response status:', response.status);
-
-                    if (!response.ok) {
-                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                    }
-
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
                     return response.json();
                 })
                 .then(data => {
-                    console.log('✅ Backend response:', data);
-
-                    $('#applyChangesBtn').prop('disabled', false).html('<i class="fas fa-check"></i> Apply Changes');
-
                     if (data.success) {
-                        // Show detailed results
-                        showResultsModal(data);
-
-                        // Close modal
-                        $('#manageAccessModal').modal('hide');
-
-                        // Reload page if Azure AD was modified
-                        if (data.reload) {
-                            setTimeout(() => {
-                                window.location.reload();
-                            }, 3000);
-                        }
+                        alert(data.message || 'Operation completed successfully');
+                        setTimeout(() => window.location.reload(), 1500);
                     } else {
+                        $('#applyChangesBtn').prop('disabled', false).html(
+                        '<i class="fas fa-check"></i> Apply Changes');
                         alert('❌ Operation Failed\n\n' + data.message);
                     }
                 })
                 .catch(error => {
-                    console.error('❌ Network error:', error);
+                    console.error('❌ Error:', error);
                     $('#applyChangesBtn').prop('disabled', false).html('<i class="fas fa-check"></i> Apply Changes');
-                    alert(`❌ Network Error\n\n${error.message}\n\nPlease check your connection and try again.`);
+                    alert(`❌ Network Error\n\n${error.message}`);
                 });
         }
 
-        // ════════════════════════════════════════════════════════════════════════
-        // SYNC FROM ODOO FUNCTION
-        // ════════════════════════════════════════════════════════════════════════
+        // ────────────────────────────────────────────
+        // SYNC & RETRY FUNCTIONS
+        // ────────────────────────────────────────────
 
         function syncOdooUsers() {
-            console.log('🔄 Sync from Odoo initiated');
-
-            // Disable button and show loading state
             const $syncBtn = $('#syncBtn');
             const originalText = $syncBtn.html();
-            $syncBtn.prop('disabled', true)
-                .html('<i class="fas fa-spinner fa-spin"></i> Syncing...');
+            $syncBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Syncing...');
 
-            // Make AJAX request
             $.ajax({
                 url: '{{ route('azure.sync.odoo.sync.ajax') }}',
                 type: 'POST',
@@ -1187,83 +945,31 @@
                     'X-CSRF-TOKEN': '{{ csrf_token() }}',
                     'Accept': 'application/json'
                 },
-                timeout: 120000, // 2 minute timeout (sync can take time)
+                timeout: 120000,
                 success: function(response) {
-                    console.log('✅ Sync successful:', response);
-
                     if (response.success) {
-                        // Build detailed success message
-                        let message = '✅ Odoo Sync Completed!\n\n';
-                        message += `📊 Processed: ${response.stats.processed}\n`;
-                        message += `➕ Inserted: ${response.stats.inserted}\n`;
-                        message += `🔄 Updated: ${response.stats.updated}\n`;
-
-                        if (response.stats.failed > 0) {
-                            message += `⚠️ Failed: ${response.stats.failed}\n`;
-                        }
-
-                        alert(message);
-
-                        // Reload page to show updated data
-                        setTimeout(() => {
-                            window.location.reload();
-                        }, 1500);
+                        alert(
+                            `✅ Sync Completed!\n\nProcessed: ${response.stats.processed}\nInserted: ${response.stats.inserted}\nUpdated: ${response.stats.updated}`);
+                        setTimeout(() => window.location.reload(), 1500);
                     } else {
                         alert('❌ Sync Failed\n\n' + (response.message || 'Unknown error'));
-
-                        // Re-enable button
                         $syncBtn.prop('disabled', false).html(originalText);
                     }
                 },
-                error: function(xhr, status, error) {
-                    console.error('❌ Sync failed:', {
-                        status: xhr.status,
-                        statusText: xhr.statusText,
-                        error: error,
-                        response: xhr.responseText
-                    });
-
-                    let errorMessage = '❌ Sync Failed\n\n';
-
-                    if (xhr.status === 404) {
-                        errorMessage += 'No users found in Odoo';
-                    } else if (xhr.status === 500) {
-                        errorMessage += 'Server error during sync';
-                    } else if (xhr.responseJSON && xhr.responseJSON.message) {
-                        errorMessage += xhr.responseJSON.message;
-                    } else if (status === 'timeout') {
-                        errorMessage += 'Request timed out. The sync may still be running in the background.';
-                    } else {
-                        errorMessage += error || 'Unknown error occurred';
-                    }
-
-                    alert(errorMessage);
-
-                    // Re-enable button
+                error: function(xhr) {
+                    alert('❌ Sync Failed\n\n' + (xhr.responseJSON?.message || 'Network error'));
                     $syncBtn.prop('disabled', false).html(originalText);
                 }
             });
         }
 
-        // ════════════════════════════════════════════════════════════════════════
-        // RETRY ALL PENDING USERS FUNCTION
-        // ════════════════════════════════════════════════════════════════════════
-
         function retryAllPendingUsers() {
-            console.log('🔄 Retry pending users initiated');
+            if (!confirm('⚠️ Retry Provisioning\n\nThis will attempt to activate all pending users.\n\nContinue?')) return;
 
-            // Confirm action
-            if (!confirm('⚠️ Retry Provisioning\n\nThis will attempt to activate all pending users.\n\nContinue?')) {
-                return;
-            }
-
-            // Disable button and show loading state
             const $retryBtn = $('#retryProvisioningBtn');
             const originalText = $retryBtn.html();
-            $retryBtn.prop('disabled', true)
-                .html('<i class="fas fa-spinner fa-spin"></i> Processing...');
+            $retryBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Processing...');
 
-            // Make AJAX request
             $.ajax({
                 url: '{{ route('azure.sync.activate-users') }}',
                 type: 'POST',
@@ -1271,99 +977,25 @@
                     'X-CSRF-TOKEN': '{{ csrf_token() }}',
                     'Accept': 'application/json'
                 },
-                timeout: 180000, // 3 minute timeout (activation can take time)
-                success: function(response) {
-                    console.log('✅ Retry successful:', response);
-
-                    // The route returns a redirect, so we'll handle the success message
-                    alert('✅ Activation process completed!\n\nPage will reload to show updated statuses.');
-
-                    // Reload page
-                    setTimeout(() => {
-                        window.location.reload();
-                    }, 1500);
+                timeout: 180000,
+                success: function() {
+                    alert('✅ Activation completed!');
+                    setTimeout(() => window.location.reload(), 1500);
                 },
-                error: function(xhr, status, error) {
-                    console.error('❌ Retry failed:', {
-                        status: xhr.status,
-                        statusText: xhr.statusText,
-                        error: error
-                    });
-
-                    let errorMessage = '❌ Activation Failed\n\n';
-
-                    if (xhr.status === 404) {
-                        errorMessage += 'No pending users found';
-                    } else if (xhr.responseJSON && xhr.responseJSON.message) {
-                        errorMessage += xhr.responseJSON.message;
-                    } else if (status === 'timeout') {
-                        errorMessage += 'Request timed out. The process may still be running.';
-                    } else {
-                        errorMessage += error || 'Unknown error occurred';
-                    }
-
-                    alert(errorMessage);
-
-                    // Re-enable button
+                error: function(xhr) {
+                    alert('❌ Activation Failed\n\n' + (xhr.responseJSON?.message || 'Network error'));
                     $retryBtn.prop('disabled', false).html(originalText);
                 }
             });
         }
 
-        console.log('✅ Sync and Retry scripts loaded successfully');
-
-
-        /**
-         * Show detailed results in alert/modal
-         */
-        function showResultsModal(data) {
-            let message = data.message;
-
-            if (data.summary) {
-                message = `${data.summary.message}`;
-            }
-
-            // Show results
-            alert(message);
-
-            console.log('📊 Operation results:', data.results);
-        }
-
         // ────────────────────────────────────────────
-        // MODAL CLOSE HANDLERS - FIXED TO ALLOW CLOSING
+        // MODAL CLEANUP
         // ────────────────────────────────────────────
 
-        /**
-         * Clean up when modal is hidden (after animation completes)
-         * NOTE: Using 'hidden.bs.modal' instead of 'hide.bs.modal' to avoid preventing close
-         */
         $('#manageAccessModal').on('hidden.bs.modal', function() {
-            console.log('🚪 Modal closed - cleaning up');
-
-            // Reset all checkboxes
-            $('.app-checkbox, #azureCheckbox').prop('checked', false);
-
-            // Enable all checkboxes
-            $('.app-checkbox').prop('disabled', false);
-            $('.custom-control').removeClass('text-muted azure-controlled');
-
-            // Reset status badges
-            $('.badge-sm').removeClass('badge-success badge-danger badge-secondary')
-                .addClass('badge-warning')
-                .text('Checking...');
-
-            // Hide summary
-            $('#changesSummary').hide();
-
-            // Reset apply button
-            $('#applyChangesBtn').prop('disabled', true).html('<i class="fas fa-check"></i> Apply Changes');
-
-            // Clear user info
-            $('#modal-user-id').val('');
-            $('#modal-user-name').val('');
-            $('#modal-user-status').val('');
-
-            // Reset status object
+            resetModalState();
+            $('#modal-user-id, #modal-user-name, #modal-user-status').val('');
             currentUserApplicationStatus = {
                 azure: false,
                 d365: false,
@@ -1371,13 +1003,8 @@
                 biz: false,
                 fit: false
             };
-
-            console.log('✅ Cleanup complete');
         });
 
-        // ────────────────────────────────────────────
-        // INITIALIZE
-        // ────────────────────────────────────────────
-        console.log('✅ Manage Access Modal scripts loaded successfully');
+        console.log('✅ All scripts loaded successfully');
     </script>
 @stop

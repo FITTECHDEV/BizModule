@@ -97,11 +97,11 @@
                                 title="Edit User">
                                 <i class="fas fa-edit"></i>
                             </a>
-                            <button class="btn btn-success btn-sm" 
+                            {{-- <button class="btn btn-success btn-sm" 
                                     onclick="enableUser('{{ $user->Id }}')"
                                     title="Enable User">
                                 <i class="fas fa-user-check"></i>
-                            </button>
+                            </button> --}}
                         </div>
                     </td>
                 </tr>

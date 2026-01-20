@@ -100,8 +100,10 @@
                                     style="cursor: not-allowed; opacity: 0.6;">
                                     <i class="fas fa-edit"></i>
                                 </button>
-                                <button class="btn btn-success btn-sm" 
-                                    onclick="openManageAccessModal('{{ $user->Id }}', '{{ addslashes($user->displayName) }}', '{{ $user->Status }}')"
+                                <button class="btn btn-success btn-sm btn-manage-access" 
+                                    data-user-id="{{ $user->Id }}"
+                                    data-user-name="{{ addslashes($user->displayName) }}"
+                                    data-user-status="{{ $user->Status }}"
                                     title="Manage Access - Enable User">
                                     <i class="fas fa-cog"></i>
                                 </button>
@@ -450,11 +452,26 @@
     .azure-controlled label {
         color: #1976d2 !important;
     }
+
+    /* Disabled button styling for inactive user prevention */
+    .btn-manage-access.restriction-active {
+        cursor: not-allowed !important;
+        opacity: 0.5 !important;
+        pointer-events: none;
+    }
 </style>
 @stop
 
 @section('js')
 <script>
+    // ════════════════════════════════════════════════════════════════════════════════════
+    // ⚙️ CONFIGURATION - Toggle this to enable/disable inactive user re-enablement
+    // ════════════════════════════════════════════════════════════════════════════════════
+    
+    const PREVENT_INACTIVE_USER_REENABLEMENT = true; // 🔴 Set to false to allow re-enabling inactive users
+    
+    // ════════════════════════════════════════════════════════════════════════════════════
+
     // ────────────────────────────────────────────
     // GLOBAL VARIABLES
     // ────────────────────────────────────────────
@@ -567,8 +584,15 @@
         console.log('🔷 Opening Manage Access Modal', {
             userId,
             userName,
-            userStatus
+            userStatus,
+            preventReenablement: PREVENT_INACTIVE_USER_REENABLEMENT
         });
+
+        // Check if re-enablement is prevented
+        if (PREVENT_INACTIVE_USER_REENABLEMENT && userStatus.toLowerCase() !== 'active') {
+            showReenablementPreventionMessage(userName);
+            return;
+        }
 
         // Set basic user info
         $('#modal-user-id').val(userId);
@@ -600,6 +624,61 @@
 
         // Load user's current application status
         loadUserApplicationStatus(userId);
+    }
+
+    /**
+     * Show prevention message when trying to re-enable inactive user
+     */
+    function showReenablementPreventionMessage(userName) {
+        const message = `
+            <div class="modal fade" id="preventionMessageModal" tabindex="-1" role="dialog">
+                <div class="modal-dialog modal-dialog-centered" role="document">
+                    <div class="modal-content">
+                        <div class="modal-header bg-danger text-white">
+                            <h5 class="modal-title">
+                                <i class="fas fa-ban"></i> Re-enablement Not Allowed
+                            </h5>
+                            <button type="button" class="close text-white" data-dismiss="modal">
+                                <span>&times;</span>
+                            </button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="alert alert-warning mb-3">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                <strong>User:</strong> ${userName}
+                            </div>
+                            <p class="mb-3">
+                                <i class="fas fa-info-circle text-info"></i>
+                                Inactive users cannot be re-enabled through this interface.
+                            </p>
+                            <p class="mb-0 text-muted small">
+                                <strong>Reason:</strong> This restriction is in place to prevent accidental re-activation 
+                                of disabled user accounts. If you need to re-enable this user, please contact your system administrator.
+                            </p>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                                <i class="fas fa-check"></i> Understood
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Remove existing prevention modal if any
+        $('#preventionMessageModal').remove();
+        
+        // Add and show new modal
+        $('body').append(message);
+        $('#preventionMessageModal').modal('show');
+        
+        // Clean up on close
+        $('#preventionMessageModal').on('hidden.bs.modal', function () {
+            $(this).remove();
+        });
+
+        console.log('🚫 Re-enablement prevented for inactive user:', userName);
     }
 
     /**
@@ -1018,8 +1097,63 @@
     });
 
     // ────────────────────────────────────────────
+    // BUTTON EVENT DELEGATION FOR MANAGE ACCESS
+    // ────────────────────────────────────────────
+
+    /**
+     * Handle manage access button clicks with delegation
+     * (Handles dynamically loaded content)
+     */
+    $(document).on('click', '.btn-manage-access', function(e) {
+        e.preventDefault();
+        
+        const userId = $(this).data('user-id');
+        const userName = $(this).data('user-name');
+        const userStatus = $(this).data('user-status');
+        
+        openManageAccessModal(userId, userName, userStatus);
+    });
+
+    // ────────────────────────────────────────────
+    // APPLY RESTRICTION STYLING ON PAGE LOAD
+    // ────────────────────────────────────────────
+
+    /**
+     * Apply visual restriction to buttons if prevention is enabled
+     */
+    function applyRestrictionStyling() {
+        if (PREVENT_INACTIVE_USER_REENABLEMENT) {
+            $('.btn-manage-access').each(function() {
+                const userStatus = $(this).data('user-status');
+                
+                if (userStatus && userStatus.toLowerCase() !== 'active') {
+                    $(this)
+                        .addClass('restriction-active')
+                        .attr('title', 'Re-enablement not allowed for inactive users')
+                        .css('cursor', 'not-allowed');
+                }
+            });
+            
+            console.log('🔒 Restriction styling applied to inactive user buttons');
+        } else {
+            $('.btn-manage-access').removeClass('restriction-active');
+            console.log('🔓 Restriction styling removed - re-enablement allowed');
+        }
+    }
+
+    // Apply styling on page load
+    $(document).ready(function() {
+        applyRestrictionStyling();
+        
+        console.log('✅ Inactive Users Page Initialized', {
+            preventReenablement: PREVENT_INACTIVE_USER_REENABLEMENT
+        });
+    });
+
+    // ────────────────────────────────────────────
     // INITIALIZE
     // ────────────────────────────────────────────
     console.log('✅ Inactive Users - Manage Access Modal scripts loaded successfully');
+    console.log(`🔒 Inactive User Re-enablement Prevention: ${PREVENT_INACTIVE_USER_REENABLEMENT ? 'ENABLED' : 'DISABLED'}`);
 </script>
 @stop
