@@ -38,10 +38,10 @@
                     <div class="card-overlay"></div>
                 </div>
             </div>
-
+            
             <!-- Total Users Card -->
             <div class="col-lg-4 col-md-4">
-                <div class="small-box bg-info clickable-card" data-filter="all">
+                <div class="small-box bg-info">
                     <div class="inner">
                         <h3 id="totalUsers">
                             <i class="fas fa-spinner fa-spin"></i>
@@ -51,7 +51,6 @@
                     <div class="icon">
                         <i class="fas fa-users"></i>
                     </div>
-                    <div class="card-overlay"></div>
                 </div>
             </div>
         </div>
@@ -250,7 +249,7 @@
 
         $(function() {
             console.log('🚀 Page loaded, initializing...');
-            
+
             // Fetch user statistics
             fetchUserStats();
 
@@ -271,7 +270,7 @@
         // Initialize DataTable
         function initializeDataTable() {
             console.log('📊 Initializing DataTable...');
-            
+
             usersTable = $('#users-table').DataTable({
                 processing: true,
                 serverSide: true,

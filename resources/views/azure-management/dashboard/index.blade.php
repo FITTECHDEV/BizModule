@@ -531,6 +531,43 @@
             opacity: 0.5;
             pointer-events: none;
         }
+
+        /* Force checkmark to show */
+        .custom-control-input:checked~.custom-control-label::before {
+            background-color: #007bff !important;
+            border-color: #007bff !important;
+        }
+
+        .custom-control-input:checked~.custom-control-label::after {
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 8 8'%3e%3cpath fill='%23fff' d='M6.564.75l-3.59 3.612-1.538-1.55L0 4.26l2.974 2.99L8 2.193z'/%3e%3c/svg%3e") !important;
+            content: '' !important;
+            display: block !important;
+        }
+
+        /* Ensure the pseudo-element is positioned */
+        .custom-control-label::before {
+            position: absolute;
+            top: 0.25rem;
+            left: -1.5rem;
+            display: block;
+            width: 1rem;
+            height: 1rem;
+            pointer-events: none;
+            content: "";
+            background-color: #fff;
+            border: 1px solid #adb5bd;
+        }
+
+        .custom-control-label::after {
+            position: absolute;
+            top: 0.25rem;
+            left: -1.5rem;
+            display: block;
+            width: 1rem;
+            height: 1rem;
+            content: "";
+            background: no-repeat 50% / 50% 50%;
+        }
     </style>
 @stop
 
@@ -759,37 +796,29 @@
 
         function updateApplicationStatusUI() {
             const apps = ['d365', 'ops', 'biz', 'fit'];
-            let allAppsActive = true;
 
             apps.forEach(app => {
                 const checkbox = $(`#${app}Checkbox`);
                 const statusBadge = $(`#${app}-status-badge`);
                 const hasAccess = currentUserApplicationStatus[app];
 
+                // ✅ CHANGE: Always start unchecked
+                checkbox.prop('checked', false);
+
                 if (!hasAccess) {
-                    checkbox.prop('checked', false).prop('disabled', true);
+                    checkbox.prop('disabled', true);
                     checkbox.closest('.custom-control').addClass('text-muted');
                     statusBadge.attr('class', 'badge badge-sm badge-secondary ml-3').html('No Access');
-                    allAppsActive = false;
                 } else {
-                    checkbox.prop('checked', true).prop('disabled', false);
+                    // ✅ CHANGE: Enable but leave unchecked
+                    checkbox.prop('disabled', false);
                     checkbox.closest('.custom-control').removeClass('text-muted');
                     statusBadge.attr('class', 'badge badge-sm badge-success ml-3').html('Active');
                 }
             });
 
-            const azureCheckbox = $('#azureCheckbox');
-            if (allAppsActive) {
-                azureCheckbox.prop('checked', true);
-                apps.forEach(app => {
-                    if (currentUserApplicationStatus[app]) {
-                        $(`#${app}Checkbox`).prop('disabled', true);
-                        $(`#${app}Checkbox`).closest('.custom-control').addClass('azure-controlled');
-                    }
-                });
-            } else {
-                azureCheckbox.prop('checked', false);
-            }
+            // ✅ CHANGE: Azure checkbox also starts unchecked
+            $('#azureCheckbox').prop('checked', false);
         }
 
         function resetModalState() {
@@ -822,13 +851,12 @@
                     const app = $(this).data('app');
                     if (currentUserApplicationStatus[app]) {
                         if (isChecked) {
-                            // Don't change the checked state - just disable to prevent unchecking
-                            if (!$(this).is(':checked')) {
-                                $(this).prop('checked', true);
-                            }
+
+                            $(this).prop('checked', true);
                             $(this).prop('disabled', true);
                             $(this).closest('.custom-control').addClass('azure-controlled');
                         } else {
+                            $(this).prop('checked', false);
                             $(this).prop('disabled', false);
                             $(this).closest('.custom-control').removeClass('azure-controlled');
                         }
@@ -920,6 +948,30 @@
             });
         });
 
+        function updateApplicationBadge(app, isActive) {
+            const statusBadge = $(`#${app}-status-badge`);
+            const checkbox = $(`#${app}Checkbox`);
+
+            if (isActive) {
+                statusBadge.attr('class', 'badge badge-sm badge-success ml-3').html('Active');
+                checkbox.prop('disabled', false);
+                checkbox.closest('.custom-control').removeClass('text-muted');
+            } else {
+                statusBadge.attr('class', 'badge badge-sm badge-secondary ml-3').html('No Access');
+                checkbox.prop('disabled', true);
+                checkbox.closest('.custom-control').addClass('text-muted');
+            }
+        }
+
+        function updateApplicationBadge(app, isActive) {
+            const statusBadge = $(`#${app}-status-badge`);
+            if (isActive) {
+                statusBadge.attr('class', 'badge badge-sm badge-success ml-3').html('Active');
+            } else {
+                statusBadge.attr('class', 'badge badge-sm badge-secondary ml-3').html('No Access');
+            }
+        }
+
         function applyApplicationChanges(userId, action, applications) {
             $.ajax({
                 url: `/azure/users/${userId}/manage-access`,
@@ -935,6 +987,32 @@
                 }),
                 success: function(data) {
                     if (data.success) {
+                        // Update the application status based on the action
+                        const wasDisabled = action.toLowerCase() === 'disable';
+
+                        applications.forEach(app => {
+                            if (app === 'azure') {
+                                // Update all apps if Azure was changed
+                                ['d365', 'ops', 'biz', 'fit'].forEach(a => {
+                                    if (currentUserApplicationStatus[a]) {
+                                        currentUserApplicationStatus[a] = !wasDisabled;
+                                        updateApplicationBadge(a, !wasDisabled);
+                                    }
+                                });
+                            } else {
+                                currentUserApplicationStatus[app] = !wasDisabled;
+                                updateApplicationBadge(app, !wasDisabled);
+                            }
+                        });
+
+                        // Reset checkboxes and UI
+                        $('.app-checkbox, #azureCheckbox').prop('checked', false);
+                        $('.app-checkbox').prop('disabled', false);
+                        $('.custom-control').removeClass('azure-controlled');
+                        $('#changesSummary').hide();
+                        $('#applyChangesBtn').prop('disabled', true).html(
+                            '<i class="fas fa-check"></i> Apply Changes');
+
                         alert(data.message || 'Operation completed successfully');
                         $('#manageAccessModal').modal('hide');
                         loadUsers();

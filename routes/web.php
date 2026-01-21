@@ -1197,39 +1197,6 @@ Route::middleware(['auth'])->prefix('jimi-test')->group(function () {
 // Route::post('/azure/users', [AzureUserManagementController::class, 'store'])
 //        ->middleware(['auth', 'permission:create-azure-users']);
 
-/*
-|--------------------------------------------------------------------------
-| Email Account API Routes
-|--------------------------------------------------------------------------
-|
-| These routes handle all email account management operations.
-| All routes return JSON responses.
-|
-*/
-
-Route::prefix('email-accounts')->group(function () {
-
-    // Create new email account
-    // POST /api/email-accounts
-    Route::post('/', [EmailAccountController::class, 'store']);
-
-    // List all email accounts (with optional domain filter)
-    // GET /api/email-accounts?domain=example.com
-    Route::get('/', [EmailAccountController::class, 'index']);
-
-    // Get specific email account details
-    // GET /api/email-accounts/{email}
-    Route::get('/{email}', [EmailAccountController::class, 'show']);
-
-    // Update email password
-    // PATCH /api/email-accounts/password
-    Route::patch('/password', [EmailAccountController::class, 'updatePassword']);
-
-    // Delete email account
-    // DELETE /api/email-accounts
-    Route::delete('/', [EmailAccountController::class, 'destroy']);
-});
-
 Route::get('/azure/check-user', function (Illuminate\Http\Request $request) {
     try {
         // Get search parameter
@@ -1431,111 +1398,6 @@ Route::get('/azure/check-user', function (Illuminate\Http\Request $request) {
     }
 })->name('azure.check-user');
 
-Route::get('/azure/view-sp-definition/{sp_name?}', function ($spName = null) {
-    try {
-        // Default to SCM SP if none specified
-        if (!$spName) {
-            $spName = 'sp_Azure_SCMUserCreation';
-        }
-
-        $results = [];
-
-        // ========================================================================
-        // 1. Get SP definition using sp_helptext
-        // ========================================================================
-        try {
-            $definition = DB::connection('sqlsrv')->select("EXEC sp_helptext ?", [$spName]);
-
-            // Combine all text lines into single string
-            $fullDefinition = collect($definition)->pluck('Text')->join('');
-
-            $results['definition'] = [
-                'exists' => true,
-                'sp_name' => $spName,
-                'code' => $fullDefinition,
-                'line_count' => count($definition),
-            ];
-
-            // ========================================================================
-            // 2. Parse the definition to find the error message
-            // ========================================================================
-            $errorMessageLocation = stripos($fullDefinition, 'User ID shared does not exists');
-
-            if ($errorMessageLocation !== false) {
-                // Extract 500 characters before and after the error message
-                $start = max(0, $errorMessageLocation - 500);
-                $length = 1000;
-                $context = substr($fullDefinition, $start, $length);
-
-                $results['error_message_context'] = [
-                    'found' => true,
-                    'message' => 'User ID shared does not exists in the system........',
-                    'surrounding_code' => $context,
-                    'position' => $errorMessageLocation,
-                ];
-            } else {
-                $results['error_message_context'] = [
-                    'found' => false,
-                    'note' => 'Error message not found in this SP',
-                ];
-            }
-
-            // ========================================================================
-            // 3. Look for common patterns that might indicate requirements
-            // ========================================================================
-            $patterns = [
-                'EmployeeCode' => stripos($fullDefinition, 'EmployeeCode') !== false,
-                'EmployeCode' => stripos($fullDefinition, 'EmployeCode') !== false,
-                'BaseOffice' => stripos($fullDefinition, 'BaseOffice') !== false,
-                'HR_' => stripos($fullDefinition, 'HR_') !== false,
-                'Employee_' => stripos($fullDefinition, 'Employee_') !== false,
-                'Staff' => stripos($fullDefinition, 'Staff') !== false,
-                'Personnel' => stripos($fullDefinition, 'Personnel') !== false,
-            ];
-
-            $results['patterns_found'] = array_filter($patterns);
-
-            // ========================================================================
-            // 4. Look for SELECT statements that might be checking for user existence
-            // ========================================================================
-            preg_match_all('/SELECT.*?FROM\s+(\w+)/is', $fullDefinition, $selectMatches);
-
-            $results['tables_queried'] = [
-                'count' => count($selectMatches[1] ?? []),
-                'tables' => array_unique($selectMatches[1] ?? []),
-            ];
-        } catch (\Exception $e) {
-            $results['definition'] = [
-                'exists' => false,
-                'error' => $e->getMessage(),
-                'note' => 'SP might not exist or you might not have permissions',
-            ];
-        }
-
-        // ========================================================================
-        // 5. Quick links to check all three SPs
-        // ========================================================================
-        $results['check_other_sps'] = [
-            'scm' => url('/azure/view-sp-definition/sp_Azure_SCMUserCreation'),
-            'd365' => url('/azure/view-sp-definition/sp_Azure_D365UserCreation'),
-            'fitsys' => url('/azure/view-sp-definition/sp_Azure_FITSYSUserCreation'),
-        ];
-
-        return response()->json([
-            'success' => true,
-            'sp_name' => $spName,
-            'results' => $results,
-        ]);
-    } catch (\Exception $e) {
-        return response()->json([
-            'success' => false,
-            'error' => $e->getMessage(),
-            'trace' => $e->getTraceAsString(),
-        ], 500);
-    }
-});
-
-
 Route::get('/azure/check-sp-logic', function (Illuminate\Http\Request $request) {
     try {
         $userId = $request->input('user_id', '824F47DD-21D3-4BD5-9AA3-044B61F50BA9');
@@ -1700,34 +1562,6 @@ Route::get('/azure/get-full-sp-source', function (Illuminate\Http\Request $reque
         return response()->json([
             'success' => true,
             'results' => $results,
-        ], 200, [], JSON_PRETTY_PRINT);
-    } catch (\Exception $e) {
-        return response()->json([
-            'success' => false,
-            'error' => $e->getMessage(),
-        ], 500);
-    }
-});
-
-Route::get('/azure/check-avery-data', function (Illuminate\Http\Request $request) {
-    try {
-        // Get all column data for Avery by her ID (since email was updated)
-        $user = DB::connection('sqlsrv')->select("
-            SELECT * 
-            FROM Azure_Users 
-            WHERE Id = '1EFE3BA1-699C-4675-9EE3-44809EB43FF0'
-        ");
-
-        if (empty($user)) {
-            return response()->json([
-                'success' => false,
-                'error' => 'User not found',
-            ], 404);
-        }
-
-        return response()->json([
-            'success' => true,
-            'user_data' => $user[0],
         ], 200, [], JSON_PRETTY_PRINT);
     } catch (\Exception $e) {
         return response()->json([

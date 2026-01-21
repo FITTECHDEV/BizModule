@@ -742,9 +742,18 @@ class AzureUserManagementController extends Controller
                 Log::info('Auto-generating EmployeeCode...');
 
                 $nextCode = DB::connection('sqlsrv')->select("
-                SELECT CAST(ISNULL(MAX(CAST(CU.EmployeeCode AS BIGINT)), 0) + 1 AS VARCHAR(100)) as NextCode
-                FROM Cust_User CU WITH (NOLOCK)
-                WHERE CU.EmployeeCode IS NOT NULL AND LEN(ISNULL(CU.EmployeeCode, '')) > 0
+                SELECT CAST(ISNULL(MAX(MaxCode), 0) + 1 AS VARCHAR(100)) as NextCode
+                FROM (
+                    SELECT MAX(CAST(CU.EmployeeCode AS BIGINT)) as MaxCode
+                    FROM Cust_User CU WITH (NOLOCK)
+                    WHERE CU.EmployeeCode IS NOT NULL AND LEN(ISNULL(CU.EmployeeCode, '')) > 0
+        
+                    UNION ALL
+        
+                    SELECT MAX(CAST(AU.EmployeCode AS BIGINT)) as MaxCode
+                    FROM Azure_Users AU WITH (NOLOCK)
+                    WHERE AU.EmployeCode IS NOT NULL AND LEN(ISNULL(AU.EmployeCode, '')) > 0
+                ) AS Combined
             ");
 
                 $generatedEmployeeCode = $nextCode[0]->NextCode ?? '1';
@@ -2727,9 +2736,18 @@ class AzureUserManagementController extends Controller
                     ]);
 
                     $nextCode = DB::connection('sqlsrv')->select("
-                        SELECT CAST(ISNULL(MAX(CAST(CU.EmployeeCode AS BIGINT)), 0) + 1 AS VARCHAR(100)) as NextCode
-                        FROM Cust_User CU WITH (NOLOCK)
-                        WHERE CU.EmployeeCode IS NOT NULL AND LEN(ISNULL(CU.EmployeeCode, '')) > 0
+                        SELECT CAST(ISNULL(MAX(MaxCode), 0) + 1 AS VARCHAR(100)) as NextCode
+                        FROM (
+                            SELECT MAX(CAST(CU.EmployeeCode AS BIGINT)) as MaxCode
+                            FROM Cust_User CU WITH (NOLOCK)
+                            WHERE CU.EmployeeCode IS NOT NULL AND LEN(ISNULL(CU.EmployeeCode, '')) > 0
+        
+                            UNION ALL
+        
+                            SELECT MAX(CAST(AU.EmployeCode AS BIGINT)) as MaxCode
+                            FROM Azure_Users AU WITH (NOLOCK)
+                            WHERE AU.EmployeCode IS NOT NULL AND LEN(ISNULL(AU.EmployeCode, '')) > 0
+                        ) AS Combined
                     ");
 
                     $generatedEmployeeCode = $nextCode[0]->NextCode ?? '1';
