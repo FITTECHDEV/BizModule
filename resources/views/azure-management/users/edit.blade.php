@@ -1322,6 +1322,170 @@
         .assignment-item {
             padding: 20px;
         }
+
+        /* ============================================================================
+                                                                           WINDOWS SIGN-IN MODULE STYLES
+                                                                           ============================================================================ */
+
+        /* Highlight Windows Sign-In in module selector */
+        .windows-signin-highlight {
+            border-color: #0066cc !important;
+            background: linear-gradient(135deg, #e8f4fd 0%, #f0f8ff 100%) !important;
+            box-shadow: 0 4px 12px rgba(0, 102, 204, 0.2) !important;
+            position: relative;
+        }
+
+        .windows-signin-highlight:hover {
+            border-color: #004080 !important;
+            transform: translateY(-6px) !important;
+            box-shadow: 0 8px 20px rgba(0, 102, 204, 0.3) !important;
+        }
+
+        .windows-signin-highlight i {
+            color: #0066cc !important;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.6;
+            }
+        }
+
+        /* Required badge for mandatory modules */
+        .required-badge {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+            color: white;
+            font-size: 0.65em;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            box-shadow: 0 2px 8px rgba(255, 107, 107, 0.4);
+            animation: blink 1.5s infinite;
+        }
+
+        @keyframes blink {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        /* Windows Sign-In info box in modal */
+        .windows-signin-info-box {
+            padding: 16px 20px;
+            background: linear-gradient(135deg, #e8f4fd 0%, #f0f8ff 100%);
+            border: 2px solid #0066cc;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .windows-signin-info-box i {
+            color: #0066cc;
+            font-size: 1.5em;
+        }
+
+        .windows-signin-info-box span {
+            color: #004080;
+            font-weight: 600;
+            font-size: 0.95em;
+            line-height: 1.5;
+        }
+
+        /* Hide location field for Windows Sign-In */
+        .windows-signin-layout .location-field {
+            display: none !important;
+        }
+
+        /* Special layout for Windows Sign-In modal */
+        .windows-signin-layout {
+            background: linear-gradient(to bottom, #f8f9fa 0%, #ffffff 100%);
+            padding: 20px;
+            border-radius: 10px;
+        }
+
+        /* ============================================================================
+       LOCKED CARD STYLES (Windows Sign-In)
+       ============================================================================ */
+
+        /* Locked card appearance */
+        .locked-card {
+            position: relative;
+            opacity: 0.95;
+            background: linear-gradient(135deg, #e8f4fd 0%, #d4e9f7 100%) !important;
+            border: 2px solid #0066cc !important;
+        }
+
+        .locked-card:hover {
+            transform: none !important;
+            box-shadow: 0 4px 12px rgba(0, 102, 204, 0.3) !important;
+        }
+
+        /* Lock badge */
+        .lock-badge {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: linear-gradient(135deg, #0066cc 0%, #004080 100%);
+            color: white;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75em;
+            box-shadow: 0 2px 8px rgba(0, 102, 204, 0.4);
+            z-index: 10;
+        }
+
+        .lock-badge i {
+            color: white !important;
+        }
+
+        /* Windows Sign-In card icon */
+        .windows-signin-card .card-icon {
+            color: #0066cc !important;
+        }
+
+        /* Disabled state visual */
+        .locked-card::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.1);
+            pointer-events: none;
+            border-radius: 12px;
+        }
+
+        /* Remove pointer events from delete button inside locked cards */
+        .locked-card .btn-ghost {
+            pointer-events: none !important;
+            opacity: 0.3 !important;
+        }
+
     </style>
 @stop
 
@@ -1657,18 +1821,59 @@
 
         function createModuleCard(card) {
             const div = document.createElement('div');
-            div.className = `module-card ${card.isNew ? 'new-module' : ''}`;
+
+            // ✅ Check if this is Windows Sign-In
+            const isWindowsSignIn = card.module_name.toUpperCase().includes('WINDOWS SIGN') ||
+                card.module_name.toUpperCase().includes('WINDOWS SIGNIN');
+
+            // ✅ Add special classes for Windows Sign-In
+            const cardClasses =
+                `module-card ${card.isNew ? 'new-module' : ''} ${isWindowsSignIn ? 'windows-signin-card locked-card' : ''}`;
+
+            div.className = cardClasses;
             div.id = card.id;
-            div.onclick = () => openModal(card.id);
+
+            // ✅ Only make it clickable if NOT Windows Sign-In
+            if (!isWindowsSignIn) {
+                div.onclick = () => openModal(card.id);
+                div.style.cursor = 'pointer';
+            } else {
+                div.style.cursor = 'not-allowed';
+                div.onclick = (e) => {
+                    e.preventDefault();
+                    Swal.fire({
+                        icon: 'info',
+                        title: 'Windows Sign-In is Locked',
+                        html: `
+                    <p><strong>Windows Sign-In</strong> is a mandatory module and cannot be modified.</p>
+                    ${card.isNew ? `
+                                        <p style="color: #dc3545; font-weight: 600; margin-top: 15px;">
+                                            To remove it, click the "Cancel Changes" button.
+                                        </p>
+                                    ` : ''}
+                `,
+                        confirmButtonColor: '#3498db',
+                        confirmButtonText: 'OK'
+                    });
+                };
+            }
+
             const assignmentCount = card.assignments ? card.assignments.length : 0;
+
+            // ✅ Add lock icon for Windows Sign-In
+            const iconClass = isWindowsSignIn ? 'fa-shield-alt' : (card.isNew ? 'fa-plus-circle' : 'fa-cube');
+            const lockBadge = isWindowsSignIn ? '<span class="lock-badge"><i class="fas fa-lock"></i></span>' : '';
+
             div.innerHTML = `
-            <i class="fas ${card.isNew ? 'fa-plus-circle' : 'fa-cube'} card-icon"></i>
-            <div class="card-title">${escapeHtml(card.module_name)}</div>
-            <span class="assignment-count">
-                <i class="fas fa-list"></i>
-                ${assignmentCount} assignment${assignmentCount !== 1 ? 's' : ''}
-            </span>
-        `;
+        <i class="fas ${iconClass} card-icon"></i>
+        <div class="card-title">${escapeHtml(card.module_name)}</div>
+        <span class="assignment-count">
+            <i class="fas fa-list"></i>
+            ${assignmentCount} assignment${assignmentCount !== 1 ? 's' : ''}
+        </span>
+        ${lockBadge}
+    `;
+
             return div;
         }
 
@@ -1882,9 +2087,14 @@
             }
 
             const applicationCode = getApplicationCodeForSP(module);
+
+            // ✅ CHECK IF THIS IS WINDOWS SIGN-IN MODULE
+            const isWindowsSignIn = module.name.toUpperCase().includes('WINDOWS SIGN') ||
+                module.name.toUpperCase().includes('WINDOWS SIGNIN');
+
             const isSCM = applicationCode === 'OPS' || applicationCode === 'OPS UAT';
             const cacheKey = `${applicationCode}_all`;
-            const isOPSModule = isSCM; // OPS modules are SCM modules
+            const isOPSModule = isSCM;
 
             // Check if data is loaded
             if (!rolesCache[cacheKey]) {
@@ -1902,241 +2112,354 @@
             const availableRoles = rolesCache[cacheKey] || [];
             const availableFunctions = isSCM ? (scmFunctionsCache || []) : [];
 
+            // ✅ RENDER ASSIGNMENTS BASED ON MODULE TYPE
             container.innerHTML = card.assignments.map(a => {
-                const isAllLocations = a.location === 'ALL';
-                const isAllFunctions = a.function_id === 'ALL';
-                const disabled = !isEditMode ? 'disabled' : '';
-                const disabledClass = !isEditMode ? 'disabled' : '';
+                // ✅ IF WINDOWS SIGN-IN: Use special layout
+                if (isWindowsSignIn) {
+                    return renderWindowsSignInAssignment(a, module, applicationCode, availableRoles);
+                }
 
-                return `
-            <div class="assignment-item" id="${a.id}">
-                <div class="assignment-header">
-                    <span style="font-weight: 600; color: #6c757d; font-size: 0.9em;">
-                        Assignment for ${escapeHtml(module.name)} (${escapeHtml(applicationCode)})
+                // ✅ IF OPS MODULE: Use OPS layout
+                if (isOPSModule) {
+                    return renderOPSAssignment(a, module, applicationCode, availableRoles, availableFunctions);
+                }
+
+                // ✅ ELSE: Use standard layout
+                return renderStandardAssignment(a, module, applicationCode, availableRoles, isSCM,
+                    availableFunctions);
+            }).join('');
+        }
+
+        /**
+         * Render Windows Sign-In assignment (no location dropdown, no delete)
+         */
+        function renderWindowsSignInAssignment(a, module, applicationCode, availableRoles) {
+            const disabled = !isEditMode ? 'disabled' : '';
+            const disabledClass = !isEditMode ? 'disabled' : '';
+
+            return `
+        <div class="assignment-item windows-signin-layout" id="${a.id}">
+            <div class="assignment-header">
+                <span style="font-weight: 600; color: #0066cc; font-size: 0.95em; display: flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-shield-alt"></i>
+                    ${escapeHtml(module.name)} - Windows Domain Access
+                    <span class="lock-badge" style="position: relative; top: 0; right: 0; margin-left: auto;">
+                        <i class="fas fa-lock"></i>
                     </span>
-                    <div style="display: flex; gap: 8px; ${!isEditMode ? 'display: none;' : ''}">
-                        <button type="button" class="btn btn-sm btn-ghost" style="color: #dc3545;" onclick="deleteAssignment('${a.id}')">
-                            <i class="fas fa-trash"></i>
-                        </button>
+                </span>
+                <!-- ✅ NO DELETE BUTTON FOR WINDOWS SIGN-IN -->
+            </div>
+
+            <!-- INFO BOX -->
+            <div class="windows-signin-info-box">
+                <i class="fas fa-info-circle"></i>
+                <span>
+                    <strong>Mandatory Module:</strong> This module grants Windows domain authentication and cannot be removed. 
+                    It is required for user activation.
+                </span>
+            </div>
+
+            <!-- ROLES (if applicable) -->
+            ${availableRoles.length > 0 ? `
+                            <div class="info-field">
+                                <div class="field-label" style="margin-bottom: 12px;">
+                                    <i class="fas fa-user-tag"></i> Access Roles (Optional)
+                                </div>
+                                <div class="checkboxes-grid">
+                                    ${availableRoles.map(r => {
+                                        const isChecked = a.roleIds && a.roleIds.map(String).includes(String(r.id));
+                                        return `
+                                <div class="checkbox-option ${!isEditMode ? 'disabled' : ''}">
+                                    <input type="checkbox"
+                                           id="${a.id}_role_${r.id}"
+                                           class="role-checkbox"
+                                           data-role-id="${r.id}"
+                                           data-role-code="${escapeHtml(r.code)}"
+                                           value="${r.id}"
+                                           ${isChecked ? 'checked' : ''}
+                                           ${disabled}
+                                           onchange="handleRoleCheckboxChange('${a.id}')">
+                                    <label for="${a.id}_role_${r.id}">${escapeHtml(r.name)}</label>
+                                </div>
+                            `;
+                                    }).join('')}
+                                </div>
+                            </div>
+                        ` : '<p style="padding: 12px; color: #666; text-align: center; background: #f8f9fa; border-radius: 6px;"><em>No roles available for this module</em></p>'}
+        </div>
+    `;
+        }
+
+
+        /**
+         * Render OPS module assignment (OPS-specific layout)
+         */
+        function renderOPSAssignment(a, module, applicationCode, availableRoles, availableFunctions) {
+            const isAllLocations = a.location === 'ALL';
+            const isAllFunctions = a.function_id === 'ALL';
+            const disabled = !isEditMode ? 'disabled' : '';
+            const disabledClass = !isEditMode ? 'disabled' : '';
+
+            return `
+        <div class="assignment-item" id="${a.id}">
+            <div class="assignment-header">
+                <span style="font-weight: 600; color: #6c757d; font-size: 0.9em;">
+                    Assignment for ${escapeHtml(module.name)} (${escapeHtml(applicationCode)})
+                </span>
+                <div style="display: flex; gap: 8px; ${!isEditMode ? 'display: none;' : ''}">
+                    <button type="button" class="btn btn-sm btn-ghost" style="color: #dc3545;" 
+                            onclick="deleteAssignment('${a.id}')">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- OPS MODULE LAYOUT -->
+            <div class="ops-module-layout">
+                <div class="ops-top-section">
+                    <!-- OFFICE LOCATION -->
+                    <div class="ops-form-section">
+                        <div class="field-label"><i class="fas fa-map-marker-alt"></i> Office Location</div>
+                        <div class="radio-group">
+                            <div class="radio-option ${disabledClass}">
+                                <input type="radio" id="${a.id}_all_locations" name="${a.id}_location_type" 
+                                       class="all-locations-radio" ${isAllLocations ? 'checked' : ''} ${disabled} 
+                                       onchange="handleLocationRadioChange('${a.id}')">
+                                <label for="${a.id}_all_locations">All Locations</label>
+                            </div>
+                            <div class="radio-option ${disabledClass}">
+                                <input type="radio" id="${a.id}_specific_locations" name="${a.id}_location_type" 
+                                       class="specific-locations-radio" ${!isAllLocations ? 'checked' : ''} ${disabled} 
+                                       onchange="handleLocationRadioChange('${a.id}')">
+                                <label for="${a.id}_specific_locations">Specific Location</label>
+                            </div>
+                        </div>
+                        <div class="checkboxes-grid">
+                            ${locationsData.map(l => {
+                                const locCode = l.code.trim();
+                                const isChecked = isAllLocations || (a.locationCodes && a.locationCodes.map(c => c.trim()).includes(locCode));
+                                return `
+                                                            <div class="checkbox-option ${isAllLocations || !isEditMode ? 'disabled' : ''}">
+                                                                <input type="checkbox"
+                                                                       id="${a.id}_loc_${locCode}"
+                                                                       class="location-checkbox"
+                                                                       data-location-id="${l.id}"
+                                                                       data-location-code="${locCode}"
+                                                                       data-location-name="${escapeHtml(l.name)}"
+                                                                       value="${locCode}"
+                                                                       ${isChecked ? 'checked' : ''}
+                                                                       ${isAllLocations || !isEditMode ? 'disabled' : ''}
+                                                                       onchange="handleLocationCheckboxChange('${a.id}')">
+                                                                <label for="${a.id}_loc_${locCode}">${escapeHtml(l.name)}</label>
+                                                            </div>
+                                                        `;
+                            }).join('')}
+                        </div>
+                    </div>
+
+                    <!-- SCM FUNCTIONS -->
+                    <div class="ops-form-section">
+                        <div class="field-label"><i class="fas fa-cog"></i> Function (SCM)</div>
+                        <div class="radio-group">
+                            <div class="radio-option ${disabledClass}">
+                                <input type="radio" id="${a.id}_all_functions" name="${a.id}_function_type" 
+                                       class="all-functions-radio" ${isAllFunctions ? 'checked' : ''} ${disabled} 
+                                       onchange="handleFunctionRadioChange('${a.id}')">
+                                <label for="${a.id}_all_functions">All Functions</label>
+                            </div>
+                            <div class="radio-option ${disabledClass}">
+                                <input type="radio" id="${a.id}_specific_functions" name="${a.id}_function_type" 
+                                       class="specific-functions-radio" ${!isAllFunctions ? 'checked' : ''} ${disabled} 
+                                       onchange="handleFunctionRadioChange('${a.id}')">
+                                <label for="${a.id}_specific_functions">Specific Function</label>
+                            </div>
+                        </div>
+                        <div class="checkboxes-grid">
+                            ${availableFunctions.length > 0 ? availableFunctions.map(f => {
+                                const functionId = String(f.id).toUpperCase();
+                                const normalizedFunctionIds = (a.functionIds || []).map(id => String(id).toUpperCase());
+                                const isChecked = isAllFunctions || normalizedFunctionIds.includes(functionId);
+                                return `
+                                                            <div class="checkbox-option ${isAllFunctions || !isEditMode ? 'disabled' : ''}">
+                                                                <input type="checkbox"
+                                                                       id="${a.id}_func_${f.id}"
+                                                                       class="function-checkbox"
+                                                                       data-function-id="${f.id}"
+                                                                       data-function-code="${escapeHtml(f.code)}"
+                                                                       value="${f.id}"
+                                                                       ${isChecked ? 'checked' : ''}
+                                                                       ${isAllFunctions || !isEditMode ? 'disabled' : ''}
+                                                                       onchange="handleFunctionCheckboxChange('${a.id}')">
+                                                                <label for="${a.id}_func_${f.id}">${escapeHtml(f.name)}</label>
+                                                            </div>
+                                                        `;
+                            }).join('') : '<p style="padding: 10px; color: #666;">No functions available</p>'}
+                        </div>
                     </div>
                 </div>
 
-                ${
-                    isOPSModule
-                    ? `
-                                                                                                                        <!-- SPECIAL LAYOUT FOR OPS MODULES -->
-                                                                                                                        <div class="ops-module-layout">
-                                                                                                                            <div class="ops-top-section">
-                                                                                                                                <!-- OFFICE LOCATION -->
-                                                                                                                                <div class="ops-form-section">
-                                                                                                                                    <div class="field-label"><i class="fas fa-map-marker-alt"></i> Office Location</div>
-                                                                                                                                    <div class="radio-group">
-                                                                                                                                        <div class="radio-option ${disabledClass}">
-                                                                                                                                            <input type="radio" id="${a.id}_all_locations" name="${a.id}_location_type" class="all-locations-radio" ${isAllLocations ? 'checked' : ''} ${disabled} onchange="handleLocationRadioChange('${a.id}')">
-                                                                                                                                            <label for="${a.id}_all_locations">All Locations</label>
-                                                                                                                                        </div>
-                                                                                                                                        <div class="radio-option ${disabledClass}">
-                                                                                                                                            <input type="radio" id="${a.id}_specific_locations" name="${a.id}_location_type" class="specific-locations-radio" ${!isAllLocations ? 'checked' : ''} ${disabled} onchange="handleLocationRadioChange('${a.id}')">
-                                                                                                                                            <label for="${a.id}_specific_locations">Specific Location</label>
-                                                                                                                                        </div>
-                                                                                                                                    </div>
-                                                                                                                                    <div class="checkboxes-grid">
-                                                                                                                                        ${locationsData.map(l => {
-                                                                                                                                            const locCode = l.code.trim();
-                                                                                                                                            const isChecked = isAllLocations ||
-                                                                                                                                                (a.locationCodes && a.locationCodes.map(c => c.trim()).includes(locCode));
-
-                                                                                                                                            return `
-                                            <div class="checkbox-option ${isAllLocations || !isEditMode ? 'disabled' : ''}">
-                                                <input type="checkbox"
-                                                       id="${a.id}_loc_${locCode}"
-                                                       class="location-checkbox"
-                                                       data-location-id="${l.id}"
-                                                       data-location-code="${locCode}"
-                                                       data-location-name="${escapeHtml(l.name)}"
-                                                       value="${locCode}"
-                                                       ${isChecked ? 'checked' : ''}
-                                                       ${isAllLocations || !isEditMode ? 'disabled' : ''}
-                                                       onchange="handleLocationCheckboxChange('${a.id}')">
-                                                <label for="${a.id}_loc_${locCode}">${escapeHtml(l.name)}</label>
-                                            </div>
-                                        `;
-                                                                                                                                        }).join('')}
-                                                                                                                                    </div>
-                                                                                                                                </div>
-
-                                                                                                                                <!-- SCM FUNCTIONS -->
-                                                                                                                                <div class="ops-form-section">
-                                                                                                                                    <div class="field-label"><i class="fas fa-cog"></i> Function (SCM)</div>
-                                                                                                                                    <div class="radio-group">
-                                                                                                                                        <div class="radio-option ${disabledClass}">
-                                                                                                                                            <input type="radio" id="${a.id}_all_functions" name="${a.id}_function_type" class="all-functions-radio" ${isAllFunctions ? 'checked' : ''} ${disabled} onchange="handleFunctionRadioChange('${a.id}')">
-                                                                                                                                            <label for="${a.id}_all_functions">All Functions</label>
-                                                                                                                                        </div>
-                                                                                                                                        <div class="radio-option ${disabledClass}">
-                                                                                                                                            <input type="radio" id="${a.id}_specific_functions" name="${a.id}_function_type" class="specific-functions-radio" ${!isAllFunctions ? 'checked' : ''} ${disabled} onchange="handleFunctionRadioChange('${a.id}')">
-                                                                                                                                            <label for="${a.id}_specific_functions">Specific Function</label>
-                                                                                                                                        </div>
-                                                                                                                                    </div>
-                                                                                                                                    <div class="checkboxes-grid">
-                                                                                                                                        ${availableFunctions.length > 0 ? availableFunctions.map(f => {
-                                                                                                                                            const functionId = String(f.id).toUpperCase();
-                                                                                                                                            const normalizedFunctionIds = (a.functionIds || []).map(id => String(id).toUpperCase());
-                                                                                                                                            const isChecked = isAllFunctions || normalizedFunctionIds.includes(functionId);
-
-                                                                                                                                            return `
-                                            <div class="checkbox-option ${isAllFunctions || !isEditMode ? 'disabled' : ''}">
-                                                <input type="checkbox"
-                                                    id="${a.id}_func_${f.id}"
-                                                    class="function-checkbox"
-                                                    data-function-id="${f.id}"
-                                                    data-function-code="${escapeHtml(f.code)}"
-                                                    value="${f.id}"
-                                                    ${isChecked ? 'checked' : ''}
-                                                    ${isAllFunctions || !isEditMode ? 'disabled' : ''}
-                                                    onchange="handleFunctionCheckboxChange('${a.id}')">
-                                                <label for="${a.id}_func_${f.id}">${escapeHtml(f.name)}</label>
-                                            </div>
-                                        `;
-                                                                                                                                        }).join('') : '<p style="padding: 10px; color: #666;">No functions available</p>'}
-                                                                                                                                    </div>
-                                                                                                                                </div>
-                                                                                                                            </div>
-
-                                                                                                                            <!-- ROLES - FULL WIDTH FOR OPS MODULES -->
-                                                                                                                            <div class="ops-roles-section">
-                                                                                                                                <div class="field-label"><i class="fas fa-user-tag"></i> Roles</div>
-                                                                                                                                <div class="roles-grid-3col">
-                                                                                                                                    ${availableRoles.length > 0 ? availableRoles.map(r => {
-                                                                                                                                        const isChecked = a.roleIds && a.roleIds.map(String).includes(String(r.id));
-                                                                                                                                        return `
-                                        <div class="checkbox-option ${!isEditMode ? 'disabled' : ''}">
-                                            <input type="checkbox"
-                                                    id="${a.id}_role_${r.id}"
-                                                    class="role-checkbox"
-                                                    data-role-id="${r.id}"
-                                                    data-role-code="${escapeHtml(r.code)}"
-                                                    value="${r.id}"
-                                                    ${isChecked ? 'checked' : ''}
-                                                    ${!isEditMode ? 'disabled' : ''}
-                                                    onchange="handleRoleCheckboxChange('${a.id}')">
-                                            <label for="${a.id}_role_${r.id}">${escapeHtml(r.name)}</label>
-                                        </div>
-                                    `;
-                                                                                                                                    }).join('') : '<p style="padding: 10px; color: #666; grid-column: 1/-1;">No roles available for ' + escapeHtml(applicationCode) + '</p>'}
-                                                                                                                                </div>
-                                                                                                                            </div>
-                                                                                                                        </div>
-                                                                                                                        `
-                    : `
-                                                                                                                        <!-- STANDARD LAYOUT FOR NON-OPS MODULES -->
-                                                                                                                        <div class="assignment-info" style="grid-template-columns: ${isSCM ? '1fr 1fr 1fr' : '1fr 1fr'};">
-                                                                                                                            <!-- OFFICE LOCATION -->
-                                                                                                                            <div class="info-field">
-                                                                                                                                <div class="field-label"><i class="fas fa-map-marker-alt"></i> Office Location</div>
-                                                                                                                                <div class="radio-group">
-                                                                                                                                    <div class="radio-option ${disabledClass}">
-                                                                                                                                        <input type="radio" id="${a.id}_all_locations" name="${a.id}_location_type" class="all-locations-radio" ${isAllLocations ? 'checked' : ''} ${disabled} onchange="handleLocationRadioChange('${a.id}')">
-                                                                                                                                        <label for="${a.id}_all_locations">All Locations</label>
-                                                                                                                                    </div>
-                                                                                                                                    <div class="radio-option ${disabledClass}">
-                                                                                                                                        <input type="radio" id="${a.id}_specific_locations" name="${a.id}_location_type" class="specific-locations-radio" ${!isAllLocations ? 'checked' : ''} ${disabled} onchange="handleLocationRadioChange('${a.id}')">
-                                                                                                                                        <label for="${a.id}_specific_locations">Specific Location</label>
-                                                                                                                                    </div>
-                                                                                                                                </div>
-                                                                                                                                <div class="checkboxes-grid">
-                                                                                                                                    ${locationsData.map(l => {
-                                                                                                                                        const locCode = l.code.trim();
-                                                                                                                                        const isChecked = isAllLocations ||
-                                                                                                                                            (a.locationCodes && a.locationCodes.map(c => c.trim()).includes(locCode));
-
-                                                                                                                                        return `
-                                        <div class="checkbox-option ${isAllLocations || !isEditMode ? 'disabled' : ''}">
-                                            <input type="checkbox"
-                                                   id="${a.id}_loc_${locCode}"
-                                                   class="location-checkbox"
-                                                   data-location-id="${l.id}"
-                                                   data-location-code="${locCode}"
-                                                   data-location-name="${escapeHtml(l.name)}"
-                                                   value="${locCode}"
-                                                   ${isChecked ? 'checked' : ''}
-                                                   ${isAllLocations || !isEditMode ? 'disabled' : ''}
-                                                   onchange="handleLocationCheckboxChange('${a.id}')">
-                                            <label for="${a.id}_loc_${locCode}">${escapeHtml(l.name)}</label>
-                                        </div>
-                                    `;
-                                                                                                                                    }).join('')}
-                                                                                                                                </div>
-                                                                                                                            </div>
-
-                                                                                                                            <!-- SCM FUNCTIONS (Only for OPS/OPSUAT) -->
-                                                                                                                            ${isSCM ? `
-                            <div class="info-field">
-                                <div class="field-label"><i class="fas fa-cog"></i> Function (SCM)</div>
-                                <div class="radio-group">
-                                    <div class="radio-option ${disabledClass}">
-                                        <input type="radio" id="${a.id}_all_functions" name="${a.id}_function_type" class="all-functions-radio" ${isAllFunctions ? 'checked' : ''} ${disabled} onchange="handleFunctionRadioChange('${a.id}')">
-                                        <label for="${a.id}_all_functions">All Functions</label>
-                                    </div>
-                                    <div class="radio-option ${disabledClass}">
-                                        <input type="radio" id="${a.id}_specific_functions" name="${a.id}_function_type" class="specific-functions-radio" ${!isAllFunctions ? 'checked' : ''} ${disabled} onchange="handleFunctionRadioChange('${a.id}')">
-                                        <label for="${a.id}_specific_functions">Specific Function</label>
-                                    </div>
-                                </div>
-                                <div class="checkboxes-grid">
-                                    ${availableFunctions.length > 0 ? availableFunctions.map(f => {
-                                        const functionId = String(f.id).toUpperCase();
-                                        const normalizedFunctionIds = (a.functionIds || []).map(id => String(id).toUpperCase());
-                                        const isChecked = isAllFunctions || normalizedFunctionIds.includes(functionId);
-
-                                        return `
-                                                                                                                                                <div class="checkbox-option ${isAllFunctions || !isEditMode ? 'disabled' : ''}">
-                                                                                                                                                    <input type="checkbox"
-                                                                                                                                                        id="${a.id}_func_${f.id}"
-                                                                                                                                                        class="function-checkbox"
-                                                                                                                                                        data-function-id="${f.id}"
-                                                                                                                                                        data-function-code="${escapeHtml(f.code)}"
-                                                                                                                                                        value="${f.id}"
-                                                                                                                                                        ${isChecked ? 'checked' : ''}
-                                                                                                                                                        ${isAllFunctions || !isEditMode ? 'disabled' : ''}
-                                                                                                                                                        onchange="handleFunctionCheckboxChange('${a.id}')">
-                                                                                                                                                    <label for="${a.id}_func_${f.id}">${escapeHtml(f.name)}</label>
-                                                                                                                                                </div>
-                                                                                                                                            `;
-                                    }).join('') : '<p style="padding: 10px; color: #666;">No functions available</p>'}
-                                </div>
-                            </div>
-                        ` : ''}
-
-                                                                                                                            <!-- ROLES -->
-                                                                                                                            <div class="info-field">
-                                                                                                                                <div class="field-label"><i class="fas fa-user-tag"></i> Role</div>
-                                                                                                                                <div class="checkboxes-grid">
-                                                                                                                                    ${availableRoles.length > 0 ? availableRoles.map(r => {
-                                                                                                                                        const isChecked = a.roleIds && a.roleIds.map(String).includes(String(r.id));
-                                                                                                                                        return `
-                                        <div class="checkbox-option ${!isEditMode ? 'disabled' : ''}">
-                                            <input type="checkbox"
-                                                    id="${a.id}_role_${r.id}"
-                                                    class="role-checkbox"
-                                                    data-role-id="${r.id}"
-                                                    data-role-code="${escapeHtml(r.code)}"
-                                                    value="${r.id}"
-                                                    ${isChecked ? 'checked' : ''}
-                                                    ${!isEditMode ? 'disabled' : ''}
-                                                    onchange="handleRoleCheckboxChange('${a.id}')">
-                                            <label for="${a.id}_role_${r.id}">${escapeHtml(r.name)}</label>
-                                        </div>
-                                    `;
-                                                                                                                                    }).join('') : '<p style="padding: 10px; color: #666;">No roles available for ' + escapeHtml(applicationCode) + '</p>'}
-                                                                                                                                </div>
-                                                                                                                            </div>
-                                                                                                                        </div>
-                                                                                                                        `
-                }
+                <!-- ROLES - FULL WIDTH FOR OPS MODULES -->
+                <div class="ops-roles-section">
+                    <div class="field-label"><i class="fas fa-user-tag"></i> Roles</div>
+                    <div class="roles-grid-3col">
+                        ${availableRoles.length > 0 ? availableRoles.map(r => {
+                            const isChecked = a.roleIds && a.roleIds.map(String).includes(String(r.id));
+                            return `
+                                                        <div class="checkbox-option ${!isEditMode ? 'disabled' : ''}">
+                                                            <input type="checkbox"
+                                                                   id="${a.id}_role_${r.id}"
+                                                                   class="role-checkbox"
+                                                                   data-role-id="${r.id}"
+                                                                   data-role-code="${escapeHtml(r.code)}"
+                                                                   value="${r.id}"
+                                                                   ${isChecked ? 'checked' : ''}
+                                                                   ${!isEditMode ? 'disabled' : ''}
+                                                                   onchange="handleRoleCheckboxChange('${a.id}')">
+                                                            <label for="${a.id}_role_${r.id}">${escapeHtml(r.name)}</label>
+                                                        </div>
+                                                    `;
+                        }).join('') : '<p style="padding: 10px; color: #666; grid-column: 1/-1;">No roles available for ' + escapeHtml(applicationCode) + '</p>'}
+                    </div>
+                </div>
             </div>
-        `;
-            }).join('');
+        </div>
+    `;
+        }
+
+
+        /**
+         * Render standard module assignment (non-OPS, non-Windows-SignIn layout)
+         */
+        function renderStandardAssignment(a, module, applicationCode, availableRoles, isSCM, availableFunctions) {
+            const isAllLocations = a.location === 'ALL';
+            const isAllFunctions = a.function_id === 'ALL';
+            const disabled = !isEditMode ? 'disabled' : '';
+            const disabledClass = !isEditMode ? 'disabled' : '';
+
+            return `
+        <div class="assignment-item" id="${a.id}">
+            <div class="assignment-header">
+                <span style="font-weight: 600; color: #6c757d; font-size: 0.9em;">
+                    Assignment for ${escapeHtml(module.name)} (${escapeHtml(applicationCode)})
+                </span>
+                <div style="display: flex; gap: 8px; ${!isEditMode ? 'display: none;' : ''}">
+                    <button type="button" class="btn btn-sm btn-ghost" style="color: #dc3545;" 
+                            onclick="deleteAssignment('${a.id}')">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- STANDARD LAYOUT FOR NON-OPS MODULES -->
+            <div class="assignment-info" style="grid-template-columns: ${isSCM ? '1fr 1fr 1fr' : '1fr 1fr'};">
+                <!-- OFFICE LOCATION -->
+                <div class="info-field">
+                    <div class="field-label"><i class="fas fa-map-marker-alt"></i> Office Location</div>
+                    <div class="radio-group">
+                        <div class="radio-option ${disabledClass}">
+                            <input type="radio" id="${a.id}_all_locations" name="${a.id}_location_type" 
+                                   class="all-locations-radio" ${isAllLocations ? 'checked' : ''} ${disabled} 
+                                   onchange="handleLocationRadioChange('${a.id}')">
+                            <label for="${a.id}_all_locations">All Locations</label>
+                        </div>
+                        <div class="radio-option ${disabledClass}">
+                            <input type="radio" id="${a.id}_specific_locations" name="${a.id}_location_type" 
+                                   class="specific-locations-radio" ${!isAllLocations ? 'checked' : ''} ${disabled} 
+                                   onchange="handleLocationRadioChange('${a.id}')">
+                            <label for="${a.id}_specific_locations">Specific Location</label>
+                        </div>
+                    </div>
+                    <div class="checkboxes-grid">
+                        ${locationsData.map(l => {
+                            const locCode = l.code.trim();
+                            const isChecked = isAllLocations || (a.locationCodes && a.locationCodes.map(c => c.trim()).includes(locCode));
+                            return `
+                                                    <div class="checkbox-option ${isAllLocations || !isEditMode ? 'disabled' : ''}">
+                                                        <input type="checkbox"
+                                                               id="${a.id}_loc_${locCode}"
+                                                               class="location-checkbox"
+                                                               data-location-id="${l.id}"
+                                                               data-location-code="${locCode}"
+                                                               data-location-name="${escapeHtml(l.name)}"
+                                                               value="${locCode}"
+                                                               ${isChecked ? 'checked' : ''}
+                                                               ${isAllLocations || !isEditMode ? 'disabled' : ''}
+                                                               onchange="handleLocationCheckboxChange('${a.id}')">
+                                                        <label for="${a.id}_loc_${locCode}">${escapeHtml(l.name)}</label>
+                                                    </div>
+                                                `;
+                        }).join('')}
+                    </div>
+                </div>
+
+                <!-- SCM FUNCTIONS (Only for non-OPS SCM modules) -->
+                ${isSCM ? `
+                                        <div class="info-field">
+                                            <div class="field-label"><i class="fas fa-cog"></i> Function (SCM)</div>
+                                            <div class="radio-group">
+                                                <div class="radio-option ${disabledClass}">
+                                                    <input type="radio" id="${a.id}_all_functions" name="${a.id}_function_type" 
+                                                           class="all-functions-radio" ${isAllFunctions ? 'checked' : ''} ${disabled} 
+                                                           onchange="handleFunctionRadioChange('${a.id}')">
+                                                    <label for="${a.id}_all_functions">All Functions</label>
+                                                </div>
+                                                <div class="radio-option ${disabledClass}">
+                                                    <input type="radio" id="${a.id}_specific_functions" name="${a.id}_function_type" 
+                                                           class="specific-functions-radio" ${!isAllFunctions ? 'checked' : ''} ${disabled} 
+                                                           onchange="handleFunctionRadioChange('${a.id}')">
+                                                    <label for="${a.id}_specific_functions">Specific Function</label>
+                                                </div>
+                                            </div>
+                                            <div class="checkboxes-grid">
+                                                ${availableFunctions.length > 0 ? availableFunctions.map(f => {
+                                                    const functionId = String(f.id).toUpperCase();
+                                                    const normalizedFunctionIds = (a.functionIds || []).map(id => String(id).toUpperCase());
+                                                    const isChecked = isAllFunctions || normalizedFunctionIds.includes(functionId);
+                                                    return `
+                                    <div class="checkbox-option ${isAllFunctions || !isEditMode ? 'disabled' : ''}">
+                                        <input type="checkbox"
+                                               id="${a.id}_func_${f.id}"
+                                               class="function-checkbox"
+                                               data-function-id="${f.id}"
+                                               data-function-code="${escapeHtml(f.code)}"
+                                               value="${f.id}"
+                                               ${isChecked ? 'checked' : ''}
+                                               ${isAllFunctions || !isEditMode ? 'disabled' : ''}
+                                               onchange="handleFunctionCheckboxChange('${a.id}')">
+                                        <label for="${a.id}_func_${f.id}">${escapeHtml(f.name)}</label>
+                                    </div>
+                                `;
+                                                }).join('') : '<p style="padding: 10px; color: #666;">No functions available</p>'}
+                                            </div>
+                                        </div>
+                                    ` : ''}
+
+                <!-- ROLES -->
+                <div class="info-field">
+                    <div class="field-label"><i class="fas fa-user-tag"></i> Role</div>
+                    <div class="checkboxes-grid">
+                        ${availableRoles.length > 0 ? availableRoles.map(r => {
+                            const isChecked = a.roleIds && a.roleIds.map(String).includes(String(r.id));
+                            return `
+                                                    <div class="checkbox-option ${!isEditMode ? 'disabled' : ''}">
+                                                        <input type="checkbox"
+                                                               id="${a.id}_role_${r.id}"
+                                                               class="role-checkbox"
+                                                               data-role-id="${r.id}"
+                                                               data-role-code="${escapeHtml(r.code)}"
+                                                               value="${r.id}"
+                                                               ${isChecked ? 'checked' : ''}
+                                                               ${!isEditMode ? 'disabled' : ''}
+                                                               onchange="handleRoleCheckboxChange('${a.id}')">
+                                                        <label for="${a.id}_role_${r.id}">${escapeHtml(r.name)}</label>
+                                                    </div>
+                                                `;
+                        }).join('') : '<p style="padding: 10px; color: #666;">No roles available for ' + escapeHtml(applicationCode) + '</p>'}
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
         }
 
         // Handle location radio change (All vs Specific)
@@ -2345,21 +2668,26 @@
         <div class="module-selector-grid">
             ${modulesData.map(m => {
                 const isAssigned = assignedModuleIds.includes(m.id);
+                const isWindowsSignIn = m.name.toUpperCase().includes('WINDOWS SIGN') || 
+                                       m.name.toUpperCase().includes('WINDOWS SIGNIN');
+                
                 const disabledClass = isAssigned ? 'disabled' : '';
                 const disabledAttr = isAssigned ? 'data-disabled="true"' : '';
+                const highlightClass = isWindowsSignIn && !isAssigned ? 'windows-signin-highlight' : '';
 
                 return `
-                                        <div class="module-selector-card ${disabledClass}"
-                                            data-module-id="${escapeHtml(String(m.id))}"
-                                            ${disabledAttr}>
-                                            <i class="fas fa-cube"></i>
-                                            <div class="module-name">${escapeHtml(m.name)}</div>
-                                            ${isAssigned ? '<div class="already-assigned-badge">Already Assigned</div>' : ''}
-                                        </div>
-                                    `;
+                                                                            <div class="module-selector-card ${disabledClass} ${highlightClass}"
+                                                                                 data-module-id="${escapeHtml(String(m.id))}"
+                                                                                 ${disabledAttr}>
+                                                                                <i class="fas ${isWindowsSignIn ? 'fa-shield-alt' : 'fa-cube'}"></i>
+                                                                                <div class="module-name">${escapeHtml(m.name)}</div>
+                                                                                ${isWindowsSignIn && !isAssigned ? '<div class="required-badge">Required</div>' : ''}
+                                                                                ${isAssigned ? '<div class="already-assigned-badge">Already Assigned</div>' : ''}
+                                                                            </div>
+                                                                        `;
             }).join('')}
         </div>
-        `;
+    `;
 
             Swal.fire({
                 title: 'Select Module',
@@ -2373,7 +2701,6 @@
                         card.addEventListener('click', function() {
                             // Check if disabled
                             if (this.getAttribute('data-disabled') === 'true') {
-                                // Show message
                                 Swal.fire({
                                     icon: 'info',
                                     title: 'Module Already Assigned',
@@ -2402,10 +2729,25 @@
 
             const cardId = `card_${cardIdCounter++}`;
             const assignId = `assign_${cardIdCounter++}`;
-
             const applicationCode = getApplicationCodeForSP(module);
+
+            // ✅ CHECK IF THIS IS WINDOWS SIGN-IN
+            const isWindowsSignIn = module.name.toUpperCase().includes('WINDOWS SIGN') ||
+                module.name.toUpperCase().includes('WINDOWS SIGNIN');
             const isSCM = applicationCode === 'OPS' || applicationCode === 'OPS UAT';
 
+            // ✅ For Windows Sign-In, use first available location as default
+            let defaultLocation = null;
+            let defaultLocationId = null;
+            let defaultLocationCode = null;
+
+            if (isWindowsSignIn && locationsData.length > 0) {
+                defaultLocation = locationsData[0];
+                defaultLocationId = defaultLocation.id;
+                defaultLocationCode = defaultLocation.code;
+            }
+
+            // Create the module card
             moduleCards[cardId] = {
                 id: cardId,
                 isNew: true,
@@ -2414,9 +2756,9 @@
                 application_id: module.application_id,
                 assignments: [{
                     id: assignId,
-                    location: '',
-                    locationIds: [],
-                    locationCodes: [],
+                    location: isWindowsSignIn ? defaultLocationCode : '',
+                    locationIds: isWindowsSignIn ? [defaultLocationId] : [],
+                    locationCodes: isWindowsSignIn ? [defaultLocationCode] : [],
                     role_id: '',
                     roleIds: [],
                     roleCodes: [],
@@ -2427,6 +2769,76 @@
             };
 
             renderAllCards();
+
+            // ✅ IF WINDOWS SIGN-IN: Check if it has roles
+            if (isWindowsSignIn) {
+                // Fetch roles first
+                fetchRolesByApplicationCode(applicationCode).then(roles => {
+                    if (roles && roles.length > 0) {
+                        // Has roles - open modal to select them, but mark as already added
+                        console.log('🔵 Windows Sign-In has roles - opening modal for selection');
+
+                        // Mark as not new (already saved)
+                        moduleCards[cardId].isNew = false;
+
+                        // Show update button
+                        toggleFormActions(true);
+
+                        // Open modal with a banner explaining it's already added
+                        openModal(cardId);
+
+                        // Add a banner to the modal
+                        const modalBody = document.querySelector('.modal-body');
+                        if (modalBody) {
+                            const banner = document.createElement('div');
+                            banner.className = 'windows-signin-auto-added-banner';
+                            banner.style.cssText = `
+                        background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+                        border: 2px solid #28a745;
+                        border-radius: 8px;
+                        padding: 12px 16px;
+                        margin-bottom: 20px;
+                        display: flex;
+                        align-items: center;
+                        gap: 12px;
+                    `;
+                            banner.innerHTML = `
+                        <i class="fas fa-check-circle" style="color: #28a745; font-size: 1.5em;"></i>
+                        <span style="color: #155724; font-weight: 600;">
+                            Windows Sign-In has been added! 
+                            ${roles.length > 0 ? 'Optionally select access roles below.' : ''}
+                        </span>
+                    `;
+                            modalBody.insertBefore(banner, modalBody.firstChild);
+                        }
+                    } else {
+                        // No roles - just add it without modal
+                        console.log('🔵 Windows Sign-In has no roles - auto-saving');
+
+                        moduleCards[cardId].isNew = false;
+                        renderAllCards();
+                        toggleFormActions(true);
+
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Windows Sign-In Added!',
+                            html: `
+                        <p><strong>${escapeHtml(module.name)}</strong> has been added.</p>
+                        <p style="color: #007bff; font-weight: 600; margin-top: 15px;">
+                            Click "Update User" to save all changes.
+                        </p>
+                    `,
+                            confirmButtonColor: '#3498db',
+                            timer: 3000,
+                            timerProgressBar: true
+                        });
+                    }
+                });
+
+                return; // Don't continue with normal modal opening
+            }
+
+            // ✅ FOR OTHER MODULES: Open modal as usual
             openModal(cardId);
         };
 
@@ -2448,12 +2860,38 @@
                 return;
             }
 
+            // ✅ CHECK IF THIS IS WINDOWS SIGN-IN - BLOCK DELETION
+            const isWindowsSignIn = card.module_name.toUpperCase().includes('WINDOWS SIGN') ||
+                card.module_name.toUpperCase().includes('WINDOWS SIGNIN');
+
+            if (isWindowsSignIn) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Cannot Delete Mandatory Module',
+                    html: `
+                <p><strong>Windows Sign-In</strong> is a mandatory module and cannot be deleted.</p>
+                <p style="color: #666; font-size: 0.9em; margin-top: 10px;">
+                    <i class="fas fa-lock"></i> This module is required for user activation.
+                </p>
+                ${card.isNew ? `
+                                <p style="color: #007bff; font-weight: 600; margin-top: 15px;">
+                                    To remove it, click "Cancel Changes" to discard all unsaved changes.
+                                </p>
+                            ` : ''}
+            `,
+                    confirmButtonColor: '#3498db',
+                    confirmButtonText: 'OK'
+                });
+                return; // ✅ Stop deletion
+            }
+
             console.log('Card before delete:', {
                 id: card.id,
                 module: card.module_name,
                 assignments: card.assignments.length
             });
 
+            // ... rest of your existing delete logic for other modules ...
             Swal.fire({
                 title: 'Delete Module?',
                 html: `
@@ -2547,11 +2985,17 @@
         window.cancelAllChanges = () => {
             Swal.fire({
                 title: 'Cancel All Changes?',
-                text: 'This will revert all unsaved changes to module assignments',
+                html: `
+            <p>This will revert all unsaved changes to module assignments.</p>
+            <p style="color: #dc3545; font-weight: 600; margin-top: 10px;">
+                <i class="fas fa-exclamation-triangle"></i> 
+                This includes removing newly added modules like Windows Sign-In.
+            </p>
+        `,
                 icon: 'warning',
                 showCancelButton: true,
                 confirmButtonColor: '#ef4444',
-                confirmButtonText: 'Yes, cancel changes',
+                confirmButtonText: 'Yes, cancel all changes',
                 cancelButtonText: 'Keep editing'
             }).then((result) => {
                 if (result.isConfirmed) {
@@ -3022,6 +3466,76 @@
             console.log('🔄 Update User clicked');
 
             try {
+                // ====================================================================
+                // ✅ STEP 0: VALIDATE MANDATORY FIELDS
+                // ====================================================================
+                const validation = validateMandatoryFields();
+
+                if (!validation.valid) {
+                    console.error('❌ Validation failed:', validation.errors);
+
+                    // Build error message
+                    const errorList = validation.errors
+                        .map(err => `• <strong>${err.field}:</strong> ${err.message}`)
+                        .join('<br>');
+
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Required Fields Missing',
+                        html: `
+                    <p style="margin-bottom: 15px;">Please fix the following issues before updating:</p>
+                    <div style="text-align: left; padding: 10px 20px; background: #fff3cd; border-radius: 6px; border-left: 4px solid #ffc107;">
+                        ${errorList}
+                    </div>
+                    <p style="margin-top: 15px; color: #666; font-size: 0.9em;">
+                        <i class="fas fa-info-circle"></i> These fields are mandatory for user activation.
+                    </p>
+                `,
+                        confirmButtonColor: '#3498db',
+                        confirmButtonText: 'OK, I\'ll fix it',
+                        width: '600px'
+                    });
+
+                    // Highlight missing fields
+                    validation.errors.forEach(err => {
+                        if (err.field === 'Base Office') {
+                            const baseOfficeSelect = document.getElementById('scm_base_office');
+                            if (baseOfficeSelect) {
+                                baseOfficeSelect.style.border = '2px solid #dc3545';
+                                baseOfficeSelect.scrollIntoView({
+                                    behavior: 'smooth',
+                                    block: 'center'
+                                });
+
+                                // Remove highlight after 3 seconds
+                                setTimeout(() => {
+                                    baseOfficeSelect.style.border = '';
+                                }, 3000);
+                            }
+                        }
+
+                        if (err.field === 'Windows Sign-In') {
+                            const modulesGrid = document.getElementById('modulesGrid');
+                            if (modulesGrid) {
+                                modulesGrid.style.border = '2px solid #dc3545';
+                                modulesGrid.scrollIntoView({
+                                    behavior: 'smooth',
+                                    block: 'center'
+                                });
+
+                                // Remove highlight after 3 seconds
+                                setTimeout(() => {
+                                    modulesGrid.style.border = '';
+                                }, 3000);
+                            }
+                        }
+                    });
+
+                    return; // ✅ Stop execution
+                }
+
+                console.log('✅ Validation passed - proceeding with update');
+
                 // Show loading state
                 Swal.fire({
                     title: 'Updating User...',
@@ -3035,23 +3549,12 @@
                 });
 
                 // ========================================================================
-                // ✅ FIX 1: Get the base office value from the form
+                // ✅ STEP 1: Get the base office value from the form
                 // ========================================================================
                 const baseOfficeSelect = document.getElementById('scm_base_office');
                 const baseOfficeValue = baseOfficeSelect ? baseOfficeSelect.value : null;
 
                 console.log('📍 Base Office Value:', baseOfficeValue);
-
-                if (!baseOfficeValue) {
-                    Swal.close();
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Validation Error',
-                        text: 'Please select a Base Office before updating.',
-                        confirmButtonColor: '#3498db'
-                    });
-                    return;
-                }
 
                 // ========================================================================
                 // Build form data with modules AND base office
@@ -3060,7 +3563,7 @@
                 formData.append('_token', csrfToken);
                 formData.append('_method', 'PUT');
 
-                // ✅ FIX 2: Add base office to form data
+                // ✅ Add base office to form data
                 formData.append('scm_base_office', baseOfficeValue);
 
                 // Get hidden inputs (modules)
@@ -3148,11 +3651,13 @@
                 });
             }
         };
-
         // ============================================================================
         // BONUS: Add validation when base office changes
         // ============================================================================
         document.addEventListener('DOMContentLoaded', function() {
+            // ====================================================================
+            // ✅ 1. BASE OFFICE - Change notification (existing code)
+            // ====================================================================
             const baseOfficeSelect = document.getElementById('scm_base_office');
 
             if (baseOfficeSelect) {
@@ -3166,7 +3671,7 @@
                         'position: fixed; top: 20px; right: 20px; z-index: 9999; max-width: 400px;';
                     notification.innerHTML = `
                 <button type="button" class="close" data-dismiss="alert">&times;</button>
-                <i class="fas fa-info-circle"></i> Base office changed. Click "Save Base Office" to save.
+                <i class="fas fa-info-circle"></i> Base office changed. Click "Update User" to save.
             `;
 
                     document.body.appendChild(notification);
@@ -3175,8 +3680,128 @@
                     setTimeout(() => {
                         notification.remove();
                     }, 5000);
+
+                    // ✅ Show Update User button when base office changes
+                    toggleFormActions(true);
                 });
             }
+
+            // ====================================================================
+            // ✅ 2. MARK BASE OFFICE AS REQUIRED (NEW - Add this)
+            // ====================================================================
+            const baseOfficeLabel = document.querySelector('label[for="scm_base_office"]');
+            if (baseOfficeLabel && !baseOfficeLabel.querySelector('.required-indicator')) {
+                // Check if asterisk already exists in label text
+                if (!baseOfficeLabel.innerHTML.includes('*')) {
+                    const requiredSpan = document.createElement('span');
+                    requiredSpan.className = 'required-indicator';
+                    requiredSpan.style.cssText = 'color: #dc3545; margin-left: 4px; font-weight: bold;';
+                    requiredSpan.textContent = '*';
+                    baseOfficeLabel.appendChild(requiredSpan);
+                }
+            }
+
+            // ====================================================================
+            // ✅ 3. ADD MANDATORY MODULE BANNER (NEW - Add this)
+            // ====================================================================
+            const modulesSection = document.querySelector('.form-section:has(#modulesGrid)');
+            if (modulesSection) {
+                const existingBanner = modulesSection.querySelector('.mandatory-module-banner');
+                if (!existingBanner) {
+                    const banner = document.createElement('div');
+                    banner.className = 'mandatory-module-banner';
+                    banner.style.cssText = `
+                background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+                border: 2px solid #ffc107;
+                border-radius: 8px;
+                padding: 12px 16px;
+                margin-bottom: 20px;
+                display: flex;
+                align-items: center;
+                gap: 12px;
+            `;
+                    banner.innerHTML = `
+                <i class="fas fa-exclamation-triangle" style="color: #856404; font-size: 1.3em;"></i>
+                <span style="color: #856404; font-weight: 600;">
+                    <strong>Required:</strong> Windows Sign-In module must be assigned before saving.
+                </span>
+            `;
+
+                    const formSectionTitle = modulesSection.querySelector('.form-section-title');
+                    if (formSectionTitle) {
+                        formSectionTitle.insertAdjacentElement('afterend', banner);
+                    }
+                }
+            }
+
+            // ====================================================================
+            // ✅ 4. PREVENT FORM SUBMISSION ON ENTER KEY (NEW - Add this)
+            // ====================================================================
+            const editForm = document.getElementById('editUserForm');
+            if (editForm) {
+                editForm.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        console.log('⚠️ Form submission prevented (use Update User button)');
+                        return false;
+                    }
+                });
+            }
+
+            // ====================================================================
+            // ✅ 5. CHECK IF WINDOWS SIGN-IN IS ALREADY ASSIGNED (NEW - Add this)
+            // ====================================================================
+            function checkWindowsSignInStatus() {
+                const hasWindowsSignIn = Object.values(moduleCards).some(card => {
+                    const moduleName = card.module_name.toUpperCase();
+                    return moduleName.includes('WINDOWS SIGN') || moduleName.includes('WINDOWS SIGNIN');
+                });
+
+                const banner = document.querySelector('.mandatory-module-banner');
+                if (banner) {
+                    if (hasWindowsSignIn) {
+                        // ✅ Windows Sign-In is assigned - change banner to success
+                        banner.style.background = 'linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%)';
+                        banner.style.borderColor = '#28a745';
+                        banner.innerHTML = `
+                    <i class="fas fa-check-circle" style="color: #155724; font-size: 1.3em;"></i>
+                    <span style="color: #155724; font-weight: 600;">
+                        <strong>✓ Windows Sign-In assigned</strong> - Required module is present.
+                    </span>
+                `;
+                    } else {
+                        // ⚠️ Windows Sign-In is NOT assigned - warning banner
+                        banner.style.background = 'linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%)';
+                        banner.style.borderColor = '#ffc107';
+                        banner.innerHTML = `
+                    <i class="fas fa-exclamation-triangle" style="color: #856404; font-size: 1.3em;"></i>
+                    <span style="color: #856404; font-weight: 600;">
+                        <strong>Required:</strong> Windows Sign-In module must be assigned before saving.
+                    </span>
+                `;
+                    }
+                }
+            }
+
+            // ====================================================================
+            // ✅ 6. MONITOR MODULE CHANGES (NEW - Add this)
+            // ====================================================================
+            // Override renderAllCards to check Windows Sign-In status after rendering
+            const originalRenderAllCards = window.renderAllCards;
+            if (originalRenderAllCards) {
+                window.renderAllCards = function() {
+                    originalRenderAllCards.call(this);
+                    checkWindowsSignInStatus();
+                };
+            }
+
+            // ====================================================================
+            // ✅ 7. INITIAL CHECK (NEW - Add this)
+            // ====================================================================
+            // Wait a bit for modules to load, then check status
+            setTimeout(() => {
+                checkWindowsSignInStatus();
+            }, 500);
         });
 
         // Initialize on page load
@@ -3189,5 +3814,42 @@
             console.log('📍 Base Office changed to:', $(this).val());
             toggleFormActions(true); // Show the Update User button
         });
+
+        /**
+         * Validate mandatory fields before submission
+         * @returns {object} { valid: boolean, errors: array }
+         */
+        function validateMandatoryFields() {
+            const errors = [];
+
+            // ✅ Check 1: Windows Sign-In module is assigned
+            const hasWindowsSignIn = Object.values(moduleCards).some(card => {
+                const moduleName = card.module_name.toUpperCase();
+                return moduleName.includes('WINDOWS SIGN') || moduleName.includes('WINDOWS SIGNIN');
+            });
+
+            if (!hasWindowsSignIn) {
+                errors.push({
+                    field: 'Windows Sign-In',
+                    message: 'Windows Sign-In module is mandatory and must be assigned before saving.'
+                });
+            }
+
+            // ✅ Check 2: Base Office is selected
+            const baseOfficeSelect = document.getElementById('scm_base_office');
+            const baseOfficeValue = baseOfficeSelect ? baseOfficeSelect.value : null;
+
+            if (!baseOfficeValue || baseOfficeValue.trim() === '') {
+                errors.push({
+                    field: 'Base Office',
+                    message: 'Base Office must be selected before saving.'
+                });
+            }
+
+            return {
+                valid: errors.length === 0,
+                errors: errors
+            };
+        }
     </script>
 @stop

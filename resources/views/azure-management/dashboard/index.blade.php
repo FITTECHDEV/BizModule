@@ -822,10 +822,14 @@
                     const app = $(this).data('app');
                     if (currentUserApplicationStatus[app]) {
                         if (isChecked) {
-                            $(this).prop('checked', true).prop('disabled', true);
+                            // Don't change the checked state - just disable to prevent unchecking
+                            if (!$(this).is(':checked')) {
+                                $(this).prop('checked', true);
+                            }
+                            $(this).prop('disabled', true);
                             $(this).closest('.custom-control').addClass('azure-controlled');
                         } else {
-                            $(this).prop('checked', false).prop('disabled', false);
+                            $(this).prop('disabled', false);
                             $(this).closest('.custom-control').removeClass('azure-controlled');
                         }
                     }
