@@ -280,7 +280,7 @@ class OdooSyncController extends Controller
 
     /**
      * Sync users from Odoo via AJAX (for manual sync button)
-     * ENHANCED: Now provisions users to Azure AD automatically
+     * USES VIEW: Only syncs users created/modified TODAY
      */
     public function syncUsersAjax()
     {
@@ -296,75 +296,32 @@ class OdooSyncController extends Controller
                 'updated' => 0,
                 'failed' => 0,
                 'azure_provisioned' => 0,
+                'azure_updated' => 0,
                 'azure_failed' => 0,
                 'azure_skipped' => 0,
                 'errors' => [],
             ];
 
-            // Fetch users from Odoo (last 7 days)
-            $odooUsers = DB::connection('pgsql')->select("
-                SELECT 
-                    ru.login AS userprincipalname,
-                    he.name AS displayname,
-                    split_part(he.name::text, ' ', 2) AS surname,
-                    he.work_email AS mail,
-                    split_part(he.name::text, ' ', 1) AS givenname,
-                    NULL AS azureid,
-                    'Member' AS usertype,
-                    he.job_title AS jobtitle,
-                    hd.complete_name AS department,
-                    1 AS accountenabled,
-                    ru.company_id,
-                    CASE
-                        WHEN rc.name ~~ '%Kenya%' THEN 'KE'
-                        WHEN rc.name ~~ '%Uganda%' THEN 'UG'
-                        WHEN rc.name ~~ '%Rwanda%' THEN 'RW'
-                        WHEN rc.name ~~ '%South Sudan%' THEN 'SS'
-                        WHEN rc.name ~~ '%Djibouti%' THEN 'DJ'
-                        WHEN rc.name ~~ '%Tanzania%' THEN 'TZ'
-                        WHEN rc.name ~~ '%Ethiopia%' THEN 'ET'
-                        ELSE 'NA'
-                    END AS usagelocation,
-                    he.private_street || CASE WHEN length(COALESCE(he.private_street2, '')) > 0 THEN ' ' || he.private_street2 ELSE '' END AS streetaddress,
-                    rcs.name AS state,
-                    rec.name::json ->> 'en_US' AS country,
-                    NULL AS officelocation,
-                    he.private_city AS city,
-                    he.private_zip AS postalcode,
-                    he.work_phone AS telephonenumber,
-                    he.mobile_phone AS mobilephone,
-                    he.private_email AS alternateemailaddress,
-                    NULL AS agegroup,
-                    NULL AS consentprovidedforminor,
-                    NULL AS legalagegroupclassification,
-                    rc.name AS companyname,
-                    NULL AS creationtype,
-                    NULL AS directorysynced,
-                    NULL AS invitationstate,
-                    NULL AS identityissuer,
-                    he.user_id AS odoouserid,
-                    he.id AS odooemployeeid,
-                    ru.login AS odoologinid,
-                    he.create_date AS odoocreatedon,
-                    he.registration_number AS employecode,
-                    CASE WHEN ru.share = false THEN 'Internal' ELSE 'Portal' END AS odoologintype
-                FROM hr_employee he
-                JOIN res_users ru ON ru.id = he.user_id AND ru.active = true
-                LEFT JOIN hr_department hd ON hd.id = he.department_id
-                JOIN res_company rc ON rc.id = ru.company_id
-                LEFT JOIN res_country_state rcs ON rcs.id = he.private_state_id
-                LEFT JOIN res_country rec ON rec.id = he.private_country_id
-                WHERE he.active = true
-                    AND (he.create_date::date >= CURRENT_DATE - INTERVAL '7 days' 
-                         OR he.write_date::date >= CURRENT_DATE - INTERVAL '7 days')
-            ");
+            // Fetch users from Odoo view (TODAY'S changes only)
+            $odooUsers = DB::connection('pgsql')
+                ->table('vw_getuserdetails')
+                ->get()
+                ->toArray();
 
-            Log::info('ODOO USERS FETCHED', ['count' => count($odooUsers)]);
+            // Convert stdClass objects to match expected format
+            $odooUsers = array_map(function ($user) {
+                return (object) (array) $user;
+            }, $odooUsers);
+
+            Log::info('ODOO USERS FETCHED FROM VIEW', [
+                'count' => count($odooUsers),
+                'date_filter' => 'TODAY only (from vw_getuserdetails)'
+            ]);
 
             if (empty($odooUsers)) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'No users found in Odoo',
+                    'message' => 'No users created/modified today in Odoo',
                 ], 404);
             }
 
@@ -385,7 +342,9 @@ class OdooSyncController extends Controller
                             ->first();
 
                         if (!$existingUser) {
+                            // ============================================================
                             // NEW USER: Insert + Azure AD Provisioning
+                            // ============================================================
                             $this->insertUserImproved($userData);
                             $stats['inserted']++;
 
@@ -405,17 +364,22 @@ class OdooSyncController extends Controller
                                 $stats['azure_failed']++;
                                 $stats['errors'][] = [
                                     'user' => $userData['userPrincipalName'],
-                                    'error' => 'Azure provisioning: ' . $azureProvisioningResult['error'],
+                                    'operation' => 'Azure Provisioning',
+                                    'error' => $azureProvisioningResult['error'],
                                 ];
                             }
                         } else {
-                            // EXISTING USER: Update + Check Azure Provisioning
+                            // ============================================================
+                            // EXISTING USER: Update DB + Update Azure AD
+                            // ============================================================
                             $hadAzureId = !empty($existingUser->AzureId);
 
+                            // Update database
                             $this->updateUserImproved($userData);
                             $stats['updated']++;
 
                             if (!$hadAzureId) {
+                                // User missing AzureId - provision now
                                 $azureProvisioningResult = $this->provisionToAzureAD($userData, $azureService);
 
                                 if ($azureProvisioningResult['success']) {
@@ -424,7 +388,6 @@ class OdooSyncController extends Controller
                                         ->where('userPrincipalName', $userData['userPrincipalName'])
                                         ->update([
                                             'AzureId' => $azureProvisioningResult['azure_id'],
-                                            // 'LastModifiedOn' => DB::raw('GETDATE()'),
                                         ]);
 
                                     $stats['azure_provisioned']++;
@@ -432,17 +395,31 @@ class OdooSyncController extends Controller
                                     $stats['azure_failed']++;
                                     $stats['errors'][] = [
                                         'user' => $userData['userPrincipalName'],
-                                        'error' => 'Azure provisioning: ' . $azureProvisioningResult['error'],
+                                        'operation' => 'Azure Provisioning (Missing AzureId)',
+                                        'error' => $azureProvisioningResult['error'],
                                     ];
                                 }
                             } else {
-                                $stats['azure_skipped']++;
+                                // User has AzureId - UPDATE Azure AD profile
+                                $azureUpdateResult = $this->updateAzureADUser($existingUser->AzureId, $userData, $azureService);
+
+                                if ($azureUpdateResult['success']) {
+                                    $stats['azure_updated']++;
+                                } else {
+                                    $stats['azure_failed']++;
+                                    $stats['errors'][] = [
+                                        'user' => $userData['userPrincipalName'],
+                                        'operation' => 'Azure AD Update',
+                                        'error' => $azureUpdateResult['error'],
+                                    ];
+                                }
                             }
                         }
                     } catch (Exception $e) {
                         $stats['failed']++;
                         $stats['errors'][] = [
                             'user' => $userData['userPrincipalName'] ?? 'Unknown',
+                            'operation' => 'Database Operation',
                             'error' => $e->getMessage(),
                         ];
 
@@ -463,6 +440,7 @@ class OdooSyncController extends Controller
                 'success' => true,
                 'message' => $this->buildAjaxSummaryMessage($stats),
                 'stats' => $stats,
+                'errors' => $stats['errors'],
             ]);
         } catch (Exception $e) {
             Log::error('=== MANUAL ODOO SYNC FAILED ===', [
@@ -559,6 +537,75 @@ class OdooSyncController extends Controller
     }
 
     /**
+     * Update existing user in Azure AD with latest Odoo data
+     * 
+     * @param string $azureId Azure AD user ID
+     * @param array $userData Normalized user data from Odoo
+     * @param \App\Services\AzureGraphService $azureService
+     * @return array ['success' => bool, 'error' => string|null]
+     */
+    private function updateAzureADUser(string $azureId, array $userData, $azureService): array
+    {
+        try {
+            Log::info('→ Updating user in Azure AD', [
+                'azure_id' => $azureId,
+                'user' => $userData['userPrincipalName'],
+            ]);
+
+            // Map Odoo fields to Azure AD update format
+            $azureUpdateData = [
+                'displayName' => $userData['displayName'],
+                'givenName' => $userData['givenName'],
+                'surname' => $userData['surname'],
+                'mail' => $userData['mail'],
+                'mobilePhone' => $userData['mobilePhone'],
+                'telephoneNumber' => $userData['telephoneNumber'],
+                'jobTitle' => $userData['jobTitle'],
+                'department' => $userData['department'],
+                'officeLocation' => $userData['officeLocation'],
+                'streetAddress' => $userData['streetAddress'],
+                'city' => $userData['city'],
+                'state' => $userData['state'],
+                'postalCode' => $userData['postalCode'],
+                'country' => $userData['country'],
+                'usageLocation' => $userData['usageLocation'],
+                'companyName' => $userData['companyName'],
+                'employeeId' => $userData['EmployeCode'],
+            ];
+
+            // Remove null values
+            $azureUpdateData = array_filter($azureUpdateData, function ($value) {
+                return $value !== null;
+            });
+
+            // Call Azure Graph API
+            $azureService->updateUser($azureId, $azureUpdateData);
+
+            Log::info('✓ User updated in Azure AD successfully', [
+                'azure_id' => $azureId,
+                'user' => $userData['userPrincipalName'],
+                'fields_updated' => array_keys($azureUpdateData),
+            ]);
+
+            return [
+                'success' => true,
+                'error' => null,
+            ];
+        } catch (Exception $e) {
+            Log::error('✗ Azure AD update failed', [
+                'azure_id' => $azureId,
+                'user' => $userData['userPrincipalName'],
+                'error' => $e->getMessage(),
+            ]);
+
+            return [
+                'success' => false,
+                'error' => $e->getMessage(),
+            ];
+        }
+    }
+
+    /**
      * Generate a secure random password for Azure AD
      * Meets Azure AD password complexity requirements
      */
@@ -604,17 +651,20 @@ class OdooSyncController extends Controller
             $parts[] = "Azure Provisioned: {$stats['azure_provisioned']}";
         }
 
+        if ($stats['azure_updated'] > 0) {
+            $parts[] = "Azure Updated: {$stats['azure_updated']}";
+        }
+
         if ($stats['azure_failed'] > 0) {
             $parts[] = "Azure Failed: {$stats['azure_failed']}";
         }
 
         if ($stats['failed'] > 0) {
-            $parts[] = "Failed: {$stats['failed']}";
+            $parts[] = "DB Failed: {$stats['failed']}";
         }
 
         return 'Sync completed! ' . implode(' | ', $parts);
     }
-
     /**
      * Normalize user data from PostgreSQL to ensure proper types and defaults
      */
@@ -708,52 +758,49 @@ class OdooSyncController extends Controller
 
     /**
      * Update user with improved error handling
-     * UPDATED USERS ARE SET TO STATUS = "Active"
+     * SMART UPDATE: Only updates non-NULL/non-empty values from Odoo
      */
     private function updateUserImproved(array $data): void
     {
         $upn = $data['userPrincipalName'];
         unset($data['userPrincipalName']);
 
-        DB::connection('sqlsrv')->update("
-            UPDATE Azure_Users
-            SET
-                displayName = ?,
-                surname = ?,
-                mail = ?,
-                givenName = ?,
-                AzureId = ?,
-                userType = ?,
-                jobTitle = ?,
-                department = ?,
-                accountEnabled = ?,
-                usageLocation = ?,
-                streetAddress = ?,
-                state = ?,
-                country = ?,
-                officeLocation = ?,
-                city = ?,
-                postalCode = ?,
-                telephoneNumber = ?,
-                mobilePhone = ?,
-                alternateEmailAddress = ?,
-                ageGroup = ?,
-                consentProvidedForMinor = ?,
-                legalAgeGroupClassification = ?,
-                companyName = ?,
-                creationType = ?,
-                directorySynced = ?,
-                invitationState = ?,
-                identityIssuer = ?,
-                OdooUserId = ?,
-                OdooEmployeeId = ?,
-                OdooLoginId = ?,
-                OdooCreatedOn = ?,
-                EmployeCode = ?,
-                OdooLoginType = ?,
-                Status = 'Active'
-            WHERE userPrincipalName = ?
-        ", array_merge(array_values($data), [$upn]));
+        // ✅ Filter out NULL and empty string values
+        $filteredData = array_filter($data, function ($value) {
+            // Keep: non-null, non-empty string, or numeric 0
+            return $value !== null && $value !== '';
+        });
+
+        // ✅ If no fields to update, skip
+        if (empty($filteredData)) {
+            Log::warning('No non-null fields to update', ['upn' => $upn]);
+            return;
+        }
+
+        // ✅ Build dynamic SET clause
+        $setClauses = [];
+        $values = [];
+
+        foreach ($filteredData as $field => $value) {
+            $setClauses[] = "{$field} = ?";
+            $values[] = $value;
+        }
+
+        // Always set Status to Active
+        $setClauses[] = "Status = 'Active'";
+
+        // Add WHERE clause value
+        $values[] = $upn;
+
+        $sql = "UPDATE Azure_Users SET " . implode(', ', $setClauses) . " WHERE userPrincipalName = ?";
+
+        DB::connection('sqlsrv')->update($sql, $values);
+
+        Log::info('User updated with smart logic', [
+            'upn' => $upn,
+            'fields_updated' => array_keys($filteredData),
+            'skipped_null_fields' => array_keys(array_diff_key($data, $filteredData)),
+        ]);
     }
 
     // ========================================================================

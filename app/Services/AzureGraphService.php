@@ -22,6 +22,7 @@ class AzureGraphService
     // Token Management
     private string $tokenCacheKey;
     private int $tokenCacheDuration;
+    private int $requestDelayMs;
 
     /**
      * Initialize Azure Service with configuration
@@ -36,6 +37,7 @@ class AzureGraphService
         $this->defaultDomain = config('azure.default_domain');
         $this->tokenCacheKey = config('azure.token_cache_key');
         $this->tokenCacheDuration = config('azure.token_cache_duration');
+        $this->requestDelayMs = config('azure.rate_limit.request_delay_ms', 500);
 
         // Validate required configuration
         $this->validateConfiguration();
@@ -65,6 +67,16 @@ class AzureGraphService
             throw new Exception(
                 'Missing required Azure configuration: ' . implode(', ', $missing)
             );
+        }
+    }
+
+    /**
+     * Throttle requests to avoid rate limiting
+     */
+    private function throttleRequest(): void
+    {
+        if ($this->requestDelayMs > 0) {
+            usleep($this->requestDelayMs * 1000);
         }
     }
 
@@ -549,6 +561,7 @@ class AzureGraphService
                 'azure_id' => $azureId
             ]);
 
+            $this->throttleRequest();
             return true;
         } catch (Exception $e) {
             // 🎯 AUDIT: Log failed update
@@ -607,6 +620,7 @@ class AzureGraphService
                 'azure_id' => $azureId
             ]);
 
+            $this->throttleRequest();
             return true;
         } catch (Exception $e) {
             Log::channel('azure')->error('Failed to disable user', [
@@ -650,6 +664,7 @@ class AzureGraphService
                 'azure_id' => $azureId
             ]);
 
+            $this->throttleRequest();
             return true;
         } catch (Exception $e) {
             Log::channel('azure')->error('Failed to enable user', [
@@ -710,6 +725,7 @@ class AzureGraphService
                 'azure_id' => $azureId
             ]);
 
+            $this->throttleRequest();
             return true;
         } catch (Exception $e) {
             // 404 is acceptable - user already deleted
@@ -869,6 +885,8 @@ class AzureGraphService
                     'azure_user_id' => $azureUserId,
                     'group_id' => $groupId
                 ]);
+
+                $this->throttleRequest();
                 return true;
             }
 
@@ -895,6 +913,8 @@ class AzureGraphService
                     'azure_user_id' => $azureUserId,
                     'group_id' => $groupId
                 ]);
+
+                $this->throttleRequest();
                 return true;
             }
 
@@ -965,6 +985,8 @@ class AzureGraphService
                     'azure_user_id' => $azureUserId,
                     'group_id' => $groupId
                 ]);
+
+                $this->throttleRequest();
                 return true;
             }
 
@@ -1041,6 +1063,7 @@ class AzureGraphService
                     'group_name' => $groupName
                 ]);
 
+                $this->throttleRequest();
                 return [
                     'success' => true,
                     'status' => 'assigned',
@@ -1087,6 +1110,7 @@ class AzureGraphService
                     'group_name' => $groupName
                 ]);
 
+                $this->throttleRequest();
                 return [
                     'success' => true,
                     'status' => 'already_member',
@@ -1101,6 +1125,7 @@ class AzureGraphService
                 'group_name' => $groupName,
                 'error' => $e->getMessage()
             ]);
+
 
             return [
                 'success' => false,
@@ -1259,6 +1284,7 @@ class AzureGraphService
                 'app_role_id' => $appRoleId
             ]);
 
+            $this->throttleRequest();
             return ['success' => true, 'status' => 'assigned'];
         } catch (Exception $e) {
             Log::channel('azure')->error('Failed to assign app role', [
@@ -1332,6 +1358,8 @@ class AzureGraphService
                     'azure_user_id' => $azureUserId,
                     'assignment_id' => $assignmentId
                 ]);
+
+                $this->throttleRequest();
                 return ['success' => true, 'status' => 'removed'];
             }
 
@@ -1381,6 +1409,8 @@ class AzureGraphService
                 Log::channel('azure')->info('User account disabled successfully', [
                     'azure_user_id' => $azureUserId
                 ]);
+
+                $this->throttleRequest();
                 return true;
             }
 
@@ -1423,6 +1453,8 @@ class AzureGraphService
                 Log::channel('azure')->info('User account enabled successfully', [
                     'azure_user_id' => $azureUserId
                 ]);
+
+                $this->throttleRequest();
                 return true;
             }
 

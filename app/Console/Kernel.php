@@ -92,28 +92,40 @@ class Kernel extends ConsoleKernel
         //  ->runInBackground()
         //
         $schedule->command('z_report_json_tz')
-    ->dailyAt('11:00')
-    ->timezone('Africa/Nairobi')
-    ->withoutOverlapping()
-    ->onSuccess(function () {
-        Log::info('TZ ZReport scheduled task completed successfully at ' . now());
-    })
-    ->onFailure(function () {
-        Log::error('TZ ZReport scheduled task failed at ' . now());
-    });;
+            ->dailyAt('11:00')
+            ->timezone('Africa/Nairobi')
+            ->withoutOverlapping()
+            ->onSuccess(function () {
+                Log::info('TZ ZReport scheduled task completed successfully at ' . now());
+            })
+            ->onFailure(function () {
+                Log::error('TZ ZReport scheduled task failed at ' . now());
+            });;
 
 
-$schedule->command('z_report_json_ar')
-    ->dailyAt('11:00')
-    ->timezone('Africa/Nairobi')
-    ->withoutOverlapping()
-    ->onSuccess(function () {
-        Log::info('AR ZReport scheduled task completed successfully at ' . now());
-    })
-    ->onFailure(function () {
-        Log::error('AR ZReport scheduled task failed at ' . now());
-    });
+        $schedule->command('z_report_json_ar')
+            ->dailyAt('11:00')
+            ->timezone('Africa/Nairobi')
+            ->withoutOverlapping()
+            ->onSuccess(function () {
+                Log::info('AR ZReport scheduled task completed successfully at ' . now());
+            })
+            ->onFailure(function () {
+                Log::error('AR ZReport scheduled task failed at ' . now());
+            });
 
+        // Send shipment status reports to clients daily at 8:00 AM EAT
+        $schedule->command('shipments:send-reports')
+            ->dailyAt('08:00')
+            ->timezone('Africa/Nairobi')
+            ->withoutOverlapping()
+            ->onOneServer()
+            ->onSuccess(function () {
+                Log::info('Shipment reports scheduled task completed successfully at ' . now());
+            })
+            ->onFailure(function () {
+                Log::error('Shipment reports scheduled task failed at ' . now());
+            });
     }
 
     /**

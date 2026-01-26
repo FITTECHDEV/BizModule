@@ -376,7 +376,7 @@ Route::prefix('azure')->name('azure.')->middleware(['auth'])->group(function () 
         // AJAX get users
         Route::get('/get-users', [App\Http\Controllers\AzureDashboardController::class, 'getUsers'])->name('get-users');
     });
-    
+
     // ============================================================================
     // USER MANAGEMENT ROUTES (with rate limiting)
     // ============================================================================
@@ -1125,8 +1125,6 @@ Route::get('/debug-import-data', function () {
 // ============================================================================
 // VEHICLE TRACKER SYSTEM ROUTES (GPS/Trip Tracking)
 // ============================================================================
-
-
 // Webhook route (public - no auth)
 Route::post('/webhooks/jimi/notifications', [JimiWebhookController::class, 'receiveNotification']);
 
@@ -1153,25 +1151,40 @@ Route::middleware(['auth'])->prefix('tracker')->name('tracker.')->group(function
     Route::get('/vehicles/list', [TrackerController::class, 'getVehicles']);
     Route::get('/locations', [TrackerController::class, 'getLocations']);
 
+    // List pending geofence notifications for a vehicle (used in modal)
+    Route::get('/notifications/vehicle', [TrackerController::class, 'getVehicleNotifications'])
+        ->name('notifications.vehicle');
+
+    // List pending geofence notifications filtered by trip + vehicle
+    // (you can use the same method and filter in PHP, or create a separate one later)
+    Route::get('/notifications/trip', [TrackerController::class, 'getVehicleNotifications'])
+        ->name('notifications.trip');
+
+    // Simple count – used for badge on trip modal / list
+    Route::get('/notifications/count', [TrackerController::class, 'getNotificationCount'])
+        ->name('notifications.count');
+
     // Notifications
-    Route::get('/notifications/get', [TrackerController::class, 'getNotifications'])->name('notifications.get');
+   // Route::get('/notifications/get', [TrackerController::class, 'getNotifications'])->name('notifications.get');
     Route::get('/notifications/alarm-types', [TrackerController::class, 'getAlarmTypes'])->name('notifications.alarm-types');
     Route::get('/notifications/stats', [TrackerController::class, 'getNotificationStats'])->name('notifications.stats');
     Route::post('/notifications/{id}/read', [TrackerController::class, 'markNotificationAsRead'])->name('notifications.read');
     Route::delete('/notifications/{id}', [TrackerController::class, 'deleteNotification'])->name('notifications.delete');
+    Route::post('/notifications/map-to-trip', [TrackerController::class, 'mapNotificationsToTrip'])
+    ->name('notifications.map-to-trip');
 });
 
 
-// Temporary redirect - forwards notifications from production to UAT
-Route::post('/webhooks/jimi/notifications', function (Request $request) {
-    // Forward to UAT
-    Http::post('https://bizuat.freightintime.com/webhooks/jimi/notifications', [
-        'msgType' => $request->input('msgType'),
-        'data' => $request->input('data')
-    ]);
+// // Temporary redirect - forwards notifications from production to UAT
+// Route::post('/webhooks/jimi/notifications', function (Request $request) {
+//     // Forward to UAT
+//     Http::post('https://bizuat.freightintime.com/webhooks/jimi/notifications', [
+//         'msgType' => $request->input('msgType'),
+//         'data' => $request->input('data')
+//     ]);
 
-    return response()->json(['success' => true, 'message' => 'Forwarded to UAT']);
-});
+//     return response()->json(['success' => true, 'message' => 'Forwarded to UAT']);
+// });
 
 Route::middleware(['auth'])->prefix('jimi-test')->group(function () {
 
@@ -1194,379 +1207,4 @@ Route::middleware(['auth'])->prefix('jimi-test')->group(function () {
     Route::post('/track', [JimiTestController::class, 'getTrackData'])->name('jimi.test.track');
 });
 
-// Route::post('/azure/users', [AzureUserManagementController::class, 'store'])
-//        ->middleware(['auth', 'permission:create-azure-users']);
-
-Route::get('/azure/check-user', function (Illuminate\Http\Request $request) {
-    try {
-        // Get search parameter
-        $azureId = $request->query('azure_id');
-        $email = $request->query('email');
-        $employeeId = $request->query('employee_id');
-
-        if (!$azureId && !$email && !$employeeId) {
-            return response()->json([
-                'error' => 'Please provide at least one parameter: azure_id, email, or employee_id',
-                'examples' => [
-                    'By Azure ID' => url('/azure/check-user?azure_id=824F470D-21D3-4BD5-9AA3-044861F50BA9'),
-                    'By Email' => url('/azure/check-user?email=c.c@gmail.com'),
-                    'By Employee ID' => url('/azure/check-user?employee_id=EMP001'),
-                ]
-            ], 400);
-        }
-
-        // Build the query
-        $query = DB::connection('sqlsrv')
-            ->table('Azure_Users')
-            ->select([
-                'Id',
-                'AzureId',
-                'userPrincipalName',
-                'displayName',
-                'mail',
-                'EmployeCode',
-                'Status',
-                'accountEnabled',
-                'jobTitle',
-                'department',
-                'companyName',
-                'officeLocation',
-                'mobilePhone',
-                'telephoneNumber',
-                'createdDateTime',
-                // External system IDs
-                'OdooUserId',
-                'OdooEmployeeId',
-                'SCMUserID',
-                'SCMResourceID',
-                'BizUserID',
-                'D365UserID',
-            ]);
-
-        // Apply filters based on provided parameters
-        if ($azureId) {
-            $query->where('AzureId', $azureId);
-        }
-
-        if ($email) {
-            $query->where(function ($q) use ($email) {
-                $q->where('userPrincipalName', $email)
-                    ->orWhere('mail', $email);
-            });
-        }
-
-        if ($employeeId) {
-            $query->where('EmployeCode', $employeeId);
-        }
-
-        $user = $query->first();
-
-        if (!$user) {
-            Log::info('User not found in Azure_Users table', [
-                'search_params' => [
-                    'azure_id' => $azureId,
-                    'email' => $email,
-                    'employee_id' => $employeeId,
-                ]
-            ]);
-
-            return response()->json([
-                'exists' => false,
-                'message' => 'User not found in Azure_Users table',
-                'search_params' => array_filter([
-                    'azure_id' => $azureId,
-                    'email' => $email,
-                    'employee_id' => $employeeId,
-                ])
-            ], 404);
-        }
-
-        // Get module assignments
-        $moduleAssignments = DB::connection('sqlsrv')
-            ->table('Azure_Application_UserMapping')
-            ->where('user_id', $user->userPrincipalName)
-            ->where('IsActive', 1)
-            ->where('IsDelete', 0)
-            ->select([
-                'ApplicationName',
-                'RoleCode',
-                'OfficeCode',
-                'CreatedOn',
-            ])
-            ->get();
-
-        // Get function assignments (for SCM modules)
-        $functionAssignments = DB::connection('sqlsrv')
-            ->table('Azure_Application_UserFunction')
-            ->where('user_id', $user->userPrincipalName)
-            ->where('IsActive', 1)
-            ->where('IsDelete', 0)
-            ->select([
-                'ApplicationName',
-                'FunctionCode',
-                'OfficeCode',
-                'CreatedOn',
-            ])
-            ->get();
-
-        // Group modules
-        $modules = $moduleAssignments->groupBy('ApplicationName')->map(function ($assignments, $moduleName) {
-            return [
-                'name' => $moduleName,
-                'roles' => $assignments->pluck('RoleCode')->unique()->values(),
-                'locations' => $assignments->pluck('OfficeCode')->unique()->values(),
-                'count' => $assignments->count(),
-            ];
-        });
-
-        $functions = $functionAssignments->groupBy('ApplicationName')->map(function ($assignments, $moduleName) {
-            return [
-                'name' => $moduleName,
-                'functions' => $assignments->pluck('FunctionCode')->unique()->values(),
-                'locations' => $assignments->pluck('OfficeCode')->unique()->values(),
-                'count' => $assignments->count(),
-            ];
-        });
-
-        Log::info('User found in Azure_Users table', [
-            'user_id' => $user->Id,
-            'azure_id' => $user->AzureId,
-            'email' => $user->userPrincipalName,
-            'status' => $user->Status,
-            'modules_count' => $modules->count(),
-        ]);
-
-        return response()->json([
-            'exists' => true,
-            'message' => 'User found in database',
-            'user' => [
-                'id' => $user->Id,
-                'azure_id' => $user->AzureId,
-                'email' => $user->userPrincipalName,
-                'display_name' => $user->displayName,
-                'employee_code' => $user->EmployeCode,
-                'status' => $user->Status,
-                'account_enabled' => (bool)$user->accountEnabled,
-                'job_title' => $user->jobTitle,
-                'department' => $user->department,
-                'company' => $user->companyName,
-                'office_location' => $user->officeLocation,
-                'mobile_phone' => $user->mobilePhone,
-                'business_phone' => $user->telephoneNumber,
-                'created_date' => $user->createdDateTime,
-            ],
-            'external_systems' => [
-                'odoo' => [
-                    'provisioned' => !empty($user->OdooUserId),
-                    'user_id' => $user->OdooUserId,
-                    'employee_id' => $user->OdooEmployeeId,
-                ],
-                'scm' => [
-                    'provisioned' => !empty($user->SCMUserID),
-                    'user_id' => $user->SCMUserID,
-                    'resource_id' => $user->SCMResourceID,
-                ],
-                'biz' => [
-                    'provisioned' => !empty($user->BizUserID),
-                    'user_id' => $user->BizUserID,
-                ],
-                'd365' => [
-                    'provisioned' => !empty($user->D365UserID),
-                    'user_id' => $user->D365UserID,
-                ],
-            ],
-            'modules' => $modules->values(),
-            'functions' => $functions->values(),
-            'summary' => [
-                'total_modules' => $modules->count(),
-                'total_module_assignments' => $moduleAssignments->count(),
-                'total_function_assignments' => $functionAssignments->count(),
-                'is_active' => $user->Status === 'Active',
-                'is_provisioned_to_azure' => !empty($user->AzureId),
-            ]
-        ]);
-    } catch (\Exception $e) {
-        Log::error('Error checking user in database', [
-            'error' => $e->getMessage(),
-            'trace' => $e->getTraceAsString(),
-        ]);
-
-        return response()->json([
-            'error' => 'Database error occurred',
-            'message' => $e->getMessage(),
-        ], 500);
-    }
-})->name('azure.check-user');
-
-Route::get('/azure/check-sp-logic', function (Illuminate\Http\Request $request) {
-    try {
-        $userId = $request->input('user_id', '824F47DD-21D3-4BD5-9AA3-044B61F50BA9');
-
-        $results = [];
-
-        // ================================================================
-        // Test 1: Try calling OPS SP and catch the exact error
-        // ================================================================
-        try {
-            $scmResult = DB::connection('sqlsrv')->select("
-                SET NOCOUNT ON;
-                DECLARE @Status VARCHAR(15), @Remark VARCHAR(200);
-                EXEC sp_Azure_SCMUserCreation
-                    @AzureUserID = ?,
-                    @Status = @Status OUTPUT,
-                    @Remark = @Remark OUTPUT;
-                SELECT @Status as Status, @Remark as Remark;
-            ", [$userId]);
-
-            $results['ops_test'] = [
-                'success' => true,
-                'status' => $scmResult[0]->Status ?? 'NULL',
-                'remark' => $scmResult[0]->Remark ?? 'NULL',
-            ];
-        } catch (\Exception $e) {
-            $results['ops_test'] = [
-                'success' => false,
-                'error' => $e->getMessage(),
-                'note' => 'This is the exact error from the SP',
-            ];
-        }
-
-        // ================================================================
-        // Test 2: Check if we can see the SP source code
-        // ================================================================
-        try {
-            $spDefinition = DB::connection('sqlsrv')->select("
-                SELECT OBJECT_DEFINITION(OBJECT_ID('sp_Azure_SCMUserCreation')) as definition
-            ");
-
-            $definition = $spDefinition[0]->definition ?? null;
-
-            $results['ops_sp_source'] = [
-                'available' => !empty($definition),
-                'length' => strlen($definition ?? ''),
-                'preview' => substr($definition ?? '', 0, 500),
-            ];
-        } catch (\Exception $e) {
-            $results['ops_sp_source'] = [
-                'error' => $e->getMessage(),
-            ];
-        }
-
-        // ================================================================
-        // Test 3: Try calling BIZ PRO SP
-        // ================================================================
-        try {
-            // Get BIZ PRO application ID
-            $bizApp = DB::connection('sqlsrv')
-                ->table('Azure_SoftwareMaster')
-                ->where('Name', 'LIKE', '%BIZ%')
-                ->orWhere('Name', 'LIKE', '%FITSYS%')
-                ->first();
-
-            if ($bizApp) {
-                $bizResult = DB::connection('sqlsrv')->select("
-                    SET NOCOUNT ON;
-                    DECLARE @Status VARCHAR(15), @Remark VARCHAR(200);
-                    EXEC sp_Azure_FITSYSUserCreation
-                        @AzureUserID = ?,
-                        @ApplicationID = ?,
-                        @Status = @Status OUTPUT,
-                        @Remark = @Remark OUTPUT;
-                    SELECT @Status as Status, @Remark as Remark;
-                ", [$userId, $bizApp->ApplicationId]);
-
-                $results['biz_test'] = [
-                    'success' => true,
-                    'status' => $bizResult[0]->Status ?? 'NULL',
-                    'remark' => $bizResult[0]->Remark ?? 'NULL',
-                ];
-            } else {
-                $results['biz_test'] = [
-                    'success' => false,
-                    'error' => 'BIZ application not found',
-                ];
-            }
-        } catch (\Exception $e) {
-            $results['biz_test'] = [
-                'success' => false,
-                'error' => $e->getMessage(),
-                'note' => 'This is the exact varchar→bigint error',
-            ];
-        }
-
-        // ================================================================
-        // Test 4: Check BIZ SP source
-        // ================================================================
-        try {
-            $bizSpDef = DB::connection('sqlsrv')->select("
-                SELECT OBJECT_DEFINITION(OBJECT_ID('sp_Azure_FITSYSUserCreation')) as definition
-            ");
-
-            $bizDefinition = $bizSpDef[0]->definition ?? null;
-
-            $results['biz_sp_source'] = [
-                'available' => !empty($bizDefinition),
-                'length' => strlen($bizDefinition ?? ''),
-                'preview' => substr($bizDefinition ?? '', 0, 500),
-            ];
-        } catch (\Exception $e) {
-            $results['biz_sp_source'] = [
-                'error' => $e->getMessage(),
-            ];
-        }
-
-        return response()->json([
-            'success' => true,
-            'results' => $results,
-        ]);
-    } catch (\Exception $e) {
-        return response()->json([
-            'success' => false,
-            'error' => $e->getMessage(),
-            'trace' => $e->getTraceAsString(),
-        ], 500);
-    }
-});
-
-
-Route::get('/azure/get-full-sp-source', function (Illuminate\Http\Request $request) {
-    try {
-        $results = [];
-
-        // ================================================================
-        // Get FULL OPS SP source
-        // ================================================================
-        try {
-            $opsSp = DB::connection('sqlsrv')->select("
-                SELECT OBJECT_DEFINITION(OBJECT_ID('sp_Azure_SCMUserCreation')) as definition
-            ");
-
-            $results['ops_sp_full'] = $opsSp[0]->definition ?? null;
-        } catch (\Exception $e) {
-            $results['ops_sp_full'] = 'ERROR: ' . $e->getMessage();
-        }
-
-        // ================================================================
-        // Get FULL BIZ SP source
-        // ================================================================
-        try {
-            $bizSp = DB::connection('sqlsrv')->select("
-                SELECT OBJECT_DEFINITION(OBJECT_ID('sp_Azure_FITSYSUserCreation')) as definition
-            ");
-
-            $results['biz_sp_full'] = $bizSp[0]->definition ?? null;
-        } catch (\Exception $e) {
-            $results['biz_sp_full'] = 'ERROR: ' . $e->getMessage();
-        }
-
-        return response()->json([
-            'success' => true,
-            'results' => $results,
-        ], 200, [], JSON_PRETTY_PRINT);
-    } catch (\Exception $e) {
-        return response()->json([
-            'success' => false,
-            'error' => $e->getMessage(),
-        ], 500);
-    }
-});
+// [2026-01-21 15:31:52] Production.ERROR: Error in user lookup {"username":"juma.k@freight-in-time.com","error":"SQLSTATE[42000]: [Microsoft][ODBC Driver 17 for SQL Server][SQL Server]Conversion failed when converting from a character string to uniqueidentifier. (SQL: select top 1 * from [Azure_Users] where LOWER(RTRIM(LTRIM(userPrincipalName))) = LOWER(juma.k@freight-in-time.com) and [id] is not null and [id] != )"}

@@ -2912,9 +2912,8 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
         try {
             // Strategy 1: Direct username match with ID validation
             $user = AzureUser::whereRaw('LOWER(RTRIM(LTRIM(userPrincipalName))) = LOWER(?)', [trim($userPrincipalName)])
-                ->whereNotNull('id')  // CRITICAL: Only get users with valid IDs
-                ->where('id', '!=', '') // Additional safety check
-                ->first();
+                ->whereNotNull('id')  // This alone is sufficient
+                ->first(); // Remove the ->where('id', '!=', '') line
 
             if ($user) {
                 Log::debug('User found via username with valid ID', [
@@ -2942,9 +2941,8 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
             // Strategy 3: Email field match
             if (filter_var($userPrincipalName, FILTER_VALIDATE_EMAIL)) {
                 $user = AzureUser::whereRaw('LOWER(RTRIM(LTRIM(mail))) = LOWER(?)', [trim($userPrincipalName)])
-                    ->whereNotNull('id')
-                    ->where('id', '!=', '')
-                    ->first();
+                    ->whereNotNull('id')  // This alone is sufficient
+                    ->first(); // Remove the ->where('id', '!=', '') line
 
                 if ($user) {
                     Log::debug('User found via email with valid ID', [

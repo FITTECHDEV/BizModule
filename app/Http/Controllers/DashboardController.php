@@ -312,11 +312,21 @@ class DashboardController extends Controller
                 'is_ajax' => $request->ajax()
             ]);
 
-            // Get summary data from stored procedure
-            $summary = $this->getUserSummary();
+            // // Get summary data from stored procedure
+            // $summary = $this->getUserSummary();
 
-            // Get login list from stored procedure
-            $loginList = $this->getLoginViewList();
+            // // Get login list from stored procedure
+            // $loginList = $this->getLoginViewList();
+
+
+            $summary = $this->getUserSummaryDirect();
+            $loginList = $this->getLoginViewListDirect();
+
+            Log::info('🔄 Dashboard loaded with direct queries (bypassing SPs)', [
+                'summary' => $summary,
+                'users_count' => $loginList->count(),
+                'method' => 'direct_queries'
+            ]);
 
             // Apply search filter if provided
             if (!empty($search)) {
@@ -1303,6 +1313,159 @@ class DashboardController extends Controller
             Log::error('Failed to get login view list from SP', [
                 'error' => $e->getMessage(),
                 'line' => $e->getLine(),
+                'trace' => substr($e->getTraceAsString(), 0, 500)
+            ]);
+
+            return collect();
+        }
+    }
+
+    /**
+     * Get user summary using direct queries (bypasses SP to use actual data range)
+     */
+    private function getUserSummaryDirect()
+    {
+        try {
+            // Get actual date range from imported data
+            $actualRange = $this->statsService->getActualDateRange();
+
+            if (!$actualRange['has_data']) {
+                Log::warning('No signin data found in database');
+                return [
+                    'total_users' => AzureUser::valid()->count(),
+                    'active_this_month' => 0,
+                    'active_last_month' => 0,
+                    'inactive_users' => AzureUser::valid()->count(),
+                ];
+            }
+
+            // Calculate date ranges based on ACTUAL data
+            $now = now();
+            $dataMin = $actualRange['min'];
+            $dataMax = $actualRange['max'];
+
+            // This month range (within actual data bounds)
+            $currentMonthStart = max($dataMin, $now->copy()->startOfMonth());
+            $currentMonthEnd = min($dataMax, $now->copy()->endOfMonth());
+
+            // Last month range (within actual data bounds)
+            $lastMonthStart = max($dataMin, $now->copy()->subMonth()->startOfMonth());
+            $lastMonthEnd = min($dataMax, $now->copy()->subMonth()->endOfMonth());
+
+            Log::info('📅 Direct query date ranges calculated', [
+                'current_month' => [$currentMonthStart->format('Y-m-d'), $currentMonthEnd->format('Y-m-d')],
+                'last_month' => [$lastMonthStart->format('Y-m-d'), $lastMonthEnd->format('Y-m-d')],
+                'actual_data_range' => [$dataMin->format('Y-m-d'), $dataMax->format('Y-m-d')]
+            ]);
+
+            // Total users
+            $totalUsers = AzureUser::valid()->count();
+
+            // Active this month
+            $activeThisMonth = AzureUser::valid()
+                ->whereHas('signIns', function ($q) use ($currentMonthStart, $currentMonthEnd) {
+                    $q->whereBetween('date_utc', [$currentMonthStart, $currentMonthEnd]);
+                })
+                ->count();
+
+            // Active last month
+            $activeLastMonth = AzureUser::valid()
+                ->whereHas('signIns', function ($q) use ($lastMonthStart, $lastMonthEnd) {
+                    $q->whereBetween('date_utc', [$lastMonthStart, $lastMonthEnd]);
+                })
+                ->count();
+
+            // Inactive users (never logged in)
+            $inactiveUsers = AzureUser::valid()
+                ->doesntHave('signIns')
+                ->count();
+
+            Log::info('✅ Direct query summary calculated', [
+                'total_users' => $totalUsers,
+                'active_this_month' => $activeThisMonth,
+                'active_last_month' => $activeLastMonth,
+                'inactive_users' => $inactiveUsers
+            ]);
+
+            return [
+                'total_users' => $totalUsers,
+                'active_this_month' => $activeThisMonth,
+                'active_last_month' => $activeLastMonth,
+                'inactive_users' => $inactiveUsers,
+            ];
+        } catch (\Exception $e) {
+            Log::error('❌ Failed to get user summary via direct query', [
+                'error' => $e->getMessage(),
+                'trace' => substr($e->getTraceAsString(), 0, 500)
+            ]);
+
+            return [
+                'total_users' => 0,
+                'active_this_month' => 0,
+                'active_last_month' => 0,
+                'inactive_users' => 0,
+            ];
+        }
+    }
+
+    /**
+     * Get login view list using direct queries (bypasses SP to use actual data range)
+     */
+    private function getLoginViewListDirect()
+    {
+        try {
+            // Get actual date range from imported data
+            $actualRange = $this->statsService->getActualDateRange();
+
+            if (!$actualRange['has_data']) {
+                Log::warning('No signin data found for login view list');
+                return collect();
+            }
+
+            $dataMin = $actualRange['min'];
+            $dataMax = $actualRange['max'];
+
+            // Last month range (within actual data bounds)
+            $lastMonthStart = max($dataMin, now()->subMonth()->startOfMonth());
+            $lastMonthEnd = min($dataMax, now()->subMonth()->endOfMonth());
+
+            Log::info('📅 Direct login list query dates', [
+                'last_month_range' => [$lastMonthStart->format('Y-m-d'), $lastMonthEnd->format('Y-m-d')],
+                'actual_data_range' => [$dataMin->format('Y-m-d'), $dataMax->format('Y-m-d')]
+            ]);
+
+            // Get all valid users with their login counts and last login
+            $users = AzureUser::valid()
+                ->select('id', 'displayName', 'userPrincipalName')
+                ->withCount(['signIns as logins_last_month' => function ($q) use ($lastMonthStart, $lastMonthEnd) {
+                    $q->whereBetween('date_utc', [$lastMonthStart, $lastMonthEnd]);
+                }])
+                ->with(['signIns' => function ($q) {
+                    $q->select('user_id', 'date_utc')
+                        ->orderByDesc('date_utc')
+                        ->limit(1);
+                }])
+                ->orderBy('displayName')
+                ->get();
+
+            Log::info('✅ Direct login list loaded', [
+                'users_count' => $users->count(),
+                'users_with_logins' => $users->where('logins_last_month', '>', 0)->count()
+            ]);
+
+            return $users->map(function ($user) {
+                $lastLogin = $user->signIns->first();
+
+                return [
+                    'name' => $user->displayName ?? 'N/A',
+                    'login_id' => $user->userPrincipalName ?? 'N/A',
+                    'logins_last_month' => $user->logins_last_month ?? 0,
+                    'last_login' => $lastLogin ? $lastLogin->date_utc : null,
+                ];
+            });
+        } catch (\Exception $e) {
+            Log::error('❌ Failed to get login view list via direct query', [
+                'error' => $e->getMessage(),
                 'trace' => substr($e->getTraceAsString(), 0, 500)
             ]);
 

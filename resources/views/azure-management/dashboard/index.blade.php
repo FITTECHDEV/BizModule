@@ -68,7 +68,7 @@
             <div class="row align-items-center">
                 <div class="col-md-6">
                     <div class="d-inline-flex align-items-center">
-                        <div class="input-group input-group-sm" style="width: 400px;">
+                        <div class="input-group input-group-sm w-100 w-md-75 w-lg-50">
                             <input type="text" id="searchUsers" class="form-control form-control-sm"
                                 placeholder="Search by name, email, login ID..." value="{{ request('search') }}"
                                 autocomplete="off">
@@ -85,7 +85,7 @@
                     </div>
                 </div>
 
-                <div class="col-md-6 text-right">
+                <div class="col-12 col-md-6 text-md-right mt-2 mt-md-0">
                     <div class="d-inline-flex align-items-center">
                         <button onclick="syncOdooUsers()" class="btn btn-success btn-sm mr-2" id="syncBtn"
                             title="Import/update users from Odoo">
@@ -106,12 +106,12 @@
                 <thead>
                     <tr>
                         <th>Name</th>
-                        <th>Email</th>
+                        <th class="d-none d-lg-table-cell">Email</th>
                         <th>Login ID</th>
-                        <th>Employee ID</th>
-                        <th>Department</th>
+                        <th class="d-none d-xl-table-cell">Employee ID</th>
+                        <th class="d-none d-md-table-cell">Department</th>
                         <th>Company</th>
-                        <th>Location</th>
+                        <th class="d-none d-md-table-cell">Location</th>
                         <th>Status</th>
                         <th style="width: 120px;">Actions</th>
                     </tr>
@@ -127,12 +127,18 @@
                                     <span>{{ $user->displayName ?? 'N/A' }}</span>
                                 </div>
                             </td>
-                            <td>{{ $user->mail ?? ($user->userPrincipalName ?? 'N/A') }}</td>
+                            <td class="d-none d-lg-table-cell">
+                                {{ $user->mail ?? ($user->userPrincipalName ?? 'N/A') }}
+                            </td>
                             <td>{{ $user->userPrincipalName ?? 'N/A' }}</td>
-                            <td>{{ $user->EmployeCode ?? 'N/A' }}</td>
-                            <td>{{ $user->department ?? 'N/A' }}</td>
-                            <td>{{ $user->companyName ?? 'N/A' }}</td>
-                            <td>{{ $user->officeLocation ?? ($user->city ?? 'N/A') }}</td>
+                            <td class="d-none d-xl-table-cell">{{ $user->EmployeCode ?? 'N/A' }}</td>
+                            <td class="d-none d-lg-table-cell">
+                                {{ $user->department ?? 'N/A' }}
+                            </td>
+                            <td class="d-none d-xl-table-cell">{{ $user->companyName ?? 'N/A' }}</td>
+                            <td class="d-none d-lg-table-cell">
+                                {{ $user->officeLocation ?? ($user->city ?? 'N/A') }}
+                            </td>
                             <td>
                                 @php
                                     $status = $user->Status ?? 'Inactive';
@@ -568,6 +574,216 @@
             content: "";
             background: no-repeat 50% / 50% 50%;
         }
+
+        /* ============================================
+   TABLE-SPECIFIC PC RESPONSIVENESS
+   ============================================ */
+
+/* Smaller Laptops (992px - 1200px) - Show essential columns */
+@media (min-width: 992px) and (max-width: 1199px) {
+    .table td, .table th {
+        padding: 0.5rem 0.6rem;
+        font-size: 0.85rem;
+    }
+    
+    .user-avatar {
+        width: 32px;
+        height: 32px;
+        font-size: 13px;
+    }
+    
+    .badge {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.45rem;
+    }
+    
+    .btn-group-sm > .btn {
+        padding: 0.25rem 0.45rem;
+        font-size: 0.8rem;
+    }
+}
+
+/* Large Laptops/Desktops (1200px - 1600px) - Show more columns */
+@media (min-width: 1200px) and (max-width: 1599px) {
+    .table td, .table th {
+        padding: 0.6rem 0.7rem;
+        font-size: 0.9rem;
+    }
+    
+    .user-avatar {
+        width: 34px;
+        height: 34px;
+        font-size: 13px;
+    }
+}
+
+/* Large Monitors (1600px+) - Show all columns comfortably */
+@media (min-width: 1600px) {
+    .table td, .table th {
+        padding: 0.7rem 0.85rem;
+        font-size: 0.95rem;
+    }
+    
+    .user-avatar {
+        width: 36px;
+        height: 36px;
+        font-size: 14px;
+    }
+}
+
+/* Table header styling */
+.table thead th {
+    font-weight: 600;
+    background-color: #f8f9fa;
+    border-bottom: 2px solid #dee2e6;
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+/* Enhanced hover effect */
+.table-hover tbody tr:hover {
+    background-color: #f1f3f5;
+    transition: background-color 0.15s ease;
+}
+
+/* Ensure actions column stays visible and centered */
+.table td:last-child,
+.table th:last-child {
+    text-align: center;
+    vertical-align: middle;
+    position: sticky;
+    right: 0;
+    background-color: #fff;
+    box-shadow: -2px 0 5px rgba(0,0,0,0.05);
+}
+
+.table-hover tbody tr:hover td:last-child {
+    background-color: #f1f3f5;
+}
+
+/* Better responsive table scroll */
+.table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Fix column widths for better display */
+@media (min-width: 1200px) {
+    th:nth-child(1), td:nth-child(1) { min-width: 180px; } /* Name */
+    th:nth-child(2), td:nth-child(2) { min-width: 200px; } /* Email */
+    th:nth-child(3), td:nth-child(3) { min-width: 200px; } /* Login ID */
+    th:nth-child(4), td:nth-child(4) { width: 120px; } /* Employee ID */
+    th:nth-child(5), td:nth-child(5) { width: 130px; } /* Department */
+    th:nth-child(6), td:nth-child(6) { width: 130px; } /* Company */
+    th:nth-child(7), td:nth-child(7) { width: 120px; } /* Location */
+    th:nth-child(8), td:nth-child(8) { width: 90px; } /* Status */
+    th:nth-child(9), td:nth-child(9) { width: 130px; } /* Actions */
+}
+
+/* ============================================
+   TABLE-SPECIFIC PC RESPONSIVENESS
+   ============================================ */
+
+/* Smaller Laptops (992px - 1200px) - Show essential columns */
+@media (min-width: 992px) and (max-width: 1199px) {
+    .table td, .table th {
+        padding: 0.5rem 0.6rem;
+        font-size: 0.85rem;
+    }
+    
+    .user-avatar {
+        width: 32px;
+        height: 32px;
+        font-size: 13px;
+    }
+    
+    .badge {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.45rem;
+    }
+    
+    .btn-group-sm > .btn {
+        padding: 0.25rem 0.45rem;
+        font-size: 0.8rem;
+    }
+}
+
+/* Large Laptops/Desktops (1200px - 1600px) - Show more columns */
+@media (min-width: 1200px) and (max-width: 1599px) {
+    .table td, .table th {
+        padding: 0.6rem 0.7rem;
+        font-size: 0.9rem;
+    }
+    
+    .user-avatar {
+        width: 34px;
+        height: 34px;
+        font-size: 13px;
+    }
+}
+
+/* Large Monitors (1600px+) - Show all columns comfortably */
+@media (min-width: 1600px) {
+    .table td, .table th {
+        padding: 0.7rem 0.85rem;
+        font-size: 0.95rem;
+    }
+    
+    .user-avatar {
+        width: 36px;
+        height: 36px;
+        font-size: 14px;
+    }
+}
+
+/* Table header styling */
+.table thead th {
+    font-weight: 600;
+    background-color: #f8f9fa;
+    border-bottom: 2px solid #dee2e6;
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+/* Enhanced hover effect */
+.table-hover tbody tr:hover {
+    background-color: #f1f3f5;
+    transition: background-color 0.15s ease;
+}
+
+/* Ensure actions column stays visible and centered */
+.table td:last-child,
+.table th:last-child {
+    text-align: center;
+    vertical-align: middle;
+    position: sticky;
+    right: 0;
+    background-color: #fff;
+    box-shadow: -2px 0 5px rgba(0,0,0,0.05);
+}
+
+.table-hover tbody tr:hover td:last-child {
+    background-color: #f1f3f5;
+}
+
+/* Better responsive table scroll */
+.table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Fix column widths for better display */
+@media (min-width: 1200px) {
+    th:nth-child(1), td:nth-child(1) { min-width: 180px; } /* Name */
+    th:nth-child(2), td:nth-child(2) { min-width: 200px; } /* Email */
+    th:nth-child(3), td:nth-child(3) { min-width: 200px; } /* Login ID */
+    th:nth-child(4), td:nth-child(4) { width: 120px; } /* Employee ID */
+    th:nth-child(5), td:nth-child(5) { width: 130px; } /* Department */
+    th:nth-child(6), td:nth-child(6) { width: 130px; } /* Company */
+    th:nth-child(7), td:nth-child(7) { width: 120px; } /* Location */
+    th:nth-child(8), td:nth-child(8) { width: 90px; } /* Status */
+    th:nth-child(9), td:nth-child(9) { width: 130px; } /* Actions */
+}
     </style>
 @stop
 
@@ -1046,12 +1262,40 @@
                     'X-CSRF-TOKEN': '{{ csrf_token() }}',
                     'Accept': 'application/json'
                 },
-                timeout: 120000,
+                timeout: 300000, // 5 minutes (increased for Azure AD updates)
                 success: function(response) {
                     if (response.success) {
-                        alert(
-                            `✅ Sync Completed!\n\nProcessed: ${response.stats.processed}\nInserted: ${response.stats.inserted}\nUpdated: ${response.stats.updated}`
-                        );
+                        let message = `✅ Sync Completed!\n\n`;
+                        message += `Processed: ${response.stats.processed}\n`;
+                        message += `Inserted: ${response.stats.inserted}\n`;
+                        message += `Updated: ${response.stats.updated}\n`;
+
+                        if (response.stats.azure_provisioned > 0) {
+                            message += `Azure Provisioned: ${response.stats.azure_provisioned}\n`;
+                        }
+                        if (response.stats.azure_updated > 0) {
+                            message += `Azure Updated: ${response.stats.azure_updated}\n`;
+                        }
+                        if (response.stats.azure_failed > 0) {
+                            message += `Azure Failed: ${response.stats.azure_failed}\n`;
+                        }
+
+                        // Show errors if any
+                        if (response.errors && response.errors.length > 0) {
+                            message += `\n⚠️ ERRORS (${response.errors.length}):\n\n`;
+                            response.errors.slice(0, 10).forEach((err, idx) => {
+                                message += `${idx + 1}. User: ${err.user}\n`;
+                                message += `   Operation: ${err.operation}\n`;
+                                message += `   Error: ${err.error.substring(0, 100)}\n\n`;
+                            });
+
+                            if (response.errors.length > 10) {
+                                message +=
+                                    `... and ${response.errors.length - 10} more errors.\nCheck logs for full details.`;
+                            }
+                        }
+
+                        alert(message);
                         loadUsers();
                     } else {
                         alert('❌ Sync Failed\n\n' + (response.message || 'Unknown error'));
@@ -1059,7 +1303,16 @@
                     $syncBtn.prop('disabled', false).html(originalText);
                 },
                 error: function(xhr) {
-                    alert('❌ Sync Failed\n\n' + (xhr.responseJSON?.message || 'Network error'));
+                    let errorMsg = '❌ Sync Failed\n\n';
+                    if (xhr.responseJSON && xhr.responseJSON.errors) {
+                        errorMsg += 'Errors:\n';
+                        xhr.responseJSON.errors.slice(0, 5).forEach((err, idx) => {
+                            errorMsg += `${idx + 1}. ${err.user}: ${err.error.substring(0, 80)}\n`;
+                        });
+                    } else {
+                        errorMsg += (xhr.responseJSON?.message || 'Network error');
+                    }
+                    alert(errorMsg);
                     $syncBtn.prop('disabled', false).html(originalText);
                 }
             });

@@ -2246,6 +2246,322 @@ public function endTrip(Request $request, $tripId)
         return $imeiMap[$vehicleNo] ?? null;
     }
 
+/**
+ * Get pending geofence notifications for a vehicle (and optionally filter by trip)
+ */
+public function getVehicleNotifications(Request $request)
+{
+    $rawVehicleNo = trim($request->query('vehicle_no', ''));
+    $tripId       = $request->query('trip_id');
+
+    Log::info('getVehicleNotifications called', [
+        'raw_vehicle_no' => $rawVehicleNo,
+        'trip_id'        => $tripId,
+        'ip'             => $request->ip(),
+        'user_id'        => auth()->id() ?? 'guest'
+    ]);
+
+    // Clean the vehicle number: remove common suffixes like " - ZH 3389", extra spaces, etc.
+    $vehicleNo = preg_replace('/\s*[-–—]\s*[A-Z0-9\s]+$/', '', $rawVehicleNo); // remove " - PLATE" style
+    $vehicleNo = trim(preg_replace('/\s+/', ' ', $vehicleNo));               // normalize multiple spaces
+
+    Log::info('Vehicle number cleaned', [
+        'raw'     => $rawVehicleNo,
+        'cleaned' => $vehicleNo
+    ]);
+
+    if (empty($vehicleNo)) {
+        Log::warning('Missing or empty vehicle_no after cleaning', ['raw' => $rawVehicleNo]);
+        return response()->json([
+            'success' => false,
+            'message' => 'vehicle_no is required'
+        ], 400);
+    }
+
+    $imei = $this->getIMEIFromVehicleNo($vehicleNo);
+
+    Log::info('IMEI lookup result', [
+        'cleaned_vehicle_no' => $vehicleNo,
+        'found_imei'         => $imei
+    ]);
+
+    if (!$imei) {
+        Log::warning('No IMEI found for vehicle (after cleaning)', [
+            'cleaned_vehicle_no' => $vehicleNo
+        ]);
+        return response()->json([
+            'success' => false,
+            'message' => 'Vehicle not found or no IMEI mapping'
+        ], 404);
+    }
+
+    try {
+        Log::info('Executing sp_Trip_LocationUpdateList', ['imei' => $imei]);
+
+        $results = DB::connection('sqlsrv')->select(
+            'EXEC [dbo].[sp_Trip_LocationUpdateList] @IEMINo = ?',
+            [$imei]
+        );
+
+        Log::info('SP returned rows', [
+            'raw_count' => count($results),
+            'first_row' => !empty($results) ? (array)$results[0] : null
+        ]);
+
+        // Optional: filter by tripId in PHP (until SP supports it natively)
+        // if ($tripId) {
+        //     Log::info('Applying trip filter in PHP', ['trip_id' => $tripId]);
+
+        //     $results = array_filter($results, function ($row) use ($tripId) {
+        //         $match = isset($row->TripInfoID) && (string)$row->TripInfoID === (string)$tripId;
+        //         if (!$match) {
+        //             Log::debug('Filtered out row due to TripInfoID mismatch', [
+        //                 'row_TripInfoID' => $row->TripInfoID ?? 'null',
+        //                 'requested_trip' => $tripId
+        //             ]);
+        //         }
+        //         return $match;
+        //     });
+        // }
+
+        $data = array_map(fn($row) => (array)$row, $results);
+
+        Log::info('Final notification count after filtering', [
+            'count'                => count($data),
+            'trip_filter_applied'  => !empty($tripId),
+            'vehicle_no'           => $vehicleNo,
+            'imei'                 => $imei
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'data'    => $data,
+            'count'   => count($data),  // extra field for easier debugging
+            'vehicle' => $vehicleNo,
+            'imei'    => $imei
+        ]);
+
+    } catch (\Exception $e) {
+        Log::error('Exception in getVehicleNotifications', [
+            'vehicle_no' => $vehicleNo,
+            'raw_vehicle_no' => $rawVehicleNo,
+            'imei'       => $imei,
+            'message'    => $e->getMessage(),
+            'file'       => $e->getFile(),
+            'line'       => $e->getLine(),
+            'trace'      => $e->getTraceAsString()
+        ]);
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Database error: ' . $e->getMessage()
+        ], 500);
+    }
+}
+
+/**
+ * Get count of pending notifications (for badge)
+ */
+public function getNotificationCount(Request $request)
+{
+    $tripId       = $request->query('trip_id');
+    $rawVehicleNo = trim($request->query('vehicle_no', ''));
+
+    Log::info('getNotificationCount called', [
+        'raw_vehicle_no' => $rawVehicleNo,
+        'trip_id'        => $tripId
+    ]);
+
+    // Clean vehicle number (same logic as above)
+    $vehicleNo = preg_replace('/\s*[-–—]\s*[A-Z0-9\s]+$/', '', $rawVehicleNo);
+    $vehicleNo = trim(preg_replace('/\s+/', ' ', $vehicleNo));
+
+    Log::info('Vehicle number cleaned for count', [
+        'raw'     => $rawVehicleNo,
+        'cleaned' => $vehicleNo
+    ]);
+
+    if (!$tripId && empty($vehicleNo)) {
+        Log::warning('Missing required parameters for count');
+        return response()->json([
+            'success' => false,
+            'message' => 'trip_id or vehicle_no required'
+        ], 400);
+    }
+
+    $imei = $vehicleNo ? $this->getIMEIFromVehicleNo($vehicleNo) : null;
+
+    Log::info('Count query - IMEI resolved', [
+        'cleaned_vehicle_no' => $vehicleNo,
+        'imei'               => $imei,
+        'using_trip'         => !empty($tripId)
+    ]);
+
+    try {
+        $query = DB::connection('sqlsrv')
+            ->table('Trip_TripNotification')
+            ->where('Status', 'Pending')
+            ->where('IsActive', 1)
+            ->where('IsDeleted', 0)
+            ->whereNull('JobID')
+            ->whereNull('TripInfoID');
+
+        if ($imei) {
+            $query->where('IMEI', $imei);
+        }
+
+        if ($tripId) {
+            $query->where('TripInfoID', $tripId);
+        }
+
+        $count = $query->count();
+
+        Log::info('Notification count result', [
+            'final_count' => $count,
+            'conditions'  => [
+                'imei'       => $imei,
+                'trip_id'    => $tripId,
+                'pending'    => true,
+                'no_job'     => true,
+                'no_trip'    => true,
+                'active'     => true
+            ],
+            'vehicle_no'  => $vehicleNo
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'count'   => (int) $count
+        ]);
+
+    } catch (\Exception $e) {
+        Log::error('Exception in getNotificationCount', [
+            'error'          => $e->getMessage(),
+            'raw_vehicle_no' => $rawVehicleNo,
+            'cleaned_vehicle_no' => $vehicleNo,
+            'trip_id'        => $tripId
+        ]);
+
+        return response()->json(['success' => false, 'message' => 'Error'], 500);
+    }
+}
+
+public function mapNotificationsToTrip(Request $request)
+{
+    $tripId          = $request->input('trip_id');
+    $notificationIds = $request->input('notification_ids', []);
+
+    if (!$tripId || empty($notificationIds)) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Missing trip_id or notification_ids'
+        ], 400);
+    }
+
+    // Get JobMappingId
+    $jobMapping = DB::connection('sqlsrv')
+        ->table('Trip_TripJobMapping')
+        ->where('TripInfoID', $tripId)
+        ->select('Id')
+        ->first();
+
+    if (!$jobMapping) {
+        return response()->json([
+            'success' => false,
+            'message' => 'No job mapping found for this trip'
+        ], 422);
+    }
+
+    $jobMappingId = $jobMapping->Id;
+
+    // Build the full JSON format (as in your SSMS test)
+    $jsonPayload = json_encode([
+        "OperationType"     => "LocationUpdate",
+        "SubmittedDatetime" => now()->format('YmdHis'),
+        "SubmittedBy"       => auth()->user()->email ?? 'system',
+        "Action"            => "Update",
+        "JobMappingId"      => $jobMappingId,
+        "notificationIds"   => $notificationIds
+    ]);
+
+    Log::info('Calling sp_Trip_LocationUpdate', [
+        'trip_id' => $tripId,
+        'payload' => $jsonPayload
+    ]);
+
+    try {
+        // Add SET NOCOUNT ON; to suppress extra row count messages
+        $result = DB::connection('sqlsrv')->select(
+            'SET NOCOUNT ON;
+            DECLARE @Output VARCHAR(MAX);
+            EXEC dbo.sp_Trip_LocationUpdate @LocationUpdate = ?, @OutputJson = @Output OUTPUT;
+            SELECT @Output AS OutputJson',
+            [$jsonPayload]
+        );
+
+        $outputJson = $result[0]->OutputJson ?? '[]';
+        $output     = json_decode($outputJson, true) ?? [];
+
+        Log::info('sp_Trip_LocationUpdate output', [
+            'raw'    => $outputJson,
+            'parsed' => $output
+        ]);
+
+        // Process output
+        $successCount = 0;
+        $failures     = [];
+        $successIds   = [];
+
+        foreach ($output as $row) {
+            $status = $row['Status'] ?? 'Unknown';
+            $id     = $row['NotificationID'] ?? 'unknown';
+            $remark = $row['Remark'] ?? 'No remark';
+
+            if ($status === 'Success') {
+                $successCount++;
+                $successIds[] = $id;
+            } else {
+                $failures[] = [
+                    'id'     => $id,
+                    'remark' => $remark
+                ];
+            }
+        }
+
+        // Manually link to trip if any success
+        if ($successCount > 0) {
+            $updated = DB::connection('sqlsrv')
+                ->table('Trip_TripNotification')
+                ->whereIn('Id', $successIds)
+                ->update([
+                    'TripInfoID' => $tripId,
+                    'Status'     => 'Mapped'
+                ]);
+
+            Log::info('Linked to trip', ['updated' => $updated]);
+        }
+
+        return response()->json([
+            'success'       => $successCount > 0,
+            'message'       => $successCount > 0
+                ? "$successCount notification(s) processed and mapped"
+                : 'Processing failed – see details',
+            'success_count' => $successCount,
+            'failures'      => $failures
+        ]);
+
+    } catch (\Exception $e) {
+        Log::error('SP call failed', [
+            'error'   => $e->getMessage(),
+            'payload' => $jsonPayload
+        ]);
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Database error: ' . $e->getMessage()
+        ], 500);
+    }
+}
 // ========================================
 // NOTIFICATION MANAGEMENT METHODS
 // ========================================

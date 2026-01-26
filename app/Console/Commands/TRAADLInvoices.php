@@ -157,7 +157,7 @@ class TRAADLInvoices extends Command
                     $invoice->save();
                 }
 
-                Log::info("Generated JSON for Invoice ID: {$invoice->ID}");
+                // Log::info("Generated JSON for Invoice ID: {$invoice->ID}");
 
             } catch (\Exception $e) {
                 Log::error("Failed to execute SP for Invoice ID: {$invoice->ID}. Error: " . $e->getMessage());

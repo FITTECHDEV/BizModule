@@ -5,10 +5,10 @@
 @section('content_header')
     <div class="header-with-notification">
         <h1>Truck Tracking</h1>
-        <button class="btn btn-warning" id="openNotificationsBtn">
+        {{-- <button class="btn btn-warning" id="openNotificationsBtn">
             <i class="fa fa-bell"></i> Notifications
             <span class="badge badge-danger" id="unreadBadge" style="display: none;">0</span>
-        </button>
+        </button> --}}
     </div>
 @stop
 
@@ -157,6 +157,11 @@
                         <div class="modal-header bg-primary text-white">
                             <h5 class="modal-title">
                                 <i class="fa fa-map"></i> Trip Details
+                                <!-- ✅ Add status badge here -->
+                                <span id="viewStatusBadge" class="badge badge-lg ml-2"
+                                    style="font-size: 0.85rem; padding: 6px 12px;">
+                                    <span id="viewStatus">-</span>
+                                </span>
                             </h5>
                             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
                                 aria-label="Close"></button>
@@ -178,17 +183,19 @@
                                     <strong><span id="viewDriver">-</span></strong>
                                 </div>
                                 <div class="col-md-3 text-center">
-                                    <span id="viewStatusBadge" class="badge badge-lg"
-                                        style="font-size: 0.95rem; padding: 8px 16px;">
-                                        <span id="viewStatus">-</span>
-                                    </span>
-
-                                    <!-- ADD HERE -->
-
-                                    <button type="button" class="btn btn-danger btn-sm mt-2" id="endTripAgainBtn"
+                                    <!-- ✅ Moved status badge to header, add notifications button here -->
+                                    <button type="button" class="btn btn-danger btn-sm btn-block mt-2" id="endTripAgainBtn"
                                         style="display:none;">
                                         <i class="fa fa-redo"></i> End Trip Again
                                     </button>
+
+                                    <button type="button" class="btn btn-warning btn-block" id="viewTripNotificationsBtn">
+                                        <i class="fa fa-bell"></i> Vehicle Notifications
+                                        <span class="badge badge-danger" id="vehicleNotifBadge"
+                                            style="display: none;">0</span>
+                                    </button>
+
+
                                 </div>
                             </div>
 
@@ -308,6 +315,117 @@
                                 <i class="fa fa-times"></i> Close
                             </button>
                         </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Trip Geofence Notifications Modal - Selection Mode -->
+            <div class="modal fade" id="tripNotificationsModal" tabindex="-1" data-bs-backdrop="static"
+                role="dialog">
+                <div class="modal-dialog modal-xl" role="document"> <!-- wider modal for better list visibility -->
+                    <div class="modal-content border-0 shadow">
+
+                        <div class="modal-header bg-warning text-dark">
+                            <h5 class="modal-title">
+                                <i class="fa fa-map-marked-alt me-2"></i>
+                                Select Geofence Notifications
+                            </h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"
+                                aria-label="Close"></button>
+                        </div>
+
+                        <div class="modal-body pb-0">
+
+                            <!-- Trip & Vehicle Info -->
+                            <div class="alert alert-info d-flex justify-content-between align-items-center mb-3 py-2 px-3">
+                                <div>
+                                    <strong>Trip:</strong> <span id="notifTripNo">-</span><br>
+                                    <strong>Vehicle:</strong> <span id="notifVehicleNo">-</span>
+                                </div>
+                                <div class="badge bg-warning text-dark fs-6 px-3 py-2">
+                                    <span id="selectedCount">0</span> selected
+                                </div>
+                            </div>
+
+                            <!-- Filters & Controls -->
+                            <div class="d-flex flex-wrap gap-3 mb-3 align-items-center">
+                                <div class="flex-grow-1">
+                                    <select class="form-select" id="notificationTypeFilter">
+                                        <option value="all">All Geofence Events</option>
+                                        <option value="1006">Entry Only (1006)</option>
+                                        <option value="1007">Exit Only (1007)</option>
+                                        <!-- You can add more dynamic options from backend if needed -->
+                                        <!-- <option value="unacknowledged">Unacknowledged Only</option> -->
+                                    </select>
+                                </div>
+
+                                <div class="btn-group">
+                                    <button type="button" class="btn btn-outline-secondary btn-sm" id="selectAllBtn">
+                                        <i class="fa fa-check-square me-1"></i> Select All
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary btn-sm" id="deselectAllBtn">
+                                        <i class="fa fa-square me-1"></i> Deselect All
+                                    </button>
+                                </div>
+
+                                <button type="button" class="btn btn-outline-primary btn-sm" id="refreshTripNotifs">
+                                    <i class="fa fa-sync-alt"></i> Refresh
+                                </button>
+                            </div>
+
+                            <!-- Stats Row (smaller) -->
+                            <div class="row g-2 mb-3 text-center">
+                                <div class="col-4">
+                                    <div class="card bg-light border-warning">
+                                        <div class="card-body py-2">
+                                            <h5 class="mb-0 fw-bold" id="notifTotalCount">0</h5>
+                                            <small class="text-muted">Total</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="card bg-light border-success">
+                                        <div class="card-body py-2">
+                                            <h5 class="mb-0 fw-bold text-success" id="notifEntryCount">0</h5>
+                                            <small class="text-muted">Entries</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="card bg-light border-danger">
+                                        <div class="card-body py-2">
+                                            <h5 class="mb-0 fw-bold text-danger" id="notifExitCount">0</h5>
+                                            <small class="text-muted">Exits</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Notifications List -->
+                            <div id="tripNotificationsContainer" class="list-group"
+                                style="max-height: 420px; overflow-y: auto;">
+                                <!-- Will be populated by JS -->
+                                <div class="text-center py-5 text-muted">
+                                    <i class="fa fa-spinner fa-spin fa-2x mb-3"></i><br>
+                                    Loading geofence events...
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <div class="modal-footer bg-light border-0">
+                            <div class="d-flex w-100 justify-content-between align-items-center">
+                                <small class="text-muted" id="selectedSummary">No items selected</small>
+                                <div>
+                                    <button type="button" class="btn btn-secondary me-2" data-bs-dismiss="modal">
+                                        <i class="fa fa-times"></i> Close
+                                    </button>
+                                    <button type="button" class="btn btn-primary" id="performBulkAction" disabled>
+                                        <i class="fa fa-check"></i> Map <span id="bulkCount">0</span> Notifications
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
             </div>
@@ -1013,6 +1131,7 @@
                 return window.VEHICLE_IMEI_MAP[clean] || null;
             }
         </script>
+
         <script>
             $(document).ready(function() {
                 let currentFilter = 'all';
@@ -2182,10 +2301,10 @@
                         </div>
 
                         ${trip.start_date ? `
-                                                                                <div class="alert alert-info mb-3" style="padding: 8px 12px; font-size: 0.9rem;">
-                                                                                    <strong>Trip Started:</strong> ${moment(trip.start_date).format('DD/MM/YY HH:mm')}
-                                                                                </div>
-                                                                                ` : ''}
+                         <div class="alert alert-info mb-3" style="padding: 8px 12px; font-size: 0.9rem;">
+                           <strong>Trip Started:</strong> ${moment(trip.start_date).format('DD/MM/YY HH:mm')}
+                            </div>
+                             ` : ''}
 
                         <div class="form-group mb-3">
                             <label style="font-weight: 600; margin-bottom: 5px;">
@@ -2205,11 +2324,11 @@
                         </div>
 
                         ${!trip.start_date ? `
-                                                                                <div class="alert alert-info mb-3" style="padding: 8px 12px; font-size: 0.85rem;">
-                                                                                    <i class="fa fa-info-circle"></i>
-                                                                                    <strong>Note:</strong> This is the first job. The trip will be started automatically with this time.
-                                                                                </div>
-                                                                                ` : ''}
+                                                                                                                        <div class="alert alert-info mb-3" style="padding: 8px 12px; font-size: 0.85rem;">
+                                                                                                                            <i class="fa fa-info-circle"></i>
+                                                                                                                            <strong>Note:</strong> This is the first job. The trip will be started automatically with this time.
+                                                                                                                        </div>
+                                                                                                                        ` : ''}
 
                         <button class="btn btn-success btn-block" id="submitManualStartBtn" type="button">
                             <i class="fa fa-play"></i> Start Job with this Time
@@ -3370,7 +3489,6 @@
             });
         </script>
 
-        
         <script>
             $(document).ready(function() {
                 // ========================================
@@ -3403,7 +3521,7 @@
                             const newCount = all.filter(n => n.Status === 'New').length;
                             const geofenceCount = all.filter(n => n.AlarmType === '1006').length;
                             const ignitionCount = all.filter(n => ['1001', '1002'].includes(n.AlarmType))
-                            .length;
+                                .length;
                             const powerCount = all.filter(n => ['2', '1003'].includes(n.AlarmType)).length;
 
                             $('#statTotal').text(all.length);
@@ -3516,12 +3634,12 @@
                                 <i class="fa fa-map"></i>
                             </a>
                             ${isNew ? `
-                                        <button class="btn btn-sm btn-success markReadBtn"
-                                                data-id="${notif.Id}"
-                                                title="Mark as Read">
-                                            <i class="fa fa-check"></i>
-                                        </button>
-                                    ` : ''}
+                                                                                <button class="btn btn-sm btn-success markReadBtn"
+                                                                                        data-id="${notif.Id}"
+                                                                                        title="Mark as Read">
+                                                                                    <i class="fa fa-check"></i>
+                                                                                </button>
+                                                                            ` : ''}
                             <button class="btn btn-sm btn-danger deleteNotifBtn"
                                     data-id="${notif.Id}"
                                     title="Delete">
@@ -3624,4 +3742,302 @@
                 loadNotificationStats();
             });
         </script>
-    @endsection
+
+<script>
+    $(document).ready(function() {
+
+        let currentNotifications = [];
+        let selectedNotifications = new Set();
+
+        // Open trip notifications modal
+        $(document).on('click', '#viewTripNotificationsBtn', function() {
+            const tripId = $('#viewTripModal').data('trip-id');
+            const tripNo = $('#viewTripNo').text().trim();
+            const vehicleNo = $('#viewVehicle').text().trim();
+
+            if (!vehicleNo || vehicleNo === '-' || vehicleNo === 'N/A') {
+                Swal.fire('Error', 'Vehicle information not available', 'error');
+                return;
+            }
+
+            $('#notifTripNo').text(tripNo || '—');
+            $('#notifVehicleNo').text(vehicleNo);
+
+            loadTripNotifications(tripId, vehicleNo);
+            $('#tripNotificationsModal').modal('show');
+        });
+
+        // Load notifications
+        function loadTripNotifications(tripId, vehicleNo) {
+            $('#tripNotificationsContainer').html(`
+                <div class="text-center py-5 text-muted">
+                    <i class="fa fa-spinner fa-spin fa-2x mb-3"></i><br>
+                    Loading geofence events...
+                </div>
+            `);
+
+            $.get('/tracker/notifications/vehicle', {
+                    vehicle_no: vehicleNo,
+                    trip_id: tripId || ''
+                })
+                .done(function(res) {
+                    console.log('[Notifications] Server response:', res);
+
+                    if (!res || !res.success || !Array.isArray(res.data)) {
+                        console.warn('[Notifications] Invalid response format', res);
+                        showEmptyState('Invalid response from server');
+                        return;
+                    }
+
+                    currentNotifications = res.data;
+
+                    console.log('[Notifications] Loaded items:', currentNotifications.length,
+                        currentNotifications);
+
+                    if (currentNotifications.length === 0) {
+                        showEmptyState('No pending geofence notifications found');
+                        return;
+                    }
+
+                    renderTripNotifications(currentNotifications);
+
+                    // Calculate stats using FenceAlertType (since AlarmType is not returned)
+                    const total = currentNotifications.length;
+                    const entries = currentNotifications.filter(n => n.FenceAlertType === 'in').length;
+                    const exits = currentNotifications.filter(n => n.FenceAlertType === 'out').length;
+
+                    $('#notifTotalCount').text(total);
+                    $('#notifEntryCount').text(entries);
+                    $('#notifExitCount').text(exits);
+                })
+                .fail(function(jqXHR, textStatus, errorThrown) {
+                    console.error('[Notifications] AJAX error:', textStatus, errorThrown);
+                    $('#tripNotificationsContainer').html(`
+                        <div class="alert alert-danger text-center my-4">
+                            <i class="fa fa-exclamation-triangle me-2"></i>
+                            Failed to load notifications (${textStatus})
+                        </div>
+                    `);
+                });
+        }
+
+        // Show empty / warning state
+        function showEmptyState(message = 'No pending geofence notifications found') {
+            currentNotifications = [];
+            $('#tripNotificationsContainer').html(`
+                <div class="alert alert-warning text-center my-4">
+                    <i class="fa fa-info-circle me-2"></i> ${message}
+                </div>
+            `);
+            $('#notifTotalCount, #notifEntryCount, #notifExitCount').text('0');
+        }
+
+        // Render the list of notifications
+        function renderTripNotifications(notifications) {
+            const filterVal = $('#notificationTypeFilter').val() || 'all';
+
+            let filtered = notifications;
+            if (filterVal !== 'all') {
+                filtered = notifications.filter(n => {
+                    if (filterVal === '1006') return n.FenceAlertType === 'in';
+                    if (filterVal === '1007') return n.FenceAlertType === 'out';
+                    return true;
+                });
+            }
+
+            if (filtered.length === 0) {
+                $('#tripNotificationsContainer').html(`
+                    <div class="alert alert-info text-center my-4">
+                        <i class="fa fa-info-circle me-2"></i>No matching notifications
+                    </div>
+                `);
+                return;
+            }
+
+            let html = '';
+            filtered.forEach(notif => {
+                const isEntry = notif.FenceAlertType === 'in';
+                const borderClass = isEntry ? 'border-start border-success border-4' :
+                    'border-start border-danger border-4';
+                const iconClass = isEntry ? 'fa-arrow-circle-right text-success' :
+                    'fa-arrow-circle-left text-danger';
+
+                // Coordinates fallback
+                const coords = (notif.Latitude && notif.Longitude) ?
+                    `${parseFloat(notif.Latitude).toFixed(6)}, ${parseFloat(notif.Longitude).toFixed(6)}` :
+                    'No coordinates';
+
+                const mapLink = (notif.Latitude && notif.Longitude) ?
+                    `<a href="https://www.google.com/maps?q=${notif.Latitude},${notif.Longitude}" target="_blank" class="btn btn-sm btn-outline-info ms-3"><i class="fa fa-map"></i></a>` :
+                    '<span class="text-muted small ms-3">No map</span>';
+
+                html += `
+                    <div class="list-group-item list-group-item-action px-3 py-2 ${borderClass}">
+                        <div class="form-check">
+                            <input class="form-check-input notif-checkbox mt-2" type="checkbox" value="${notif.Id || ''}">
+                            <div class="d-flex justify-content-between align-items-start ms-4">
+                                <div class="flex-grow-1">
+                                    <strong>${notif.AlarmName || 'Geofence Event'}</strong>
+                                    <div class="small text-muted mt-1">
+                                        <i class="fa fa-clock me-1"></i>
+                                        ${moment(notif.AlarmTime).format('DD/MM/YY HH:mm:ss')}
+                                    </div>
+                                    <div class="small text-muted">
+                                        <i class="fa fa-map-marker-alt me-1"></i> ${coords}
+                                    </div>
+                                </div>
+                                ${mapLink}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            $('#tripNotificationsContainer').html(html);
+        }
+
+        // Update UI when selection changes
+        function updateSelectionUI() {
+            const count = selectedNotifications.size;
+
+            $('#bulkCount').text(count);
+            $('#selectedCount').text(count);
+            $('#selectedSummary').text(
+                count === 0 ? 'No items selected' : `${count} notification${count !== 1 ? 's' : ''} selected`
+            );
+
+            $('#performBulkAction').prop('disabled', count === 0);
+        }
+
+        // Listen for checkbox changes (delegated event)
+        $(document).on('change', '.notif-checkbox', function() {
+            const id = $(this).val();
+
+            if (this.checked) {
+                selectedNotifications.add(id);
+            } else {
+                selectedNotifications.delete(id);
+            }
+
+            console.log('Selection updated:', Array.from(selectedNotifications));
+            updateSelectionUI();
+        });
+
+        // Select All
+        $('#selectAllBtn').on('click', function() {
+            $('.notif-checkbox:visible').prop('checked', true).trigger('change');
+        });
+
+        // Deselect All
+        $('#deselectAllBtn').on('click', function() {
+            $('.notif-checkbox:visible').prop('checked', false).trigger('change');
+        });
+
+        // Clear selection when modal closes
+        $('#tripNotificationsModal').on('hidden.bs.modal', function() {
+            selectedNotifications.clear();
+            $('.notif-checkbox').prop('checked', false);
+            updateSelectionUI();
+        });
+
+        // ────────────────────────────────────────────────
+        // Bulk map action – call backend endpoint
+        // ────────────────────────────────────────────────
+        $('#performBulkAction').on('click', function() {
+            if (selectedNotifications.size === 0) return;
+            const selectedIds = Array.from(selectedNotifications);
+            const tripId      = $('#viewTripModal').data('trip-id');
+            const tripNo      = $('#notifTripNo').text().trim();
+
+            Swal.fire({
+                title: 'Map to Trip',
+                html: `Map <strong>${selectedIds.length}</strong> notification(s)<br>to trip <strong>${tripNo}</strong>?`,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#3085d6',
+                cancelButtonColor: '#d33',
+                confirmButtonText: 'Yes, Map',
+                cancelButtonText: 'Cancel',
+                allowOutsideClick: false
+            }).then((result) => {
+                if (!result.isConfirmed) return;
+
+                // Show loading
+                Swal.fire({
+                    title: 'Mapping notifications...',
+                    allowOutsideClick: false,
+                    allowEscapeKey: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+
+                $.ajax({
+                    url: '/tracker/notifications/map-to-trip',
+                    method: 'POST',
+                    data: {
+                        trip_id: tripId,
+                        notification_ids: selectedIds
+                    },
+                    headers: {
+                        'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                    },
+                    success: function(res) {
+                        if (res.success) {
+                            Swal.fire({
+                                title: 'Success!',
+                                text: res.message || `${res.success_count} notification(s) mapped`,
+                                icon: 'success',
+                                timer: 2000
+                            });
+                            // Clear selection & refresh list
+                            selectedNotifications.clear();
+                            updateSelectionUI();
+                            loadTripNotifications(tripId, $('#notifVehicleNo').text().trim());
+                        } else {
+                            Swal.fire({
+                                title: 'Warning',
+                                html: res.message || 'No notifications were mapped.<br>' +
+                                      (res.failures?.length ?
+                                       `<small>${res.failures.map(f => f.remark).join('<br>')}</small>` : ''),
+                                icon: 'warning'
+                            });
+                        }
+                    },
+                    error: function(xhr) {
+                        let msg = 'Failed to map notifications';
+                        if (xhr.responseJSON && xhr.responseJSON.message) {
+                            msg += ': ' + xhr.responseJSON.message;
+                        }
+                        Swal.fire('Error', msg, 'error');
+                        console.error('Map error:', xhr.responseJSON);
+                    }
+                });
+            });
+        });
+
+        // Update badge when viewing a trip
+        $(document).on('click', '.viewTrip', function() {
+            const tripId = $(this).data('trip-id');
+
+            $.get('/tracker/notifications/count', {
+                    trip_id: tripId
+                })
+                .done(function(res) {
+                    if (res.success) {
+                        const count = res.count || 0;
+                        $('#tripNotifBadge')
+                            .text(count)
+                            .toggle(count > 0);
+                    }
+                })
+                .fail(function() {
+                    console.warn('[Badge] Failed to load notification count');
+                    $('#tripNotifBadge').hide();
+                });
+        });
+
+    });
+</script>
+
+@endsection

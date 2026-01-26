@@ -178,6 +178,7 @@ return [
     'rate_limit' => [
         'requests_per_minute' => 60,
         'respect_retry_after_header' => true,
+        'request_delay_ms' => env('AZURE_REQUEST_DELAY_MS', 500),
     ],
 
 ];

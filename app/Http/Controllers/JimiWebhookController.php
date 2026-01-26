@@ -88,75 +88,103 @@ class JimiWebhookController extends Controller
     //         ]);
     //     }
     // }
-    private function handleAlarmNotification($data)
+private function handleAlarmNotification($data)
 {
-    Log::info('Alarm Triggered', [
-        'imei' => $data['imei'],
-        'device_name' => $data['deviceName'],
-        'alarm_type' => $data['alarmType'],
-        'alarm_name' => $data['alarmName'],
-        'latitude' => $data['lat'],
-        'longitude' => $data['lng'],
-        'alarm_time' => $data['alarmTime']
-    ]);
-
-    // ❌ COMMENTED OUT - Table not in production yet
-    // try {
-    //     DB::connection('sqlsrv')->table('Trip_TripNotification')->insert([...]);
-    //     Log::info('✅ Alarm Stored in Database');
-    // } catch (\Exception $e) {
-    //     Log::error('❌ Failed to store alarm');
-    // }
-
-    // ✅ FOR NOW: Just logging is enough
-    Log::info('✅ Notification logged (DB storage disabled until table is in production)');
-}
-
-    private function findActiveTripAndJob($imei)
-    {
-        try {
-            // Find active trip for this IMEI from Trip_TripInformation
-            $trip = DB::connection('sqlsrv')
-                ->table('Trip_TripInformation')
-                ->where('IMEI', $imei)
-                ->where('Status', 'In Transit')
-                ->whereNull('EndDate')
-                ->orderBy('StartDate', 'desc')
-                ->first();
-
-            if (!$trip) {
-                Log::info('No active trip found for IMEI', ['imei' => $imei]);
-                return ['trip_id' => null, 'job_id' => null];
-            }
-
-            // Find active job within this trip from Trip_Jobs
-            $job = DB::connection('sqlsrv')
-                ->table('Trip_Jobs')
-                ->where('TripInfoID', $trip->Id)
-                ->where('Status', 'In Transit')
-                ->whereNull('EndDate')
-                ->orderBy('StartDate', 'desc')
-                ->first();
-
-            Log::info('Active trip/job found', [
-                'imei' => $imei,
-                'trip_id' => $trip->Id,
-                'trip_no' => $trip->TripNo ?? 'N/A',
-                'job_id' => $job->Id ?? null,
-                'job_no' => $job->JobNumber ?? 'N/A'
-            ]);
-
-            return [
-                'trip_id' => $trip->Id,
-                'job_id' => $job->Id ?? null
-            ];
-
-        } catch (\Exception $e) {
-            Log::error('Error finding active trip/job: ' . $e->getMessage(), [
-                'imei' => $imei,
-                'error' => $e->getMessage()
-            ]);
-            return ['trip_id' => null, 'job_id' => null];
-        }
+    if (!in_array($data['alarmType'] ?? '', ['1006', '1007'])) {
+        Log::info('Ignored non-geofence alarm', ['type' => $data['alarmType'] ?? 'missing']);
+        return;
     }
+
+    try {
+        $tripJob = $this->findActiveTripAndJob($data['imei']);
+
+        // Only insert columns you know exist
+        $insertData = [
+            'Id'          => Uuid::uuid4()->toString(),
+            'IMEI'        => $data['imei'] ?? null,
+            'DeviceName'  => $data['deviceName'] ?? null,
+            'AlarmType'   => $data['alarmType'],
+            'AlarmName'   => $data['alarmName'] ?? null,
+            'Latitude'    => $data['lat'] ?? null,
+            'Longitude'   => $data['lng'] ?? null,
+            'AlarmTime'   => $data['alarmTime'],
+            'TripInfoID'  => $tripJob['trip_id'],
+            'JobID'       => $tripJob['job_id'],
+            'Status'      => 'New',
+            'IsActive'    => 1,
+            'IsDeleted'   => 0
+        ];
+
+        // Add optional geofence fields only if they exist in the table
+        if (Schema::connection('sqlsrv')->hasColumn('Trip_TripNotification', 'FenceAlertType')) {
+            $insertData['FenceAlertType'] = $data['fenceAlertType'] ?? null;
+        }
+        if (Schema::connection('sqlsrv')->hasColumn('Trip_TripNotification', 'FenceId')) {
+            $insertData['FenceId'] = $data['fenceId'] ?? null;
+        }
+
+        DB::connection('sqlsrv')->table('Trip_TripNotification')->insert($insertData);
+
+        Log::info('Geofence alarm stored', [
+            'imei'       => $data['imei'],
+            'type'       => $data['alarmType'],
+            'name'       => $data['alarmName'],
+            'trip_id'    => $tripJob['trip_id'],
+            'job_id'     => $tripJob['job_id']
+        ]);
+
+    } catch (\Exception $e) {
+        Log::error('Failed to store geofence alarm', [
+            'imei'  => $data['imei'] ?? 'missing',
+            'error' => $e->getMessage()
+        ]);
+    }
+}
+    // private function findActiveTripAndJob($imei)
+    // {
+    //     try {
+    //         // Find active trip for this IMEI from Trip_TripInformation
+    //         $trip = DB::connection('sqlsrv')
+    //             ->table('Trip_TripInformation')
+    //             ->where('IMEI', $imei)
+    //             ->where('Status', 'In Transit')
+    //             ->whereNull('EndDate')
+    //             ->orderBy('StartDate', 'desc')
+    //             ->first();
+
+    //         if (!$trip) {
+    //             Log::info('No active trip found for IMEI', ['imei' => $imei]);
+    //             return ['trip_id' => null, 'job_id' => null];
+    //         }
+
+    //         // Find active job within this trip from Trip_Jobs
+    //         $job = DB::connection('sqlsrv')
+    //             ->table('Trip_Jobs')
+    //             ->where('TripInfoID', $trip->Id)
+    //             ->where('Status', 'In Transit')
+    //             ->whereNull('EndDate')
+    //             ->orderBy('StartDate', 'desc')
+    //             ->first();
+
+    //         Log::info('Active trip/job found', [
+    //             'imei' => $imei,
+    //             'trip_id' => $trip->Id,
+    //             'trip_no' => $trip->TripNo ?? 'N/A',
+    //             'job_id' => $job->Id ?? null,
+    //             'job_no' => $job->JobNumber ?? 'N/A'
+    //         ]);
+
+    //         return [
+    //             'trip_id' => $trip->Id,
+    //             'job_id' => $job->Id ?? null
+    //         ];
+
+    //     } catch (\Exception $e) {
+    //         Log::error('Error finding active trip/job: ' . $e->getMessage(), [
+    //             'imei' => $imei,
+    //             'error' => $e->getMessage()
+    //         ]);
+    //         return ['trip_id' => null, 'job_id' => null];
+    //     }
+    // }
 }
