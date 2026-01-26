@@ -558,13 +558,13 @@ class AzureUserProvisioningService
         $status = [
             'local_user' => [
                 'exists' => true,
-                'status' => $user->Status,  // ✅ Changed from status to Status
-                'created_at' => $user->CreatedAt,  // ✅ Changed
+                'status' => $user->status,
+                'created_at' => $user->created_at,
             ],
             'azure' => [
-                'provisioned' => !empty($user->AzureId),
-                'azure_id' => $user->AzureId,
-                'azure_upn' => $user->userPrincipalName,
+                'provisioned' => !empty($user->azure_id),
+                'azure_id' => $user->azure_id,
+                'azure_upn' => $user->azure_upn,
                 'synced' => false,
             ],
             'modules' => [],
@@ -572,60 +572,49 @@ class AzureUserProvisioningService
         ];
 
         // Check Azure sync status
-        if ($user->AzureId) {
+        if ($user->azure_id) {
             try {
-                $azureUser = $this->azureService->getUser($user->AzureId);
+                $azureUser = $this->azureService->getUser($user->azure_id);
                 $status['azure']['synced'] = true;
                 $status['azure']['account_enabled'] = $azureUser['accountEnabled'] ?? false;
             } catch (Exception $e) {
                 $status['azure']['synced'] = false;
                 $status['azure']['error'] = $e->getMessage();
+                Log::warning('Failed to check Azure sync status', [
+                    'user_id' => $user->id,
+                    'azure_id' => $user->azure_id,
+                    'error' => $e->getMessage()
+                ]);
             }
         }
 
-        // ✅ FIX: Safely get module assignments from database
-        try {
-            $moduleAssignments = DB::connection('sqlsrv')
-                ->table('Azure_Application_UserMapping as aaum')
-                ->join('Azure_SoftwareMaster as asm', 'aaum.application_id', '=', 'asm.ApplicationId')
-                ->where('aaum.AzureUserID', $user->Id)
-                ->where('aaum.IsActive', 1)
-                ->where('aaum.IsDelete', 0)
-                ->select(
-                    'asm.Id as module_id',
-                    'asm.Name as module_name',
-                    'asm.ApplicationId',
-                    'aaum.RoleCode',
-                    'aaum.RoleID',
-                    'aaum.OfficeCode',
-                    'aaum.CreatedOn'
-                )
-                ->get();
+        // Check module assignments
+        $moduleAssignments = $user->moduleAssignments()
+            ->select('ApplicationName', 'application_id', 'RoleCode', 'RoleID', 'OfficeCode')
+            ->get();
 
-            foreach ($moduleAssignments as $assignment) {
-                $status['modules'][] = [
-                    'module_id' => $assignment->module_id,
-                    'module_name' => $assignment->module_name,
-                    'application_id' => $assignment->ApplicationId,
-                    'role_id' => $assignment->RoleID,
-                    'role_code' => $assignment->RoleCode,
-                    'location' => $assignment->OfficeCode,
-                    'assigned_at' => $assignment->CreatedOn,
-                ];
-            }
-        } catch (Exception $e) {
-            Log::warning('Failed to load module assignments for provisioning status', [
-                'user_id' => $user->Id,
-                'error' => $e->getMessage()
-            ]);
+        foreach ($user->modules as $module) {
+            $moduleStatus = [
+                'module_id' => $module->id,
+                'module_name' => $module->name,
+                'module_code' => $module->code,
+                'role_id' => $module->pivot->role_id,
+                'location' => $module->pivot->location,
+                'assigned_at' => $module->pivot->created_at,
+                'azure_provisioned' => !empty($module->pivot->azure_group_id),
+                'azure_group_id' => $module->pivot->azure_group_id,
+                'provisioned_at' => $module->pivot->provisioned_at,
+            ];
+
+            $status['modules'][] = $moduleStatus;
         }
 
         // Determine overall status
-        if ($user->Status === 'Active' && $user->AzureId && $status['azure']['synced']) {
+        if ($user->status === 'active' && $user->azure_id && $status['azure']['synced']) {
             $status['overall_status'] = 'fully_provisioned';
-        } elseif ($user->Status === 'Pending' || !$user->AzureId) {
+        } elseif ($user->status === 'pending' || !$user->azure_id) {
             $status['overall_status'] = 'pending';
-        } elseif ($user->Status === 'Inactive') {
+        } elseif ($user->status === 'inactive') {
             $status['overall_status'] = 'disabled';
         } else {
             $status['overall_status'] = 'partial';

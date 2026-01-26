@@ -22,6 +22,7 @@ class AzureGraphService
     // Token Management
     private string $tokenCacheKey;
     private int $tokenCacheDuration;
+    private int $requestDelayMs;
 
     /**
      * Initialize Azure Service with configuration
@@ -36,6 +37,7 @@ class AzureGraphService
         $this->defaultDomain = config('azure.default_domain');
         $this->tokenCacheKey = config('azure.token_cache_key');
         $this->tokenCacheDuration = config('azure.token_cache_duration');
+        $this->requestDelayMs = config('azure.rate_limit.request_delay_ms', 500);
 
         // Validate required configuration
         $this->validateConfiguration();
@@ -65,6 +67,16 @@ class AzureGraphService
             throw new Exception(
                 'Missing required Azure configuration: ' . implode(', ', $missing)
             );
+        }
+    }
+
+    /**
+     * Throttle requests to avoid rate limiting
+     */
+    private function throttleRequest(): void
+    {
+        if ($this->requestDelayMs > 0) {
+            usleep($this->requestDelayMs * 1000);
         }
     }
 
@@ -231,8 +243,10 @@ class AzureGraphService
         }
     }
 
+
     /**
      * Find a user in Azure AD by User Principal Name (UPN / email).
+     * WITH REDUCED RETRIES
      *
      * @param string $upn
      * @return array|null
@@ -241,9 +255,12 @@ class AzureGraphService
     public function findUserByUPN(string $upn): ?array
     {
         try {
+            // ✅ REDUCED RETRIES: Only 1 retry instead of 3
             $response = $this->makeRequestWithRetry(
                 'GET',
-                $this->graphApiBaseUrl . '/users/' . urlencode($upn)
+                $this->graphApiBaseUrl . '/users/' . urlencode($upn),
+                null,
+                1  // ← CHANGED: Only 1 retry (down from 3)
             );
 
             if ($response->successful()) {
@@ -544,6 +561,7 @@ class AzureGraphService
                 'azure_id' => $azureId
             ]);
 
+            $this->throttleRequest();
             return true;
         } catch (Exception $e) {
             // 🎯 AUDIT: Log failed update
@@ -571,7 +589,7 @@ class AzureGraphService
 
     /**
      * Disable a user in Azure AD
-     * WITH AUDIT LOGGING
+     * WITH AUDIT LOGGING AND REDUCED RETRIES
      * 
      * @param string $azureId
      * @return bool
@@ -580,21 +598,16 @@ class AzureGraphService
     public function disableUser(string $azureId): bool
     {
         try {
-            // 🎯 AUDIT: Log disable attempt
-            // AzureAuditLogger::log(
-            //     'azure.user.disable.started',
-            //     null,
-            //     'success',
-            //     null,
-            //     [
-            //         'azure_id' => $azureId,
-            //     ]
-            // );
+            Log::channel('azure')->info('Disabling user in Azure AD', [
+                'azure_id' => $azureId
+            ]);
 
+            // ✅ REDUCED RETRIES: Only 1 retry instead of 3
             $response = $this->makeRequestWithRetry(
                 'PATCH',
                 $this->graphApiBaseUrl . "/users/{$azureId}",
-                ['accountEnabled' => false]
+                ['accountEnabled' => false],
+                1  // ← CHANGED: Only 1 retry (down from 3)
             );
 
             if (!$response->successful()) {
@@ -603,34 +616,13 @@ class AzureGraphService
                 );
             }
 
-            // 🎯 AUDIT: Log successful disable
-            // AzureAuditLogger::log(
-            //     'azure.user.disabled',
-            //     null,
-            //     'success',
-            //     null,
-            //     [
-            //         'azure_id' => $azureId,
-            //     ]
-            // );
-
             Log::channel('azure')->info('User disabled in Azure AD', [
                 'azure_id' => $azureId
             ]);
 
+            $this->throttleRequest();
             return true;
         } catch (Exception $e) {
-            // 🎯 AUDIT: Log failed disable
-            // AzureAuditLogger::log(
-            //     'azure.user.disable.failed',
-            //     null,
-            //     'failed',
-            //     $e->getMessage(),
-            //     [
-            //         'azure_id' => $azureId,
-            //     ]
-            // );
-
             Log::channel('azure')->error('Failed to disable user', [
                 'azure_id' => $azureId,
                 'error' => $e->getMessage()
@@ -641,7 +633,7 @@ class AzureGraphService
 
     /**
      * Enable a user in Azure AD
-     * WITH AUDIT LOGGING
+     * WITH AUDIT LOGGING AND REDUCED RETRIES
      * 
      * @param string $azureId
      * @return bool
@@ -650,21 +642,16 @@ class AzureGraphService
     public function enableUser(string $azureId): bool
     {
         try {
-            // 🎯 AUDIT: Log enable attempt
-            // AzureAuditLogger::log(
-            //     'azure.user.enable.started',
-            //     null,
-            //     'success',
-            //     null,
-            //     [
-            //         'azure_id' => $azureId,
-            //     ]
-            // );
+            Log::channel('azure')->info('Enabling user in Azure AD', [
+                'azure_id' => $azureId
+            ]);
 
+            // ✅ REDUCED RETRIES: Only 1 retry instead of 3
             $response = $this->makeRequestWithRetry(
                 'PATCH',
                 $this->graphApiBaseUrl . "/users/{$azureId}",
-                ['accountEnabled' => true]
+                ['accountEnabled' => true],
+                1  // ← CHANGED: Only 1 retry (down from 3)
             );
 
             if (!$response->successful()) {
@@ -673,34 +660,13 @@ class AzureGraphService
                 );
             }
 
-            // 🎯 AUDIT: Log successful enable
-            // AzureAuditLogger::log(
-            //     'azure.user.enabled',
-            //     null,
-            //     'success',
-            //     null,
-            //     [
-            //         'azure_id' => $azureId,
-            //     ]
-            // );
-
             Log::channel('azure')->info('User enabled in Azure AD', [
                 'azure_id' => $azureId
             ]);
 
+            $this->throttleRequest();
             return true;
         } catch (Exception $e) {
-            // 🎯 AUDIT: Log failed enable
-            // AzureAuditLogger::log(
-            //     'azure.user.enable.failed',
-            //     null,
-            //     'failed',
-            //     $e->getMessage(),
-            //     [
-            //         'azure_id' => $azureId,
-            //     ]
-            // );
-
             Log::channel('azure')->error('Failed to enable user', [
                 'azure_id' => $azureId,
                 'error' => $e->getMessage()
@@ -708,6 +674,7 @@ class AzureGraphService
             throw $e;
         }
     }
+
 
     /**
      * Delete a user from Azure AD
@@ -758,6 +725,7 @@ class AzureGraphService
                 'azure_id' => $azureId
             ]);
 
+            $this->throttleRequest();
             return true;
         } catch (Exception $e) {
             // 404 is acceptable - user already deleted
@@ -917,6 +885,8 @@ class AzureGraphService
                     'azure_user_id' => $azureUserId,
                     'group_id' => $groupId
                 ]);
+
+                $this->throttleRequest();
                 return true;
             }
 
@@ -943,6 +913,8 @@ class AzureGraphService
                     'azure_user_id' => $azureUserId,
                     'group_id' => $groupId
                 ]);
+
+                $this->throttleRequest();
                 return true;
             }
 
@@ -1013,6 +985,8 @@ class AzureGraphService
                     'azure_user_id' => $azureUserId,
                     'group_id' => $groupId
                 ]);
+
+                $this->throttleRequest();
                 return true;
             }
 
@@ -1089,6 +1063,7 @@ class AzureGraphService
                     'group_name' => $groupName
                 ]);
 
+                $this->throttleRequest();
                 return [
                     'success' => true,
                     'status' => 'assigned',
@@ -1135,6 +1110,7 @@ class AzureGraphService
                     'group_name' => $groupName
                 ]);
 
+                $this->throttleRequest();
                 return [
                     'success' => true,
                     'status' => 'already_member',
@@ -1149,6 +1125,7 @@ class AzureGraphService
                 'group_name' => $groupName,
                 'error' => $e->getMessage()
             ]);
+
 
             return [
                 'success' => false,
@@ -1307,6 +1284,7 @@ class AzureGraphService
                 'app_role_id' => $appRoleId
             ]);
 
+            $this->throttleRequest();
             return ['success' => true, 'status' => 'assigned'];
         } catch (Exception $e) {
             Log::channel('azure')->error('Failed to assign app role', [
@@ -1380,6 +1358,8 @@ class AzureGraphService
                     'azure_user_id' => $azureUserId,
                     'assignment_id' => $assignmentId
                 ]);
+
+                $this->throttleRequest();
                 return ['success' => true, 'status' => 'removed'];
             }
 
@@ -1429,6 +1409,8 @@ class AzureGraphService
                 Log::channel('azure')->info('User account disabled successfully', [
                     'azure_user_id' => $azureUserId
                 ]);
+
+                $this->throttleRequest();
                 return true;
             }
 
@@ -1471,6 +1453,8 @@ class AzureGraphService
                 Log::channel('azure')->info('User account enabled successfully', [
                     'azure_user_id' => $azureUserId
                 ]);
+
+                $this->throttleRequest();
                 return true;
             }
 

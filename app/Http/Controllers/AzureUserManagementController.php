@@ -376,18 +376,18 @@ class AzureUserManagementController extends Controller
 
     /**
      * Store a newly created user with Azure AD provisioning + D365 provisioning
-     * ENHANCED: Prevents duplicate users by email/UPN
+     * ENHANCED: Prevents duplicate users by email/UPN and ensures AzureId is always set
      *
      * Flow:
-     * 0. CHECK FOR DUPLICATES (email/UPN in DB and Azure AD)
-     * 1. Validate and decode modules JSON
-     * 2. Expand ALL selections (locations, roles, functions) server-side
-     * 3. Create user in local DB (Status='Pending')
-     * 4. Create user in Azure AD
-     * 5. Save AzureId to local DB
-     * 6. Create all expanded module assignments
-     * 7. Provision user to D365 (if D365 LIVE modules assigned)
-     * 8. Rollback everything if ANY critical step fails (all-or-nothing)
+     * 1. CHECK FOR DUPLICATES (email/UPN in DB and Azure AD)
+     * 2. Validate and decode modules JSON
+     * 3. CREATE USER IN AZURE AD FIRST (to get AzureId)
+     * 4. Create user in local DB with AzureId already populated
+     * 5. Auto-assign EmployeeCode if not provided
+     * 6. Expand ALL selections (locations, roles, functions) server-side
+     * 7. Create all expanded module assignments
+     * 8. Provision user to external systems (D365, OPS, BIZ, FIT)
+     * 9. Rollback everything if ANY critical step fails (all-or-nothing)
      *
      * @return \Illuminate\Http\RedirectResponse
      */
@@ -397,7 +397,6 @@ class AzureUserManagementController extends Controller
         $userId = null;
         $azureId = null;
         $azureService = null;
-        $d365ProvisioningStatus = null;
 
         try {
             Log::info('=== USER CREATION STARTED ===', [
@@ -428,7 +427,6 @@ class AzureUserManagementController extends Controller
                     'email' => $userEmail,
                     'existing_user_id' => $existingByUPN->Id,
                     'existing_display_name' => $existingByUPN->displayName,
-                    'created_at' => $existingByUPN->CreatedAt,
                 ]);
 
                 $errorMessage = sprintf(
@@ -447,12 +445,6 @@ class AzureUserManagementController extends Controller
                         'success' => false,
                         'message' => strip_tags($errorMessage),
                         'error' => 'Duplicate user - email already exists',
-                        'existing_user' => [
-                            'id' => $existingByUPN->Id,
-                            'name' => $existingByUPN->displayName,
-                            'email' => $existingByUPN->userPrincipalName,
-                            'created' => $existingByUPN->CreatedAt,
-                        ],
                     ], 422);
                 }
 
@@ -465,13 +457,12 @@ class AzureUserManagementController extends Controller
             $existingByMail = DB::connection('sqlsrv')
                 ->table('Azure_Users')
                 ->where('mail', $userEmail)
-                ->where('userPrincipalName', '!=', $userEmail) // Different UPN but same email
+                ->where('userPrincipalName', '!=', $userEmail)
                 ->first();
 
             if ($existingByMail) {
                 Log::warning('Duplicate user detected by mail field', [
                     'email' => $userEmail,
-                    'existing_user_id' => $existingByMail->Id,
                     'existing_upn' => $existingByMail->userPrincipalName,
                 ]);
 
@@ -488,7 +479,6 @@ class AzureUserManagementController extends Controller
                     return response()->json([
                         'success' => false,
                         'message' => strip_tags($errorMessage),
-                        'error' => 'Duplicate email found under different username',
                     ], 422);
                 }
 
@@ -497,69 +487,8 @@ class AzureUserManagementController extends Controller
                     ->withErrors(['email' => strip_tags($errorMessage)]);
             }
 
-            // Check 3: Azure AD - check if user exists there
-            $azureService = app(\App\Services\AzureGraphService::class);
-
-            try {
-                $existingAzureUser = $azureService->findUserByUPN($userEmail);
-
-                if ($existingAzureUser) {
-                    // Check if this Azure user is already linked in our database
-                    $linkedUser = DB::connection('sqlsrv')
-                        ->table('Azure_Users')
-                        ->where('AzureId', $existingAzureUser['id'])
-                        ->first();
-
-                    if ($linkedUser) {
-                        Log::warning('Azure user exists and is already linked in database', [
-                            'email' => $userEmail,
-                            'azure_id' => $existingAzureUser['id'],
-                            'linked_to' => $linkedUser->Id,
-                        ]);
-
-                        $errorMessage = sprintf(
-                            'This user already exists in both Azure AD and our system!<br>' .
-                                '<strong>Name:</strong> %s<br>' .
-                                '<strong>Email:</strong> %s',
-                            $linkedUser->displayName ?? 'Unknown',
-                            $linkedUser->userPrincipalName ?? $userEmail
-                        );
-                    } else {
-                        // Azure user exists but NOT in our database - we'll link it later
-                        Log::info('Azure user exists but not in our database - will link during creation', [
-                            'email' => $userEmail,
-                            'azure_id' => $existingAzureUser['id'],
-                        ]);
-
-                        // Don't throw error - we'll link this user in Step 3
-                        $existingAzureUser = null; // Reset to allow normal flow
-                    }
-
-                    if ($linkedUser) {
-                        if ($request->wantsJson() || $request->ajax()) {
-                            return response()->json([
-                                'success' => false,
-                                'message' => strip_tags($errorMessage),
-                                'error' => 'User exists in Azure AD and database',
-                            ], 422);
-                        }
-
-                        return redirect()->back()
-                            ->withInput()
-                            ->withErrors(['email' => strip_tags($errorMessage)]);
-                    }
-                }
-            } catch (\Exception $azureCheckError) {
-                // If Azure check fails, log warning but continue
-                // (Azure might be temporarily unavailable)
-                Log::warning('Could not check Azure AD for duplicate (will try again during creation)', [
-                    'email' => $userEmail,
-                    'error' => $azureCheckError->getMessage(),
-                ]);
-            }
-
-            // Check 4: Employee ID uniqueness (if provided)
-            if (! empty($request->employee_id)) {
+            // Check 3: Employee ID uniqueness (if provided)
+            if (!empty($request->employee_id)) {
                 $existingByEmployeeId = DB::connection('sqlsrv')
                     ->table('Azure_Users')
                     ->where('EmployeCode', $request->employee_id)
@@ -581,7 +510,6 @@ class AzureUserManagementController extends Controller
                         return response()->json([
                             'success' => false,
                             'message' => $errorMessage,
-                            'error' => 'Duplicate employee ID',
                         ], 422);
                     }
 
@@ -591,13 +519,12 @@ class AzureUserManagementController extends Controller
                 }
             }
 
-            Log::info('✓ Step 0: No duplicates found - proceeding with creation', [
-                'email' => $userEmail,
-            ]);
+            Log::info('✓ Step 0: No duplicates found - proceeding with creation');
 
             // ====================================================================
             // STEP 1: Decode and validate modules JSON
             // ====================================================================
+
             $modulesData = [];
 
             if ($request->has('modules_json')) {
@@ -611,21 +538,29 @@ class AzureUserManagementController extends Controller
                     'compact_assignments' => count($modulesData),
                 ]);
             } elseif ($request->has('modules')) {
-                // Fallback to old format for compatibility
                 $modulesData = $request->input('modules');
-
                 Log::info('Using legacy modules format', [
                     'assignments' => count($modulesData),
                 ]);
             }
 
-            // Validate we have modules
             if (empty($modulesData)) {
                 throw new \Exception('No module assignments provided. Please assign at least one module.');
             }
 
-            // Start database transaction
-            DB::connection('sqlsrv')->beginTransaction();
+            // ====================================================================
+            // STEP 1.5: Validate Windows Sign-In module is present (MANDATORY)
+            // ====================================================================
+            $hasWindowsSignIn = collect($modulesData)->contains(function ($module) {
+                $moduleName = strtoupper($module['application_name'] ?? '');
+                return in_array($moduleName, ['WINDOWS SIGN IN', 'WINDOWS SIGN-IN', 'WINDOWS SIGNIN']);
+            });
+
+            if (!$hasWindowsSignIn) {
+                throw new \Exception('Windows Sign-In module is mandatory for all new users. Please add it to the assignments.');
+            }
+
+            Log::info('✓ Windows Sign-In module validation passed');
 
             // ====================================================================
             // STEP 2: Prepare user data
@@ -636,8 +571,10 @@ class AzureUserManagementController extends Controller
             $givenName = $nameParts[0];
             $surname = $nameParts[1] ?? $nameParts[0];
 
-            // Use email as userPrincipalName
-            $userPrincipalName = $userEmail;
+            // Extract email local part and generate proper UPN
+            $emailLocalPart = explode('@', $userEmail)[0];
+            $companyDomain = config('azure.tenant_domain', 'freight-in-time.com');
+            $userPrincipalName = $emailLocalPart . '@' . $companyDomain;
 
             // Generate new GUID for user ID
             $userId = DB::connection('sqlsrv')
@@ -645,10 +582,10 @@ class AzureUserManagementController extends Controller
 
             // Determine primary location from first module assignment
             $primaryLocation = 'KE'; // Default to Kenya
-            if (! empty($modulesData)) {
+            if (!empty($modulesData)) {
                 $firstModule = $modulesData[0];
                 if (
-                    ! empty($firstModule['locationCodes']) &&
+                    !empty($firstModule['locationCodes']) &&
                     $firstModule['locationCodes'][0] !== 'ALL' &&
                     strtoupper($firstModule['locationCodes'][0]) !== 'ALL'
                 ) {
@@ -660,73 +597,42 @@ class AzureUserManagementController extends Controller
                 'user_id' => $userId,
                 'given_name' => $givenName,
                 'surname' => $surname,
+                'user_principal_name' => $userPrincipalName,
+                'user_principal_name' => $userPrincipalName,
                 'primary_location' => $primaryLocation,
             ]);
 
-            // ====================================================================
-            // STEP 3: Insert into Azure_Users with Status = 'Pending'
-            // ====================================================================
-
-            DB::connection('sqlsrv')->insert('
-            INSERT INTO Azure_Users (
-                Id, userPrincipalName, displayName, surname, mail, givenName,
-                telephoneNumber, mobilePhone, jobTitle, department,
-                officeLocation, accountEnabled, userType, usageLocation, country,
-                createdDateTime, Status, EmployeCode, companyName, AzureId
-            )
-            VALUES (
-                ?, ?, ?, ?, ?, ?,
-                ?, ?, ?, ?,
-                ?, ?, ?, ?, ?,
-                GETDATE(), ?, ?, ?, NULL
-            )
-        ', [
-                $userId,
-                $userPrincipalName,
-                $request->name,
-                $surname,
-                $userEmail,
-                $givenName,
-                $request->phone,
-                $request->mobile_phone,
-                $request->job_title,
-                $request->department,
-                $primaryLocation,
-                1, // accountEnabled = true
-                'Member',
-                'KE',
-                'Kenya',
-                'Pending', // Status = Pending
-                $request->employee_id,
-                $request->company_id,
-            ]);
-
-            Log::info('✓ Step 3: User created in local database', [
-                'user_id' => $userId,
-                'email' => $userEmail,
-                'status' => 'Pending',
-            ]);
+            // Start database transaction
+            DB::connection('sqlsrv')->beginTransaction();
 
             // ====================================================================
-            // STEP 4: Create user in Azure AD
+            // STEP 3: CREATE USER IN AZURE AD FIRST (to get AzureId)
             // ====================================================================
 
             $azureUpn = null;
+            $azureService = app(\App\Services\AzureGraphService::class);
 
-            Log::info('→ Step 4: Checking Azure AD...', [
+            Log::info('→ Step 3: Creating user in Azure AD...', [
                 'upn' => $userPrincipalName,
                 'display_name' => $request->name,
             ]);
 
-            // Check if user already exists in Azure AD (double-check)
-            $existingAzureUser = $azureService->findUserByUPN($userPrincipalName);
+            // Check if user already exists in Azure AD
+            $existingAzureUser = null;
+            try {
+                $existingAzureUser = $azureService->findUserByUPN($userPrincipalName);
+            } catch (\Exception $e) {
+                Log::debug('Azure AD lookup during creation', [
+                    'error' => $e->getMessage(),
+                ]);
+            }
 
             if ($existingAzureUser) {
                 // User already exists in Azure - link to existing user
                 $azureId = $existingAzureUser['id'];
                 $azureUpn = $existingAzureUser['userPrincipalName'];
 
-                Log::info('✓ Step 4: User already exists in Azure AD - linking', [
+                Log::info('✓ Step 3: User already exists in Azure AD - linking', [
                     'azure_id' => $azureId,
                     'azure_upn' => $azureUpn,
                 ]);
@@ -735,11 +641,11 @@ class AzureUserManagementController extends Controller
                 $azureUserData = [
                     'accountEnabled' => true,
                     'displayName' => $request->name,
-                    'mailNickname' => explode('@', $userEmail)[0],
+                    'mailNickname' => $emailLocalPart,
                     'userPrincipalName' => $userPrincipalName,
                     'givenName' => $givenName,
                     'surname' => $surname,
-                    'mail' => $userEmail,
+                    'mail' => $userPrincipalName,
                     'usageLocation' => 'KE',
                     'passwordProfile' => [
                         'forceChangePasswordNextSignIn' => true,
@@ -769,30 +675,104 @@ class AzureUserManagementController extends Controller
                 $azureId = $azureResult['id'];
                 $azureUpn = $azureResult['userPrincipalName'];
 
-                Log::info('✓ Step 4: User created in Azure AD', [
+                Log::info('✓ Step 3: User created in Azure AD', [
                     'azure_id' => $azureId,
                     'azure_upn' => $azureUpn,
                 ]);
             }
 
+            // Validate AzureId before proceeding
+            if (empty($azureId) || !$this->isValidUuid($azureId)) {
+                throw new \Exception('Failed to obtain valid Azure ID from Azure AD');
+            }
+
             // ====================================================================
-            // STEP 5: Update local DB with AzureId
+            // STEP 4: Insert into Azure_Users WITH AzureId already populated
             // ====================================================================
 
-            DB::connection('sqlsrv')->update('
-            UPDATE Azure_Users
-            SET AzureId = ?
-            WHERE Id = ?
+            Log::info('→ Step 4: Inserting user into database with AzureId...');
+
+            DB::connection('sqlsrv')->insert('
+            INSERT INTO Azure_Users (
+                Id, userPrincipalName, displayName, surname, mail, givenName,
+                telephoneNumber, mobilePhone, jobTitle, department,
+                officeLocation, accountEnabled, userType, usageLocation, country,
+                createdDateTime, Status, EmployeCode, companyName, AzureId
+            )
+            VALUES (
+                ?, ?, ?, ?, ?, ?,
+                ?, ?, ?, ?,
+                ?, ?, ?, ?, ?,
+                GETDATE(), ?, ?, ?, ?
+            )
         ', [
-                $azureId,
                 $userId,
+                $userPrincipalName,
+                $request->name,
+                $surname,
+                $userPrincipalName,
+                $givenName,
+                $request->phone,
+                $request->mobile_phone,
+                $request->job_title,
+                $request->department,
+                $primaryLocation,
+                1, // accountEnabled = true
+                'Member',
+                'KE',
+                'Kenya',
+                'Pending', // Status = Pending
+                $request->employee_id,
+                $request->company_id,
+                $azureId, // ← AzureId is set immediately during creation!
             ]);
 
-            Log::info('✓ Step 5: Azure ID saved to local database', [
+            Log::info('✓ Step 4: User created in database with AzureId', [
                 'user_id' => $userId,
                 'azure_id' => $azureId,
-                'status' => 'Pending (awaiting external system sync)',
+                'upn' => $userPrincipalName,
+                'status' => 'Pending',
             ]);
+
+            // ====================================================================
+            // STEP 5: Auto-assign EmployeeCode if not provided
+            // ====================================================================
+
+            if (empty($request->employee_id)) {
+                Log::info('Auto-generating EmployeeCode...');
+
+                $nextCode = DB::connection('sqlsrv')->select("
+                SELECT CAST(ISNULL(MAX(MaxCode), 0) + 1 AS VARCHAR(100)) as NextCode
+                FROM (
+                    SELECT MAX(CAST(CU.EmployeeCode AS BIGINT)) as MaxCode
+                    FROM Cust_User CU WITH (NOLOCK)
+                    WHERE CU.EmployeeCode IS NOT NULL AND LEN(ISNULL(CU.EmployeeCode, '')) > 0
+        
+                    UNION ALL
+        
+                    SELECT MAX(CAST(AU.EmployeCode AS BIGINT)) as MaxCode
+                    FROM Azure_Users AU WITH (NOLOCK)
+                    WHERE AU.EmployeCode IS NOT NULL AND LEN(ISNULL(AU.EmployeCode, '')) > 0
+                ) AS Combined
+            ");
+
+                $generatedEmployeeCode = $nextCode[0]->NextCode ?? '1';
+
+                DB::connection('sqlsrv')->update(
+                    "UPDATE Azure_Users SET EmployeCode = ? WHERE Id = ?",
+                    [$generatedEmployeeCode, $userId]
+                );
+
+                Log::info('✓ EmployeeCode auto-assigned', [
+                    'user_id' => $userId,
+                    'employee_code' => $generatedEmployeeCode,
+                ]);
+            } else {
+                Log::info('Using provided EmployeeCode', [
+                    'user_id' => $userId,
+                    'employee_code' => $request->employee_id,
+                ]);
+            }
 
             // ====================================================================
             // STEP 6: Expand module assignments (server-side)
@@ -814,7 +794,6 @@ class AzureUserManagementController extends Controller
                         empty($compactAssignment['application_name'])
                     ) {
                         $expansionErrors[] = "Assignment {$index}: Missing required fields";
-
                         continue;
                     }
 
@@ -822,57 +801,87 @@ class AzureUserManagementController extends Controller
                     $module = DB::connection('sqlsrv')
                         ->selectOne(
                             'SELECT Id, Name, ApplicationId FROM Azure_SoftwareMaster
-                        WHERE Id = ? AND IsActive = 1 AND IsDeleted = 0',
+                WHERE Id = ? AND IsActive = 1 AND IsDeleted = 0',
                             [$compactAssignment['module_id']]
                         );
 
-                    if (! $module) {
+                    if (!$module) {
                         $expansionErrors[] = "Assignment {$index}: Module not found or inactive";
-
                         continue;
                     }
 
-                    // --------------------------------------------------------
-                    // 6.1: Expand LOCATIONS
-                    // --------------------------------------------------------
+                    // ================================================================
+                    // ✅ STEP 6.1: Check if this is Windows Sign-In module
+                    // ================================================================
+                    $applicationCode = $compactAssignment['application_name'];
+                    $isWindowsSignIn = in_array(strtoupper($applicationCode), [
+                        'WINDOWS SIGN IN',
+                        'WINDOWS SIGN-IN',
+                        'WINDOWS SIGNIN'
+                    ]);
+
+                    // ================================================================
+                    // ✅ STEP 6.2: Expand LOCATIONS (with Windows Sign-In special handling)
+                    // ================================================================
                     $locations = [];
 
-                    if (
-                        $compactAssignment['location'] === 'ALL' ||
-                        in_array('ALL', $compactAssignment['locationCodes'] ?? [])
-                    ) {
-                        $locationsRaw = DB::connection('sqlsrv')
-                            ->select('SELECT Id, code, Name FROM Cust_Office WHERE IsActive = 1 AND IsDeleted = 0');
-                        $locations = collect($locationsRaw);
+                    if ($isWindowsSignIn) {
+                        // ✅ WINDOWS SIGN-IN: Use default location automatically
+                        Log::info("  Processing Windows Sign-In module (no location required)");
 
-                        Log::info("  Expanded ALL locations to {$locations->count()} locations");
+                        $defaultLocation = DB::connection('sqlsrv')
+                            ->selectOne("SELECT TOP 1 Id, code, Name FROM Cust_Office 
+                             WHERE IsActive = 1 AND IsDeleted = 0 
+                             ORDER BY code");
+
+                        if (!$defaultLocation) {
+                            $expansionErrors[] = "Assignment {$index}: Could not find default location for Windows Sign-In";
+                            continue;
+                        }
+
+                        $locations = collect([$defaultLocation]);
+
+                        Log::info("  ✓ Using default location for Windows Sign-In", [
+                            'location_code' => $defaultLocation->code,
+                            'location_name' => $defaultLocation->Name
+                        ]);
                     } else {
-                        $locationCodes = $compactAssignment['locationCodes'] ?? [];
-                        if (! empty($locationCodes)) {
-                            $placeholders = implode(',', array_fill(0, count($locationCodes), '?'));
+                        // ✅ NORMAL MODULES: Process locations as usual
+                        if (
+                            $compactAssignment['location'] === 'ALL' ||
+                            in_array('ALL', $compactAssignment['locationCodes'] ?? [])
+                        ) {
                             $locationsRaw = DB::connection('sqlsrv')
-                                ->select(
-                                    "SELECT Id, code, Name FROM Cust_Office
-                                WHERE code IN ({$placeholders}) AND IsActive = 1 AND IsDeleted = 0",
-                                    $locationCodes
-                                );
+                                ->select('SELECT Id, code, Name FROM Cust_Office WHERE IsActive = 1 AND IsDeleted = 0');
                             $locations = collect($locationsRaw);
 
-                            Log::info("  Using {$locations->count()} specific locations");
+                            Log::info("  Expanded ALL locations to {$locations->count()} locations");
+                        } else {
+                            $locationCodes = $compactAssignment['locationCodes'] ?? [];
+                            if (!empty($locationCodes)) {
+                                $placeholders = implode(',', array_fill(0, count($locationCodes), '?'));
+                                $locationsRaw = DB::connection('sqlsrv')
+                                    ->select(
+                                        "SELECT Id, code, Name FROM Cust_Office
+                            WHERE code IN ({$placeholders}) AND IsActive = 1 AND IsDeleted = 0",
+                                        $locationCodes
+                                    );
+                                $locations = collect($locationsRaw);
+
+                                Log::info("  Using {$locations->count()} specific locations");
+                            }
                         }
                     }
 
                     if ($locations->isEmpty()) {
                         $expansionErrors[] = "Assignment {$index}: No valid locations found";
-
                         continue;
                     }
 
-                    // --------------------------------------------------------
-                    // 6.2: Expand ROLES
-                    // --------------------------------------------------------
+                    // ================================================================
+                    // STEP 6.3: Expand ROLES (existing code)
+                    // ================================================================
                     $roles = [];
-                    $applicationCode = $compactAssignment['application_name'];
 
                     if (
                         $compactAssignment['role_id'] === 'ALL' ||
@@ -881,7 +890,7 @@ class AzureUserManagementController extends Controller
                         try {
                             $rolesRaw = DB::connection('sqlsrv')
                                 ->select(
-                                    'EXEC sp_UserCreation_ResourceRole @ApplicationCode = ?',
+                                    'EXEC sp_Azure_UserResourceRole @ApplicationCode = ?',
                                     [$applicationCode]
                                 );
 
@@ -891,27 +900,26 @@ class AzureUserManagementController extends Controller
                                     'code' => $r->RoleCode ?? $r->Code ?? $r->code,
                                 ];
                             })->filter(function ($r) {
-                                return ! empty($r->id) && ! empty($r->code);
+                                return !empty($r->id) && !empty($r->code);
                             });
 
                             Log::info("  Expanded ALL roles to {$roles->count()} roles for {$applicationCode}");
                         } catch (\Exception $e) {
                             $expansionErrors[] = "Assignment {$index}: Failed to fetch roles - {$e->getMessage()}";
-
                             continue;
                         }
                     } else {
                         $roleIds = $compactAssignment['roleIds'] ?? [];
                         $roleCodes = $compactAssignment['roleCodes'] ?? [];
 
-                        if (! empty($roleIds)) {
+                        if (!empty($roleIds)) {
                             $roles = collect($roleIds)->map(function ($id, $idx) use ($roleCodes) {
                                 return (object) [
                                     'id' => $id,
                                     'code' => $roleCodes[$idx] ?? '',
                                 ];
                             })->filter(function ($r) {
-                                return ! empty($r->id) && ! empty($r->code);
+                                return !empty($r->id) && !empty($r->code);
                             });
 
                             Log::info("  Using {$roles->count()} specific roles");
@@ -920,69 +928,22 @@ class AzureUserManagementController extends Controller
 
                     if ($roles->isEmpty()) {
                         $expansionErrors[] = "Assignment {$index}: No valid roles found";
-
                         continue;
                     }
 
-                    // --------------------------------------------------------
-                    // 6.3: Expand FUNCTIONS (SCM modules only)
-                    // --------------------------------------------------------
+                    // ================================================================
+                    // STEP 6.4: Expand FUNCTIONS (SCM modules only - existing code)
+                    // ================================================================
                     $functions = collect([null]);
                     $isSCM = in_array(strtoupper($applicationCode), ['OPS', 'OPS UAT', 'OPSUAT']);
 
                     if ($isSCM) {
-                        if (
-                            $compactAssignment['function_id'] === 'ALL' ||
-                            in_array('ALL', $compactAssignment['functionIds'] ?? [])
-                        ) {
-                            try {
-                                $functionsRaw = DB::connection('sqlsrv')
-                                    ->select('EXEC sp_UserCreation_Resourcefunction');
-
-                                $functions = collect($functionsRaw)->map(function ($f) {
-                                    return (object) [
-                                        'id' => $f->ID ?? $f->Id ?? $f->id,
-                                        'code' => $f->Code ?? $f->code,
-                                    ];
-                                })->filter(function ($f) {
-                                    return ! empty($f->id) && ! empty($f->code);
-                                });
-
-                                Log::info("  Expanded ALL functions to {$functions->count()} functions");
-                            } catch (\Exception $e) {
-                                $expansionErrors[] = "Assignment {$index}: Failed to fetch SCM functions - {$e->getMessage()}";
-
-                                continue;
-                            }
-                        } else {
-                            $functionIds = $compactAssignment['functionIds'] ?? [];
-                            $functionCodes = $compactAssignment['functionCodes'] ?? [];
-
-                            if (! empty($functionIds)) {
-                                $functions = collect($functionIds)->map(function ($id, $idx) use ($functionCodes) {
-                                    return (object) [
-                                        'id' => $id,
-                                        'code' => $functionCodes[$idx] ?? '',
-                                    ];
-                                })->filter(function ($f) {
-                                    return ! empty($f->id) && ! empty($f->code);
-                                });
-
-                                Log::info("  Using {$functions->count()} specific functions");
-                            }
-                        }
-
-                        if ($functions->isEmpty()) {
-                            $expansionErrors[] = "Assignment {$index}: SCM module requires functions but none found";
-
-                            continue;
-                        }
+                        // ... (keep your existing SCM function expansion code)
                     }
 
-                    // --------------------------------------------------------
-                    // 6.4: Create all combinations (role × location, function × location)
-                    // NOTE: Using 1-to-1 method - roles separate from functions
-                    // --------------------------------------------------------
+                    // ================================================================
+                    // STEP 6.5: Create all combinations (existing code)
+                    // ================================================================
                     foreach ($locations as $location) {
                         // Add roles (without functions)
                         foreach ($roles as $role) {
@@ -994,12 +955,12 @@ class AzureUserManagementController extends Controller
                                 'location_code' => $location->code,
                                 'role_id' => $role->id,
                                 'role_code' => $role->code,
-                                'function_id' => null,  // No function for role records
+                                'function_id' => null,
                                 'function_code' => null,
                             ];
                         }
 
-                        // Add functions separately (only for SCM, without roles)
+                        // Add functions separately (only for SCM)
                         if ($isSCM) {
                             foreach ($functions as $function) {
                                 if ($function && $function->id) {
@@ -1009,7 +970,7 @@ class AzureUserManagementController extends Controller
                                         'application_name' => $compactAssignment['application_name'],
                                         'location_id' => $location->Id,
                                         'location_code' => $location->code,
-                                        'role_id' => null,  // No role for function records
+                                        'role_id' => null,
                                         'role_code' => null,
                                         'function_id' => $function->id,
                                         'function_code' => $function->code,
@@ -1027,25 +988,6 @@ class AzureUserManagementController extends Controller
                 }
             }
 
-            // Check if expansion failed
-            if (! empty($expansionErrors)) {
-                $errorMessage = "Failed to expand module assignments:\n" . implode("\n", $expansionErrors);
-                Log::error('Expansion errors occurred', [
-                    'errors' => $expansionErrors,
-                    'expanded_count' => count($expandedAssignments),
-                ]);
-                throw new \Exception($errorMessage);
-            }
-
-            if (empty($expandedAssignments)) {
-                throw new \Exception('No valid module assignments after expansion. Please check your selections.');
-            }
-
-            Log::info('✓ Step 6: Module assignments expanded successfully', [
-                'compact_assignments' => count($modulesData),
-                'expanded_assignments' => count($expandedAssignments),
-            ]);
-
             // ====================================================================
             // STEP 7: Validate and sanitize all expanded assignments
             // ====================================================================
@@ -1061,28 +1003,26 @@ class AzureUserManagementController extends Controller
                 // Validate assignment
                 $validation = $this->validateAssignment($assignment, $index);
 
-                if (! $validation['valid']) {
+                if (!$validation['valid']) {
                     $validationErrors[] = $validation['error'];
                     Log::error('Assignment validation failed', [
                         'index' => $index,
                         'error' => $validation['error'],
                         'assignment' => $assignment,
                     ]);
-
                     continue;
                 }
 
                 // Verify referenced data exists
                 $dataCheck = $this->verifyReferencedData($validation['data']);
 
-                if (! $dataCheck['valid']) {
+                if (!$dataCheck['valid']) {
                     $validationErrors[] = "Assignment {$index}: " . implode(', ', $dataCheck['errors']);
                     Log::error('Referenced data validation failed', [
                         'index' => $index,
                         'errors' => $dataCheck['errors'],
                         'assignment' => $assignment,
                     ]);
-
                     continue;
                 }
 
@@ -1090,7 +1030,7 @@ class AzureUserManagementController extends Controller
             }
 
             // Check if validation failed
-            if (! empty($validationErrors)) {
+            if (!empty($validationErrors)) {
                 $errorMessage = 'Validation failed for ' . count($validationErrors) . " assignment(s):\n" .
                     implode("\n", array_slice($validationErrors, 0, 5));
 
@@ -1122,10 +1062,10 @@ class AzureUserManagementController extends Controller
             $functionAssignments = [];
 
             foreach ($validatedAssignments as $assignment) {
-                if (! empty($assignment['role_id'])) {
+                if (!empty($assignment['role_id'])) {
                     $roleAssignments[] = $assignment;
                 }
-                if (! empty($assignment['function_id'])) {
+                if (!empty($assignment['function_id'])) {
                     $functionAssignments[] = $assignment;
                 }
             }
@@ -1142,7 +1082,7 @@ class AzureUserManagementController extends Controller
             $insertedRolesCount = 0;
             $roleInsertErrors = [];
 
-            if (! empty($roleAssignments)) {
+            if (!empty($roleAssignments)) {
                 Log::info('→ Step 9: Inserting role assignments...', [
                     'total_roles' => count($roleAssignments),
                 ]);
@@ -1156,7 +1096,7 @@ class AzureUserManagementController extends Controller
                             ->table('Azure_Application_UserMapping')
                             ->insert([
                                 'Id' => $mappingId,
-                                'AzureUserID' => $azureId,
+                                'AzureUserID' => $userId,
                                 'user_id' => $userPrincipalName,
                                 'application_id' => $roleData['application_id'],
                                 'Username' => $request->name,
@@ -1169,8 +1109,6 @@ class AzureUserManagementController extends Controller
                                 'IsDelete' => 0,
                                 'CreatedBy' => Auth::user()->name ?? 'system',
                                 'CreatedOn' => DB::raw('GETDATE()'),
-                                'LastModifiedBy' => null,
-                                'LastModifiedOn' => null,
                             ]);
 
                         $insertedRolesCount++;
@@ -1213,7 +1151,7 @@ class AzureUserManagementController extends Controller
                             ->table('Azure_Application_UserFunction')
                             ->insert([
                                 'Id' => $functionId,
-                                'AzureUserID' => $azureId,
+                                'AzureUserID' => $userId,
                                 'user_id' => $userPrincipalName,
                                 'application_id' => $funcData['application_id'],
                                 'Username' => $request->name,
@@ -1269,6 +1207,7 @@ class AzureUserManagementController extends Controller
 
             $totalAssignmentsCreated = $insertedRolesCount + $insertedFunctionsCount;
 
+
             // ====================================================================
             // STEP 11: Provision user to D365 (if applicable)
             // ====================================================================
@@ -1288,14 +1227,14 @@ class AzureUserManagementController extends Controller
 
                 try {
                     $d365Result = DB::connection('sqlsrv')->select('
-                    SET NOCOUNT ON;
-                    DECLARE @Status VARCHAR(15), @Remark VARCHAR(200);
-                    EXEC sp_Azure_D365UserCreation
-                        @AzureUserID = ?,
-                        @Status = @Status OUTPUT,
-                        @Remark = @Remark OUTPUT;
-                    SELECT @Status as Status, @Remark as Remark;
-                ', [$azureId]);
+            SET NOCOUNT ON;
+            DECLARE @Status VARCHAR(15), @Remark VARCHAR(200);
+            EXEC sp_Azure_D365UserCreation
+                @AzureUserID = ?,
+                @Status = @Status OUTPUT,
+                @Remark = @Remark OUTPUT;
+            SELECT @Status as Status, @Remark as Remark;
+        ', [$userId]);
 
                     $d365Status = $d365Result[0]->Status ?? 'Failed';
                     $d365Remark = $d365Result[0]->Remark ?? 'Unknown error';
@@ -1353,7 +1292,192 @@ class AzureUserManagementController extends Controller
             }
 
             // ====================================================================
-            // STEP 12: Commit transaction - everything succeeded!
+            // STEP 12: Provision to OPS/SCM (if applicable)
+            // ====================================================================
+
+            $hasOPSAssignment = collect($validatedAssignments)
+                ->contains(function ($assignment) {
+                    $appName = strtoupper($assignment['application_name']);
+                    return in_array($appName, ['OPS', 'OPS UAT', 'OPSUAT']);
+                });
+
+            if ($hasOPSAssignment) {
+                Log::info('→ Step 12: Provisioning user to OPS/SCM...', [
+                    'user_id' => $userId,
+                ]);
+
+                try {
+                    $scmResult = DB::connection('sqlsrv')->select("
+            SET NOCOUNT ON;
+            DECLARE @Status VARCHAR(15), @Remark VARCHAR(200);
+            EXEC sp_Azure_SCMUserCreation
+                @AzureUserID = ?,
+                @Status = @Status OUTPUT,
+                @Remark = @Remark OUTPUT;
+            SELECT @Status as Status, @Remark as Remark;
+        ", [$userId]);
+
+                    $scmStatus = $scmResult[0]->Status ?? 'Failed';
+                    $scmRemark = $scmResult[0]->Remark ?? 'Unknown error';
+
+                    Log::info(strtoupper($scmStatus) === 'SUCCESS' ? '✓ Step 12: OPS provisioned' : '⚠ Step 12: OPS failed', [
+                        'status' => $scmStatus,
+                        'remark' => $scmRemark,
+                    ]);
+                } catch (\Exception $e) {
+                    Log::error('✗ Step 12: OPS provisioning error', [
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            } else {
+                Log::info('⊘ Step 12: OPS provisioning skipped (no OPS assignments)');
+            }
+
+            // ====================================================================
+            // STEP 13: Provision to BIZ PRO (if applicable)
+            // ====================================================================
+
+            $hasBizAssignment = collect($validatedAssignments)
+                ->contains(function ($assignment) {
+                    return strtoupper($assignment['application_name']) === 'BIZ PRO';
+                });
+
+            if ($hasBizAssignment) {
+                Log::info('→ Step 13: Provisioning user to BIZ PRO...', [
+                    'user_id' => $userId,
+                ]);
+
+                // Get fresh user data for validation
+                $userForValidation = DB::connection('sqlsrv')
+                    ->table('Azure_Users')
+                    ->where('Id', $userId)
+                    ->first();
+
+                // PRE-FLIGHT VALIDATION
+                $validation = $this->validateForBizProvisioning((object) [
+                    'Id' => $userForValidation->Id,
+                    'EmployeCode' => $userForValidation->EmployeCode,
+                ]);
+
+                if (!$validation['valid']) {
+                    Log::warning('⊘ Step 13: BIZ PRO provisioning skipped - validation failed', [
+                        'user_id' => $userId,
+                        'errors' => $validation['errors'],
+                    ]);
+                } else {
+                    try {
+                        $bizApp = DB::connection('sqlsrv')
+                            ->table('Azure_SoftwareMaster')
+                            ->where(function ($q) {
+                                $q->where('Name', 'LIKE', '%FITSYS%')
+                                    ->orWhere('Name', 'LIKE', '%BIZ%');
+                            })
+                            ->first();
+
+                        if ($bizApp) {
+                            $bizResult = DB::connection('sqlsrv')->select("
+                    SET NOCOUNT ON;
+                    DECLARE @Status VARCHAR(15), @Remark VARCHAR(200);
+                    EXEC sp_Azure_FITSYSUserCreation
+                        @AzureUserID = ?,
+                        @ApplicationID = ?,
+                        @Status = @Status OUTPUT,
+                        @Remark = @Remark OUTPUT;
+                    SELECT @Status as Status, @Remark as Remark;
+                ", [$userId, $bizApp->ApplicationId]);
+
+                            $bizStatus = $bizResult[0]->Status ?? 'Failed';
+                            $bizRemark = $bizResult[0]->Remark ?? 'Unknown error';
+
+                            Log::info(strtolower($bizStatus) === 'success' ? '✓ Step 13: BIZ PRO provisioned' : '⚠ Step 13: BIZ PRO failed', [
+                                'status' => $bizStatus,
+                                'remark' => $bizRemark,
+                            ]);
+                        } else {
+                            Log::error('✗ Step 13: BIZ PRO application not found');
+                        }
+                    } catch (\Exception $e) {
+                        Log::error('✗ Step 13: BIZ PRO provisioning error', [
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
+                }
+            } else {
+                Log::info('⊘ Step 13: BIZ PRO provisioning skipped (no BIZ PRO assignments)');
+            }
+
+            // ====================================================================
+            // STEP 14: FIT Express (if applicable)
+            // ====================================================================
+
+            $hasFitAssignment = collect($validatedAssignments)
+                ->contains(function ($assignment) {
+                    return stripos($assignment['application_name'], 'FIT EXPRESS') !== false;
+                });
+
+            if ($hasFitAssignment) {
+                Log::info('→ Step 14: Provisioning user to FIT Express...', [
+                    'user_id' => $userId,
+                ]);
+
+                // Get fresh user data for validation
+                $userForValidation = DB::connection('sqlsrv')
+                    ->table('Azure_Users')
+                    ->where('Id', $userId)
+                    ->first();
+
+                // PRE-FLIGHT VALIDATION
+                $validation = $this->validateForBizProvisioning((object) [
+                    'Id' => $userForValidation->Id,
+                    'EmployeCode' => $userForValidation->EmployeCode,
+                ]);
+
+                if (!$validation['valid']) {
+                    Log::warning('⊘ Step 14: FIT Express provisioning skipped - validation failed', [
+                        'user_id' => $userId,
+                        'errors' => $validation['errors'],
+                    ]);
+                } else {
+                    try {
+                        $fitApp = DB::connection('sqlsrv')
+                            ->table('Azure_SoftwareMaster')
+                            ->where('Name', 'LIKE', '%FIT Express%')
+                            ->first();
+
+                        if ($fitApp) {
+                            $fitResult = DB::connection('sqlsrv')->select("
+                    SET NOCOUNT ON;
+                    DECLARE @Status VARCHAR(15), @Remark VARCHAR(200);
+                    EXEC sp_Azure_FITSYSUserCreation
+                        @AzureUserID = ?,
+                        @ApplicationID = ?,
+                        @Status = @Status OUTPUT,
+                        @Remark = @Remark OUTPUT;
+                    SELECT @Status as Status, @Remark as Remark;
+                ", [$userId, $fitApp->ApplicationId]);
+
+                            $fitStatus = $fitResult[0]->Status ?? 'Failed';
+                            $fitRemark = $fitResult[0]->Remark ?? 'Unknown error';
+
+                            Log::info(strtolower($fitStatus) === 'success' ? '✓ Step 14: FIT Express provisioned' : '⚠ Step 14: FIT Express failed', [
+                                'status' => $fitStatus,
+                                'remark' => $fitRemark,
+                            ]);
+                        } else {
+                            Log::error('✗ Step 14: FIT Express application not found');
+                        }
+                    } catch (\Exception $e) {
+                        Log::error('✗ Step 14: FIT Express provisioning error', [
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
+                }
+            } else {
+                Log::info('⊘ Step 14: FIT Express provisioning skipped (no FIT Express assignments)');
+            }
+
+            // ====================================================================
+            // STEP 15: Commit transaction - everything succeeded!
             // ====================================================================
 
             DB::connection('sqlsrv')->commit();
@@ -1487,36 +1611,118 @@ class AzureUserManagementController extends Controller
     }
 
     /**
-     * Generate a secure random password for Azure AD
-     * Meets Azure AD password complexity requirements:
-     * - At least 8 characters
-     * - Contains uppercase, lowercase, number, and special character
+     * Ensure user has AzureId, fetch from Azure AD if missing
+     * 
+     * @param AzureUser $user
+     * @return array ['success' => bool, 'azure_id' => string|null, 'message' => string]
      */
-    private function generateSecurePassword(): string
+    private function ensureAzureIdExists(AzureUser $user): array
     {
-        $length = config('azure.default_password_length', 16);
+        // Check if AzureId already exists in database
+        $azureId = DB::connection('sqlsrv')
+            ->table('Azure_Users')
+            ->where('Id', $user->Id)
+            ->value('AzureId');
 
-        // Character sets
-        $uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-        $lowercase = 'abcdefghijklmnopqrstuvwxyz';
-        $numbers = '0123456789';
-        $special = '!@#$%^&*()-_=+[]{}|;:,.<>?';
-
-        // Ensure at least one character from each set
-        $password = '';
-        $password .= $uppercase[random_int(0, strlen($uppercase) - 1)];
-        $password .= $lowercase[random_int(0, strlen($lowercase) - 1)];
-        $password .= $numbers[random_int(0, strlen($numbers) - 1)];
-        $password .= $special[random_int(0, strlen($special) - 1)];
-
-        // Fill remaining length with random characters from all sets
-        $allChars = $uppercase . $lowercase . $numbers . $special;
-        for ($i = 4; $i < $length; $i++) {
-            $password .= $allChars[random_int(0, strlen($allChars) - 1)];
+        if (!empty($azureId) && $this->isValidUuid($azureId)) {
+            return [
+                'success' => true,
+                'azure_id' => trim($azureId),
+                'message' => 'AzureId already exists',
+            ];
         }
 
-        // Shuffle to avoid predictable pattern (special char always at position 4, etc.)
-        return str_shuffle($password);
+        // AzureId missing - attempt to fetch from Azure AD
+        Log::warning('AzureId missing - attempting lookup in Azure AD', [
+            'user_id' => $user->Id,
+            'upn' => $user->userPrincipalName,
+        ]);
+
+        try {
+            $azureService = app(\App\Services\AzureGraphService::class);
+            $azureUser = $azureService->findUserByUPN($user->userPrincipalName);
+
+            if (!$azureUser || !isset($azureUser['id'])) {
+                return [
+                    'success' => false,
+                    'azure_id' => null,
+                    'message' => 'User not found in Azure AD',
+                ];
+            }
+
+            $fetchedAzureId = trim($azureUser['id']);
+
+            // Validate format
+            if (!$this->isValidUuid($fetchedAzureId)) {
+                return [
+                    'success' => false,
+                    'azure_id' => null,
+                    'message' => 'Invalid AzureId format received from Azure AD',
+                ];
+            }
+
+            // Update database
+            DB::connection('sqlsrv')
+                ->table('Azure_Users')
+                ->where('Id', $user->Id)
+                ->update(['AzureId' => $fetchedAzureId]);
+
+            Log::info('✓ AzureId fetched and saved from Azure AD', [
+                'user_id' => $user->Id,
+                'azure_id' => $fetchedAzureId,
+            ]);
+
+            return [
+                'success' => true,
+                'azure_id' => $fetchedAzureId,
+                'message' => 'AzureId fetched from Azure AD',
+            ];
+        } catch (\Exception $e) {
+            Log::error('Failed to fetch AzureId from Azure AD', [
+                'user_id' => $user->Id,
+                'upn' => $user->userPrincipalName,
+                'error' => $e->getMessage(),
+            ]);
+
+            return [
+                'success' => false,
+                'azure_id' => null,
+                'message' => 'Azure AD lookup failed: ' . $e->getMessage(),
+            ];
+        }
+    }
+
+    /**
+     * Validate user data before BIZ/FIT provisioning
+     * 
+     * @param AzureUser $user
+     * @return array ['valid' => bool, 'errors' => array]
+     */
+    private function validateForBizProvisioning(AzureUser $user): array
+    {
+        $errors = [];
+
+        // Check 1: EmployeCode must exist
+        if (empty($user->EmployeCode)) {
+            $errors[] = 'EmployeCode is required for BIZ/FIT provisioning. Please ensure EmployeeCode is set in Azure_Users table.';
+        }
+        // Check 2: EmployeCode must be numeric
+        elseif (!is_numeric($user->EmployeCode)) {
+            $errors[] = "EmployeCode '{$user->EmployeCode}' must be numeric (found non-numeric value).";
+        }
+        // Check 3: EmployeCode must be positive integer
+        elseif ((int)$user->EmployeCode <= 0) {
+            $errors[] = "EmployeCode '{$user->EmployeCode}' must be a positive number.";
+        }
+        // ✅ Check 4: EmployeCode must fit in BIGINT range
+        elseif ((int)$user->EmployeCode > 9223372036854775807) {
+            $errors[] = "EmployeCode '{$user->EmployeCode}' exceeds maximum allowed value.";
+        }
+
+        return [
+            'valid' => empty($errors),
+            'errors' => $errors,
+        ];
     }
 
     /**
@@ -1903,6 +2109,15 @@ class AzureUserManagementController extends Controller
      */
     public function update(Request $request, AzureUser $user)
     {
+
+        Log::info('=== UPDATE USER DEBUG INFO ===', [
+            'user_id' => $user->Id,
+            'user_principal' => $user->userPrincipalName,
+            'azure_id_from_model' => $user->AzureId,
+            'azure_id_raw' => $user->getAttributes()['AzureId'] ?? 'NOT SET',
+            'all_attributes' => $user->getAttributes(),
+        ]);
+
         set_time_limit(120);
         error_reporting(E_ALL);
         ini_set('display_errors', 1);
@@ -1926,6 +2141,53 @@ class AzureUserManagementController extends Controller
                 'request_method' => $request->method(),
                 'is_ajax' => $request->ajax(),
             ]);
+
+            // ====================================================================
+            // ✅ NEW: STEP 0.5 - Handle Base Office Update (BEFORE modules)
+            // ====================================================================
+            if ($request->has('scm_base_office')) {
+                $newBaseOffice = trim($request->input('scm_base_office'));
+
+                Log::info('→ Updating base office', [
+                    'user_id' => $user->Id,
+                    'old_value' => $user->BaseOfficeCode,
+                    'new_value' => $newBaseOffice,
+                ]);
+
+                // Verify office exists
+                $office = DB::connection('sqlsrv')
+                    ->table('Cust_Office')
+                    ->where('Code', $newBaseOffice)
+                    ->where('IsActive', 1)
+                    ->where('IsDeleted', 0)
+                    ->first();
+
+                if (!$office) {
+                    Log::error('Base office not found', [
+                        'code' => $newBaseOffice,
+                    ]);
+
+                    return response()->json([
+                        'success' => false,
+                        'message' => "Invalid base office code: {$newBaseOffice}",
+                    ], 400);
+                }
+
+                // Update base office
+                DB::connection('sqlsrv')
+                    ->table('Azure_Users')
+                    ->where('Id', $user->Id)
+                    ->update([
+                        'BaseOfficeCode' => $newBaseOffice,
+                    ]);
+
+                Log::info('✓ Base office updated successfully', [
+                    'user_id' => $user->Id,
+                    'new_base_office' => $newBaseOffice,
+                ]);
+            }
+
+
 
             // ====================================================================
             // STEP 1: Process modules data with proper error handling
@@ -1986,15 +2248,14 @@ class AzureUserManagementController extends Controller
             // ====================================================================
             if (! empty($modulesData)) {
                 try {
-                    // Updated validation - role_id and function_id are now nullable
                     $validated = $request->validate([
                         'modules' => 'required|array|min:1',
                         'modules.*.module_id' => 'required|string',
                         'modules.*.application_id' => 'required|string',
                         'modules.*.location_id' => 'required|string',
                         'modules.*.location_code' => 'required|string',
-                        'modules.*.role_id' => 'nullable|string',  // ← Changed to nullable
-                        'modules.*.role_code' => 'nullable|string',  // ← Changed to nullable
+                        'modules.*.role_id' => 'nullable|string',
+                        'modules.*.role_code' => 'nullable|string',
                         'modules.*.function_id' => 'nullable|string',
                         'modules.*.function_code' => 'nullable|string',
                     ]);
@@ -2036,36 +2297,22 @@ class AzureUserManagementController extends Controller
                 // STEP 4: Soft delete existing assignments FROM BOTH TABLES
                 // ====================================================================
 
-                // Delete from roles table
                 $deletedRolesCount = DB::connection('sqlsrv')
                     ->table('Azure_Application_UserMapping')
                     ->where('user_id', $user->userPrincipalName)
-                    ->where('IsDelete', 0)
-                    ->update([
-                        'IsDelete' => 1,
-                        'IsActive' => 0,
-                        'LastModifiedBy' => Auth::id() ?? 'system',
-                        'LastModifiedOn' => DB::raw('GETDATE()'),
-                    ]);
+                    ->delete(); // ← HARD DELETE
 
-                // Delete from functions table
                 $deletedFunctionsCount = DB::connection('sqlsrv')
                     ->table('Azure_Application_UserFunction')
                     ->where('user_id', $user->userPrincipalName)
-                    ->where('IsDelete', 0)
-                    ->update([
-                        'IsDelete' => 1,
-                        'IsActive' => 0,
-                        'LastModifiedBy' => Auth::id() ?? 'system',
-                        'LastModifiedOn' => DB::raw('GETDATE()'),
-                    ]);
+                    ->delete(); // ← HARD DELETE
 
                 $totalDeleted = $deletedRolesCount + $deletedFunctionsCount;
 
-                Log::info('🗑️ Marked existing assignments as deleted', [
+                Log::info('🗑️ Deleted existing assignments (HARD DELETE)', [
                     'user_principal' => $user->userPrincipalName,
-                    'deleted_roles_count' => $deletedRolesCount,
-                    'deleted_functions_count' => $deletedFunctionsCount,
+                    'deleted_roles' => $deletedRolesCount,
+                    'deleted_functions' => $deletedFunctionsCount,
                     'total_deleted' => $totalDeleted,
                 ]);
 
@@ -2102,7 +2349,6 @@ class AzureUserManagementController extends Controller
                 ]);
 
                 foreach ($modulesData as $index => $moduleData) {
-                    // Determine if this is a role or function record
                     $hasRole = ! empty($moduleData['role_id']);
                     $hasFunction = ! empty($moduleData['function_id']);
 
@@ -2111,7 +2357,6 @@ class AzureUserManagementController extends Controller
                             'index' => $index,
                             'data' => $moduleData,
                         ]);
-
                         continue;
                     }
 
@@ -2150,7 +2395,6 @@ class AzureUserManagementController extends Controller
                             'index' => $index,
                             'error' => $validation['error'],
                         ]);
-
                         continue;
                     }
 
@@ -2162,18 +2406,15 @@ class AzureUserManagementController extends Controller
                             'index' => $index,
                             'errors' => $dataCheck['errors'],
                         ]);
-
                         continue;
                     }
 
-                    // Get module name
                     $module = DB::connection('sqlsrv')
                         ->table('Azure_SoftwareMaster')
                         ->where('Id', $validation['data']['module_id'])
                         ->first();
 
                     $validation['data']['application_name'] = $module->Name;
-
                     $validatedRoles[] = $validation['data'];
                 }
 
@@ -2216,7 +2457,6 @@ class AzureUserManagementController extends Controller
                             'index' => $index,
                             'error' => $validation['error'],
                         ]);
-
                         continue;
                     }
 
@@ -2228,18 +2468,15 @@ class AzureUserManagementController extends Controller
                             'index' => $index,
                             'errors' => $dataCheck['errors'],
                         ]);
-
                         continue;
                     }
 
-                    // Get module name
                     $module = DB::connection('sqlsrv')
                         ->table('Azure_SoftwareMaster')
                         ->where('Id', $validation['data']['module_id'])
                         ->first();
 
                     $validation['data']['application_name'] = $module->Name;
-
                     $validatedFunctions[] = $validation['data'];
                 }
 
@@ -2279,7 +2516,7 @@ class AzureUserManagementController extends Controller
                             ->table('Azure_Application_UserMapping')
                             ->insert([
                                 'Id' => \Illuminate\Support\Str::uuid()->toString(),
-                                'AzureUserID' => $user->AzureId,
+                                'AzureUserID' => $user->Id,
                                 'user_id' => $user->userPrincipalName,
                                 'application_id' => $roleData['application_id'],
                                 'ApplicationName' => $roleData['application_name'],
@@ -2291,8 +2528,8 @@ class AzureUserManagementController extends Controller
                                 'IsDelete' => 0,
                                 'CreatedBy' => Auth::user()->name ?? 'system',
                                 'CreatedOn' => DB::raw('GETDATE()'),
-                                'LastModifiedBy' => Auth::user()->name ?? 'system',
-                                'LastModifiedOn' => DB::raw('GETDATE()'),
+                                //'LastModifiedBy' => Auth::user()->name ?? 'system',
+                                //'LastModifiedOn' => DB::raw('GETDATE()'),
                             ]);
 
                         $insertedRolesCount++;
@@ -2314,10 +2551,10 @@ class AzureUserManagementController extends Controller
                 ]);
 
                 // ====================================================================
-                // STEP 10: Insert FUNCTIONS to Azure_Application_UserFunction
+                // STEP 10: UPSERT FUNCTIONS to Azure_Application_UserFunction
                 // ====================================================================
 
-                Log::info('→ Step 10: Inserting function assignments...', [
+                Log::info('→ Step 10: Upserting function assignments...', [
                     'total_functions' => count($validatedFunctions),
                 ]);
 
@@ -2326,25 +2563,62 @@ class AzureUserManagementController extends Controller
 
                 foreach ($validatedFunctions as $funcData) {
                     try {
-                        DB::connection('sqlsrv')
+                        // ✅ FIX: Check if record exists by PRIMARY KEY (AzureUserID, FunctionID, OfficeID)
+                        $existing = DB::connection('sqlsrv')
                             ->table('Azure_Application_UserFunction')
-                            ->insert([
-                                'Id' => \Illuminate\Support\Str::uuid()->toString(),
-                                'AzureUserID' => $user->AzureId,
-                                'user_id' => $user->userPrincipalName,
-                                'application_id' => $funcData['application_id'],
-                                'ApplicationName' => $funcData['application_name'],
-                                'FunctionID' => $funcData['function_id'],
-                                'FunctionCode' => $funcData['function_code'],
-                                'OfficeID' => $funcData['location_id'],
-                                'OfficeCode' => $funcData['location_code'],
-                                'IsActive' => 1,
-                                'IsDelete' => 0,
-                                'CreatedBy' => Auth::user()->name ?? 'system',
-                                'CreatedOn' => DB::raw('GETDATE()'),
-                                'LastModifiedBy' => Auth::user()->name ?? 'system',
-                                'LastModifiedOn' => DB::raw('GETDATE()'),
+                            ->where('AzureUserID', $user->AzureId)
+                            ->where('FunctionID', $funcData['function_id'])
+                            ->where('OfficeID', $funcData['location_id'])
+                            ->first();
+
+                        if ($existing) {
+                            // UPDATE existing record (reactivate and update all fields)
+                            DB::connection('sqlsrv')
+                                ->table('Azure_Application_UserFunction')
+                                ->where('Id', $existing->Id)
+                                ->update([
+                                    'user_id' => $user->userPrincipalName,
+                                    'application_id' => $funcData['application_id'],
+                                    'ApplicationName' => $funcData['application_name'],
+                                    'FunctionCode' => $funcData['function_code'],
+                                    'OfficeCode' => $funcData['location_code'],
+                                    'IsActive' => 1,
+                                    'IsDelete' => 0,
+                                    'LastModifiedBy' => Auth::user()->name ?? 'system',
+                                    'LastModifiedOn' => DB::raw('GETDATE()'),
+                                ]);
+
+                            Log::info('✓ Updated existing function assignment', [
+                                'id' => $existing->Id,
+                                'function' => $funcData['function_code'],
+                                'office' => $funcData['location_code'],
+                                'was_deleted' => $existing->IsDelete == 1,
                             ]);
+                        } else {
+                            // INSERT new record
+                            DB::connection('sqlsrv')
+                                ->table('Azure_Application_UserFunction')
+                                ->insert([
+                                    'Id' => \Illuminate\Support\Str::uuid()->toString(),
+                                    'AzureUserID' => $user->Id,
+                                    'user_id' => $user->userPrincipalName,
+                                    'application_id' => $funcData['application_id'],
+                                    'ApplicationName' => $funcData['application_name'],
+                                    'FunctionID' => $funcData['function_id'],
+                                    'FunctionCode' => $funcData['function_code'],
+                                    'OfficeID' => $funcData['location_id'],
+                                    'OfficeCode' => $funcData['location_code'],
+                                    'IsActive' => 1,
+                                    'IsDelete' => 0,
+                                    'CreatedBy' => Auth::user()->name ?? 'system',
+                                    'CreatedOn' => DB::raw('GETDATE()'),
+                                ]);
+
+                            Log::info('✓ Inserted new function assignment', [
+                                'function' => $funcData['function_code'],
+                                'office' => $funcData['location_code'],
+                            ]);
+                        }
 
                         $insertedFunctionsCount++;
                     } catch (\Exception $e) {
@@ -2352,17 +2626,46 @@ class AzureUserManagementController extends Controller
                             'data' => $funcData,
                             'error' => $e->getMessage(),
                         ];
-                        Log::error('Failed to insert function assignment', [
+                        Log::error('Failed to upsert function assignment', [
                             'function_data' => $funcData,
                             'error' => $e->getMessage(),
+                            'trace' => $e->getTraceAsString(),
                         ]);
                     }
                 }
 
-                Log::info('✓ Step 10: Function assignments inserted', [
-                    'inserted' => $insertedFunctionsCount,
+                Log::info('✓ Step 10: Function assignments upserted', [
+                    'upserted' => $insertedFunctionsCount,
                     'failed' => count($functionInsertErrors),
                 ]);
+
+
+                // ============================================================================
+                // OPTIONAL: Also fix STEP 4 to mark functions as deleted that won't be re-inserted
+                // ============================================================================
+
+                // ====================================================================
+                // STEP 4: Mark existing assignments as deleted (for audit trail)
+                // ====================================================================
+
+                // $deletedRolesCount = DB::connection('sqlsrv')
+                //     ->table('Azure_Application_UserMapping')
+                //     ->where('user_id', $user->userPrincipalName)
+                //     ->delete(); // ← HARD DELETE
+
+                // $deletedFunctionsCount = DB::connection('sqlsrv')
+                //     ->table('Azure_Application_UserFunction')
+                //     ->where('user_id', $user->userPrincipalName)
+                //     ->delete(); // ← HARD DELETE
+
+                // $totalDeleted = $deletedRolesCount + $deletedFunctionsCount;
+
+                // Log::info('🗑️ Deleted existing assignments (HARD DELETE)', [
+                //     'user_principal' => $user->userPrincipalName,
+                //     'deleted_roles' => $deletedRolesCount,
+                //     'deleted_functions' => $deletedFunctionsCount,
+                //     'total_deleted' => $totalDeleted,
+                // ]);
 
                 // ====================================================================
                 // STEP 11: Check for insertion errors
@@ -2407,8 +2710,447 @@ class AzureUserManagementController extends Controller
                     'total_deleted' => $totalDeleted,
                 ]);
 
+                // This ensures we have the latest data before provisioning
+                try {
+                    $freshUser = AzureUser::find($user->Id);
+                    if ($freshUser) {
+                        $user = $freshUser;
+                        Log::info('Model refreshed successfully', [
+                            'user_id' => $user->Id,
+                            'azure_id' => $user->AzureId,
+                        ]);
+                    } else {
+                        Log::warning('Could not find user during refresh', ['user_id' => $user->Id]);
+                    }
+                } catch (\Exception $e) {
+                    Log::warning('Failed to refresh model', ['error' => $e->getMessage()]);
+                }
+
+
+                // ✅ STEP 12.5: Ensure EmployeeCode exists before BIZ/FIT provisioning
+                $user->refresh(); // Get latest data
+
+                if (empty($user->EmployeCode)) {
+                    Log::info('Auto-generating missing EmployeeCode before provisioning...', [
+                        'user_id' => $user->Id,
+                    ]);
+
+                    $nextCode = DB::connection('sqlsrv')->select("
+                        SELECT CAST(ISNULL(MAX(MaxCode), 0) + 1 AS VARCHAR(100)) as NextCode
+                        FROM (
+                            SELECT MAX(CAST(CU.EmployeeCode AS BIGINT)) as MaxCode
+                            FROM Cust_User CU WITH (NOLOCK)
+                            WHERE CU.EmployeeCode IS NOT NULL AND LEN(ISNULL(CU.EmployeeCode, '')) > 0
+        
+                            UNION ALL
+        
+                            SELECT MAX(CAST(AU.EmployeCode AS BIGINT)) as MaxCode
+                            FROM Azure_Users AU WITH (NOLOCK)
+                            WHERE AU.EmployeCode IS NOT NULL AND LEN(ISNULL(AU.EmployeCode, '')) > 0
+                        ) AS Combined
+                    ");
+
+                    $generatedEmployeeCode = $nextCode[0]->NextCode ?? '1';
+
+                    DB::connection('sqlsrv')->update(
+                        "UPDATE Azure_Users SET EmployeCode = ? WHERE Id = ?",
+                        [$generatedEmployeeCode, $user->Id]
+                    );
+
+                    $user->refresh(); // Refresh model to get the new EmployeeCode
+
+                    Log::info('✓ EmployeeCode auto-generated in update()', [
+                        'user_id' => $user->Id,
+                        'employee_code' => $generatedEmployeeCode,
+                    ]);
+                }
+
                 // ====================================================================
-                // STEP 13: Verify data was saved
+                // STEP 13: PROVISION TO EXTERNAL APPLICATIONS
+                // ====================================================================
+
+                $provisioningResults = [];
+                $allValidatedAssignments = array_merge($validatedRoles, $validatedFunctions);
+
+                $assignedModules = collect($allValidatedAssignments)
+                    ->pluck('application_name')
+                    ->unique()
+                    ->map(fn($name) => strtoupper(trim($name)))
+                    ->filter()
+                    ->values();
+
+                Log::info('→ Step 13: Provisioning to external applications...', [
+                    'modules' => $assignedModules->toArray(),
+                ]);
+
+                // ========================================================================
+                // 13.0: CRITICAL - Ensure AzureId exists before ANY provisioning
+                // ========================================================================
+                $azureIdCheck = $this->ensureAzureIdExists($user);
+
+                if (!$azureIdCheck['success']) {
+                    Log::error('✗ Step 13: Cannot provision - AzureId missing or invalid', [
+                        'user_id' => $user->Id,
+                        'message' => $azureIdCheck['message'],
+                    ]);
+
+                    // Add warning to all modules
+                    foreach ($assignedModules as $moduleName) {
+                        $provisioningResults[$moduleName] = [
+                            'success' => false,
+                            'message' => 'Provisioning skipped: ' . $azureIdCheck['message'],
+                        ];
+                    }
+
+                    // Continue to Step 14 (don't fail the entire update)
+                } else {
+                    // ✅ AzureId exists - proceed with provisioning
+                    $userId = $user->Id;  // Primary key for SPs (misleadingly named @AzureUserID)
+
+                    Log::info('✓ AzureId verified for provisioning', [
+                        'user_id' => $userId,
+                        'azure_id' => $azureIdCheck['azure_id'],
+                    ]);
+
+                    // ========================================================================
+                    // 13.1: D365 Live
+                    // ========================================================================
+                    if ($assignedModules->contains('D365 LIVE')) {
+                        Log::info('→ Provisioning to D365 Live...');
+
+                        try {
+                            $d365Result = DB::connection('sqlsrv')->select("
+                SET NOCOUNT ON;
+                DECLARE @Status VARCHAR(15), @Remark VARCHAR(200);
+                EXEC sp_Azure_D365UserCreation
+                    @AzureUserID = ?,
+                    @Status = @Status OUTPUT,
+                    @Remark = @Remark OUTPUT;
+                SELECT @Status as Status, @Remark as Remark;
+            ", [$userId]);
+
+                            $d365Status = $d365Result[0]->Status ?? 'Failed';
+                            $d365Remark = $d365Result[0]->Remark ?? 'Unknown error';
+
+                            $provisioningResults['D365 LIVE'] = [
+                                'success' => $d365Status === 'Success',
+                                'message' => $d365Remark,
+                            ];
+
+                            Log::info($d365Status === 'Success' ? '✓ D365 provisioned' : '⚠ D365 failed', [
+                                'status' => $d365Status,
+                                'remark' => $d365Remark,
+                            ]);
+                        } catch (\Exception $e) {
+                            $provisioningResults['D365 LIVE'] = [
+                                'success' => false,
+                                'message' => 'Exception: ' . $e->getMessage(),
+                            ];
+                            Log::error('✗ D365 provisioning error', ['error' => $e->getMessage()]);
+                        }
+                    }
+
+                    // ========================================================================
+                    // 13.2: OPS/SCM
+                    // ========================================================================
+                    if (
+                        $assignedModules->contains('OPS') ||
+                        $assignedModules->contains('OPS UAT') ||
+                        $assignedModules->contains('OPSUAT')
+                    ) {
+                        Log::info('→ Provisioning to OPS/SCM...');
+
+                        try {
+                            $needsStatusChange = ($user->Status === 'Active' && empty($user->SCMResourceID));
+                            $originalStatus = null;
+
+                            if ($needsStatusChange) {
+                                $originalStatus = $user->Status;
+                                DB::connection('sqlsrv')
+                                    ->table('Azure_Users')
+                                    ->where('Id', $user->Id)
+                                    ->update(['Status' => 'Pending']);
+
+                                Log::info('Temporarily set user to Pending for OPS provisioning', [
+                                    'user_id' => $user->Id,
+                                    'original_status' => $originalStatus,
+                                ]);
+                            }
+
+                            try {
+                                $scmResult = DB::connection('sqlsrv')->select("
+                    SET NOCOUNT ON;
+                    DECLARE @Status VARCHAR(15), @Remark VARCHAR(200);
+                    EXEC sp_Azure_SCMUserCreation
+                        @AzureUserID = ?,
+                        @Status = @Status OUTPUT,
+                        @Remark = @Remark OUTPUT;
+                    SELECT @Status as Status, @Remark as Remark;
+                ", [$userId]);
+
+                                $scmStatus = $scmResult[0]->Status ?? 'Failed';
+                                $scmRemark = $scmResult[0]->Remark ?? 'Unknown error';
+
+                                $provisioningResults['OPS'] = [
+                                    'success' => strtoupper($scmStatus) === 'SUCCESS',
+                                    'message' => $scmRemark,
+                                ];
+
+                                Log::info(strtoupper($scmStatus) === 'SUCCESS' ? '✓ OPS provisioned' : '⚠ OPS failed', [
+                                    'status' => $scmStatus,
+                                    'remark' => $scmRemark,
+                                ]);
+                            } finally {
+                                if ($needsStatusChange && $originalStatus) {
+                                    DB::connection('sqlsrv')
+                                        ->table('Azure_Users')
+                                        ->where('Id', $user->Id)
+                                        ->update(['Status' => $originalStatus]);
+
+                                    Log::info('Restored original user status', [
+                                        'user_id' => $user->Id,
+                                        'status' => $originalStatus,
+                                    ]);
+                                }
+                            }
+                        } catch (\Exception $e) {
+                            $provisioningResults['OPS'] = [
+                                'success' => false,
+                                'message' => 'Exception: ' . $e->getMessage(),
+                            ];
+                            Log::error('✗ OPS provisioning error', ['error' => $e->getMessage()]);
+                        }
+                    }
+
+                    // ========================================================================
+                    // 13.3: BIZ PRO
+                    // ========================================================================
+                    if ($assignedModules->contains('BIZ PRO') || $assignedModules->contains('FITSYS')) {
+                        Log::info('→ Provisioning to BIZ PRO...');
+
+                        // PRE-FLIGHT VALIDATION
+                        $validation = $this->validateForBizProvisioning($user);
+
+                        if (!$validation['valid']) {
+                            $provisioningResults['BIZ PRO'] = [
+                                'success' => false,
+                                'message' => 'Validation failed: ' . implode('; ', $validation['errors']),
+                            ];
+
+                            Log::warning('⊘ BIZ PRO provisioning skipped - validation failed', [
+                                'user_id' => $user->Id,
+                                'errors' => $validation['errors'],
+                            ]);
+                        } else {
+                            try {
+                                // ================================================================
+                                // WORKAROUND: Pre-create user in Cust_User if doesn't exist
+                                // ================================================================
+                                $existsInCustUser = DB::connection('sqlsrv')
+                                    ->table('Cust_User')
+                                    ->where('EmployeeCode', $user->EmployeCode)
+                                    ->exists();
+
+                                if (!$existsInCustUser) {
+                                    Log::info('Pre-creating user in Cust_User for BIZ PRO...', [
+                                        'employee_code' => $user->EmployeCode,
+                                    ]);
+
+                                    $officeId = DB::connection('sqlsrv')
+                                        ->table('Cust_Office')
+                                        ->where('Code', $user->BaseOfficeCode ?? 'KE')
+                                        ->where('IsActive', 1)
+                                        ->where('IsDeleted', 0)
+                                        ->value('Id');
+
+                                    if (!$officeId) {
+                                        $officeId = DB::connection('sqlsrv')
+                                            ->table('Cust_Office')
+                                            ->where('IsActive', 1)
+                                            ->where('IsDeleted', 0)
+                                            ->value('Id');
+                                    }
+
+                                    DB::connection('sqlsrv')->table('Cust_User')->insert([
+                                        'ID' => \Illuminate\Support\Str::uuid()->toString(),
+                                        'EmployeeCode' => $user->EmployeCode,
+                                        'FirstName' => $user->givenName ?? explode(' ', $user->displayName)[0],
+                                        'LastName' => $user->surname ?? (explode(' ', $user->displayName)[1] ?? $user->displayName),
+                                        'LoginID' => explode('@', $user->userPrincipalName)[0],
+                                        'password' => '$2y$10$uZnoQrODNPUp4z8oFE8ei.RhxkHP5fyfpyW15vycoRNN6JF9P/I3W',
+                                        'OfficeID' => $officeId,
+                                        'OfficeCode' => $user->BaseOfficeCode ?? 'KE',
+                                        'Email' => $user->mail ?? $user->userPrincipalName,
+                                        'Role' => 2,
+                                        'CreatedBy' => 'system',
+                                        'CreatedOn' => DB::raw('GETDATE()'),
+                                        'LastModifiedBy' => 'system',
+                                        'LastModifiedOn' => DB::raw('GETDATE()'),
+                                        'IsActive' => 1,
+                                        'IsDeleted' => 0,
+                                    ]);
+
+                                    Log::info('✓ Pre-created user in Cust_User', [
+                                        'employee_code' => $user->EmployeeCode,
+                                        'login_id' => explode('@', $user->userPrincipalName)[0],
+                                    ]);
+                                } else {
+                                    Log::info('User already exists in Cust_User', [
+                                        'employee_code' => $user->EmployeCode,
+                                    ]);
+                                }
+
+                                // ================================================================
+                                // DIAGNOSTIC: Check what SP will actually see
+                                // ================================================================
+                                $diagnostic = DB::connection('sqlsrv')->select("
+                SELECT 
+                    AU.Id as AzureUserId,
+                    AU.EmployeCode as Azure_EmployeeCode,
+                    AU.BizUserID,
+                    CU.ID as CustUserId,
+                    CU.EmployeeCode as Cust_EmployeeCode
+                FROM Azure_Users AU
+                LEFT JOIN Cust_User CU ON CU.EmployeeCode = AU.EmployeCode
+                WHERE AU.Id = ?
+            ", [$user->Id]);
+
+                                Log::info('SP Diagnostic check', [
+                                    'result' => $diagnostic[0] ?? null,
+                                ]);
+
+                                // ================================================================
+                                // NOW call the SP
+                                // ================================================================
+                                $bizApp = DB::connection('sqlsrv')
+                                    ->table('Azure_SoftwareMaster')
+                                    ->where(function ($q) {
+                                        $q->where('Name', 'LIKE', '%FITSYS%')
+                                            ->orWhere('Name', 'LIKE', '%BIZ%');
+                                    })
+                                    ->first();
+
+                                if ($bizApp) {
+                                    $bizResult = DB::connection('sqlsrv')->select("
+                    SET NOCOUNT ON;
+                    DECLARE @Status VARCHAR(15), @Remark VARCHAR(200);
+                    EXEC sp_Azure_FITSYSUserCreation
+                        @AzureUserID = ?,
+                        @ApplicationID = ?,
+                        @Status = @Status OUTPUT,
+                        @Remark = @Remark OUTPUT;
+                    SELECT @Status as Status, @Remark as Remark;
+                ", [$userId, $bizApp->ApplicationId]);
+
+                                    $bizStatus = $bizResult[0]->Status ?? 'Failed';
+                                    $bizRemark = $bizResult[0]->Remark ?? 'Unknown error';
+
+                                    $provisioningResults['BIZ PRO'] = [
+                                        'success' => strtolower($bizStatus) === 'success',
+                                        'message' => $bizRemark,
+                                    ];
+
+                                    Log::info(strtolower($bizStatus) === 'success' ? '✓ BIZ PRO provisioned' : '⚠ BIZ PRO failed', [
+                                        'status' => $bizStatus,
+                                        'remark' => $bizRemark,
+                                    ]);
+                                } else {
+                                    $provisioningResults['BIZ PRO'] = [
+                                        'success' => false,
+                                        'message' => 'BIZ PRO application not found in Azure_SoftwareMaster',
+                                    ];
+                                    Log::error('✗ BIZ PRO application not found');
+                                }
+                            } catch (\Exception $e) {
+                                $provisioningResults['BIZ PRO'] = [
+                                    'success' => false,
+                                    'message' => 'Exception: ' . $e->getMessage(),
+                                ];
+                                Log::error('✗ BIZ PRO provisioning error', [
+                                    'error' => $e->getMessage(),
+                                    'trace' => $e->getTraceAsString(),
+                                ]);
+                            }
+                        }
+                    }
+
+                    // ========================================================================
+                    // 13.4: FIT Express
+                    // ========================================================================
+                    if ($assignedModules->contains('FIT EXPRESS')) {
+                        Log::info('→ Provisioning to FIT Express...');
+
+                        // PRE-FLIGHT VALIDATION
+                        $validation = $this->validateForBizProvisioning($user);
+
+                        if (!$validation['valid']) {
+                            $provisioningResults['FIT Express'] = [
+                                'success' => false,
+                                'message' => 'Validation failed: ' . implode('; ', $validation['errors']),
+                            ];
+
+                            Log::warning('⊘ FIT Express provisioning skipped - validation failed', [
+                                'user_id' => $user->Id,
+                                'errors' => $validation['errors'],
+                            ]);
+                        } else {
+                            try {
+                                $fitApp = DB::connection('sqlsrv')
+                                    ->table('Azure_SoftwareMaster')
+                                    ->where('Name', 'LIKE', '%FIT Express%')
+                                    ->first();
+
+                                if ($fitApp) {
+                                    $fitResult = DB::connection('sqlsrv')->select("
+                        SET NOCOUNT ON;
+                        DECLARE @Status VARCHAR(15), @Remark VARCHAR(200);
+                        EXEC sp_Azure_FITSYSUserCreation
+                            @AzureUserID = ?,
+                            @ApplicationID = ?,
+                            @Status = @Status OUTPUT,
+                            @Remark = @Remark OUTPUT;
+                        SELECT @Status as Status, @Remark as Remark;
+                    ", [$userId, $fitApp->ApplicationId]);
+
+                                    $fitStatus = $fitResult[0]->Status ?? 'Failed';
+                                    $fitRemark = $fitResult[0]->Remark ?? 'Unknown error';
+
+                                    $provisioningResults['FIT Express'] = [
+                                        'success' => strtolower($fitStatus) === 'success',
+                                        'message' => $fitRemark,
+                                    ];
+
+                                    Log::info(strtolower($fitStatus) === 'success' ? '✓ FIT Express provisioned' : '⚠ FIT Express failed', [
+                                        'status' => $fitStatus,
+                                        'remark' => $fitRemark,
+                                    ]);
+                                } else {
+                                    $provisioningResults['FIT Express'] = [
+                                        'success' => false,
+                                        'message' => 'FIT Express application not found in Azure_SoftwareMaster',
+                                    ];
+                                    Log::error('✗ FIT Express application not found');
+                                }
+                            } catch (\Exception $e) {
+                                $provisioningResults['FIT Express'] = [
+                                    'success' => false,
+                                    'message' => 'Exception: ' . $e->getMessage(),
+                                ];
+                                Log::error('✗ FIT Express provisioning error', [
+                                    'error' => $e->getMessage(),
+                                    'trace' => $e->getTraceAsString(),
+                                ]);
+                            }
+                        }
+                    }
+                }
+
+                Log::info('✓ Step 13: Provisioning completed', [
+                    'results' => $provisioningResults,
+                ]);
+
+                // ====================================================================
+                // STEP 14: Verify data was saved
                 // ====================================================================
 
                 $verifyRolesCount = DB::connection('sqlsrv')
@@ -2435,12 +3177,25 @@ class AzureUserManagementController extends Controller
                 ]);
 
                 // ====================================================================
-                // STEP 14: Return success response
+                // STEP 15: Return success response
                 // ====================================================================
+
+                $provisioningSummary = '';
+                if (!empty($provisioningResults)) {
+                    $successCount = collect($provisioningResults)->where('success', true)->count();
+                    $totalCount = count($provisioningResults);
+
+                    $provisioningSummary = "\n\nProvisioning: {$successCount}/{$totalCount} successful";
+
+                    foreach ($provisioningResults as $module => $result) {
+                        $icon = $result['success'] ? '✓' : '⚠';
+                        $provisioningSummary .= "\n{$icon} {$module}: {$result['message']}";
+                    }
+                }
 
                 return response()->json([
                     'success' => true,
-                    'message' => "User updated successfully! {$insertedRolesCount} roles and {$insertedFunctionsCount} functions saved.",
+                    'message' => "User updated successfully! {$insertedRolesCount} roles and {$insertedFunctionsCount} functions saved.{$provisioningSummary}",
                     'data' => [
                         'roles_inserted' => $insertedRolesCount,
                         'functions_inserted' => $insertedFunctionsCount,
@@ -2449,13 +3204,10 @@ class AzureUserManagementController extends Controller
                         'roles_verified' => $verifyRolesCount,
                         'functions_verified' => $verifyFunctionsCount,
                         'user_id' => $user->Id,
+                        'provisioning_results' => $provisioningResults,
                     ],
                 ]);
             } catch (\Exception $e) {
-                // ====================================================================
-                // STEP 15: Rollback on any database error
-                // ====================================================================
-
                 if (DB::connection('sqlsrv')->transactionLevel() > 0) {
                     DB::connection('sqlsrv')->rollBack();
                 }
@@ -2466,6 +3218,7 @@ class AzureUserManagementController extends Controller
                     'file' => $e->getFile(),
                     'line' => $e->getLine(),
                     'trace' => $e->getTraceAsString(),
+
                 ]);
 
                 return response()->json([
@@ -2479,10 +3232,6 @@ class AzureUserManagementController extends Controller
                 ], 500);
             }
         } catch (\Exception $e) {
-            // ====================================================================
-            // STEP 16: Catch any other unexpected errors
-            // ====================================================================
-
             Log::error('❌ Unexpected error in update method', [
                 'user_id' => $user->Id ?? null,
                 'error' => $e->getMessage(),
@@ -2861,23 +3610,11 @@ class AzureUserManagementController extends Controller
      */
     public function disable(AzureUser $user)
     {
-
-        Log::info('DEBUG Azure ID check', [
-            'user_id' => $user->Id,
-            'azure_id_model' => $user->AzureId,
-            'azure_id_type' => gettype($user->AzureId),
-            'azure_id_empty' => empty($user->AzureId),
-            'azure_id_null' => is_null($user->AzureId),
-            'azure_id_string' => is_string($user->AzureId),
-            'azure_id_length' => strlen($user->AzureId ?? ''),
-            'attributes_array' => $user->getAttributes(), // Show all attributes
-        ]);
         try {
             Log::info('=== DISABLE USER REQUEST ===', [
                 'user_id' => $user->Id,
                 'email' => $user->userPrincipalName,
                 'current_status' => $user->Status,
-                'azure_id' => $user->AzureId,
                 'initiated_by' => Auth::id(),
             ]);
 
@@ -2889,190 +3626,96 @@ class AzureUserManagementController extends Controller
                 ], 400);
             }
 
-            // **FIX 1: Double-check Azure ID from database directly**
-            $azureId = null;
-
-            // Query database directly to get Azure ID
-            $dbUser = DB::connection('sqlsrv')
-                ->table('Azure_Users')
-                ->select('AzureId')
-                ->where('Id', $user->Id)
-                ->first();
-
-            if ($dbUser && !empty($dbUser->AzureId)) {
-                $azureId = trim($dbUser->AzureId);
-                Log::info('Azure ID retrieved from database', [
-                    'azure_id' => $azureId,
-                    'from_model' => $user->AzureId,
-                    'match' => $azureId === trim($user->AzureId ?? ''),
-                ]);
-            } else {
-                Log::warning('No Azure ID found in database for user', [
-                    'user_id' => $user->Id,
-                    'email' => $user->userPrincipalName,
-                ]);
+            // Ensure Azure ID exists
+            $azureIdCheck = $this->ensureAzureIdExists($user);
+            if (!$azureIdCheck['success']) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cannot disable: ' . $azureIdCheck['message']
+                ], 400);
             }
+            $azureId = $azureIdCheck['azure_id'];
 
             // STEP 1: Attempt to disable in Azure AD
             $azureDisabled = false;
             $azureNotFound = false;
             $azureIdUpdated = false;
 
-            if (!empty($azureId) && $this->isValidUuid($azureId)) {
-                Log::info('Step 1: Attempting to disable user in Azure AD...', [
-                    'user_id' => $user->Id,
-                    'azure_id' => $azureId,
-                    'email' => $user->userPrincipalName,
-                ]);
+            Log::info('Step 1: Attempting to disable user in Azure AD...', [
+                'user_id' => $user->Id,
+                'azure_id' => $azureId,
+            ]);
+
+            try {
+                $azureService = app(\App\Services\AzureGraphService::class);
+                set_time_limit(120);
 
                 try {
-                    $azureService = app(\App\Services\AzureGraphService::class);
+                    $azureService->disableUser($azureId);
+                    $azureDisabled = true;
+                    Log::info('✓ Step 1: User disabled in Azure AD successfully');
+                } catch (\Exception $directError) {
+                    if (
+                        str_contains($directError->getMessage(), '404') ||
+                        str_contains($directError->getMessage(), 'ResourceNotFound')
+                    ) {
+                        Log::warning('Azure ID not found, attempting lookup by email');
 
-                    // **FIX 2: Add timeout handling**
-                    set_time_limit(120); // Increase timeout
-
-                    // Strategy: Try direct disable first, fallback to UPN lookup on 404
-                    try {
-                        $azureService->disableUser($azureId);
-                        $azureDisabled = true;
-
-                        Log::info('✓ Step 1: User disabled in Azure AD successfully', [
-                            'user_id' => $user->Id,
-                            'azure_id' => $azureId,
-                        ]);
-                    } catch (\Exception $directError) {
-                        // If 404, try to find user by email and update Azure ID
-                        if (
-                            str_contains($directError->getMessage(), '404') ||
-                            str_contains($directError->getMessage(), 'ResourceNotFound') ||
-                            str_contains($directError->getMessage(), 'Request_ResourceNotFound')
-                        ) {
-
-                            Log::warning('Azure ID not found, attempting lookup by email', [
-                                'user_id' => $user->Id,
-                                'stale_azure_id' => $azureId,
-                                'email' => $user->userPrincipalName,
-                            ]);
-
-                            // Try to find user by email with retry logic
-                            $maxRetries = 2;
-                            $retryCount = 0;
-                            $azureUserData = null;
-
-                            while ($retryCount < $maxRetries && !$azureUserData) {
-                                try {
-                                    $azureUserData = $azureService->findUserByUPN($user->userPrincipalName);
-                                    break;
-                                } catch (\Exception $lookupError) {
-                                    $retryCount++;
-                                    if ($retryCount >= $maxRetries) {
-                                        throw $lookupError;
-                                    }
-                                    sleep(1); // Wait 1 second before retry
-                                }
-                            }
+                        try {
+                            $azureUserData = $azureService->findUserByUPN($user->userPrincipalName);
 
                             if ($azureUserData && isset($azureUserData['id'])) {
-                                // Found user with different Azure ID - update and retry
                                 $correctAzureId = trim($azureUserData['id']);
 
-                                Log::warning('Azure ID mismatch detected - updating local record', [
-                                    'user_id' => $user->Id,
-                                    'old_azure_id' => $azureId,
-                                    'correct_azure_id' => $correctAzureId,
-                                    'email' => $user->userPrincipalName,
+                                Log::warning('Azure ID mismatch - updating', [
+                                    'old' => $azureId,
+                                    'new' => $correctAzureId,
                                 ]);
 
-                                // Update to correct Azure ID
                                 DB::connection('sqlsrv')
                                     ->table('Azure_Users')
                                     ->where('Id', $user->Id)
-                                    ->update([
-                                        'AzureId' => $correctAzureId,
-                                        'LastModifiedOn' => DB::raw('GETDATE()'),
-                                        'LastModifiedBy' => Auth::id(),
-                                    ]);
+                                    ->update(['AzureId' => $correctAzureId]);
 
                                 $azureId = $correctAzureId;
                                 $azureIdUpdated = true;
 
-                                // Now disable with correct ID
                                 $azureService->disableUser($correctAzureId);
                                 $azureDisabled = true;
-
-                                Log::info('✓ Step 1: User disabled in Azure AD after ID correction', [
-                                    'user_id' => $user->Id,
-                                    'corrected_azure_id' => $correctAzureId,
-                                ]);
+                                Log::info('✓ User disabled after ID correction');
                             } else {
-                                // User truly doesn't exist in Azure AD
                                 $azureNotFound = true;
-
-                                Log::warning('✓ Step 1: User not found in Azure AD (already deleted or never existed)', [
-                                    'user_id' => $user->Id,
-                                    'azure_id' => $azureId,
-                                    'email' => $user->userPrincipalName,
-                                    'treating_as' => 'already_disabled',
-                                ]);
+                                Log::warning('✓ User not found in Azure AD (already deleted)');
                             }
-                        } else {
-                            // Non-404 error - re-throw
-                            throw $directError;
+                        } catch (\Exception $lookupError) {
+                            $azureNotFound = true;
+                            Log::warning('✓ User lookup failed (treating as already deleted)');
                         }
-                    }
-                } catch (\Exception $azureException) {
-                    // **FIX 3: Handle timeout errors specifically**
-                    if (
-                        str_contains($azureException->getMessage(), 'Maximum execution time') ||
-                        str_contains($azureException->getMessage(), 'timeout')
-                    ) {
-
-                        Log::warning('Azure operation timed out - proceeding with local disable only', [
-                            'user_id' => $user->Id,
-                            'error' => $azureException->getMessage(),
-                        ]);
-
-                        // Continue with local disable despite Azure timeout
                     } else {
-                        // For other errors, fail the operation
-                        Log::error('✗ Step 1 FAILED: Could not disable user in Azure AD', [
-                            'user_id' => $user->Id,
-                            'azure_id' => $azureId,
-                            'error' => $azureException->getMessage(),
-                        ]);
-
-                        return response()->json([
-                            'success' => false,
-                            'message' => 'Failed to disable user in Azure AD: ' . $azureException->getMessage(),
-                            'error' => $azureException->getMessage(),
-                        ], 500);
+                        throw $directError;
                     }
                 }
-            } else {
-                Log::warning('User has no valid Azure ID - proceeding with local disable only', [
-                    'user_id' => $user->Id,
-                    'email' => $user->userPrincipalName,
-                    'azure_id_in_db' => $azureId,
-                    'is_valid_uuid' => $azureId ? $this->isValidUuid($azureId) : false,
-                ]);
+            } catch (\Exception $azureException) {
+                if (str_contains($azureException->getMessage(), 'timeout')) {
+                    Log::warning('Azure operation timed out - proceeding with local disable');
+                } else {
+                    Log::error('✗ Step 1 FAILED: ' . $azureException->getMessage());
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Failed to disable in Azure AD: ' . $azureException->getMessage(),
+                    ], 500);
+                }
             }
 
             // STEP 2: Update database
-            Log::info('Step 2: Updating database...', [
-                'user_id' => $user->Id,
-                'azure_disabled' => $azureDisabled,
-                'azure_not_found' => $azureNotFound,
-                'azure_id_updated' => $azureIdUpdated,
-            ]);
+            Log::info('Step 2: Updating database...');
 
             try {
-                // **FIX 4: Direct database update instead of model method**
                 $updateData = [
                     'Status' => 'Inactive',
                     'accountEnabled' => 0,
                 ];
 
-                // Update AzureId if it was corrected
                 if ($azureIdUpdated && !empty($azureId)) {
                     $updateData['AzureId'] = $azureId;
                 }
@@ -3086,55 +3729,33 @@ class AzureUserManagementController extends Controller
                     throw new \Exception('Database update failed');
                 }
 
-                Log::info('✓ Step 2: Database updated successfully', [
-                    'user_id' => $user->Id,
-                    'rows_affected' => $dbSuccess,
-                ]);
+                Log::info('✓ Step 2: Database updated successfully');
             } catch (\Exception $dbError) {
-                Log::error('✗ Step 2 FAILED: Database update failed', [
-                    'user_id' => $user->Id,
-                    'error' => $dbError->getMessage(),
-                ]);
+                Log::error('✗ Step 2 FAILED: ' . $dbError->getMessage());
 
-                // ROLLBACK: Only if we actually disabled in Azure
-                if ($azureDisabled && !$azureNotFound && !empty($azureId)) {
+                // Rollback if Azure was disabled
+                if ($azureDisabled && !$azureNotFound) {
                     try {
-                        $azureService = app(\App\Services\AzureGraphService::class);
                         $azureService->enableUser($azureId);
-
-                        Log::warning('⚠ ROLLBACK SUCCESSFUL: User re-enabled in Azure AD', [
-                            'user_id' => $user->Id,
-                            'azure_id' => $azureId,
-                        ]);
+                        Log::warning('⚠ ROLLBACK: User re-enabled in Azure AD');
 
                         return response()->json([
                             'success' => false,
                             'message' => 'Database update failed. User remains enabled (rollback successful).',
-                            'error' => 'Database error: ' . $dbError->getMessage(),
                         ], 500);
                     } catch (\Exception $rollbackError) {
-                        Log::critical('✗ ROLLBACK FAILED: User disabled in Azure but database not updated!', [
+                        Log::critical('✗ ROLLBACK FAILED: Manual intervention required!', [
                             'user_id' => $user->Id,
                             'azure_id' => $azureId,
-                            'db_error' => $dbError->getMessage(),
-                            'rollback_error' => $rollbackError->getMessage(),
-                            'action_required' => 'MANUAL INTERVENTION NEEDED',
                         ]);
 
                         return response()->json([
                             'success' => false,
-                            'message' => 'CRITICAL ERROR: User disabled in Azure AD but database update failed. Manual intervention required.',
-                            'error' => [
-                                'database' => $dbError->getMessage(),
-                                'rollback' => $rollbackError->getMessage(),
-                            ],
-                            'user_id' => $user->Id,
-                            'azure_id' => $azureId,
+                            'message' => 'CRITICAL: User disabled in Azure but DB update failed. Contact IT immediately.',
                         ], 500);
                     }
                 }
 
-                // If Azure wasn't touched, just return DB error
                 return response()->json([
                     'success' => false,
                     'message' => 'Failed to update database: ' . $dbError->getMessage(),
@@ -3142,66 +3763,28 @@ class AzureUserManagementController extends Controller
             }
 
             // Log activity
-            try {
-                $this->logUserActivity(
-                    $user->Id,
-                    'user.disabled',
-                    'User account disabled',
-                    [
-                        'disabled_by' => Auth::user()->name ?? Auth::id() ?? 'system',
-                        'azure_disabled' => $azureDisabled,
-                        'azure_not_found' => $azureNotFound,
-                        'azure_id_updated' => $azureIdUpdated,
-                        'final_azure_id' => $azureId,
-                    ]
-                );
-            } catch (\Exception $e) {
-                Log::warning('Failed to log user activity', [
-                    'user_id' => $user->Id,
-                    'error' => $e->getMessage(),
-                ]);
-            }
-
-            Log::info('=== USER DISABLED SUCCESSFULLY ===', [
-                'user_id' => $user->Id,
-                'azure_id' => $azureId,
-                'disabled_by' => Auth::user()->name ?? Auth::id() ?? 'system',
-                'azure_action' => $azureDisabled ? 'disabled' : ($azureNotFound ? 'not_found' : 'skipped'),
-                'azure_id_corrected' => $azureIdUpdated,
+            $this->logUserActivity($user->Id, 'user.disabled', 'User account disabled', [
+                'disabled_by' => Auth::user()->name ?? 'system',
+                'azure_disabled' => $azureDisabled,
+                'azure_not_found' => $azureNotFound,
             ]);
 
-            // Build response message
-            $message = 'User has been disabled successfully.';
-            if ($azureIdUpdated) {
-                $message .= ' Azure ID was corrected during the process.';
-            }
-            if ($azureNotFound) {
-                $message .= ' Note: User was not found in Azure AD (may have been previously deleted).';
-            }
-            if (!$azureDisabled && !$azureNotFound && !empty($azureId)) {
-                $message .= ' Note: Could not disable in Azure AD (timeout or error), but local status updated.';
-            }
+            Log::info('=== USER DISABLED SUCCESSFULLY ===');
+
+            $message = '✅ User has been disabled successfully!';
+            if ($azureIdUpdated) $message .= ' Azure ID was corrected.';
+            if ($azureNotFound) $message .= ' Note: User was not found in Azure AD.';
 
             return response()->json([
                 'success' => true,
                 'message' => $message,
-                'details' => [
-                    'azure_disabled' => $azureDisabled,
-                    'azure_not_found' => $azureNotFound,
-                    'azure_id_updated' => $azureIdUpdated,
-                    'local_status_updated' => true,
-                ],
+                'reload' => true,
             ]);
         } catch (\Exception $e) {
-            Log::error('Unexpected error disabling user', [
-                'user_id' => $user->Id ?? null,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
-
+            Log::error('Unexpected error: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
-                'message' => 'An unexpected error occurred: ' . $e->getMessage(),
+                'message' => '❌ An unexpected error occurred: ' . $e->getMessage(),
             ], 500);
         }
     }
@@ -3224,6 +3807,45 @@ class AzureUserManagementController extends Controller
     }
 
     /**
+     * Normalize and validate Azure ID (GUID)
+     * Handles UUIDs with or without braces
+     * 
+     * @param string|null $azureId
+     * @return string|null Returns normalized UUID or null if invalid
+     */
+    private function normalizeAzureId(?string $azureId): ?string
+    {
+        if (empty($azureId) || !is_string($azureId)) {
+            Log::debug('Azure ID is empty or not a string', [
+                'value' => $azureId,
+                'type' => gettype($azureId)
+            ]);
+            return null;
+        }
+
+        // Trim whitespace
+        $azureId = trim($azureId);
+
+        // Remove braces if present
+        $azureId = trim($azureId, '{}');
+
+        // Validate format
+        $pattern = '/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i';
+
+        if (preg_match($pattern, $azureId) === 1) {
+            return strtolower($azureId); // ← Normalize to lowercase
+        }
+
+        Log::warning('Invalid Azure ID format', [
+            'original' => $azureId,
+            'length' => strlen($azureId),
+            'pattern_matched' => false
+        ]);
+
+        return null;
+    }
+
+    /**
      * Enable a disabled user (Azure AD first, then database - all-or-nothing)
      */
     public function enable(AzureUser $user)
@@ -3233,60 +3855,180 @@ class AzureUserManagementController extends Controller
                 'user_id' => $user->Id,
                 'email' => $user->userPrincipalName,
                 'current_status' => $user->Status,
-                'azure_id' => $user->AzureId,
                 'initiated_by' => Auth::id(),
             ]);
 
             // Check if user is already active
             if ($user->Status === 'Active') {
-                Log::info('User already active', [
-                    'user_id' => $user->Id,
-                    'status' => $user->Status,
-                ]);
-
                 return response()->json([
                     'success' => false,
                     'message' => 'User is already enabled',
                 ], 400);
             }
 
-            // **FIX: Double-check Azure ID from database**
-            $azureId = null;
-            $dbUser = DB::connection('sqlsrv')
-                ->table('Azure_Users')
-                ->select('AzureId')
-                ->where('Id', $user->Id)
-                ->first();
+            // Ensure Azure ID exists
+            $azureIdCheck = $this->ensureAzureIdExists($user);
+            if (!$azureIdCheck['success']) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cannot enable: ' . $azureIdCheck['message']
+                ], 400);
+            }
+            $azureId = $azureIdCheck['azure_id'];
 
-            if ($dbUser && !empty($dbUser->AzureId)) {
-                $azureId = trim($dbUser->AzureId);
+            // STEP 1: Attempt to enable in Azure AD
+            $azureEnabled = false;
+            $azureNotFound = false;
+            $azureIdUpdated = false;
+
+            Log::info('Step 1: Attempting to enable user in Azure AD...', [
+                'user_id' => $user->Id,
+                'azure_id' => $azureId,
+            ]);
+
+            try {
+                $azureService = app(\App\Services\AzureGraphService::class);
+                set_time_limit(120);
+
+                try {
+                    $azureService->enableUser($azureId);
+                    $azureEnabled = true;
+                    Log::info('✓ Step 1: User enabled in Azure AD successfully');
+                } catch (\Exception $directError) {
+                    if (
+                        str_contains($directError->getMessage(), '404') ||
+                        str_contains($directError->getMessage(), 'ResourceNotFound')
+                    ) {
+                        Log::warning('Azure ID not found, attempting lookup by email');
+
+                        try {
+                            $azureUserData = $azureService->findUserByUPN($user->userPrincipalName);
+
+                            if ($azureUserData && isset($azureUserData['id'])) {
+                                $correctAzureId = trim($azureUserData['id']);
+
+                                Log::warning('Azure ID mismatch - updating', [
+                                    'old' => $azureId,
+                                    'new' => $correctAzureId,
+                                ]);
+
+                                DB::connection('sqlsrv')
+                                    ->table('Azure_Users')
+                                    ->where('Id', $user->Id)
+                                    ->update(['AzureId' => $correctAzureId]);
+
+                                $azureId = $correctAzureId;
+                                $azureIdUpdated = true;
+
+                                $azureService->enableUser($correctAzureId);
+                                $azureEnabled = true;
+                                Log::info('✓ User enabled after ID correction');
+                            } else {
+                                Log::error('✗ User not found in Azure AD');
+                                return response()->json([
+                                    'success' => false,
+                                    'message' => 'Cannot enable: User not found in Azure AD. Contact IT support.',
+                                ], 404);
+                            }
+                        } catch (\Exception $lookupError) {
+                            Log::error('✗ User lookup failed');
+                            return response()->json([
+                                'success' => false,
+                                'message' => 'Cannot enable: User not found in Azure AD.',
+                            ], 404);
+                        }
+                    } else {
+                        throw $directError;
+                    }
+                }
+            } catch (\Exception $azureException) {
+                if (str_contains($azureException->getMessage(), 'timeout')) {
+                    Log::warning('Azure operation timed out - proceeding with local enable');
+                } else {
+                    Log::error('✗ Step 1 FAILED: ' . $azureException->getMessage());
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Failed to enable in Azure AD: ' . $azureException->getMessage(),
+                    ], 500);
+                }
             }
 
-            // Check if user has Azure ID
-            if (empty($azureId) || !$this->isValidUuid($azureId)) {
-                Log::warning('Cannot enable user - no valid Azure ID', [
-                    'user_id' => $user->Id,
-                    'email' => $user->userPrincipalName,
-                    'azure_id_in_db' => $azureId,
-                ]);
+            // STEP 2: Update database
+            Log::info('Step 2: Updating database...');
+
+            try {
+                $updateData = [
+                    'Status' => 'Active',
+                    'accountEnabled' => 1,
+                ];
+
+                if ($azureIdUpdated && !empty($azureId)) {
+                    $updateData['AzureId'] = $azureId;
+                }
+
+                $dbSuccess = DB::connection('sqlsrv')
+                    ->table('Azure_Users')
+                    ->where('Id', $user->Id)
+                    ->update($updateData);
+
+                if ($dbSuccess === false) {
+                    throw new \Exception('Database update failed');
+                }
+
+                Log::info('✓ Step 2: Database updated successfully');
+            } catch (\Exception $dbError) {
+                Log::error('✗ Step 2 FAILED: ' . $dbError->getMessage());
+
+                // Rollback if Azure was enabled
+                if ($azureEnabled) {
+                    try {
+                        $azureService->disableUser($azureId);
+                        Log::warning('⚠ ROLLBACK: User re-disabled in Azure AD');
+
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Database update failed. User remains disabled (rollback successful).',
+                        ], 500);
+                    } catch (\Exception $rollbackError) {
+                        Log::critical('✗ ROLLBACK FAILED: Manual intervention required!', [
+                            'user_id' => $user->Id,
+                            'azure_id' => $azureId,
+                        ]);
+
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'CRITICAL: User enabled in Azure but DB update failed. Contact IT immediately.',
+                        ], 500);
+                    }
+                }
 
                 return response()->json([
                     'success' => false,
-                    'message' => 'Cannot enable user: User has not been provisioned to Azure AD or Azure ID is invalid',
-                ], 400);
+                    'message' => 'Failed to update database: ' . $dbError->getMessage(),
+                ], 500);
             }
 
-            // ... rest of your enable method remains similar with timeout handling
-        } catch (\Exception $e) {
-            Log::error('Unexpected error enabling user', [
-                'user_id' => $user->Id ?? null,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
+            // Log activity
+            $this->logUserActivity($user->Id, 'user.enabled', 'User account enabled', [
+                'enabled_by' => Auth::user()->name ?? 'system',
+                'azure_enabled' => $azureEnabled,
             ]);
 
+            Log::info('=== USER ENABLED SUCCESSFULLY ===');
+
+            $message = '✅ User has been enabled successfully!';
+            if ($azureIdUpdated) $message .= ' Azure ID was corrected.';
+
+            return response()->json([
+                'success' => true,
+                'message' => $message,
+                'reload' => true,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Unexpected error: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
-                'message' => 'An unexpected error occurred: ' . $e->getMessage(),
+                'message' => '❌ An unexpected error occurred: ' . $e->getMessage(),
             ], 500);
         }
     }
@@ -3395,8 +4137,8 @@ class AzureUserManagementController extends Controller
                 ->where('Id', $user->Id)
                 ->update([
                     'AzureId' => $correctAzureId,
-                    'LastModifiedOn' => DB::raw('GETDATE()'),
-                    'LastModifiedBy' => Auth::id(),
+                    //'LastModifiedOn' => DB::raw('GETDATE()'),
+                    //'LastModifiedBy' => Auth::id(),
                 ]);
 
             Log::info('Azure ID repaired', [
@@ -3570,14 +4312,14 @@ class AzureUserManagementController extends Controller
     }
 
     /**
-     * Get functions for SCM modules (OPS/OPSUAT) using sp_UserCreation_Resourcefunction
+     * Get functions for SCM modules (OPS/OPSUAT) using sp_Azure_UserResourcefunction
      * API endpoint: GET /api/azure/modules/scm-functions
      */
     public function getSCMFunctions()
     {
         try {
             $functions = DB::connection('sqlsrv')
-                ->select('EXEC sp_UserCreation_Resourcefunction');
+                ->select('EXEC sp_Azure_UserResourcefunction');
 
             return response()->json([
                 'success' => true,
@@ -3596,7 +4338,7 @@ class AzureUserManagementController extends Controller
     }
 
     /**
-     * Get roles based on Application Code using sp_UserCreation_ResourceRole
+     * Get roles based on Application Code using sp_Azure_UserResourceRole
      * API endpoint: GET /api/azure/modules/roles?application_code=XXX&filter=YYY
      */
     public function getModuleRolesByCode(Request $request)
@@ -3615,51 +4357,54 @@ class AzureUserManagementController extends Controller
             }
 
             // ✅ ADD CACHING - cache for 1 hour
-            $cacheKey = "roles_{$applicationCode}_" . md5($filter ?? 'all');
+            // $cacheKey = "roles_{$applicationCode}_" . md5($filter ?? 'all');
 
-            $roles = Cache::remember($cacheKey, 3600, function () use ($applicationCode, $filter) {
-                $mapping = config('azure_modules.module_mapping', []);
-                $finalCode = $mapping[$applicationCode] ?? $applicationCode;
+            // $roles = Cache::remember($cacheKey, 3600, function () use ($applicationCode, $filter) {
+            $mapping = config('azure_modules.module_mapping', []);
+            $finalCode = $mapping[$applicationCode] ?? $applicationCode;
 
-                // Call stored procedure
-                if ($filter) {
-                    $roles = DB::connection('sqlsrv')
-                        ->select(
-                            'EXEC sp_UserCreation_ResourceRole @ApplicationCode = ?, @Filter = ?',
-                            [$finalCode, $filter]
-                        );
-                } else {
-                    $roles = DB::connection('sqlsrv')
-                        ->select(
-                            'EXEC sp_UserCreation_ResourceRole @ApplicationCode = ?',
-                            [$finalCode]
-                        );
-                }
+            // Call stored procedure
+            if ($filter) {
+                $roles = DB::connection('sqlsrv')
+                    ->select(
+                        'EXEC sp_Azure_UserResourceRole @ApplicationCode = ?, @Filter = ?',
+                        [$finalCode, $filter]
+                    );
+            } else {
+                $roles = DB::connection('sqlsrv')
+                    ->select(
+                        'EXEC sp_Azure_UserResourceRole @ApplicationCode = ?',
+                        [$finalCode]
+                    );
+            }
 
-                // Map RoleId to GUID
+            // Only map if RoleId is numeric (not already GUID)
+            $needsMapping = collect($roles)->contains(function ($role) {
+                return is_numeric($role->RoleId);
+            });
+
+            if ($needsMapping) {
                 $roleIds = collect($roles)->pluck('RoleId')->filter()->toArray();
 
-                if (! empty($roleIds)) {
-                    $roleMapping = DB::connection('sqlsrv')
-                        ->table('Azure_Users_Role')
-                        ->select('Id', 'RoleId', 'RoleCode', 'Role')
-                        ->where('ApplicationCode', $finalCode)
-                        ->whereIn('RoleId', $roleIds)
-                        ->where('IsActive', 1)
-                        ->where('IsDeleted', 0)
-                        ->get()
-                        ->keyBy('RoleId');
+                $roleMapping = DB::connection('sqlsrv')
+                    ->table('Azure_Users_Role')
+                    ->select('Id', 'RoleId', 'RoleCode', 'Role')
+                    ->where('ApplicationCode', $finalCode)
+                    ->whereIn('RoleId', $roleIds)
+                    ->where('IsActive', 1)
+                    ->where('IsDeleted', 0)
+                    ->get()
+                    ->keyBy('RoleId');
 
-                    foreach ($roles as &$role) {
-                        $oldRoleId = $role->RoleId;
-                        if (isset($roleMapping[$oldRoleId])) {
-                            $role->RoleId = $roleMapping[$oldRoleId]->Id;
-                        }
+                foreach ($roles as &$role) {
+                    $oldRoleId = $role->RoleId;
+                    if (isset($roleMapping[$oldRoleId])) {
+                        $role->RoleId = $roleMapping[$oldRoleId]->Id;
                     }
                 }
+            }
 
-                return $roles;
-            });
+            // });
 
             Log::info('✅ [AZURE ROLES] Roles fetched', [
                 'application_code' => $applicationCode,
@@ -3835,8 +4580,8 @@ class AzureUserManagementController extends Controller
                             ->where('Id', $user->Id)
                             ->update([
                                 'Status' => 'Active',
-                                'LastModifiedOn' => DB::raw('GETDATE()'),
-                                'LastModifiedBy' => Auth::id(),
+                                //'LastModifiedOn' => DB::raw('GETDATE()'),
+                                //'LastModifiedBy' => Auth::id(),
                             ]);
 
                         $stats['activated']++;
@@ -4023,6 +4768,7 @@ class AzureUserManagementController extends Controller
         return preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $guid) === 1;
     }
 
+
     /**
      * Validate and sanitize module assignment data
      *
@@ -4032,15 +4778,34 @@ class AzureUserManagementController extends Controller
     {
         $errors = [];
 
-        // Required fields validation
-        $requiredFields = ['module_id', 'application_id', 'location_id', 'location_code', 'role_id', 'role_code'];
+        // ========================================================================
+        // REQUIRED FIELDS (Always needed)
+        // ========================================================================
+        $requiredFields = ['module_id', 'application_id', 'location_id', 'location_code'];
+
         foreach ($requiredFields as $field) {
             if (empty($assignment[$field])) {
                 $errors[] = "Missing required field: {$field}";
             }
         }
 
-        if (! empty($errors)) {
+        // ========================================================================
+        // ✅ FIX: Handle 1-to-1 method validation
+        // In 1-to-1 method, a record can have EITHER:
+        // - role_id + role_code (role record)
+        // - function_id + function_code (function record)
+        // But NOT both in the same record
+        // ========================================================================
+
+        $hasRole = !empty($assignment['role_id']) && !empty($assignment['role_code']);
+        $hasFunction = !empty($assignment['function_id']) && !empty($assignment['function_code']);
+
+        // At least ONE must be present
+        if (!$hasRole && !$hasFunction) {
+            $errors[] = "Must have either role (role_id + role_code) OR function (function_id + function_code)";
+        }
+
+        if (!empty($errors)) {
             return [
                 'valid' => false,
                 'data' => null,
@@ -4048,10 +4813,27 @@ class AzureUserManagementController extends Controller
             ];
         }
 
-        // GUID format validation
-        $guidFields = ['module_id', 'application_id', 'location_id', 'role_id'];
-        foreach ($guidFields as $field) {
-            if (! $this->isValidGuid($assignment[$field])) {
+        // ========================================================================
+        // GUID format validation (only for non-null values)
+        // ========================================================================
+        $guidFields = [
+            'module_id' => $assignment['module_id'],
+            'application_id' => $assignment['application_id'],
+            'location_id' => $assignment['location_id'],
+        ];
+
+        // Add role_id only if present
+        if ($hasRole) {
+            $guidFields['role_id'] = $assignment['role_id'];
+        }
+
+        // Add function_id only if present
+        if ($hasFunction) {
+            $guidFields['function_id'] = $assignment['function_id'];
+        }
+
+        foreach ($guidFields as $field => $value) {
+            if (!$this->isValidGuid($value)) {
                 return [
                     'valid' => false,
                     'data' => null,
@@ -4060,19 +4842,19 @@ class AzureUserManagementController extends Controller
             }
         }
 
-        // Validate function_id if present (for SCM modules)
-        if (! empty($assignment['function_id']) && ! $this->isValidGuid($assignment['function_id'])) {
-            return [
-                'valid' => false,
-                'data' => null,
-                'error' => "Assignment {$index}: Invalid GUID format for function_id",
-            ];
-        }
-
-        // Sanitize data - convert empty strings to NULL for optional fields
-        $sanitized = $assignment;
-        $sanitized['function_id'] = ! empty($assignment['function_id']) ? $assignment['function_id'] : null;
-        $sanitized['function_code'] = ! empty($assignment['function_code']) ? $assignment['function_code'] : null;
+        // ========================================================================
+        // Sanitize data - set missing fields to NULL
+        // ========================================================================
+        $sanitized = [
+            'module_id' => $assignment['module_id'],
+            'application_id' => $assignment['application_id'],
+            'location_id' => $assignment['location_id'],
+            'location_code' => $assignment['location_code'],
+            'role_id' => $hasRole ? $assignment['role_id'] : null,
+            'role_code' => $hasRole ? $assignment['role_code'] : null,
+            'function_id' => $hasFunction ? $assignment['function_id'] : null,
+            'function_code' => $hasFunction ? $assignment['function_code'] : null,
+        ];
 
         return [
             'valid' => true,
@@ -4080,6 +4862,7 @@ class AzureUserManagementController extends Controller
             'error' => null,
         ];
     }
+
 
     /**
      * Check if module assignment already exists (prevent duplicates)
@@ -4104,6 +4887,8 @@ class AzureUserManagementController extends Controller
 
         return $query->exists();
     }
+
+
 
     /**
      * Verify that referenced master data exists
@@ -4140,30 +4925,45 @@ class AzureUserManagementController extends Controller
             $errors[] = "Location not found or inactive: {$assignment['location_code']}";
         }
 
-        // Verify role exists
-        $roleExists = DB::connection('sqlsrv')
-            ->table('Azure_Users_Role')
-            ->where('Id', $assignment['role_id'])
-            ->where('IsActive', 1)
-            ->where('IsDeleted', 0)
-            ->exists();
-
-        if (! $roleExists) {
-            $errors[] = "Role not found or inactive: {$assignment['role_code']}";
-        }
-
-        // Verify function if present (for SCM modules)
-        if (! empty($assignment['function_id'])) {
-            $functionExists = DB::connection('sqlsrv')
-                ->table('Azure_SCM_Functions') // Adjust table name as needed
-                ->where('Id', $assignment['function_id'])
+        // ========================================================================
+        // ✅ FIX: Verify role by RoleCode instead of Id
+        // ========================================================================
+        // PROBLEM: The frontend gets role IDs from sp_Azure_UserResourceRole 
+        //          which returns the RoleId column.
+        //          But Azure_Users_Role table's primary key is Id (different value!)
+        // SOLUTION: Match on RoleCode which is consistent across both sources
+        // 
+        // NOTE: In 1-to-1 method, role can be NULL (for function-only records)
+        // ========================================================================
+        if (!empty($assignment['role_code'])) {
+            $roleExists = DB::connection('sqlsrv')
+                ->table('Azure_Users_Role')
+                ->where('RoleCode', $assignment['role_code'])
                 ->where('IsActive', 1)
                 ->where('IsDeleted', 0)
                 ->exists();
 
-            if (! $functionExists) {
-                $errors[] = "Function not found or inactive: {$assignment['function_code']}";
+            if (! $roleExists) {
+                $errors[] = "Role not found or inactive: {$assignment['role_code']}";
             }
+        }
+
+        // ========================================================================
+        // ✅ FIX: Verify function by Code
+        // ========================================================================
+        // NOTE: Functions come from sp_Azure_UserResourcefunction (not from a table)
+        // The stored procedure returns: ID, Code, Name
+        // We could cache and validate against SP output, but for now we'll skip
+        // validation since the frontend already validates against the SP output
+        // ========================================================================
+        if (!empty($assignment['function_code'])) {
+            // Functions are validated by the frontend against sp_Azure_UserResourcefunction
+            // No table exists to validate against
+            // The function will fail at provisioning time if invalid
+            Log::debug('Function assignment detected', [
+                'function_code' => $assignment['function_code'],
+                'function_id' => $assignment['function_id'] ?? null,
+            ]);
         }
 
         return [
@@ -4171,6 +4971,9 @@ class AzureUserManagementController extends Controller
             'errors' => $errors,
         ];
     }
+
+
+
 
     /**
      * Retry D365 provisioning for a specific user
@@ -4787,5 +5590,651 @@ class AzureUserManagementController extends Controller
                 'message' => 'FIT Express provisioning failed: ' . $e->getMessage(),
             ], 500);
         }
+    }
+
+
+    /**
+     * Get user's current application access status
+     * Used to determine which checkboxes should be enabled/disabled in the modal
+     * 
+     * @param AzureUser $user
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getUserApplicationStatus(AzureUser $user)
+    {
+        try {
+            Log::info('=== GET USER APPLICATION STATUS ===', [
+                'user_id' => $user->Id,
+                'azure_id' => $user->AzureId,
+                'email' => $user->userPrincipalName,
+            ]);
+
+            // Check Azure AD status
+            $azureEnabled = ($user->Status === 'Active' && $user->accountEnabled);
+
+            // ✅ FIX: Use $user->Id instead of $user->AzureId
+            // Check D365 Live access
+            $hasD365 = DB::connection('sqlsrv')
+                ->table('Azure_Application_UserMapping')
+                ->where('AzureUserID', $user->Id)  // ← Changed from $user->AzureId
+                ->where('ApplicationName', 'D365 LIVE')
+                ->where('IsActive', 1)
+                ->where('IsDelete', 0)
+                ->exists();
+
+            // Check OPS/SCM access
+            $hasOPS = DB::connection('sqlsrv')
+                ->table('Azure_Application_UserMapping')
+                ->where('AzureUserID', $user->Id)  // ← Changed from $user->AzureId
+                ->where('ApplicationName', 'LIKE', '%OPS%')
+                ->where('IsActive', 1)
+                ->where('IsDelete', 0)
+                ->exists();
+
+            // Check BIZ PRO access
+            $hasBIZ = !empty($user->BizUserID);
+
+            // Check FIT Express access
+            $hasFIT = DB::connection('sqlsrv')
+                ->table('Azure_Application_UserMapping')
+                ->where('AzureUserID', $user->Id)  // ← Changed from $user->AzureId
+                ->where('ApplicationName', 'LIKE', '%FIT Express%')
+                ->where('IsActive', 1)
+                ->where('IsDelete', 0)
+                ->exists();
+
+            $status = [
+                'azure' => $azureEnabled,
+                'd365' => $hasD365,
+                'ops' => $hasOPS,
+                'biz' => $hasBIZ,
+                'fit' => $hasFIT,
+            ];
+
+            Log::info('User application status retrieved', [
+                'user_id' => $user->Id,
+                'status' => $status,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'data' => $status,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to get user application status', [
+                'user_id' => $user->Id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve application status',
+            ], 500);
+        }
+    }
+
+    /**
+     * Manage user access across multiple applications using sp_Azure_UserDisable
+     * 
+     * @param Request $request
+     * @param AzureUser $user
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function manageUserApplicationAccess(Request $request, AzureUser $user)
+    {
+        try {
+            Log::info('=== MANAGE USER APPLICATION ACCESS ===', [
+                'user_id' => $user->Id,
+                'azure_id' => $user->AzureId,
+                'email' => $user->userPrincipalName,
+                'request_data' => $request->all(),
+            ]);
+
+            // Validate request
+            $validated = $request->validate([
+                'action' => 'required|in:Disable,Enable',
+                'applications' => 'required|array|min:1',
+                'applications.*' => 'required|in:azure,d365,ops,biz,fit',
+            ]);
+
+            $action = $validated['action'];
+            $applications = $validated['applications'];
+
+            // Check if Azure AD is included
+            $includesAzureAD = in_array('azure', $applications);
+
+            // ================================================================
+            // Auto-include all accessible applications when Azure AD is selected for disable
+            // ================================================================
+            if ($includesAzureAD && $action === 'Disable') {
+                Log::info('→ Azure AD disable detected - auto-including all accessible applications');
+
+                $allApps = ['d365', 'ops', 'biz', 'fit'];
+                $addedApps = [];
+
+                foreach ($allApps as $app) {
+                    if (!in_array($app, $applications)) {
+                        $hasAccess = $this->checkUserHasApplicationAccess($user, $app);
+
+                        if ($hasAccess) {
+                            $applications[] = $app;
+                            $addedApps[] = $app;
+                            Log::info("  ✓ Auto-added {$app} to disable list (user has access)");
+                        } else {
+                            Log::info("  ⊘ Skipped {$app} (user has no access)");
+                        }
+                    }
+                }
+
+                if (!empty($addedApps)) {
+                    Log::info('Auto-added applications:', [
+                        'count' => count($addedApps),
+                        'apps' => $addedApps,
+                    ]);
+                }
+            }
+
+            // ================================================================
+            // CRITICAL: Validate AzureId exists before proceeding
+            // ================================================================
+            if (!$includesAzureAD && !empty($applications)) {
+                // Only validate AzureId if we're processing non-Azure applications
+                if (empty($user->AzureId) || !$this->isValidUuid($user->AzureId)) {
+                    Log::error('Cannot process - AzureId is missing or invalid', [
+                        'user_id' => $user->Id,
+                        'azure_id' => $user->AzureId,
+                        'upn' => $user->userPrincipalName,
+                    ]);
+
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Cannot process applications: User Azure ID is missing or invalid. Please ensure the user is properly provisioned to Azure AD.',
+                    ], 400);
+                }
+            }
+
+            // Build module list for JSON payload
+            $moduleList = [];
+
+            // Map application codes to module names (exact case match required)
+            $applicationMapping = [
+                'd365' => ['Module' => 'D365 Live', 'UserLevel' => 'Overall'],
+                'ops' => ['Module' => 'OPS', 'UserLevel' => 'User'],
+                'biz' => ['Module' => 'BIZ PRO', 'UserLevel' => 'Overall'],
+                'fit' => ['Module' => 'FIT Express', 'UserLevel' => 'Overall'],
+            ];
+
+            foreach ($applications as $app) {
+                if ($app === 'azure') {
+                    continue; // Azure AD handled separately
+                }
+
+                if (isset($applicationMapping[$app])) {
+                    $moduleList[] = [
+                        'Module' => $applicationMapping[$app]['Module'],
+                        'UserLevel' => $applicationMapping[$app]['UserLevel'],
+                        'Status' => ($action === 'Disable') ? 1 : 0,
+                    ];
+                }
+            }
+
+            $results = [
+                'azure' => null,
+                'applications' => [],
+            ];
+
+            // ================================================================
+            // Step 1: Handle Azure AD if included
+            // ================================================================
+            if ($includesAzureAD) {
+                Log::info('→ Step 1: Processing Azure AD...');
+
+                try {
+                    if ($action === 'Disable') {
+                        $azureResponse = $this->performAzureDisable($user);
+                    } else {
+                        $azureResponse = $this->performAzureEnable($user);
+                    }
+
+                    $results['azure'] = [
+                        'success' => $azureResponse['success'],
+                        'message' => $azureResponse['message'],
+                    ];
+
+                    Log::info('✓ Step 1: Azure AD processed', $results['azure']);
+                } catch (\Exception $e) {
+                    $results['azure'] = [
+                        'success' => false,
+                        'message' => 'Azure AD operation failed: ' . $e->getMessage(),
+                    ];
+
+                    Log::error('✗ Step 1: Azure AD failed', [
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+
+            // ================================================================
+            // Step 2: Handle other applications via stored procedure
+            // ================================================================
+            if (!empty($moduleList)) {
+                Log::info('→ Step 2: Processing applications via SP...', [
+                    'module_count' => count($moduleList),
+                    'modules' => array_column($moduleList, 'Module'),
+                ]);
+
+                try {
+                    // Build simplified JSON input (no outer wrapper)
+                    $inputJson = [
+                        'OperationType' => $action . ' Users',
+                        'SubmittedDatetime' => now()->format('YmdHis'),
+                        'SubmittedBy' => Auth::user()->name ?? 'system',
+                        'Action' => $action,
+                        'UserID' => $user->Id, // Use AzureId for consistency with your example
+                        'Modulelist' => $moduleList,
+                    ];
+
+                    $inputJsonString = json_encode($inputJson);
+
+                    Log::info('Calling sp_Azure_UserDisable', [
+                        'input_json' => $inputJsonString,
+                        'user_azure_id' => $user->AzureId,
+                        'user_db_id' => $user->Id,
+                    ]);
+
+                    // Call stored procedure
+                    $pdo = DB::connection('sqlsrv')->getPdo();
+                    $stmt = $pdo->prepare("
+                    SET NOCOUNT ON;
+                    DECLARE @OutputJson NVARCHAR(MAX);
+                    EXEC dbo.sp_Azure_UserDisable 
+                        @InputJson = ?,
+                        @OutputJson = @OutputJson OUTPUT;
+                    SELECT @OutputJson as OutputJson;
+                ");
+
+                    $stmt->execute([$inputJsonString]);
+                    $result = $stmt->fetch(\PDO::FETCH_OBJ);
+
+                    // Clear any remaining result sets
+                    while ($stmt->nextRowset()) {
+                        // Just loop through to clear
+                    }
+
+                    $outputJson = $result->OutputJson ?? null;
+
+                    Log::info('SP Raw Response', [
+                        'raw_output' => $outputJson,
+                        'raw_length' => strlen($outputJson ?? ''),
+                        'raw_hex' => bin2hex(substr($outputJson ?? '', 0, 100)),
+                        'first_100_chars' => substr($outputJson ?? '', 0, 100),
+                    ]);
+
+                    // Parse output JSON
+                    if ($outputJson) {
+                        // Clean the JSON first
+                        $cleanedJson = trim($outputJson);
+                        $cleanedJson = preg_replace('/[\x00-\x1F\x7F]/u', '', $cleanedJson);
+
+                        // Wrap multiple JSON objects in array brackets if needed
+                        if (substr($cleanedJson, 0, 1) === '{' && strpos($cleanedJson, '},{') !== false) {
+                            $cleanedJson = '[' . $cleanedJson . ']';
+                            Log::info('Wrapped multiple JSON objects in array', ['wrapped' => true]);
+                        }
+
+                        Log::info('Cleaned JSON', [
+                            'cleaned' => substr($cleanedJson, 0, 200) . '...',
+                            'original_equals_cleaned' => ($outputJson === $cleanedJson),
+                        ]);
+
+                        $output = json_decode($cleanedJson, true);
+
+                        if (json_last_error() === JSON_ERROR_NONE) {
+                            Log::info('JSON parsed successfully', ['output' => $output]);
+
+                            // Handle array of module results from SP
+                            if (is_array($output) && isset($output[0]['status'])) {
+                                Log::info('Detected array of module results');
+
+                                foreach ($output as $moduleResult) {
+                                    $remark = $moduleResult['Remark'] ?? '';
+
+                                    // Extract module name from remark (e.g., "<< BIZ PRO >>")
+                                    if (preg_match('/<< (.+?) >>/', $remark, $matches)) {
+                                        $moduleName = trim($matches[1]);
+
+                                        $results['applications'][$moduleName] = [
+                                            'success' => strtolower($moduleResult['status']) === 'success',
+                                            'message' => $remark,
+                                        ];
+                                    }
+                                }
+                            } else {
+                                // Unknown format - mark all modules as failed
+                                Log::warning('Unknown SP output format', ['output' => $output]);
+
+                                foreach ($moduleList as $module) {
+                                    $moduleName = $module['Module'];
+                                    $results['applications'][$moduleName] = [
+                                        'success' => false,
+                                        'message' => 'Unexpected response format from stored procedure',
+                                    ];
+                                }
+                            }
+                        } else {
+                            throw new \Exception('Invalid JSON response from stored procedure: ' . json_last_error_msg());
+                        }
+                    } else {
+                        throw new \Exception('No output from stored procedure');
+                    }
+
+                    Log::info('✓ Step 2: Applications processed', [
+                        'results' => $results['applications'],
+                    ]);
+                } catch (\Exception $e) {
+                    Log::error('✗ Step 2: Application processing failed', [
+                        'error' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString(),
+                    ]);
+
+                    // Mark all applications as failed
+                    foreach ($moduleList as $module) {
+                        $moduleName = $module['Module'];
+
+                        // Only mark as failed if not already processed
+                        if (!isset($results['applications'][$moduleName])) {
+                            $results['applications'][$moduleName] = [
+                                'success' => false,
+                                'message' => 'Failed: ' . $e->getMessage(),
+                            ];
+                        }
+                    }
+                }
+            }
+
+            // Build summary message
+            $summary = $this->buildSummaryMessage($results, $action);
+
+            Log::info('=== MANAGE USER APPLICATION ACCESS COMPLETED ===', [
+                'user_id' => $user->Id,
+                'summary' => $summary,
+                'results' => $results,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => $summary['message'],
+                'results' => $results,
+                'summary' => $summary,
+                'reload' => $includesAzureAD, // Reload page if Azure AD was modified
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Unexpected error in manageUserApplicationAccess', [
+                'user_id' => $user->Id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'An unexpected error occurred: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Helper: Check if user has access to a specific application
+     * 
+     * @param AzureUser $user
+     * @param string $app - Application code (d365, ops, biz, fit)
+     * @return bool
+     */
+    private function checkUserHasApplicationAccess(AzureUser $user, string $app): bool
+    {
+        switch ($app) {
+            case 'd365':
+                return DB::connection('sqlsrv')
+                    ->table('Azure_Application_UserMapping')
+                    ->where('AzureUserID', $user->Id)
+                    ->where('ApplicationName', 'D365 LIVE')
+                    ->where('IsActive', 1)
+                    ->where('IsDelete', 0)
+                    ->exists();
+
+            case 'ops':
+                return DB::connection('sqlsrv')
+                    ->table('Azure_Application_UserMapping')
+                    ->where('AzureUserID', $user->Id)
+                    ->where('ApplicationName', 'LIKE', '%OPS%')
+                    ->where('IsActive', 1)
+                    ->where('IsDelete', 0)
+                    ->exists();
+
+            case 'biz':
+                return !empty($user->BizUserID);
+
+            case 'fit':
+                return DB::connection('sqlsrv')
+                    ->table('Azure_Application_UserMapping')
+                    ->where('AzureUserID', $user->Id)
+                    ->where('ApplicationName', 'LIKE', '%FIT Express%')
+                    ->where('IsActive', 1)
+                    ->where('IsDelete', 0)
+                    ->exists();
+
+            default:
+                return false;
+        }
+    }
+
+    /**
+     * Helper: Perform Azure AD disable operation
+     */
+    private function performAzureDisable($user)
+    {
+        // Reuse existing disable logic
+        $azureId = $user->AzureId;
+
+        if (empty($azureId) || !$this->isValidUuid($azureId)) {
+            return [
+                'success' => false,
+                'message' => 'Invalid Azure ID',
+            ];
+        }
+
+        $azureService = app(\App\Services\AzureGraphService::class);
+
+        try {
+            $azureService->disableUser($azureId);
+
+            DB::connection('sqlsrv')
+                ->table('Azure_Users')
+                ->where('Id', $user->Id)
+                ->update([
+                    'Status' => 'Inactive',
+                    'accountEnabled' => 0,
+                ]);
+
+            return [
+                'success' => true,
+                'message' => 'Azure AD account disabled successfully',
+            ];
+        } catch (\Exception $e) {
+            return [
+                'success' => false,
+                'message' => 'Azure AD disable failed: ' . $e->getMessage(),
+            ];
+        }
+    }
+
+    /**
+     * Helper: Perform Azure AD enable operation
+     */
+    private function performAzureEnable($user)
+    {
+        // Reuse existing enable logic
+        $azureId = $user->AzureId;
+
+        if (empty($azureId) || !$this->isValidUuid($azureId)) {
+            return [
+                'success' => false,
+                'message' => 'Invalid Azure ID',
+            ];
+        }
+
+        $azureService = app(\App\Services\AzureGraphService::class);
+
+        try {
+            $azureService->enableUser($azureId);
+
+            DB::connection('sqlsrv')
+                ->table('Azure_Users')
+                ->where('Id', $user->Id)
+                ->update([
+                    'Status' => 'Active',
+                    'accountEnabled' => 1,
+                ]);
+
+            return [
+                'success' => true,
+                'message' => 'Azure AD account enabled successfully',
+            ];
+        } catch (\Exception $e) {
+            return [
+                'success' => false,
+                'message' => 'Azure AD enable failed: ' . $e->getMessage(),
+            ];
+        }
+    }
+
+    /**
+     * Helper: Build summary message from results
+     */
+    private function buildSummaryMessage($results, $action)
+    {
+        $successful = [];
+        $failed = [];
+
+        // Check Azure AD result
+        if ($results['azure']) {
+            if ($results['azure']['success']) {
+                $successful[] = 'Azure AD';
+            } else {
+                $failed[] = 'Azure AD: ' . $results['azure']['message'];
+            }
+        }
+
+        // Check application results
+        foreach ($results['applications'] as $module => $result) {
+            if ($result['success']) {
+                $successful[] = $module;
+            } else {
+                $failed[] = $module . ': ' . $result['message'];
+            }
+        }
+
+        $totalCount = count($successful) + count($failed);
+        $successCount = count($successful);
+
+        // ✅ IMPROVED: Build more detailed message with action verb
+        $actionVerb = strtolower($action) . 'd'; // "disabled" or "enabled"
+        $message = "{$action} operation completed: {$successCount}/{$totalCount} successful";
+
+        if (!empty($successful)) {
+            $message .= "\n\n✅ Successfully {$actionVerb}:\n• " . implode("\n• ", $successful);
+        }
+
+        if (!empty($failed)) {
+            $message .= "\n\n❌ Failed:\n• " . implode("\n• ", $failed);
+        }
+
+        return [
+            'message' => $message,
+            'successful' => $successful,
+            'failed' => $failed,
+            'success_count' => $successCount,
+            'total_count' => $totalCount,
+        ];
+    }
+
+    /**
+     * Get Azure ID with comprehensive fallback strategy
+     * 
+     * @param AzureUser $user
+     * @return string|null
+     */
+    private function getAzureIdWithFallback(AzureUser $user): ?string
+    {
+        // Method 1: From model
+        if (!empty($user->AzureId) && $this->isValidUuid($user->AzureId)) {
+            return trim($user->AzureId);
+        }
+
+        // Method 2: Refresh and retry
+        $user = $user->fresh();
+        if ($user && !empty($user->AzureId) && $this->isValidUuid($user->AzureId)) {
+            return trim($user->AzureId);
+        }
+
+        // Method 3: Direct DB query
+        $azureId = DB::connection('sqlsrv')
+            ->table('Azure_Users')
+            ->where('Id', $user->Id)
+            ->value('AzureId');
+
+        if (!empty($azureId) && $this->isValidUuid($azureId)) {
+            return trim($azureId);
+        }
+
+        // Method 4: Azure AD lookup
+        try {
+            $azureService = app(\App\Services\AzureGraphService::class);
+            $azureUser = $azureService->findUserByUPN($user->userPrincipalName);
+
+            if ($azureUser && isset($azureUser['id']) && $this->isValidUuid($azureUser['id'])) {
+                $azureId = trim($azureUser['id']);
+
+                // Update DB
+                DB::connection('sqlsrv')
+                    ->table('Azure_Users')
+                    ->where('Id', $user->Id)
+                    ->update(['AzureId' => $azureId]);
+
+                return $azureId;
+            }
+        } catch (\Exception $e) {
+            Log::error('Azure AD lookup failed', ['error' => $e->getMessage()]);
+        }
+
+        return null;
+    }
+
+
+    /**
+     * Repair AzureId by searching with alternate email patterns
+     */
+    private function findAndRepairAzureId(AzureUser $user): ?string
+    {
+        $azureService = app(\App\Services\AzureGraphService::class);
+
+        // Try 1: Exact UPN match
+        try {
+            $azureUser = $azureService->findUserByUPN($user->userPrincipalName);
+            if ($azureUser && isset($azureUser['id'])) {
+                return trim($azureUser['id']);
+            }
+        } catch (\Exception $e) {
+        }
+
+        // Try 2: Search by display name
+        try {
+            $searchResults = $azureService->searchUsers($user->displayName);
+            if (!empty($searchResults) && isset($searchResults[0]['id'])) {
+                return trim($searchResults[0]['id']);
+            }
+        } catch (\Exception $e) {
+        }
+
+        return null;
     }
 }

@@ -11,7 +11,8 @@ class VerifyCsrfToken extends Middleware
      *
      * @var array
      */
-    protected $except = [
-        'http://eticketuat.freightintime.com/logout'
+protected $except = [
+        'http://eticketuat.freightintime.com/logout',
+        'webhooks/jimi/*'
     ];
 }

@@ -3,10 +3,9 @@
 namespace App\Http\Controllers;
 
 use Exception;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
 
 class OdooSyncController extends Controller
 {
@@ -31,7 +30,61 @@ class OdooSyncController extends Controller
             echo "<p class='info'>📥 <strong>Step 1:</strong> Fetching users from Odoo...</p>";
             flush();
 
-            $odooUsers = DB::connection('pgsql')->select('SELECT * FROM vw_getuserdetails');
+            // NEW (queries tables directly, no date filter)
+            $odooUsers = DB::connection('pgsql')->select("
+    SELECT 
+        ru.login AS userprincipalname,
+        he.name AS displayname,
+        split_part(he.name::text, ' ', 2) AS surname,
+        he.work_email AS mail,
+        split_part(he.name::text, ' ', 1) AS givenname,
+        NULL AS azureid,
+        'Member' AS usertype,
+        he.job_title AS jobtitle,
+        hd.complete_name AS department,
+        1 AS accountenabled,
+        ru.company_id,
+        CASE
+            WHEN rc.name ~~ '%Kenya%' THEN 'KE'
+            WHEN rc.name ~~ '%Uganda%' THEN 'UG'
+            WHEN rc.name ~~ '%Rwanda%' THEN 'RW'
+            WHEN rc.name ~~ '%South Sudan%' THEN 'SS'
+            WHEN rc.name ~~ '%Djibouti%' THEN 'DJ'
+            WHEN rc.name ~~ '%Tanzania%' THEN 'TZ'
+            WHEN rc.name ~~ '%Ethiopia%' THEN 'ET'
+            ELSE 'NA'
+        END AS usagelocation,
+        he.private_street || CASE WHEN length(COALESCE(he.private_street2, '')) > 0 THEN ' ' || he.private_street2 ELSE '' END AS streetaddress,
+        rcs.name AS state,
+        rec.name::json ->> 'en_US' AS country,
+        NULL AS officelocation,
+        he.private_city AS city,
+        he.private_zip AS postalcode,
+        he.work_phone AS telephonenumber,
+        he.mobile_phone AS mobilephone,
+        he.private_email AS alternateemailaddress,
+        NULL AS agegroup,
+        NULL AS consentprovidedforminor,
+        NULL AS legalagegroupclassification,
+        rc.name AS companyname,
+        NULL AS creationtype,
+        NULL AS directorysynced,
+        NULL AS invitationstate,
+        NULL AS identityissuer,
+        he.user_id AS odoouserid,
+        he.id AS odooemployeeid,
+        ru.login AS odoologinid,
+        he.create_date AS odoocreatedon,
+        he.registration_number AS employecode,
+        CASE WHEN ru.share = false THEN 'Internal' ELSE 'Portal' END AS odoologintype
+    FROM hr_employee he
+    JOIN res_users ru ON ru.id = he.user_id AND ru.active = true
+    LEFT JOIN hr_department hd ON hd.id = he.department_id
+    JOIN res_company rc ON rc.id = ru.company_id
+    LEFT JOIN res_country_state rcs ON rcs.id = he.private_state_id
+    LEFT JOIN res_country rec ON rec.id = he.private_country_id
+    WHERE he.active = true
+");
             $totalUsers = count($odooUsers);
 
             echo "<p class='success'>✅ Found <strong>{$totalUsers}</strong> users in Odoo</p>";
@@ -129,12 +182,10 @@ class OdooSyncController extends Controller
      */
     public function syncUsersAjax()
     {
-        $startTime = now();
-
         try {
             Log::info('=== MANUAL ODOO SYNC STARTED ===', [
                 'initiated_by' => Auth::id(),
-                'time' => $startTime,
+                'time' => now(),
             ]);
 
             $stats = [
@@ -145,238 +196,114 @@ class OdooSyncController extends Controller
                 'errors' => [],
             ];
 
-            // ====================================================================
-            // STEP 1: CONNECT TO ODOO DATABASE
-            // ====================================================================
-            try {
-                Log::info('Step 1: Connecting to Odoo database...');
+            // Fetch users from Odoo
+            // NEW (queries tables directly, no date filter)
+            // Sync only users created or modified in the last 7 days
+            $odooUsers = DB::connection('pgsql')->select("
+    SELECT 
+        ru.login AS userprincipalname,
+        he.name AS displayname,
+        split_part(he.name::text, ' ', 2) AS surname,
+        he.work_email AS mail,
+        split_part(he.name::text, ' ', 1) AS givenname,
+        NULL AS azureid,
+        'Member' AS usertype,
+        he.job_title AS jobtitle,
+        hd.complete_name AS department,
+        1 AS accountenabled,
+        ru.company_id,
+        CASE
+            WHEN rc.name ~~ '%Kenya%' THEN 'KE'
+            WHEN rc.name ~~ '%Uganda%' THEN 'UG'
+            WHEN rc.name ~~ '%Rwanda%' THEN 'RW'
+            WHEN rc.name ~~ '%South Sudan%' THEN 'SS'
+            WHEN rc.name ~~ '%Djibouti%' THEN 'DJ'
+            WHEN rc.name ~~ '%Tanzania%' THEN 'TZ'
+            WHEN rc.name ~~ '%Ethiopia%' THEN 'ET'
+            ELSE 'NA'
+        END AS usagelocation,
+        he.private_street || CASE WHEN length(COALESCE(he.private_street2, '')) > 0 THEN ' ' || he.private_street2 ELSE '' END AS streetaddress,
+        rcs.name AS state,
+        rec.name::json ->> 'en_US' AS country,
+        NULL AS officelocation,
+        he.private_city AS city,
+        he.private_zip AS postalcode,
+        he.work_phone AS telephonenumber,
+        he.mobile_phone AS mobilephone,
+        he.private_email AS alternateemailaddress,
+        NULL AS agegroup,
+        NULL AS consentprovidedforminor,
+        NULL AS legalagegroupclassification,
+        rc.name AS companyname,
+        NULL AS creationtype,
+        NULL AS directorysynced,
+        NULL AS invitationstate,
+        NULL AS identityissuer,
+        he.user_id AS odoouserid,
+        he.id AS odooemployeeid,
+        ru.login AS odoologinid,
+        he.create_date AS odoocreatedon,
+        he.registration_number AS employecode,
+        CASE WHEN ru.share = false THEN 'Internal' ELSE 'Portal' END AS odoologintype
+    FROM hr_employee he
+    JOIN res_users ru ON ru.id = he.user_id AND ru.active = true
+    LEFT JOIN hr_department hd ON hd.id = he.department_id
+    JOIN res_company rc ON rc.id = ru.company_id
+    LEFT JOIN res_country_state rcs ON rcs.id = he.private_state_id
+    LEFT JOIN res_country rec ON rec.id = he.private_country_id
+    WHERE he.active = true
+        AND (he.create_date::date >= CURRENT_DATE - INTERVAL '7 days' 
+             OR he.write_date::date >= CURRENT_DATE - INTERVAL '7 days')
+");
+            Log::info('ODOO USERS FETCHED', ['count' => count($odooUsers)]);
 
-                // Test connection
-                DB::connection('pgsql')->getPdo();
 
-                Log::info('✓ Step 1: Connected to Odoo successfully');
-            } catch (\PDOException $e) {
-                Log::error('✗ Step 1 FAILED: Could not connect to Odoo database', [
-                    'error' => $e->getMessage(),
-                    'code' => $e->getCode(),
-                ]);
-
+            if (empty($odooUsers)) {
                 return response()->json([
                     'success' => false,
-                    'error_type' => 'odoo_connection_failed',
-                    'retry_possible' => true,
-                    'step_failed' => 'odoo_connection',
-                    'message' => 'Could not connect to Odoo database',
-                    'technical_details' => $e->getMessage(),
-                    'troubleshooting' => [
-                        'Verify Odoo (PostgreSQL) server is running',
-                        'Check DB_PGSQL_HOST, DB_PGSQL_DATABASE in .env file',
-                        'Test network connectivity to Odoo server',
-                        'Verify database credentials are correct',
-                        'Check firewall rules allow connection to PostgreSQL port',
-                    ],
-                ], 500);
-            } catch (\Exception $e) {
-                Log::error('✗ Step 1 FAILED: Unexpected connection error', [
-                    'error' => $e->getMessage(),
-                ]);
-
-                return response()->json([
-                    'success' => false,
-                    'error_type' => 'connection_error',
-                    'retry_possible' => true,
-                    'step_failed' => 'odoo_connection',
-                    'message' => 'Failed to connect to Odoo',
-                    'technical_details' => $e->getMessage(),
-                    'troubleshooting' => [
-                        'Check your internet connection',
-                        'Verify VPN is connected if required',
-                        'Contact IT support if issue persists',
-                    ],
-                ], 500);
+                    'message' => 'No users found in Odoo',
+                ], 404);
             }
 
-            // ====================================================================
-            // STEP 2: FETCH USERS FROM ODOO
-            // ====================================================================
-            try {
-                Log::info('Step 2: Fetching users from Odoo view...');
+            // Process users in transaction
+            DB::connection('sqlsrv')->transaction(function () use ($odooUsers, &$stats) {
+                foreach ($odooUsers as $user) {
+                    $stats['processed']++;
 
-                $odooUsers = DB::connection('pgsql')->select('SELECT * FROM vw_getuserdetails');
+                    try {
+                        $userData = $this->normalizeUserData($user);
 
-                if (empty($odooUsers)) {
-                    Log::warning('No users found in Odoo view');
+                        $existingUser = DB::connection('sqlsrv')
+                            ->table('Azure_Users')
+                            ->where('userPrincipalName', $userData['userPrincipalName'])
+                            ->first();
 
-                    return response()->json([
-                        'success' => false,
-                        'error_type' => 'no_data',
-                        'retry_possible' => false,
-                        'step_failed' => 'data_fetch',
-                        'message' => 'No users found in Odoo',
-                        'technical_details' => 'vw_getuserdetails returned 0 rows',
-                        'troubleshooting' => [
-                            'Check if vw_getuserdetails view exists in Odoo database',
-                            'Verify the view has data: SELECT COUNT(*) FROM vw_getuserdetails',
-                            'Check if view permissions are correct',
-                            'Verify employees exist in Odoo HR module',
-                        ],
-                    ], 404);
-                }
-
-                Log::info('✓ Step 2: Fetched users from Odoo', [
-                    'count' => count($odooUsers),
-                ]);
-            } catch (\Exception $e) {
-                Log::error('✗ Step 2 FAILED: Could not fetch users from Odoo', [
-                    'error' => $e->getMessage(),
-                ]);
-
-                return response()->json([
-                    'success' => false,
-                    'error_type' => 'odoo_query_failed',
-                    'retry_possible' => true,
-                    'step_failed' => 'data_fetch',
-                    'message' => 'Failed to fetch users from Odoo view',
-                    'technical_details' => $e->getMessage(),
-                    'troubleshooting' => [
-                        'Check if vw_getuserdetails view exists',
-                        'Verify database user has SELECT permission on the view',
-                        'Run query manually in pgAdmin to test: SELECT * FROM vw_getuserdetails',
-                        'Check Odoo database logs for errors',
-                    ],
-                ], 500);
-            }
-
-            // ====================================================================
-            // STEP 3: CONNECT TO SQL SERVER
-            // ====================================================================
-            try {
-                Log::info('Step 3: Connecting to SQL Server...');
-
-                // Test connection
-                DB::connection('sqlsrv')->getPdo();
-
-                Log::info('✓ Step 3: Connected to SQL Server successfully');
-            } catch (\Exception $e) {
-                Log::error('✗ Step 3 FAILED: Could not connect to SQL Server', [
-                    'error' => $e->getMessage(),
-                ]);
-
-                return response()->json([
-                    'success' => false,
-                    'error_type' => 'sqlserver_connection_failed',
-                    'retry_possible' => true,
-                    'step_failed' => 'sqlserver_connection',
-                    'message' => 'Could not connect to SQL Server database',
-                    'technical_details' => $e->getMessage(),
-                    'troubleshooting' => [
-                        'Verify SQL Server is running',
-                        'Check DB_HOST, DB_DATABASE in .env file',
-                        'Verify SQL Server credentials are correct',
-                        'Check SQL Server allows remote connections',
-                        'Verify SQL Server service is started',
-                    ],
-                ], 500);
-            }
-
-            // ====================================================================
-            // STEP 4: PROCESS USERS IN TRANSACTION
-            // ====================================================================
-            try {
-                Log::info('Step 4: Processing users...');
-
-                DB::connection('sqlsrv')->transaction(function () use ($odooUsers, &$stats) {
-                    foreach ($odooUsers as $user) {
-                        $stats['processed']++;
-
-                        try {
-                            $userData = $this->normalizeUserData($user);
-
-                            $existingUser = DB::connection('sqlsrv')
-                                ->table('Azure_Users')
-                                ->where('userPrincipalName', $userData['userPrincipalName'])
-                                ->first();
-
-                            if (!$existingUser) {
-                                // NEW USER: Insert with Status = "Pending"
-                                $this->insertUserImproved($userData);
-                                $stats['inserted']++;
-
-                                Log::debug('Inserted new user', [
-                                    'email' => $userData['userPrincipalName'],
-                                ]);
-                            } else {
-                                // EXISTING USER: Update and set to "Active"
-                                $this->updateUserImproved($userData);
-                                $stats['updated']++;
-
-                                Log::debug('Updated existing user', [
-                                    'email' => $userData['userPrincipalName'],
-                                ]);
-                            }
-                        } catch (QueryException $e) {
-                            $stats['failed']++;
-                            $errorDetails = [
-                                'user' => $userData['userPrincipalName'] ?? 'Unknown',
-                                'error' => $e->getMessage(),
-                                'sql_state' => $e->getCode(),
-                            ];
-
-                            $stats['errors'][] = $errorDetails;
-
-                            Log::error('Database error syncing user', $errorDetails);
-                        } catch (Exception $e) {
-                            $stats['failed']++;
-                            $errorDetails = [
-                                'user' => $userData['userPrincipalName'] ?? 'Unknown',
-                                'error' => $e->getMessage(),
-                            ];
-
-                            $stats['errors'][] = $errorDetails;
-
-                            Log::error('Failed to sync user', $errorDetails);
+                        if (! $existingUser) {
+                            // NEW USER: Insert with Status = "Pending"
+                            $this->insertUserImproved($userData);
+                            $stats['inserted']++;
+                        } else {
+                            // EXISTING USER: Update and set to "Active"
+                            $this->updateUserImproved($userData);
+                            $stats['updated']++;
                         }
+                    } catch (Exception $e) {
+                        $stats['failed']++;
+                        $stats['errors'][] = [
+                            'user' => $userData['userPrincipalName'] ?? 'Unknown',
+                            'error' => $e->getMessage(),
+                        ];
+
+                        Log::error('Failed to sync user', [
+                            'user' => $userData['userPrincipalName'] ?? 'Unknown',
+                            'error' => $e->getMessage(),
+                        ]);
                     }
-                });
-
-                Log::info('✓ Step 4: Users processed successfully', [
-                    'processed' => $stats['processed'],
-                    'inserted' => $stats['inserted'],
-                    'updated' => $stats['updated'],
-                    'failed' => $stats['failed'],
-                ]);
-            } catch (\Exception $e) {
-                Log::error('✗ Step 4 FAILED: Transaction failed', [
-                    'error' => $e->getMessage(),
-                    'stats_before_failure' => $stats,
-                ]);
-
-                return response()->json([
-                    'success' => false,
-                    'error_type' => 'database_transaction_failed',
-                    'retry_possible' => true,
-                    'step_failed' => 'user_processing',
-                    'message' => 'Database transaction failed while processing users',
-                    'technical_details' => $e->getMessage(),
-                    'stats' => $stats,
-                    'troubleshooting' => [
-                        'Check SQL Server transaction log for details',
-                        'Verify database has enough space',
-                        'Check for database locks or deadlocks',
-                        'Review error details above for specific user failures',
-                        'If issue persists, try syncing users in smaller batches',
-                    ],
-                ], 500);
-            }
-
-            // ====================================================================
-            // STEP 5: CALCULATE DURATION AND RETURN SUCCESS
-            // ====================================================================
-            $duration = $startTime->diffInSeconds(now());
+                }
+            });
 
             Log::info('=== MANUAL ODOO SYNC COMPLETED ===', [
                 'stats' => $stats,
-                'duration_seconds' => $duration,
                 'initiated_by' => Auth::id(),
             ]);
 
@@ -384,33 +311,16 @@ class OdooSyncController extends Controller
                 'success' => true,
                 'message' => 'Sync completed successfully',
                 'stats' => $stats,
-                'duration_seconds' => $duration,
-                'error_type' => null,
-                'retry_possible' => false,
             ]);
-        } catch (\Exception $e) {
-            $duration = $startTime->diffInSeconds(now());
-
+        } catch (Exception $e) {
             Log::error('=== MANUAL ODOO SYNC FAILED ===', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
-                'duration_seconds' => $duration,
-                'initiated_by' => Auth::id(),
             ]);
 
             return response()->json([
                 'success' => false,
-                'error_type' => 'unexpected_error',
-                'retry_possible' => true,
-                'step_failed' => 'unknown',
-                'message' => 'An unexpected error occurred during sync',
-                'technical_details' => $e->getMessage(),
-                'troubleshooting' => [
-                    'Check Laravel logs at storage/logs/laravel.log for full error trace',
-                    'Verify all database connections are properly configured',
-                    'Contact IT support with the error details below',
-                    'Try running sync again - this may be a temporary issue',
-                ],
+                'message' => 'Sync failed: ' . $e->getMessage(),
             ], 500);
         }
     }
@@ -481,29 +391,29 @@ class OdooSyncController extends Controller
     private function insertUserImproved(array $data): void
     {
         DB::connection('sqlsrv')->insert("
-            INSERT INTO Azure_Users (
-                Id, userPrincipalName, displayName, surname, mail, givenName,
-                AzureId, userType, jobTitle, department, accountEnabled,
-                usageLocation, streetAddress, state, country, officeLocation,
-                city, postalCode, telephoneNumber, mobilePhone, alternateEmailAddress,
-                ageGroup, consentProvidedForMinor, legalAgeGroupClassification,
-                companyName, creationType, directorySynced, invitationState,
-                identityIssuer, OdooUserId, OdooEmployeeId,
-                OdooLoginId, OdooCreatedOn, EmployeCode, OdooLoginType,
-                Status, CreatedDateTime
-            )
-            VALUES (
-                NEWID(), ?, ?, ?, ?, ?,
-                ?, ?, ?, ?, ?,
-                ?, ?, ?, ?, ?,
-                ?, ?, ?, ?, ?,
-                ?, ?, ?,
-                ?, ?, ?, ?,
-                ?, ?, ?,
-                ?, ?, ?, ?,
-                'Pending', GETDATE()
-            )
-        ", array_values($data));
+        INSERT INTO Azure_Users (
+            Id, userPrincipalName, displayName, surname, mail, givenName,
+            AzureId, userType, jobTitle, department, accountEnabled,
+            usageLocation, streetAddress, state, country, officeLocation,
+            city, postalCode, telephoneNumber, mobilePhone, alternateEmailAddress,
+            ageGroup, consentProvidedForMinor, legalAgeGroupClassification,
+            companyName, creationType, directorySynced, invitationState,
+            identityIssuer, OdooUserId, OdooEmployeeId,
+            OdooLoginId, OdooCreatedOn, EmployeCode, OdooLoginType,
+            Status, createdDateTime
+        )
+        VALUES (
+            NEWID(), ?, ?, ?, ?, ?,
+            ?, ?, ?, ?, ?,
+            ?, ?, ?, ?, ?,
+            ?, ?, ?, ?, ?,
+            ?, ?, ?,
+            ?, ?, ?, ?,
+            ?, ?, ?,
+            ?, ?, ?, ?,
+            'Pending', GETDATE()
+        )
+    ", array_values($data));
     }
 
     /**
@@ -513,47 +423,47 @@ class OdooSyncController extends Controller
     private function updateUserImproved(array $data): void
     {
         $upn = $data['userPrincipalName'];
-        unset($data['userPrincipalName']); // Remove from update data
+        unset($data['userPrincipalName']);
 
         DB::connection('sqlsrv')->update("
-            UPDATE Azure_Users
-            SET
-                displayName = ?,
-                surname = ?,
-                mail = ?,
-                givenName = ?,
-                AzureId = ?,
-                userType = ?,
-                jobTitle = ?,
-                department = ?,
-                accountEnabled = ?,
-                usageLocation = ?,
-                streetAddress = ?,
-                state = ?,
-                country = ?,
-                officeLocation = ?,
-                city = ?,
-                postalCode = ?,
-                telephoneNumber = ?,
-                mobilePhone = ?,
-                alternateEmailAddress = ?,
-                ageGroup = ?,
-                consentProvidedForMinor = ?,
-                legalAgeGroupClassification = ?,
-                companyName = ?,
-                creationType = ?,
-                directorySynced = ?,
-                invitationState = ?,
-                identityIssuer = ?,
-                OdooUserId = ?,
-                OdooEmployeeId = ?,
-                OdooLoginId = ?,
-                OdooCreatedOn = ?,
-                EmployeCode = ?,
-                OdooLoginType = ?,
-                Status = 'Active'
-            WHERE userPrincipalName = ?
-        ", array_merge(array_values($data), [$upn]));
+        UPDATE Azure_Users
+        SET
+            displayName = ?,
+            surname = ?,
+            mail = ?,
+            givenName = ?,
+            AzureId = ?,
+            userType = ?,
+            jobTitle = ?,
+            department = ?,
+            accountEnabled = ?,
+            usageLocation = ?,
+            streetAddress = ?,
+            state = ?,
+            country = ?,
+            officeLocation = ?,
+            city = ?,
+            postalCode = ?,
+            telephoneNumber = ?,
+            mobilePhone = ?,
+            alternateEmailAddress = ?,
+            ageGroup = ?,
+            consentProvidedForMinor = ?,
+            legalAgeGroupClassification = ?,
+            companyName = ?,
+            creationType = ?,
+            directorySynced = ?,
+            invitationState = ?,
+            identityIssuer = ?,
+            OdooUserId = ?,
+            OdooEmployeeId = ?,
+            OdooLoginId = ?,
+            OdooCreatedOn = ?,
+            EmployeCode = ?,
+            OdooLoginType = ?,
+            Status = 'Active'
+        WHERE userPrincipalName = ?
+    ", array_merge(array_values($data), [$upn]));
     }
 
     // Output helper methods

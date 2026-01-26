@@ -81,7 +81,7 @@ class DashboardStatsService
             $search = strtolower(trim($search));
             $usersQuery->where(function ($q) use ($search) {
                 $q->whereRaw('LOWER(displayName) LIKE ?', ["%$search%"])
-                  ->orWhereRaw('LOWER(userPrincipalName) LIKE ?', ["%$search%"]);
+                    ->orWhereRaw('LOWER(userPrincipalName) LIKE ?', ["%$search%"]);
             });
         }
 

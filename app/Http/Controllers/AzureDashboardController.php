@@ -18,9 +18,10 @@ class AzureDashboardController extends Controller
     public function index()
     {
         try {
+
             // Get filter parameters from request
             $search = request('search', '');
-            $status = request('status', '');
+            $status = request('status', 'active');
             $department = request('department', '');
             $company = request('company', '');
             $location = request('location', '');
@@ -276,5 +277,188 @@ class AzureDashboardController extends Controller
 
             return response()->json([]);
         }
+    }
+
+
+    /**
+     * Get users for AJAX requests (No partials needed)
+     */
+    public function getUsers(Request $request)
+    {
+        try {
+            $search = $request->input('search', '');
+            $status = $request->input('status', 'active'); // CHANGE: Default to 'active'
+            $perPage = $request->input('per_page', 15);
+
+            $query = AzureUser::query();
+
+            if ($search) {
+                $searchLower = strtolower($search);
+                $query->where(function ($q) use ($search, $searchLower) {
+                    $q->whereRaw('LOWER(displayName) LIKE ?', ['%' . $searchLower . '%'])
+                        ->orWhereRaw('LOWER(department) LIKE ?', ['%' . $searchLower . '%'])
+                        ->orWhereRaw('LOWER(companyName) LIKE ?', ['%' . $searchLower . '%'])
+                        ->orWhere('EmployeCode', 'LIKE', "%{$search}%")
+                        ->orWhere('mail', 'LIKE', "%{$search}%")
+                        ->orWhere('userPrincipalName', 'LIKE', "%{$search}%");
+                });
+            }
+
+            if ($status) {
+                $query->where('Status', ucfirst(strtolower($status)));
+            }
+
+            $users = $query->orderBy('Id', 'desc')->paginate($perPage);
+
+            // Build table HTML - PASS $status to buildUserRow
+            $tableRows = '';
+            foreach ($users as $user) {
+                $tableRows .= $this->buildUserRow($user, $status); // ADD $status parameter
+            }
+
+            if ($users->isEmpty()) {
+                $tableRows = '<tr><td colspan="9" class="text-center text-muted py-4">
+                <i class="fas fa-users fa-3x mb-3"></i>
+                <p>No users found</p></td></tr>';
+            }
+
+            // Build pagination HTML
+            $paginationHtml = $this->buildPagination($users);
+
+            return response()->json([
+                'success' => true,
+                'table' => $tableRows,
+                'pagination' => $paginationHtml,
+                'total' => $users->total(),
+                'from' => $users->firstItem() ?? 0,
+                'to' => $users->lastItem() ?? 0
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Get Users AJAX Error: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Build user row HTML
+     */
+    private function buildUserRow($user, $currentStatus = 'active') // ADD parameter with default
+    {
+        $displayName = $user->displayName ?? 'N/A';
+        $initials = strtoupper(substr($displayName, 0, 2));
+        $email = $user->mail ?? ($user->userPrincipalName ?? 'N/A');
+        $loginId = $user->userPrincipalName ?? 'N/A';
+        $employeeCode = $user->EmployeCode ?? 'N/A';
+        $department = $user->department ?? 'N/A';
+        $company = $user->companyName ?? 'N/A';
+        $location = $user->officeLocation ?? ($user->city ?? 'N/A');
+        $status = $user->Status ?? 'Inactive';
+
+        $badgeClass = match (strtolower($status)) {
+            'active' => 'badge-success',
+            'pending' => 'badge-warning',
+            'inactive' => 'badge-danger',
+            default => 'badge-secondary',
+        };
+
+        $actions = '';
+        if ($user->Id) {
+            $viewUrl = route('azure.users.show', $user->Id);
+            $editUrl = route('azure.users.edit', $user->Id);
+            $isInactive = strtolower($user->Status ?? 'inactive') === 'inactive';
+            $isActive = strtolower($user->Status ?? 'inactive') === 'active';
+            $userIdEscaped = e($user->Id);
+            $displayNameEscaped = e(addslashes($displayName));
+            $statusEscaped = e($status);
+
+            // USE the passed $currentStatus parameter instead of request()
+            $showManageButton = $isActive && $currentStatus === 'active';
+
+            $editButton = $isInactive
+                ? '<button class="btn btn-warning btn-sm btn-disabled" disabled title="Enable user first to edit" style="cursor: not-allowed; opacity: 0.6;"><i class="fas fa-edit"></i></button>'
+                : '<a href="' . $editUrl . '" class="btn btn-warning btn-sm" title="Edit User"><i class="fas fa-edit"></i></a>';
+
+            $manageButton = $showManageButton
+                ? '<button class="btn btn-danger btn-sm" onclick="openManageAccessModal(\'' . $userIdEscaped . '\', \'' . $displayNameEscaped . '\', \'' . $statusEscaped . '\')" title="Manage Access"><i class="fas fa-cog"></i></button>'
+                : '';
+
+            $actions = '<div class="btn-group btn-group-sm" role="group">
+            <a href="' . $viewUrl . '" class="btn btn-info btn-sm" title="View User"><i class="fas fa-eye"></i></a>
+            ' . $editButton . '
+            ' . $manageButton . '
+            </div>';
+        } else {
+            $upnEscaped = e($user->userPrincipalName);
+            $actions = '<button class="btn btn-warning btn-sm" onclick="fixUserRecord(\'' . $upnEscaped . '\')" title="Fix missing ID"><i class="fas fa-wrench"></i> Fix Record</button>';
+        }
+
+        return '<tr>
+        <td>
+            <div class="d-flex align-items-center">
+                <div class="user-avatar mr-2">' . $initials . '</div>
+                <span>' . e($displayName) . '</span>
+            </div>
+        </td>
+        <td>' . e($email) . '</td>
+        <td>' . e($loginId) . '</td>
+        <td>' . e($employeeCode) . '</td>
+        <td>' . e($department) . '</td>
+        <td>' . e($company) . '</td>
+        <td>' . e($location) . '</td>
+        <td><span class="badge ' . $badgeClass . '">' . e($status) . '</span></td>
+        <td>' . $actions . '</td>
+        </tr>';
+    }
+
+    /**
+     * Build pagination HTML
+     */
+    private function buildPagination($users)
+    {
+        if (!$users->hasPages()) {
+            return '';
+        }
+
+        $html = '<div class="row align-items-center">
+        <div class="col-md-6">
+            <span class="text-muted">
+                Showing ' . ($users->firstItem() ?? 0) . ' to ' . ($users->lastItem() ?? 0) . ' of ' . $users->total() . ' users
+            </span>
+        </div>
+        <div class="col-md-6">
+            <ul class="pagination pagination-sm m-0 float-right">';
+
+        // First button
+        $html .= $users->onFirstPage()
+            ? '<li class="page-item disabled"><span class="page-link">First</span></li>'
+            : '<li class="page-item"><a class="page-link page-nav" href="#" data-page="1">First</a></li>';
+
+        // Previous button
+        $html .= $users->onFirstPage()
+            ? '<li class="page-item disabled"><span class="page-link">&laquo;</span></li>'
+            : '<li class="page-item"><a class="page-link page-nav" href="#" data-page="' . ($users->currentPage() - 1) . '">&laquo;</a></li>';
+
+        // Page numbers
+        foreach ($users->getUrlRange(1, $users->lastPage()) as $page => $url) {
+            if ($page == $users->currentPage()) {
+                $html .= '<li class="page-item active"><span class="page-link">' . $page . '</span></li>';
+            } else {
+                $html .= '<li class="page-item"><a class="page-link page-nav" href="#" data-page="' . $page . '">' . $page . '</a></li>';
+            }
+        }
+
+        // Next button
+        $html .= $users->hasMorePages()
+            ? '<li class="page-item"><a class="page-link page-nav" href="#" data-page="' . ($users->currentPage() + 1) . '">&raquo;</a></li>'
+            : '<li class="page-item disabled"><span class="page-link">&raquo;</span></li>';
+
+        // Last button
+        $html .= $users->currentPage() == $users->lastPage()
+            ? '<li class="page-item disabled"><span class="page-link">Last</span></li>'
+            : '<li class="page-item"><a class="page-link page-nav" href="#" data-page="' . $users->lastPage() . '">Last</a></li>';
+
+        $html .= '</ul></div></div>';
+
+        return $html;
     }
 }

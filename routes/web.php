@@ -363,6 +363,9 @@ Route::prefix('azure')->name('azure.')->middleware(['auth'])->group(function () 
         Route::get('/activity', [App\Http\Controllers\AzureDashboardController::class, 'getRecentActivity'])
             ->name('activity')
             ->middleware('throttle:dashboard');
+
+        // AJAX get users
+        Route::get('/get-users', [App\Http\Controllers\AzureDashboardController::class, 'getUsers'])->name('get-users');
     });
 
     // ============================================================================
@@ -455,6 +458,17 @@ Route::prefix('azure')->name('azure.')->middleware(['auth'])->group(function () 
         Route::get('/{user}/modules/{module}/assignments', [App\Http\Controllers\AzureUserManagementController::class, 'getUserModuleAssignments'])
             ->name('module-assignments')
             ->middleware('throttle:api');
+
+        // GET: Get user's current application access status
+        Route::get('/{user}/application-status', [App\Http\Controllers\AzureUserManagementController::class, 'getUserApplicationStatus'])
+            ->name('application-status')
+            ->middleware('throttle:api');
+
+        // POST: Manage user access across multiple applications
+        Route::post('/{user}/manage-access', [App\Http\Controllers\AzureUserManagementController::class, 'manageUserApplicationAccess'])
+            ->name('manage-access')
+            ->middleware('throttle:user_actions');
+
 
         // Generic CRUD routes (come after specific actions)
         Route::get('/{user}', [App\Http\Controllers\AzureUserManagementController::class, 'show'])
@@ -1103,27 +1117,55 @@ Route::get('/debug-import-data', function () {
 // ============================================================================
 // VEHICLE TRACKER SYSTEM ROUTES (GPS/Trip Tracking)
 // ============================================================================
+// Webhook route (public - no auth)
+Route::post('/webhooks/jimi/notifications', [JimiWebhookController::class, 'receiveNotification']);
 
+// Tracker routes (authenticated)
 Route::middleware(['auth'])->prefix('tracker')->name('tracker.')->group(function () {
 
+    // Dashboard
     Route::get('/dashboard', [TrackerController::class, 'dashboard'])->name('dashboard');
-    // Remove ->name('dashboard') - it's already prefixed as 'tracker.dashboard'
+
+    // Trips
     Route::get('/trips/get/{filter?}', [TrackerController::class, 'getTrips']);
     Route::get('/trips/{id}', [TrackerController::class, 'getTripDetails']);
-
-    Route::get('/vehicles/list', [TrackerController::class, 'getVehicles']);
-    Route::get('/jobs/available', [TrackerController::class, 'getAvailableJobs']);
-    Route::get('/locations', [TrackerController::class, 'getLocations']);
-
     Route::post('/trips/create', [TrackerController::class, 'createTrip']);
     Route::post('/trips/{tripId}/start', [TrackerController::class, 'startTrip']);
     Route::post('/trips/{tripId}/end', [TrackerController::class, 'endTrip']);
-    Route::post('/trips/{tripId}/jobs/add', [TrackerController::class, 'addJobToTrip']);
 
-    // Correct job actions — require both tripId and jobId
+    // Jobs
+    Route::post('/trips/{tripId}/jobs/add', [TrackerController::class, 'addJobToTrip']);
     Route::post('/trips/{tripId}/jobs/{jobId}/start', [TrackerController::class, 'startJob']);
     Route::post('/trips/{tripId}/jobs/{jobId}/complete', [TrackerController::class, 'completeJob']);
+    Route::get('/jobs/available', [TrackerController::class, 'getAvailableJobs']);
+
+    // Vehicles & Locations
+    Route::get('/vehicles/list', [TrackerController::class, 'getVehicles']);
+    Route::get('/locations', [TrackerController::class, 'getLocations']);
+
+    // List pending geofence notifications for a vehicle (used in modal)
+    Route::get('/notifications/vehicle', [TrackerController::class, 'getVehicleNotifications'])
+        ->name('notifications.vehicle');
+
+    // List pending geofence notifications filtered by trip + vehicle
+    // (you can use the same method and filter in PHP, or create a separate one later)
+    Route::get('/notifications/trip', [TrackerController::class, 'getVehicleNotifications'])
+        ->name('notifications.trip');
+
+    // Simple count – used for badge on trip modal / list
+    Route::get('/notifications/count', [TrackerController::class, 'getNotificationCount'])
+        ->name('notifications.count');
+
+    // Notifications
+    Route::get('/notifications/get', [TrackerController::class, 'getNotifications'])->name('notifications.get');
+    Route::get('/notifications/alarm-types', [TrackerController::class, 'getAlarmTypes'])->name('notifications.alarm-types');
+    Route::get('/notifications/stats', [TrackerController::class, 'getNotificationStats'])->name('notifications.stats');
+    Route::post('/notifications/{id}/read', [TrackerController::class, 'markNotificationAsRead'])->name('notifications.read');
+    Route::delete('/notifications/{id}', [TrackerController::class, 'deleteNotification'])->name('notifications.delete');
+    Route::post('/notifications/map-to-trip', [TrackerController::class, 'mapNotificationsToTrip'])
+    ->name('notifications.map-to-trip');
 });
+
 
 Route::middleware(['auth'])->prefix('jimi-test')->group(function () {
 
@@ -1575,3 +1617,4 @@ Route::get('/test/check-biz-sync/{email}', function ($email) {
         ], 500);
     }
 });
+Route::post('/webhooks/jimi/notifications', [App\Http\Controllers\JimiWebhookController::class, 'receiveNotification']);

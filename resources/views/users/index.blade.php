@@ -7,6 +7,38 @@
 
         <!-- Statistics Cards Row -->
         <div class="row mb-4">
+            <!-- Active Users Card -->
+            <div class="col-lg-4 col-md-4">
+                <div class="small-box bg-success clickable-card active-filter" data-filter="active">
+                    <div class="inner">
+                        <h3 id="activeUsers">
+                            <i class="fas fa-spinner fa-spin"></i>
+                        </h3>
+                        <p>Active Users</p>
+                    </div>
+                    <div class="icon">
+                        <i class="fas fa-user-check"></i>
+                    </div>
+                    <div class="card-overlay"></div>
+                </div>
+            </div>
+
+            <!-- Inactive Users Card -->
+            <div class="col-lg-4 col-md-4">
+                <div class="small-box bg-danger clickable-card" data-filter="inactive">
+                    <div class="inner">
+                        <h3 id="inactiveUsers">
+                            <i class="fas fa-spinner fa-spin"></i>
+                        </h3>
+                        <p>Inactive Users</p>
+                    </div>
+                    <div class="icon">
+                        <i class="fas fa-user-times"></i>
+                    </div>
+                    <div class="card-overlay"></div>
+                </div>
+            </div>
+            
             <!-- Total Users Card -->
             <div class="col-lg-4 col-md-4">
                 <div class="small-box bg-info">
@@ -21,36 +53,6 @@
                     </div>
                 </div>
             </div>
-
-            <!-- Active Users Card -->
-            <div class="col-lg-4 col-md-4">
-                <div class="small-box bg-success">
-                    <div class="inner">
-                        <h3 id="activeUsers">
-                            <i class="fas fa-spinner fa-spin"></i>
-                        </h3>
-                        <p>Active Users</p>
-                    </div>
-                    <div class="icon">
-                        <i class="fas fa-user-check"></i>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Inactive Users Card -->
-            <div class="col-lg-4 col-md-4">
-                <div class="small-box bg-danger">
-                    <div class="inner">
-                        <h3 id="inactiveUsers">
-                            <i class="fas fa-spinner fa-spin"></i>
-                        </h3>
-                        <p>Inactive Users</p>
-                    </div>
-                    <div class="icon">
-                        <i class="fas fa-user-times"></i>
-                    </div>
-                </div>
-            </div>
         </div>
 
         <!-- Main Table Card -->
@@ -58,15 +60,11 @@
             <div class="card-header">
                 <div class="d-flex justify-content-between align-items-center">
                     <div class="card-title mb-0">
-                        <h2 class="mb-0">Users Management</h2>
+                        <h2 class="mb-0">
+                            Users Management
+                            <span id="filterBadge" class="badge badge-success ml-2">Active Users</span>
+                        </h2>
                     </div>
-                    {{-- <div class="card-tools">
-                    @if (Auth::user()->can('users-list'))
-                        <a class="btn btn-md btn-success" href="{{ route('users.create') }}">
-                            <i class="fas fa-plus"></i> Create New User
-                        </a>
-                    @endif
-                </div> --}}
                 </div>
             </div>
             <div class="card-body">
@@ -105,9 +103,34 @@
             transition: all 0.3s ease;
         }
 
-        .small-box:hover {
+        .clickable-card {
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .clickable-card:hover {
             box-shadow: 0 4px 8px rgba(0, 0, 0, .12), 0 8px 16px rgba(0, 0, 0, .1);
             transform: translateY(-2px);
+        }
+
+        .clickable-card:active {
+            transform: translateY(0);
+        }
+
+        /* Active filter state */
+        .clickable-card.active-filter {
+            box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.5), 0 4px 12px rgba(0, 0, 0, .2);
+            transform: scale(1.02);
+        }
+
+        .clickable-card.active-filter .card-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.1);
+            pointer-events: none;
         }
 
         .small-box>.inner {
@@ -139,9 +162,17 @@
             transition: all .3s ease;
         }
 
-        .small-box:hover .icon {
+        .clickable-card:hover .icon {
             transform: scale(1.1) rotate(5deg);
             color: rgba(255, 255, 255, .3);
+        }
+
+        /* Filter badge */
+        #filterBadge {
+            font-size: 0.9rem;
+            font-weight: 500;
+            padding: 0.4em 0.8em;
+            vertical-align: middle;
         }
 
         /* DataTable enhancements */
@@ -212,17 +243,53 @@
 
 @section('js')
     <script>
+        // Global variables
+        let usersTable;
+        let currentFilter = 'active';
+
         $(function() {
+            console.log('🚀 Page loaded, initializing...');
+
             // Fetch user statistics
             fetchUserStats();
 
             // Initialize DataTable
-            $('#users-table').DataTable({
+            initializeDataTable();
+
+            // Card click handlers
+            $('.clickable-card').on('click', function() {
+                console.log('🖱️ Card clicked!');
+                const filter = $(this).data('filter');
+                console.log('📋 Filter value:', filter);
+                applyFilter(filter);
+            });
+
+            console.log('✅ Initialization complete');
+        });
+
+        // Initialize DataTable
+        function initializeDataTable() {
+            console.log('📊 Initializing DataTable...');
+
+            usersTable = $('#users-table').DataTable({
                 processing: true,
                 serverSide: true,
                 searching: true,
-                stateSave: true,
-                ajax: '{!! route('datatables.users') !!}',
+                stateSave: false,
+                ajax: {
+                    url: '{!! route('datatables.users') !!}',
+                    data: function(d) {
+                        console.log('📤 Sending AJAX request with filter:', currentFilter);
+                        d.status = currentFilter;
+                        console.log('📦 Full data object:', d);
+                        return d;
+                    },
+                    error: function(xhr, error, code) {
+                        console.error('❌ AJAX Error:', error);
+                        console.error('❌ Status:', xhr.status);
+                        console.error('❌ Response:', xhr.responseText);
+                    }
+                },
                 columns: [{
                         data: 'LoginID',
                         name: 'LoginID'
@@ -262,7 +329,55 @@
                 pageLength: 25,
                 dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>rt<"row"<"col-sm-12 col-md-5"i><"col-sm-12 col-md-7"p>>'
             });
-        });
+
+            console.log('✅ DataTable initialized');
+        }
+
+        // Apply filter
+        function applyFilter(filter) {
+            console.log('🔍 Applying filter:', filter);
+            console.log('📍 Current filter before change:', currentFilter);
+
+            // Update current filter
+            currentFilter = filter;
+            console.log('📍 Current filter after change:', currentFilter);
+
+            // Update active card styling
+            $('.clickable-card').removeClass('active-filter');
+            $(`.clickable-card[data-filter="${filter}"]`).addClass('active-filter');
+            console.log('🎨 Updated card styling');
+
+            // Update filter badge
+            const filterLabels = {
+                'all': 'All Users',
+                'active': 'Active Users',
+                'inactive': 'Inactive Users'
+            };
+            const badgeClasses = {
+                'all': 'badge-info',
+                'active': 'badge-success',
+                'inactive': 'badge-danger'
+            };
+
+            $('#filterBadge')
+                .removeClass('badge-info badge-success badge-danger')
+                .addClass(badgeClasses[filter])
+                .text(filterLabels[filter]);
+            console.log('🏷️ Updated badge to:', filterLabels[filter]);
+
+            // Check if DataTable is initialized
+            if (typeof usersTable === 'undefined' || !usersTable) {
+                console.error('❌ DataTable not initialized!');
+                return;
+            }
+
+            console.log('🔄 Reloading DataTable...');
+            // Reload DataTable with new filter
+            usersTable.ajax.reload(function(json) {
+                console.log('✅ DataTable reloaded successfully');
+                console.log('📊 Received data:', json);
+            }, false);
+        }
 
         // Function to fetch user statistics
         function fetchUserStats() {
