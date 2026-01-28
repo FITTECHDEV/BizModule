@@ -580,7 +580,7 @@ class UserController extends Controller
             $currentMonthEnd = Carbon::now()->endOfMonth();
 
             // Get raw data grouped by date and application for CURRENT MONTH
-            $currentMonthApplicationsRaw = SigninLog::where('user_id', $user->id)
+            $currentMonthApplicationsRaw = SigninLog::where(DB::raw('LOWER(username)'), strtolower($user->userPrincipalName))
                 ->whereBetween('date_utc', [$currentMonthStart, $currentMonthEnd])
                 ->whereNotNull('application')
                 ->where('application', '!=', '')
@@ -655,7 +655,7 @@ class UserController extends Controller
             // ====================================================================
 
             // Get raw data grouped by date and application for SELECTED PERIOD
-            $recentApplicationsRaw = SigninLog::where('user_id', $user->id)
+            $recentApplicationsRaw = SigninLog::where(DB::raw('LOWER(username)'), strtolower($user->userPrincipalName))
                 ->whereBetween('date_utc', [$start, $end])
                 ->whereNotNull('application')
                 ->where('application', '!=', '')
@@ -740,7 +740,7 @@ class UserController extends Controller
                 }
 
                 // Fetch raw login data with optimized query
-                $loginDataRaw = SigninLog::where('user_id', $user->id)
+                $loginDataRaw = SigninLog::where(DB::raw('LOWER(username)'), strtolower($user->userPrincipalName))
                     ->whereBetween('date_utc', [
                         $start->format('Y-m-d 00:00:00'),
                         $end->format('Y-m-d 23:59:59')
@@ -904,9 +904,9 @@ class UserController extends Controller
             // ====================================================================
             // 6. SIGN-INS QUERY (NO EXCLUSIONS - SHOW ALL APPLICATIONS)
             // ====================================================================
-            $signInsQuery = $user->signIns()
+            $signInsQuery = SigninLog::where(DB::raw('LOWER(username)'), strtolower($user->userPrincipalName))
                 ->whereBetween('date_utc', [$start, $end]);
-
+                
             if ($request->filled('search')) {
                 $search = $request->input('search');
                 $signInsQuery->where(function ($q) use ($search) {
@@ -927,7 +927,7 @@ class UserController extends Controller
             // ====================================================================
             // 7. UNIQUE APPS COUNT (ALL APPS, NO EXCLUSIONS)
             // ====================================================================
-            $uniqueAppsCount = SigninLog::where('user_id', $user->id)
+            $uniqueAppsCount = SigninLog::where(DB::raw('LOWER(username)'), strtolower($user->userPrincipalName))
                 ->whereBetween('date_utc', [$start, $end])
                 ->whereNotNull('application')
                 ->where('application', '!=', '')
@@ -1885,6 +1885,13 @@ class UserController extends Controller
      */
     private function getSystemUsageWithAggregation($userId, $start, $end)
     {
+        // Get the user to access their userPrincipalName
+        $user = AzureUser::find($userId);
+
+        if (!$user) {
+            return collect();
+        }
+
         // Check if using SQL Server
         if (DB::connection()->getDriverName() === 'sqlsrv') {
             return SigninLog::select([
@@ -1893,7 +1900,7 @@ class UserController extends Controller
                 DB::raw('MAX(date_utc) as last_used'),
                 DB::raw('STRING_AGG(CAST(system AS NVARCHAR(MAX)), \', \') WITHIN GROUP (ORDER BY system) as systems')
             ])
-                ->where('user_id', $userId)
+                ->where(DB::raw('LOWER(username)'), strtolower($user->userPrincipalName))
                 ->whereBetween('date_utc', [$start, $end])
                 ->whereNotNull('system')
                 ->groupBy('system')
@@ -1908,7 +1915,7 @@ class UserController extends Controller
                 DB::raw('MAX(date_utc) as last_used'),
                 DB::raw('GROUP_CONCAT(DISTINCT system ORDER BY system SEPARATOR ", ") as systems')
             ])
-                ->where('user_id', $userId)
+                ->where(DB::raw('LOWER(username)'), strtolower($user->userPrincipalName))
                 ->whereBetween('date_utc', [$start, $end])
                 ->whereNotNull('system')
                 ->groupBy('system')

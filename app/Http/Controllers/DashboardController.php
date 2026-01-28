@@ -294,60 +294,33 @@ class DashboardController extends Controller
         return $rawNames;
     }
 
-
-
     public function index(Request $request)
     {
-        set_time_limit(120); // 2 minutes
+        set_time_limit(120);
         try {
-            // Get pagination and search parameters
             $perPage = $request->input('per_page', 17);
             $currentPage = $request->input('page', 1);
             $search = $request->input('search', '');
+            $filter = $request->input('filter', null);
 
             Log::info('Dashboard index called', [
                 'per_page' => $perPage,
                 'page' => $currentPage,
                 'search' => $search,
+                'filter' => $filter,
                 'is_ajax' => $request->ajax()
             ]);
 
-            // // Get summary data from stored procedure
-            // $summary = $this->getUserSummary();
-
-            // // Get login list from stored procedure
-            // $loginList = $this->getLoginViewList();
-
-
             $summary = $this->getUserSummaryDirect();
-            $loginList = $this->getLoginViewListDirect();
 
-            Log::info('🔄 Dashboard loaded with direct queries (bypassing SPs)', [
+            // Get filtered data directly from database
+            $loginList = $this->getFilteredLoginList($filter, $search);
+
+            Log::info('Dashboard loaded with filters', [
                 'summary' => $summary,
                 'users_count' => $loginList->count(),
-                'method' => 'direct_queries'
+                'filter' => $filter
             ]);
-
-            // Apply search filter if provided
-            if (!empty($search)) {
-                $searchLower = strtolower(trim($search));
-
-                $loginList = $loginList->filter(function ($user) use ($searchLower) {
-                    // Check if searching for users who never logged in
-                    if ($searchLower === 'never') {
-                        return empty($user['last_login']) || is_null($user['last_login']);
-                    }
-
-                    // Regular search in name and login_id
-                    return str_contains(strtolower($user['name']), $searchLower) ||
-                        str_contains(strtolower($user['login_id']), $searchLower);
-                })->values();
-
-                Log::info('Search applied', [
-                    'search_term' => $search,
-                    'filtered_count' => $loginList->count()
-                ]);
-            }
 
             // Paginate the results
             $total = $loginList->count();
@@ -405,6 +378,161 @@ class DashboardController extends Controller
         }
     }
 
+    private function getFilteredLoginList($filter, $search)
+    {
+        // Create cache key based on filter and search
+        $cacheKey = 'dashboard_filtered_list_v5_' . md5(($filter ?? 'all') . '_' . ($search ?? ''));
+
+        return Cache::remember($cacheKey, 300, function () use ($filter, $search) {
+            $actualRange = $this->statsService->getActualDateRange();
+
+            if (!$actualRange['has_data']) {
+                return collect();
+            }
+
+            $dataMin = $actualRange['min'];
+            $dataMax = $actualRange['max'];
+
+            // Use current calendar month
+            $thisMonthStart = now()->startOfMonth();
+            $thisMonthEnd = now()->endOfMonth();
+
+            // Build WHERE clauses as strings to avoid query builder overhead
+            if ($filter === 'inactive') {
+                $sql = "
+                SELECT 
+                    au.id,
+                    au.displayName as name,
+                    au.userPrincipalName as login_id,
+                    0 as logins_last_month,
+                    NULL as last_login
+                FROM Azure_Users au
+                WHERE au.displayName IS NOT NULL 
+                    AND au.displayName != ''
+                    AND au.displayName NOT LIKE 'User-%'
+                    AND au.userPrincipalName IS NOT NULL
+                    AND au.userPrincipalName != ''
+                    AND au.userPrincipalName NOT LIKE 'User-%'
+                    AND NOT EXISTS (
+                        SELECT 1 
+                        FROM Azure_LoginDetails ald 
+                        WHERE LOWER(ald.username) = LOWER(au.userPrincipalName)
+                    )
+            ";
+                $params = [];
+            } elseif ($filter === 'active_this_month') {
+                $sql = "
+                SELECT 
+                    au.id,
+                    au.displayName as name,
+                    au.userPrincipalName as login_id,
+                    login_data.logins_last_month,
+                    login_data.last_login
+                FROM Azure_Users au
+                INNER JOIN (
+                    SELECT 
+                        username,
+                        COUNT(*) as logins_last_month,
+                        MAX(date_utc) as last_login
+                    FROM Azure_LoginDetails WITH (NOLOCK)
+                    WHERE date_utc BETWEEN ? AND ?
+                    GROUP BY username
+                ) login_data ON LOWER(login_data.username) = LOWER(au.userPrincipalName)
+                WHERE au.displayName IS NOT NULL 
+                    AND au.displayName != ''
+                    AND au.displayName NOT LIKE 'User-%'
+                    AND au.userPrincipalName IS NOT NULL
+                    AND au.userPrincipalName != ''
+                    AND au.userPrincipalName NOT LIKE 'User-%'
+            ";
+                $params = [$thisMonthStart, $thisMonthEnd];
+
+                Log::info('Active This Month filter - CALENDAR MONTH', [
+                    'calendar_month' => now()->format('F Y'),
+                    'date_range_queried' => [
+                        $thisMonthStart->format('Y-m-d H:i:s'),
+                        $thisMonthEnd->format('Y-m-d H:i:s')
+                    ]
+                ]);
+            } elseif ($filter === 'active_last_month') {
+                $sql = "
+                SELECT 
+                    au.id,
+                    au.displayName as name,
+                    au.userPrincipalName as login_id,
+                    login_data.logins_last_month,
+                    login_data.last_login
+                FROM Azure_Users au
+                INNER JOIN (
+                    SELECT 
+                        username,
+                        COUNT(*) as logins_last_month,
+                        MAX(date_utc) as last_login
+                    FROM Azure_LoginDetails WITH (NOLOCK)
+                    WHERE date_utc BETWEEN ? AND ?
+                    GROUP BY username
+                ) login_data ON LOWER(login_data.username) = LOWER(au.userPrincipalName)
+                WHERE au.displayName IS NOT NULL 
+                    AND au.displayName != ''
+                    AND au.displayName NOT LIKE 'User-%'
+                    AND au.userPrincipalName IS NOT NULL
+                    AND au.userPrincipalName != ''
+                    AND au.userPrincipalName NOT LIKE 'User-%'
+            ";
+                $params = [$dataMin, $dataMax];
+            } else {
+                $sql = "
+                SELECT 
+                    au.id,
+                    au.displayName as name,
+                    au.userPrincipalName as login_id,
+                    ISNULL(login_data.logins_last_month, 0) as logins_last_month,
+                    login_data.last_login
+                FROM Azure_Users au
+                LEFT JOIN (
+                    SELECT 
+                        username,
+                        COUNT(*) as logins_last_month,
+                        MAX(date_utc) as last_login
+                    FROM Azure_LoginDetails WITH (NOLOCK)
+                    WHERE date_utc BETWEEN ? AND ?
+                    GROUP BY username
+                ) login_data ON LOWER(login_data.username) = LOWER(au.userPrincipalName)
+                WHERE au.displayName IS NOT NULL 
+                    AND au.displayName != ''
+                    AND au.displayName NOT LIKE 'User-%'
+                    AND au.userPrincipalName IS NOT NULL
+                    AND au.userPrincipalName != ''
+                    AND au.userPrincipalName NOT LIKE 'User-%'
+            ";
+                $params = [$dataMin, $dataMax];
+            }
+
+            if (!empty($search)) {
+                $searchLower = strtolower(trim($search));
+                if ($searchLower !== 'never') {
+                    $sql .= " AND (LOWER(au.displayName) LIKE ? OR LOWER(au.userPrincipalName) LIKE ?)";
+                    $searchParam = "%{$searchLower}%";
+                    $params[] = $searchParam;
+                    $params[] = $searchParam;
+                }
+            }
+
+            $sql .= " ORDER BY au.displayName";
+
+            $results = DB::select($sql, $params);
+
+            return collect($results)->map(function ($user) {
+                return [
+                    'id' => $user->id,
+                    'name' => $user->name ?? 'N/A',
+                    'login_id' => $user->login_id ?? 'N/A',
+                    'logins_last_month' => $user->logins_last_month ?? 0,
+                    'last_login' => $user->last_login ?? null,
+                ];
+            });
+        });
+    }
 
     /**
      * Apply enhanced system filter - FIXED boolean logic
@@ -761,6 +889,7 @@ class DashboardController extends Controller
         foreach ($cacheKeys as $key) {
             Cache::forget($key);
         }
+
 
         // Clear pattern-based cache keys
         try {
@@ -1322,7 +1451,9 @@ class DashboardController extends Controller
 
     /**
      * Get user summary using direct queries (bypasses SP to use actual data range)
+     * FIXED: Uses case-insensitive user_id matching for SQL Server
      */
+
     private function getUserSummaryDirect()
     {
         try {
@@ -1339,52 +1470,95 @@ class DashboardController extends Controller
                 ];
             }
 
-            // Calculate date ranges based on ACTUAL data
-            $now = now();
             $dataMin = $actualRange['min'];
             $dataMax = $actualRange['max'];
 
-            // This month range (within actual data bounds)
-            $currentMonthStart = max($dataMin, $now->copy()->startOfMonth());
-            $currentMonthEnd = min($dataMax, $now->copy()->endOfMonth());
+            // CHANGED: Use current calendar month instead of "last 30 days"
+            $currentMonthStart = now()->startOfMonth();  // Jan 1, 2026
+            $currentMonthEnd = now()->endOfMonth();      // Jan 31, 2026
 
-            // Last month range (within actual data bounds)
-            $lastMonthStart = max($dataMin, $now->copy()->subMonth()->startOfMonth());
-            $lastMonthEnd = min($dataMax, $now->copy()->subMonth()->endOfMonth());
+            // Constrain to available data (don't query beyond what we have)
+            // $currentMonthStart = max($currentMonthStart, $dataMin);
+            // $currentMonthEnd = min($currentMonthEnd, $dataMax);
 
-            Log::info('📅 Direct query date ranges calculated', [
-                'current_month' => [$currentMonthStart->format('Y-m-d'), $currentMonthEnd->format('Y-m-d')],
-                'last_month' => [$lastMonthStart->format('Y-m-d'), $lastMonthEnd->format('Y-m-d')],
-                'actual_data_range' => [$dataMin->format('Y-m-d'), $dataMax->format('Y-m-d')]
+            // "Active Last Month" = entire imported period (or you could use previous calendar month)
+            $lastMonthStart = $dataMin;
+            $lastMonthEnd = $dataMax;
+
+            Log::info('📅 Calendar month ranges calculated', [
+                'current_calendar_month' => [
+                    now()->startOfMonth()->format('Y-m-d'),
+                    now()->endOfMonth()->format('Y-m-d')
+                ],
+                'constrained_to_data' => [
+                    $currentMonthStart->format('Y-m-d'),
+                    $currentMonthEnd->format('Y-m-d')
+                ],
+                'data_available_until' => $dataMax->format('Y-m-d'),
             ]);
 
             // Total users
             $totalUsers = AzureUser::valid()->count();
 
-            // Active this month
-            $activeThisMonth = AzureUser::valid()
-                ->whereHas('signIns', function ($q) use ($currentMonthStart, $currentMonthEnd) {
-                    $q->whereBetween('date_utc', [$currentMonthStart, $currentMonthEnd]);
-                })
-                ->count();
+            // Active this month (current calendar month with available data)
+            $activeThisMonth = DB::select("
+                SELECT COUNT(DISTINCT au.id) as count
+                FROM Azure_Users au
+                WHERE au.displayName IS NOT NULL 
+                    AND au.displayName != ''
+                    AND au.displayName NOT LIKE 'User-%'
+                    AND au.userPrincipalName IS NOT NULL
+                    AND au.userPrincipalName != ''
+                    AND au.userPrincipalName NOT LIKE 'User-%'
+                    AND EXISTS (
+                        SELECT 1 
+                        FROM Azure_LoginDetails ald 
+                        WHERE LOWER(ald.username) = LOWER(au.userPrincipalName)
+                            AND ald.date_utc BETWEEN ? AND ?
+                    )
+                ", [$currentMonthStart, $currentMonthEnd])[0]->count ?? 0;
 
-            // Active last month
-            $activeLastMonth = AzureUser::valid()
-                ->whereHas('signIns', function ($q) use ($lastMonthStart, $lastMonthEnd) {
-                    $q->whereBetween('date_utc', [$lastMonthStart, $lastMonthEnd]);
-                })
-                ->count();
+            // Active last month (entire imported period)
+            $activeLastMonth = DB::select("
+            SELECT COUNT(DISTINCT au.id) as count
+            FROM Azure_Users au
+            WHERE au.displayName IS NOT NULL 
+                AND au.displayName != ''
+                AND au.displayName NOT LIKE 'User-%'
+                AND au.userPrincipalName IS NOT NULL
+                AND au.userPrincipalName != ''
+                AND au.userPrincipalName NOT LIKE 'User-%'
+                AND EXISTS (
+                    SELECT 1 
+                    FROM Azure_LoginDetails ald 
+                    WHERE LOWER(ald.username) = LOWER(au.userPrincipalName)
+                        AND ald.date_utc BETWEEN ? AND ?
+                )
+        ", [$lastMonthStart, $lastMonthEnd])[0]->count ?? 0;
 
             // Inactive users (never logged in)
-            $inactiveUsers = AzureUser::valid()
-                ->doesntHave('signIns')
-                ->count();
+            $inactiveUsers = DB::select("
+            SELECT COUNT(*) as count
+            FROM Azure_Users au
+            WHERE au.displayName IS NOT NULL 
+                AND au.displayName != ''
+                AND au.displayName NOT LIKE 'User-%'
+                AND au.userPrincipalName IS NOT NULL
+                AND au.userPrincipalName != ''
+                AND au.userPrincipalName NOT LIKE 'User-%'
+                AND NOT EXISTS (
+                    SELECT 1 
+                    FROM Azure_LoginDetails ald 
+                    WHERE LOWER(ald.username) = LOWER(au.userPrincipalName)
+                )
+        ")[0]->count ?? 0;
 
-            Log::info('✅ Direct query summary calculated', [
+            Log::info('✅ Summary calculated with calendar month', [
                 'total_users' => $totalUsers,
                 'active_this_month' => $activeThisMonth,
                 'active_last_month' => $activeLastMonth,
-                'inactive_users' => $inactiveUsers
+                'inactive_users' => $inactiveUsers,
+                'current_month' => now()->format('F Y'),
             ]);
 
             return [
@@ -1410,6 +1584,7 @@ class DashboardController extends Controller
 
     /**
      * Get login view list using direct queries (bypasses SP to use actual data range)
+     * FIXED: Case-insensitive join with proper grouping
      */
     private function getLoginViewListDirect()
     {
@@ -1425,44 +1600,74 @@ class DashboardController extends Controller
             $dataMin = $actualRange['min'];
             $dataMax = $actualRange['max'];
 
-            // Last month range (within actual data bounds)
-            $lastMonthStart = max($dataMin, now()->subMonth()->startOfMonth());
-            $lastMonthEnd = min($dataMax, now()->subMonth()->endOfMonth());
+            // Use the FULL data range
+            $periodStart = $dataMin;
+            $periodEnd = $dataMax;
 
-            Log::info('📅 Direct login list query dates', [
-                'last_month_range' => [$lastMonthStart->format('Y-m-d'), $lastMonthEnd->format('Y-m-d')],
-                'actual_data_range' => [$dataMin->format('Y-m-d'), $dataMax->format('Y-m-d')]
+            Log::info('📅 Direct login list query dates (CASE-INSENSITIVE FIX)', [
+                'period_range' => [$periodStart->format('Y-m-d'), $periodEnd->format('Y-m-d')],
             ]);
 
-            // Get all valid users with their login counts and last login
-            $users = AzureUser::valid()
-                ->select('id', 'displayName', 'userPrincipalName')
-                ->withCount(['signIns as logins_last_month' => function ($q) use ($lastMonthStart, $lastMonthEnd) {
-                    $q->whereBetween('date_utc', [$lastMonthStart, $lastMonthEnd]);
-                }])
-                ->with(['signIns' => function ($q) {
-                    $q->select('user_id', 'date_utc')
-                        ->orderByDesc('date_utc')
-                        ->limit(1);
-                }])
-                ->orderBy('displayName')
-                ->get();
+            // FIXED: Use INNER JOIN to only get users with logins, then LEFT JOIN to get all users
+            $usersWithLogins = DB::select("
+            SELECT 
+                au.id,
+                au.displayName as name,
+                au.userPrincipalName as login_id,
+                COUNT(ald.request_id) as logins_last_month,
+                MAX(ald.date_utc) as last_login
+            FROM Azure_Users au
+            INNER JOIN Azure_LoginDetails ald 
+                ON LOWER(ald.user_id) = LOWER(au.id)
+                AND ald.date_utc BETWEEN ? AND ?
+            WHERE au.displayName IS NOT NULL 
+                AND au.displayName != ''
+                AND au.displayName NOT LIKE 'User-%'
+                AND au.userPrincipalName IS NOT NULL
+                AND au.userPrincipalName != ''
+                AND au.userPrincipalName NOT LIKE 'User-%'
+            GROUP BY au.id, au.displayName, au.userPrincipalName
+            ORDER BY au.displayName
+        ", [$periodStart, $periodEnd]);
 
-            Log::info('✅ Direct login list loaded', [
-                'users_count' => $users->count(),
-                'users_with_logins' => $users->where('logins_last_month', '>', 0)->count()
-            ]);
+            // Get all valid users
+            $allUsers = DB::select("
+            SELECT 
+                id,
+                displayName as name,
+                userPrincipalName as login_id
+            FROM Azure_Users
+            WHERE displayName IS NOT NULL 
+                AND displayName != ''
+                AND displayName NOT LIKE 'User-%'
+                AND userPrincipalName IS NOT NULL
+                AND userPrincipalName != ''
+                AND userPrincipalName NOT LIKE 'User-%'
+            ORDER BY displayName
+        ");
 
-            return $users->map(function ($user) {
-                $lastLogin = $user->signIns->first();
+            // Create a lookup map for users with logins
+            $loginMap = collect($usersWithLogins)->keyBy('id');
+
+            // Merge all users with their login data
+            $usersCollection = collect($allUsers)->map(function ($user) use ($loginMap) {
+                $userWithLogins = $loginMap->get($user->id);
 
                 return [
-                    'name' => $user->displayName ?? 'N/A',
-                    'login_id' => $user->userPrincipalName ?? 'N/A',
-                    'logins_last_month' => $user->logins_last_month ?? 0,
-                    'last_login' => $lastLogin ? $lastLogin->date_utc : null,
+                    'id' => $user->id,
+                    'name' => $user->name ?? 'N/A',
+                    'login_id' => $user->login_id ?? 'N/A',
+                    'logins_last_month' => $userWithLogins->logins_last_month ?? 0,
+                    'last_login' => $userWithLogins->last_login ?? null,
                 ];
             });
+
+            Log::info('✅ Direct login list loaded (CASE-INSENSITIVE FIX)', [
+                'users_count' => $usersCollection->count(),
+                'users_with_logins' => $usersCollection->where('logins_last_month', '>', 0)->count(),
+            ]);
+
+            return $usersCollection;
         } catch (\Exception $e) {
             Log::error('❌ Failed to get login view list via direct query', [
                 'error' => $e->getMessage(),
@@ -1700,7 +1905,47 @@ class DashboardController extends Controller
         return $insights;
     }
 
+    // private function applyCardFilter($loginList, $filter)
+    // {
+    //     $actualRange = $this->statsService->getActualDateRange();
 
+    //     if (!$actualRange['has_data']) {
+    //         return $loginList;
+    //     }
+
+    //     $dataMin = $actualRange['min'];
+    //     $dataMax = $actualRange['max'];
+
+    //     // "This month" = last 30 days of data
+    //     $thisMonthStart = max($dataMin, $dataMax->copy()->subDays(30));
+    //     $thisMonthEnd = $dataMax;
+
+    //     // Convert to timestamps once for comparison
+    //     $thisMonthStartTs = $thisMonthStart->timestamp;
+    //     $thisMonthEndTs = $thisMonthEnd->timestamp;
+    //     $lastMonthStartTs = $dataMin->timestamp;
+    //     $lastMonthEndTs = $dataMax->timestamp;
+
+    //     return match ($filter) {
+    //         'active_this_month' => $loginList->filter(function ($user) use ($thisMonthStartTs, $thisMonthEndTs) {
+    //             if (empty($user['last_login'])) return false;
+    //             $loginTs = strtotime($user['last_login']);
+    //             return $loginTs >= $thisMonthStartTs && $loginTs <= $thisMonthEndTs;
+    //         })->values(),
+
+    //         'active_last_month' => $loginList->filter(function ($user) use ($lastMonthStartTs, $lastMonthEndTs) {
+    //             if (empty($user['last_login'])) return false;
+    //             $loginTs = strtotime($user['last_login']);
+    //             return $loginTs >= $lastMonthStartTs && $loginTs <= $lastMonthEndTs;
+    //         })->values(),
+
+    //         'inactive' => $loginList->filter(function ($user) {
+    //             return empty($user['last_login']) || is_null($user['last_login']);
+    //         })->values(),
+
+    //         default => $loginList
+    //     };
+    // }
 
     public function debugRelationships(Request $request)
     {

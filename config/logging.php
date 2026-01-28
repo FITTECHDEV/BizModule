@@ -53,6 +53,13 @@ return [
             'level' => env('LOG_LEVEL', 'debug'),
             'replace_placeholders' => true,
         ],
+        // ✅ ADD THIS
+    'jimi_notifications' => [
+        'driver' => 'daily',
+        'path' => storage_path('logs/jimi_notifications.log'),
+        'level' => env('LOG_LEVEL', 'debug'),
+        'days' => 30,
+    ],
 
         'daily' => [
             'driver' => 'daily',

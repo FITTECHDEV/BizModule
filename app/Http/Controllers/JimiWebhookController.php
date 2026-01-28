@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
-use Ramsey\Uuid\Uuid;
+use Illuminate\Support\Facades\Storage;
 
 class JimiWebhookController extends Controller
 {
@@ -15,7 +15,7 @@ class JimiWebhookController extends Controller
             $msgType = $request->input('msgType');
             $data = json_decode($request->input('data'), true);
 
-            Log::info('JIMI Notification Received', [
+            Log::channel('jimi_notifications')->info('JIMI Notification Received', [
                 'msgType' => $msgType,
                 'data' => $data
             ]);
@@ -30,7 +30,7 @@ class JimiWebhookController extends Controller
             ], 200);
 
         } catch (\Exception $e) {
-            Log::error('JIMI Webhook Error: ' . $e->getMessage());
+            Log::channel('jimi_notifications')->error('JIMI Webhook Error: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'Error processing notification'
@@ -38,153 +38,144 @@ class JimiWebhookController extends Controller
         }
     }
 
-    // private function handleAlarmNotification($data)
-    // {
-    //     Log::info('Alarm Triggered', [
-    //         'imei' => $data['imei'],
-    //         'device_name' => $data['deviceName'],
-    //         'alarm_type' => $data['alarmType'],
-    //         'alarm_name' => $data['alarmName'],
-    //         'latitude' => $data['lat'],
-    //         'longitude' => $data['lng'],
-    //         'alarm_time' => $data['alarmTime']
-    //     ]);
+    private function handleAlarmNotification($data)
+    {
+        if (!in_array($data['alarmType'] ?? '', ['1006', '1007'])) {
+            Log::channel('jimi_notifications')->info('Ignored non-geofence alarm', ['type' => $data['alarmType'] ?? 'missing']);
+            return;
+        }
 
-    //     try {
-    //         // Find active trip and job for this IMEI
-    //         $tripJob = $this->findActiveTripAndJob($data['imei']);
+        try {
+            // Store in pending file first
+            $this->storeNotificationToFile($data);
 
-    //         // Store ALL alarms in Trip_TripNotification table
-    //         DB::connection('sqlsrv')->table('Trip_TripNotification')->insert([
-    //             'Id' => Uuid::uuid4()->toString(),
-    //             'IMEI' => $data['imei'],
-    //             'DeviceName' => $data['deviceName'],
-    //             'AlarmType' => $data['alarmType'],
-    //             'AlarmName' => $data['alarmName'],
-    //             'Latitude' => $data['lat'],
-    //             'Longitude' => $data['lng'],
-    //             'AlarmTime' => $data['alarmTime'],
-    //             'TripInfoID' => $tripJob['trip_id'],
-    //             'JobID' => $tripJob['job_id'],
-    //             'Status' => 'New',
-    //             'IsActive' => 1,
-    //             'IsDeleted' => 0
-    //         ]);
+            // Try to process immediately
+            $this->processNotification($data);
 
-    //         Log::info('✅ Alarm Stored in Database', [
-    //             'imei' => $data['imei'],
-    //             'vehicle' => $data['deviceName'],
-    //             'alarm_type' => $data['alarmType'],
-    //             'alarm_name' => $data['alarmName'],
-    //             'trip_id' => $tripJob['trip_id'],
-    //             'job_id' => $tripJob['job_id']
-    //         ]);
-
-    //     } catch (\Exception $e) {
-    //         Log::error('❌ Failed to store alarm in database: ' . $e->getMessage(), [
-    //             'imei' => $data['imei'],
-    //             'alarm_name' => $data['alarmName'],
-    //             'error' => $e->getMessage()
-    //         ]);
-    //     }
-    // }
-private function handleAlarmNotification($data)
-{
-    if (!in_array($data['alarmType'] ?? '', ['1006', '1007'])) {
-        Log::info('Ignored non-geofence alarm', ['type' => $data['alarmType'] ?? 'missing']);
-        return;
+        } catch (\Exception $e) {
+            Log::channel('jimi_notifications')->error('Failed to handle notification', [
+                'imei' => $data['imei'] ?? 'missing',
+                'error' => $e->getMessage()
+            ]);
+        }
     }
 
-    try {
-        $tripJob = $this->findActiveTripAndJob($data['imei']);
+    private function storeNotificationToFile($data)
+    {
+        $filename = 'jimi_notifications_pending.json';
 
-        // Only insert columns you know exist
-        $insertData = [
-            'Id'          => Uuid::uuid4()->toString(),
-            'IMEI'        => $data['imei'] ?? null,
-            'DeviceName'  => $data['deviceName'] ?? null,
-            'AlarmType'   => $data['alarmType'],
-            'AlarmName'   => $data['alarmName'] ?? null,
-            'Latitude'    => $data['lat'] ?? null,
-            'Longitude'   => $data['lng'] ?? null,
-            'AlarmTime'   => $data['alarmTime'],
-            'TripInfoID'  => $tripJob['trip_id'],
-            'JobID'       => $tripJob['job_id'],
-            'Status'      => 'New',
-            'IsActive'    => 1,
-            'IsDeleted'   => 0
+        // Get existing notifications
+        $notifications = [];
+        if (Storage::disk('local')->exists($filename)) {
+            $content = Storage::disk('local')->get($filename);
+            $notifications = json_decode($content, true) ?? [];
+        }
+
+        // Add new notification with timestamp and unique ID
+        $notifications[] = [
+            'id' => uniqid('jimi_', true),
+            'timestamp' => now()->toIso8601String(),
+            'data' => $data,
+            'processed' => false,
+            'retry_count' => 0
         ];
 
-        // Add optional geofence fields only if they exist in the table
-        if (Schema::connection('sqlsrv')->hasColumn('Trip_TripNotification', 'FenceAlertType')) {
-            $insertData['FenceAlertType'] = $data['fenceAlertType'] ?? null;
-        }
-        if (Schema::connection('sqlsrv')->hasColumn('Trip_TripNotification', 'FenceId')) {
-            $insertData['FenceId'] = $data['fenceId'] ?? null;
-        }
+        // Save back to file
+        Storage::disk('local')->put($filename, json_encode($notifications, JSON_PRETTY_PRINT));
 
-        DB::connection('sqlsrv')->table('Trip_TripNotification')->insert($insertData);
-
-        Log::info('Geofence alarm stored', [
-            'imei'       => $data['imei'],
-            'type'       => $data['alarmType'],
-            'name'       => $data['alarmName'],
-            'trip_id'    => $tripJob['trip_id'],
-            'job_id'     => $tripJob['job_id']
-        ]);
-
-    } catch (\Exception $e) {
-        Log::error('Failed to store geofence alarm', [
-            'imei'  => $data['imei'] ?? 'missing',
-            'error' => $e->getMessage()
+        Log::channel('jimi_notifications')->info('Notification stored to file', [
+            'imei' => $data['imei']
         ]);
     }
-}
-    // private function findActiveTripAndJob($imei)
-    // {
-    //     try {
-    //         // Find active trip for this IMEI from Trip_TripInformation
-    //         $trip = DB::connection('sqlsrv')
-    //             ->table('Trip_TripInformation')
-    //             ->where('IMEI', $imei)
-    //             ->where('Status', 'In Transit')
-    //             ->whereNull('EndDate')
-    //             ->orderBy('StartDate', 'desc')
-    //             ->first();
 
-    //         if (!$trip) {
-    //             Log::info('No active trip found for IMEI', ['imei' => $imei]);
-    //             return ['trip_id' => null, 'job_id' => null];
-    //         }
+    private function processNotification($data)
+    {
+        try {
+            $notificationJson = json_encode([
+                'data' => [
+                    'imei' => $data['imei'] ?? null,
+                    'deviceName' => $data['deviceName'] ?? null,
+                    'alarmType' => $data['alarmType'],
+                    'fenceAlertType' => $data['fenceAlertType'] ?? null,
+                    'alarmName' => $data['alarmName'] ?? null,
+                    'fenceId' => $data['fenceId'] ?? null,
+                    'lat' => $data['lat'] ?? null,
+                    'lng' => $data['lng'] ?? null,
+                    'alarmTime' => $data['alarmTime']
+                ]
+            ]);
 
-    //         // Find active job within this trip from Trip_Jobs
-    //         $job = DB::connection('sqlsrv')
-    //             ->table('Trip_Jobs')
-    //             ->where('TripInfoID', $trip->Id)
-    //             ->where('Status', 'In Transit')
-    //             ->whereNull('EndDate')
-    //             ->orderBy('StartDate', 'desc')
-    //             ->first();
+            $pdo = DB::connection('sqlsrv')->getPdo();
 
-    //         Log::info('Active trip/job found', [
-    //             'imei' => $imei,
-    //             'trip_id' => $trip->Id,
-    //             'trip_no' => $trip->TripNo ?? 'N/A',
-    //             'job_id' => $job->Id ?? null,
-    //             'job_no' => $job->JobNumber ?? 'N/A'
-    //         ]);
+            $stmt = $pdo->prepare("
+                SET NOCOUNT ON;
+                DECLARE @OutputJson VARCHAR(MAX) = NULL;
 
-    //         return [
-    //             'trip_id' => $trip->Id,
-    //             'job_id' => $job->Id ?? null
-    //         ];
+                EXEC dbo.sp_Trip_NotificationUpdate
+                    @NotificationJson = :notificationJson,
+                    @OutputJson = @OutputJson OUTPUT;
 
-    //     } catch (\Exception $e) {
-    //         Log::error('Error finding active trip/job: ' . $e->getMessage(), [
-    //             'imei' => $imei,
-    //             'error' => $e->getMessage()
-    //         ]);
-    //         return ['trip_id' => null, 'job_id' => null];
-    //     }
-    // }
+                SELECT ISNULL(@OutputJson, '') AS OutputJson;
+            ");
+
+            $stmt->bindParam(':notificationJson', $notificationJson, \PDO::PARAM_STR);
+            $stmt->execute();
+
+            $outputJson = '';
+            do {
+                if ($stmt->columnCount() > 0) {
+                    while ($row = $stmt->fetch(\PDO::FETCH_ASSOC)) {
+                        if (isset($row['OutputJson'])) {
+                            $outputJson = $row['OutputJson'];
+                            break 2;
+                        }
+                    }
+                }
+            } while ($stmt->nextRowset());
+
+            Log::channel('jimi_notifications')->info('SP OutputJson: ' . $outputJson);
+
+            $output = json_decode($outputJson, true);
+
+            // Mark as processed in file
+            $this->markNotificationAsProcessed($data['imei']);
+
+            Log::channel('jimi_notifications')->info('Geofence alarm processed by SP', [
+                'imei' => $data['imei'],
+                'type' => $data['alarmType'],
+                'name' => $data['alarmName'],
+                'sp_result' => $output
+            ]);
+
+        } catch (\Exception $e) {
+            Log::channel('jimi_notifications')->error('Failed to process notification', [
+                'imei' => $data['imei'] ?? 'missing',
+                'error' => $e->getMessage()
+            ]);
+            throw $e;
+        }
+    }
+
+    private function markNotificationAsProcessed($imei)
+    {
+        $filename = 'jimi_notifications_pending.json';
+
+        if (!Storage::disk('local')->exists($filename)) {
+            return;
+        }
+
+        $content = Storage::disk('local')->get($filename);
+        $notifications = json_decode($content, true) ?? [];
+
+        // Mark matching notification as processed
+        foreach ($notifications as &$notification) {
+            if (!$notification['processed'] && ($notification['data']['imei'] ?? '') === $imei) {
+                $notification['processed'] = true;
+                $notification['processed_at'] = now()->toIso8601String();
+                break;
+            }
+        }
+
+        Storage::disk('local')->put($filename, json_encode($notifications, JSON_PRETTY_PRINT));
+    }
 }

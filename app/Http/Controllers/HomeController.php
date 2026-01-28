@@ -192,59 +192,114 @@ class HomeController extends Controller
      * @return array
      */
     private function getLoginTrackerStats()
-    {
-        try {
-            $pdo = DB::connection()->getPdo();
-            $stmt = $pdo->prepare("SET NOCOUNT ON; EXEC dbo.sp_Azure_UserSummary;");
-            $stmt->execute();
-
-            $results = $stmt->fetchAll(\PDO::FETCH_OBJ);
-
-            // Clear any additional result sets
-            while ($stmt->nextRowset()) {
-                // Clear buffer
-            }
-
-            \Log::info('Login Tracker Stats Retrieved', [
-                'count' => count($results),
-                'first_result' => !empty($results) ? $results[0] : null,
-            ]);
-
-            if (!empty($results) && is_object($results[0])) {
-                $firstRow = $results[0];
-
-                // Use actual column names from stored procedure
-                return [
-                    'total_users' => $firstRow->Totaluser ?? 0,
-                    'active_this_month' => $firstRow->ActiveThisMonth ?? 0,
-                    'active_last_month' => $firstRow->ActiveLastMonth ?? 0,
-                    'inactive_users' => $firstRow->InActiveUser ?? 0,
-                ];
-            }
-
-            \Log::warning('SP UserSummary returned no data');
-
+{
+    try {
+        // Get actual data range from the stats service
+        $actualRange = app(\App\Services\DashboardStatsService::class)->getActualDateRange();
+        
+        if (!$actualRange['has_data']) {
+            $totalUsers = \App\Models\Logintracker\AzureUser::valid()->count();
             return [
-                'total_users' => 0,
+                'total_users' => $totalUsers,
                 'active_this_month' => 0,
                 'active_last_month' => 0,
-                'inactive_users' => 0,
-            ];
-        } catch (\Exception $e) {
-            \Log::error('Failed to get login tracker stats in HomeController', [
-                'error' => $e->getMessage(),
-                'line' => $e->getLine(),
-            ]);
-
-            // Return zero values on error
-            return [
-                'total_users' => 0,
-                'active_this_month' => 0,
-                'active_last_month' => 0,
-                'inactive_users' => 0,
+                'inactive_users' => $totalUsers,
             ];
         }
+        
+        $dataMin = $actualRange['min'];
+        $dataMax = $actualRange['max'];
+        
+        // Current month
+        $currentMonthStart = now()->startOfMonth();
+        $currentMonthEnd = now()->endOfMonth();
+        
+        // Active this month (current calendar month)
+        $active_this_month = DB::select("
+            SELECT COUNT(DISTINCT au.id) as count
+            FROM Azure_Users au
+            WHERE au.displayName IS NOT NULL 
+                AND au.displayName != ''
+                AND au.displayName NOT LIKE 'User-%'
+                AND au.userPrincipalName IS NOT NULL
+                AND au.userPrincipalName != ''
+                AND au.userPrincipalName NOT LIKE 'User-%'
+                AND EXISTS (
+                    SELECT 1 
+                    FROM Azure_LoginDetails ald 
+                    WHERE LOWER(ald.username) = LOWER(au.userPrincipalName)
+                        AND ald.date_utc BETWEEN ? AND ?
+                )
+        ", [$currentMonthStart, $currentMonthEnd])[0]->count ?? 0;
+        
+        // Active last month (entire imported period)
+        $active_last_month = DB::select("
+            SELECT COUNT(DISTINCT au.id) as count
+            FROM Azure_Users au
+            WHERE au.displayName IS NOT NULL 
+                AND au.displayName != ''
+                AND au.displayName NOT LIKE 'User-%'
+                AND au.userPrincipalName IS NOT NULL
+                AND au.userPrincipalName != ''
+                AND au.userPrincipalName NOT LIKE 'User-%'
+                AND EXISTS (
+                    SELECT 1 
+                    FROM Azure_LoginDetails ald 
+                    WHERE LOWER(ald.username) = LOWER(au.userPrincipalName)
+                        AND ald.date_utc BETWEEN ? AND ?
+                )
+        ", [$dataMin, $dataMax])[0]->count ?? 0;
+        
+        // Inactive users (never logged in)
+        $inactive_users = DB::select("
+            SELECT COUNT(*) as count
+            FROM Azure_Users au
+            WHERE au.displayName IS NOT NULL 
+                AND au.displayName != ''
+                AND au.displayName NOT LIKE 'User-%'
+                AND au.userPrincipalName IS NOT NULL
+                AND au.userPrincipalName != ''
+                AND au.userPrincipalName NOT LIKE 'User-%'
+                AND NOT EXISTS (
+                    SELECT 1 
+                    FROM Azure_LoginDetails ald 
+                    WHERE LOWER(ald.username) = LOWER(au.userPrincipalName)
+                )
+        ")[0]->count ?? 0;
+        
+        // Total users
+        $total_users = \App\Models\Logintracker\AzureUser::valid()->count();
+        
+        \Log::info('Login Tracker Stats Retrieved', [
+            'total_users' => $total_users,
+            'active_this_month' => $active_this_month,
+            'active_last_month' => $active_last_month,
+            'inactive_users' => $inactive_users,
+        ]);
+        
+        return [
+            'total_users' => $total_users,
+            'active_this_month' => $active_this_month,
+            'active_last_month' => $active_last_month,
+            'inactive_users' => $inactive_users,
+        ];
+        
+    } catch (\Exception $e) {
+        \Log::error('Failed to get login tracker stats in HomeController', [
+            'error' => $e->getMessage(),
+            'line' => $e->getLine(),
+            'trace' => $e->getTraceAsString(),
+        ]);
+
+        // Return zero values on error
+        return [
+            'total_users' => 0,
+            'active_this_month' => 0,
+            'active_last_month' => 0,
+            'inactive_users' => 0,
+        ];
     }
+}
 
     public function archive()
     {

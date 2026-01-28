@@ -116,34 +116,25 @@ class OdooSyncController extends Controller
                         // Normalize user data
                         $userData = $this->normalizeUserData($user);
 
-                        // Check if user exists
+                        // ✅ FIX: Check if user exists BY ODOOUSERID (not email)
                         $existingUser = DB::connection('sqlsrv')
                             ->table('Azure_Users')
-                            ->where('userPrincipalName', $userData['userPrincipalName'])
+                            ->where('OdooUserId', $userData['OdooUserId'])
                             ->first();
 
                         if (!$existingUser) {
                             // ============================================================
-                            // NEW USER FLOW: Insert + Azure AD Provisioning
+                            // ✅ FIXED: Azure AD FIRST, then DB insert
                             // ============================================================
 
-                            // Step 1: Insert to database with Status = "Pending"
-                            $this->insertUserImproved($userData);
-                            $stats['inserted']++;
-
-                            // Step 2: Provision to Azure AD
+                            // Step 1: Provision to Azure AD FIRST
                             $azureProvisioningResult = $this->provisionToAzureAD($userData, $azureService);
 
                             if ($azureProvisioningResult['success']) {
-                                // Step 3: Update with AzureId
-                                DB::connection('sqlsrv')
-                                    ->table('Azure_Users')
-                                    ->where('userPrincipalName', $userData['userPrincipalName'])
-                                    ->update([
-                                        'AzureId' => $azureProvisioningResult['azure_id'],
-                                        'LastModifiedOn' => DB::raw('GETDATE()'),
-                                    ]);
-
+                                // Step 2: Insert to database WITH AzureId already populated
+                                $userData['AzureId'] = $azureProvisioningResult['azure_id'];
+                                $this->insertUserImproved($userData);
+                                $stats['inserted']++;
                                 $stats['azure_provisioned']++;
 
                                 $this->outputRow(
@@ -153,9 +144,12 @@ class OdooSyncController extends Controller
                                     'INSERT',
                                     '✅ Provisioned',
                                     true,
-                                    'Created in DB + Azure AD (Pending)'
+                                    'Created in Azure AD + DB (Pending)'
                                 );
                             } else {
+                                // Azure creation failed - insert without AzureId
+                                $this->insertUserImproved($userData);
+                                $stats['inserted']++;
                                 $stats['azure_failed']++;
                                 $stats['errors'][] = [
                                     'user' => $userData['userPrincipalName'],
@@ -195,10 +189,9 @@ class OdooSyncController extends Controller
                                 if ($azureProvisioningResult['success']) {
                                     DB::connection('sqlsrv')
                                         ->table('Azure_Users')
-                                        ->where('userPrincipalName', $userData['userPrincipalName'])
+                                        ->where('OdooUserId', $userData['OdooUserId'])
                                         ->update([
                                             'AzureId' => $azureProvisioningResult['azure_id'],
-                                            // 'LastModifiedOn' => DB::raw('GETDATE()'),
                                         ]);
 
                                     $stats['azure_provisioned']++;
@@ -336,31 +329,26 @@ class OdooSyncController extends Controller
                     try {
                         $userData = $this->normalizeUserData($user);
 
+                        // ✅ FIX: Match by OdooUserId
                         $existingUser = DB::connection('sqlsrv')
                             ->table('Azure_Users')
-                            ->where('userPrincipalName', $userData['userPrincipalName'])
+                            ->where('OdooUserId', $userData['OdooUserId'])
                             ->first();
 
                         if (!$existingUser) {
                             // ============================================================
-                            // NEW USER: Insert + Azure AD Provisioning
+                            // ✅ FIXED: Azure AD FIRST, then DB insert
                             // ============================================================
-                            $this->insertUserImproved($userData);
-                            $stats['inserted']++;
-
                             $azureProvisioningResult = $this->provisionToAzureAD($userData, $azureService);
 
                             if ($azureProvisioningResult['success']) {
-                                DB::connection('sqlsrv')
-                                    ->table('Azure_Users')
-                                    ->where('userPrincipalName', $userData['userPrincipalName'])
-                                    ->update([
-                                        'AzureId' => $azureProvisioningResult['azure_id'],
-                                        'LastModifiedOn' => DB::raw('GETDATE()'),
-                                    ]);
-
+                                $userData['AzureId'] = $azureProvisioningResult['azure_id'];
+                                $this->insertUserImproved($userData);
+                                $stats['inserted']++;
                                 $stats['azure_provisioned']++;
                             } else {
+                                $this->insertUserImproved($userData);
+                                $stats['inserted']++;
                                 $stats['azure_failed']++;
                                 $stats['errors'][] = [
                                     'user' => $userData['userPrincipalName'],
@@ -385,7 +373,7 @@ class OdooSyncController extends Controller
                                 if ($azureProvisioningResult['success']) {
                                     DB::connection('sqlsrv')
                                         ->table('Azure_Users')
-                                        ->where('userPrincipalName', $userData['userPrincipalName'])
+                                        ->where('OdooUserId', $userData['OdooUserId'])
                                         ->update([
                                             'AzureId' => $azureProvisioningResult['azure_id'],
                                         ]);
@@ -762,8 +750,8 @@ class OdooSyncController extends Controller
      */
     private function updateUserImproved(array $data): void
     {
-        $upn = $data['userPrincipalName'];
-        unset($data['userPrincipalName']);
+        $odooUserId = $data['OdooUserId'];
+        unset($data['OdooUserId']);
 
         // ✅ Filter out NULL and empty string values
         $filteredData = array_filter($data, function ($value) {
@@ -773,7 +761,7 @@ class OdooSyncController extends Controller
 
         // ✅ If no fields to update, skip
         if (empty($filteredData)) {
-            Log::warning('No non-null fields to update', ['upn' => $upn]);
+            Log::warning('No non-null fields to update', ['odoo_user_id' => $odooUserId]);
             return;
         }
 
@@ -790,14 +778,14 @@ class OdooSyncController extends Controller
         $setClauses[] = "Status = 'Active'";
 
         // Add WHERE clause value
-        $values[] = $upn;
+        $values[] = $odooUserId;
 
-        $sql = "UPDATE Azure_Users SET " . implode(', ', $setClauses) . " WHERE userPrincipalName = ?";
+        $sql = "UPDATE Azure_Users SET " . implode(', ', $setClauses) . " WHERE OdooUserId = ?";
 
         DB::connection('sqlsrv')->update($sql, $values);
 
         Log::info('User updated with smart logic', [
-            'upn' => $upn,
+            'odoo_user_id' => $odooUserId,
             'fields_updated' => array_keys($filteredData),
             'skipped_null_fields' => array_keys(array_diff_key($data, $filteredData)),
         ]);

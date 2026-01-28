@@ -91,6 +91,9 @@ class Kernel extends ConsoleKernel
         //  ->withoutOverlapping()
         //  ->runInBackground()
         //
+
+        $schedule->command('jimi:process-pending')->everyFiveMinutes();
+        
         $schedule->command('z_report_json_tz')
             ->dailyAt('11:00')
             ->timezone('Africa/Nairobi')
@@ -114,9 +117,9 @@ class Kernel extends ConsoleKernel
                 Log::error('AR ZReport scheduled task failed at ' . now());
             });
 
-        // Send shipment status reports to clients daily at 8:00 AM EAT
+        // Send shipment status reports to clients daily at 17:00 EAT
         $schedule->command('shipments:send-reports')
-            ->dailyAt('08:00')
+            ->dailyAt('17:00')
             ->timezone('Africa/Nairobi')
             ->withoutOverlapping()
             ->onOneServer()
