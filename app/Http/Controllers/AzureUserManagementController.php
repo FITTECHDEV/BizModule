@@ -562,6 +562,25 @@ class AzureUserManagementController extends Controller
 
             Log::info('✓ Windows Sign-In module validation passed');
 
+
+            // ====================================================================
+            // STEP 1.5: Validate Windows Sign-In module is present (MANDATORY - if enabled)
+            // // ====================================================================
+            // if (config('windows_signin.mandatory', false)) {
+            //     $hasWindowsSignIn = collect($modulesData)->contains(function ($module) {
+            //         $moduleName = strtoupper($module['application_name'] ?? '');
+            //         return in_array($moduleName, ['WINDOWS SIGN IN', 'WINDOWS SIGN-IN', 'WINDOWS SIGNIN']);
+            //     });
+
+            //     if (!$hasWindowsSignIn) {
+            //         throw new \Exception('Windows Sign-In module is mandatory for all new users. Please add it to the assignments.');
+            //     }
+
+            //     Log::info('✓ Windows Sign-In module validation passed');
+            // } else {
+            //     Log::info('⊘ Windows Sign-In validation skipped (not mandatory)');
+            // }
+
             // ====================================================================
             // STEP 2: Prepare user data
             // ====================================================================
@@ -609,81 +628,63 @@ class AzureUserManagementController extends Controller
             // STEP 3: CREATE USER IN AZURE AD FIRST (to get AzureId)
             // ====================================================================
 
-            $azureUpn = null;
-            $azureService = app(\App\Services\AzureGraphService::class);
-
             Log::info('→ Step 3: Creating user in Azure AD...', [
                 'upn' => $userPrincipalName,
                 'display_name' => $request->name,
             ]);
 
-            // Check if user already exists in Azure AD
-            $existingAzureUser = null;
-            try {
-                $existingAzureUser = $azureService->findUserByUPN($userPrincipalName);
-            } catch (\Exception $e) {
-                Log::debug('Azure AD lookup during creation', [
-                    'error' => $e->getMessage(),
-                ]);
+            // Prepare Azure AD user data
+            $azureUserData = [
+                'accountEnabled' => true,
+                'displayName' => $request->name,
+                'mailNickname' => $emailLocalPart,
+                'userPrincipalName' => $userPrincipalName,
+                'givenName' => $givenName,
+                'surname' => $surname,
+                'mail' => $userPrincipalName,
+                'usageLocation' => 'KE',
+                'passwordProfile' => [
+                    'forceChangePasswordNextSignIn' => true,
+                    'password' => $this->generateSecurePassword(),
+                ],
+            ];
+
+            // Add optional fields if present
+            if ($request->mobile_phone) {
+                $azureUserData['mobilePhone'] = $request->mobile_phone;
+            }
+            if ($request->phone) {
+                $azureUserData['businessPhones'] = [$request->phone];
+            }
+            if ($request->job_title) {
+                $azureUserData['jobTitle'] = $request->job_title;
+            }
+            if ($request->department) {
+                $azureUserData['department'] = $request->department;
+            }
+            if ($primaryLocation) {
+                $azureUserData['officeLocation'] = $primaryLocation;
             }
 
-            if ($existingAzureUser) {
-                // User already exists in Azure - link to existing user
-                $azureId = $existingAzureUser['id'];
-                $azureUpn = $existingAzureUser['userPrincipalName'];
+            // ✅ USE THE ROBUST HELPER METHOD
+            $azureResult = $this->getOrCreateAzureId($userPrincipalName, $request->name, $azureUserData);
 
-                Log::info('✓ Step 3: User already exists in Azure AD - linking', [
-                    'azure_id' => $azureId,
-                    'azure_upn' => $azureUpn,
-                ]);
-            } else {
-                // Create new user in Azure AD
-                $azureUserData = [
-                    'accountEnabled' => true,
-                    'displayName' => $request->name,
-                    'mailNickname' => $emailLocalPart,
-                    'userPrincipalName' => $userPrincipalName,
-                    'givenName' => $givenName,
-                    'surname' => $surname,
-                    'mail' => $userPrincipalName,
-                    'usageLocation' => 'KE',
-                    'passwordProfile' => [
-                        'forceChangePasswordNextSignIn' => true,
-                        'password' => $this->generateSecurePassword(),
-                    ],
-                ];
-
-                // Add optional fields if present
-                if ($request->mobile_phone) {
-                    $azureUserData['mobilePhone'] = $request->mobile_phone;
-                }
-                if ($request->phone) {
-                    $azureUserData['businessPhones'] = [$request->phone];
-                }
-                if ($request->job_title) {
-                    $azureUserData['jobTitle'] = $request->job_title;
-                }
-                if ($request->department) {
-                    $azureUserData['department'] = $request->department;
-                }
-                if ($primaryLocation) {
-                    $azureUserData['officeLocation'] = $primaryLocation;
-                }
-
-                $azureResult = $azureService->createUser($azureUserData);
-
-                $azureId = $azureResult['id'];
-                $azureUpn = $azureResult['userPrincipalName'];
-
-                Log::info('✓ Step 3: User created in Azure AD', [
-                    'azure_id' => $azureId,
-                    'azure_upn' => $azureUpn,
-                ]);
+            if (!$azureResult['success'] || empty($azureResult['azure_id'])) {
+                throw new \Exception('Failed to obtain Azure ID: ' . $azureResult['message']);
             }
 
-            // Validate AzureId before proceeding
-            if (empty($azureId) || !$this->isValidUuid($azureId)) {
-                throw new \Exception('Failed to obtain valid Azure ID from Azure AD');
+            $azureId = $azureResult['azure_id'];
+            $azureUpn = $userPrincipalName;
+
+            Log::info('✓ Step 3: Azure ID obtained', [
+                'azure_id' => $azureId,
+                'azure_upn' => $azureUpn,
+                'message' => $azureResult['message'],
+            ]);
+
+            // Final validation before proceeding
+            if (!$this->isValidUuid($azureId)) {
+                throw new \Exception('Invalid Azure ID format after all attempts: ' . $azureId);
             }
 
             // ====================================================================
@@ -692,20 +693,30 @@ class AzureUserManagementController extends Controller
 
             Log::info('→ Step 4: Inserting user into database with AzureId...');
 
+            // ✅ CRITICAL: Validate AzureId before insert
+            if (empty($azureId) || !$this->isValidUuid($azureId)) {
+                throw new \Exception('Cannot create user: Invalid or missing Azure ID. AzureId: ' . ($azureId ?? 'NULL'));
+            }
+
+            Log::info('✓ AzureId validated before insert', [
+                'azure_id' => $azureId,
+                'is_valid' => $this->isValidUuid($azureId),
+            ]);
+
             DB::connection('sqlsrv')->insert('
-            INSERT INTO Azure_Users (
-                Id, userPrincipalName, displayName, surname, mail, givenName,
-                telephoneNumber, mobilePhone, jobTitle, department,
-                officeLocation, accountEnabled, userType, usageLocation, country,
-                createdDateTime, Status, EmployeCode, companyName, AzureId
-            )
-            VALUES (
-                ?, ?, ?, ?, ?, ?,
-                ?, ?, ?, ?,
-                ?, ?, ?, ?, ?,
-                GETDATE(), ?, ?, ?, ?
-            )
-        ', [
+    INSERT INTO Azure_Users (
+        Id, userPrincipalName, displayName, surname, mail, givenName,
+        telephoneNumber, mobilePhone, jobTitle, department,
+        officeLocation, accountEnabled, userType, usageLocation, country,
+        createdDateTime, Status, EmployeCode, companyName, AzureId
+    )
+    VALUES (
+        ?, ?, ?, ?, ?, ?,
+        ?, ?, ?, ?,
+        ?, ?, ?, ?, ?,
+        GETDATE(), ?, ?, ?, ?
+    )
+', [
                 $userId,
                 $userPrincipalName,
                 $request->name,
@@ -724,7 +735,7 @@ class AzureUserManagementController extends Controller
                 'Pending', // Status = Pending
                 $request->employee_id,
                 $request->company_id,
-                $azureId, // ← AzureId is set immediately during creation!
+                $azureId, // ← AzureId is now guaranteed to be valid!
             ]);
 
             Log::info('✓ Step 4: User created in database with AzureId', [
@@ -746,13 +757,17 @@ class AzureUserManagementController extends Controller
                 FROM (
                     SELECT MAX(CAST(CU.EmployeeCode AS BIGINT)) as MaxCode
                     FROM Cust_User CU WITH (NOLOCK)
-                    WHERE CU.EmployeeCode IS NOT NULL AND LEN(ISNULL(CU.EmployeeCode, '')) > 0
-        
+                        WHERE CU.EmployeeCode IS NOT NULL 
+                        AND LEN(ISNULL(CU.EmployeeCode, '')) > 0
+                        AND ISNUMERIC(CU.EmployeeCode) = 1        
                     UNION ALL
         
                     SELECT MAX(CAST(AU.EmployeCode AS BIGINT)) as MaxCode
                     FROM Azure_Users AU WITH (NOLOCK)
-                    WHERE AU.EmployeCode IS NOT NULL AND LEN(ISNULL(AU.EmployeCode, '')) > 0
+                    WHERE AU.EmployeCode IS NOT NULL  
+                        AND LEN(ISNULL(AU.EmployeCode, '')) > 0
+                        AND ISNUMERIC(AU.EmployeCode) = 1
+
                 ) AS Combined
             ");
 
@@ -2187,6 +2202,91 @@ class AzureUserManagementController extends Controller
                 ]);
             }
 
+            // ====================================================================
+            // ✅ STEP 0.6: CRITICAL - Validate AzureId exists before allowing activation
+            // ====================================================================
+            // Only check if modules are being updated (which could trigger activation)
+            if (!empty($modulesData)) {
+                // Get current status from database (not from model which might be stale)
+                $currentUserStatus = DB::connection('sqlsrv')
+                    ->table('Azure_Users')
+                    ->where('Id', $user->Id)
+                    ->value('Status');
+
+                Log::info('→ Step 0.6: Checking if user can be activated', [
+                    'user_id' => $user->Id,
+                    'current_status' => $currentUserStatus,
+                    'has_azure_id' => !empty($user->AzureId),
+                    'azure_id_valid' => $this->isValidUuid($user->AzureId ?? ''),
+                ]);
+
+                // If user is currently Pending and modules are being updated, check AzureId
+                if ($currentUserStatus === 'Pending') {
+                    // Ensure AzureId exists
+                    $azureIdCheck = $this->ensureAzureIdExists($user);
+
+                    if (!$azureIdCheck['success']) {
+                        Log::error('✗ Step 0.6: Cannot activate user - AzureId missing', [
+                            'user_id' => $user->Id,
+                            'upn' => $user->userPrincipalName,
+                            'message' => $azureIdCheck['message'],
+                        ]);
+
+                        return response()->json([
+                            'success' => false,
+                            'message' => '❌ Cannot activate user: ' . $azureIdCheck['message'] .
+                                '\n\nThe user must be provisioned to Azure AD before activation. Please contact IT support.',
+                        ], 400);
+                    }
+
+                    Log::info('✓ Step 0.6: AzureId validated for activation', [
+                        'user_id' => $user->Id,
+                        'azure_id' => $azureIdCheck['azure_id'],
+                    ]);
+                }
+            }
+
+
+            // ====================================================================
+            // ✅ STEP 0.6: CRITICAL - Validate AzureId exists before allowing activation
+            // ====================================================================
+            // Get current status from database (not from model which might be stale)
+            $currentUserStatus = DB::connection('sqlsrv')
+                ->table('Azure_Users')
+                ->where('Id', $user->Id)
+                ->value('Status');
+
+            Log::info('→ Step 0.6: Checking if user can be activated', [
+                'user_id' => $user->Id,
+                'current_status' => $currentUserStatus,
+                'has_azure_id' => !empty($user->AzureId),
+                'azure_id_valid' => $this->isValidUuid($user->AzureId ?? ''),
+            ]);
+
+            // If user is currently Pending and modules are being updated, check AzureId
+            if ($currentUserStatus === 'Pending' && !empty($modulesData)) {
+                // Ensure AzureId exists
+                $azureIdCheck = $this->ensureAzureIdExists($user);
+
+                if (!$azureIdCheck['success']) {
+                    Log::error('✗ Step 0.6: Cannot activate user - AzureId missing', [
+                        'user_id' => $user->Id,
+                        'upn' => $user->userPrincipalName,
+                        'message' => $azureIdCheck['message'],
+                    ]);
+
+                    return response()->json([
+                        'success' => false,
+                        'message' => '❌ Cannot activate user: ' . $azureIdCheck['message'] .
+                            '\n\nThe user must be provisioned to Azure AD before activation. Please contact IT support.',
+                    ], 400);
+                }
+
+                Log::info('✓ Step 0.6: AzureId validated', [
+                    'user_id' => $user->Id,
+                    'azure_id' => $azureIdCheck['azure_id'],
+                ]);
+            }
 
 
             // ====================================================================
@@ -2740,13 +2840,16 @@ class AzureUserManagementController extends Controller
                         FROM (
                             SELECT MAX(CAST(CU.EmployeeCode AS BIGINT)) as MaxCode
                             FROM Cust_User CU WITH (NOLOCK)
-                            WHERE CU.EmployeeCode IS NOT NULL AND LEN(ISNULL(CU.EmployeeCode, '')) > 0
-        
+                                WHERE CU.EmployeeCode IS NOT NULL 
+                                AND LEN(ISNULL(CU.EmployeeCode, '')) > 0
+                                AND ISNUMERIC(CU.EmployeeCode) = 1        
                             UNION ALL
         
                             SELECT MAX(CAST(AU.EmployeCode AS BIGINT)) as MaxCode
                             FROM Azure_Users AU WITH (NOLOCK)
-                            WHERE AU.EmployeCode IS NOT NULL AND LEN(ISNULL(AU.EmployeCode, '')) > 0
+                            WHERE AU.EmployeCode IS NOT NULL  
+                                AND LEN(ISNULL(AU.EmployeCode, '')) > 0
+                                AND ISNUMERIC(AU.EmployeCode) = 1
                         ) AS Combined
                     ");
 
@@ -3330,6 +3433,23 @@ class AzureUserManagementController extends Controller
                     ->with('info', 'User is already Active. No changes made.');
             }
 
+            // ✅ NEW: Validation 1.5: CRITICAL - Check if AzureId exists before activation
+            if (empty($user->AzureId) || !$this->isValidUuid($user->AzureId)) {
+                Log::error('Cannot activate user - AzureId missing or invalid', [
+                    'user_id' => $user->Id,
+                    'upn' => $user->userPrincipalName,
+                    'azure_id' => $user->AzureId,
+                ]);
+
+                return redirect()->back()
+                    ->with('error', 'Cannot activate user: Azure ID is missing or invalid. The user must be provisioned to Azure AD first.');
+            }
+
+            Log::info('✓ AzureId validated for activation', [
+                'user_id' => $user->Id,
+                'azure_id' => $user->AzureId,
+            ]);
+
             // Validation 2: Check if user is Pending (only valid state for sync)
             if ($user->Status !== 'Pending') {
                 Log::warning('Invalid status for sync operation', [
@@ -3344,6 +3464,7 @@ class AzureUserManagementController extends Controller
                         $user->Status
                     ));
             }
+
 
             // Validation 3: Check if user has been provisioned to Azure AD
             if (!$user->isProvisionedToAzure()) {
@@ -3804,6 +3925,147 @@ class AzureUserManagementController extends Controller
         $pattern = '/^\{?[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\}?$/i';
 
         return preg_match($pattern, $uuid) === 1;
+    }
+
+    /**
+     * Get or create Azure ID for a user with comprehensive error handling
+     * This is the SINGLE SOURCE OF TRUTH for Azure ID management
+     * 
+     * @param string $userPrincipalName
+     * @param string|null $displayName
+     * @param array $userData Additional user data for Azure AD creation
+     * @return array ['success' => bool, 'azure_id' => string|null, 'message' => string]
+     */
+    private function getOrCreateAzureId(string $userPrincipalName, ?string $displayName = null, array $userData = []): array
+    {
+        Log::info('→ Getting or creating Azure ID', [
+            'upn' => $userPrincipalName,
+            'display_name' => $displayName,
+        ]);
+
+        $azureService = app(\App\Services\AzureGraphService::class);
+
+        // STEP 1: Try to find existing user in Azure AD
+        try {
+            $existingUser = $azureService->findUserByUPN($userPrincipalName);
+
+            if ($existingUser && isset($existingUser['id'])) {
+                $azureId = trim($existingUser['id']);
+
+                // Validate UUID format
+                if ($this->isValidUuid($azureId)) {
+                    Log::info('✓ Found existing Azure user', [
+                        'upn' => $userPrincipalName,
+                        'azure_id' => $azureId,
+                    ]);
+
+                    return [
+                        'success' => true,
+                        'azure_id' => $azureId,
+                        'message' => 'Existing Azure user found',
+                    ];
+                } else {
+                    Log::error('Invalid Azure ID format from existing user', [
+                        'upn' => $userPrincipalName,
+                        'azure_id' => $azureId,
+                    ]);
+                }
+            }
+        } catch (\Exception $e) {
+            Log::info('User not found in Azure AD, will create new', [
+                'upn' => $userPrincipalName,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        // STEP 2: Create new user in Azure AD
+        if (empty($userData)) {
+            return [
+                'success' => false,
+                'azure_id' => null,
+                'message' => 'User not found in Azure AD and no user data provided for creation',
+            ];
+        }
+
+        try {
+            Log::info('Creating new Azure AD user', [
+                'upn' => $userPrincipalName,
+            ]);
+
+            $createResult = $azureService->createUser($userData);
+
+            if (!$createResult || !isset($createResult['id'])) {
+                throw new \Exception('Azure AD user creation returned no ID');
+            }
+
+            $azureId = trim($createResult['id']);
+
+            // Validate UUID format
+            if (!$this->isValidUuid($azureId)) {
+                throw new \Exception('Invalid Azure ID format returned: ' . $azureId);
+            }
+
+            Log::info('✓ Created new Azure AD user', [
+                'upn' => $userPrincipalName,
+                'azure_id' => $azureId,
+            ]);
+
+            // STEP 3: Verify creation with retry
+            $maxRetries = 3;
+            $retryDelay = 2; // seconds
+
+            for ($i = 0; $i < $maxRetries; $i++) {
+                try {
+                    sleep($retryDelay);
+                    $verifyUser = $azureService->getUser($azureId);
+
+                    if ($verifyUser && isset($verifyUser['id'])) {
+                        Log::info('✓ Azure user creation verified', [
+                            'azure_id' => $azureId,
+                            'attempt' => $i + 1,
+                        ]);
+
+                        return [
+                            'success' => true,
+                            'azure_id' => $azureId,
+                            'message' => 'Azure user created and verified',
+                        ];
+                    }
+                } catch (\Exception $e) {
+                    Log::warning('Verification attempt failed', [
+                        'attempt' => $i + 1,
+                        'error' => $e->getMessage(),
+                    ]);
+
+                    if ($i === $maxRetries - 1) {
+                        // Last attempt - return the ID anyway
+                        return [
+                            'success' => true,
+                            'azure_id' => $azureId,
+                            'message' => 'Azure user created (verification pending)',
+                        ];
+                    }
+                }
+            }
+
+            return [
+                'success' => true,
+                'azure_id' => $azureId,
+                'message' => 'Azure user created',
+            ];
+        } catch (\Exception $e) {
+            Log::error('Failed to create Azure AD user', [
+                'upn' => $userPrincipalName,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return [
+                'success' => false,
+                'azure_id' => null,
+                'message' => 'Azure AD user creation failed: ' . $e->getMessage(),
+            ];
+        }
     }
 
     /**
@@ -4472,7 +4734,33 @@ class AzureUserManagementController extends Controller
             // Process each pending user
             foreach ($pendingUsers as $user) {
                 try {
-                    // Check eligibility for activation
+                    // ====================================================================
+                    // ✅ NEW: Validation 1: CRITICAL - Check AzureId exists before activation
+                    // ====================================================================
+                    if (empty($user->AzureId) || !$this->isValidUuid($user->AzureId)) {
+                        Log::warning('Skipping activation - AzureId missing or invalid', [
+                            'user_id' => $user->Id,
+                            'upn' => $user->userPrincipalName,
+                            'azure_id' => $user->AzureId ?? 'NULL',
+                        ]);
+
+                        $stats['skipped']++;
+                        $stats['errors'][] = [
+                            'user' => $user->userPrincipalName ?? $user->Id,
+                            'error' => 'AzureId missing or invalid - user not provisioned to Azure AD',
+                        ];
+
+                        continue; // Skip this user
+                    }
+
+                    Log::info('✓ AzureId validated for activation', [
+                        'user_id' => $user->Id,
+                        'azure_id' => $user->AzureId,
+                    ]);
+
+                    // ====================================================================
+                    // Validation 2: Check eligibility for activation
+                    // ====================================================================
                     $eligible = $this->checkUserEligibility($user);
 
                     if ($eligible['can_activate']) {
@@ -4481,7 +4769,7 @@ class AzureUserManagementController extends Controller
                         // D365 PROVISIONING (Before Activation)
                         // ====================================================================
 
-                        $needsD365 = ! empty($user->AzureId) && empty($user->D365UserID);
+                        $needsD365 = !empty($user->AzureId) && empty($user->D365UserID);
 
                         if ($needsD365) {
                             // Check if user has D365 LIVE module assignments
@@ -4556,7 +4844,7 @@ class AzureUserManagementController extends Controller
                                 ]);
                             }
                         } else {
-                            if (!$user->isProvisionedToAzure()) {
+                            if (empty($user->AzureId)) {
                                 Log::debug('⊘ D365 provisioning skipped - no Azure ID', [
                                     'user_id' => $user->Id,
                                     'upn' => $user->userPrincipalName,
@@ -4580,8 +4868,6 @@ class AzureUserManagementController extends Controller
                             ->where('Id', $user->Id)
                             ->update([
                                 'Status' => 'Active',
-                                //'LastModifiedOn' => DB::raw('GETDATE()'),
-                                //'LastModifiedBy' => Auth::id(),
                             ]);
 
                         $stats['activated']++;
@@ -4634,7 +4920,7 @@ class AzureUserManagementController extends Controller
                 $messageParts[] = sprintf('D365 Failed: %d (can retry manually)', $stats['d365_failed']);
             }
 
-            if (! empty($stats['errors'])) {
+            if (!empty($stats['errors'])) {
                 $messageParts[] = sprintf('Errors: %d', count($stats['errors']));
             }
 
