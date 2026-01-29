@@ -11,68 +11,90 @@ use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 class ShipmentReportService
 {
-    private $stats = [
-        'total_clients' => 0,
-        'emails_sent' => 0,
-        'emails_failed' => 0,
-        'skipped_no_email' => 0,
-        'milestone_failures' => 0,
-        'errors' => []
-    ];
-
     /**
-     * Get client list from stored procedure
+     * Get client list from sp_ClientEmailDetails stored procedure
+     * 
+     * @return \Illuminate\Support\Collection
      */
     public function getClientEmailList()
     {
         try {
             $pdo = DB::connection('sqlsrv_auth')->getPdo();
-            $stmt = $pdo->prepare('SET NOCOUNT ON; EXEC [dbo].[sp_EmailClientDetails]');
+            $stmt = $pdo->prepare('SET NOCOUNT ON; EXEC [dbo].[sp_EmailClientDetails]'); // Changed name
             $stmt->execute();
-            
-            return collect($stmt->fetchAll(\PDO::FETCH_OBJ));
+
+            $results = $stmt->fetchAll(\PDO::FETCH_OBJ);
+
+            return collect($results);
         } catch (\Exception $e) {
             Log::error('Failed to execute sp_EmailClientDetails', [
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
+
             throw $e;
         }
     }
 
     /**
-     * Get milestone data for specific client/service
+     * Get milestone data for a specific client/service combination
+     * 
+     * @param string $officeId
+     * @param string $clientId
+     * @param string $serviceId
+     * @param string $processId
+     * @return array ['success' => bool, 'data' => array|null, 'error' => string|null]
      */
     public function getMilestoneData($officeId, $clientId, $serviceId, $processId)
     {
         try {
+            // Use PDO directly for proper GUID handling
             $pdo = DB::connection('sqlsrv_auth')->getPdo();
+
             $sql = "SET NOCOUNT ON; EXEC [dbo].[sp_MilestoneStatusAsofToday] @OfficeID=?, @ClientID=?, @ServiceID=?, @ProcessID=?";
             $stmt = $pdo->prepare($sql);
             $stmt->execute([$officeId, $clientId, $serviceId, $processId]);
-            
+
             $results = $stmt->fetchAll(\PDO::FETCH_OBJ);
 
+            // Check if result is an error message
             if (!empty($results)) {
                 $firstResult = (array) $results[0];
                 $firstValue = reset($firstResult);
 
                 if (is_string($firstValue) && strpos($firstValue, 'Failed') === 0) {
-                    return ['success' => false, 'data' => null, 'error' => $firstValue];
+                    return [
+                        'success' => false,
+                        'data' => null,
+                        'error' => $firstValue
+                    ];
                 }
             }
 
-            return ['success' => true, 'data' => $results, 'error' => null];
+            return [
+                'success' => true,
+                'data' => $results,
+                'error' => null
+            ];
         } catch (\Exception $e) {
-            return ['success' => false, 'data' => null, 'error' => 'Failed - ' . $e->getMessage()];
+            return [
+                'success' => false,
+                'data' => null,
+                'error' => 'Failed - ' . $e->getMessage()
+            ];
         }
     }
 
     /**
-     * Main processing method
+     * Process and send shipment reports to all clients
+     * 
+     * @param string|null $testEmail Optional test email to override all client emails
+     * @param array|null $clientIds Optional array of specific client IDs to process
+     * @return array Summary of sent/failed emails
      */
     public function processAndSendReports($testEmail = null, $clientIds = null)
     {
-        $this->stats = [
+        $summary = [
             'total_clients' => 0,
             'emails_sent' => 0,
             'emails_failed' => 0,
@@ -84,240 +106,293 @@ class ShipmentReportService
         try {
             $clientList = $this->getClientEmailList();
 
+            // Filter by specific client IDs if provided
             if ($clientIds !== null && !empty($clientIds)) {
                 $clientList = $clientList->whereIn('ClientId', $clientIds);
+
+                if ($clientList->isEmpty()) {
+                    Log::warning('No clients found matching the provided IDs', [
+                        'requested_ids' => $clientIds
+                    ]);
+                }
             }
 
-            $this->stats['total_clients'] = $clientList->count();
+            $summary['total_clients'] = $clientList->count();
 
             Log::info('Starting shipment report processing', [
-                'total_clients' => $this->stats['total_clients'],
+                'total_clients' => $summary['total_clients'],
                 'test_email' => $testEmail,
+                'client_filter' => $clientIds,
                 'timestamp' => now()
             ]);
 
-            $processedCount = 0;
-
             foreach ($clientList as $client) {
-                $processedCount++;
-                
-                // Progress logging
-                if ($processedCount % config('shipment_reports.processing.progress_log_interval', 10) === 0) {
-                    Log::info("Progress: {$processedCount}/{$this->stats['total_clients']}", [
-                        'sent' => $this->stats['emails_sent'],
-                        'failed' => $this->stats['emails_failed']
-                    ]);
-                }
+                $status = 'Failed';
+                $remark = '';
 
-                $this->processClient($client, $testEmail);
-                
-                // Delay between emails
-                if ($this->stats['emails_sent'] > 0) {
-                    sleep(config('shipment_reports.email.delay_between_sends', 2));
-                }
-            }
-
-            Log::info('Processing completed', $this->stats);
-
-        } catch (\Exception $e) {
-            Log::error('Fatal error in processing', [
-                'error' => $e->getMessage(),
-                'stats' => $this->stats
-            ]);
-            throw $e;
-        }
-
-        return $this->stats;
-    }
-
-    /**
-     * Process single client
-     */
-    private function processClient($client, $testEmail)
-    {
-        $status = 'Failed';
-        $remark = '';
-
-        try {
-            // Check email
-            if (!$testEmail && $client->EmailID === 'No Email ID Present') {
-                $this->stats['skipped_no_email']++;
-                $remark = 'No Email ID Present';
-                
-                Log::warning('No email for client', [
-                    'client_id' => $client->ClientId,
-                    'client_name' => $client->ClientName
-                ]);
-                
-                $this->logTransaction($client, $status, $remark);
-                return;
-            }
-
-            // Get milestone data
-            $milestoneResult = $this->getMilestoneData(
-                $client->OfficeID,
-                $client->ClientId,
-                $client->ServiceID,
-                $client->ProcessId
-            );
-
-            if (!$milestoneResult['success']) {
-                $this->stats['milestone_failures']++;
-                $remark = $milestoneResult['error'];
-                
-                Log::warning('Milestone unavailable', [
-                    'client_id' => $client->ClientId,
-                    'client_name' => $client->ClientName,
-                    'error' => $remark
-                ]);
-                
-                $this->logTransaction($client, $status, $remark);
-                return;
-            }
-
-            // Send email with retry
-            $emailAddress = $testEmail ?? $client->EmailID;
-            $maxRetries = config('shipment_reports.email.max_retries', 3);
-            
-            for ($attempt = 1; $attempt <= $maxRetries; $attempt++) {
                 try {
-                    $this->sendReportEmail(
-                        $emailAddress,
-                        $client->EmailSubject,
-                        $client->BodyDeails,
-                        $milestoneResult['data'],
-                        $client
+                    // Check for valid email first (unless using test email)
+                    if (!$testEmail && $client->EmailID === 'No Email ID Present') {
+                        $summary['skipped_no_email']++;
+                        $remark = 'No Email ID Present';
+
+                        Log::warning('Skipping client without email', [
+                            'client_id' => $client->ClientId,
+                            'client_name' => $client->ClientName
+                        ]);
+
+                        // Log to Phase 3
+                        $this->logSchedulerTransaction($client, $status, $remark);
+                        usleep(100000);
+                        continue;
+                    }
+
+                    // Phase 2: Get milestone data
+                    $milestoneResult = $this->getMilestoneData(
+                        $client->OfficeID,
+                        $client->ClientId,
+                        $client->ServiceID,
+                        $client->ProcessId
                     );
 
+                    if (!$milestoneResult['success']) {
+                        // Milestone failed - don't send email
+                        $summary['milestone_failures']++;
+                        $remark = $milestoneResult['error'];
+
+                        Log::warning('Milestone data unavailable for client', [
+                            'client_id' => $client->ClientId,
+                            'client_name' => $client->ClientName,
+                            'error' => $remark
+                        ]);
+
+                        // Log to Phase 3
+                        $this->logSchedulerTransaction($client, $status, $remark);
+
+                        sleep(config('shipment.email.delay_between_sends', 2));
+                        continue;
+                    }
+
+                    // Milestone success - send email with Excel attachment
+                    // Use test email if provided, otherwise use client email
+                    $emailAddress = $testEmail ?? $client->EmailID;
+
+                    // Retry logic for email sending
+                    $maxRetries = config('shipment.email.max_retries', 3);
+                    $retryDelay = config('shipment.email.retry_delay', 5);
+                    $attempt = 0;
+                    $emailSent = false;
+
+                    while ($attempt < $maxRetries && !$emailSent) {
+                        try {
+                            $attempt++;
+
+                            // Reset SMTP connection before retry to avoid "too many messages" error
+                            if ($attempt > 1) {
+                                $this->resetMailConnection();
+                            }
+
+                            $this->sendReportEmail(
+                                $emailAddress,
+                                $client->EmailSubject,
+                                $client->BodyDeails,
+                                $milestoneResult['data'],
+                                $client
+                            );
+                            $emailSent = true;
+                        } catch (\Exception $e) {
+                            if ($attempt >= $maxRetries) {
+                                throw $e; // Re-throw on final attempt
+                            }
+                            Log::warning('Email send failed, retrying', [
+                                'attempt' => $attempt,
+                                'max_retries' => $maxRetries,
+                                'client_id' => $client->ClientId,
+                                'error' => $e->getMessage()
+                            ]);
+
+                            // Reset connection before sleeping
+                            $this->resetMailConnection();
+                            sleep($retryDelay);
+                        }
+                    }
                     $status = 'Success';
-                    $remark = $testEmail ? "Sent to test: {$testEmail}" : 'Email sent successfully';
-                    $this->stats['emails_sent']++;
-                    
-                    Log::info('Email sent', [
+                    $remark = $testEmail
+                        ? "Email sent successfully to test address: {$testEmail}"
+                        : 'Email sent successfully';
+                    $summary['emails_sent']++;
+
+                    Log::info('Email sent successfully', [
                         'client_id' => $client->ClientId,
                         'client_name' => $client->ClientName,
                         'email' => $emailAddress,
+                        'service' => $client->ServiceName,
                         'test_mode' => !is_null($testEmail)
                     ]);
-                    
-                    break; // Success, exit retry loop
-
                 } catch (\Exception $e) {
-                    if ($attempt < $maxRetries) {
-                        Log::warning("Email attempt {$attempt} failed, retrying", [
-                            'client_id' => $client->ClientId,
-                            'error' => $e->getMessage()
-                        ]);
-                        sleep(config('shipment_reports.email.retry_delay', 5));
-                    } else {
-                        throw $e; // Last attempt failed
-                    }
+                    $summary['emails_failed']++;
+                    $status = 'Failed';
+                    $remark = 'Failed - ' . $e->getMessage();
+
+                    $summary['errors'][] = [
+                        'client_id' => $client->ClientId,
+                        'client_name' => $client->ClientName,
+                        'error' => $e->getMessage()
+                    ];
+
+                    Log::error('Failed to process client', [
+                        'client_id' => $client->ClientId,
+                        'client_name' => $client->ClientName,
+                        'email' => $testEmail ?? $client->EmailID,
+                        'error' => $e->getMessage()
+                    ]);
                 }
+
+                // Phase 3: Log transaction
+                $this->logSchedulerTransaction($client, $status, $remark);
+
+                sleep(config('shipment.email.delay_between_sends', 2));
             }
 
+            Log::info('Shipment report processing completed', $summary);
         } catch (\Exception $e) {
-            $this->stats['emails_failed']++;
-            $remark = 'Failed - ' . $e->getMessage();
-            
-            $this->stats['errors'][] = [
-                'client_id' => $client->ClientId,
-                'client_name' => $client->ClientName,
-                'error' => $e->getMessage()
-            ];
-            
-            Log::error('Failed to process client', [
-                'client_id' => $client->ClientId,
-                'client_name' => $client->ClientName,
-                'error' => $e->getMessage()
+            Log::error('Fatal error in shipment report processing', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
+
+            throw $e;
         }
 
-        $this->logTransaction($client, $status, $remark);
+        return $summary;
     }
 
     /**
-     * Send email with Excel attachment
+     * Send shipment report email to a client with Excel attachment
+     * 
+     * @param string $emailAddress
+     * @param string $subject
+     * @param string $htmlBody HTML content from SP
+     * @param array $milestoneData Milestone data for Excel attachment
+     * @param object $client Client object for filename generation
+     * @return void
+     * @throws \Exception
      */
-    private function sendReportEmail($emailAddress, $subject, $htmlBody, $milestoneData, $client)
+    protected function sendReportEmail($emailAddress, $subject, $htmlBody, $milestoneData, $client)
     {
-        $excelFilePath = null;
-
         try {
-            $excelFilePath = $this->generateExcel($milestoneData, $client->ClientName, $client->ServiceName);
+            $excelFilePath = $this->generateExcelFromMilestoneData(
+                $milestoneData,
+                $client->ClientName,
+                $client->ServiceName
+            );
 
             if (!$excelFilePath) {
-                throw new \Exception('Failed to generate Excel');
+                throw new \Exception('Failed to generate Excel attachment');
             }
 
             $fileSize = filesize($excelFilePath);
-            $maxSize = config('shipment_reports.email.max_attachment_size_mb', 10) * 1024 * 1024;
-            
-            if ($fileSize > $maxSize) {
-                throw new \Exception('Excel too large: ' . round($fileSize / 1024 / 1024, 2) . 'MB');
+            $maxSizeMB = config('shipment.email.max_attachment_size_mb', 10);
+            if ($fileSize > $maxSizeMB * 1024 * 1024) {
+                throw new \Exception('Excel file too large: ' . round($fileSize / 1024 / 1024, 2) . 'MB (max: ' . $maxSizeMB . 'MB)');
             }
 
-            // Parse email addresses
-            $emails = array_filter(array_map('trim', preg_split('/[;,]/', $emailAddress)));
-            
-            foreach ($emails as $email) {
-                if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                    throw new \Exception("Invalid email: {$email}");
-                }
-            }
+            // Parse multiple email addresses (semicolon or comma separated)
+            $emailAddresses = array_map('trim', preg_split('/[;,]/', $emailAddress));
+            $emailAddresses = array_filter($emailAddresses); // Remove empty values
 
-            // Send email
-            Mail::send([], [], function ($message) use ($emails, $subject, $htmlBody, $excelFilePath) {
-                $message->to($emails)
-                    ->subject($subject)
-                    ->html($htmlBody)
-                    ->attach($excelFilePath, [
-                        'as' => basename($excelFilePath),
-                        'mime' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-                    ]);
-            });
+            // Create Swift attachment
+            $attachment = \Swift_Attachment::fromPath($excelFilePath)
+                ->setFilename(basename($excelFilePath))
+                ->setContentType('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
 
-            Log::info('Email sent with attachment', [
-                'recipients' => implode(', ', $emails),
+            // Send using SwiftMailer directly
+            $swiftMessage = new \Swift_Message($subject);
+            $swiftMessage->setFrom([config('mail.from.address') => config('mail.from.name')])
+                ->setTo($emailAddresses)
+                ->setBody($htmlBody, 'text/html')
+                ->attach($attachment);
+
+            Log::info('About to send email', [
+                'to' => $emailAddresses,
+                'from' => config('mail.from.address'),
+                'smtp_host' => config('mail.mailers.smtp.host'),
+                'smtp_port' => config('mail.mailers.smtp.port'),
+            ]);
+
+            Mail::getSwiftMailer()->send($swiftMessage);
+
+            Log::info('Email sent with Excel attachment', [
+                'email' => implode(', ', $emailAddresses),
                 'attachment' => basename($excelFilePath),
                 'size' => $fileSize
             ]);
 
-        } finally {
-            if ($excelFilePath && file_exists($excelFilePath)) {
+            if (file_exists($excelFilePath)) {
                 unlink($excelFilePath);
-                Log::debug('Temp file deleted', ['file' => basename($excelFilePath)]);
+                Log::debug('Temporary Excel file deleted', ['file' => $excelFilePath]);
             }
+        } catch (\Exception $e) {
+            if (isset($excelFilePath) && file_exists($excelFilePath)) {
+                unlink($excelFilePath);
+            }
+
+            Log::error('Failed to send email with attachment', [
+                'email' => $emailAddress,
+                'error' => $e->getMessage()
+            ]);
+            throw $e;
         }
     }
 
     /**
-     * Generate Excel file
+     * Generate Excel file from milestone data
+     * 
+     * @param array $milestoneData Database result set from SP
+     * @param string $clientName Client name for filename
+     * @param string $serviceName Service name for filename
+     * @return string|false File path on success, false on failure
      */
-    private function generateExcel($milestoneData, $clientName, $serviceName)
+    protected function generateExcelFromMilestoneData($milestoneData, $clientName, $serviceName)
     {
         try {
+            // Validate milestone data
             if (empty($milestoneData)) {
+                Log::warning('No milestone data to generate Excel');
                 return false;
             }
 
-            $tempDir = config('shipment_reports.temp_directory');
+            // Create temp directory if it doesn't exist
+            $tempDir = storage_path('app/temp/shipment-reports');
             if (!is_dir($tempDir)) {
                 mkdir($tempDir, 0755, true);
             }
 
+            // Generate filename
             $sanitizedClient = preg_replace('/[^A-Za-z0-9_-]/', '_', $clientName);
             $sanitizedService = preg_replace('/[^A-Za-z0-9_-]/', '_', $serviceName);
-            $filename = sprintf('%s_%s_%s.xlsx', $sanitizedClient, $sanitizedService, now()->format('Ymd_His'));
+            $filename = sprintf(
+                '%s_%s_%s.xlsx',
+                $sanitizedClient,
+                $sanitizedService,
+                now()->format('Ymd_His')
+            );
             $filepath = $tempDir . '/' . $filename;
 
-            $data = array_map(fn($row) => (array) $row, $milestoneData);
+            // Convert stdClass objects to arrays
+            $data = array_map(function ($row) {
+                return (array) $row;
+            }, $milestoneData);
+
+            // Get headers from first row
             $headers = array_keys($data[0]);
 
+            // Create Excel using PhpSpreadsheet
             $spreadsheet = new Spreadsheet();
             $sheet = $spreadsheet->getActiveSheet();
             $sheet->setTitle('Shipment Status');
 
-            // Headers
+            // Write headers
             $col = 'A';
             foreach ($headers as $header) {
                 $sheet->setCellValue($col . '1', $header);
@@ -328,41 +403,47 @@ class ShipmentReportService
                 $col++;
             }
 
-            // Data
+            // Write data
             $rowNum = 2;
             foreach ($data as $row) {
                 $col = 'A';
                 foreach ($headers as $header) {
-                    $sheet->setCellValue($col . $rowNum, $row[$header] ?? '');
+                    $value = $row[$header] ?? '';
+                    $sheet->setCellValue($col . $rowNum, $value);
                     $col++;
                 }
                 $rowNum++;
             }
 
-            // Auto-size
+            // Auto-size columns
             foreach (range('A', $sheet->getHighestColumn()) as $col) {
                 $sheet->getColumnDimension($col)->setAutoSize(true);
             }
 
+            // Save Excel file
             $writer = new Xlsx($spreadsheet);
             $writer->save($filepath);
 
-            Log::info('Excel generated', [
-                'file' => $filename,
+            Log::info('Excel file generated successfully', [
+                'filepath' => $filepath,
                 'rows' => count($data),
                 'size' => filesize($filepath)
             ]);
 
             return $filepath;
-
         } catch (\Exception $e) {
-            Log::error('Excel generation failed', ['error' => $e->getMessage()]);
+            Log::error('Failed to generate Excel file', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
             return false;
         }
     }
 
     /**
      * Validate email configuration
+     * 
+     * @return bool
      */
     public function validateEmailConfig()
     {
@@ -383,9 +464,14 @@ class ShipmentReportService
     }
 
     /**
-     * Log transaction to database
+     * Log email scheduler transaction to database
+     * 
+     * @param object $client Client data from sp_ClientEmailDetails
+     * @param string $status "Success" or "Failed"
+     * @param string $remark Success/failure message
+     * @return void
      */
-    private function logTransaction($client, $status, $remark)
+    protected function logSchedulerTransaction($client, $status, $remark)
     {
         try {
             $json = json_encode([
@@ -408,20 +494,41 @@ class ShipmentReportService
             ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
             $pdo = DB::connection('sqlsrv_auth')->getPdo();
-            $sql = "DECLARE @OutStatus VARCHAR(20), @OutRemark VARCHAR(2000);
-                    EXEC [dbo].[sp_EmailSchedulerDetailsUpdate] 
-                        @JsonData = ?, 
-                        @Status = @OutStatus OUTPUT, 
-                        @Remark = @OutRemark OUTPUT;";
-            
+            $sql = "DECLARE @Status VARCHAR(20), @Remark VARCHAR(2000);
+            EXEC [dbo].[sp_EmailSchedulerDetailsUpdate] 
+                @JsonData = ?, 
+                @Status = @Status OUTPUT, 
+                @Remark = @Remark OUTPUT;";
+
             $stmt = $pdo->prepare($sql);
             $stmt->execute([$json]);
 
-            Log::debug('Transaction logged', ['client_id' => $client->ClientId, 'status' => $status]);
-
-        } catch (\Exception $e) {
-            Log::error('Failed to log transaction', [
+            Log::info('Scheduler transaction logged', [
                 'client_id' => $client->ClientId,
+                'status' => $status
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to log scheduler transaction', [
+                'client_id' => $client->ClientId,
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Reset SMTP connection to avoid "too many messages" errors
+     * 
+     * @return void
+     */
+    protected function resetMailConnection()
+    {
+        try {
+            $transport = Mail::getSwiftMailer()->getTransport();
+            if ($transport instanceof \Swift_SmtpTransport && $transport->isStarted()) {
+                $transport->stop();
+            }
+        } catch (\Exception $e) {
+            Log::warning('Failed to reset mail connection', [
                 'error' => $e->getMessage()
             ]);
         }

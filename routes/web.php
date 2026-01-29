@@ -1165,13 +1165,13 @@ Route::middleware(['auth'])->prefix('tracker')->name('tracker.')->group(function
         ->name('notifications.count');
 
     // Notifications
-   // Route::get('/notifications/get', [TrackerController::class, 'getNotifications'])->name('notifications.get');
+    // Route::get('/notifications/get', [TrackerController::class, 'getNotifications'])->name('notifications.get');
     Route::get('/notifications/alarm-types', [TrackerController::class, 'getAlarmTypes'])->name('notifications.alarm-types');
     Route::get('/notifications/stats', [TrackerController::class, 'getNotificationStats'])->name('notifications.stats');
     Route::post('/notifications/{id}/read', [TrackerController::class, 'markNotificationAsRead'])->name('notifications.read');
     Route::delete('/notifications/{id}', [TrackerController::class, 'deleteNotification'])->name('notifications.delete');
     Route::post('/notifications/map-to-trip', [TrackerController::class, 'mapNotificationsToTrip'])
-    ->name('notifications.map-to-trip');
+        ->name('notifications.map-to-trip');
 });
 
 
@@ -1208,3 +1208,34 @@ Route::middleware(['auth'])->prefix('jimi-test')->group(function () {
 });
 
 // [2026-01-21 15:31:52] Production.ERROR: Error in user lookup {"username":"juma.k@freight-in-time.com","error":"SQLSTATE[42000]: [Microsoft][ODBC Driver 17 for SQL Server][SQL Server]Conversion failed when converting from a character string to uniqueidentifier. (SQL: select top 1 * from [Azure_Users] where LOWER(RTRIM(LTRIM(userPrincipalName))) = LOWER(juma.k@freight-in-time.com) and [id] is not null and [id] != )"}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Route::get('/test-plain-email', function() {
+    try {
+        Mail::send([], [], function ($message) {
+            $message->to('nashonmwendwa04@gmail.com');
+            $message->subject('Plain Test Email - ' . now());
+            $message->setBody('<h1>Test Email</h1><p>This is a plain test without attachment.</p>', 'text/html');
+        });
+        
+        return response()->json([
+            'status' => 'sent',
+            'note' => 'Plain email sent without attachment - check Gmail'
+        ]);
+    } catch (\Exception $e) {
+        return response()->json(['error' => $e->getMessage()], 500);
+    }
+});

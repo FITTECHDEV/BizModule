@@ -91,14 +91,14 @@ return [
         'sqlsrv_auth' => [
             'driver' => 'sqlsrv',
             'url' => env('DATABASE_URL'),
-            'host' => env('DB_SQLSRV_AUTH_HOST', '10.0.1.23'),
-            'port' => env('DB_SQLSRV_AUTH_PORT', '60780'),
-            'database' => env('DB_SQLSRV_AUTH_DATABASE', 'FITSYS'),
-            'username' => env('DB_SQLSRV_AUTH_USERNAME', 'apscmuser'),
-            'password' => env('DB_SQLSRV_AUTH_PASSWORD', 'Fre1ght#SQL@1N@T1me#2024'), 
-            // 'charset' => 'utf8',
-            // 'prefix' => '',
-            // 'prefix_indexes' => true,
+            'host' => env('DB_SQLSRV_AUTH_HOST', 'localhost'),
+            'port' => env('DB_SQLSRV_AUTH_PORT', '1433'),
+            'database' => env('DB_SQLSRV_AUTH_DATABASE', 'forge'),
+            'username' => env('DB_SQLSRV_AUTH_USERNAME', 'forge'),
+            'password' => env('DB_SQLSRV_AUTH_PASSWORD', ''),
+            'charset' => 'utf8',
+            'prefix' => '',
+            'prefix_indexes' => true,
         ],
 
         'efris' => [

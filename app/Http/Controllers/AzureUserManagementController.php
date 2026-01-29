@@ -517,6 +517,40 @@ class AzureUserManagementController extends Controller
                         ->withInput()
                         ->withErrors(['employee_id' => $errorMessage]);
                 }
+
+                // Check 4: Odoo User ID uniqueness (if provided)
+                $odooUserId = $request->input('odoo_user_id'); // If your form has this field
+
+                if (!empty($odooUserId)) {
+                    $existingByOdooId = DB::connection('sqlsrv')
+                        ->table('Azure_Users')
+                        ->where('OdooUserId', $odooUserId)
+                        ->first();
+
+                    if ($existingByOdooId) {
+                        Log::warning('Duplicate Odoo User ID detected', [
+                            'odoo_user_id' => $odooUserId,
+                            'existing_user' => $existingByOdooId->displayName,
+                        ]);
+
+                        $errorMessage = sprintf(
+                            'Odoo User ID "%s" is already assigned to: %s',
+                            $odooUserId,
+                            $existingByOdooId->displayName ?? 'Unknown'
+                        );
+
+                        if ($request->wantsJson() || $request->ajax()) {
+                            return response()->json([
+                                'success' => false,
+                                'message' => $errorMessage,
+                            ], 422);
+                        }
+
+                        return redirect()->back()
+                            ->withInput()
+                            ->withErrors(['odoo_user_id' => $errorMessage]);
+                    }
+                }
             }
 
             Log::info('✓ Step 0: No duplicates found - proceeding with creation');
@@ -757,13 +791,17 @@ class AzureUserManagementController extends Controller
                 FROM (
                     SELECT MAX(CAST(CU.EmployeeCode AS BIGINT)) as MaxCode
                     FROM Cust_User CU WITH (NOLOCK)
-                    WHERE CU.EmployeeCode IS NOT NULL AND LEN(ISNULL(CU.EmployeeCode, '')) > 0
-        
+                        WHERE CU.EmployeeCode IS NOT NULL 
+                        AND LEN(ISNULL(CU.EmployeeCode, '')) > 0
+                        AND ISNUMERIC(CU.EmployeeCode) = 1        
                     UNION ALL
         
                     SELECT MAX(CAST(AU.EmployeCode AS BIGINT)) as MaxCode
                     FROM Azure_Users AU WITH (NOLOCK)
-                    WHERE AU.EmployeCode IS NOT NULL AND LEN(ISNULL(AU.EmployeCode, '')) > 0
+                    WHERE AU.EmployeCode IS NOT NULL  
+                        AND LEN(ISNULL(AU.EmployeCode, '')) > 0
+                        AND ISNUMERIC(AU.EmployeCode) = 1
+
                 ) AS Combined
             ");
 
@@ -2836,13 +2874,16 @@ class AzureUserManagementController extends Controller
                         FROM (
                             SELECT MAX(CAST(CU.EmployeeCode AS BIGINT)) as MaxCode
                             FROM Cust_User CU WITH (NOLOCK)
-                            WHERE CU.EmployeeCode IS NOT NULL AND LEN(ISNULL(CU.EmployeeCode, '')) > 0
-        
+                                WHERE CU.EmployeeCode IS NOT NULL 
+                                AND LEN(ISNULL(CU.EmployeeCode, '')) > 0
+                                AND ISNUMERIC(CU.EmployeeCode) = 1        
                             UNION ALL
         
                             SELECT MAX(CAST(AU.EmployeCode AS BIGINT)) as MaxCode
                             FROM Azure_Users AU WITH (NOLOCK)
-                            WHERE AU.EmployeCode IS NOT NULL AND LEN(ISNULL(AU.EmployeCode, '')) > 0
+                            WHERE AU.EmployeCode IS NOT NULL  
+                                AND LEN(ISNULL(AU.EmployeCode, '')) > 0
+                                AND ISNUMERIC(AU.EmployeCode) = 1
                         ) AS Combined
                     ");
 

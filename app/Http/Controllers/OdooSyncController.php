@@ -117,10 +117,33 @@ class OdooSyncController extends Controller
                         $userData = $this->normalizeUserData($user);
 
                         // ✅ FIX: Check if user exists BY ODOOUSERID (not email)
+                        // ✅ IMPROVED: Check by OdooUserId OR email (prevents duplicates from manual creation)
                         $existingUser = DB::connection('sqlsrv')
                             ->table('Azure_Users')
-                            ->where('OdooUserId', $userData['OdooUserId'])
+                            ->where(function ($query) use ($userData) {
+                                $query->where('OdooUserId', $userData['OdooUserId'])
+                                    ->orWhere('userPrincipalName', $userData['userPrincipalName']);
+                            })
                             ->first();
+
+                        // If found by email but missing OdooUserId, update it
+                        if ($existingUser && empty($existingUser->OdooUserId)) {
+                            DB::connection('sqlsrv')
+                                ->table('Azure_Users')
+                                ->where('Id', $existingUser->Id)
+                                ->update([
+                                    'OdooUserId' => $userData['OdooUserId'],
+                                    'OdooEmployeeId' => $userData['OdooEmployeeId'],
+                                    'OdooLoginId' => $userData['OdooLoginId'],
+                                    'OdooCreatedOn' => $userData['OdooCreatedOn'],
+                                    'OdooLoginType' => $userData['OdooLoginType'],
+                                ]);
+
+                            Log::info('Linked manually-created user to Odoo', [
+                                'user' => $userData['userPrincipalName'],
+                                'odoo_user_id' => $userData['OdooUserId'],
+                            ]);
+                        }
 
                         if (!$existingUser) {
                             // ============================================================
@@ -329,11 +352,33 @@ class OdooSyncController extends Controller
                     try {
                         $userData = $this->normalizeUserData($user);
 
-                        // ✅ FIX: Match by OdooUserId
+                        // ✅ IMPROVED: Match by OdooUserId OR email
                         $existingUser = DB::connection('sqlsrv')
                             ->table('Azure_Users')
-                            ->where('OdooUserId', $userData['OdooUserId'])
+                            ->where(function ($query) use ($userData) {
+                                $query->where('OdooUserId', $userData['OdooUserId'])
+                                    ->orWhere('userPrincipalName', $userData['userPrincipalName']);
+                            })
                             ->first();
+
+                        // If found by email but missing OdooUserId, link them
+                        if ($existingUser && empty($existingUser->OdooUserId)) {
+                            DB::connection('sqlsrv')
+                                ->table('Azure_Users')
+                                ->where('Id', $existingUser->Id)
+                                ->update([
+                                    'OdooUserId' => $userData['OdooUserId'],
+                                    'OdooEmployeeId' => $userData['OdooEmployeeId'],
+                                    'OdooLoginId' => $userData['OdooLoginId'],
+                                    'OdooCreatedOn' => $userData['OdooCreatedOn'],
+                                    'OdooLoginType' => $userData['OdooLoginType'],
+                                ]);
+
+                            Log::info('Linked manually-created user to Odoo (AJAX sync)', [
+                                'user' => $userData['userPrincipalName'],
+                                'odoo_user_id' => $userData['OdooUserId'],
+                            ]);
+                        }
 
                         if (!$existingUser) {
                             // ============================================================
