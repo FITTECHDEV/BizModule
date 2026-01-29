@@ -81,6 +81,7 @@ class DashboardController extends Controller
 //     ];
 // }
 
+
 // Add this method to get raw system names for a mapped system
 // private function getRawSystemNames($mappedSystem)
 // {
@@ -134,7 +135,6 @@ class DashboardController extends Controller
     //         return $systems;
     //     });
     // }
-
 
 
     private function getAvailableSystems()
@@ -197,8 +197,6 @@ class DashboardController extends Controller
     }
 
 
-
-
 // private function getAvailableSystems()
 // {
 //     try {
@@ -239,7 +237,6 @@ class DashboardController extends Controller
 // }
 
 
-
     /**
      * Enhanced system name normalization using systemmap.php
      */
@@ -269,6 +266,7 @@ class DashboardController extends Controller
         return $normalized;
     }
 
+
     /**
      * Helper function to get raw system names from config
      */
@@ -293,6 +291,7 @@ class DashboardController extends Controller
 
         return $rawNames;
     }
+
 
     public function index(Request $request)
     {
@@ -378,6 +377,7 @@ class DashboardController extends Controller
         }
     }
 
+
     private function getFilteredLoginList($filter, $search)
     {
         // Create cache key based on filter and search
@@ -399,27 +399,33 @@ class DashboardController extends Controller
 
             // Build WHERE clauses as strings to avoid query builder overhead
             if ($filter === 'inactive') {
+                $threeMonthsAgo = now()->subMonths(3)->startOfDay()->format('Y-m-d H:i:s');
                 $sql = "
-                SELECT 
-                    au.id,
-                    au.displayName as name,
-                    au.userPrincipalName as login_id,
-                    0 as logins_last_month,
-                    NULL as last_login
-                FROM Azure_Users au
-                WHERE au.displayName IS NOT NULL 
-                    AND au.displayName != ''
-                    AND au.displayName NOT LIKE 'User-%'
-                    AND au.userPrincipalName IS NOT NULL
-                    AND au.userPrincipalName != ''
-                    AND au.userPrincipalName NOT LIKE 'User-%'
-                    AND NOT EXISTS (
-                        SELECT 1 
+            SELECT 
+                au.id,
+                au.displayName as name,
+                au.userPrincipalName as login_id,
+                0 as logins_last_month,
+            (
+            SELECT MAX(ald2.date_utc)
+                FROM Azure_LoginDetails ald2
+                WHERE LOWER(ald2.username) = LOWER(au.userPrincipalName)
+            ) as last_login
+            FROM Azure_Users au
+            WHERE au.displayName IS NOT NULL 
+                AND au.displayName != ''
+                AND au.displayName NOT LIKE 'User-%'
+                AND au.userPrincipalName IS NOT NULL
+                AND au.userPrincipalName != ''
+                AND au.userPrincipalName NOT LIKE 'User-%'
+                AND NOT EXISTS (
+                    SELECT 1 
                         FROM Azure_LoginDetails ald 
                         WHERE LOWER(ald.username) = LOWER(au.userPrincipalName)
-                    )
+                            AND ald.date_utc >= ?
+                )   
             ";
-                $params = [];
+                $params = [$threeMonthsAgo];
             } elseif ($filter === 'active_this_month') {
                 $sql = "
                 SELECT 
@@ -534,6 +540,7 @@ class DashboardController extends Controller
         });
     }
 
+
     /**
      * Apply enhanced system filter - FIXED boolean logic
      */
@@ -559,6 +566,7 @@ class DashboardController extends Controller
             $q->orWhere(DB::raw('LOWER(application)'), 'like', '%' . strtolower($systemName) . '%');
         });
     }
+
 
     private function getSystemVariations($systemName)
     {
@@ -588,7 +596,6 @@ class DashboardController extends Controller
 
         return array_unique($variations);
     }
-
 
 
     /**
@@ -728,8 +735,6 @@ class DashboardController extends Controller
     }
 
 
-
-
     public function debugSystemMapping(Request $request)
     {
         $system = $request->input('system', 'SCM');
@@ -767,6 +772,7 @@ class DashboardController extends Controller
         ], 200, [], JSON_PRETTY_PRINT);
     }
 
+
     private function generateSystemMappingRecommendation($system, $actualSystems, $matchingCounts)
     {
         $recommendations = [];
@@ -789,6 +795,8 @@ class DashboardController extends Controller
 
         return $recommendations;
     }
+
+
     /**
      * IMPROVED: Clean date range calculation excluding unwanted systems
      */
@@ -819,9 +827,9 @@ class DashboardController extends Controller
     }
 
 
-
-    // OPTIMIZED:
-
+    /**
+     * IMPROVED: Optimized logged-in users count with simplified query
+     */
     public function getLoggedInUsersCount($startDate, $endDate, $system)
     {
         Log::info('getLoggedInUsersCount called (optimized version)', [
@@ -835,10 +843,10 @@ class DashboardController extends Controller
         SELECT COUNT(DISTINCT username) as count
         FROM Azure_LoginDetails
         WHERE system = ?
-        AND date_utc BETWEEN ? AND ?
-        AND username IS NOT NULL
-        AND username != ''
-    ";
+            AND date_utc BETWEEN ? AND ?
+            AND username IS NOT NULL
+            AND username != ''
+        ";
 
         $params = [
             $system,
@@ -1098,6 +1106,8 @@ class DashboardController extends Controller
 
         return response()->json($debug, 200, [], JSON_PRETTY_PRINT);
     }
+
+
     public function diagnoseDataRelationships(Request $request)
     {
         $system = $request->input('system', 'SCM');
@@ -1242,6 +1252,7 @@ class DashboardController extends Controller
         ], 200, [], JSON_PRETTY_PRINT);
     }
 
+
     private function generateMatchingRecommendations($matchingAnalysis)
     {
         $recommendations = [];
@@ -1262,6 +1273,7 @@ class DashboardController extends Controller
 
         return $recommendations;
     }
+
 
     /**
      * Invalidate dashboard cache
@@ -1302,6 +1314,8 @@ class DashboardController extends Controller
             ]);
         }
     }
+
+
     /**
      * Get user summary from stored procedure - FIXED with actual column names
      */
@@ -1358,6 +1372,7 @@ class DashboardController extends Controller
             ];
         }
     }
+
 
     /**
      * Get login view list from stored procedure - FIXED with day-based counting
@@ -1449,6 +1464,7 @@ class DashboardController extends Controller
         }
     }
 
+
     /**
      * Get user summary using direct queries (bypasses SP to use actual data range)
      * FIXED: Uses case-insensitive user_id matching for SQL Server
@@ -1482,8 +1498,8 @@ class DashboardController extends Controller
             // $currentMonthEnd = min($currentMonthEnd, $dataMax);
 
             // "Active Last Month" = entire imported period (or you could use previous calendar month)
-            $lastMonthStart = $dataMin;
-            $lastMonthEnd = $dataMax;
+            $lastMonthStart = now()->subMonth()->startOfMonth();  // Dec 1, 2025
+            $lastMonthEnd = now()->subMonth()->endOfMonth();
 
             Log::info('📅 Calendar month ranges calculated', [
                 'current_calendar_month' => [
@@ -1536,6 +1552,24 @@ class DashboardController extends Controller
                 )
         ", [$lastMonthStart, $lastMonthEnd])[0]->count ?? 0;
 
+            // Inactive for 3+ months (users who haven't logged in for the past 3 months)
+            $threeMonthsAgo = now()->subMonths(3)->startOfDay();
+            $inactiveThreeMonths = DB::select("
+                SELECT COUNT(*) as count
+                FROM Azure_Users au
+                WHERE au.displayName IS NOT NULL 
+                    AND au.displayName != ''
+                    AND au.displayName NOT LIKE 'User-%'
+                    AND au.userPrincipalName IS NOT NULL
+                    AND au.userPrincipalName != ''
+                    AND au.userPrincipalName NOT LIKE 'User-%'
+                    AND NOT EXISTS (
+                        SELECT 1 
+                        FROM Azure_LoginDetails ald 
+                        WHERE LOWER(ald.username) = LOWER(au.userPrincipalName)
+                            AND ald.date_utc >= ?
+                    )
+                ", [$threeMonthsAgo])[0]->count ?? 0;
             // Inactive users (never logged in)
             $inactiveUsers = DB::select("
             SELECT COUNT(*) as count
@@ -1551,13 +1585,14 @@ class DashboardController extends Controller
                     FROM Azure_LoginDetails ald 
                     WHERE LOWER(ald.username) = LOWER(au.userPrincipalName)
                 )
-        ")[0]->count ?? 0;
+            ")[0]->count ?? 0;
 
             Log::info('✅ Summary calculated with calendar month', [
                 'total_users' => $totalUsers,
                 'active_this_month' => $activeThisMonth,
                 'active_last_month' => $activeLastMonth,
-                'inactive_users' => $inactiveUsers,
+                'inactive_3_months' => $inactiveThreeMonths,
+                'never_logged_in' => $inactiveUsers,
                 'current_month' => now()->format('F Y'),
             ]);
 
@@ -1565,7 +1600,9 @@ class DashboardController extends Controller
                 'total_users' => $totalUsers,
                 'active_this_month' => $activeThisMonth,
                 'active_last_month' => $activeLastMonth,
-                'inactive_users' => $inactiveUsers,
+                // 'inactive_users' => $inactiveUsers,
+                'inactive_users' => $inactiveThreeMonths,
+                'never_logged_in' => $inactiveUsers,
             ];
         } catch (\Exception $e) {
             Log::error('❌ Failed to get user summary via direct query', [
@@ -1581,6 +1618,7 @@ class DashboardController extends Controller
             ];
         }
     }
+
 
     /**
      * Get login view list using direct queries (bypasses SP to use actual data range)
@@ -1679,7 +1717,6 @@ class DashboardController extends Controller
     }
 
 
-
     /**
      * Get actual login count for a user when stored procedure returns asterisk
      * FIXED: Counts unique APPLICATION-DAY combinations
@@ -1720,7 +1757,6 @@ class DashboardController extends Controller
             return 0;
         }
     }
-
 
 
 
@@ -1871,6 +1907,8 @@ class DashboardController extends Controller
             ], 500);
         }
     }
+
+
     /**
      * Interpret login count and provide insights
      */
@@ -1904,6 +1942,7 @@ class DashboardController extends Controller
 
         return $insights;
     }
+
 
     // private function applyCardFilter($loginList, $filter)
     // {
@@ -1946,6 +1985,7 @@ class DashboardController extends Controller
     //         default => $loginList
     //     };
     // }
+
 
     public function debugRelationships(Request $request)
     {

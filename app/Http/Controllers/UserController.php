@@ -405,9 +405,6 @@ class UserController extends Controller
     }
 
 
-
-
-
     public function show(Request $request, $identifier)
     {
         Log::info('UserController@show called', [
