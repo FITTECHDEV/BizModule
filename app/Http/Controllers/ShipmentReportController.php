@@ -94,7 +94,7 @@ class ShipmentReportController extends Controller
                     break;
                 case 'milestone_failures':
                     $query->where('SendRemark', 'like', '%Failed%')
-                          ->where('SendRemark', '!=', 'Failed - Email sent successfully');
+                        ->where('SendRemark', '!=', 'Failed - Email sent successfully');
                     break;
                 case 'failed':
                     $query->where('Status', 'Failed');
@@ -102,7 +102,7 @@ class ShipmentReportController extends Controller
                 case 'success':
                     $query->where('Status', 'Success');
                     break;
-                // 'all' - no additional filter
+                    // 'all' - no additional filter
             }
 
             // Apply search (only on actual table columns, not computed columns)
@@ -139,11 +139,11 @@ class ShipmentReportController extends Controller
                 ->editColumn('SendRemark', function ($row) {
                     return $row->SendRemark ?? 'N/A';
                 })
-                ->filterColumn('report_date', function($query, $keyword) {
+                ->filterColumn('report_date', function ($query, $keyword) {
                     // Don't filter on this computed column via DataTables
                     // The custom search above already handles filtering
                 })
-                ->filterColumn('shipment_count', function($query, $keyword) {
+                ->filterColumn('shipment_count', function ($query, $keyword) {
                     // Don't filter on this computed column via DataTables
                 })
                 ->rawColumns(['Status'])
@@ -278,6 +278,69 @@ class ShipmentReportController extends Controller
                 'success_rate' => 0,
                 'failed' => 0,
             ];
+        }
+    }
+
+    /**
+     * Get filtered statistics for dashboard cards
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getStats(Request $request)
+    {
+        try {
+            $days = $request->input('days', 15);
+            $startDate = $request->input('start_date');
+            $endDate = $request->input('end_date');
+            $office = $request->input('office');
+
+            // Build base query
+            $query = DB::connection('sqlsrv_auth')
+                ->table('Email_EmailScheduler')
+                ->whereNotNull('SubmittedOn');
+
+            // Apply date filter
+            if ($startDate && $endDate) {
+                $query->whereBetween(DB::raw('CAST(SubmittedOn as DATE)'), [$startDate, $endDate]);
+            } else {
+                $query->where(DB::raw('CAST(SubmittedOn as DATE)'), '>=', Carbon::now()->subDays($days)->toDateString());
+            }
+
+            // Apply office filter
+            if ($office) {
+                $query->where('OfficeName', $office);
+            }
+
+            // Get statistics
+            $stats = $query->select([
+                DB::raw("COUNT(*) as total_emails"),
+                DB::raw("SUM(CASE WHEN Status = 'Success' THEN 1 ELSE 0 END) as emails_sent"),
+                DB::raw("SUM(CASE WHEN Status = 'Failed' THEN 1 ELSE 0 END) as emails_failed"),
+                DB::raw("SUM(CASE WHEN SendRemark = 'No Email ID Present' THEN 1 ELSE 0 END) as no_email"),
+                DB::raw("SUM(CASE WHEN SendRemark LIKE '%Failed%' AND SendRemark != 'Failed - Email sent successfully' THEN 1 ELSE 0 END) as milestone_failures")
+            ])->first();
+
+            return response()->json([
+                'total_emails' => $stats->total_emails ?? 0,
+                'emails_sent' => $stats->emails_sent ?? 0,
+                'emails_failed' => $stats->emails_failed ?? 0,
+                'no_email' => $stats->no_email ?? 0,
+                'milestone_failures' => $stats->milestone_failures ?? 0,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to get filtered shipment reports statistics', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'total_emails' => 0,
+                'emails_sent' => 0,
+                'emails_failed' => 0,
+                'no_email' => 0,
+                'milestone_failures' => 0,
+            ], 500);
         }
     }
 }

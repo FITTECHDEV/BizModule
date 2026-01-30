@@ -974,6 +974,9 @@ Route::middleware(['auth', 'can:approve-all-entity-request'])->group(function ()
 
     Route::get('/shipment-reports/data', [ShipmentReportController::class, 'getData'])
         ->name('shipment-reports.data');
+
+    Route::get('/shipment-reprts/stats', [ShipmentReportController::class, 'getstats'])
+    ->name('shipment-reports.stats');
 });
 
 // ============================================================================
