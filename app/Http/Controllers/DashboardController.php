@@ -1470,153 +1470,158 @@ class DashboardController extends Controller
      * FIXED: Uses case-insensitive user_id matching for SQL Server
      */
 
+    // private function getUserSummaryDirect()
+    // {
+    //     try {
+    //         // Get actual date range from imported data
+    //         $actualRange = $this->statsService->getActualDateRange();
+
+    //         if (!$actualRange['has_data']) {
+    //             Log::warning('No signin data found in database');
+    //             return [
+    //                 'total_users' => AzureUser::valid()->count(),
+    //                 'active_this_month' => 0,
+    //                 'active_last_month' => 0,
+    //                 'inactive_users' => AzureUser::valid()->count(),
+    //             ];
+    //         }
+
+    //         $dataMin = $actualRange['min'];
+    //         $dataMax = $actualRange['max'];
+
+    //         // CHANGED: Use current calendar month instead of "last 30 days"
+    //         $currentMonthStart = now()->startOfMonth();  // Jan 1, 2026
+    //         $currentMonthEnd = now()->endOfMonth();      // Jan 31, 2026
+
+    //         // Constrain to available data (don't query beyond what we have)
+    //         // $currentMonthStart = max($currentMonthStart, $dataMin);
+    //         // $currentMonthEnd = min($currentMonthEnd, $dataMax);
+
+    //         // "Active Last Month" = entire imported period (or you could use previous calendar month)
+    //         $lastMonthStart = now()->subMonth()->startOfMonth();  // Dec 1, 2025
+    //         $lastMonthEnd = now()->subMonth()->endOfMonth();
+
+    //         Log::info('📅 Calendar month ranges calculated', [
+    //             'current_calendar_month' => [
+    //                 now()->startOfMonth()->format('Y-m-d'),
+    //                 now()->endOfMonth()->format('Y-m-d')
+    //             ],
+    //             'constrained_to_data' => [
+    //                 $currentMonthStart->format('Y-m-d'),
+    //                 $currentMonthEnd->format('Y-m-d')
+    //             ],
+    //             'data_available_until' => $dataMax->format('Y-m-d'),
+    //         ]);
+
+    //         // Total users
+    //         $totalUsers = AzureUser::valid()->count();
+
+    //         // Active this month (current calendar month with available data)
+    //         $activeThisMonth = DB::select("
+    //             SELECT COUNT(DISTINCT au.id) as count
+    //             FROM Azure_Users au
+    //             WHERE au.displayName IS NOT NULL 
+    //                 AND au.displayName != ''
+    //                 AND au.displayName NOT LIKE 'User-%'
+    //                 AND au.userPrincipalName IS NOT NULL
+    //                 AND au.userPrincipalName != ''
+    //                 AND au.userPrincipalName NOT LIKE 'User-%'
+    //                 AND EXISTS (
+    //                     SELECT 1 
+    //                     FROM Azure_LoginDetails ald 
+    //                     WHERE LOWER(ald.username) = LOWER(au.userPrincipalName)
+    //                         AND ald.date_utc BETWEEN ? AND ?
+    //                 )
+    //             ", [$currentMonthStart, $currentMonthEnd])[0]->count ?? 0;
+
+    //         // Active last month (entire imported period)
+    //         $activeLastMonth = DB::select("
+    //         SELECT COUNT(DISTINCT au.id) as count
+    //         FROM Azure_Users au
+    //         WHERE au.displayName IS NOT NULL 
+    //             AND au.displayName != ''
+    //             AND au.displayName NOT LIKE 'User-%'
+    //             AND au.userPrincipalName IS NOT NULL
+    //             AND au.userPrincipalName != ''
+    //             AND au.userPrincipalName NOT LIKE 'User-%'
+    //             AND EXISTS (
+    //                 SELECT 1 
+    //                 FROM Azure_LoginDetails ald 
+    //                 WHERE LOWER(ald.username) = LOWER(au.userPrincipalName)
+    //                     AND ald.date_utc BETWEEN ? AND ?
+    //             )
+    //     ", [$lastMonthStart, $lastMonthEnd])[0]->count ?? 0;
+
+    //         // Inactive for 3+ months (users who haven't logged in for the past 3 months)
+    //         $threeMonthsAgo = now()->subMonths(3)->startOfDay();
+    //         $inactiveThreeMonths = DB::select("
+    //             SELECT COUNT(*) as count
+    //             FROM Azure_Users au
+    //             WHERE au.displayName IS NOT NULL 
+    //                 AND au.displayName != ''
+    //                 AND au.displayName NOT LIKE 'User-%'
+    //                 AND au.userPrincipalName IS NOT NULL
+    //                 AND au.userPrincipalName != ''
+    //                 AND au.userPrincipalName NOT LIKE 'User-%'
+    //                 AND NOT EXISTS (
+    //                     SELECT 1 
+    //                     FROM Azure_LoginDetails ald 
+    //                     WHERE LOWER(ald.username) = LOWER(au.userPrincipalName)
+    //                         AND ald.date_utc >= ?
+    //                 )
+    //             ", [$threeMonthsAgo])[0]->count ?? 0;
+    //         // Inactive users (never logged in)
+    //         $inactiveUsers = DB::select("
+    //         SELECT COUNT(*) as count
+    //         FROM Azure_Users au
+    //         WHERE au.displayName IS NOT NULL 
+    //             AND au.displayName != ''
+    //             AND au.displayName NOT LIKE 'User-%'
+    //             AND au.userPrincipalName IS NOT NULL
+    //             AND au.userPrincipalName != ''
+    //             AND au.userPrincipalName NOT LIKE 'User-%'
+    //             AND NOT EXISTS (
+    //                 SELECT 1 
+    //                 FROM Azure_LoginDetails ald 
+    //                 WHERE LOWER(ald.username) = LOWER(au.userPrincipalName)
+    //             )
+    //         ")[0]->count ?? 0;
+
+    //         Log::info('✅ Summary calculated with calendar month', [
+    //             'total_users' => $totalUsers,
+    //             'active_this_month' => $activeThisMonth,
+    //             'active_last_month' => $activeLastMonth,
+    //             'inactive_3_months' => $inactiveThreeMonths,
+    //             'never_logged_in' => $inactiveUsers,
+    //             'current_month' => now()->format('F Y'),
+    //         ]);
+
+    //         return [
+    //             'total_users' => $totalUsers,
+    //             'active_this_month' => $activeThisMonth,
+    //             'active_last_month' => $activeLastMonth,
+    //             // 'inactive_users' => $inactiveUsers,
+    //             'inactive_users' => $inactiveThreeMonths,
+    //             'never_logged_in' => $inactiveUsers,
+    //         ];
+    //     } catch (\Exception $e) {
+    //         Log::error('❌ Failed to get user summary via direct query', [
+    //             'error' => $e->getMessage(),
+    //             'trace' => substr($e->getTraceAsString(), 0, 500)
+    //         ]);
+
+    //         return [
+    //             'total_users' => 0,
+    //             'active_this_month' => 0,
+    //             'active_last_month' => 0,
+    //             'inactive_users' => 0,
+    //         ];
+    //     }
+    // }
+
     private function getUserSummaryDirect()
     {
-        try {
-            // Get actual date range from imported data
-            $actualRange = $this->statsService->getActualDateRange();
-
-            if (!$actualRange['has_data']) {
-                Log::warning('No signin data found in database');
-                return [
-                    'total_users' => AzureUser::valid()->count(),
-                    'active_this_month' => 0,
-                    'active_last_month' => 0,
-                    'inactive_users' => AzureUser::valid()->count(),
-                ];
-            }
-
-            $dataMin = $actualRange['min'];
-            $dataMax = $actualRange['max'];
-
-            // CHANGED: Use current calendar month instead of "last 30 days"
-            $currentMonthStart = now()->startOfMonth();  // Jan 1, 2026
-            $currentMonthEnd = now()->endOfMonth();      // Jan 31, 2026
-
-            // Constrain to available data (don't query beyond what we have)
-            // $currentMonthStart = max($currentMonthStart, $dataMin);
-            // $currentMonthEnd = min($currentMonthEnd, $dataMax);
-
-            // "Active Last Month" = entire imported period (or you could use previous calendar month)
-            $lastMonthStart = now()->subMonth()->startOfMonth();  // Dec 1, 2025
-            $lastMonthEnd = now()->subMonth()->endOfMonth();
-
-            Log::info('📅 Calendar month ranges calculated', [
-                'current_calendar_month' => [
-                    now()->startOfMonth()->format('Y-m-d'),
-                    now()->endOfMonth()->format('Y-m-d')
-                ],
-                'constrained_to_data' => [
-                    $currentMonthStart->format('Y-m-d'),
-                    $currentMonthEnd->format('Y-m-d')
-                ],
-                'data_available_until' => $dataMax->format('Y-m-d'),
-            ]);
-
-            // Total users
-            $totalUsers = AzureUser::valid()->count();
-
-            // Active this month (current calendar month with available data)
-            $activeThisMonth = DB::select("
-                SELECT COUNT(DISTINCT au.id) as count
-                FROM Azure_Users au
-                WHERE au.displayName IS NOT NULL 
-                    AND au.displayName != ''
-                    AND au.displayName NOT LIKE 'User-%'
-                    AND au.userPrincipalName IS NOT NULL
-                    AND au.userPrincipalName != ''
-                    AND au.userPrincipalName NOT LIKE 'User-%'
-                    AND EXISTS (
-                        SELECT 1 
-                        FROM Azure_LoginDetails ald 
-                        WHERE LOWER(ald.username) = LOWER(au.userPrincipalName)
-                            AND ald.date_utc BETWEEN ? AND ?
-                    )
-                ", [$currentMonthStart, $currentMonthEnd])[0]->count ?? 0;
-
-            // Active last month (entire imported period)
-            $activeLastMonth = DB::select("
-            SELECT COUNT(DISTINCT au.id) as count
-            FROM Azure_Users au
-            WHERE au.displayName IS NOT NULL 
-                AND au.displayName != ''
-                AND au.displayName NOT LIKE 'User-%'
-                AND au.userPrincipalName IS NOT NULL
-                AND au.userPrincipalName != ''
-                AND au.userPrincipalName NOT LIKE 'User-%'
-                AND EXISTS (
-                    SELECT 1 
-                    FROM Azure_LoginDetails ald 
-                    WHERE LOWER(ald.username) = LOWER(au.userPrincipalName)
-                        AND ald.date_utc BETWEEN ? AND ?
-                )
-        ", [$lastMonthStart, $lastMonthEnd])[0]->count ?? 0;
-
-            // Inactive for 3+ months (users who haven't logged in for the past 3 months)
-            $threeMonthsAgo = now()->subMonths(3)->startOfDay();
-            $inactiveThreeMonths = DB::select("
-                SELECT COUNT(*) as count
-                FROM Azure_Users au
-                WHERE au.displayName IS NOT NULL 
-                    AND au.displayName != ''
-                    AND au.displayName NOT LIKE 'User-%'
-                    AND au.userPrincipalName IS NOT NULL
-                    AND au.userPrincipalName != ''
-                    AND au.userPrincipalName NOT LIKE 'User-%'
-                    AND NOT EXISTS (
-                        SELECT 1 
-                        FROM Azure_LoginDetails ald 
-                        WHERE LOWER(ald.username) = LOWER(au.userPrincipalName)
-                            AND ald.date_utc >= ?
-                    )
-                ", [$threeMonthsAgo])[0]->count ?? 0;
-            // Inactive users (never logged in)
-            $inactiveUsers = DB::select("
-            SELECT COUNT(*) as count
-            FROM Azure_Users au
-            WHERE au.displayName IS NOT NULL 
-                AND au.displayName != ''
-                AND au.displayName NOT LIKE 'User-%'
-                AND au.userPrincipalName IS NOT NULL
-                AND au.userPrincipalName != ''
-                AND au.userPrincipalName NOT LIKE 'User-%'
-                AND NOT EXISTS (
-                    SELECT 1 
-                    FROM Azure_LoginDetails ald 
-                    WHERE LOWER(ald.username) = LOWER(au.userPrincipalName)
-                )
-            ")[0]->count ?? 0;
-
-            Log::info('✅ Summary calculated with calendar month', [
-                'total_users' => $totalUsers,
-                'active_this_month' => $activeThisMonth,
-                'active_last_month' => $activeLastMonth,
-                'inactive_3_months' => $inactiveThreeMonths,
-                'never_logged_in' => $inactiveUsers,
-                'current_month' => now()->format('F Y'),
-            ]);
-
-            return [
-                'total_users' => $totalUsers,
-                'active_this_month' => $activeThisMonth,
-                'active_last_month' => $activeLastMonth,
-                // 'inactive_users' => $inactiveUsers,
-                'inactive_users' => $inactiveThreeMonths,
-                'never_logged_in' => $inactiveUsers,
-            ];
-        } catch (\Exception $e) {
-            Log::error('❌ Failed to get user summary via direct query', [
-                'error' => $e->getMessage(),
-                'trace' => substr($e->getTraceAsString(), 0, 500)
-            ]);
-
-            return [
-                'total_users' => 0,
-                'active_this_month' => 0,
-                'active_last_month' => 0,
-                'inactive_users' => 0,
-            ];
-        }
+        return \App\Models\Logintracker\AzureUser::getUserSummary();
     }
 
 

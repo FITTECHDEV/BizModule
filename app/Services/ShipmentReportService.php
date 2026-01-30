@@ -51,7 +51,7 @@ class ShipmentReportService
             // Use PDO directly for proper GUID handling
             $pdo = DB::connection('sqlsrv_auth')->getPdo();
 
-            $sql = "SET NOCOUNT ON; EXEC [dbo].[sp_MilestoneStatusAsofToday] @OfficeID=?, @ClientID=?, @ServiceID=?, @ProcessID=?";
+            $sql = "SET NOCOUNT ON; EXEC [dbo].[sp_Email_MilestoneStatusAsofToday] @OfficeID=?, @ClientID=?, @ServiceID=?, @ProcessID=?";
             $stmt = $pdo->prepare($sql);
             $stmt->execute([$officeId, $clientId, $serviceId, $processId]);
 

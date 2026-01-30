@@ -18,32 +18,80 @@ class RRAInvoices extends Command
         parent::__construct();
     }
 
-    public function handle()
-    {
-        Log::notice("RRA push running");
+    // public function handle()
+    // {
+    //     Log::notice("RRA push running");
 
-        $invoiceId = $this->argument('invoiceId');
-        $pendingInvoices = $this->fetchPendingInvoices($invoiceId);
+    //     $invoiceId = $this->argument('invoiceId');
+    //     $pendingInvoices = $this->fetchPendingInvoices($invoiceId);
 
-        if ($pendingInvoices->isEmpty()) {
-            // Log::info("No pending invoices found RRA.");
-            return 0;
+    //     if ($pendingInvoices->isEmpty()) {
+    //         // Log::info("No pending invoices found RRA.");
+    //         return 0;
+    //     }
+
+    //     foreach ($pendingInvoices as $invoice) {
+    //         $jsonData = json_decode($invoice->RRAJsonFile, true);
+
+    //         if ($jsonData) {
+    //             $this->submitToApi($invoice, $jsonData);
+    //         } else {
+    //             Log::error("Failed to decode JSON data for invoice ID: {$invoice->ID}");
+    //         }
+    //     }
+
+    //     Log::notice("RRA push completed");
+    //     return 0;
+    // }
+public function handle()
+{
+    Log::notice("RRA push running");
+
+    $invoiceId = $this->argument('invoiceId');
+
+    // If invoiceId is provided, just display the JSON and exit
+    if ($invoiceId) {
+        // Search by DocNo only (since ID is a GUID)
+        $invoice = RRABillingHeader::where('DocNo', $invoiceId)->first();
+
+        if (!$invoice) {
+            $this->error("Invoice with DocNo: {$invoiceId} not found");
+            Log::error("Invoice with DocNo: {$invoiceId} not found");
+            return 1;
         }
 
-        foreach ($pendingInvoices as $invoice) {
-            $jsonData = json_decode($invoice->RRAJsonFile, true);
+        $this->info("=== JSON for Invoice ===");
+        $this->info("ID: {$invoice->ID}");
+        $this->info("DocNo: {$invoice->DocNo}");
+        $this->line("");
+        $this->line($invoice->RRAJsonFile);
 
-            if ($jsonData) {
-                $this->submitToApi($invoice, $jsonData);
-            } else {
-                Log::error("Failed to decode JSON data for invoice ID: {$invoice->ID}");
-            }
-        }
+        // Also log it
+        Log::info("Invoice {$invoice->DocNo} JSON: " . $invoice->RRAJsonFile);
 
-        Log::notice("RRA push completed");
         return 0;
     }
 
+    // Rest of your original code...
+    $pendingInvoices = $this->fetchPendingInvoices($invoiceId);
+
+    if ($pendingInvoices->isEmpty()) {
+        return 0;
+    }
+
+    foreach ($pendingInvoices as $invoice) {
+        $jsonData = json_decode($invoice->RRAJsonFile, true);
+
+        if ($jsonData) {
+            $this->submitToApi($invoice, $jsonData);
+        } else {
+            Log::error("Failed to decode JSON data for invoice ID: {$invoice->ID}");
+        }
+    }
+
+    Log::notice("RRA push completed");
+    return 0;
+}
     protected function fetchPendingInvoices($invoiceId = null)
     {
         $query = RRABillingHeader::where('Docstatus', 'Pending')

@@ -17,6 +17,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Yajra\DataTables\Facades\DataTables;
+use App\Http\Controllers\ShipmentReportController;
+
 
 
 class HomeController extends Controller
@@ -75,9 +77,16 @@ class HomeController extends Controller
             }
 
             try {
-                $loginTrackerStats = $this->getLoginTrackerStats();
+                $azureStats = AzureUser::getStatistics(); // Use the method that returns 'total', 'active', 'pending', 'inactive'
+                $loginTrackerStats = $this->getLoginTrackerStats(); // Keep separate for login tracker
             } catch (\Exception $e) {
-                \Log::error('Login Tracker Stats Error: ' . $e->getMessage());
+                \Log::error('Azure Stats Error: ' . $e->getMessage());
+                $azureStats = [
+                    'total' => 0,
+                    'active' => 0,
+                    'pending' => 0,
+                    'inactive' => 0,
+                ];
                 $loginTrackerStats = [
                     'total_users' => 0,
                     'active_this_month' => 0,
@@ -99,23 +108,13 @@ class HomeController extends Controller
                 ];
             }
 
-            // ✅ Get Azure User Statistics
-            try {
-                $azureStats = AzureUser::getStatistics();
-            } catch (\Exception $e) {
-                \Log::error('Azure Stats Error: ' . $e->getMessage());
-                $azureStats = [  // ✅ Changed from (object) to array
-                    'total' => 0,
-                    'active' => 0,
-                    'pending' => 0,
-                    'inactive' => 0,
-                ];
-            }
-
+            // Extract individual variables for backward compatibility
             $active_this_month = $loginTrackerStats['active_this_month'];
             $active_last_month = $loginTrackerStats['active_last_month'];
             $inactive_users = $loginTrackerStats['inactive_users'];
             $total_users = $loginTrackerStats['total_users'];
+
+            $shipment_reports_stats = ShipmentReportController::getHomeStats();
 
             return view(
                 'dashboard.ticket',
@@ -127,12 +126,14 @@ class HomeController extends Controller
                     'traStatsTZ',
                     'traStatsADL',
                     'rra_stats',
+                    'loginTrackerStats',
                     'active_this_month',
                     'active_last_month',
                     'inactive_users',
                     'total_users',
                     'tracker_stats',
-                    'azureStats'
+                    'azureStats',
+                    'shipment_reports_stats'
                 )
             );
         } catch (\Exception $e) {
@@ -192,30 +193,30 @@ class HomeController extends Controller
      * @return array
      */
     private function getLoginTrackerStats()
-{
-    try {
-        // Get actual data range from the stats service
-        $actualRange = app(\App\Services\DashboardStatsService::class)->getActualDateRange();
-        
-        if (!$actualRange['has_data']) {
-            $totalUsers = \App\Models\Logintracker\AzureUser::valid()->count();
-            return [
-                'total_users' => $totalUsers,
-                'active_this_month' => 0,
-                'active_last_month' => 0,
-                'inactive_users' => $totalUsers,
-            ];
-        }
-        
-        $dataMin = $actualRange['min'];
-        $dataMax = $actualRange['max'];
-        
-        // Current month
-        $currentMonthStart = now()->startOfMonth();
-        $currentMonthEnd = now()->endOfMonth();
-        
-        // Active this month (current calendar month)
-        $active_this_month = DB::select("
+    {
+        try {
+            // Get actual data range from the stats service
+            $actualRange = app(\App\Services\DashboardStatsService::class)->getActualDateRange();
+
+            if (!$actualRange['has_data']) {
+                $totalUsers = \App\Models\Logintracker\AzureUser::valid()->count();
+                return [
+                    'total_users' => $totalUsers,
+                    'active_this_month' => 0,
+                    'active_last_month' => 0,
+                    'inactive_users' => $totalUsers,
+                ];
+            }
+
+            $dataMin = $actualRange['min'];
+            $dataMax = $actualRange['max'];
+
+            // Current month
+            $currentMonthStart = now()->startOfMonth();
+            $currentMonthEnd = now()->endOfMonth();
+
+            // Active this month (current calendar month)
+            $active_this_month = DB::select("
             SELECT COUNT(DISTINCT au.id) as count
             FROM Azure_Users au
             WHERE au.displayName IS NOT NULL 
@@ -231,9 +232,9 @@ class HomeController extends Controller
                         AND ald.date_utc BETWEEN ? AND ?
                 )
         ", [$currentMonthStart, $currentMonthEnd])[0]->count ?? 0;
-        
-        // Active last month (entire imported period)
-        $active_last_month = DB::select("
+
+            // Active last month (entire imported period)
+            $active_last_month = DB::select("
             SELECT COUNT(DISTINCT au.id) as count
             FROM Azure_Users au
             WHERE au.displayName IS NOT NULL 
@@ -249,9 +250,9 @@ class HomeController extends Controller
                         AND ald.date_utc BETWEEN ? AND ?
                 )
         ", [$dataMin, $dataMax])[0]->count ?? 0;
-        
-        // Inactive users (never logged in)
-        $inactive_users = DB::select("
+
+            // Inactive users (never logged in)
+            $inactive_users = DB::select("
             SELECT COUNT(*) as count
             FROM Azure_Users au
             WHERE au.displayName IS NOT NULL 
@@ -266,40 +267,39 @@ class HomeController extends Controller
                     WHERE LOWER(ald.username) = LOWER(au.userPrincipalName)
                 )
         ")[0]->count ?? 0;
-        
-        // Total users
-        $total_users = \App\Models\Logintracker\AzureUser::valid()->count();
-        
-        \Log::info('Login Tracker Stats Retrieved', [
-            'total_users' => $total_users,
-            'active_this_month' => $active_this_month,
-            'active_last_month' => $active_last_month,
-            'inactive_users' => $inactive_users,
-        ]);
-        
-        return [
-            'total_users' => $total_users,
-            'active_this_month' => $active_this_month,
-            'active_last_month' => $active_last_month,
-            'inactive_users' => $inactive_users,
-        ];
-        
-    } catch (\Exception $e) {
-        \Log::error('Failed to get login tracker stats in HomeController', [
-            'error' => $e->getMessage(),
-            'line' => $e->getLine(),
-            'trace' => $e->getTraceAsString(),
-        ]);
 
-        // Return zero values on error
-        return [
-            'total_users' => 0,
-            'active_this_month' => 0,
-            'active_last_month' => 0,
-            'inactive_users' => 0,
-        ];
+            // Total users
+            $total_users = \App\Models\Logintracker\AzureUser::valid()->count();
+
+            \Log::info('Login Tracker Stats Retrieved', [
+                'total_users' => $total_users,
+                'active_this_month' => $active_this_month,
+                'active_last_month' => $active_last_month,
+                'inactive_users' => $inactive_users,
+            ]);
+
+            return [
+                'total_users' => $total_users,
+                'active_this_month' => $active_this_month,
+                'active_last_month' => $active_last_month,
+                'inactive_users' => $inactive_users,
+            ];
+        } catch (\Exception $e) {
+            \Log::error('Failed to get login tracker stats in HomeController', [
+                'error' => $e->getMessage(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            // Return zero values on error
+            return [
+                'total_users' => 0,
+                'active_this_month' => 0,
+                'active_last_month' => 0,
+                'inactive_users' => 0,
+            ];
+        }
     }
-}
 
     public function archive()
     {

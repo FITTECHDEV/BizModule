@@ -350,6 +350,14 @@ return [
             'active' => ['azure/*'],
         ],
 
+        [
+            'text' => 'SHIPMENT EMAIL REPORTS',
+            'url'  => 'shipment-reports',
+            'icon' => 'fas fa-fw fa-envelope',
+            'active' => ['shipment-reports/*'],
+            'can'  => 'approve-all-entity-request'
+        ],
+
         // ['header' => 'account_settings'],
         [
             'text' => 'SETTINGS',
@@ -378,6 +386,7 @@ return [
                     'active'  => ['users/*'],
                     'can'  => 'users-list'
                 ],
+
                 [
                     'text' => 'Category Management',
                     'url'  => 'categories',
@@ -385,6 +394,7 @@ return [
                     'active'  => ['categories/*'],
                     'can'  => 'manage-category'
                 ],
+
             ],
         ],
     ],

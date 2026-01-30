@@ -8,6 +8,8 @@ use App\Http\Controllers\JimiWebhookController;
 use App\Http\Controllers\TrackerController;
 use App\Http\Controllers\AzureUserManagementController;
 use App\Http\Controllers\OdooSyncController;
+use App\Http\Controllers\ShipmentReportController;
+
 
 use App\Models\Category;
 use App\Models\Office;
@@ -964,6 +966,17 @@ Route::get('/test-azure-users', function () {
 });
 
 // ============================================================================
+// SHIPMENT EMAIL REPORTS ROUTES - Must come before wildcard routes
+// ============================================================================
+Route::middleware(['auth', 'can:approve-all-entity-request'])->group(function () {
+    Route::get('/shipment-reports', [ShipmentReportController::class, 'index'])
+        ->name('shipment-reports.index');
+
+    Route::get('/shipment-reports/data', [ShipmentReportController::class, 'getData'])
+        ->name('shipment-reports.data');
+});
+
+// ============================================================================
 // LOGIN TRACKER SYSTEM ROUTES (User Activity Monitoring)
 // ============================================================================
 
@@ -1175,6 +1188,9 @@ Route::middleware(['auth'])->prefix('tracker')->name('tracker.')->group(function
 });
 
 
+
+
+
 // // Temporary redirect - forwards notifications from production to UAT
 // Route::post('/webhooks/jimi/notifications', function (Request $request) {
 //     // Forward to UAT
@@ -1223,14 +1239,14 @@ Route::middleware(['auth'])->prefix('jimi-test')->group(function () {
 
 
 
-Route::get('/test-plain-email', function() {
+Route::get('/test-plain-email', function () {
     try {
         Mail::send([], [], function ($message) {
             $message->to('nashonmwendwa04@gmail.com');
             $message->subject('Plain Test Email - ' . now());
             $message->setBody('<h1>Test Email</h1><p>This is a plain test without attachment.</p>', 'text/html');
         });
-        
+
         return response()->json([
             'status' => 'sent',
             'note' => 'Plain email sent without attachment - check Gmail'

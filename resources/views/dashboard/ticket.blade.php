@@ -435,6 +435,52 @@
                 </div>
             @endif
 
+            <!-- Shipment Email Reports -->
+            @if (Auth::user()->can('approve-all-entity-request'))
+                <div class="col-12 col-sm-6 col-lg-4 col-xl-3 mb-3">
+                    <a href="{{ route('shipment-reports.index') }}" style="text-decoration: none; color: inherit;">
+                        <div class="d-flex h-100 flex-column card card-widget widget-user shadow service-card shipment-reports-card"
+                            style="cursor: pointer;">
+                            <div class="widget-user-header bg-purple">
+                                <h3 class="widget-user-username">SHIPMENT REPORTS</h3>
+                                <h5 class="widget-user-desc">Email Report Status</h5>
+                            </div>
+                            <div class="widget-user-image">
+                                <img src="{{ asset('img/postman.png') }}" alt="Shipment Reports"
+                                    class="img-circle elevation-2">
+                            </div>
+                            <div class="card-footer">
+                                <div class="row">
+                                    <div class="col-4 border-right">
+                                        <div class="description-block">
+                                            <h5 class="description-header text-success">
+                                                {{ $shipment_reports_stats['emails_sent'] ?? 0 }}
+                                            </h5>
+                                            <span class="description-text">Emails Sent</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-4 border-right">
+                                        <div class="description-block">
+                                            <h5 class="description-header text-primary">
+                                                {{ $shipment_reports_stats['success_rate'] ?? 0 }}%
+                                            </h5>
+                                            <span class="description-text">Success Rate</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="description-block">
+                                            <h5 class="description-header text-danger">
+                                                {{ $shipment_reports_stats['failed'] ?? 0 }}
+                                            </h5>
+                                            <span class="description-text">Failed</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+            @endif
 
         </div>
     </div>
