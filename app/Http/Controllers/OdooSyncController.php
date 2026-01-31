@@ -155,12 +155,10 @@ class OdooSyncController extends Controller
                             // ============================================================
                             // NEW USER: Create in Azure AD first, then DB
                             // ============================================================
-
-                            // Step 1: Provision to Azure AD FIRST
                             $azureProvisioningResult = $this->provisionToAzureAD($userData, $azureService);
 
                             if ($azureProvisioningResult['success']) {
-                                // Step 2: Insert to database WITH AzureId already populated
+                                // ✅ Only insert if Azure provisioning succeeded
                                 $userData['AzureId'] = $azureProvisioningResult['azure_id'];
                                 $this->insertUserImproved($userData);
                                 $stats['inserted']++;
@@ -176,24 +174,28 @@ class OdooSyncController extends Controller
                                     'Created in Azure AD + DB (Pending)'
                                 );
                             } else {
-                                // Azure creation failed - insert without AzureId
-                                $this->insertUserImproved($userData);
-                                $stats['inserted']++;
+                                // ✅ FIXED: Do NOT insert - skip this user entirely
                                 $stats['azure_failed']++;
+                                $stats['failed']++; // Count as overall failure
                                 $stats['errors'][] = [
                                     'user' => $userData['userPrincipalName'],
-                                    'error' => 'Azure provisioning failed: ' . $azureProvisioningResult['error'],
+                                    'operation' => 'Azure Provisioning (Required)',
+                                    'error' => 'User NOT created - Azure provisioning failed: ' . $azureProvisioningResult['error'],
                                 ];
 
                                 $this->outputRow(
                                     $rowNumber,
                                     $userData['userPrincipalName'],
                                     $userData['OdooLoginType'],
-                                    'INSERT',
+                                    'SKIPPED',
                                     '❌ Failed',
-                                    true,
-                                    'DB created, Azure failed: ' . substr($azureProvisioningResult['error'], 0, 50)
+                                    false,
+                                    'Azure provisioning failed - user NOT created: ' . substr($azureProvisioningResult['error'], 0, 50)
                                 );
+
+                                // Skip to next user
+                                flush();
+                                continue;
                             }
                         } else {
                             // ============================================================
@@ -400,19 +402,33 @@ class OdooSyncController extends Controller
                             $azureProvisioningResult = $this->provisionToAzureAD($userData, $azureService);
 
                             if ($azureProvisioningResult['success']) {
+                                // ✅ Only insert if Azure provisioning succeeded
                                 $userData['AzureId'] = $azureProvisioningResult['azure_id'];
                                 $this->insertUserImproved($userData);
                                 $stats['inserted']++;
                                 $stats['azure_provisioned']++;
+
+                                Log::info('✅ New user created with AzureId', [
+                                    'user' => $userData['userPrincipalName'],
+                                    'azure_id' => $azureProvisioningResult['azure_id'],
+                                ]);
                             } else {
-                                $this->insertUserImproved($userData);
-                                $stats['inserted']++;
+                                // ✅ FIXED: Do NOT insert - skip this user
                                 $stats['azure_failed']++;
+                                $stats['failed']++;
                                 $stats['errors'][] = [
                                     'user' => $userData['userPrincipalName'],
-                                    'operation' => 'Azure Provisioning',
-                                    'error' => $azureProvisioningResult['error'],
+                                    'operation' => 'Azure Provisioning (Required)',
+                                    'error' => 'User NOT created - Azure provisioning failed: ' . $azureProvisioningResult['error'],
                                 ];
+
+                                Log::warning('⚠️ User creation skipped - Azure provisioning failed', [
+                                    'user' => $userData['userPrincipalName'],
+                                    'error' => $azureProvisioningResult['error'],
+                                ]);
+
+                                // Skip to next user
+                                continue;
                             }
                         } else {
                             // ============================================================

@@ -308,9 +308,27 @@ class ShipmentReportService
                 throw new \Exception('Excel file too large: ' . round($fileSize / 1024 / 1024, 2) . 'MB (max: ' . $maxSizeMB . 'MB)');
             }
 
-            // Parse multiple email addresses (semicolon or comma separated)
-            $emailAddresses = array_map('trim', preg_split('/[;,]/', $emailAddress));
-            $emailAddresses = array_filter($emailAddresses); // Remove empty values
+            // Parse TO email addresses (semicolon or comma separated)
+            $toAddresses = array_map('trim', preg_split('/[;,]/', $emailAddress));
+            $toAddresses = array_filter($toAddresses);
+
+            // Parse CC email addresses (semicolon or comma separated)
+            $ccAddresses = array_map('trim', preg_split('/[;,]/', $client->EmailIdCC ?? ''));
+            $ccAddresses = array_filter($ccAddresses);
+
+            // DEBUG: Check what we're getting
+            Log::info('CC Email Debug', [
+                'client_id' => $client->ClientId,
+                'EmailIdCC_raw' => $client->EmailIdCC ?? 'NULL/EMPTY',  // Changed
+                'cc_addresses_parsed' => $ccAddresses,
+                'cc_count' => count($ccAddresses),
+                'is_empty' => empty($ccAddresses)
+            ]);
+
+            // Ensure at least one recipient exists
+            if (empty($toAddresses) && empty($ccAddresses)) {
+                throw new \Exception('No email addresses found for client: ' . $client->ClientName);
+            }
 
             // Create Swift attachment
             $attachment = \Swift_Attachment::fromPath($excelFilePath)
@@ -320,13 +338,24 @@ class ShipmentReportService
             // Send using SwiftMailer directly
             $swiftMessage = new \Swift_Message($subject);
             $swiftMessage->setFrom([config('mail.from.address') => config('mail.from.name')])
-                ->setTo($emailAddresses)
-                ->setBcc([config('mail.from.address')])
-                ->setBody($htmlBody, 'text/html')
+                ->setBcc([config('mail.from.address')]);
+
+            // Set TO if exists
+            if (!empty($toAddresses)) {
+                $swiftMessage->setTo($toAddresses);
+            }
+
+            // Set CC if exists
+            if (!empty($ccAddresses)) {
+                $swiftMessage->setCc($ccAddresses);
+            }
+
+            $swiftMessage->setBody($htmlBody, 'text/html')
                 ->attach($attachment);
 
             Log::info('About to send email', [
-                'to' => $emailAddresses,
+                'to' => $toAddresses,
+                'cc' => $ccAddresses,
                 'from' => config('mail.from.address'),
                 'smtp_host' => config('mail.mailers.smtp.host'),
                 'smtp_port' => config('mail.mailers.smtp.port'),
@@ -337,7 +366,8 @@ class ShipmentReportService
             // $this->saveToSentFolder($emailAddress, $subject, $htmlBody, $client);
 
             Log::info('Email sent with Excel attachment', [
-                'email' => implode(', ', $emailAddresses),
+                'to' => implode(', ', $toAddresses),
+                'cc' => implode(', ', $ccAddresses),
                 'attachment' => basename($excelFilePath),
                 'size' => $fileSize
             ]);
@@ -502,7 +532,7 @@ class ShipmentReportService
                 'NoofShipment' => $shipmentCount,
                 'EmailFrom' => config('mail.from.address'),
                 'EmailTo' => $client->EmailID,
-                'EmailIDCC' => $client->EmailIDCC ?? '',
+                'EmailIDCC' => $client->EmailIdCC ?? '',
                 'Subject' => $client->EmailSubject,
                 'BodyMessage' => $client->BodyDetails ?? '<body></body>',
                 'Status' => $status,
