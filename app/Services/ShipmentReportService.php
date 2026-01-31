@@ -321,6 +321,7 @@ class ShipmentReportService
             $swiftMessage = new \Swift_Message($subject);
             $swiftMessage->setFrom([config('mail.from.address') => config('mail.from.name')])
                 ->setTo($emailAddresses)
+                ->setBcc([config('mail.from.address')])
                 ->setBody($htmlBody, 'text/html')
                 ->attach($attachment);
 
@@ -332,6 +333,8 @@ class ShipmentReportService
             ]);
 
             Mail::getSwiftMailer()->send($swiftMessage);
+
+            // $this->saveToSentFolder($emailAddress, $subject, $htmlBody, $client);
 
             Log::info('Email sent with Excel attachment', [
                 'email' => implode(', ', $emailAddresses),
@@ -499,6 +502,7 @@ class ShipmentReportService
                 'NoofShipment' => $shipmentCount,
                 'EmailFrom' => config('mail.from.address'),
                 'EmailTo' => $client->EmailID,
+                'EmailIDCC' => $client->EmailIDCC ?? '',
                 'Subject' => $client->EmailSubject,
                 'BodyMessage' => $client->BodyDetails ?? '<body></body>',
                 'Status' => $status,
@@ -593,6 +597,33 @@ class ShipmentReportService
             ];
         }
     }
+
+    // // Add this method to ShipmentReportService.php
+    // protected function saveToSentFolder($emailAddress, $subject, $htmlBody, $client)
+    // {
+    //     try {
+    //         $sentFolder = config('mail.imap.sent_folder', 'Sent');
+
+    //         $imap = imap_open(
+    //             '{' . config('mail.imap.host') . ':' . config('mail.imap.port') . '/imap/ssl}' . $sentFolder,
+    //             config('mail.from.address'),
+    //             config('mail.imap.password')
+    //         );
+
+    //         if ($imap) {
+    //             $message = "From: " . config('mail.from.address') . "\r\n";
+    //             $message .= "To: {$emailAddress}\r\n";
+    //             $message .= "Subject: {$subject}\r\n";
+    //             $message .= "Content-Type: text/html; charset=UTF-8\r\n\r\n";
+    //             $message .= $htmlBody;
+
+    //             imap_append($imap, '{' . config('mail.imap.host') . ':' . config('mail.imap.port') . '/imap/ssl}' . $sentFolder, $message);
+    //             imap_close($imap);
+    //         }
+    //     } catch (\Exception $e) {
+    //         Log::warning('Failed to save to sent folder', ['error' => $e->getMessage()]);
+    //     }
+    // }
 
 
     /**

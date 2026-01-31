@@ -121,7 +121,8 @@
                             </div>
 
                             {{-- Clear Filters Button --}}
-                            <div class="col-xl-auto col-lg-auto col-md-6 col-sm-6">
+                            <div class="col-xl-auto col-lg-auto col-md-6 col-sm-6" id="clearFiltersContainer"
+                                style="display: none;">
                                 <button type="button" id="clearAllFilters" class="btn btn-outline-secondary btn-sm"
                                     title="Clear all filters">
                                     <i class="fas fa-redo"></i> Clear Filters
@@ -439,8 +440,8 @@
                         name: 'ServiceName'
                     },
                     {
-                        data: 'total_shipments',
-                        name: 'total_shipments',
+                        data: 'shipment_count',
+                        name: 'shipment_count',
                         searchable: false,
                         className: 'text-center'
                     },
@@ -594,6 +595,20 @@
                 $indicator.text(filterText).show();
             }
 
+            // Function to show/hide clear filters button
+            function updateClearButtonVisibility() {
+                var dateFilter = $('#dateFilter').val();
+                var officeFilter = $('#officeFilter').val();
+
+                // Only show if (date is 30 days AND office filter is empty) OR (office filter is active AND date is NOT custom)
+                if ((dateFilter === '30' && officeFilter === '') || (officeFilter !== '' && dateFilter !==
+                    'custom')) {
+                    $('#clearFiltersContainer').show();
+                } else {
+                    $('#clearFiltersContainer').hide();
+                }
+            }
+
             // Date filter change
             $('#dateFilter').on('change', function() {
                 var selectedValue = $(this).val();
@@ -612,6 +627,7 @@
                     // Update cards and reload table with selected preset range
                     updateCardStats();
                     table.ajax.reload();
+                    updateClearButtonVisibility();
                 }
             });
 
@@ -632,6 +648,7 @@
                     // Update cards and reload table
                     updateCardStats();
                     table.ajax.reload();
+                    updateClearButtonVisibility();
                 }
             });
 
@@ -658,6 +675,7 @@
                 // Update cards and reload table
                 updateCardStats();
                 table.ajax.reload();
+                updateClearButtonVisibility();
             });
 
             // Clear All Filters button
@@ -686,6 +704,7 @@
                 // Update cards and reload table
                 updateCardStats();
                 table.ajax.reload();
+                updateClearButtonVisibility();
             });
         });
     </script>

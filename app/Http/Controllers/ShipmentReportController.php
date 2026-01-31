@@ -69,7 +69,7 @@ class ShipmentReportController extends Controller
                     'OfficeName',
                     'ClientName',
                     'ServiceName',
-                    DB::raw('SUM(ISNULL(NoofShipment, 0)) as total_shipments'),  // MODIFIED
+                    DB::raw('ISNULL(NoofShipment, 0) as shipment_count'),  // MODIFIED
                     'Status',
                     'SendRemark'
                 ])
@@ -116,14 +116,14 @@ class ShipmentReportController extends Controller
                 });
             }
 
-            $query->groupBy([
-                DB::raw('CAST(SubmittedOn as DATE)'),
-                'OfficeName',
-                'ClientName',
-                'ServiceName',
-                'Status',
-                'SendRemark'
-            ]);
+            // $query->groupBy([
+            //     DB::raw('CAST(SubmittedOn as DATE)'),
+            //     'OfficeName',
+            //     'ClientName',
+            //     'ServiceName',
+            //     'Status',
+            //     'SendRemark'
+            // ]);
 
             return DataTables::of($query)
                 ->editColumn('report_date', function ($row) {
@@ -137,19 +137,24 @@ class ShipmentReportController extends Controller
                     }
                 })
                 ->editColumn('SendRemark', function ($row) {
-                    return $row->SendRemark ?? 'N/A';
+                    $remark = $row->SendRemark ?? 'N/A';
+                    if (strlen($remark) > 80) {
+                        $truncated = substr($remark, 0, 80) . '...';
+                        return '<span title="' . htmlspecialchars($remark) . '">' . htmlspecialchars($truncated) . '</span>';
+                    }
+                    return htmlspecialchars($remark);
                 })
-                ->editColumn('total_shipments', function ($row) {  // ADDED
-                    return number_format($row->total_shipments);
+                ->editColumn('shipment_count', function ($row) {
+                    return number_format($row->shipment_count);
                 })
                 ->filterColumn('report_date', function ($query, $keyword) {
                     // Don't filter on this computed column via DataTables
                     // The custom search above already handles filtering
                 })
-                ->filterColumn('total_shipments', function ($query, $keyword) {  // ADDED
+                ->filterColumn('shipment_count', function ($query, $keyword) {  // ADDED
                     // Don't filter on this computed column via DataTables
                 })
-                ->rawColumns(['Status'])
+                ->rawColumns(['Status', 'SendRemark'])
                 ->make(true);
         } catch (\Exception $e) {
             Log::error('Shipment Reports DataTables Error', [

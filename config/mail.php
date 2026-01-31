@@ -45,7 +45,8 @@ return [
             'auth_mode' => null,
             'from' => [
                 'address' => env('MAIL_FROM_ADDRESS', 'it3@freight-in-time.com'),
-                    'name' => env('APP_NAME', 'FIT TICKETING SYSTEM')],
+                'name' => env('APP_NAME', 'FIT TICKETING SYSTEM')
+            ],
         ],
         'stream' => [
             'ssl' => [
@@ -96,6 +97,13 @@ return [
     'from' => [
         'address' => env('MAIL_FROM_ADDRESS', 'it3@freight-in-time.com'),
         'name' => env('MAIL_FROM_NAME', env('APP_NAME')),
+    ],
+
+    'imap' => [
+        'host' => env('MAIL_IMAP_HOST'),
+        'port' => env('MAIL_IMAP_PORT', 993),
+        'password' => env('MAIL_IMAP_PASSWORD'),
+        'sent_folder' => env('MAIL_IMAP_SENT_FOLDER', 'Sent'),
     ],
 
     /*

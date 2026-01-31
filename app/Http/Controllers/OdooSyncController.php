@@ -35,59 +35,59 @@ class OdooSyncController extends Controller
             flush();
 
             $odooUsers = DB::connection('pgsql')->select("
-                SELECT 
-                    ru.login AS userprincipalname,
-                    he.name AS displayname,
-                    split_part(he.name::text, ' ', 2) AS surname,
-                    he.work_email AS mail,
-                    split_part(he.name::text, ' ', 1) AS givenname,
-                    NULL AS azureid,
-                    'Member' AS usertype,
-                    he.job_title AS jobtitle,
-                    hd.complete_name AS department,
-                    1 AS accountenabled,
-                    ru.company_id,
-                    CASE
-                        WHEN rc.name ~~ '%Kenya%' THEN 'KE'
-                        WHEN rc.name ~~ '%Uganda%' THEN 'UG'
-                        WHEN rc.name ~~ '%Rwanda%' THEN 'RW'
-                        WHEN rc.name ~~ '%South Sudan%' THEN 'SS'
-                        WHEN rc.name ~~ '%Djibouti%' THEN 'DJ'
-                        WHEN rc.name ~~ '%Tanzania%' THEN 'TZ'
-                        WHEN rc.name ~~ '%Ethiopia%' THEN 'ET'
-                        ELSE 'NA'
-                    END AS usagelocation,
-                    he.private_street || CASE WHEN length(COALESCE(he.private_street2, '')) > 0 THEN ' ' || he.private_street2 ELSE '' END AS streetaddress,
-                    rcs.name AS state,
-                    rec.name::json ->> 'en_US' AS country,
-                    NULL AS officelocation,
-                    he.private_city AS city,
-                    he.private_zip AS postalcode,
-                    he.work_phone AS telephonenumber,
-                    he.mobile_phone AS mobilephone,
-                    he.private_email AS alternateemailaddress,
-                    NULL AS agegroup,
-                    NULL AS consentprovidedforminor,
-                    NULL AS legalagegroupclassification,
-                    rc.name AS companyname,
-                    NULL AS creationtype,
-                    NULL AS directorysynced,
-                    NULL AS invitationstate,
-                    NULL AS identityissuer,
-                    he.user_id AS odoouserid,
-                    he.id AS odooemployeeid,
-                    ru.login AS odoologinid,
-                    he.create_date AS odoocreatedon,
-                    he.registration_number AS employecode,
-                    CASE WHEN ru.share = false THEN 'Internal' ELSE 'Portal' END AS odoologintype
-                FROM hr_employee he
-                JOIN res_users ru ON ru.id = he.user_id AND ru.active = true
-                LEFT JOIN hr_department hd ON hd.id = he.department_id
-                JOIN res_company rc ON rc.id = ru.company_id
-                LEFT JOIN res_country_state rcs ON rcs.id = he.private_state_id
-                LEFT JOIN res_country rec ON rec.id = he.private_country_id
-                WHERE he.active = true
-            ");
+            SELECT 
+                ru.login AS userprincipalname,
+                he.name AS displayname,
+                split_part(he.name::text, ' ', 2) AS surname,
+                he.work_email AS mail,
+                split_part(he.name::text, ' ', 1) AS givenname,
+                NULL AS azureid,
+                'Member' AS usertype,
+                he.job_title AS jobtitle,
+                hd.complete_name AS department,
+                1 AS accountenabled,
+                ru.company_id,
+                CASE
+                    WHEN rc.name ~~ '%Kenya%' THEN 'KE'
+                    WHEN rc.name ~~ '%Uganda%' THEN 'UG'
+                    WHEN rc.name ~~ '%Rwanda%' THEN 'RW'
+                    WHEN rc.name ~~ '%South Sudan%' THEN 'SS'
+                    WHEN rc.name ~~ '%Djibouti%' THEN 'DJ'
+                    WHEN rc.name ~~ '%Tanzania%' THEN 'TZ'
+                    WHEN rc.name ~~ '%Ethiopia%' THEN 'ET'
+                    ELSE 'NA'
+                END AS usagelocation,
+                he.private_street || CASE WHEN length(COALESCE(he.private_street2, '')) > 0 THEN ' ' || he.private_street2 ELSE '' END AS streetaddress,
+                rcs.name AS state,
+                rec.name::json ->> 'en_US' AS country,
+                NULL AS officelocation,
+                he.private_city AS city,
+                he.private_zip AS postalcode,
+                he.work_phone AS telephonenumber,
+                he.mobile_phone AS mobilephone,
+                he.private_email AS alternateemailaddress,
+                NULL AS agegroup,
+                NULL AS consentprovidedforminor,
+                NULL AS legalagegroupclassification,
+                rc.name AS companyname,
+                NULL AS creationtype,
+                NULL AS directorysynced,
+                NULL AS invitationstate,
+                NULL AS identityissuer,
+                he.user_id AS odoouserid,
+                he.id AS odooemployeeid,
+                ru.login AS odoologinid,
+                he.create_date AS odoocreatedon,
+                he.registration_number AS employecode,
+                CASE WHEN ru.share = false THEN 'Internal' ELSE 'Portal' END AS odoologintype
+            FROM hr_employee he
+            JOIN res_users ru ON ru.id = he.user_id AND ru.active = true
+            LEFT JOIN hr_department hd ON hd.id = he.department_id
+            JOIN res_company rc ON rc.id = ru.company_id
+            LEFT JOIN res_country_state rcs ON rcs.id = he.private_state_id
+            LEFT JOIN res_country rec ON rec.id = he.private_country_id
+            WHERE he.active = true
+        ");
 
             $totalUsers = count($odooUsers);
 
@@ -116,38 +116,44 @@ class OdooSyncController extends Controller
                         // Normalize user data
                         $userData = $this->normalizeUserData($user);
 
-                        // ✅ FIX: Check if user exists BY ODOOUSERID (not email)
-                        // ✅ IMPROVED: Check by OdooUserId OR email (prevents duplicates from manual creation)
+                        // ✅ FIXED: Sequential matching to prevent duplicates
+                        // Step 1: Try to find by OdooUserId (primary identifier)
                         $existingUser = DB::connection('sqlsrv')
                             ->table('Azure_Users')
-                            ->where(function ($query) use ($userData) {
-                                $query->where('OdooUserId', $userData['OdooUserId'])
-                                    ->orWhere('userPrincipalName', $userData['userPrincipalName']);
-                            })
+                            ->where('OdooUserId', $userData['OdooUserId'])
                             ->first();
 
-                        // If found by email but missing OdooUserId, update it
-                        if ($existingUser && empty($existingUser->OdooUserId)) {
-                            DB::connection('sqlsrv')
+                        // Step 2: If not found, try to find by UPN (for manually-created users)
+                        if (!$existingUser) {
+                            $existingUser = DB::connection('sqlsrv')
                                 ->table('Azure_Users')
-                                ->where('Id', $existingUser->Id)
-                                ->update([
-                                    'OdooUserId' => $userData['OdooUserId'],
-                                    'OdooEmployeeId' => $userData['OdooEmployeeId'],
-                                    'OdooLoginId' => $userData['OdooLoginId'],
-                                    'OdooCreatedOn' => $userData['OdooCreatedOn'],
-                                    'OdooLoginType' => $userData['OdooLoginType'],
-                                ]);
+                                ->where('userPrincipalName', $userData['userPrincipalName'])
+                                ->whereNull('OdooUserId')  // Only match if not yet linked to Odoo
+                                ->first();
 
-                            Log::info('Linked manually-created user to Odoo', [
-                                'user' => $userData['userPrincipalName'],
-                                'odoo_user_id' => $userData['OdooUserId'],
-                            ]);
+                            // If found by email but missing OdooUserId, link them
+                            if ($existingUser) {
+                                DB::connection('sqlsrv')
+                                    ->table('Azure_Users')
+                                    ->where('Id', $existingUser->Id)
+                                    ->update([
+                                        'OdooUserId' => $userData['OdooUserId'],
+                                        'OdooEmployeeId' => $userData['OdooEmployeeId'],
+                                        'OdooLoginId' => $userData['OdooLoginId'],
+                                        'OdooCreatedOn' => $userData['OdooCreatedOn'],
+                                        'OdooLoginType' => $userData['OdooLoginType'],
+                                    ]);
+
+                                Log::info('Linked manually-created user to Odoo', [
+                                    'user' => $userData['userPrincipalName'],
+                                    'odoo_user_id' => $userData['OdooUserId'],
+                                ]);
+                            }
                         }
 
                         if (!$existingUser) {
                             // ============================================================
-                            // ✅ FIXED: Azure AD FIRST, then DB insert
+                            // NEW USER: Create in Azure AD first, then DB
                             // ============================================================
 
                             // Step 1: Provision to Azure AD FIRST
@@ -191,7 +197,7 @@ class OdooSyncController extends Controller
                             }
                         } else {
                             // ============================================================
-                            // EXISTING USER FLOW: Update + Check Azure Provisioning
+                            // EXISTING USER: Update DB + Handle Azure AD
                             // ============================================================
 
                             $previousStatus = $existingUser->Status ?? 'Unknown';
@@ -352,37 +358,44 @@ class OdooSyncController extends Controller
                     try {
                         $userData = $this->normalizeUserData($user);
 
-                        // ✅ IMPROVED: Match by OdooUserId OR email
+                        // ✅ FIXED: Sequential matching to prevent duplicates
+                        // Step 1: Try to find by OdooUserId (primary identifier)
                         $existingUser = DB::connection('sqlsrv')
                             ->table('Azure_Users')
-                            ->where(function ($query) use ($userData) {
-                                $query->where('OdooUserId', $userData['OdooUserId'])
-                                    ->orWhere('userPrincipalName', $userData['userPrincipalName']);
-                            })
+                            ->where('OdooUserId', $userData['OdooUserId'])
                             ->first();
 
-                        // If found by email but missing OdooUserId, link them
-                        if ($existingUser && empty($existingUser->OdooUserId)) {
-                            DB::connection('sqlsrv')
+                        // Step 2: If not found, try to find by UPN (for manually-created users)
+                        if (!$existingUser) {
+                            $existingUser = DB::connection('sqlsrv')
                                 ->table('Azure_Users')
-                                ->where('Id', $existingUser->Id)
-                                ->update([
-                                    'OdooUserId' => $userData['OdooUserId'],
-                                    'OdooEmployeeId' => $userData['OdooEmployeeId'],
-                                    'OdooLoginId' => $userData['OdooLoginId'],
-                                    'OdooCreatedOn' => $userData['OdooCreatedOn'],
-                                    'OdooLoginType' => $userData['OdooLoginType'],
-                                ]);
+                                ->where('userPrincipalName', $userData['userPrincipalName'])
+                                ->whereNull('OdooUserId')  // Only match if not yet linked to Odoo
+                                ->first();
 
-                            Log::info('Linked manually-created user to Odoo (AJAX sync)', [
-                                'user' => $userData['userPrincipalName'],
-                                'odoo_user_id' => $userData['OdooUserId'],
-                            ]);
+                            // If found by email but missing OdooUserId, link them
+                            if ($existingUser) {
+                                DB::connection('sqlsrv')
+                                    ->table('Azure_Users')
+                                    ->where('Id', $existingUser->Id)
+                                    ->update([
+                                        'OdooUserId' => $userData['OdooUserId'],
+                                        'OdooEmployeeId' => $userData['OdooEmployeeId'],
+                                        'OdooLoginId' => $userData['OdooLoginId'],
+                                        'OdooCreatedOn' => $userData['OdooCreatedOn'],
+                                        'OdooLoginType' => $userData['OdooLoginType'],
+                                    ]);
+
+                                Log::info('Linked manually-created user to Odoo (AJAX sync)', [
+                                    'user' => $userData['userPrincipalName'],
+                                    'odoo_user_id' => $userData['OdooUserId'],
+                                ]);
+                            }
                         }
 
                         if (!$existingUser) {
                             // ============================================================
-                            // ✅ FIXED: Azure AD FIRST, then DB insert
+                            // NEW USER: Create in Azure AD first, then DB
                             // ============================================================
                             $azureProvisioningResult = $this->provisionToAzureAD($userData, $azureService);
 
@@ -403,7 +416,7 @@ class OdooSyncController extends Controller
                             }
                         } else {
                             // ============================================================
-                            // EXISTING USER: Update DB + Update Azure AD
+                            // EXISTING USER: Update DB + Handle Azure AD
                             // ============================================================
                             $hadAzureId = !empty($existingUser->AzureId);
 
