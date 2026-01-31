@@ -380,148 +380,90 @@ class DashboardController extends Controller
 
     private function getFilteredLoginList($filter, $search)
     {
-        // Create cache key based on filter and search
-        $cacheKey = 'dashboard_filtered_list_v5_' . md5(($filter ?? 'all') . '_' . ($search ?? ''));
+        $cacheKey = 'dashboard_filtered_list_v6_' . md5(($filter ?? 'all') . '_' . ($search ?? ''));
 
-        return Cache::remember($cacheKey, 300, function () use ($filter, $search) {
+        return Cache::remember($cacheKey, 600, function () use ($filter, $search) {
             $actualRange = $this->statsService->getActualDateRange();
 
             if (!$actualRange['has_data']) {
                 return collect();
             }
 
-            $dataMin = $actualRange['min'];
-            $dataMax = $actualRange['max'];
-
-            // Use current calendar month
             $thisMonthStart = now()->startOfMonth();
             $thisMonthEnd = now()->endOfMonth();
+            $lastMonthStart = now()->subMonth()->startOfMonth();
+            $lastMonthEnd = now()->subMonth()->endOfMonth();
 
-            // Build WHERE clauses as strings to avoid query builder overhead
             if ($filter === 'inactive') {
                 $threeMonthsAgo = now()->subMonths(3)->startOfDay()->format('Y-m-d H:i:s');
                 $sql = "
-            SELECT 
-                au.id,
-                au.displayName as name,
-                au.userPrincipalName as login_id,
-                0 as logins_last_month,
-            (
-            SELECT MAX(ald2.date_utc)
-                FROM Azure_LoginDetails ald2
-                WHERE LOWER(ald2.username) = LOWER(au.userPrincipalName)
-            ) as last_login
-            FROM Azure_Users au
-            WHERE au.displayName IS NOT NULL 
-                AND au.displayName != ''
-                AND au.displayName NOT LIKE 'User-%'
-                AND au.userPrincipalName IS NOT NULL
-                AND au.userPrincipalName != ''
-                AND au.userPrincipalName NOT LIKE 'User-%'
-                AND NOT EXISTS (
-                    SELECT 1 
-                        FROM Azure_LoginDetails ald 
-                        WHERE LOWER(ald.username) = LOWER(au.userPrincipalName)
-                            AND ald.date_utc >= ?
-                )   
+                SELECT 
+                    au.id,
+                    au.displayName as name,
+                    au.userPrincipalName as login_id,
+                    0 as logins_last_month,
+                    (SELECT MAX(ald2.date_utc) FROM Azure_LoginDetails ald2 WHERE ald2.username = au.userPrincipalName) as last_login
+                FROM Azure_Users au
+                WHERE au.displayName IS NOT NULL 
+                    AND au.displayName != ''
+                    AND au.displayName NOT LIKE 'User-%'
+                    AND NOT EXISTS (
+                        SELECT 1 FROM Azure_LoginDetails ald 
+                        WHERE ald.username = au.userPrincipalName AND ald.date_utc >= ?
+                    )
             ";
                 $params = [$threeMonthsAgo];
             } elseif ($filter === 'active_this_month') {
                 $sql = "
-                SELECT 
-                    au.id,
-                    au.displayName as name,
-                    au.userPrincipalName as login_id,
-                    login_data.logins_last_month,
-                    login_data.last_login
+                SELECT au.id, au.displayName as name, au.userPrincipalName as login_id,
+                       login_data.logins_last_month, login_data.last_login
                 FROM Azure_Users au
                 INNER JOIN (
-                    SELECT 
-                        username,
-                        COUNT(*) as logins_last_month,
-                        MAX(date_utc) as last_login
+                    SELECT username, COUNT(*) as logins_last_month, MAX(date_utc) as last_login
                     FROM Azure_LoginDetails WITH (NOLOCK)
                     WHERE date_utc BETWEEN ? AND ?
                     GROUP BY username
-                ) login_data ON LOWER(login_data.username) = LOWER(au.userPrincipalName)
-                WHERE au.displayName IS NOT NULL 
-                    AND au.displayName != ''
-                    AND au.displayName NOT LIKE 'User-%'
-                    AND au.userPrincipalName IS NOT NULL
-                    AND au.userPrincipalName != ''
-                    AND au.userPrincipalName NOT LIKE 'User-%'
+                ) login_data ON login_data.username = au.userPrincipalName
+                WHERE au.displayName IS NOT NULL AND au.displayName NOT LIKE 'User-%'
             ";
                 $params = [$thisMonthStart, $thisMonthEnd];
-
-                Log::info('Active This Month filter - CALENDAR MONTH', [
-                    'calendar_month' => now()->format('F Y'),
-                    'date_range_queried' => [
-                        $thisMonthStart->format('Y-m-d H:i:s'),
-                        $thisMonthEnd->format('Y-m-d H:i:s')
-                    ]
-                ]);
             } elseif ($filter === 'active_last_month') {
                 $sql = "
-                SELECT 
-                    au.id,
-                    au.displayName as name,
-                    au.userPrincipalName as login_id,
-                    login_data.logins_last_month,
-                    login_data.last_login
+                SELECT au.id, au.displayName as name, au.userPrincipalName as login_id,
+                       login_data.logins_last_month, login_data.last_login
                 FROM Azure_Users au
                 INNER JOIN (
-                    SELECT 
-                        username,
-                        COUNT(*) as logins_last_month,
-                        MAX(date_utc) as last_login
+                    SELECT username, COUNT(*) as logins_last_month, MAX(date_utc) as last_login
                     FROM Azure_LoginDetails WITH (NOLOCK)
                     WHERE date_utc BETWEEN ? AND ?
                     GROUP BY username
-                ) login_data ON LOWER(login_data.username) = LOWER(au.userPrincipalName)
-                WHERE au.displayName IS NOT NULL 
-                    AND au.displayName != ''
-                    AND au.displayName NOT LIKE 'User-%'
-                    AND au.userPrincipalName IS NOT NULL
-                    AND au.userPrincipalName != ''
-                    AND au.userPrincipalName NOT LIKE 'User-%'
+                ) login_data ON login_data.username = au.userPrincipalName
+                WHERE au.displayName IS NOT NULL AND au.displayName NOT LIKE 'User-%'
             ";
-                $params = [$dataMin, $dataMax];
+                $params = [$lastMonthStart, $lastMonthEnd];
             } else {
                 $sql = "
-                SELECT 
-                    au.id,
-                    au.displayName as name,
-                    au.userPrincipalName as login_id,
-                    ISNULL(login_data.logins_last_month, 0) as logins_last_month,
-                    login_data.last_login
+                SELECT au.id, au.displayName as name, au.userPrincipalName as login_id,
+                       ISNULL(login_data.logins_last_month, 0) as logins_last_month,
+                       login_data.last_login
                 FROM Azure_Users au
                 LEFT JOIN (
-                    SELECT 
-                        username,
-                        COUNT(*) as logins_last_month,
-                        MAX(date_utc) as last_login
+                    SELECT username, COUNT(*) as logins_last_month, MAX(date_utc) as last_login
                     FROM Azure_LoginDetails WITH (NOLOCK)
                     WHERE date_utc BETWEEN ? AND ?
                     GROUP BY username
-                ) login_data ON LOWER(login_data.username) = LOWER(au.userPrincipalName)
-                WHERE au.displayName IS NOT NULL 
-                    AND au.displayName != ''
-                    AND au.displayName NOT LIKE 'User-%'
-                    AND au.userPrincipalName IS NOT NULL
-                    AND au.userPrincipalName != ''
-                    AND au.userPrincipalName NOT LIKE 'User-%'
+                ) login_data ON login_data.username = au.userPrincipalName
+                WHERE au.displayName IS NOT NULL AND au.displayName NOT LIKE 'User-%'
             ";
-                $params = [$dataMin, $dataMax];
+                $params = [$actualRange['min'], $actualRange['max']];
             }
 
             if (!empty($search)) {
                 $searchLower = strtolower(trim($search));
-                if ($searchLower !== 'never') {
-                    $sql .= " AND (LOWER(au.displayName) LIKE ? OR LOWER(au.userPrincipalName) LIKE ?)";
-                    $searchParam = "%{$searchLower}%";
-                    $params[] = $searchParam;
-                    $params[] = $searchParam;
-                }
+                $sql .= " AND (au.displayName LIKE ? OR au.userPrincipalName LIKE ?)";
+                $searchParam = "%{$searchLower}%";
+                $params[] = $searchParam;
+                $params[] = $searchParam;
             }
 
             $sql .= " ORDER BY au.displayName";

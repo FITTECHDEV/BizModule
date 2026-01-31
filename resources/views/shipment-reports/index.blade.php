@@ -439,9 +439,10 @@
                         name: 'ServiceName'
                     },
                     {
-                        data: 'shipment_count',
-                        name: 'shipment_count',
-                        searchable: false
+                        data: 'total_shipments',
+                        name: 'total_shipments',
+                        searchable: false,
+                        className: 'text-center'
                     },
                     {
                         data: 'Status',

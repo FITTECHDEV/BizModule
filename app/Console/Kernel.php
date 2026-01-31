@@ -119,7 +119,7 @@ class Kernel extends ConsoleKernel
 
         // Send shipment status reports to clients daily at 17:00 EAT
         $schedule->command('shipments:send-reports')
-            ->dailyAt('17:00')
+            ->dailyAt('18:00')
             ->timezone('Africa/Nairobi')
             ->withoutOverlapping()
             ->onOneServer()

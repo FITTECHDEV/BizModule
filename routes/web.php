@@ -1258,3 +1258,24 @@ Route::get('/test-plain-email', function () {
         return response()->json(['error' => $e->getMessage()], 500);
     }
 });
+
+
+
+// Add this to your routes/web.php temporarily (remove after testing)
+Route::get('/test-sp-data', function() {
+    $pdo = DB::connection('sqlsrv_auth')->getPdo();
+    $stmt = $pdo->prepare('SET NOCOUNT ON; EXEC [dbo].[sp_EmailClientDetails]');
+    $stmt->execute();
+    $results = $stmt->fetchAll(\PDO::FETCH_OBJ);
+    
+    if (!empty($results)) {
+        $first = $results[0];
+        return response()->json([
+            'all_properties' => get_object_vars($first),
+            'NoofShip_value' => $first->NoofShip ?? 'NOT FOUND',
+            'has_property' => property_exists($first, 'NoofShip')
+        ]);
+    }
+    
+    return response()->json(['error' => 'No results']);
+});

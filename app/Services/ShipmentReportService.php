@@ -106,7 +106,6 @@ class ShipmentReportService
         try {
             $clientList = $this->getClientEmailList();
 
-            // Filter by specific client IDs if provided
             if ($clientIds !== null && !empty($clientIds)) {
                 $clientList = $clientList->whereIn('ClientId', $clientIds);
 
@@ -129,6 +128,7 @@ class ShipmentReportService
             foreach ($clientList as $client) {
                 $status = 'Failed';
                 $remark = '';
+                $shipmentCount = 0;  // ADDED - Initialize count
 
                 try {
                     // Check for valid email first (unless using test email)
@@ -141,8 +141,8 @@ class ShipmentReportService
                             'client_name' => $client->ClientName
                         ]);
 
-                        // Log to Phase 3
-                        $this->logSchedulerTransaction($client, $status, $remark);
+                        // Log to Phase 3 with 0 shipments
+                        $this->logSchedulerTransaction($client, $status, $remark, 0);  // MODIFIED
                         usleep(100000);
                         continue;
                     }
@@ -166,15 +166,27 @@ class ShipmentReportService
                             'error' => $remark
                         ]);
 
-                        // Log to Phase 3
-                        $this->logSchedulerTransaction($client, $status, $remark);
+                        // Log to Phase 3 with 0 shipments
+                        $shipmentCount = (int) ($client->NoofShipment ?? 0);
+                        $this->logSchedulerTransaction($client, $status, $remark, $shipmentCount);
+                        // MODIFIED
 
                         sleep(config('shipment.email.delay_between_sends', 2));
                         continue;
                     }
 
+                    if (!property_exists($client, 'NoofShipment')) {
+                        Log::error('NoofShipment missing from client object', [
+                            'client_id' => $client->ClientId,
+                            'available_fields' => array_keys((array) $client)
+                        ]);
+                    }
+
+
+                    // ADDED - Calculate shipment count from milestone data
+                    $shipmentCount = (int) ($client->NoofShipment ?? 0);
+
                     // Milestone success - send email with Excel attachment
-                    // Use test email if provided, otherwise use client email
                     $emailAddress = $testEmail ?? $client->EmailID;
 
                     // Retry logic for email sending
@@ -187,7 +199,6 @@ class ShipmentReportService
                         try {
                             $attempt++;
 
-                            // Reset SMTP connection before retry to avoid "too many messages" error
                             if ($attempt > 1) {
                                 $this->resetMailConnection();
                             }
@@ -195,14 +206,14 @@ class ShipmentReportService
                             $this->sendReportEmail(
                                 $emailAddress,
                                 $client->EmailSubject,
-                                $client->BodyDeails,
+                                $client->BodyDetails,
                                 $milestoneResult['data'],
                                 $client
                             );
                             $emailSent = true;
                         } catch (\Exception $e) {
                             if ($attempt >= $maxRetries) {
-                                throw $e; // Re-throw on final attempt
+                                throw $e;
                             }
                             Log::warning('Email send failed, retrying', [
                                 'attempt' => $attempt,
@@ -211,11 +222,11 @@ class ShipmentReportService
                                 'error' => $e->getMessage()
                             ]);
 
-                            // Reset connection before sleeping
                             $this->resetMailConnection();
                             sleep($retryDelay);
                         }
                     }
+
                     $status = 'Success';
                     $remark = $testEmail
                         ? "Email sent successfully to test address: {$testEmail}"
@@ -227,6 +238,7 @@ class ShipmentReportService
                         'client_name' => $client->ClientName,
                         'email' => $emailAddress,
                         'service' => $client->ServiceName,
+                        'shipment_count' => $shipmentCount,  // ADDED
                         'test_mode' => !is_null($testEmail)
                     ]);
                 } catch (\Exception $e) {
@@ -248,8 +260,8 @@ class ShipmentReportService
                     ]);
                 }
 
-                // Phase 3: Log transaction
-                $this->logSchedulerTransaction($client, $status, $remark);
+                // Phase 3: Log transaction with shipment count
+                $this->logSchedulerTransaction($client, $status, $remark, $shipmentCount);  // MODIFIED
 
                 sleep(config('shipment.email.delay_between_sends', 2));
             }
@@ -266,7 +278,6 @@ class ShipmentReportService
 
         return $summary;
     }
-
     /**
      * Send shipment report email to a client with Excel attachment
      * 
@@ -469,13 +480,13 @@ class ShipmentReportService
      * @param object $client Client data from sp_ClientEmailDetails
      * @param string $status "Success" or "Failed"
      * @param string $remark Success/failure message
-     * @return void
+     * @param int $shipmentCount Number of shipments in the report (default 0)
+     * @return array ['success' => bool, 'sp_status' => string|null, 'sp_remark' => string|null]
      */
-    protected function logSchedulerTransaction($client, $status, $remark)
+    protected function logSchedulerTransaction($client, $status, $remark, $shipmentCount = 0)
     {
         try {
             $json = json_encode([
-                'transactionType' => 'EmailScheduler',
                 'SchedulerType' => 'MilestoneUpdate',
                 'SubmittedOn' => now()->format('Y-m-d H:i:s'),
                 'ClientID' => $client->ClientId,
@@ -485,35 +496,104 @@ class ShipmentReportService
                 'ServiceID' => $client->ServiceID,
                 'ProcessID' => $client->ProcessId,
                 'ServiceName' => $client->ServiceName,
+                'NoofShipment' => $shipmentCount,
                 'EmailFrom' => config('mail.from.address'),
                 'EmailTo' => $client->EmailID,
                 'Subject' => $client->EmailSubject,
-                'BodyMessage' => $client->BodyDeails ?? '<body></body>',
+                'BodyMessage' => $client->BodyDetails ?? '<body></body>',
                 'Status' => $status,
                 'SendRemark' => $remark
             ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
+            Log::info('Attempting to log transaction', [
+                'client_id' => $client->ClientId,
+                'shipment_count' => $shipmentCount
+            ]);
+
             $pdo = DB::connection('sqlsrv_auth')->getPdo();
-            $sql = "DECLARE @Status VARCHAR(20), @Remark VARCHAR(2000);
+
+            // Declare output variables and execute the stored procedure
+            $sql = "
+            DECLARE @Status VARCHAR(20);
+            DECLARE @Remark VARCHAR(2000);
+            
             EXEC [dbo].[sp_EmailSchedulerDetailsUpdate] 
-                @JsonData = ?, 
-                @Status = @Status OUTPUT, 
-                @Remark = @Remark OUTPUT;";
+                @JsonData = :json_data,
+                @Status = @Status OUTPUT,
+                @Remark = @Remark OUTPUT;
+            
+            SELECT @Status AS Status, @Remark AS Remark;
+        ";
 
             $stmt = $pdo->prepare($sql);
-            $stmt->execute([$json]);
+            $stmt->bindParam(':json_data', $json, \PDO::PARAM_STR);
+            $stmt->execute();
 
-            Log::info('Scheduler transaction logged', [
-                'client_id' => $client->ClientId,
-                'status' => $status
-            ]);
+            // SQL Server may return multiple result sets (from PRINT, INSERT, etc.)
+            // We need to advance to the final SELECT statement
+            $result = null;
+            do {
+                try {
+                    $row = $stmt->fetch(\PDO::FETCH_OBJ);
+                    if ($row !== false) {
+                        $result = $row;
+                    }
+                } catch (\PDOException $e) {
+                    // Empty result set - continue to next
+                }
+            } while ($stmt->nextRowset());
+
+            // Check if we got the output parameters
+            if (!$result) {
+                throw new \Exception('Failed to retrieve output parameters from stored procedure');
+            }
+
+            $spStatus = $result->Status ?? null;
+            $spRemark = $result->Remark ?? null;
+
+            if ($spStatus === 'Success') {
+                Log::info('Scheduler transaction logged successfully', [
+                    'client_id' => $client->ClientId,
+                    'status' => $status,
+                    'shipment_count' => $shipmentCount,
+                    'sp_status' => $spStatus,
+                    'sp_remark' => $spRemark
+                ]);
+
+                return [
+                    'success' => true,
+                    'sp_status' => $spStatus,
+                    'sp_remark' => $spRemark
+                ];
+            } else {
+                Log::warning('Stored procedure reported failure', [
+                    'client_id' => $client->ClientId,
+                    'sp_status' => $spStatus,
+                    'sp_remark' => $spRemark
+                ]);
+
+                return [
+                    'success' => false,
+                    'sp_status' => $spStatus,
+                    'sp_remark' => $spRemark
+                ];
+            }
         } catch (\Exception $e) {
             Log::error('Failed to log scheduler transaction', [
                 'client_id' => $client->ClientId,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
             ]);
+
+            return [
+                'success' => false,
+                'sp_status' => null,
+                'sp_remark' => $e->getMessage()
+            ];
         }
     }
+
 
     /**
      * Reset SMTP connection to avoid "too many messages" errors

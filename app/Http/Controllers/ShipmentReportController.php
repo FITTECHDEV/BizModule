@@ -69,7 +69,7 @@ class ShipmentReportController extends Controller
                     'OfficeName',
                     'ClientName',
                     'ServiceName',
-                    DB::raw('COUNT(*) as shipment_count'),
+                    DB::raw('SUM(ISNULL(NoofShipment, 0)) as total_shipments'),  // MODIFIED
                     'Status',
                     'SendRemark'
                 ])
@@ -139,11 +139,14 @@ class ShipmentReportController extends Controller
                 ->editColumn('SendRemark', function ($row) {
                     return $row->SendRemark ?? 'N/A';
                 })
+                ->editColumn('total_shipments', function ($row) {  // ADDED
+                    return number_format($row->total_shipments);
+                })
                 ->filterColumn('report_date', function ($query, $keyword) {
                     // Don't filter on this computed column via DataTables
                     // The custom search above already handles filtering
                 })
-                ->filterColumn('shipment_count', function ($query, $keyword) {
+                ->filterColumn('total_shipments', function ($query, $keyword) {  // ADDED
                     // Don't filter on this computed column via DataTables
                 })
                 ->rawColumns(['Status'])
