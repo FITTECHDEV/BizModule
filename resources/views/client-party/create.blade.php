@@ -63,6 +63,7 @@
                             <form action="/client-party" method="POST" class="form-horizontal"
                                 enctype="multipart/form-data" id="clientPartyForm" novalidate>
                                 @csrf
+                                <input type="hidden" name="OperationType" id="operationType" value="OperationalEntity">
                                 <!-- your steps content here -->
                                 <div id="basic-details" class="content" role="tabpanel"
                                     aria-labelledby="basic-details-trigger">
@@ -1297,45 +1298,52 @@
         }
 
         /* License validation styles */
-#licenceTypeValue.is-invalid {
-    border-color: #dc3545;
-    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='none' stroke='%23dc3545' viewBox='0 0 12 12'%3e%3ccircle cx='6' cy='6' r='4.5'/%3e%3cpath stroke-linejoin='round' d='M5.8 3.6h.4L6 6.5z'/%3e%3ccircle cx='6' cy='8.2' r='.6' fill='%23dc3545' stroke='none'/%3e%3c/svg%3e");
-    background-repeat: no-repeat;
-    background-position: right calc(0.375em + 0.1875rem) center;
-    background-size: calc(0.75em + 0.375rem) calc(0.75em + 0.375rem);
-}
+        #licenceTypeValue.is-invalid {
+            border-color: #dc3545;
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='none' stroke='%23dc3545' viewBox='0 0 12 12'%3e%3ccircle cx='6' cy='6' r='4.5'/%3e%3cpath stroke-linejoin='round' d='M5.8 3.6h.4L6 6.5z'/%3e%3ccircle cx='6' cy='8.2' r='.6' fill='%23dc3545' stroke='none'/%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right calc(0.375em + 0.1875rem) center;
+            background-size: calc(0.75em + 0.375rem) calc(0.75em + 0.375rem);
+        }
 
-#licenceTypeValue.is-valid {
-    border-color: #28a745;
-    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 8 8'%3e%3cpath fill='%2328a745' d='M2.3 6.73L.6 4.53c-.4-1.04.46-1.4 1.1-.8l1.1 1.4 3.4-3.8c.6-.63 1.6-.27 1.2.7l-4 4.6c-.43.5-.8.4-1.1.1z'/%3e%3c/svg%3e");
-    background-repeat: no-repeat;
-    background-position: right calc(0.375em + 0.1875rem) center;
-    background-size: calc(0.75em + 0.375rem) calc(0.75em + 0.375rem);
-}
+        #licenceTypeValue.is-valid {
+            border-color: #28a745;
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 8 8'%3e%3cpath fill='%2328a745' d='M2.3 6.73L.6 4.53c-.4-1.04.46-1.4 1.1-.8l1.1 1.4 3.4-3.8c.6-.63 1.6-.27 1.2.7l-4 4.6c-.43.5-.8.4-1.1.1z'/%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right calc(0.375em + 0.1875rem) center;
+            background-size: calc(0.75em + 0.375rem) calc(0.75em + 0.375rem);
+        }
 
-.license-checking {
-    display: inline-block;
-    color: #17a2b8;
-    font-size: 0.875rem;
-    animation: pulse 1.5s ease-in-out infinite;
-}
+        .license-checking {
+            display: inline-block;
+            color: #17a2b8;
+            font-size: 0.875rem;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
 
-@keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
-}
+        @keyframes pulse {
 
-#licenseError {
-    color: #dc3545;
-    font-size: 0.875rem;
-    margin-top: 0.25rem;
-}
+            0%,
+            100% {
+                opacity: 1;
+            }
 
-#licenseSuccess {
-    color: #28a745;
-    font-size: 0.875rem;
-    margin-top: 0.25rem;
-}
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        #licenseError {
+            color: #dc3545;
+            font-size: 0.875rem;
+            margin-top: 0.25rem;
+        }
+
+        #licenseSuccess {
+            color: #28a745;
+            font-size: 0.875rem;
+            margin-top: 0.25rem;
+        }
     </style>
 @stop
 
@@ -1349,6 +1357,7 @@
     <script src="{{ asset('js/client-party/sub-form.js') }}"></script>
     <script src="{{ asset('js/client-party/jquery-number/jquery.number.min.js') }}"></script>
     <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
+
     <script>
         /* Ajax setup CSRF */
         $.ajaxSetup({
@@ -1356,6 +1365,7 @@
                 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
             }
         });
+
 
         $(document).ready(function() {
             // Cache DOM elements
@@ -1391,6 +1401,120 @@
             let attachmentCount = 1;
             const maxAttachments = 3;
 
+            // Function to check if office is Kenya-based
+            function isKenyaOffice(officeText) {
+                if (!officeText) return false;
+                const trimmedOffice = officeText.trim().toLowerCase();
+
+                // Check for all Kenya office variations
+                return trimmedOffice === 'fit-kenya' ||
+                    trimmedOffice === 'fit - kenya' ||
+                    trimmedOffice === 'fit-kenya (fit express)' ||
+                    trimmedOffice === 'fit - kenya (fit express)' ||
+                    trimmedOffice === 'fit-kenya(fit express)' ||
+                    trimmedOffice === 'fit - kenya(fit express)' ||
+                    (trimmedOffice.includes('kenya') && trimmedOffice.includes('fit'));
+            }
+
+            // Function to auto-select license type based on office
+            function autoSelectLicenseType(officeText) {
+                const licenceTypeSelect = $('#licenceTypeID');
+
+                // Only proceed if the license type select exists
+                if (!licenceTypeSelect.length) {
+                    console.warn('License type select not found');
+                    return;
+                }
+
+                const isKenya = isKenyaOffice(officeText);
+
+                console.log('Auto-selecting license for office:', {
+                    officeText: officeText,
+                    isKenya: isKenya
+                });
+
+                let targetOption;
+
+                if (isKenya) {
+                    // For Kenya: Find "PERSONAL IDENTIFICATION NUMBER"
+                    targetOption = licenceTypeSelect.find('option').filter(function() {
+                        const optionText = $(this).text().trim().toLowerCase();
+                        return optionText.includes('personal identification number') ||
+                            optionText.includes('personal id');
+                    });
+                    console.log('Looking for PIN, found:', targetOption.length, targetOption.text());
+                } else {
+                    // For non-Kenya: Find "TAXPAYER IDENTIFICATION NUMBER"
+                    targetOption = licenceTypeSelect.find('option').filter(function() {
+                        const optionText = $(this).text().trim().toLowerCase();
+                        return optionText.includes('taxpayer identification number') ||
+                            optionText.includes('taxpayer id');
+                    });
+                    console.log('Looking for TIN, found:', targetOption.length, targetOption.text());
+                }
+
+                if (targetOption.length > 0) {
+                    // Select the appropriate option
+                    licenceTypeSelect.val(targetOption.val());
+
+                    // Make it non-editable (disabled)
+                    licenceTypeSelect.prop('disabled', true);
+
+                    // Add visual indicator that it's auto-selected
+                    licenceTypeSelect.addClass('bg-light');
+
+                    // Manually trigger the change event to update license code
+                    licenceTypeSelect.trigger('change');
+
+                    // Update the license code
+                    setTimeout(function() {
+                        updateLicenseCode();
+                    }, 50);
+
+                    console.log('✓ Auto-selected License Type:', {
+                        office: officeText,
+                        isKenya: isKenya,
+                        selectedOption: targetOption.text().trim(),
+                        selectedValue: targetOption.val(),
+                        licenseType: isKenya ? 'PERSONAL IDENTIFICATION NUMBER' :
+                            'TAXPAYER IDENTIFICATION NUMBER'
+                    });
+                } else {
+                    console.warn(
+                        `${isKenya ? 'PERSONAL' : 'TAXPAYER'} IDENTIFICATION NUMBER option not found in license types`
+                    );
+                }
+            }
+            // Function to reset license type selection
+            // Function to reset license type selection
+            function resetLicenseType() {
+                const licenceTypeSelect = $('#licenceTypeID');
+
+                if (!licenceTypeSelect.length) return;
+
+                // Re-enable the select
+                licenceTypeSelect.prop('disabled', false);
+
+                // Remove visual indicator
+                licenceTypeSelect.removeClass('bg-light');
+
+                // Reset to default option
+                licenceTypeSelect.val('');
+
+                // Clear license code and value
+                if ($('#licenceTypeCode').length) {
+                    $('#licenceTypeCode').val('');
+                }
+                if ($('#licenceTypeValue').length) {
+                    $('#licenceTypeValue').val('');
+                }
+
+                console.log('License type reset - field enabled');
+            }
+
+            // ================================
+            // EXISTING: Your validation checks
+            // ================================
             if (!overseasEntityCheckbox.length || !licenceTypeValue.length || !licenceTypeID.length) {
                 console.error('Critical DOM elements missing:', {
                     overseasEntity: !!overseasEntityCheckbox.length,
@@ -1404,6 +1528,20 @@
                     clientCodeInput: !!clientCodeInput.length
                 });
             }
+
+            // if (!overseasEntityCheckbox.length || !licenceTypeValue.length || !licenceTypeID.length) {
+            //     console.error('Critical DOM elements missing:', {
+            //         overseasEntity: !!overseasEntityCheckbox.length,
+            //         licenceTypeValue: !!licenceTypeValue.length,
+            //         licenceTypeID: !!licenceTypeID.length
+            //     });
+            // }
+            // if (!clientIdInput.length || !clientCodeInput.length) {
+            //     console.warn('ClientID or ClientCode inputs missing:', {
+            //         clientIdInput: !!clientIdInput.length,
+            //         clientCodeInput: !!clientCodeInput.length
+            //     });
+            // }
 
             // ================================
             // OTHER FIELDS INITIALIZATION FOR ACCOUNTING MODE
@@ -1626,31 +1764,33 @@
             }
 
             function validateGuidFields() {
-    const guidFields = [
-        'companyId', 'clientID', 'otherID', 'hiddenOtherID',
-        'countryID', 'officeCountryID', 'billingCurrency'
-    ];
+                const guidFields = [
+                    'companyId', 'clientID', 'otherID', 'hiddenOtherID',
+                    'countryID', 'officeCountryID', 'billingCurrency'
+                ];
 
-    guidFields.forEach(fieldId => {
-        const field = $('#' + fieldId);
-        if (field.length && field.val() && field.val().trim() !== '') {
-            const value = field.val().trim();
+                guidFields.forEach(fieldId => {
+                    const field = $('#' + fieldId);
+                    if (field.length && field.val() && field.val().trim() !== '') {
+                        const value = field.val().trim();
 
-            // Check if it's a valid GUID format
-            const guidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+                        // Check if it's a valid GUID format
+                        const guidRegex =
+                            /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-            if (!guidRegex.test(value)) {
-                console.warn(`Invalid GUID format for ${fieldId}:`, value);
+                        if (!guidRegex.test(value)) {
+                            console.warn(`Invalid GUID format for ${fieldId}:`, value);
 
-                // If it's a temp ID that's not a proper GUID, replace it
-                if (value.startsWith('temp-')) {
-                    field.val(generateUUID());
-                    console.log(`Replaced invalid temp ID with proper GUID for ${fieldId}`);
-                }
+                            // If it's a temp ID that's not a proper GUID, replace it
+                            if (value.startsWith('temp-')) {
+                                field.val(generateUUID());
+                                console.log(`Replaced invalid temp ID with proper GUID for ${fieldId}`);
+                            }
+                        }
+                    }
+                });
             }
-        }
-    });
-}
+
             function showFileError(message) {
                 const errorElement = $('#file-upload-error');
                 errorElement.html('<i class="fa fa-exclamation-triangle"></i> ' + message);
@@ -1823,6 +1963,7 @@
                 return code;
             }
 
+
             // FIXED: Delegated event handler for license type change (more robust)
             $(document).off('change', '#licenceTypeID').on('change', '#licenceTypeID', function() {
                 const selectedOption = $(this).find('option:selected');
@@ -1844,6 +1985,30 @@
                 setTimeout(function() {
                     updateLicenseCode();
                 }, 10);
+            });
+
+            // ================================
+            // NEW: Office selection change handler - Add this
+            // ================================
+            $(document).off('change', '#officeCountry').on('change', '#officeCountry', function() {
+                const selectedOption = $(this).find('option:selected');
+                const officeText = selectedOption.text().trim();
+                const officeValue = $(this).val();
+
+                console.log('Office changed:', {
+                    value: officeValue,
+                    text: officeText,
+                    isKenya: isKenyaOffice(officeText),
+                    requestType: requestType
+                });
+
+                if (officeValue && officeText) {
+                    // Auto-select license type for all offices
+                    autoSelectLicenseType(officeText);
+                } else {
+                    // Reset if no office selected
+                    resetLicenseType();
+                }
             });
 
             // ================================
@@ -2411,246 +2576,254 @@
                 }, 50);
             }
             // ============================================
-// LICENSE DUPLICATE CHECK FUNCTION
-// ============================================
-let licenseCheckTimeout;
-let lastCheckedLicense = '';
+            // LICENSE DUPLICATE CHECK FUNCTION
+            // ============================================
+            let licenseCheckTimeout;
+            let lastCheckedLicense = '';
 
-async function checkLicenseDuplicate() {
-    const licenceTypeValue = $('#licenceTypeValue').val()?.trim();
-    const licenceTypeID = $('#licenceTypeID').val();
-    const officeCode = $('#officeCountry').find('option:selected').attr('code') ||
-                       $('input[name="officeCode"]').val();
-    const legalEntityType = $('#legalEntityType').val();
+            async function checkLicenseDuplicate() {
+                const licenceTypeValue = $('#licenceTypeValue').val()?.trim();
+                const licenceTypeID = $('#licenceTypeID').val();
+                const officeCode = $('#officeCountry').find('option:selected').attr('code') ||
+                    $('input[name="officeCode"]').val();
+                const legalEntityType = $('#legalEntityType').val();
 
-    // Clear previous states
-    $('#licenseError').hide().text('');
-    $('#licenseSuccess').hide().text('');
-    $('#licenceTypeValue').removeClass('is-invalid is-valid');
+                // Clear previous states
+                $('#licenseError').hide().text('');
+                $('#licenseSuccess').hide().text('');
+                $('#licenceTypeValue').removeClass('is-invalid is-valid');
 
-    // Don't check if overseas entity or operational mode
-    const isOverseas = $('#overseasEntity').is(':checked');
-    const requestType = new URLSearchParams(window.location.search).get('type');
+                // Don't check if overseas entity or operational mode
+                const isOverseas = $('#overseasEntity').is(':checked');
+                const requestType = new URLSearchParams(window.location.search).get('type');
 
-    if (isOverseas || requestType === 'operational' || licenceTypeValue === 'NIL') {
-        console.log('License check skipped: Overseas entity or operational mode');
-        return true; // Return true since no validation needed
-    }
+                if (isOverseas || requestType === 'operational' || licenceTypeValue === 'NIL') {
+                    console.log('License check skipped: Overseas entity or operational mode');
+                    return true; // Return true since no validation needed
+                }
 
-    // Validate required fields
-    if (!licenceTypeValue || !licenceTypeID || !officeCode) {
-        console.log('License check skipped: Missing required fields', {
-            licenceTypeValue,
-            licenceTypeID,
-            officeCode
-        });
-        return true; // Return true if fields not ready yet
-    }
+                // Validate required fields
+                if (!licenceTypeValue || !licenceTypeID || !officeCode) {
+                    console.log('License check skipped: Missing required fields', {
+                        licenceTypeValue,
+                        licenceTypeID,
+                        officeCode
+                    });
+                    return true; // Return true if fields not ready yet
+                }
 
-    // Don't check if same value as last time (unless it was invalid)
-    if (licenceTypeValue === lastCheckedLicense && $('#licenceTypeValue').hasClass('is-valid')) {
-        console.log('License check skipped: Already validated');
-        return true;
-    }
+                // Don't check if same value as last time (unless it was invalid)
+                if (licenceTypeValue === lastCheckedLicense && $('#licenceTypeValue').hasClass('is-valid')) {
+                    console.log('License check skipped: Already validated');
+                    return true;
+                }
 
-    // Determine party type based on legal entity type
-    let partyType = 'Debtor'; // Default
-    if (legalEntityType) {
-        if (legalEntityType.includes('Vendor') && !legalEntityType.includes('Debtor')) {
-            partyType = 'Vendor';
-        } else if (legalEntityType.includes('Debtor')) {
-            partyType = 'Debtor';
-        }
-    }
+                // Determine party type based on legal entity type
+                let partyType = 'Debtor'; // Default
+                if (legalEntityType) {
+                    if (legalEntityType.includes('Vendor') && !legalEntityType.includes('Debtor')) {
+                        partyType = 'Vendor';
+                    } else if (legalEntityType.includes('Debtor')) {
+                        partyType = 'Debtor';
+                    }
+                }
 
-    console.log('🔍 Checking license for duplicate:', {
-        licenceTypeValue,
-        licenceTypeID,
-        officeCode,
-        partyType,
-        legalEntityType
-    });
+                console.log('🔍 Checking license for duplicate:', {
+                    licenceTypeValue,
+                    licenceTypeID,
+                    officeCode,
+                    partyType,
+                    legalEntityType
+                });
 
-    // Show loading indicator
-    $('#licenceTypeValue').after('<span class="license-checking ml-2"><i class="fa fa-spinner fa-spin"></i> Checking...</span>');
+                // Show loading indicator
+                $('#licenceTypeValue').after(
+                    '<span class="license-checking ml-2"><i class="fa fa-spinner fa-spin"></i> Checking...</span>'
+                );
 
-    try {
-        const response = await $.ajax({
-            url: '{{ route('client-party.check-license') }}',
-            type: 'POST',
-            dataType: 'json',
-            data: {
-                licenseNo: licenceTypeValue,
-                partyType: partyType,
-                officeCode: officeCode,
-                _token: '{{ csrf_token() }}'
+                try {
+                    const response = await $.ajax({
+                        url: '{{ route('client-party.check-license') }}',
+                        type: 'POST',
+                        dataType: 'json',
+                        data: {
+                            licenseNo: licenceTypeValue,
+                            partyType: partyType,
+                            officeCode: officeCode,
+                            _token: '{{ csrf_token() }}'
+                        }
+                    });
+
+                    console.log('✅ License check response:', response);
+
+                    // Remove loading indicator
+                    $('.license-checking').remove();
+
+                    // 🔥 FIXED: Better response handling with explicit boolean check
+                    const isDuplicate = response.isDuplicate === true ||
+                        response.isDuplicate === 1 ||
+                        response.isDuplicate === "1" ||
+                        response.status === 'Duplicate' ||
+                        response.status === 'Error';
+
+                    console.log('🔍 isDuplicate evaluation:', {
+                        raw: response.isDuplicate,
+                        type: typeof response.isDuplicate,
+                        status: response.status,
+                        evaluated: isDuplicate
+                    });
+
+                    if (isDuplicate) {
+                        // ❌ DUPLICATE FOUND
+                        console.log('❌ Duplicate license detected');
+
+                        $('#licenseError')
+                            .html(
+                                `<i class="fa fa-exclamation-triangle"></i> ${response.remark || 'This license number already exists!'}`
+                            )
+                            .show();
+
+                        $('#licenceTypeValue')
+                            .addClass('is-invalid')
+                            .removeClass('is-valid');
+
+                        // Disable submit buttons
+                        $('button[type="submit"], button[name="createBtn"], button[name="submitBtn"]')
+                            .prop('disabled', true)
+                            .addClass('disabled')
+                            .attr('title', 'Cannot submit: Duplicate license number');
+
+                        lastCheckedLicense = licenceTypeValue;
+                        return false;
+
+                    } else {
+                        // ✅ NO DUPLICATE - LICENSE IS AVAILABLE
+                        console.log('✅ License is available');
+
+                        $('#licenseSuccess')
+                            .html(
+                                `<i class="fa fa-check-circle"></i> ${response.remark || 'License number is available'}`
+                            )
+                            .show();
+
+                        $('#licenceTypeValue')
+                            .addClass('is-valid')
+                            .removeClass('is-invalid');
+
+                        // Enable submit buttons
+                        $('button[type="submit"], button[name="createBtn"], button[name="submitBtn"]')
+                            .prop('disabled', false)
+                            .removeClass('disabled')
+                            .removeAttr('title');
+
+                        lastCheckedLicense = licenceTypeValue;
+                        return true;
+                    }
+
+                } catch (xhr) {
+                    console.error('❌ License check AJAX error:', xhr);
+                    $('.license-checking').remove();
+
+                    // Show error message
+                    $('#licenseError')
+                        .html(
+                            `<i class="fa fa-exclamation-circle"></i> Error checking license: ${xhr.responseJSON?.error || xhr.statusText || 'Unknown error'}`
+                        )
+                        .show();
+
+                    $('#licenceTypeValue')
+                        .addClass('is-invalid')
+                        .removeClass('is-valid');
+
+                    lastCheckedLicense = licenceTypeValue;
+                    return false;
+                }
             }
-        });
 
-        console.log('✅ License check response:', response);
+            // ============================================
+            // LICENSE DUPLICATE CHECK EVENT HANDLERS
+            // ============================================
+            $(document).ready(function() {
+                // ... your existing code ...
 
-        // Remove loading indicator
-        $('.license-checking').remove();
+                // Real-time license check on input (with debounce)
+                $('#licenceTypeValue').on('input', function() {
+                    clearTimeout(licenseCheckTimeout);
 
-        // 🔥 FIXED: Better response handling with explicit boolean check
-        const isDuplicate = response.isDuplicate === true ||
-                          response.isDuplicate === 1 ||
-                          response.isDuplicate === "1" ||
-                          response.status === 'Duplicate' ||
-                          response.status === 'Error';
+                    const value = $(this).val()?.trim();
 
-        console.log('🔍 isDuplicate evaluation:', {
-            raw: response.isDuplicate,
-            type: typeof response.isDuplicate,
-            status: response.status,
-            evaluated: isDuplicate
-        });
+                    // Clear previous validation states
+                    $('#licenseError').hide();
+                    $('#licenseSuccess').hide();
+                    $(this).removeClass('is-invalid is-valid');
 
-        if (isDuplicate) {
-            // ❌ DUPLICATE FOUND
-            console.log('❌ Duplicate license detected');
+                    // Only check if not overseas and not NIL
+                    const isOverseas = $('#overseasEntity').is(':checked');
+                    const requestType = new URLSearchParams(window.location.search).get('type');
 
-            $('#licenseError')
-                .html(`<i class="fa fa-exclamation-triangle"></i> ${response.remark || 'This license number already exists!'}`)
-                .show();
+                    if (!isOverseas && requestType !== 'operational' && value && value !== 'NIL') {
+                        // Debounce: wait 1 second after user stops typing
+                        licenseCheckTimeout = setTimeout(() => {
+                            checkLicenseDuplicate();
+                        }, 1000);
+                    }
+                });
 
-            $('#licenceTypeValue')
-                .addClass('is-invalid')
-                .removeClass('is-valid');
+                // Check on blur (when user leaves the field)
+                $('#licenceTypeValue').on('blur', function() {
+                    const value = $(this).val()?.trim();
+                    const isOverseas = $('#overseasEntity').is(':checked');
+                    const requestType = new URLSearchParams(window.location.search).get('type');
 
-            // Disable submit buttons
-            $('button[type="submit"], button[name="createBtn"], button[name="submitBtn"]')
-                .prop('disabled', true)
-                .addClass('disabled')
-                .attr('title', 'Cannot submit: Duplicate license number');
+                    if (!isOverseas && requestType !== 'operational' && value && value !== 'NIL') {
+                        checkLicenseDuplicate();
+                    }
+                });
 
-            lastCheckedLicense = licenceTypeValue;
-            return false;
+                // Re-check when legal entity type changes (party type might change)
+                $('#legalEntityType').on('change', function() {
+                    const licenceTypeValue = $('#licenceTypeValue').val()?.trim();
+                    const isOverseas = $('#overseasEntity').is(':checked');
 
-        } else {
-            // ✅ NO DUPLICATE - LICENSE IS AVAILABLE
-            console.log('✅ License is available');
+                    if (!isOverseas && licenceTypeValue && licenceTypeValue !== 'NIL') {
+                        // Reset last checked to force re-check with new party type
+                        lastCheckedLicense = '';
+                        setTimeout(() => {
+                            checkLicenseDuplicate();
+                        }, 500);
+                    }
+                });
 
-            $('#licenseSuccess')
-                .html(`<i class="fa fa-check-circle"></i> ${response.remark || 'License number is available'}`)
-                .show();
+                // Re-check when office changes
+                $('#officeCountry').on('change', function() {
+                    const licenceTypeValue = $('#licenceTypeValue').val()?.trim();
+                    const isOverseas = $('#overseasEntity').is(':checked');
 
-            $('#licenceTypeValue')
-                .addClass('is-valid')
-                .removeClass('is-invalid');
+                    if (!isOverseas && licenceTypeValue && licenceTypeValue !== 'NIL') {
+                        // Reset last checked to force re-check with new office
+                        lastCheckedLicense = '';
+                        setTimeout(() => {
+                            checkLicenseDuplicate();
+                        }, 500);
+                    }
+                });
 
-            // Enable submit buttons
-            $('button[type="submit"], button[name="createBtn"], button[name="submitBtn"]')
-                .prop('disabled', false)
-                .removeClass('disabled')
-                .removeAttr('title');
+                // Clear license check when overseas entity is checked
+                $('#overseasEntity').on('change', function() {
+                    if ($(this).is(':checked')) {
+                        $('#licenseError').hide();
+                        $('#licenseSuccess').hide();
+                        $('#licenceTypeValue').removeClass('is-invalid is-valid');
+                        $('.license-checking').remove();
 
-            lastCheckedLicense = licenceTypeValue;
-            return true;
-        }
-
-    } catch (xhr) {
-        console.error('❌ License check AJAX error:', xhr);
-        $('.license-checking').remove();
-
-        // Show error message
-        $('#licenseError')
-            .html(`<i class="fa fa-exclamation-circle"></i> Error checking license: ${xhr.responseJSON?.error || xhr.statusText || 'Unknown error'}`)
-            .show();
-
-        $('#licenceTypeValue')
-            .addClass('is-invalid')
-            .removeClass('is-valid');
-
-        lastCheckedLicense = licenceTypeValue;
-        return false;
-    }
-}
-
-// ============================================
-// LICENSE DUPLICATE CHECK EVENT HANDLERS
-// ============================================
-$(document).ready(function() {
-    // ... your existing code ...
-
-    // Real-time license check on input (with debounce)
-    $('#licenceTypeValue').on('input', function() {
-        clearTimeout(licenseCheckTimeout);
-
-        const value = $(this).val()?.trim();
-
-        // Clear previous validation states
-        $('#licenseError').hide();
-        $('#licenseSuccess').hide();
-        $(this).removeClass('is-invalid is-valid');
-
-        // Only check if not overseas and not NIL
-        const isOverseas = $('#overseasEntity').is(':checked');
-        const requestType = new URLSearchParams(window.location.search).get('type');
-
-        if (!isOverseas && requestType !== 'operational' && value && value !== 'NIL') {
-            // Debounce: wait 1 second after user stops typing
-            licenseCheckTimeout = setTimeout(() => {
-                checkLicenseDuplicate();
-            }, 1000);
-        }
-    });
-
-    // Check on blur (when user leaves the field)
-    $('#licenceTypeValue').on('blur', function() {
-        const value = $(this).val()?.trim();
-        const isOverseas = $('#overseasEntity').is(':checked');
-        const requestType = new URLSearchParams(window.location.search).get('type');
-
-        if (!isOverseas && requestType !== 'operational' && value && value !== 'NIL') {
-            checkLicenseDuplicate();
-        }
-    });
-
-    // Re-check when legal entity type changes (party type might change)
-    $('#legalEntityType').on('change', function() {
-        const licenceTypeValue = $('#licenceTypeValue').val()?.trim();
-        const isOverseas = $('#overseasEntity').is(':checked');
-
-        if (!isOverseas && licenceTypeValue && licenceTypeValue !== 'NIL') {
-            // Reset last checked to force re-check with new party type
-            lastCheckedLicense = '';
-            setTimeout(() => {
-                checkLicenseDuplicate();
-            }, 500);
-        }
-    });
-
-    // Re-check when office changes
-    $('#officeCountry').on('change', function() {
-        const licenceTypeValue = $('#licenceTypeValue').val()?.trim();
-        const isOverseas = $('#overseasEntity').is(':checked');
-
-        if (!isOverseas && licenceTypeValue && licenceTypeValue !== 'NIL') {
-            // Reset last checked to force re-check with new office
-            lastCheckedLicense = '';
-            setTimeout(() => {
-                checkLicenseDuplicate();
-            }, 500);
-        }
-    });
-
-    // Clear license check when overseas entity is checked
-    $('#overseasEntity').on('change', function() {
-        if ($(this).is(':checked')) {
-            $('#licenseError').hide();
-            $('#licenseSuccess').hide();
-            $('#licenceTypeValue').removeClass('is-invalid is-valid');
-            $('.license-checking').remove();
-
-            // Re-enable submit buttons
-            $('button[type="submit"], button[name="createBtn"], button[name="submitBtn"]')
-                .prop('disabled', false)
-                .removeClass('disabled')
-                .removeAttr('title');
-        }
-    });
-});
+                        // Re-enable submit buttons
+                        $('button[type="submit"], button[name="createBtn"], button[name="submitBtn"]')
+                            .prop('disabled', false)
+                            .removeClass('disabled')
+                            .removeAttr('title');
+                    }
+                });
+            });
 
             function toggleAccountingFields() {
                 if (requestType === 'operational') {
@@ -3291,7 +3464,7 @@ $(document).ready(function() {
 
                     console.log('Form submission - ensuring Other fields for accounting mode only');
                     ensureOtherFieldsForAccountingMode();
-                     validateGuidFields();
+                    validateGuidFields();
 
                     // Double-check that Other fields are properly set based on user access level
                     let otherInput, otherID, otherCode, otherChecked;
@@ -3856,8 +4029,8 @@ $(document).ready(function() {
                 $('<style>').attr('data-overseas-styles', 'true').text(overseaStyles).appendTo('head');
             }
             /* --------------------------------------------------------------
-       MAX CREDIT LIMIT – comma separator (any length, no errors)
-       -------------------------------------------------------------- */
+               MAX CREDIT LIMIT – comma separator (any length, no errors)
+               -------------------------------------------------------------- */
             function fmtNum(n) {
                 return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
             }
@@ -3930,6 +4103,65 @@ $(document).ready(function() {
                         $el.val(fmtNum(parseInt(raw, 10)));
                     }
                 }, 300);
+            });
+
+            const officeSelect = $('#officeCountry');
+            if (officeSelect.length) {
+                const selectedOffice = officeSelect.find('option:selected');
+                const officeText = selectedOffice.text().trim();
+
+                if (selectedOffice.val() && officeText) {
+                    // Auto-select license type if office is pre-selected
+                    setTimeout(function() {
+                        autoSelectLicenseType(officeText);
+                    }, 100);
+                }
+            }
+            // NEW: Dynamically set OperationType based on URL and/or selection
+            function updateOperationType() {
+                const urlType = new URLSearchParams(window.location.search).get('type');
+                let opType = 'OperationalEntity'; // default
+
+                // Priority 1: URL param ?type=accounting
+                if (urlType === 'accounting') {
+                    opType = 'AccountingEntity';
+                }
+                // Priority 2: Selected partyEntityType is accounting-related
+                else if (partyEntityType.val()) {
+                    const accountingValues = [
+                        'Client',
+                        'Create only in D365',
+                        'Debtor & Vendor',
+                        'Debtor',
+                        'Vendor',
+                        'Only in D365 Debtor',
+                        'Only in D365 Vendor'
+                    ];
+                    if (accountingValues.includes(partyEntityType.val())) {
+                        opType = 'AccountingEntity';
+                    }
+                }
+
+                // Set the hidden field
+                $('#operationType').val(opType);
+
+                console.log('OperationType updated:', {
+                    finalValue: opType,
+                    urlType: urlType,
+                    selectedType: partyEntityType.val(),
+                    timestamp: new Date().toISOString()
+                });
+            }
+
+            // Run on page load
+            updateOperationType();
+
+            // Re-run when partyEntityType changes
+            partyEntityType.on('change', updateOperationType);
+
+            // Optional: Re-run when anything changes (safety net)
+            $(document).on('change input', 'select, input', function() {
+                updateOperationType();
             });
 
         });

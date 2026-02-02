@@ -621,7 +621,6 @@
             }
         };
 
-        // Ensure jQuery is available
         (function($) {
             // Ajax CSRF Setup
             $.ajaxSetup({
@@ -631,15 +630,14 @@
             });
 
             $(document).ready(function() {
-                // Show loader before DataTable AJAX request
+                // Show loader
                 $('#table-loader').removeClass('d-none');
 
-                window.user_raise_ticket = `{{ Auth::user()->can('request-client-party') ? 'true' : 'false' }}`;
-                window.user_view_my_office =
-                    `{{ !Auth::user()->can('approve-all-entity-request') ? 'true' : 'false' }}`;
-                window.office = `{{ Auth::user()->OfficeCode ?? '' }}`;
+                // Global user permissions & office
+                window.user_raise_ticket = '{{ Auth::user()->can('request-client-party') ? 'true' : 'false' }}';
+                window.user_view_my_office = '{{ !Auth::user()->can('approve-all-entity-request') ? 'true' : 'false' }}';
+                window.office = '{{ Auth::user()->OfficeCode ?? '' }}';
 
-                // Check if table element exists before initializing
                 if (!$('#client-party-table').length) {
                     console.error('DataTable element not found');
                     $('#table-loader').addClass('d-none');
@@ -648,20 +646,18 @@
 
                 const clientPartyTable = $('#client-party-table').DataTable({
                     responsive: true,
-                    order: [
-                        [6, 'desc']
-                    ], // Order by CreatedBy column since CreatedOn is hidden
+                    order: [[6, 'desc']], // Order by CreatedBy (adjust if needed)
                     processing: true,
                     serverSide: true,
                     searching: true,
                     stateSave: true,
                     dom: '<"row mb-3"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6 d-flex justify-content-end align-items-center"fB>>t<"d-flex justify-content-between"ip>',
-                    buttons: [{
+                    buttons: [
+                        {
                             extend: 'csv',
                             className: 'btn btn-sm btn-outline-secondary',
                             text: '<i class="fas fa-file-csv"></i> CSV',
-                            title: 'Pending_Entity_Approvals_' + new Date().toISOString().slice(0,
-                                10)
+                            title: 'Pending_Entity_Approvals_' + new Date().toISOString().slice(0, 10)
                         },
                         {
                             extend: 'pdf',
@@ -672,6 +668,7 @@
                     ],
                     ajax: {
                         url: '{!! route('datatables.approvalEntityRequests') !!}',
+                        // No entity_type parameter → shows both legal & operational
                         beforeSend: function() {
                             $('#table-loader').removeClass('d-none');
                         },
@@ -681,8 +678,6 @@
                         error: async function(xhr) {
                             $('#table-loader').addClass('d-none');
                             console.error('DataTable load failed:', xhr);
-
-                            // Professional error handling with SweetAlert2
                             if (xhr.status === 0) {
                                 await SwalPro.networkError();
                             } else {
@@ -693,45 +688,26 @@
                             }
                         }
                     },
-                    columns: [{
-                            data: 'Code',
-                            name: 'Code'
-                        },
-                        {
-                            data: 'Name',
-                            name: 'Name'
-                        },
-                        {
-                            data: 'Office',
-                            name: 'Office'
-                        },
-                        {
-                            data: 'OperationalEntityType',
-                            name: 'OperationalEntityType'
-                        },
-                        {
-                            data: 'LegalEntityType',
-                            name: 'LegalEntityType'
-                        },
+                    columns: [
+                        { data: 'Code', name: 'Code' },
+                        { data: 'Name', name: 'Name' },
+                        { data: 'Office', name: 'Office' },
+                        { data: 'OperationalEntityType', name: 'OperationalEntityType' },
+                        { data: 'LegalEntityType', name: 'LegalEntityType' },
                         {
                             data: 'Status',
                             name: 'Status',
                             render: function(data) {
                                 return data === 'Not Submitted' ? 'Not Submitted' :
-                                    data === 'Submitted' ? 'Submitted' :
-                                    data === 'PendingCountryLevelApproval' ?
-                                    'Pending Country Approval' :
-                                    data === 'PendingGroupLevelApproval' ?
-                                    'Pending Group Approval' :
-                                    data === 'Created' ? 'Created' :
-                                    data === 'Rejected' ? 'Rejected' :
-                                    data === 'Review' ? 'Review' : data;
+                                       data === 'Submitted' ? 'Submitted' :
+                                       data === 'PendingCountryLevelApproval' ? 'Pending Country Approval' :
+                                       data === 'PendingGroupLevelApproval' ? 'Pending Group Approval' :
+                                       data === 'Created' ? 'Created' :
+                                       data === 'Rejected' ? 'Rejected' :
+                                       data === 'Review' ? 'Review' : data;
                             }
                         },
-                        {
-                            data: 'CreatedBy',
-                            name: 'CreatedBy'
-                        },
+                        { data: 'CreatedBy', name: 'CreatedBy' },
                         {
                             data: 'Action',
                             name: 'Action',
@@ -747,9 +723,9 @@
                                             <i class="fas fa-times"></i>
                                         </a>
                                 `;
-                                if (row.Status === 'PendingCountryLevelApproval' || row
-                                    .Status === 'PendingGroupLevelApproval' || row.Status ===
-                                    'Submitted') {
+                                if (row.Status === 'PendingCountryLevelApproval' ||
+                                    row.Status === 'PendingGroupLevelApproval' ||
+                                    row.Status === 'Submitted') {
                                     actions += `
                                         <a href="/client-party/show/${row.Id}" class="btn btn-sm btn-success" title="Approve Request">
                                             <i class="fas fa-check"></i>
@@ -769,11 +745,11 @@
                     }
                 });
 
-                // Wait for DataTable to initialize before adding buttons
+                // ────────────────────────────────────────────────
+                // New Request Button – shows BOTH options (no tabs)
+                // ────────────────────────────────────────────────
                 clientPartyTable.on('init.dt', function() {
-                    // New Request Button with enhanced styling and proper alignment
                     if (window.user_raise_ticket === 'true') {
-                        // Check if wrapper exists
                         const $wrapper = $('#client-party-table_wrapper .row:first .col-md-6:last');
                         if ($wrapper.length) {
                             $wrapper.prepend(`
@@ -795,57 +771,44 @@
                     }
                 });
 
-                // Office Filter
+                // ────────────────────────────────────────────────
+                // Office Filter (your original logic)
+                // ────────────────────────────────────────────────
                 if (window.user_view_my_office === 'true') {
-                    searchOffice(window.office);
+                    clientPartyTable.column(2).search(window.office).draw();
                 }
 
-                // Enhanced Filter Buttons with loading feedback
+                // ────────────────────────────────────────────────
+                // Status Filter Handlers (your original logic)
+                // ────────────────────────────────────────────────
                 function createFilterHandler(status, statusName, isRegex = false) {
                     return async function(e) {
                         e.preventDefault();
-
-                        // Visual feedback
                         const $this = $(this);
                         $this.addClass('shadow-lg').find('.info-box').css('transform', 'scale(0.95)');
 
-                        searchTable(status, isRegex);
+                        clientPartyTable.column(5).search(status, isRegex, false, false).draw();
 
-                        // Show brief success feedback
                         setTimeout(() => {
-                            $this.removeClass('shadow-lg').find('.info-box').css('transform',
-                                '');
-                            SwalPro.success('Filter Applied', `Showing ${statusName} requests`,
-                                1500);
+                            $this.removeClass('shadow-lg').find('.info-box').css('transform', '');
+                            SwalPro.success('Filter Applied', `Showing ${statusName} requests`, 1500);
                         }, 300);
                     };
                 }
 
                 $('#notSubmitted').on('click', createFilterHandler('Not Submitted', 'Not Submitted'));
-                $('#pendingCountry').on('click', createFilterHandler('PendingCountryLevelApproval',
-                    'Pending Country Approval'));
-                $('#pendingGroup').on('click', createFilterHandler('PendingGroupLevelApproval',
-                    'Pending Group Approval'));
+                $('#pendingCountry').on('click', createFilterHandler('PendingCountryLevelApproval', 'Pending Country Approval'));
+                $('#pendingGroup').on('click', createFilterHandler('PendingGroupLevelApproval', 'Pending Group Approval'));
                 $('#submitted').on('click', createFilterHandler('Submitted', 'Submitted'));
                 $('#allPending').on('click', createFilterHandler(
-                    'PendingCountryLevelApproval|PendingGroupLevelApproval|Submitted', 'All Pending',
-                    true));
+                    'PendingCountryLevelApproval|PendingGroupLevelApproval|Submitted',
+                    'All Pending',
+                    true
+                ));
 
-                function searchTable(param, regex = false) {
-                    $('#table-loader').removeClass('d-none');
-                    clientPartyTable.column(5).search(param, regex, false, false).draw();
-                }
-
-                function searchOffice(param) {
-                    clientPartyTable.column(2).search(param, false, false, false).draw();
-                }
-
-                // Hide loader after draw
-                clientPartyTable.on('draw.dt', function() {
-                    $('#table-loader').addClass('d-none');
-                });
-
-                // Enhanced Rejection Modal Handlers
+                // ────────────────────────────────────────────────
+                // Rejection Modal & Handlers (your original logic)
+                // ────────────────────────────────────────────────
                 $('#client-party-table').on('click', 'a#deny', function() {
                     rejectEntity($(this).attr('code'));
                 });
@@ -856,7 +819,6 @@
                     $('#level, #reason').removeClass('is-invalid');
                 });
 
-                // Enhanced Submit Entity Handler with SweetAlert2
                 $('#submit-entity').on('click', async function() {
                     const $btn = $(this);
                     const $spinner = $btn.find('.spinner-border');
@@ -868,7 +830,6 @@
 
                     let isValid = true;
 
-                    // Enhanced validation with smooth animations
                     if (!formData.level) {
                         $('#level').addClass('is-invalid').focus();
                         isValid = false;
@@ -884,14 +845,10 @@
                     }
 
                     if (!isValid) {
-                        await SwalPro.warning(
-                            'Incomplete Information',
-                            'Please fill in all required fields before submitting the rejection.'
-                        );
+                        await SwalPro.warning('Incomplete Information', 'Please fill in all required fields.');
                         return;
                     }
 
-                    // Final confirmation with detailed info
                     const confirmResult = await SwalPro.confirm(
                         'Confirm Rejection',
                         `Are you sure you want to ${formData.level.toLowerCase()} this entity request?`,
@@ -901,49 +858,29 @@
 
                     if (!confirmResult.isConfirmed) return;
 
-                    // Show loading state
-                    SwalPro.loading('Processing Rejection',
-                        'Please wait while we process your rejection...');
+                    SwalPro.loading('Processing Rejection', 'Please wait...');
                     $spinner.removeClass('d-none');
                     $btn.prop('disabled', true);
 
                     try {
-                        const response = await $.ajax({
+                        await $.ajax({
                             url: '/client-party/reject',
                             type: 'POST',
                             data: formData
                         });
 
-                        // Success with specific messaging
                         await SwalPro.rejectionSuccess(formData.level);
                         $('#cancelModal').modal('hide');
-
-                        // Reload the page to refresh data and counts
-                        setTimeout(() => {
-                            location.reload();
-                        }, 1500);
+                        setTimeout(() => location.reload(), 1500);
 
                     } catch (xhr) {
-                        console.error('Rejection failed:', xhr.responseJSON?.message ||
-                            'Unknown error');
-
-                        // Enhanced error handling
+                        console.error('Rejection failed:', xhr);
                         if (xhr.status === 422) {
-                            await SwalPro.error(
-                                'Validation Error',
-                                'Please check your input and try again.'
-                            );
+                            await SwalPro.error('Validation Error', 'Please check your input.');
                         } else if (xhr.status === 403) {
-                            await SwalPro.error(
-                                'Permission Denied',
-                                'You do not have permission to reject this entity request.'
-                            );
+                            await SwalPro.error('Permission Denied', 'You do not have permission.');
                         } else {
-                            await SwalPro.error(
-                                'Rejection Failed',
-                                xhr.responseJSON?.message ||
-                                'An unexpected error occurred. Please try again.'
-                            );
+                            await SwalPro.error('Rejection Failed', xhr.responseJSON?.message || 'Unexpected error.');
                         }
                     } finally {
                         $spinner.addClass('d-none');
@@ -952,10 +889,8 @@
                     }
                 });
 
-                // Enhanced Reject Entity Function
                 async function rejectEntity(id) {
-                    // Show loading while checking entity
-                    SwalPro.loading('Verifying Entity', 'Checking entity permissions...');
+                    SwalPro.loading('Verifying Entity', 'Checking permissions...');
 
                     try {
                         const data = await $.ajax({
@@ -970,32 +905,29 @@
                             $('#entityID').val(id);
                         } else {
                             await SwalPro.warning(
-                                'Cannot Reject Entity',
-                                'Only legal entities can be rejected through this interface. Operational entities use a different workflow.'
+                                'Cannot Reject',
+                                'Only legal entities can be rejected here. Operational entities use a different process.'
                             );
                         }
                     } catch (xhr) {
                         Swal.close();
-                        console.error('Error fetching entity:', xhr);
-
                         if (xhr.status === 404) {
-                            await SwalPro.error(
-                                'Entity Not Found',
-                                'The requested entity could not be found. It may have been deleted or moved.'
-                            );
+                            await SwalPro.error('Not Found', 'Entity could not be found.');
                         } else {
-                            await SwalPro.error(
-                                'Verification Failed',
-                                'Unable to verify entity type. Please try again or contact support.'
-                            );
+                            await SwalPro.error('Verification Failed', 'Unable to verify entity.');
                         }
                     }
                 }
 
-                // Add enhanced tooltips to info boxes
+                // Loader after draw
+                clientPartyTable.on('draw.dt', function() {
+                    $('#table-loader').addClass('d-none');
+                });
+
+                // Tooltips
                 $('[data-toggle="tooltip"]').tooltip();
 
-                // Add pulse animation to active filters
+                // Pulse on active filter
                 $('.info-box-link').on('click', function() {
                     $('.info-box').removeClass('border border-primary');
                     $(this).find('.info-box').addClass('border border-primary');

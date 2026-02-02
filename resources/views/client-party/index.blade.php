@@ -3,14 +3,21 @@
 @section('title', 'Client Party Dashboard')
 
 @section('content_header')
-    <div class="d-flex justify-content-between align-items-center">
+    <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h1 class="m-0">Client Party Dashboard</h1>
-            <small class="text-muted">
-                <i class="fas fa-calendar-alt"></i>
-                Showing entity requests from last 3 months ({{ \Carbon\Carbon::now()->subMonths(3)->format('M d, Y') }} -
-                {{ \Carbon\Carbon::now()->format('M d, Y') }})
-            </small>
+            <h1 class="m-0 fw-bold text-dark" style="font-size: 2.6rem; letter-spacing: -0.5px;">
+                Client Party Dashboard
+            </h1>
+            <div class="mt-2 d-flex align-items-center gap-3 text-muted fs-5">
+                <i class="fas fa-calendar-alt fa-lg text-primary"></i>
+                <div>
+                    <span>Showing entity requests from the last 3 months</span>
+                    <div class="fw-bold text-dark mt-1" style="font-size: 1.35rem; letter-spacing: -0.3px;">
+                        {{ \Carbon\Carbon::now()->subMonths(3)->format('M d, Y') }} —
+                        {{ \Carbon\Carbon::now()->format('M d, Y') }}
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 @stop
@@ -20,160 +27,287 @@
 @section('content')
     <div class="container-fluid p-3">
         <!-- Date Range Info Alert -->
-        <div class="alert alert-info alert-dismissible fade show" role="alert">
+        {{-- <div class="alert alert-info alert-dismissible fade show" role="alert">
             <i class="fas fa-info-circle"></i>
             <strong>Data Scope:</strong> This dashboard displays entity requests created within the last 3 months only.
             Older records are not shown to improve performance and focus on recent activity.
             <button type="button" class="close" data-dismiss="alert" aria-label="Close">
                 <span aria-hidden="true">&times;</span>
             </button>
+        </div> --}}
+        <!-- Entity Type Tabs -->
+        <ul class="nav nav-tabs mb-4 shadow-sm" id="entityTypeTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active fw-bold px-4 py-3" id="operational-tab" data-bs-toggle="tab"
+                    data-type="operational" type="button" role="tab" aria-controls="operational" aria-selected="true">
+                    <i class="fas fa-cogs me-2"></i>Operational Entities (OET)
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link fw-bold px-4 py-3" id="legal-tab" data-bs-toggle="tab" data-type="legal"
+                    type="button" role="tab" aria-controls="legal" aria-selected="false">
+                    <i class="fas fa-balance-scale me-2"></i>Legal Entities (LET)
+                </button>
+            </li>
+        </ul>
+
+        <!-- Info Boxes - OPERATIONAL ENTITIES -->
+        <!-- Operational Entities Stats -->
+        <div class="entity-stats operational-stats">
+            <div class="row flex-nowrap pb-2" style="overflow-x: auto; gap: 12px;">
+
+                <!-- 1. Not Submitted -->
+                <div class="col-12 col-sm-6 col-md-4 col-lg-auto mb-3">
+                    <a href="#" id="notSubmitted" class="info-box-link" data-status="Not Submitted">
+                        <div class="info-box bg-gradient-secondary shadow-sm hover-scale">
+                            <span class="info-box-icon"><i class="fas fa-save"></i></span>
+                            <div class="info-box-content">
+                                <span class="info-box-text" data-short="Draft" data-full="Not Submitted">Draft</span>
+                                <span
+                                    class="info-box-number">{{ $clientParty->clientPartyCount('Status', 'Not Submitted', ['entity_type' => 'operational']) }}</span>
+                                <span class="info-box-description text-xs">Last 3 mo</span>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+
+                <!-- 2. Submitted -->
+                <div class="col-12 col-sm-6 col-md-4 col-lg-auto mb-3">
+                    <a href="#" id="submitted" class="info-box-link" data-status="Submitted">
+                        <div class="info-box bg-gradient-warning shadow-sm hover-scale">
+                            <span class="info-box-icon"><i class="fas fa-paper-plane"></i></span>
+                            <div class="info-box-content">
+                                <span class="info-box-text" data-short="Submitted" data-full="Submitted">Submitted</span>
+                                <span
+                                    class="info-box-number">{{ $clientParty->clientPartyCount('Status', 'Submitted', ['entity_type' => 'operational']) }}</span>
+                                <span class="info-box-description text-xs">Last 3 mo</span>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+
+                <!-- 3. Created -->
+                <div class="col-12 col-sm-6 col-md-4 col-lg-auto mb-3">
+                    <a href="#" id="created" class="info-box-link" data-status="Created">
+                        <div class="info-box bg-gradient-success shadow-sm hover-scale">
+                            <span class="info-box-icon"><i class="fas fa-check-circle"></i></span>
+                            <div class="info-box-content">
+                                <span class="info-box-text" data-short="Created" data-full="Created">Created</span>
+                                <span
+                                    class="info-box-number">{{ $clientParty->clientPartyCount('Status', 'Created', ['entity_type' => 'operational']) }}</span>
+                                <span class="info-box-description text-xs">Last 3 mo</span>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+
+                <!-- 4. Rejected -->
+                <div class="col-12 col-sm-6 col-md-4 col-lg-auto mb-3">
+                    <a href="#" id="rejected" class="info-box-link" data-status="Rejected">
+                        <div class="info-box bg-gradient-danger shadow-sm hover-scale">
+                            <span class="info-box-icon"><i class="fas fa-times-circle"></i></span>
+                            <div class="info-box-content">
+                                <span class="info-box-text" data-short="Rejected" data-full="Rejected">Rejected</span>
+                                <span
+                                    class="info-box-number">{{ $clientParty->clientPartyCount('Status', 'Rejected', ['entity_type' => 'operational']) }}</span>
+                                <span class="info-box-description text-xs">Last 3 mo</span>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+
+                <!-- 5. Review -->
+                <div class="col-12 col-sm-6 col-md-4 col-lg-auto mb-3">
+                    <a href="#" id="review" class="info-box-link" data-status="Review">
+                        <div class="info-box bg-gradient-info shadow-sm hover-scale">
+                            <span class="info-box-icon"><i class="fas fa-sync-alt"></i></span>
+                            <div class="info-box-content">
+                                <span class="info-box-text" data-short="Review" data-full="Review">Review</span>
+                                <span
+                                    class="info-box-number">{{ $clientParty->clientPartyCount('Status', 'Review', ['entity_type' => 'operational']) }}</span>
+                                <span class="info-box-description text-xs">Last 3 mo</span>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+
+                <!-- 6. Total -->
+                <div class="col-12 col-sm-6 col-md-4 col-lg-auto mb-3">
+                    <a href="#" id="allEntityRequests" class="info-box-link" data-status="">
+                        <div class="info-box bg-gradient-dark shadow-sm hover-scale">
+                            <span class="info-box-icon"><i class="fas fa-list"></i></span>
+                            <div class="info-box-content">
+                                <span class="info-box-text" data-short="All" data-full="All Requests">All</span>
+                                <span
+                                    class="info-box-number">{{ $clientParty->clientPartyCount('Status', '*', ['entity_type' => 'operational']) }}</span>
+                                <span class="info-box-description text-xs">Last 3 mo</span>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+
+            </div>
         </div>
 
-        <!-- Info Boxes -->
-        <div class="row">
-            {{-- 1. Not Submitted --}}
-            <div class="col-12 col-sm-6 col-md-4 col-lg-auto mb-3">
-                <a href="#" id="notSubmitted" class="info-box-link">
-                    <div class="info-box bg-gradient-secondary shadow-sm hover-scale">
-                        <span class="info-box-icon"><i class="fas fa-save"></i></span>
-                        <div class="info-box-content">
-                            <span class="info-box-text" data-short="Draft" data-full="Not Submitted">Draft</span>
-                            <span class="info-box-number">
-                                {{ $clientParty->clientPartyCount('Status', 'Not Submitted') }}
-                            </span>
-                            <span class="info-box-description text-xs">Last 3 mo</span>
-                        </div>
-                    </div>
-                </a>
-            </div>
+        <!-- Info Boxes - LEGAL ENTITIES -->
+        <div class="entity-stats legal-stats d-none">
+            <div class="row flex-nowrap pb-2" style="overflow-x: auto; gap: 12px;">
 
-            {{-- 2. Country Approval --}}
-            <div class="col-12 col-sm-6 col-md-4 col-lg-auto mb-3">
-                <a href="#" id="pendingCountry" class="info-box-link">
-                    <div class="info-box bg-gradient-primary shadow-sm hover-scale">
-                        <span class="info-box-icon"><i class="fas fa-hourglass-half"></i></span>
-                        <div class="info-box-content">
-                            <span class="info-box-text" data-short="Country" data-full="Country Approval">Country</span>
-                            <span class="info-box-number">
-                                {{ $clientParty->clientPartyCount('Status', 'PendingCountryLevelApproval') }}
-                            </span>
-                            <span class="info-box-description text-xs">Last 3 mo</span>
+                {{-- 1. Not Submitted --}}
+                <div class="col-12 col-sm-6 col-md-4 col-lg-auto mb-3">
+                    <a href="#" id="notSubmittedLegal" class="info-box-link">
+                        <div class="info-box bg-gradient-secondary shadow-sm hover-scale">
+                            <span class="info-box-icon"><i class="fas fa-save"></i></span>
+                            <div class="info-box-content">
+                                <span class="info-box-text" data-short="Draft" data-full="Not Submitted">Draft</span>
+                                <span class="info-box-number">
+                                    {{ $clientParty->clientPartyCount('Status', 'Not Submitted', ['entity_type' => 'legal']) }}
+                                    {{-- TODO: change to → 'Not Submitted', 'legal') --}}
+                                </span>
+                                <span class="info-box-description text-xs">Last 3 mo</span>
+                            </div>
                         </div>
-                    </div>
-                </a>
-            </div>
+                    </a>
+                </div>
 
-            {{-- 3. Group Approval --}}
-            <div class="col-12 col-sm-6 col-md-4 col-lg-auto mb-3">
-                <a href="#" id="pendingGroup" class="info-box-link">
-                    <div class="info-box bg-gradient-info shadow-sm hover-scale">
-                        <span class="info-box-icon"><i class="fas fa-hourglass-half"></i></span>
-                        <div class="info-box-content">
-                            <span class="info-box-text" data-short="Group" data-full="Group Approval">Group</span>
-                            <span class="info-box-number">
-                                {{ $clientParty->clientPartyCount('Status', 'PendingGroupLevelApproval') }}
-                            </span>
-                            <span class="info-box-description text-xs">Last 3 mo</span>
+                {{-- 2. Country Approval --}}
+                <div class="col-12 col-sm-6 col-md-4 col-lg-auto mb-3">
+                    <a href="#" id="pendingCountryLegal" class="info-box-link">
+                        <div class="info-box bg-gradient-primary shadow-sm hover-scale">
+                            <span class="info-box-icon"><i class="fas fa-hourglass-half"></i></span>
+                            <div class="info-box-content">
+                                <span class="info-box-text" data-short="Country"
+                                    data-full="Country Approval">Country</span>
+                                <span class="info-box-number">
+                                    {{ $clientParty->clientPartyCount('Status', 'PendingCountryLevelApproval', ['entity_type' => 'legal']) }}
+                                    {{-- TODO: change to → 'PendingCountryLevelApproval', 'legal') --}}
+                                </span>
+                                <span class="info-box-description text-xs">Last 3 mo</span>
+                            </div>
                         </div>
-                    </div>
-                </a>
-            </div>
+                    </a>
+                </div>
 
-            {{-- 4. Submitted --}}
-            <div class="col-12 col-sm-6 col-md-4 col-lg-auto mb-3">
-                <a href="#" id="submitted" class="info-box-link">
-                    <div class="info-box bg-gradient-warning shadow-sm hover-scale">
-                        <span class="info-box-icon"><i class="fas fa-paper-plane"></i></span>
-                        <div class="info-box-content">
-                            <span class="info-box-text" data-short="Submitted" data-full="Submitted">Submitted</span>
-                            <span class="info-box-number">
-                                {{ $clientParty->clientPartyCount('Status', 'Submitted') }}
-                            </span>
-                            <span class="info-box-description text-xs">Last 3 mo</span>
+                {{-- 3. Group Approval --}}
+                <div class="col-12 col-sm-6 col-md-4 col-lg-auto mb-3">
+                    <a href="#" id="pendingGroupLegal" class="info-box-link">
+                        <div class="info-box bg-gradient-info shadow-sm hover-scale">
+                            <span class="info-box-icon"><i class="fas fa-hourglass-half"></i></span>
+                            <div class="info-box-content">
+                                <span class="info-box-text" data-short="Group" data-full="Group Approval">Group</span>
+                                <span class="info-box-number">
+                                    {{ $clientParty->clientPartyCount('Status', 'PendingGroupLevelApproval', ['entity_type' => 'legal']) }}
+                                    {{-- TODO: change to → 'PendingGroupLevelApproval', 'legal') --}}
+                                </span>
+                                <span class="info-box-description text-xs">Last 3 mo</span>
+                            </div>
                         </div>
-                    </div>
-                </a>
-            </div>
+                    </a>
+                </div>
 
-            {{-- 5. Pending IT Verification --}}
-            <div class="col-12 col-sm-6 col-md-4 col-lg-auto mb-3">
-                <a href="#" id="pendingITVerification" class="info-box-link">
-                    <div class="info-box bg-gradient-purple shadow-sm hover-scale">
-                        <span class="info-box-icon"><i class="fas fa-laptop-code"></i></span>
-                        <div class="info-box-content">
-                            <span class="info-box-text" data-short="IT Verify" data-full="Pending IT Verification">IT
-                                Verify</span>
-                            <span class="info-box-number">
-                                {{ $clientParty->clientPartyCount('Status', 'PendingITVerification') }}
-                            </span>
-                            <span class="info-box-description text-xs">Last 3 mo</span>
+                {{-- 4. Submitted --}}
+                <div class="col-12 col-sm-6 col-md-4 col-lg-auto mb-3">
+                    <a href="#" id="submittedLegal" class="info-box-link">
+                        <div class="info-box bg-gradient-warning shadow-sm hover-scale">
+                            <span class="info-box-icon"><i class="fas fa-paper-plane"></i></span>
+                            <div class="info-box-content">
+                                <span class="info-box-text" data-short="Submitted" data-full="Submitted">Submitted</span>
+                                <span class="info-box-number">
+                                    {{ $clientParty->clientPartyCount('Status', 'Submitted', ['entity_type' => 'legal']) }}
+                                    {{-- TODO: change to → 'Submitted', 'legal') --}}
+                                </span>
+                                <span class="info-box-description text-xs">Last 3 mo</span>
+                            </div>
                         </div>
-                    </div>
-                </a>
-            </div>
+                    </a>
+                </div>
 
-            {{-- 6. Created --}}
-            <div class="col-12 col-sm-6 col-md-4 col-lg-auto mb-3">
-                <a href="#" id="created" class="info-box-link">
-                    <div class="info-box bg-gradient-success shadow-sm hover-scale">
-                        <span class="info-box-icon"><i class="fas fa-check-circle"></i></span>
-                        <div class="info-box-content">
-                            <span class="info-box-text" data-short="Created" data-full="Created">Created</span>
-                            <span class="info-box-number">
-                                {{ $clientParty->clientPartyCount('Status', 'Created') }}
-                            </span>
-                            <span class="info-box-description text-xs">Last 3 mo</span>
+                {{-- 5. Pending IT Verification --}}
+                <div class="col-12 col-sm-6 col-md-4 col-lg-auto mb-3">
+                    <a href="#" id="pendingITVerificationLegal" class="info-box-link">
+                        <div class="info-box bg-gradient-purple shadow-sm hover-scale">
+                            <span class="info-box-icon"><i class="fas fa-laptop-code"></i></span>
+                            <div class="info-box-content">
+                                <span class="info-box-text" data-short="IT Verify" data-full="Pending IT Verification">IT
+                                    Verify</span>
+                                <span class="info-box-number">
+                                    {{ $clientParty->clientPartyCount('Status', 'PendingITVerification', ['entity_type' => 'legal']) }}
+                                    {{-- TODO: change to → 'PendingITVerification', 'legal') --}}
+                                </span>
+                                <span class="info-box-description text-xs">Last 3 mo</span>
+                            </div>
                         </div>
-                    </div>
-                </a>
-            </div>
+                    </a>
+                </div>
 
-            {{-- 7. Rejected --}}
-            <div class="col-12 col-sm-6 col-md-4 col-lg-auto mb-3">
-                <a href="#" id="rejected" class="info-box-link">
-                    <div class="info-box bg-gradient-danger shadow-sm hover-scale">
-                        <span class="info-box-icon"><i class="fas fa-times-circle"></i></span>
-                        <div class="info-box-content">
-                            <span class="info-box-text" data-short="Rejected" data-full="Rejected">Rejected</span>
-                            <span class="info-box-number">
-                                {{ $clientParty->clientPartyCount('Status', 'Rejected') }}
-                            </span>
-                            <span class="info-box-description text-xs">Last 3 mo</span>
+                {{-- 6. Created --}}
+                <div class="col-12 col-sm-6 col-md-4 col-lg-auto mb-3">
+                    <a href="#" id="createdLegal" class="info-box-link">
+                        <div class="info-box bg-gradient-success shadow-sm hover-scale">
+                            <span class="info-box-icon"><i class="fas fa-check-circle"></i></span>
+                            <div class="info-box-content">
+                                <span class="info-box-text" data-short="Created" data-full="Created">Created</span>
+                                <span class="info-box-number">
+                                    {{ $clientParty->clientPartyCount('Status', 'Created', ['entity_type' => 'legal']) }}
+                                    {{-- TODO: change to → 'Created', 'legal') --}}
+                                </span>
+                                <span class="info-box-description text-xs">Last 3 mo</span>
+                            </div>
                         </div>
-                    </div>
-                </a>
-            </div>
+                    </a>
+                </div>
 
-            {{-- 8. Review --}}
-            <div class="col-12 col-sm-6 col-md-4 col-lg-auto mb-3">
-                <a href="#" id="review" class="info-box-link">
-                    <div class="info-box bg-gradient-info shadow-sm hover-scale">
-                        <span class="info-box-icon"><i class="fas fa-sync-alt"></i></span>
-                        <div class="info-box-content">
-                            <span class="info-box-text" data-short="Review" data-full="Review">Review</span>
-                            <span class="info-box-number">
-                                {{ $clientParty->clientPartyCount('Status', 'Review') }}
-                            </span>
-                            <span class="info-box-description text-xs">Last 3 mo</span>
+                {{-- 7. Rejected --}}
+                <div class="col-12 col-sm-6 col-md-4 col-lg-auto mb-3">
+                    <a href="#" id="rejectedLegal" class="info-box-link">
+                        <div class="info-box bg-gradient-danger shadow-sm hover-scale">
+                            <span class="info-box-icon"><i class="fas fa-times-circle"></i></span>
+                            <div class="info-box-content">
+                                <span class="info-box-text" data-short="Rejected" data-full="Rejected">Rejected</span>
+                                <span class="info-box-number">
+                                    {{ $clientParty->clientPartyCount('Status', 'Rejected', ['entity_type' => 'legal']) }}
+                                    {{-- TODO: change to → 'Rejected', 'legal') --}}
+                                </span>
+                                <span class="info-box-description text-xs">Last 3 mo</span>
+                            </div>
                         </div>
-                    </div>
-                </a>
-            </div>
+                    </a>
+                </div>
 
-            {{-- 9. All Requests --}}
-            <div class="col-12 col-sm-6 col-md-4 col-lg-auto mb-3">
-                <a href="#" id="allEntityRequests" class="info-box-link">
-                    <div class="info-box bg-gradient-dark shadow-sm hover-scale">
-                        <span class="info-box-icon"><i class="fas fa-list"></i></span>
-                        <div class="info-box-content">
-                            <span class="info-box-text" data-short="All" data-full="All Requests">All</span>
-                            <span class="info-box-number">
-                                {{ $clientParty->clientPartyCount('Status', '*') }}
-                            </span>
-                            <span class="info-box-description text-xs">Last 3 mo</span>
+                {{-- 8. Review --}}
+                <div class="col-12 col-sm-6 col-md-4 col-lg-auto mb-3">
+                    <a href="#" id="reviewLegal" class="info-box-link">
+                        <div class="info-box bg-gradient-info shadow-sm hover-scale">
+                            <span class="info-box-icon"><i class="fas fa-sync-alt"></i></span>
+                            <div class="info-box-content">
+                                <span class="info-box-text" data-short="Review" data-full="Review">Review</span>
+                                <span class="info-box-number">
+                                    {{ $clientParty->clientPartyCount('Status', 'Review', ['entity_type' => 'legal']) }}
+                                    {{-- TODO: change to → 'Review', 'legal') --}}
+                                </span>
+                                <span class="info-box-description text-xs">Last 3 mo</span>
+                            </div>
                         </div>
-                    </div>
-                </a>
+                    </a>
+                </div>
+
+                {{-- 9. All Requests --}}
+                <div class="col-12 col-sm-6 col-md-4 col-lg-auto mb-3">
+                    <a href="#" id="allEntityRequestsLegal" class="info-box-link">
+                        <div class="info-box bg-gradient-dark shadow-sm hover-scale">
+                            <span class="info-box-icon"><i class="fas fa-list"></i></span>
+                            <div class="info-box-content">
+                                <span class="info-box-text" data-short="All" data-full="All Requests">All</span>
+                                <span class="info-box-number">
+                                    {{ $clientParty->clientPartyCount('Status', '*', ['entity_type' => 'legal']) }}
+                                    {{-- TODO: change to → '*', 'legal') --}}
+                                </span>
+                                <span class="info-box-description text-xs">Last 3 mo</span>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+
             </div>
         </div>
 
@@ -312,6 +446,178 @@
             font-family: 'Roboto', Arial, sans-serif !important;
         }
 
+        /* ════════════════════════════════════════════════════════════
+               ULTRA-PROMINENT TAB STYLING - DRAMATIC VERSION
+               ════════════════════════════════════════════════════════════ */
+        #entityTypeTabs {
+            background: #ffffff;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+            border-radius: 15px;
+            padding: 1.25rem;
+            margin-bottom: 2.5rem;
+            border: none;
+        }
+
+        #entityTypeTabs .nav-item {
+            margin-right: 1rem;
+        }
+
+        #entityTypeTabs .nav-link {
+            font-size: 1.35rem;
+            font-weight: 700;
+            padding: 1.5rem 3rem !important;
+            border-radius: 12px;
+            margin: 0;
+            border: 3px solid transparent;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            color: #6c757d;
+            position: relative;
+            background: #f8f9fa;
+        }
+
+        #entityTypeTabs .nav-link:hover {
+            background: linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%);
+            color: #495057;
+            transform: translateY(-4px);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+            border-color: #adb5bd;
+        }
+
+        #entityTypeTabs .nav-link.active {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: #ffffff !important;
+            border-color: #4facfe;
+            box-shadow: 0 10px 30px rgba(79, 172, 254, 0.5);
+            transform: translateY(-6px) scale(1.05);
+        }
+
+        #entityTypeTabs .nav-link.active::before {
+            content: '';
+            position: absolute;
+            top: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 60%;
+            height: 4px;
+            background: linear-gradient(90deg, transparent, #00f2fe, transparent);
+            border-radius: 2px;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        #entityTypeTabs .nav-link.active::after {
+            content: '';
+            position: absolute;
+            bottom: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80%;
+            height: 4px;
+            background: linear-gradient(90deg, transparent, #4facfe, transparent);
+            border-radius: 2px;
+        }
+
+        #entityTypeTabs .nav-link i {
+            font-size: 1.6rem;
+            vertical-align: middle;
+            margin-right: 0.5rem;
+            transition: transform 0.3s ease;
+        }
+
+        #entityTypeTabs .nav-link:hover i {
+            transform: rotate(15deg) scale(1.15);
+        }
+
+        #entityTypeTabs .nav-link.active i {
+            animation: iconBounce 0.6s ease;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 0.6;
+            }
+
+            50% {
+                opacity: 1;
+            }
+        }
+
+        @keyframes iconBounce {
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-5px);
+            }
+        }
+
+        /* Add subtle animation on tab switch */
+        @keyframes tabSlide {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .entity-stats {
+            animation: tabSlide 0.4s ease;
+        }
+
+        /* Responsive Tab Adjustments */
+        @media (max-width: 768px) {
+            #entityTypeTabs {
+                padding: 0.75rem;
+                margin-bottom: 1.5rem;
+            }
+
+            #entityTypeTabs .nav-item {
+                margin-right: 0.5rem;
+                margin-bottom: 0.5rem;
+            }
+
+            #entityTypeTabs .nav-link {
+                font-size: 1rem;
+                padding: 1rem 1.5rem !important;
+                letter-spacing: 0.5px;
+            }
+
+            #entityTypeTabs .nav-link i {
+                font-size: 1.2rem;
+            }
+
+            #entityTypeTabs .nav-link.active {
+                transform: translateY(-3px) scale(1.02);
+            }
+        }
+
+        @media (max-width: 576px) {
+            #entityTypeTabs .nav-item {
+                flex: 1 1 100%;
+                margin-right: 0;
+            }
+
+            #entityTypeTabs .nav-link {
+                font-size: 0.95rem;
+                padding: 0.85rem 1.25rem !important;
+                text-align: center;
+            }
+        }
+
+        /* ════════════════════════════════════════════════════════════
+               END TAB STYLING
+               ════════════════════════════════════════════════════════════ */
+
         /* Enhanced Info Box Styling with Hover Expansion */
         .info-box {
             transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
@@ -333,142 +639,193 @@
             color: inherit;
         }
 
-  /* Base styles for cards in a row */
-    @media (min-width: 992px) {
-    .row {
-        display: flex;
-        flex-wrap: nowrap;
-        gap: 8px;
-        margin-bottom: 1.5rem;
-        align-items: stretch;
-    }
+        /* ────────────────────────────────────────────────
+                   Row & card layout – restored original hover behavior
+                ──────────────────────────────────────────────── */
+        .entity-stats .row {
+            display: flex;
+            flex-wrap: nowrap;
+            /* no wrap → cards stay in one line */
+            gap: 8px;
+            margin-bottom: 1.5rem;
+            align-items: stretch;
+            overflow-x: hidden;
+            /* no scrollbar unless extremely narrow */
+        }
 
-    .row > [class*='col-lg-'] {
-        flex: 0 0 calc(11.11% - 8px);
-        max-width: calc(11.11% - 8px);
-        transition: flex 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+        @media (min-width: 992px) {
+            .entity-stats .row>div[class*="col-"] {
+                flex: 0 0 calc(11.11% - 8px);
+                /* ~9 cards fit perfectly */
+                max-width: calc(11.11% - 8px);
+                transition: flex 0.4s cubic-bezier(0.4, 0, 0.2, 1),
                     max-width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    }
+            }
 
-    /* When hovering over the row, shrink all cards slightly */
-    .row:hover > [class*='col-lg-'] {
-        flex: 0 0 calc(10.5% - 8px);
-        max-width: calc(10.5% - 8px);
-    }
+            /* When hovering over the row → shrink all cards slightly */
+            .entity-stats .row:hover>div[class*="col-"] {
+                flex: 0 0 calc(10.5% - 8px);
+                max-width: calc(10.5% - 8px);
+            }
 
-    /* Then expand the hovered card */
-    .row > [class*='col-lg-']:hover {
-        flex: 0 0 calc(16% - 8px) !important;
-        max-width: calc(16% - 8px) !important;
-        z-index: 10;
-    }
+            /* Expand only the hovered card */
+            .entity-stats .row>div[class*="col-"]:hover {
+                flex: 0 0 calc(16% - 8px) !important;
+                max-width: calc(16% - 8px) !important;
+                z-index: 10;
+            }
 
-    .info-box {
-        height: 95px;
-        display: flex;
-        align-items: center;
-        position: relative;
-    }
+            /* For operational tab (only 6 cards) – prevent excessive stretching */
+            .operational-stats .row>div[class*="col-"] {
+                flex: 0 0 calc(16.66% - 8px);
+                /* ~6 cards base size */
+                max-width: calc(16.66% - 8px);
+            }
 
-    .info-box:hover {
-        transform: scale(1.02);
-        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15), 0 10px 20px rgba(0, 0, 0, 0.1) !important;
-    }
+            .operational-stats .row:hover>div[class*="col-"] {
+                flex: 0 0 calc(15% - 8px);
+                max-width: calc(15% - 8px);
+            }
 
-    .info-box-content {
-        padding: 8px 6px;
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        overflow: hidden;
-    }
+            .operational-stats .row>div[class*="col-"]:hover {
+                flex: 0 0 calc(25% - 8px) !important;
+                max-width: calc(25% - 8px) !important;
+            }
 
-    .info-box-text {
-        font-size: 0.7rem;
-        line-height: 1.2;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.3px;
-        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
+            .info-box {
+                height: 95px;
+                display: flex;
+                align-items: center;
+                position: relative;
+            }
 
-    /* Show full text on hover */
-    .info-box:hover .info-box-text {
-        font-size: 0.75rem;
-        white-space: normal;
-        word-break: break-word;
-    }
+            .info-box:hover {
+                transform: scale(1.02);
+                box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15), 0 10px 20px rgba(0, 0, 0, 0.1) !important;
+            }
 
-    .info-box-number {
-        font-size: 1.6rem;
-        margin: 4px 0;
-        font-weight: 700;
-        line-height: 1;
-        transition: all 0.3s ease;
-    }
+            .info-box-content {
+                padding: 8px 6px;
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                overflow: hidden;
+            }
 
-    .info-box:hover .info-box-number {
-        font-size: 1.75rem;
-    }
+            .info-box-text {
+                font-size: 0.7rem;
+                line-height: 1.2;
+                font-weight: 600;
+                text-transform: uppercase;
+                letter-spacing: 0.3px;
+                transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
 
-    .info-box-description {
-        font-size: 0.6rem;
-        opacity: 0.9;
-        font-style: italic;
-        white-space: nowrap;
-        transition: all 0.3s ease;
-    }
+            .info-box:hover .info-box-text {
+                font-size: 0.75rem;
+                white-space: normal;
+                word-break: break-word;
+            }
 
-    .info-box:hover .info-box-description {
-        font-size: 0.65rem;
-        opacity: 1;
-    }
+            .info-box-number {
+                font-size: 1.6rem;
+                margin: 4px 0;
+                font-weight: 700;
+                line-height: 1;
+                transition: all 0.3s ease;
+            }
 
-    .info-box-icon {
-        width: 45px;
-        font-size: 1.4rem;
-        flex-shrink: 0;
-        transition: all 0.3s ease;
-    }
+            .info-box:hover .info-box-number {
+                font-size: 1.75rem;
+            }
 
-    .info-box:hover .info-box-icon {
-        font-size: 1.5rem;
-        width: 48px;
-    }
-    }
+            .info-box-description {
+                font-size: 0.6rem;
+                opacity: 0.9;
+                font-style: italic;
+                white-space: nowrap;
+                transition: all 0.3s ease;
+            }
 
-/* Extra large screens */
-    @media (min-width: 1400px) {
-    .row:hover > [class*='col-lg-'] {
-        flex: 0 0 calc(10.2% - 8px);
-        max-width: calc(10.2% - 8px);
-    }
+            .info-box:hover .info-box-description {
+                font-size: 0.65rem;
+                opacity: 1;
+            }
 
-    .row > [class*='col-lg-']:hover {
-        flex: 0 0 calc(18% - 8px) !important;
-        max-width: calc(18% - 8px) !important;
-    }
+            .info-box-icon {
+                width: 45px;
+                font-size: 1.4rem;
+                flex-shrink: 0;
+                transition: all 0.3s ease;
+            }
 
-    .info-box-text {
-        font-size: 0.75rem;
-    }
+            .info-box:hover .info-box-icon {
+                font-size: 1.5rem;
+                width: 48px;
+            }
+        }
 
-    .info-box:hover .info-box-text {
-        font-size: 0.8rem;
-    }
+        /* Extra large screens – slightly larger hover expansion */
+        @media (min-width: 1400px) {
+            .entity-stats .row:hover>div[class*="col-"] {
+                flex: 0 0 calc(10.2% - 8px);
+                max-width: calc(10.2% - 8px);
+            }
 
-    .info-box-number {
-        font-size: 1.7rem;
-    }
+            .entity-stats .row>div[class*="col-"]:hover {
+                flex: 0 0 calc(18% - 8px) !important;
+                max-width: calc(18% - 8px) !important;
+            }
 
-    .info-box:hover .info-box-number {
-        font-size: 1.85rem;
-    }
-}     /* Enhanced DataTable Styling */
+            .operational-stats .row:hover>div[class*="col-"] {
+                flex: 0 0 calc(14% - 8px);
+                max-width: calc(14% - 8px);
+            }
+
+            .operational-stats .row>div[class*="col-"]:hover {
+                flex: 0 0 calc(28% - 8px) !important;
+                max-width: calc(28% - 8px) !important;
+            }
+
+            .info-box-text {
+                font-size: 0.75rem;
+            }
+
+            .info-box:hover .info-box-text {
+                font-size: 0.8rem;
+            }
+
+            .info-box-number {
+                font-size: 1.7rem;
+            }
+
+            .info-box:hover .info-box-number {
+                font-size: 1.85rem;
+            }
+        }
+
+        /* ────────────────────────────────────────────────
+                   Fallback for narrow screens – allow wrapping
+                ──────────────────────────────────────────────── */
+        @media (max-width: 1199px) {
+            .entity-stats .row {
+                flex-wrap: wrap;
+                /* cards wrap instead of scrolling */
+                justify-content: center;
+            }
+
+            .entity-stats .row>div[class*="col-"] {
+                flex: 1 1 45%;
+                max-width: 48%;
+                min-width: 45%;
+            }
+        }
+
+        /* Enhanced DataTable Styling */
         #client-party-table {
             font-size: 0.9rem;
             font-weight: 400;
@@ -630,6 +987,76 @@
 
             .dataTables_wrapper .dataTables_filter input {
                 width: 180px;
+            }
+        }
+
+        /* DataTable Header Layout - Search Left, New Request Right */
+        #client-party-table_wrapper .dataTables_filter {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            margin-bottom: 0 !important;
+        }
+
+        #client-party-table_wrapper .dataTables_filter label {
+            margin-bottom: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            order: 1;
+        }
+
+        #client-party-table_wrapper .dataTables_filter .dynamic-new-request {
+            order: 2;
+            margin-right: 0 !important;
+            margin-left: auto;
+        }
+
+        #client-party-table_wrapper .dataTables_filter small.text-muted {
+            order: 3;
+            margin-left: 0.5rem;
+        }
+
+        /* Adjust the top DataTable controls row */
+        #client-party-table_wrapper .d-flex.justify-content-between.align-items-center.mb-3 {
+            flex-wrap: wrap;
+        }
+
+        #client-party-table_wrapper .dataTables_length {
+            margin-right: auto;
+        }
+
+        #client-party-table_wrapper .dt-buttons {
+            margin-left: auto;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            #client-party-table_wrapper .dataTables_filter {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 10px;
+            }
+
+            #client-party-table_wrapper .dataTables_filter label {
+                order: 1;
+                width: 100%;
+            }
+
+            #client-party-table_wrapper .dataTables_filter .dynamic-new-request {
+                order: 2;
+                margin-left: 0;
+                width: 100%;
+            }
+
+            #client-party-table_wrapper .dataTables_filter .dynamic-new-request button {
+                width: 100%;
+            }
+
+            #client-party-table_wrapper .dataTables_filter small.text-muted {
+                order: 3;
+                text-align: center;
             }
         }
     </style>
@@ -804,6 +1231,11 @@
                 ],
                 ajax: {
                     url: '{!! route('datatables.allEntityRequests') !!}',
+                    data: function(d) {
+                        // Send current tab's entity type to backend
+                        d.entity_type = $('#entityTypeTabs .nav-link.active').data('type') ||
+                            'operational';
+                    },
                     beforeSend: function() {
                         $('#table-loader').removeClass('d-none');
                     },
@@ -814,7 +1246,6 @@
                         $('#table-loader').addClass('d-none');
                         console.error('DataTable load failed:', xhr);
 
-                        // 🎯 Professional error handling with SweetAlert2
                         if (xhr.status === 0) {
                             await SwalPro.networkError();
                         } else {
@@ -882,79 +1313,94 @@
                 }
             });
 
-            // Add note about 3-month filter to the search area
-            $('#client-party-table_filter').append(
-                '<small class="text-muted ml-2"><i class="fas fa-info-circle"></i> Showing last 3 months only</small>'
-            );
+            // // Add note about 3-month filter to the search area
+            // $('#client-party-table_filter').append(
+            //     '<small class="text-muted"><i class="fas fa-info-circle"></i> Last 3 months</small>'
+            // );
 
-            // New Request Button with enhanced styling
-            if ({{ Auth::user()->can('request-client-party') ? 'true' : 'false' }}) {
-                $('#client-party-table_filter').prepend(`
-                    <div class="btn-group mr-3">
+            // ────────────────────────────────────────────────
+            // TAB SWITCHING + DYNAMIC NEW REQUEST BUTTON
+            // ────────────────────────────────────────────────
+            $('#entityTypeTabs button[data-bs-toggle="tab"]').on('shown.bs.tab', function(e) {
+                const type = $(this).data('type') || 'operational';
+
+                // Show correct stats block
+                $('.entity-stats').addClass('d-none');
+                $(`.entity-stats.${type}-stats`).removeClass('d-none');
+
+                // Reset any active status highlight
+                $('.info-box').removeClass('active-filter border border-primary');
+
+                // Reset status column search
+                clientPartyTable.column(5).search('').draw(false);
+
+                // Reload table → backend will now filter by entity_type
+                clientPartyTable.ajax.reload(null, false);
+
+                // Update New Request dropdown
+                const $filter = $('#client-party-table_filter');
+                $filter.find('.btn-group.dynamic-new-request').remove();
+
+                let dropdownItem = '';
+                if (type === 'operational') {
+                    dropdownItem = `
+                        <li><a class="dropdown-item" href="/client-party/create?type=operational">
+                            <i class="fas fa-cogs mr-2 text-primary"></i>Operational Entity
+                        </a></li>
+                    `;
+                } else {
+                    dropdownItem = `
+                        <li><a class="dropdown-item" href="/client-party/create?type=accounting">
+                            <i class="fas fa-calculator mr-2 text-success"></i>Accounting Entity
+                        </a></li>
+                    `;
+                }
+
+                const dropdownHtml = `
+                    <div class="btn-group mr-3 dynamic-new-request">
                         <button type="button" class="btn btn-primary btn-sm dropdown-toggle shadow-sm" data-toggle="dropdown">
                             <i class="fas fa-plus mr-1"></i> New Request
                         </button>
                         <ul class="dropdown-menu shadow">
-                            <li><a class="dropdown-item" href="/client-party/create?type=operational">
-                                <i class="fas fa-cogs mr-2 text-primary"></i>Operational Entity
-                            </a></li>
-                            <li><a class="dropdown-item" href="/client-party/create?type=accounting">
-                                <i class="fas fa-calculator mr-2 text-success"></i>Accounting Entity
-                            </a></li>
+                            ${dropdownItem}
                         </ul>
                     </div>
-                `);
-            }
+                `;
 
-            // Enhanced Filter Buttons with loading feedback
-            function createFilterHandler(status, statusName) {
-                return async function(e) {
-                    e.preventDefault();
+                $filter.append(dropdownHtml);
 
-                    // Visual feedback
-                    const $this = $(this);
-                    const originalHtml = $this.html();
-                    $this.addClass('shadow-lg').find('.info-box').css('transform', 'scale(0.95)');
+                SwalPro.success('View Switched',
+                    `Now showing ${type === 'operational' ? 'Operational' : 'Legal/Accounting'} Entities`,
+                    1500);
+            });
 
-                    searchTable(status);
+            // ────────────────────────────────────────────────
+            // Status filter clicks (delegated + visibility-aware)
+            // ────────────────────────────────────────────────
+            $(document).on('click', '.entity-stats:visible .info-box-link', function(e) {
+                e.preventDefault();
+                const $this = $(this);
+                const status = $this.data('status') || '';
 
-                    // Show brief success feedback
-                    setTimeout(() => {
-                        $this.removeClass('shadow-lg').find('.info-box').css('transform', '');
-                        if (status === '') {
-                            SwalPro.success('Filter Applied', 'Showing all entity requests', 1500);
-                        } else {
-                            SwalPro.success('Filter Applied', `Showing ${statusName} requests`,
-                                1500);
-                        }
-                    }, 300);
-                };
-            }
+                // Visual feedback
+                $('.info-box').removeClass('active-filter border border-primary');
+                $this.find('.info-box').addClass('active-filter border border-primary');
 
-            $('#notSubmitted').on('click', createFilterHandler('Not Submitted', 'Not Submitted'));
-            $('#pendingCountry').on('click', createFilterHandler('PendingCountryLevelApproval',
-                'Pending Country Approval'));
-            $('#pendingGroup').on('click', createFilterHandler('PendingGroupLevelApproval',
-                'Pending Group Approval'));
-            $('#submitted').on('click', createFilterHandler('Submitted', 'Submitted'));
-            $('#pendingITVerification').on('click', createFilterHandler('PendingITVerification',
-                'Pending IT Verification')); // ← ADD THIS
-            $('#created').on('click', createFilterHandler('Created', 'Created'));
-            $('#rejected').on('click', createFilterHandler('Rejected', 'Rejected'));
-            $('#review').on('click', createFilterHandler('Review', 'Review'));
-            $('#allEntityRequests').on('click', createFilterHandler('', 'All'));
+                // Apply filter
+                clientPartyTable.column(5).search(status).draw();
 
-            function searchTable(param) {
-                $('#table-loader').removeClass('d-none');
-                clientPartyTable.column(5).search(param, false, false, false).draw();
-            }
+                const message = status ? `Showing ${status}` : 'Showing all requests';
+                SwalPro.success('Filter Applied', message, 1400);
+            });
 
             // Hide loader after draw
             clientPartyTable.on('draw.dt', function() {
                 $('#table-loader').addClass('d-none');
             });
 
-            // 🔥 Enhanced Rejection Modal Handlers
+            // ────────────────────────────────────────────────
+            // Rejection Modal Handlers (unchanged)
+            // ────────────────────────────────────────────────
             $('#client-party-table').on('click', 'a#deny', function() {
                 rejectEntity($(this).attr('code'));
             });
@@ -964,7 +1410,6 @@
                 $('#level, #reason').removeClass('is-invalid');
             });
 
-            // 🔥 Enhanced Submit Entity Handler with SweetAlert2
             $('#submit-entity').on('click', async function() {
                 const $btn = $(this);
                 const $spinner = $btn.find('.spinner-border');
@@ -976,7 +1421,6 @@
 
                 let isValid = true;
 
-                // Enhanced validation with smooth animations
                 if (!formData.level) {
                     $('#level').addClass('is-invalid').focus();
                     isValid = false;
@@ -999,7 +1443,6 @@
                     return;
                 }
 
-                // Final confirmation with detailed info
                 const confirmResult = await SwalPro.confirm(
                     'Confirm Rejection',
                     `Are you sure you want to ${formData.level.toLowerCase()} this entity request?`,
@@ -1009,7 +1452,6 @@
 
                 if (!confirmResult.isConfirmed) return;
 
-                // Show loading state
                 SwalPro.loading('Processing Rejection',
                     'Please wait while we process your rejection...');
                 $spinner.removeClass('d-none');
@@ -1022,7 +1464,6 @@
                         data: formData
                     });
 
-                    // 🎯 Success with specific messaging
                     await SwalPro.rejectionSuccess(formData.level);
                     $('#cancel-entity-modal').modal('hide');
                     clientPartyTable.ajax.reload();
@@ -1030,23 +1471,15 @@
                 } catch (xhr) {
                     console.error('Rejection failed:', xhr.responseJSON?.message || 'Unknown error');
 
-                    // 🎯 Enhanced error handling
                     if (xhr.status === 422) {
-                        await SwalPro.error(
-                            'Validation Error',
-                            'Please check your input and try again.'
-                        );
+                        await SwalPro.error('Validation Error',
+                            'Please check your input and try again.');
                     } else if (xhr.status === 403) {
-                        await SwalPro.error(
-                            'Permission Denied',
-                            'You do not have permission to reject this entity request.'
-                        );
+                        await SwalPro.error('Permission Denied',
+                            'You do not have permission to reject this entity request.');
                     } else {
-                        await SwalPro.error(
-                            'Rejection Failed',
-                            xhr.responseJSON?.message ||
-                            'An unexpected error occurred. Please try again.'
-                        );
+                        await SwalPro.error('Rejection Failed', xhr.responseJSON?.message ||
+                            'An unexpected error occurred.');
                     }
                 } finally {
                     $spinner.addClass('d-none');
@@ -1055,9 +1488,7 @@
                 }
             });
 
-            // 🔥 Enhanced Reject Entity Function
             async function rejectEntity(id) {
-                // Show loading while checking entity
                 SwalPro.loading('Verifying Entity', 'Checking entity permissions...');
 
                 try {
@@ -1082,46 +1513,33 @@
                     console.error('Error fetching entity:', xhr);
 
                     if (xhr.status === 404) {
-                        await SwalPro.error(
-                            'Entity Not Found',
-                            'The requested entity could not be found. It may have been deleted or moved.'
-                        );
+                        await SwalPro.error('Entity Not Found', 'The requested entity could not be found.');
                     } else {
-                        await SwalPro.error(
-                            'Verification Failed',
-                            'Unable to verify entity type. Please try again or contact support.'
-                        );
+                        await SwalPro.error('Verification Failed', 'Unable to verify entity type.');
                     }
                 }
             }
 
-            // Add enhanced tooltips to info boxes
+            // Tooltips & hover effects (unchanged)
             $('[data-toggle="tooltip"]').tooltip();
 
-            // Add pulse animation to active filters
-            $('.info-box-link').on('click', function() {
-                $('.info-box').removeClass('border border-primary');
-                $(this).find('.info-box').addClass('border border-primary');
-            });
-            // Text expansion on hover
             $('.info-box').hover(
                 function() {
-                    // On mouse enter - show full text
                     const $text = $(this).find('.info-box-text');
                     const fullText = $text.attr('data-full');
-                    if (fullText) {
-                        $text.text(fullText);
-                    }
+                    if (fullText) $text.text(fullText);
                 },
                 function() {
-                    // On mouse leave - show short text
                     const $text = $(this).find('.info-box-text');
                     const shortText = $text.attr('data-short');
-                    if (shortText) {
-                        $text.text(shortText);
-                    }
+                    if (shortText) $text.text(shortText);
                 }
             );
+
+            // ────────────────────────────────────────────────
+            // Initialize with operational tab
+            // ────────────────────────────────────────────────
+            $('#operational-tab').trigger('shown.bs.tab');
         });
     </script>
 

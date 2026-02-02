@@ -11,9 +11,9 @@ use App\Models\TicketView;
 use App\Models\Office;
 use App\Models\User;
 use Carbon\Carbon;
-// use Illuminate\Http\Request;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Request;
+//use Illuminate\Support\Facades\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\URL;
 use JeroenNoten\LaravelAdminLte\Components\Tool\Datatable;
@@ -1040,14 +1040,22 @@ private function getLastThreeMonthsFilter()
 }
 
 /**!ENTITY REQUESTS DATATABLES*/
-/**!All Entity */
+
+/**
+ * All Entity Requests (dashboard)
+ */
+/**
+ * All Entity Requests (dashboard)
+ */
 public function allEntityRequests(Request $request)
 {
     $threeMonthsAgo = $this->getLastThreeMonthsFilter();
     $user = Auth::user();
     $user_office = $user->OfficeCode;
 
-    // Define common columns
+    // Get entity_type from request (null = show both)
+    $entityType = $request->input('entity_type');
+
     $commonColumns = [
         'Id',
         'Code',
@@ -1059,13 +1067,45 @@ public function allEntityRequests(Request $request)
         'LegalEntityType',
         'Status',
         'OfficeCode',
+        // Optional: include these if you want to debug them in the table
+        // 'RequestforDebtor',
+        // 'RequestforVendor',
+        // 'DebtorCode',
+        // 'VendorCode',
     ];
 
-    // Initial query with common columns and 3-month filter
     $query = ClientParty::select($commonColumns)
         ->where('CreatedOn', '>=', $threeMonthsAgo);
 
-    // Restrict to user's office unless they have approve-all-entity-request permission
+    if ($entityType === 'operational') {
+        // Pure operational: has OET, NO LET, NO debtor/vendor indicators
+        $query->whereNotNull('OperationalEntityType')
+              ->whereNull('LegalEntityType')
+              ->where('RequestforDebtor', 0)       // or false if bit is stored as 0/1
+              ->where('RequestforVendor', 0)
+              ->whereNull('DebtorCode')
+              ->whereNull('VendorCode')
+              ->whereNull('DebtorID')
+              ->whereNull('VendorID')
+              ->whereNull('DebtorFileUpload')
+              ->whereNull('VendorFileUpload');
+    }
+    elseif ($entityType === 'legal') {
+        // Legal: has LET OR any debtor/vendor indicator
+        $query->where(function ($q) {
+            $q->whereNotNull('LegalEntityType')
+              ->orWhere('RequestforDebtor', 1)
+              ->orWhere('RequestforVendor', 1)
+              ->orWhereNotNull('DebtorCode')
+              ->orWhereNotNull('VendorCode')
+              ->orWhereNotNull('DebtorID')
+              ->orWhereNotNull('VendorID')
+              ->orWhereNotNull('DebtorFileUpload')
+              ->orWhereNotNull('VendorFileUpload');
+        });
+    }
+    // If no entity_type → no filter (shows both) – safe fallback
+
     if (!$user->can('approve-all-entity-request')) {
         $query->where('OfficeCode', $user_office);
     }
@@ -1101,12 +1141,10 @@ public function allEntityRequests(Request $request)
             $html = '<div class="btn-group">';
             $html .= '<a href="' . URL::signedRoute('client-party.show', $row->Id) . '" class="btn btn-sm btn-flat btn-info" title="View"><i class="fas fa-eye"></i></a>';
 
-            // Add reject button for statuses that can be rejected (if user has permission)
             if ($user->can('reject-entity-request') && in_array($row->Status, ['Not Submitted', 'Submitted', 'PendingCountryLevelApproval', 'PendingGroupLevelApproval'])) {
                 $html .= '<a href="#" id="deny" code="' . e($row->Id) . '" class="btn btn-sm btn-flat btn-danger reject" title="Reject"><i class="fas fa-times"></i></a>';
             }
 
-            // Add approve button for statuses that can be approved (if user has permission)
             if ($user->can('approve-entity-request') && in_array($row->Status, ['PendingCountryLevelApproval', 'PendingGroupLevelApproval', 'Submitted'])) {
                 $html .= '<a href="' . URL::signedRoute('client-party.show', $row->Id) . '" class="btn btn-sm btn-flat btn-success" title="Approve"><i class="fas fa-check"></i></a>';
             }
@@ -1121,11 +1159,15 @@ public function allEntityRequests(Request $request)
 /**
  * DataTable for entities pending approval (used in client-party.approve.blade.php)
  */
+
 public function approvalEntityRequests(Request $request)
 {
     $threeMonthsAgo = $this->getLastThreeMonthsFilter();
     $user = Auth::user();
     $user_office = $user->OfficeCode;
+
+    // Get entity_type from request (default to 'operational')
+    $entityType = $request->input('entity_type', 'operational');
 
     // Define common columns
     $commonColumns = [
@@ -1145,6 +1187,13 @@ public function approvalEntityRequests(Request $request)
     $query = ClientParty::select($commonColumns)
         ->whereIn('Status', ['PendingCountryLevelApproval', 'PendingGroupLevelApproval', 'Submitted'])
         ->where('CreatedOn', '>=', $threeMonthsAgo);
+
+    // NEW: Filter by entity type
+    if ($entityType === 'operational') {
+        $query->whereNotNull('OperationalEntityType');
+    } elseif ($entityType === 'legal') {
+        $query->whereNotNull('LegalEntityType');
+    }
 
     // Restrict to user's office unless they have approve-all-entity-request permission
     if (!$user->can('approve-all-entity-request')) {
@@ -1190,6 +1239,7 @@ public function approvalEntityRequests(Request $request)
         ->rawColumns(['Code', 'Status', 'Action'])
         ->make(true);
 }
+
 
 
     public function users()

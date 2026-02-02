@@ -307,13 +307,13 @@ return [
                     'active' => ['client-party?submitted_request=true'],
                     // 'can'  => 'create-client-party',
                 ],
-                [
-                    'text' => 'Request Client Party',
-                    'url'  => 'client-party/create',
-                    'icon' => 'fas fa-fw fa-hand-paper ',
-                    'active' => ['client-party/create'],
-                    'can'  => 'request-client-party',
-                ],
+                // [
+                //     'text' => 'Request Client Party',
+                //     'url'  => 'client-party/create',
+                //     'icon' => 'fas fa-fw fa-hand-paper ',
+                //     'active' => ['client-party/create'],
+                //     'can'  => 'request-client-party',
+                // ],
                 // [
                 //     'text' => 'My Requests',
                 //     'url'  => 'client-party?my_request=true',

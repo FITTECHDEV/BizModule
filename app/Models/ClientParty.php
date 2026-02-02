@@ -245,50 +245,107 @@ class ClientParty extends Model
         }
     }
 
-    public function clientPartyCount(string $column = null, $value = null, array $constraints = null)
-    {
-        $count = 0;
-        $auth_user = Auth::user();
+    // public function clientPartyCount(string $column = null, $value = null, array $constraints = null)
+    // {
+    //     $count = 0;
+    //     $auth_user = Auth::user();
 
-        if ($column == null || $value == null) {
-            return $count;
-        }
+    //     if ($column == null || $value == null) {
+    //         return $count;
+    //     }
 
-        if ($value == '*') {
-            if ($auth_user->Role != 1) {
-                $count = $this->where('CreatedBy', $auth_user->full_name)->count();
-            } else {
-                $count = $this->count();
-            }
-        } else {
-            if ($auth_user->Role != 1) {
-                $count = $this->where('CreatedBy', $auth_user->full_name)
-                    ->where($column, (string) $value)->count();
-            } else {
-                $count = $this->where($column, (string) $value)->count();
-            }
-        }
+    //     if ($value == '*') {
+    //         if ($auth_user->Role != 1) {
+    //             $count = $this->where('CreatedBy', $auth_user->full_name)->count();
+    //         } else {
+    //             $count = $this->count();
+    //         }
+    //     } else {
+    //         if ($auth_user->Role != 1) {
+    //             $count = $this->where('CreatedBy', $auth_user->full_name)
+    //                 ->where($column, (string) $value)->count();
+    //         } else {
+    //             $count = $this->where($column, (string) $value)->count();
+    //         }
+    //     }
 
-        if (isset($constraints) && !empty($constraints)) {
-            if ($value == '*') {
-                $entity = new ClientParty();
-            } else {
-                $entity = $this->where($column, (string) $value);
-            }
-            foreach ($constraints as $key => $constraint) {
+    //     if (isset($constraints) && !empty($constraints)) {
+    //         if ($value == '*') {
+    //             $entity = new ClientParty();
+    //         } else {
+    //             $entity = $this->where($column, (string) $value);
+    //         }
+    //         foreach ($constraints as $key => $constraint) {
 
-                $entity = $entity->where($constraint[0], $constraint[1]);
-            }
+    //             $entity = $entity->where($constraint[0], $constraint[1]);
+    //         }
 
-            if ($auth_user->Role != 1) {
-                $entity->where('CreatedBy', $auth_user->full_name);
-            }
-            $count = $entity->count();
-        }
+    //         if ($auth_user->Role != 1) {
+    //             $entity->where('CreatedBy', $auth_user->full_name);
+    //         }
+    //         $count = $entity->count();
+    //     }
 
-        return number_format($count, 0, '', ',');
+    //     return number_format($count, 0, '', ',');
+    // }
+public function clientPartyCount(string $column = null, $value = null, array $constraints = null)
+{
+    $count = 0;
+    $auth_user = Auth::user();
+
+    if ($column == null || $value == null) {
+        return $count;
     }
 
+    // Base query
+    $query = $this->newQuery();
+
+    // Apply 3-month filter (you might want to add this – currently missing in your method)
+    $query->where('CreatedOn', '>=', now()->subMonths(3));
+
+    // Apply entity type filter if provided in constraints
+    if (isset($constraints['entity_type'])) {
+        $entityType = $constraints['entity_type'];
+        if ($entityType === 'operational') {
+            $query->whereNotNull('OperationalEntityType');
+            // Optional: ->where('OperationalEntityType', '!=', '') if empty string is invalid
+        } elseif ($entityType === 'legal') {
+            $query->whereNotNull('LegalEntityType');
+        }
+    }
+
+    // Apply role-based CreatedBy restriction
+    if ($auth_user->Role != 1) {
+        $query->where('CreatedBy', $auth_user->full_name);
+    }
+
+    // Apply column/value filter
+    if ($value !== '*') {
+        $query->where($column, (string) $value);
+    }
+
+    // Apply any additional constraints
+    if (isset($constraints) && !empty($constraints)) {
+        foreach ($constraints as $key => $constraint) {
+            // Skip 'entity_type' since we already handled it
+            if ($key === 'entity_type') {
+                continue;
+            }
+
+            // Assuming $constraint is [column, operator/value] or just [column => value]
+            if (is_array($constraint) && count($constraint) === 2) {
+                $query->where($constraint[0], $constraint[1]);
+            } elseif (is_string($constraint)) {
+                // If it's a simple value → assume equality
+                $query->where($key, $constraint);
+            }
+        }
+    }
+
+    $count = $query->count();
+
+    return number_format($count, 0, '', ',');
+}
     public function attachments()
     {
         return $this->hasMany(ClientPartyAttahment::class, 'CustEntityID', 'Id');
