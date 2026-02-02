@@ -158,18 +158,30 @@ class ShipmentReportService
                     if (!$milestoneResult['success']) {
                         // Milestone failed - don't send email
                         $summary['milestone_failures']++;
-                        $remark = $milestoneResult['error'];
+                        $originalError = $milestoneResult['error'];
+
+                        // Map SP error messages to standardized remarks
+                        if (
+                            strpos($originalError, 'No Milestone Present') !== false ||
+                            strpos($originalError, 'Actuals are not updated') !== false
+                        ) {
+                            $remark = 'Milestones Not Updated';
+                        } elseif (strpos($originalError, 'No Jobs present') !== false) {
+                            $remark = 'Milestones Not Configured';
+                        } else {
+                            $remark = $originalError; // Keep original for unexpected errors
+                        }
 
                         Log::warning('Milestone data unavailable for client', [
                             'client_id' => $client->ClientId,
                             'client_name' => $client->ClientName,
-                            'error' => $remark
+                            'original_error' => $originalError,
+                            'mapped_remark' => $remark
                         ]);
 
-                        // Log to Phase 3 with 0 shipments
+                        // Log to Phase 3 with shipment count
                         $shipmentCount = (int) ($client->NoofShipment ?? 0);
                         $this->logSchedulerTransaction($client, $status, $remark, $shipmentCount);
-                        // MODIFIED
 
                         sleep(config('shipment.email.delay_between_sends', 2));
                         continue;
@@ -337,8 +349,8 @@ class ShipmentReportService
 
             // Send using SwiftMailer directly
             $swiftMessage = new \Swift_Message($subject);
-            $swiftMessage->setFrom([config('mail.from.address') => config('mail.from.name')])
-                ->setBcc([config('mail.from.address')]);
+            $swiftMessage->setFrom([config('mail.from.address') => config('mail.from.name')]);
+            // ->setBcc([config('mail.from.address')]);
 
             // Set TO if exists
             if (!empty($toAddresses)) {
@@ -363,7 +375,7 @@ class ShipmentReportService
 
             Mail::getSwiftMailer()->send($swiftMessage);
 
-            // $this->saveToSentFolder($emailAddress, $subject, $htmlBody, $client);
+            $this->saveToSentFolder($emailAddress, $subject, $htmlBody, $client);
 
             Log::info('Email sent with Excel attachment', [
                 'to' => implode(', ', $toAddresses),
@@ -443,7 +455,7 @@ class ShipmentReportService
                 $sheet->getStyle($col . '1')->getFont()->setBold(true);
                 $sheet->getStyle($col . '1')->getFill()
                     ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
-                    ->getStartColor()->setARGB('FF4472C4');
+                    ->getStartColor()->setARGB('FF5B9BD5');
                 $col++;
             }
 
@@ -628,32 +640,94 @@ class ShipmentReportService
         }
     }
 
-    // // Add this method to ShipmentReportService.php
-    // protected function saveToSentFolder($emailAddress, $subject, $htmlBody, $client)
-    // {
-    //     try {
-    //         $sentFolder = config('mail.imap.sent_folder', 'Sent');
+    /**
+     * Save sent email to IMAP Sent folder
+     * 
+     * @param string $emailAddress
+     * @param string $subject
+     * @param string $htmlBody
+     * @param object $client
+     * @return void
+     */
+    protected function saveToSentFolder($emailAddress, $subject, $htmlBody, $client)
+    {
+        try {
+            $imapHost = config('mail.imap.host');
+            $imapPort = config('mail.imap.port', 993);
+            $imapUsername = config('mail.username');
+            $imapPassword = config('mail.imap.password');
+            $sentFolder = config('mail.imap.sent_folder', 'Sent');
 
-    //         $imap = imap_open(
-    //             '{' . config('mail.imap.host') . ':' . config('mail.imap.port') . '/imap/ssl}' . $sentFolder,
-    //             config('mail.from.address'),
-    //             config('mail.imap.password')
-    //         );
+            // Validate configuration
+            if (empty($imapHost) || empty($imapUsername) || empty($imapPassword)) {
+                Log::warning('IMAP configuration incomplete, skipping Sent folder save');
+                return;
+            }
 
-    //         if ($imap) {
-    //             $message = "From: " . config('mail.from.address') . "\r\n";
-    //             $message .= "To: {$emailAddress}\r\n";
-    //             $message .= "Subject: {$subject}\r\n";
-    //             $message .= "Content-Type: text/html; charset=UTF-8\r\n\r\n";
-    //             $message .= $htmlBody;
+            // Build IMAP connection string
+            $imapConnection = sprintf(
+                '{%s:%d/imap/ssl/novalidate-cert}%s',
+                $imapHost,
+                $imapPort,
+                $sentFolder
+            );
 
-    //             imap_append($imap, '{' . config('mail.imap.host') . ':' . config('mail.imap.port') . '/imap/ssl}' . $sentFolder, $message);
-    //             imap_close($imap);
-    //         }
-    //     } catch (\Exception $e) {
-    //         Log::warning('Failed to save to sent folder', ['error' => $e->getMessage()]);
-    //     }
-    // }
+            // Connect to IMAP
+            $imap = @imap_open($imapConnection, $imapUsername, $imapPassword);
+
+            if (!$imap) {
+                $error = imap_last_error();
+                Log::warning('Failed to connect to IMAP for Sent folder', [
+                    'error' => $error,
+                    'host' => $imapHost
+                ]);
+                return;
+            }
+
+            // Build email message in RFC 2822 format
+            $boundary = uniqid('boundary_');
+            $date = date('r');
+            $fromAddress = config('mail.from.address');
+            $fromName = config('mail.from.name');
+
+            $message = "From: {$fromName} <{$fromAddress}>\r\n";
+            $message .= "To: {$emailAddress}\r\n";
+
+            // Add CC if present
+            if (!empty($client->EmailIdCC)) {
+                $message .= "Cc: {$client->EmailIdCC}\r\n";
+            }
+
+            $message .= "Subject: {$subject}\r\n";
+            $message .= "Date: {$date}\r\n";
+            $message .= "MIME-Version: 1.0\r\n";
+            $message .= "Content-Type: text/html; charset=UTF-8\r\n";
+            $message .= "Content-Transfer-Encoding: 8bit\r\n";
+            $message .= "\r\n";
+            $message .= $htmlBody;
+
+            // Append to Sent folder
+            $result = imap_append($imap, $imapConnection, $message, "\\Seen");
+
+            if ($result) {
+                Log::info('Email saved to Sent folder via IMAP', [
+                    'client_id' => $client->ClientId,
+                    'email' => $emailAddress
+                ]);
+            } else {
+                Log::warning('Failed to append email to Sent folder', [
+                    'error' => imap_last_error()
+                ]);
+            }
+
+            imap_close($imap);
+        } catch (\Exception $e) {
+            Log::warning('Exception while saving to Sent folder', [
+                'error' => $e->getMessage(),
+                'client_id' => $client->ClientId ?? 'unknown'
+            ]);
+        }
+    }
 
 
     /**
