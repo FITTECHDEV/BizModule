@@ -85,6 +85,7 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
     public function isLockOwner(string $lockKey, array $context = []): bool
     {
         $lockData = Cache::get($lockKey);
+
         return isset($lockData['process']) && $lockData['process'] === (getmypid() ?: 'unknown');
     }
 
@@ -106,25 +107,6 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
             'bulk_threshold' => $this->bulkThreshold,
             'lock_key' => self::$lockKey
         ]);
-    }
-
-    private function verifyCachedUsersHaveIds(): void
-    {
-        $usersWithoutIds = [];
-
-        foreach ($this->userCache as $username => $user) {
-            if (empty($user->id)) {
-                $usersWithoutIds[] = $username;
-                unset($this->userCache[$username]); // Remove invalid users from cache
-            }
-        }
-
-        if (!empty($usersWithoutIds)) {
-            Log::warning('⚠️ Removed users with null IDs from cache', [
-                'count' => count($usersWithoutIds),
-                'sample' => array_slice($usersWithoutIds, 0, 5)
-            ]);
-        }
     }
 
     private function checkAndSetLock(): void
@@ -1509,6 +1491,7 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
 
         return $this->executeSingleRowInserts($signinLogs, $batchNumber);
     }
+    
 
     private function executeBulkInsert(array $signinLogs, int $batchNumber): int
     {
@@ -1584,6 +1567,7 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
         }
     }
 
+
     private function executeChunkedBatchInsert(array $signinLogs, int $batchNumber): int
     {
         $columnCount = count($signinLogs[0]);
@@ -1631,7 +1615,7 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
                     return $record;
                 }, $chunk);
 
-                DB::table('Azure_LoginDetails')->timeout(120)->insert($cleanChunk);
+                DB::table('Azure_LoginDetails')->insert($cleanChunk);
                 $insertedCount += count($cleanChunk);
 
                 Log::debug("Batch chunk inserted successfully", [
@@ -1661,6 +1645,8 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
 
         return $insertedCount;
     }
+
+
     /**
      * FIXED: Use proper UPSERT with correct SQL syntax
      */
@@ -1794,10 +1780,7 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
         if (empty($usernames)) return;
 
         foreach (array_chunk($usernames, 500) as $chunk) {
-            // ✅ ENHANCED: Only load users with valid IDs
             $existingUsers = AzureUser::whereIn('userPrincipalName', $chunk)
-                ->whereNotNull('id')      // ✅ NEW: Filter out null IDs
-                ->where('id', '!=', '')   // ✅ NEW: Filter out empty IDs
                 ->get()
                 ->keyBy('userPrincipalName');
 
@@ -1806,255 +1789,8 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
             }
         }
 
-        // ✅ NEW: Verify cached users have valid IDs
-        $this->verifyCachedUsersHaveIds();
-
-        Log::info('Preloaded users', [
-            'count' => count($this->userCache),
-            'verified_valid_ids' => true  // ✅ NEW: Indicate verification ran
-        ]);
+        Log::info('Preloaded users', ['count' => count($this->userCache)]);
     }
-
-// private function preloadSystems(array $systemNames)
-// {
-//     if (empty($systemNames)) return;
-
-//     // Deduplicate system names
-//     $systemNames = array_unique($systemNames);
-
-//     // ✅ FIX 1: Define existingSystems BEFORE transaction
-//     $existingSystems = System::whereIn('name', $systemNames)
-//         ->get()
-//         ->keyBy('name');
-
-//     foreach ($existingSystems as $system) {
-//         $this->systemCache[$system->name] = $system;
-//     }
-
-//     $missingSystemNames = array_diff($systemNames, $existingSystems->pluck('name')->toArray());
-
-//     if (!empty($missingSystemNames)) {
-//         try {
-//             // ✅ FIX 2: Use UUIDs instead of integers
-//             DB::transaction(function () use ($missingSystemNames) {
-//                 $newSystems = [];
-//                 foreach ($missingSystemNames as $systemName) {
-//                     $newSystems[] = [
-//                         'Id' => (string) \Illuminate\Support\Str::uuid(),  // ✅ UUID
-//                         'name' => $systemName
-//                     ];
-//                 }
-
-//                 DB::table('Azure_SoftwareMaster')->insert($newSystems);
-
-//                 // Reload newly created systems
-//                 $newSystemModels = System::whereIn('name', $missingSystemNames)->get()->keyBy('name');
-//                 foreach ($newSystemModels as $system) {
-//                     $this->systemCache[$system->name] = $system;
-//                 }
-//             });
-
-//             // ✅ FIX 3: Log AFTER transaction with correct variable scope
-//             Log::info('Preloaded systems', [
-//                 'existing' => $existingSystems->count(),
-//                 'created' => count($missingSystemNames),
-//                 'total_cached' => count($this->systemCache)
-//             ]);
-
-//         } catch (\Exception $e) {
-//             Log::error('Failed to create systems during preload', [
-//                 'systems' => $missingSystemNames,
-//                 'error' => $e->getMessage()
-//             ]);
-
-//             // Fallback: Create systems individually
-//             foreach ($missingSystemNames as $systemName) {
-//                 try {
-//                     DB::transaction(function () use ($systemName) {
-//                         $newId = (string) \Illuminate\Support\Str::uuid();  // ✅ UUID
-
-//                         DB::table('Azure_SoftwareMaster')->insert([
-//                             'Id' => $newId,
-//                             'name' => $systemName
-//                         ]);
-
-//                         $system = System::where('name', $systemName)->first();
-//                         if ($system) {
-//                             $this->systemCache[$systemName] = $system;
-//                         }
-//                     });
-
-//                 } catch (\Exception $e2) {
-//                     Log::warning('Failed to create individual system', [
-//                         'system' => $systemName,
-//                         'error' => $e2->getMessage()
-//                     ]);
-//                 }
-//             }
-//         }
-//     } else {
-//         Log::info('Preloaded systems', [
-//             'existing' => $existingSystems->count(),
-//             'created' => 0,
-//             'total_cached' => count($this->systemCache)
-//         ]);
-//     }
-// }
-
-
-// private function bulkInsertUserSystemAssociations(array $associations)
-// {
-//     if (empty($associations)) {
-//         Log::debug('No user-system associations to process');
-//         return;
-//     }
-
-//     // Deduplicate associations
-//     $uniqueAssociations = [];
-//     foreach ($associations as $assoc) {
-//         if (!isset($assoc['user_id'], $assoc['application_id'])) {
-//             Log::warning('Invalid association data', ['association' => $assoc]);
-//             continue;
-//         }
-
-//         $key = $assoc['user_id'] . '|' . $assoc['application_id'];
-//         if (!isset($uniqueAssociations[$key])) {
-//             $uniqueAssociations[$key] = [
-//                 'user_id' => $assoc['user_id'],
-//                 'application_id' => (string) $assoc['application_id'],
-//             ];
-//         }
-//     }
-
-//     if (empty($uniqueAssociations)) {
-//         Log::debug('No valid associations after deduplication');
-//         return;
-//     }
-
-//     Log::info('Processing user-system associations', [
-//         'original_count' => count($associations),
-//         'unique_count' => count($uniqueAssociations)
-//     ]);
-
-//     // CRITICAL FIX: Cast to int and ensure non-negative
-//     $maxId = (int) DB::table('Azure_Application_UserMapping')->max('Id');
-//     $maxId = max(0, $maxId);
-//     $nextId = $maxId + 1;
-
-//     // Process in chunks of 50
-//     foreach (array_chunk(array_values($uniqueAssociations), 50) as $chunkIndex => $chunk) {
-//         try {
-//             $userIds = array_column($chunk, 'user_id');
-//             $applicationIds = array_column($chunk, 'application_id');
-
-//             // Check for existing associations
-//             $existingPairs = DB::table('Azure_Application_UserMapping')
-//                 ->whereIn('user_id', $userIds)
-//                 ->whereIn('application_id', $applicationIds)
-//                 ->select('user_id', 'application_id')
-//                 ->get()
-//                 ->mapWithKeys(fn($row) => [$row->user_id . '|' . $row->application_id => true])
-//                 ->all();
-
-//             // Filter out existing associations and add explicit IDs
-//             $newAssociations = [];
-//             foreach ($chunk as $assoc) {
-//                 $key = $assoc['user_id'] . '|' . $assoc['application_id'];
-//                 if (!isset($existingPairs[$key])) {
-//                     $newAssociations[] = [
-//                         'Id' => $nextId++,
-//                         'user_id' => $assoc['user_id'],
-//                         'application_id' => $assoc['application_id']
-//                     ];
-//                 }
-//             }
-
-//             if (!empty($newAssociations)) {
-//                 try {
-//                     DB::table('Azure_Application_UserMapping')->insert($newAssociations);
-
-//                     Log::info('Inserted user-application associations chunk', [
-//                         'chunk_index' => $chunkIndex + 1,
-//                         'new_associations' => count($newAssociations),
-//                         'skipped_existing' => count($chunk) - count($newAssociations)
-//                     ]);
-//                 } catch (\Exception $e) {
-//                     Log::warning('Batch association insert failed, trying individual inserts', [
-//                         'chunk_index' => $chunkIndex + 1,
-//                         'chunk_size' => count($newAssociations),
-//                         'error' => $e->getMessage()
-//                     ]);
-
-//                     $this->insertUserSystemAssociationsIndividually($newAssociations);
-//                 }
-//             }
-
-//         } catch (\Exception $e) {
-//             Log::error('Critical error in association processing', [
-//                 'chunk_index' => $chunkIndex + 1,
-//                 'error' => $e->getMessage()
-//             ]);
-
-//             continue;
-//         }
-//     }
-// }
-
-
-// private function insertUserSystemAssociationsIndividually(array $associations)
-// {
-//     $insertedCount = 0;
-//     $skippedCount = 0;
-
-//     foreach ($associations as $assoc) {
-//         try {
-//             $exists = DB::table('Azure_Application_UserMapping')
-//                 ->where('user_id', $assoc['user_id'])
-//                 ->where('application_id', $assoc['application_id'])
-//                 ->exists();
-
-//             if (!$exists) {
-//                 // CRITICAL FIX: Cast to int
-//                 $maxId = (int) DB::table('Azure_Application_UserMapping')->max('Id');
-//                 $maxId = max(0, $maxId);
-
-//                 DB::table('Azure_Application_UserMapping')->insert([
-//                     'Id' => $maxId + 1,
-//                     'user_id' => $assoc['user_id'],
-//                     'application_id' => $assoc['application_id']
-//                 ]);
-//                 $insertedCount++;
-//             } else {
-//                 $skippedCount++;
-//             }
-
-//         } catch (\Exception $e) {
-//             if (str_contains($e->getMessage(), 'duplicate') ||
-//                 str_contains($e->getMessage(), 'UNIQUE constraint') ||
-//                 str_contains($e->getMessage(), 'PRIMARY KEY constraint')) {
-//                 $skippedCount++;
-//                 Log::debug('Duplicate user-application association skipped', [
-//                     'user_id' => $assoc['user_id'],
-//                     'application_id' => $assoc['application_id']
-//                 ]);
-//             } else {
-//                 Log::error('Failed to insert individual user-application association', [
-//                     'user_id' => $assoc['user_id'],
-//                     'application_id' => $assoc['application_id'],
-//                     'error' => $e->getMessage()
-//                 ]);
-//             }
-//         }
-//     }
-
-//     if ($insertedCount > 0 || $skippedCount > 0) {
-//         Log::info('Individual user-application associations completed', [
-//             'inserted' => $insertedCount,
-//             'skipped' => $skippedCount
-//         ]);
-//     }
-// }
-
 
 
     /**
@@ -2182,26 +1918,17 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
             ]);
         }
     }
+
+
     private function prepareSigninLogData(array $row, $user, string $parsedDate, ?string $userIdFromCsv = null): array
     {
-        // CRITICAL FIX: Use CSV user ID if valid, otherwise fall back to user->id
-        $userIdToStore = (!empty($userIdFromCsv) && $this->isValidUuid($userIdFromCsv))
-            ? $userIdFromCsv
-            : $user->id;
-
-        // Log::debug('Preparing signin log data', [ /// Tracker Debug
-        //     'username' => $row['username'] ?? 'unknown',
-        //     'user_id_from_csv' => $userIdFromCsv,
-        //     'user_id_from_model' => $user->id,
-        //     'user_id_to_store' => $userIdToStore,
-        //     'used_csv_id' => (!empty($userIdFromCsv) && $this->isValidUuid($userIdFromCsv))
-        // ]);
-
+        // FIXED: Always use local database user ID, NOT the CSV Azure AD ID
+        // The CSV contains Azure AD's user ID which doesn't match our local database IDs
         return [
             // Required core fields
             'date_utc' => $parsedDate,
             'request_id' => $this->getValueOrDefault($row['request_id'] ?? null, 'IMPORT-' . uniqid()),
-            'user_id' => $userIdToStore,
+            'user_id' => $user->id, // ✅ ALWAYS use local database ID
 
             // User information fields
             'user' => $this->truncateString($row['user'] ?? null, 255),
@@ -2227,12 +1954,9 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
 
             // Authentication field
             'authentication_requirement' => $this->truncateString($row['authentication_requirement'] ?? null, 255),
-
-            // Timestamps
-            // 'created_at' => now(),
-            // 'updated_at' => now(),
         ];
     }
+
 
     private function getValueOrDefault($value, $default)
     {
@@ -2939,26 +2663,14 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
         try {
             // Strategy 1: Direct username match with ID validation
             $user = AzureUser::whereRaw('LOWER(RTRIM(LTRIM(userPrincipalName))) = LOWER(?)', [trim($userPrincipalName)])
-                ->whereNotNull('id')  // CRITICAL: Only get users with valid IDs
-                ->where('id', '!=', '') // Additional safety check
-                ->first();
-
-            // ✅ NEW: Double-check the user has a valid UUID format
-            if ($user && !$this->isValidUuid($user->id)) {
-                Log::warning('⚠️ User found but ID is not valid UUID format', [
-                    'username' => $userPrincipalName,
-                    'invalid_id' => $user->id,
-                    'strategy' => 'username_match'
-                ]);
-                $user = null; // Treat as not found
-            }
+                ->whereNotNull('id')  // This alone is sufficient
+                ->first(); // Remove the ->where('id', '!=', '') line
 
             if ($user) {
                 Log::debug('User found via username with valid ID', [
                     'username' => $userPrincipalName,
                     'found_username' => $user->userPrincipalName,
-                    'user_id' => $user->id,
-                    'id_validated' => true  // ✅ NEW: Indicate UUID validation passed
+                    'user_id' => $user->id
                 ]);
                 $this->stats['users_matched_by_strategy']['username']++;
                 return $user;
@@ -2966,27 +2678,11 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
 
             // Strategy 2: Try by exact ID if provided
             if (!empty($userIdFromCsv) && $this->isValidUuid($userIdFromCsv)) {
-                $user = AzureUser::where('id', $userIdFromCsv)
-                    ->whereNotNull('id')  // ✅ NEW: Extra safety check
-                    ->where('id', '!=', '') // ✅ NEW: Extra safety check
-                    ->first();
-
-                // ✅ NEW: Validate UUID format even though we already checked input
-                if ($user && !$this->isValidUuid($user->id)) {
-                    Log::warning('⚠️ User found by ID but stored ID is not valid UUID format', [
-                        'username' => $userPrincipalName,
-                        'search_id' => $userIdFromCsv,
-                        'stored_id' => $user->id,
-                        'strategy' => 'exact_id_match'
-                    ]);
-                    $user = null;
-                }
-
+                $user = AzureUser::where('id', $userIdFromCsv)->first();
                 if ($user) {
                     Log::debug('User found via exact ID', [
                         'username' => $userPrincipalName,
-                        'user_id' => $user->id,
-                        'id_validated' => true  // ✅ NEW
+                        'user_id' => $user->id
                     ]);
                     $this->stats['users_matched_by_strategy']['exact_id']++;
                     return $user;
@@ -2996,53 +2692,22 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
             // Strategy 3: Email field match
             if (filter_var($userPrincipalName, FILTER_VALIDATE_EMAIL)) {
                 $user = AzureUser::whereRaw('LOWER(RTRIM(LTRIM(mail))) = LOWER(?)', [trim($userPrincipalName)])
-                    ->whereNotNull('id')
-                    ->where('id', '!=', '')
-                    ->first();
-
-                // ✅ NEW: Validate UUID format
-                if ($user && !$this->isValidUuid($user->id)) {
-                    Log::warning('⚠️ User found by email but ID is not valid UUID format', [
-                        'email' => $userPrincipalName,
-                        'invalid_id' => $user->id,
-                        'strategy' => 'email_match'
-                    ]);
-                    $user = null;
-                }
+                    ->whereNotNull('id')  // This alone is sufficient
+                    ->first(); // Remove the ->where('id', '!=', '') line
 
                 if ($user) {
                     Log::debug('User found via email with valid ID', [
                         'username' => $userPrincipalName,
-                        'user_id' => $user->id,
-                        'id_validated' => true  // ✅ NEW
+                        'user_id' => $user->id
                     ]);
                     $this->stats['users_matched_by_strategy']['email']++;
                     return $user;
                 }
             }
-
-            // ✅ NEW: Log failed lookup attempt for debugging (only first few times)
-            static $failureCount = 0;
-            $failureCount++;
-
-            if ($failureCount <= 10) {
-                Log::debug('User lookup failed - no match found', [
-                    'username' => $userPrincipalName,
-                    'user_id_from_csv' => $userIdFromCsv,
-                    'is_email_format' => filter_var($userPrincipalName, FILTER_VALIDATE_EMAIL) ? 'yes' : 'no',
-                    'strategies_attempted' => ['username', 'exact_id', 'email'],
-                    'failure_number' => $failureCount
-                ]);
-            } elseif ($failureCount == 11) {
-                Log::info('Suppressing detailed user lookup failure logs after 10 failures');
-            }
         } catch (\Exception $e) {
             Log::error('Error in user lookup', [
                 'username' => $userPrincipalName,
-                'user_id_from_csv' => $userIdFromCsv,
-                'error' => $e->getMessage(),
-                'error_class' => get_class($e),
-                'trace' => substr($e->getTraceAsString(), 0, 500)  // ✅ NEW: Include partial trace
+                'error' => $e->getMessage()
             ]);
         }
 

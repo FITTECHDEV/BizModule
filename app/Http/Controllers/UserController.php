@@ -23,13 +23,13 @@ class UserController extends Controller
      */
     protected $excludedSystems = [
         // 'Import-Unknown',
-        // 'Unknown',
+        // 'Unknown', 
         // 'Microsoft Teams',
         // 'Office 365',
-        // 'Windows Authentication',
-        // 'IT Infrastructure',
-        // 'FITerp UAT',
-        // 'Web Browser',
+        // 'Windows Authentication',  
+        // 'IT Infrastructure',       
+        // 'FITerp UAT',             
+        // 'Web Browser',           
         // 'Mobile/Desktop Client'
         // 'all'
     ];
@@ -404,6 +404,7 @@ class UserController extends Controller
         }
     }
 
+
     public function show(Request $request, $identifier)
     {
         Log::info('UserController@show called', [
@@ -576,7 +577,7 @@ class UserController extends Controller
             $currentMonthEnd = Carbon::now()->endOfMonth();
 
             // Get raw data grouped by date and application for CURRENT MONTH
-            $currentMonthApplicationsRaw = SigninLog::where('user_id', $user->id)
+            $currentMonthApplicationsRaw = SigninLog::where(DB::raw('LOWER(username)'), strtolower($user->userPrincipalName))
                 ->whereBetween('date_utc', [$currentMonthStart, $currentMonthEnd])
                 ->whereNotNull('application')
                 ->where('application', '!=', '')
@@ -651,7 +652,7 @@ class UserController extends Controller
             // ====================================================================
 
             // Get raw data grouped by date and application for SELECTED PERIOD
-            $recentApplicationsRaw = SigninLog::where('user_id', $user->id)
+            $recentApplicationsRaw = SigninLog::where(DB::raw('LOWER(username)'), strtolower($user->userPrincipalName))
                 ->whereBetween('date_utc', [$start, $end])
                 ->whereNotNull('application')
                 ->where('application', '!=', '')
@@ -736,7 +737,7 @@ class UserController extends Controller
                 }
 
                 // Fetch raw login data with optimized query
-                $loginDataRaw = SigninLog::where('user_id', $user->id)
+                $loginDataRaw = SigninLog::where(DB::raw('LOWER(username)'), strtolower($user->userPrincipalName))
                     ->whereBetween('date_utc', [
                         $start->format('Y-m-d 00:00:00'),
                         $end->format('Y-m-d 23:59:59')
@@ -900,9 +901,9 @@ class UserController extends Controller
             // ====================================================================
             // 6. SIGN-INS QUERY (NO EXCLUSIONS - SHOW ALL APPLICATIONS)
             // ====================================================================
-            $signInsQuery = $user->signIns()
+            $signInsQuery = SigninLog::where(DB::raw('LOWER(username)'), strtolower($user->userPrincipalName))
                 ->whereBetween('date_utc', [$start, $end]);
-
+                
             if ($request->filled('search')) {
                 $search = $request->input('search');
                 $signInsQuery->where(function ($q) use ($search) {
@@ -923,7 +924,7 @@ class UserController extends Controller
             // ====================================================================
             // 7. UNIQUE APPS COUNT (ALL APPS, NO EXCLUSIONS)
             // ====================================================================
-            $uniqueAppsCount = SigninLog::where('user_id', $user->id)
+            $uniqueAppsCount = SigninLog::where(DB::raw('LOWER(username)'), strtolower($user->userPrincipalName))
                 ->whereBetween('date_utc', [$start, $end])
                 ->whereNotNull('application')
                 ->where('application', '!=', '')
@@ -998,7 +999,7 @@ class UserController extends Controller
 
     /**
      * Build clean to raw system name mapping
-     *
+     * 
      * @param array $systemMap
      * @return array
      */
@@ -1028,7 +1029,7 @@ class UserController extends Controller
 
     /**
      * Process raw login data and map to clean system names
-     *
+     * 
      * @param \Illuminate\Support\Collection $loginDataRaw
      * @param array $cleanToRawMap
      * @return array
@@ -1091,7 +1092,7 @@ class UserController extends Controller
     /**
      * Build monthly summary rows from processed data
      * NOW INCLUDES ALL DATES IN RANGE, NOT JUST DATES WITH ACTIVITY
-     *
+     * 
      * @param array $processedData
      * @param \Carbon\Carbon $start
      * @param \Carbon\Carbon $end
@@ -1155,7 +1156,7 @@ class UserController extends Controller
 
     /**
      * Get systems that have data across all rows
-     *
+     * 
      * @param array $monthlySummary
      * @return array
      */
@@ -1173,6 +1174,244 @@ class UserController extends Controller
 
         return $systemsWithData;
     }
+
+
+//   public function loggedInUsers(Request $request)
+// {
+//     try {
+//         $filterService = new \App\Services\LoginFilterService();
+//         $filters = $filterService->parseFilters($request);
+//         $search = $request->input('search');
+
+//         if ($search === 'logged-in' || empty($search)) {
+//             $search = null;
+//         }
+
+//         Log::info('UserController@loggedInUsers called', [
+//             'filters' => $filters,
+//             'search' => $search,
+//             'request_url' => $request->fullUrl(),
+//         ]);
+
+//         // Helper function to get raw system names
+//         $getRawSystemNames = function($cleanSystemName) {
+//             $systemMap = config('systemmap', []);
+            
+//             if (empty($systemMap)) {
+//                 Log::warning('System map configuration not found');
+//                 return [$cleanSystemName]; // Return the clean name as fallback
+//             }
+            
+//             $rawNames = collect($systemMap)
+//                 ->filter(fn($mappedName) => $mappedName === $cleanSystemName)
+//                 ->keys()
+//                 ->toArray();
+            
+//             // If no mappings found, return the clean system name itself
+//             if (empty($rawNames)) {
+//                 return [$cleanSystemName];
+//             }
+            
+//             return $rawNames;
+//         };
+
+//         // FIXED: System filtering helper function
+//         $applySystemFilter = function($query, $systemName) use ($getRawSystemNames) {
+//             if (empty($systemName)) {
+//                 return $query;
+//             }
+            
+//             $rawSystemNames = $getRawSystemNames($systemName);
+            
+//             return $query->where(function ($q) use ($rawSystemNames, $systemName) {
+//                 // Start with OR conditions from the beginning
+//                 $q->where(DB::raw('LOWER(application)'), strtolower($systemName));
+                
+//                 // Add all raw system variations as OR conditions
+//                 foreach ($rawSystemNames as $rawSystem) {
+//                     $q->orWhere(DB::raw('LOWER(application)'), strtolower($rawSystem))
+//                       ->orWhere('application', 'LIKE', "%{$rawSystem}%");
+//                 }
+                
+//                 // Also try direct application field match for the clean name
+//                 $q->orWhere(DB::raw('LOWER(application)'), 'like', '%' . strtolower($systemName) . '%');
+//             });
+//         };
+
+//         // Main query
+//         $query = AzureUser::valid()->whereHas('signIns', function ($q) use ($filters, $applySystemFilter) {
+//             $q->whereBetween('date_utc', [$filters['startDate'], $filters['endDate']]);
+            
+//             // FIXED: Apply system filter correctly
+//             if (!empty($filters['system'])) {
+//                 $applySystemFilter($q, $filters['system']);
+//             }
+//         });
+
+//         if ($search) {
+//             $query->where(function ($q) use ($search) {
+//                 $q->where('displayName', 'like', "%{$search}%")
+//                   ->orWhere('userPrincipalName', 'like', "%{$search}%")
+//                   ->orWhere('mail', 'like', "%{$search}%")
+//                   ->orWhere('alternateEmailAddress', 'like', "%{$search}%");
+//             });
+//         }
+
+//         $query->withCount(['signIns as login_count' => function ($q) use ($filters, $applySystemFilter) {
+//             $q->whereBetween('date_utc', [$filters['startDate'], $filters['endDate']]);
+            
+//             // FIXED: Same system filtering logic for count
+//             if (!empty($filters['system'])) {
+//                 $applySystemFilter($q, $filters['system']);
+//             }
+//         }])
+//         ->with(['signIns' => function ($q) use ($filters, $applySystemFilter) {
+//             $q->whereBetween('date_utc', [$filters['startDate'], $filters['endDate']]);
+            
+//             // FIXED: Same system filtering logic for relations
+//             if (!empty($filters['system'])) {
+//                 $applySystemFilter($q, $filters['system']);
+//             }
+            
+//             $q->orderByDesc('date_utc')->limit(5);
+//         }])
+//         ->orderBy('displayName');
+
+//         $users = $query->paginate($this->perPage)->withQueryString();
+//         $systems = $filterService->getSystemList();
+//         $type = 'default';
+
+//         Log::info('loggedInUsers loaded with fixed system filtering', [
+//             'user_count' => $users->total(),
+//             'filters' => $filters,
+//             'search' => $search,
+//             'user_ids' => $users->pluck('id')->toArray(),
+//             'applied_system_filter' => $filters['system'] ?? 'none',
+//         ]);
+
+//         return view('logintracker.users.logged-in', compact('users', 'filters', 'search', 'systems', 'type'));
+//     } catch (\Exception $e) {
+//         Log::error('Error in loggedInUsers', [
+//             'error' => $e->getMessage(),
+//             'trace' => $e->getTraceAsString(),
+//         ]);
+//         return redirect()->route('dashboard')->with('error', 'An unexpected error occurred.');
+//     }
+// }
+
+
+// public function notLoggedInUsers(Request $request)
+// {
+//     try {
+//         $filterService = new \App\Services\LoginFilterService();
+//         $filters = $filterService->parseFilters($request);
+//         $search = $request->input('search');
+
+//         Log::info('UserController@notLoggedInUsers called', [
+//             'filters' => $filters,
+//             'search' => $search,
+//             'request_url' => $request->fullUrl(),
+//         ]);
+
+//         // Helper functions (same as before)
+//         $getRawSystemNames = function($cleanSystemName) {
+//             $systemMap = config('systemmap', []);
+            
+//             if (empty($systemMap)) {
+//                 Log::warning('System map configuration not found');
+//                 return [$cleanSystemName];
+//             }
+            
+//             $rawNames = collect($systemMap)
+//                 ->filter(fn($mappedName) => $mappedName === $cleanSystemName)
+//                 ->keys()
+//                 ->toArray();
+            
+//             if (empty($rawNames)) {
+//                 return [$cleanSystemName];
+//             }
+            
+//             return $rawNames;
+//         };
+
+//         $applySystemFilter = function($query, $systemName) use ($getRawSystemNames) {
+//             if (empty($systemName)) {
+//                 return $query;
+//             }
+            
+//             $rawSystemNames = $getRawSystemNames($systemName);
+            
+//             return $query->where(function ($q) use ($rawSystemNames, $systemName) {
+//                 $q->where(DB::raw('LOWER(application)'), strtolower($systemName));
+                
+//                 foreach ($rawSystemNames as $rawSystem) {
+//                     $q->orWhere(DB::raw('LOWER(application)'), strtolower($rawSystem))
+//                       ->orWhere('application', 'LIKE', "%{$rawSystem}%");
+//                 }
+                
+//                 $q->orWhere(DB::raw('LOWER(application)'), 'like', '%' . strtolower($systemName) . '%');
+//             });
+//         };
+
+//         // FIXED: Show users who have used the system before but not during this period
+//         if (!empty($filters['system'])) {
+//             // Users who have used this specific system before
+//             $baseQuery = AzureUser::valid()
+//                 ->whereHas('signIns', function ($q) use ($applySystemFilter, $filters) {
+//                     // They have used this system at some point
+//                     $applySystemFilter($q, $filters['system']);
+//                 })
+//                 ->whereDoesntHave('signIns', function ($q) use ($filters, $applySystemFilter) {
+//                     // But NOT during the selected period for this system
+//                     $q->whereBetween('date_utc', [$filters['startDate'], $filters['endDate']]);
+//                     $applySystemFilter($q, $filters['system']);
+//                 });
+//         } else {
+//             // For "All Systems" - users who haven't logged in anywhere during the period
+//             $baseQuery = AzureUser::valid()
+//                 ->whereDoesntHave('signIns', function ($q) use ($filters) {
+//                     $q->whereBetween('date_utc', [$filters['startDate'], $filters['endDate']]);
+//                 });
+//         }
+
+//         // Apply search filter if provided
+//         if ($search) {
+//             $baseQuery->where(function ($q) use ($search) {
+//                 $q->where('displayName', 'like', "%{$search}%")
+//                   ->orWhere('userPrincipalName', 'like', "%{$search}%")
+//                   ->orWhere('mail', 'like', "%{$search}%")
+//                   ->orWhere('alternateEmailAddress', 'like', "%{$search}%");
+//             });
+//         }
+
+//         // Order and paginate
+//         $users = $baseQuery->orderBy('displayName')
+//             ->paginate($this->perPage)
+//             ->withQueryString();
+
+//         $systems = $filterService->getSystemList();
+
+//         Log::info('notLoggedInUsers loaded with system-specific filtering', [
+//             'user_count' => $users->total(),
+//             'filters' => $filters,
+//             'search' => $search,
+//             'applied_system_filter' => $filters['system'] ?? 'none',
+//             'logic' => $filters['system'] ? 'system_specific' : 'all_systems'
+//         ]);
+
+//         return view('logintracker.users.not-logged-in', compact('users', 'filters', 'search', 'systems'));
+        
+//     } catch (\Exception $e) {
+//         Log::error('Error in notLoggedInUsers', [
+//             'error' => $e->getMessage(),
+//             'trace' => $e->getTraceAsString(),
+//         ]);
+//         return redirect()->back()->with('error', 'An unexpected error occurred.');
+//     }
+// }
+
+
+
 
     /**
      * Show users active this month
@@ -1643,6 +1882,13 @@ class UserController extends Controller
      */
     private function getSystemUsageWithAggregation($userId, $start, $end)
     {
+        // Get the user to access their userPrincipalName
+        $user = AzureUser::find($userId);
+
+        if (!$user) {
+            return collect();
+        }
+
         // Check if using SQL Server
         if (DB::connection()->getDriverName() === 'sqlsrv') {
             return SigninLog::select([
@@ -1651,7 +1897,7 @@ class UserController extends Controller
                 DB::raw('MAX(date_utc) as last_used'),
                 DB::raw('STRING_AGG(CAST(system AS NVARCHAR(MAX)), \', \') WITHIN GROUP (ORDER BY system) as systems')
             ])
-                ->where('user_id', $userId)
+                ->where(DB::raw('LOWER(username)'), strtolower($user->userPrincipalName))
                 ->whereBetween('date_utc', [$start, $end])
                 ->whereNotNull('system')
                 ->groupBy('system')
@@ -1666,7 +1912,7 @@ class UserController extends Controller
                 DB::raw('MAX(date_utc) as last_used'),
                 DB::raw('GROUP_CONCAT(DISTINCT system ORDER BY system SEPARATOR ", ") as systems')
             ])
-                ->where('user_id', $userId)
+                ->where(DB::raw('LOWER(username)'), strtolower($user->userPrincipalName))
                 ->whereBetween('date_utc', [$start, $end])
                 ->whereNotNull('system')
                 ->groupBy('system')

@@ -18,7 +18,7 @@ class LoginFilterService
     {
         $validRanges = ['this_month', 'last_month', 'last_3_months'];
         $range = $request->input('range', 'this_month');
-        
+
         // Validate range
         if (!in_array($range, $validRanges)) {
             Log::warning('Invalid range provided, defaulting to this_month', ['range' => $range]);
@@ -27,7 +27,7 @@ class LoginFilterService
 
         $validSystems = $this->getSystemList();
         $system = $request->input('system', 'SCM');
-        
+
         // Validate system
         if (!in_array($system, $validSystems)) {
             Log::warning('Invalid system provided, defaulting to SCM', ['system' => $system]);
@@ -111,42 +111,42 @@ class LoginFilterService
     /**
      * Get the list of supported systems (for dropdown filtering)
      */
-  public function getSystemList(): array
-{
-    // Systems to exclude - REMOVED, we want all systems during import
-    $excluded = [];
-    
-    // Fetch all systems from DB (no exclusions)
-    $systems = System::whereNotIn(\DB::raw('LOWER(name)'), $excluded)
-        ->orderBy('name')
-        ->pluck('name')
-        ->toArray();
-    
-    // Fallback to hardcoded list if System model is empty
-    if (empty($systems)) {
-        $systems = [
-            'SCM',
-            'Odoo',
-            'OPS',
-            'D365 Live',
-            'Fit Express',
-            'FIT ERP',
-            'Fit Express UAT',
-            'FITerp UAT',
-            'OPS UAT',
-        ];
-        Log::info('No systems found in System model, using hardcoded list');
+    public function getSystemList(): array
+    {
+        // Systems to exclude - REMOVED, we want all systems during import
+        $excluded = [];
+
+        // Fetch all systems from DB (no exclusions)
+        $systems = System::whereNotIn(\DB::raw('LOWER(name)'), $excluded)
+            ->orderBy('name')
+            ->pluck('name')
+            ->toArray();
+
+        // Fallback to hardcoded list if System model is empty
+        if (empty($systems)) {
+            $systems = [
+                'SCM',
+                'Odoo',
+                'OPS',
+                'D365 Live',
+                'Fit Express',
+                'FIT ERP',
+                'Fit Express UAT',
+                'FITerp UAT',
+                'OPS UAT',
+            ];
+            Log::info('No systems found in System model, using hardcoded list');
+        }
+
+        // Ensure unique + sorted
+        $systems = array_values(array_unique($systems));
+
+        Log::info('System list loaded', [
+            'count' => count($systems),
+            'excluded' => $excluded,
+            'systems' => $systems,
+        ]);
+
+        return $systems;
     }
-    
-    // Ensure unique + sorted
-    $systems = array_values(array_unique($systems));
-    
-    Log::info('System list loaded', [
-        'count' => count($systems),
-        'excluded' => $excluded,
-        'systems' => $systems,
-    ]);
-    
-    return $systems;
-}
 }

@@ -51,14 +51,14 @@ class SigninLog extends Model
     protected static function boot()
     {
         parent::boot();
-        
+
         static::creating(function ($model) {
             try {
                 // Auto-generate request_id if not provided
                 if (empty($model->request_id)) {
                     $model->request_id = 'REQ_' . Str::uuid();
                 }
-                
+
                 // Handle user_id - must be a valid string, not null
                 if (empty($model->user_id) && !empty($model->username)) {
                     $user = static::resolveUser($model->username, $model->user);
@@ -67,7 +67,7 @@ class SigninLog extends Model
                     // No username provided, use system unknown user
                     $model->user_id = static::getOrCreateUnknownUserId();
                 }
-                
+
                 // Final validation - ensure user_id is never null
                 if (is_null($model->user_id) || $model->user_id === '') {
                     Log::warning('SigninLog: user_id is null/empty, using fallback', [
@@ -76,14 +76,13 @@ class SigninLog extends Model
                     ]);
                     $model->user_id = static::getSystemUnknownUserId();
                 }
-                
             } catch (\Exception $e) {
                 Log::error('SigninLog boot error: ' . $e->getMessage(), [
                     'username' => $model->username ?? 'N/A',
                     'user' => $model->user ?? 'N/A',
                     'trace' => $e->getTraceAsString()
                 ]);
-                
+
                 // Absolute fallback: use system unknown user to prevent constraint violation
                 $model->user_id = static::getSystemUnknownUserId();
             }
@@ -98,14 +97,13 @@ class SigninLog extends Model
         try {
             // Use the existing findByIdentifier method first
             $user = AzureUser::findByIdentifier($username);
-            
+
             if ($user) {
                 return $user;
             }
-            
+
             // If not found, try to create using the existing findOrCreateUser method
             return AzureUser::findOrCreateUser($username, $displayName);
-            
         } catch (\Exception $e) {
             Log::error('Failed to resolve user: ' . $e->getMessage(), [
                 'username' => $username,
@@ -123,10 +121,10 @@ class SigninLog extends Model
         try {
             // Generate UUID for the user
             $userId = (string) Str::uuid();
-            
+
             // Extract name parts from username/email
             $nameParts = static::extractNameFromUsername($username);
-            
+
             $userData = [
                 'id' => $userId,
                 'userPrincipalName' => $username,
@@ -140,9 +138,8 @@ class SigninLog extends Model
                 'identityIssuer' => 'System Generated',
                 'createdDateTime' => now(),
             ];
-            
+
             return AzureUser::create($userData);
-            
         } catch (\Exception $e) {
             Log::error('Failed to create new user: ' . $e->getMessage(), [
                 'username' => $username,
@@ -158,26 +155,26 @@ class SigninLog extends Model
     protected static function getOrCreateUnknownUserId($username = null)
     {
         static $unknownUserId = null;
-        
+
         if ($unknownUserId !== null) {
             return $unknownUserId;
         }
-        
+
         try {
             // Look for existing unknown user
             $unknownUser = AzureUser::where('userPrincipalName', 'LIKE', 'unknown_%@freight-in-time.com')
-                                  ->where('displayName', 'Unknown User')
-                                  ->first();
-            
+                ->where('displayName', 'Unknown User')
+                ->first();
+
             if ($unknownUser) {
                 $unknownUserId = $unknownUser->id;
                 return $unknownUserId;
             }
-            
+
             // Create new unknown user
             $userId = (string) Str::uuid();
             $identifier = $username ? static::sanitizeUsername($username) : 'user_' . time();
-            
+
             $unknownUser = AzureUser::create([
                 'id' => $userId,
                 'userPrincipalName' => 'unknown_' . $identifier . '@freight-in-time.com',
@@ -191,10 +188,9 @@ class SigninLog extends Model
                 'identityIssuer' => 'System Generated',
                 'createdDateTime' => now(),
             ]);
-            
+
             $unknownUserId = $unknownUser->id;
             return $unknownUserId;
-            
         } catch (\Exception $e) {
             Log::error('Failed to create/get unknown user: ' . $e->getMessage());
             return static::getSystemUnknownUserId();
@@ -221,15 +217,15 @@ class SigninLog extends Model
         } else {
             $localPart = $username;
         }
-        
+
         // Remove common prefixes/suffixes and clean up
         $localPart = preg_replace('/^(mr|mrs|ms|dr|prof)\.?/i', '', $localPart);
         $localPart = preg_replace('/\.(admin|test|temp)$/i', '', $localPart);
-        
+
         // Split by dots, underscores, or hyphens
         $nameParts = preg_split('/[._-]/', $localPart);
         $nameParts = array_map('ucfirst', array_filter($nameParts));
-        
+
         if (count($nameParts) >= 2) {
             return [
                 'givenName' => $nameParts[0],
@@ -255,7 +251,7 @@ class SigninLog extends Model
         if (static::isValidEmail($username)) {
             $username = explode('@', $username)[0];
         }
-        
+
         // Remove special characters and limit length
         $sanitized = preg_replace('/[^a-zA-Z0-9._-]/', '', $username);
         return substr($sanitized, 0, 20);
@@ -274,7 +270,7 @@ class SigninLog extends Model
      */
     public function user()
     {
-        return $this->belongsTo(AzureUser::class, 'user_id', 'id');
+        return $this->belongsTo(AzureUser::class, 'username', 'userPrincipalName');
     }
 
     /**
@@ -336,7 +332,7 @@ class SigninLog extends Model
     public function scopeWithMfa($query)
     {
         return $query->whereNotNull('multifactor_authentication_result')
-                    ->where('multifactor_authentication_result', '!=', 'None');
+            ->where('multifactor_authentication_result', '!=', 'None');
     }
 
     /**
@@ -376,11 +372,11 @@ class SigninLog extends Model
         if (empty($this->location)) {
             return 'Unknown';
         }
-        
+
         // Parse location string (e.g., "Mombasa, Coast, KE")
         $parts = array_map('trim', explode(',', $this->location));
         $filtered = array_filter($parts, fn($part) => !empty($part));
-        
+
         return implode(', ', $filtered) ?: 'Unknown';
     }
 
@@ -389,7 +385,7 @@ class SigninLog extends Model
         if (empty($this->browser)) {
             return 'Unknown';
         }
-        
+
         // Clean up browser string (e.g., "Firefox 140.0" -> "Firefox 140")
         return preg_replace('/\.0+$/', '', $this->browser);
     }
@@ -415,7 +411,7 @@ class SigninLog extends Model
     public function usedMfa()
     {
         return !empty($this->multifactor_authentication_result) &&
-               !in_array($this->multifactor_authentication_result, ['None', 'Not Required', '']);
+            !in_array($this->multifactor_authentication_result, ['None', 'Not Required', '']);
     }
 
     public function hasValidUser()
@@ -433,7 +429,7 @@ class SigninLog extends Model
         if (!$this->date_utc) {
             return null;
         }
-        
+
         return $this->date_utc->diffForHumans();
     }
 
@@ -443,45 +439,45 @@ class SigninLog extends Model
     public static function getSystemList()
     {
         return static::select('system')->distinct()
-                    ->whereNotNull('system')
-                    ->where('system', '!=', '')
-                    ->pluck('system')
-                    ->sort()
-                    ->values()
-                    ->toArray();
+            ->whereNotNull('system')
+            ->where('system', '!=', '')
+            ->pluck('system')
+            ->sort()
+            ->values()
+            ->toArray();
     }
 
     public static function getApplicationList()
     {
         return static::select('application')->distinct()
-                    ->whereNotNull('application')
-                    ->where('application', '!=', '')
-                    ->pluck('application')
-                    ->sort()
-                    ->values()
-                    ->toArray();
+            ->whereNotNull('application')
+            ->where('application', '!=', '')
+            ->pluck('application')
+            ->sort()
+            ->values()
+            ->toArray();
     }
 
     public static function getStatusList()
     {
         return static::select('status')->distinct()
-                    ->whereNotNull('status')
-                    ->where('status', '!=', '')
-                    ->pluck('status')
-                    ->sort()
-                    ->values()
-                    ->toArray();
+            ->whereNotNull('status')
+            ->where('status', '!=', '')
+            ->pluck('status')
+            ->sort()
+            ->values()
+            ->toArray();
     }
 
     public static function getBrowserList()
     {
         return static::select('browser')->distinct()
-                    ->whereNotNull('browser')
-                    ->where('browser', '!=', '')
-                    ->pluck('browser')
-                    ->sort()
-                    ->values()
-                    ->toArray();
+            ->whereNotNull('browser')
+            ->where('browser', '!=', '')
+            ->pluck('browser')
+            ->sort()
+            ->values()
+            ->toArray();
     }
 
     /**
@@ -491,7 +487,7 @@ class SigninLog extends Model
     {
         $total = static::last30Days()->count();
         if ($total === 0) return 0;
-        
+
         $successful = static::last30Days()->successful()->count();
         return round(($successful / $total) * 100, 2);
     }
@@ -500,7 +496,7 @@ class SigninLog extends Model
     {
         $total = static::last30Days()->successful()->count();
         if ($total === 0) return 0;
-        
+
         $withMfa = static::last30Days()->successful()->withMfa()->count();
         return round(($withMfa / $total) * 100, 2);
     }
@@ -517,17 +513,16 @@ class SigninLog extends Model
 
         foreach ($batches as $batchIndex => $batch) {
             Log::info("Processing batch " . ($batchIndex + 1) . " of " . count($batches));
-            
+
             foreach ($batch as $index => $record) {
                 try {
                     // Validate required fields
                     if (empty($record['username']) && empty($record['user_id'])) {
                         throw new \InvalidArgumentException('Either username or user_id is required');
                     }
-                    
+
                     static::create($record);
                     $successful++;
-                    
                 } catch (\Exception $e) {
                     $failed++;
                     $errors[] = [
@@ -536,7 +531,7 @@ class SigninLog extends Model
                         'username' => $record['username'] ?? 'N/A',
                         'error' => $e->getMessage()
                     ];
-                    
+
                     Log::error('SigninLog batch import failed for record', [
                         'batch' => $batchIndex + 1,
                         'index' => $index,

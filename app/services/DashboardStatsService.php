@@ -6,6 +6,8 @@ use App\Models\Logintracker\SigninLog;
 use App\Models\Logintracker\AzureUser;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use App\Services\LoginFilterService;
 
 class DashboardStatsService
@@ -15,6 +17,33 @@ class DashboardStatsService
     public function __construct(LoginFilterService $filterService)
     {
         $this->filterService = $filterService;
+    }
+
+    /**
+     * Get the actual date range of imported data
+     * Cached for 5 minutes to avoid repeated queries
+     */
+    public function getActualDateRange(): array
+    {
+        return Cache::remember('actual_date_range', 300, function () {
+            $minDate = SigninLog::min('date_utc');
+            $maxDate = SigninLog::max('date_utc');
+
+            if (!$minDate || !$maxDate) {
+                // No data exists, return default range
+                return [
+                    'min' => Carbon::now()->subDays(30),
+                    'max' => Carbon::now(),
+                    'has_data' => false
+                ];
+            }
+
+            return [
+                'min' => Carbon::parse($minDate),
+                'max' => Carbon::parse($maxDate),
+                'has_data' => true
+            ];
+        });
     }
 
     /**
@@ -29,7 +58,8 @@ class DashboardStatsService
     }
 
     /**
-     * Apply system filter to a query - improved version that checks multiple fields
+     * SIMPLIFIED: Apply system filter - only checks application field
+     * More reliable since import only populates 'application', not 'system'
      */
     private function applySystemFilter($query, $systemName)
     {
@@ -37,27 +67,77 @@ class DashboardStatsService
             return $query;
         }
 
+        // Get any mapped raw system names from config
         $rawSystemNames = $this->getRawSystemNames($systemName);
         
         return $query->where(function ($q) use ($rawSystemNames, $systemName) {
-            // Try direct system field match first
-            $q->where(DB::raw('LOWER(application)'), strtolower($systemName));
+            // Primary: Direct case-insensitive match on application field
+            $q->whereRaw('LOWER(application) = ?', [strtolower($systemName)]);
             
-            // If there are raw system mappings, also check application field
+            // Secondary: Check raw system name mappings
             if (!empty($rawSystemNames)) {
                 foreach ($rawSystemNames as $rawSystem) {
-                    $q->orWhere('application', 'LIKE', "%{$rawSystem}%");
+                    $q->orWhereRaw('LOWER(application) LIKE ?', ['%' . strtolower($rawSystem) . '%']);
                 }
             }
             
-            // Also try direct application field match
-            $q->orWhere(DB::raw('LOWER(application)'), 'like', '%' . strtolower($systemName) . '%');
+            // Tertiary: Partial match fallback
+            $q->orWhereRaw('LOWER(application) LIKE ?', ['%' . strtolower($systemName) . '%']);
         });
+    }
+
+    /**
+     * Validate if the selected date range contains any data
+     */
+    private function validateDateRange($startDate, $endDate): array
+    {
+        $actualRange = $this->getActualDateRange();
+        
+        if (!$actualRange['has_data']) {
+            return [
+                'valid' => false,
+                'message' => 'No sign-in data exists in the database.',
+                'suggestion' => 'Please import sign-in data first.'
+            ];
+        }
+
+        // Check if selected range overlaps with actual data
+        $selectedStart = Carbon::parse($startDate);
+        $selectedEnd = Carbon::parse($endDate);
+        $dataStart = $actualRange['min'];
+        $dataEnd = $actualRange['max'];
+
+        // No overlap if selected range is completely before or after data range
+        if ($selectedEnd->lt($dataStart) || $selectedStart->gt($dataEnd)) {
+            return [
+                'valid' => false,
+                'message' => "No data exists in selected date range ({$selectedStart->format('M d, Y')} - {$selectedEnd->format('M d, Y')}).",
+                'suggestion' => "Available data: {$dataStart->format('M d, Y')} - {$dataEnd->format('M d, Y')}",
+                'actual_range' => $actualRange
+            ];
+        }
+
+        return [
+            'valid' => true,
+            'actual_range' => $actualRange
+        ];
     }
 
     public function generateStats(array $filters)
     {
         ['startDate' => $startDate, 'endDate' => $endDate, 'system' => $system, 'search' => $search] = $filters;
+        
+        // Validate date range and get actual data range
+        $dateValidation = $this->validateDateRange($startDate, $endDate);
+        
+        // Log warning if date range doesn't match data
+        if (!$dateValidation['valid']) {
+            Log::warning('Dashboard date range mismatch', [
+                'selected_range' => "{$startDate->format('Y-m-d')} to {$endDate->format('Y-m-d')}",
+                'validation' => $dateValidation
+            ]);
+        }
+
         $totalDays = (int) ($startDate->diffInDays($endDate) + 1);
 
         // 🔹 Users with filters - show all users who have used the system, with date-filtered login counts
@@ -87,7 +167,7 @@ class DashboardStatsService
 
         $users = $usersQuery->orderBy('displayName')->paginate(17);
 
-        // FIXED: Load signIns separately after pagination to avoid eager loading issues
+        // Load signIns separately after pagination
         $users->getCollection()->transform(function ($user) use ($filters) {
             $signInsQuery = SigninLog::where('user_id', $user->id);
             
@@ -148,29 +228,28 @@ class DashboardStatsService
                 'Azure_Users.id',
                 'Azure_LoginDetails.date_utc',
                 'Azure_LoginDetails.application',
-                'Azure_LoginDetails.system',
                 'Azure_Users.displayName',
                 'Azure_Users.userPrincipalName as email'
             )
             ->whereBetween('Azure_LoginDetails.date_utc', [$startDate, $endDate]);
 
         if ($system) {
-            // Apply system filter to the join query
+            // SIMPLIFIED: Only check application field
             $rawSystemNames = $this->getRawSystemNames($system);
             
             $signInsQuery->where(function ($query) use ($rawSystemNames, $system) {
-                // Try direct system field match first
-                $query->where(DB::raw('LOWER(Azure_LoginDetails.system)'), strtolower($system));
+                // Primary: Direct match
+                $query->whereRaw('LOWER(Azure_LoginDetails.application) = ?', [strtolower($system)]);
                 
-                // If there are raw system mappings, also check application field
+                // Secondary: Raw system mappings
                 if (!empty($rawSystemNames)) {
                     foreach ($rawSystemNames as $rawSystem) {
-                        $query->orWhere('Azure_LoginDetails.application', 'LIKE', "%{$rawSystem}%");
+                        $query->orWhereRaw('LOWER(Azure_LoginDetails.application) LIKE ?', ['%' . strtolower($rawSystem) . '%']);
                     }
                 }
                 
-                // Also try direct application field match
-                $query->orWhere(DB::raw('LOWER(Azure_LoginDetails.application)'), 'like', '%' . strtolower($system) . '%');
+                // Tertiary: Partial match
+                $query->orWhereRaw('LOWER(Azure_LoginDetails.application) LIKE ?', ['%' . strtolower($system) . '%']);
             });
         }
 
@@ -195,7 +274,59 @@ class DashboardStatsService
             'signIns',
             'totalLogins',
             'lastLogin',
-            'totalDays'
+            'totalDays',
+            'dateValidation'  // NEW: Include validation info for the view
         );
+    }
+
+    /**
+     * Get available systems/applications from actual data
+     * Cached for 5 minutes
+     */
+    public function getAvailableSystems(): array
+    {
+        return Cache::remember('available_systems', 300, function () {
+            return SigninLog::query()
+                ->select('application')
+                ->distinct()
+                ->whereNotNull('application')
+                ->where('application', '!=', '')
+                ->orderBy('application')
+                ->pluck('application')
+                ->toArray();
+        });
+    }
+
+    /**
+     * Get summary statistics for quick overview
+     */
+    public function getSummaryStats(): array
+    {
+        return Cache::remember('dashboard_summary_stats', 300, function () {
+            $actualRange = $this->getActualDateRange();
+            
+            if (!$actualRange['has_data']) {
+                return [
+                    'has_data' => false,
+                    'total_users' => AzureUser::valid()->count(),
+                    'total_logins' => 0,
+                    'date_range' => null
+                ];
+            }
+
+            return [
+                'has_data' => true,
+                'total_users' => AzureUser::valid()->count(),
+                'total_logins' => SigninLog::count(),
+                'date_range' => [
+                    'min' => $actualRange['min']->format('M d, Y'),
+                    'max' => $actualRange['max']->format('M d, Y'),
+                ],
+                'available_systems' => $this->getAvailableSystems(),
+                'users_with_logins' => AzureUser::valid()
+                    ->whereHas('signIns')
+                    ->count()
+            ];
+        });
     }
 }
