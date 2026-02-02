@@ -416,7 +416,7 @@ class DashboardController extends Controller
             } elseif ($filter === 'active_this_month') {
                 $sql = "
                 SELECT au.id, au.displayName as name, au.userPrincipalName as login_id,
-                       login_data.logins_last_month, login_data.last_login
+                    login_data.logins_last_month, login_data.last_login
                 FROM Azure_Users au
                 INNER JOIN (
                     SELECT username, COUNT(*) as logins_last_month, MAX(date_utc) as last_login

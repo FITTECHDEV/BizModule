@@ -600,9 +600,16 @@
                 var dateFilter = $('#dateFilter').val();
                 var officeFilter = $('#officeFilter').val();
 
-                // Only show if (date is 30 days AND office filter is empty) OR (office filter is active AND date is NOT custom)
-                if ((dateFilter === '30' && officeFilter === '') || (officeFilter !== '' && dateFilter !==
-                    'custom')) {
+                // Hide button if custom date range is selected
+                if (dateFilter === 'custom') {
+                    $('#clearFiltersContainer').hide();
+                    return;
+                }
+
+                // Show button if either:
+                // - Date is set to 30 days (non-default)
+                // - Office filter is active (non-default)
+                if (dateFilter === '30' || officeFilter !== '') {
                     $('#clearFiltersContainer').show();
                 } else {
                     $('#clearFiltersContainer').hide();
@@ -617,6 +624,7 @@
                     // Show custom date range inputs
                     $('#customDateRange').show();
                     $('#customDateRangeTo').show();
+                    updateClearButtonVisibility();
                 } else {
                     // Hide custom date range inputs and clear values
                     $('#customDateRange').hide();

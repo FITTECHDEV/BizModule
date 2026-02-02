@@ -78,8 +78,8 @@ class ShipmentReportController extends Controller
             // Apply date filter
             if ($startDate && $endDate) {
                 $query->whereBetween(DB::raw('CAST(SubmittedOn as DATE)'), [$startDate, $endDate]);
-            } else {
-                $query->where(DB::raw('CAST(SubmittedOn as DATE)'), '>=', Carbon::now()->subDays($days)->toDateString());
+            } elseif (is_numeric($days)) {
+                $query->where(DB::raw('CAST(SubmittedOn as DATE)'), '>=', Carbon::now()->subDays((int)$days)->toDateString());
             }
 
             // Apply office filter
@@ -311,9 +311,10 @@ class ShipmentReportController extends Controller
             // Apply date filter
             if ($startDate && $endDate) {
                 $query->whereBetween(DB::raw('CAST(SubmittedOn as DATE)'), [$startDate, $endDate]);
-            } else {
-                $query->where(DB::raw('CAST(SubmittedOn as DATE)'), '>=', Carbon::now()->subDays($days)->toDateString());
+            } elseif (is_numeric($days)) {
+                $query->where(DB::raw('CAST(SubmittedOn as DATE)'), '>=', Carbon::now()->subDays((int)$days)->toDateString());
             }
+            // If days is "custom" and no dates provided, don't apply date filter
 
             // Apply office filter
             if ($office) {
