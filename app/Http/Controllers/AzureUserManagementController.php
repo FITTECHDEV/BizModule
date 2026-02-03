@@ -2108,11 +2108,11 @@ class AzureUserManagementController extends Controller
             // ====================================================================
             $modulesRaw = DB::connection('sqlsrv')
                 ->select("SELECT Id, Name, ApplicationId
-                FROM Azure_SoftwareMaster
-                WHERE IsActive = 1 AND IsDeleted = 0
-                AND Name != 'Odoo'
-                AND Name NOT LIKE '%UAT%'
-                ORDER BY Name");
+    FROM Azure_SoftwareMaster
+    WHERE IsActive = 1 AND IsDeleted = 0
+    AND Name != 'Odoo'
+    AND Name NOT LIKE '%UAT%'
+    ORDER BY Name");
 
             $modules = collect($modulesRaw)->map(function ($module) {
                 return (object) [
@@ -2433,9 +2433,11 @@ class AzureUserManagementController extends Controller
                 $deletedRolesCount = DB::connection('sqlsrv')
                     ->table('Azure_Application_UserMapping')
                     ->where('user_id', $user->userPrincipalName)
-                    ->where(function ($q) {
-                        $q->whereNot('ApplicationName', 'Windows Sign-In');
-                    })
+                    ->whereNotIn('ApplicationName', [
+                        'Windows Sign-In',
+                        'Windows Sign In',    // ← ADD THIS (with space, no hyphen)
+                        'Windows SignIn'      // ← ADD THIS (no space, no hyphen)
+                    ])
                     ->delete();
 
                 $deletedFunctionsCount = DB::connection('sqlsrv')
@@ -4507,7 +4509,7 @@ class AzureUserManagementController extends Controller
     private function checkUserEligibility($user): array
     {
         // Check 1: Azure AD provisioning
-        if (!$user->isProvisionedToAzure()) {
+        if (empty($user->AzureId)) {  // ✅ FIXED - removed isProvisionedToAzure() call
             return [
                 'can_activate' => false,
                 'reason' => 'Not provisioned to Azure AD',
@@ -4516,13 +4518,13 @@ class AzureUserManagementController extends Controller
 
         // Check 2: External system synchronization
         $syncedSystems = [];
-        if (! empty($user->OdooUserId)) {
+        if (!empty($user->OdooUserId)) {
             $syncedSystems[] = 'Odoo';
         }
-        if (! empty($user->SCMUserID)) {
+        if (!empty($user->SCMUserID)) {
             $syncedSystems[] = 'SCM';
         }
-        if (! empty($user->BizUserID)) {
+        if (!empty($user->BizUserID)) {
             $syncedSystems[] = 'BIZ';
         }
 
@@ -4584,6 +4586,16 @@ class AzureUserManagementController extends Controller
         $errors = [];
 
         // ========================================================================
+        // Check if this is Windows Sign-In (special case - no roles/functions needed)
+        // ========================================================================
+        $isWindowsSignIn = isset($assignment['application_name']) &&
+            in_array(strtoupper(trim($assignment['application_name'])), [
+                'WINDOWS SIGN-IN',
+                'WINDOWS SIGN IN',
+                'WINDOWS SIGNIN'
+            ]);
+
+        // ========================================================================
         // REQUIRED FIELDS (Always needed)
         // ========================================================================
         $requiredFields = ['module_id', 'application_id', 'location_id', 'location_code'];
@@ -4596,18 +4608,22 @@ class AzureUserManagementController extends Controller
 
         // ========================================================================
         // ✅ FIX: Handle 1-to-1 method validation
-        // In 1-to-1 method, a record can have EITHER:
-        // - role_id + role_code (role record)
-        // - function_id + function_code (function record)
-        // But NOT both in the same record
+        // Windows Sign-In: No role/function validation needed
+        // Other modules: Must have EITHER role OR function
         // ========================================================================
 
-        $hasRole = !empty($assignment['role_id']) && !empty($assignment['role_code']);
-        $hasFunction = !empty($assignment['function_id']) && !empty($assignment['function_code']);
+        if (!$isWindowsSignIn) {
+            $hasRole = !empty($assignment['role_id']) && !empty($assignment['role_code']);
+            $hasFunction = !empty($assignment['function_id']) && !empty($assignment['function_code']);
 
-        // At least ONE must be present
-        if (!$hasRole && !$hasFunction) {
-            $errors[] = "Must have either role (role_id + role_code) OR function (function_id + function_code)";
+            // At least ONE must be present (for non-Windows Sign-In modules)
+            if (!$hasRole && !$hasFunction) {
+                $errors[] = "Must have either role (role_id + role_code) OR function (function_id + function_code)";
+            }
+        } else {
+            // Windows Sign-In: Set flags to false (no validation needed)
+            $hasRole = false;
+            $hasFunction = false;
         }
 
         if (!empty($errors)) {

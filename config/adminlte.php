@@ -358,6 +358,14 @@ return [
             'can'  => 'approve-all-entity-request'
         ],
 
+        [
+            'text' => 'SCM PROFIT INTEGRATION',
+            'url'  => 'scm-profit-integration',
+            'icon' => 'fas fa-fw fa-plug',  // or 'fas fa-fw fa-sync-alt' or 'fas fa-fw fa-exchange-alt'
+            'active' => ['scm-profit-integration/*'],
+            'can'  => 'approve-all-entity-request'
+        ],
+
         // ['header' => 'account_settings'],
         [
             'text' => 'SETTINGS',

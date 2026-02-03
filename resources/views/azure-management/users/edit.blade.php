@@ -1324,8 +1324,8 @@
         }
 
         /* ============================================================================
-                                                                               WINDOWS SIGN-IN MODULE STYLES
-                                                                               ============================================================================ */
+                                                                                       WINDOWS SIGN-IN MODULE STYLES
+                                                                                       ============================================================================ */
 
         /* Highlight Windows Sign-In in module selector */
         .windows-signin-highlight {
@@ -1424,8 +1424,8 @@
         }
 
         /* ============================================================================
-           LOCKED CARD STYLES (Windows Sign-In)
-           ============================================================================ */
+                   LOCKED CARD STYLES (Windows Sign-In)
+                   ============================================================================ */
 
         /* Locked card appearance */
         .locked-card {
@@ -1846,10 +1846,10 @@
                         html: `
                     <p><strong>Windows Sign-In</strong> is a mandatory module and cannot be modified.</p>
                     ${card.isNew ? `
-                                            <p style="color: #dc3545; font-weight: 600; margin-top: 15px;">
-                                                To remove it, click the "Cancel Changes" button.
-                                            </p>
-                                        ` : ''}
+                                                    <p style="color: #dc3545; font-weight: 600; margin-top: 15px;">
+                                                        To remove it, click the "Cancel Changes" button.
+                                                    </p>
+                                                ` : ''}
                 `,
                         confirmButtonColor: '#3498db',
                         confirmButtonText: 'OK'
@@ -2160,14 +2160,14 @@
 
             <!-- ROLES (if applicable) -->
             ${availableRoles.length > 0 ? `
-                                <div class="info-field">
-                                    <div class="field-label" style="margin-bottom: 12px;">
-                                        <i class="fas fa-user-tag"></i> Access Roles (Optional)
-                                    </div>
-                                    <div class="checkboxes-grid">
-                                        ${availableRoles.map(r => {
-                                            const isChecked = a.roleIds && a.roleIds.map(String).includes(String(r.id));
-                                            return `
+                                        <div class="info-field">
+                                            <div class="field-label" style="margin-bottom: 12px;">
+                                                <i class="fas fa-user-tag"></i> Access Roles (Optional)
+                                            </div>
+                                            <div class="checkboxes-grid">
+                                                ${availableRoles.map(r => {
+                                                    const isChecked = a.roleIds && a.roleIds.map(String).includes(String(r.id));
+                                                    return `
                                 <div class="checkbox-option ${!isEditMode ? 'disabled' : ''}">
                                     <input type="checkbox"
                                            id="${a.id}_role_${r.id}"
@@ -2181,10 +2181,10 @@
                                     <label for="${a.id}_role_${r.id}">${escapeHtml(r.name)}</label>
                                 </div>
                             `;
-                                        }).join('')}
-                                    </div>
-                                </div>
-                            ` : '<p style="padding: 12px; color: #666; text-align: center; background: #f8f9fa; border-radius: 6px;"><em>No roles available for this module</em></p>'}
+                                                }).join('')}
+                                            </div>
+                                        </div>
+                                    ` : '<p style="padding: 12px; color: #666; text-align: center; background: #f8f9fa; border-radius: 6px;"><em>No roles available for this module</em></p>'}
         </div>
     `;
         }
@@ -2238,20 +2238,20 @@
                                 const locCode = l.code.trim();
                                 const isChecked = isAllLocations || (a.locationCodes && a.locationCodes.map(c => c.trim()).includes(locCode));
                                 return `
-                                                                <div class="checkbox-option ${isAllLocations || !isEditMode ? 'disabled' : ''}">
-                                                                    <input type="checkbox"
-                                                                           id="${a.id}_loc_${locCode}"
-                                                                           class="location-checkbox"
-                                                                           data-location-id="${l.id}"
-                                                                           data-location-code="${locCode}"
-                                                                           data-location-name="${escapeHtml(l.name)}"
-                                                                           value="${locCode}"
-                                                                           ${isChecked ? 'checked' : ''}
-                                                                           ${isAllLocations || !isEditMode ? 'disabled' : ''}
-                                                                           onchange="handleLocationCheckboxChange('${a.id}')">
-                                                                    <label for="${a.id}_loc_${locCode}">${escapeHtml(l.name)}</label>
-                                                                </div>
-                                                            `;
+                                                                        <div class="checkbox-option ${isAllLocations || !isEditMode ? 'disabled' : ''}">
+                                                                            <input type="checkbox"
+                                                                                   id="${a.id}_loc_${locCode}"
+                                                                                   class="location-checkbox"
+                                                                                   data-location-id="${l.id}"
+                                                                                   data-location-code="${locCode}"
+                                                                                   data-location-name="${escapeHtml(l.name)}"
+                                                                                   value="${locCode}"
+                                                                                   ${isChecked ? 'checked' : ''}
+                                                                                   ${isAllLocations || !isEditMode ? 'disabled' : ''}
+                                                                                   onchange="handleLocationCheckboxChange('${a.id}')">
+                                                                            <label for="${a.id}_loc_${locCode}">${escapeHtml(l.name)}</label>
+                                                                        </div>
+                                                                    `;
                             }).join('')}
                         </div>
                     </div>
@@ -2279,19 +2279,19 @@
                                 const normalizedFunctionIds = (a.functionIds || []).map(id => String(id).toUpperCase());
                                 const isChecked = isAllFunctions || normalizedFunctionIds.includes(functionId);
                                 return `
-                                                                <div class="checkbox-option ${isAllFunctions || !isEditMode ? 'disabled' : ''}">
-                                                                    <input type="checkbox"
-                                                                           id="${a.id}_func_${f.id}"
-                                                                           class="function-checkbox"
-                                                                           data-function-id="${f.id}"
-                                                                           data-function-code="${escapeHtml(f.code)}"
-                                                                           value="${f.id}"
-                                                                           ${isChecked ? 'checked' : ''}
-                                                                           ${isAllFunctions || !isEditMode ? 'disabled' : ''}
-                                                                           onchange="handleFunctionCheckboxChange('${a.id}')">
-                                                                    <label for="${a.id}_func_${f.id}">${escapeHtml(f.name)}</label>
-                                                                </div>
-                                                            `;
+                                                                        <div class="checkbox-option ${isAllFunctions || !isEditMode ? 'disabled' : ''}">
+                                                                            <input type="checkbox"
+                                                                                   id="${a.id}_func_${f.id}"
+                                                                                   class="function-checkbox"
+                                                                                   data-function-id="${f.id}"
+                                                                                   data-function-code="${escapeHtml(f.code)}"
+                                                                                   value="${f.id}"
+                                                                                   ${isChecked ? 'checked' : ''}
+                                                                                   ${isAllFunctions || !isEditMode ? 'disabled' : ''}
+                                                                                   onchange="handleFunctionCheckboxChange('${a.id}')">
+                                                                            <label for="${a.id}_func_${f.id}">${escapeHtml(f.name)}</label>
+                                                                        </div>
+                                                                    `;
                             }).join('') : '<p style="padding: 10px; color: #666;">No functions available</p>'}
                         </div>
                     </div>
@@ -2304,19 +2304,19 @@
                         ${availableRoles.length > 0 ? availableRoles.map(r => {
                             const isChecked = a.roleIds && a.roleIds.map(String).includes(String(r.id));
                             return `
-                                                            <div class="checkbox-option ${!isEditMode ? 'disabled' : ''}">
-                                                                <input type="checkbox"
-                                                                       id="${a.id}_role_${r.id}"
-                                                                       class="role-checkbox"
-                                                                       data-role-id="${r.id}"
-                                                                       data-role-code="${escapeHtml(r.code)}"
-                                                                       value="${r.id}"
-                                                                       ${isChecked ? 'checked' : ''}
-                                                                       ${!isEditMode ? 'disabled' : ''}
-                                                                       onchange="handleRoleCheckboxChange('${a.id}')">
-                                                                <label for="${a.id}_role_${r.id}">${escapeHtml(r.name)}</label>
-                                                            </div>
-                                                        `;
+                                                                    <div class="checkbox-option ${!isEditMode ? 'disabled' : ''}">
+                                                                        <input type="checkbox"
+                                                                               id="${a.id}_role_${r.id}"
+                                                                               class="role-checkbox"
+                                                                               data-role-id="${r.id}"
+                                                                               data-role-code="${escapeHtml(r.code)}"
+                                                                               value="${r.id}"
+                                                                               ${isChecked ? 'checked' : ''}
+                                                                               ${!isEditMode ? 'disabled' : ''}
+                                                                               onchange="handleRoleCheckboxChange('${a.id}')">
+                                                                        <label for="${a.id}_role_${r.id}">${escapeHtml(r.name)}</label>
+                                                                    </div>
+                                                                `;
                         }).join('') : '<p style="padding: 10px; color: #666; grid-column: 1/-1;">No roles available for ' + escapeHtml(applicationCode) + '</p>'}
                     </div>
                 </div>
@@ -2373,48 +2373,48 @@
                             const locCode = l.code.trim();
                             const isChecked = isAllLocations || (a.locationCodes && a.locationCodes.map(c => c.trim()).includes(locCode));
                             return `
-                                                        <div class="checkbox-option ${isAllLocations || !isEditMode ? 'disabled' : ''}">
-                                                            <input type="checkbox"
-                                                                   id="${a.id}_loc_${locCode}"
-                                                                   class="location-checkbox"
-                                                                   data-location-id="${l.id}"
-                                                                   data-location-code="${locCode}"
-                                                                   data-location-name="${escapeHtml(l.name)}"
-                                                                   value="${locCode}"
-                                                                   ${isChecked ? 'checked' : ''}
-                                                                   ${isAllLocations || !isEditMode ? 'disabled' : ''}
-                                                                   onchange="handleLocationCheckboxChange('${a.id}')">
-                                                            <label for="${a.id}_loc_${locCode}">${escapeHtml(l.name)}</label>
-                                                        </div>
-                                                    `;
+                                                                <div class="checkbox-option ${isAllLocations || !isEditMode ? 'disabled' : ''}">
+                                                                    <input type="checkbox"
+                                                                           id="${a.id}_loc_${locCode}"
+                                                                           class="location-checkbox"
+                                                                           data-location-id="${l.id}"
+                                                                           data-location-code="${locCode}"
+                                                                           data-location-name="${escapeHtml(l.name)}"
+                                                                           value="${locCode}"
+                                                                           ${isChecked ? 'checked' : ''}
+                                                                           ${isAllLocations || !isEditMode ? 'disabled' : ''}
+                                                                           onchange="handleLocationCheckboxChange('${a.id}')">
+                                                                    <label for="${a.id}_loc_${locCode}">${escapeHtml(l.name)}</label>
+                                                                </div>
+                                                            `;
                         }).join('')}
                     </div>
                 </div>
 
                 <!-- SCM FUNCTIONS (Only for non-OPS SCM modules) -->
                 ${isSCM ? `
-                                            <div class="info-field">
-                                                <div class="field-label"><i class="fas fa-cog"></i> Function (SCM)</div>
-                                                <div class="radio-group">
-                                                    <div class="radio-option ${disabledClass}">
-                                                        <input type="radio" id="${a.id}_all_functions" name="${a.id}_function_type" 
-                                                               class="all-functions-radio" ${isAllFunctions ? 'checked' : ''} ${disabled} 
-                                                               onchange="handleFunctionRadioChange('${a.id}')">
-                                                        <label for="${a.id}_all_functions">All Functions</label>
-                                                    </div>
-                                                    <div class="radio-option ${disabledClass}">
-                                                        <input type="radio" id="${a.id}_specific_functions" name="${a.id}_function_type" 
-                                                               class="specific-functions-radio" ${!isAllFunctions ? 'checked' : ''} ${disabled} 
-                                                               onchange="handleFunctionRadioChange('${a.id}')">
-                                                        <label for="${a.id}_specific_functions">Specific Function</label>
-                                                    </div>
-                                                </div>
-                                                <div class="checkboxes-grid">
-                                                    ${availableFunctions.length > 0 ? availableFunctions.map(f => {
-                                                        const functionId = String(f.id).toUpperCase();
-                                                        const normalizedFunctionIds = (a.functionIds || []).map(id => String(id).toUpperCase());
-                                                        const isChecked = isAllFunctions || normalizedFunctionIds.includes(functionId);
-                                                        return `
+                                                    <div class="info-field">
+                                                        <div class="field-label"><i class="fas fa-cog"></i> Function (SCM)</div>
+                                                        <div class="radio-group">
+                                                            <div class="radio-option ${disabledClass}">
+                                                                <input type="radio" id="${a.id}_all_functions" name="${a.id}_function_type" 
+                                                                       class="all-functions-radio" ${isAllFunctions ? 'checked' : ''} ${disabled} 
+                                                                       onchange="handleFunctionRadioChange('${a.id}')">
+                                                                <label for="${a.id}_all_functions">All Functions</label>
+                                                            </div>
+                                                            <div class="radio-option ${disabledClass}">
+                                                                <input type="radio" id="${a.id}_specific_functions" name="${a.id}_function_type" 
+                                                                       class="specific-functions-radio" ${!isAllFunctions ? 'checked' : ''} ${disabled} 
+                                                                       onchange="handleFunctionRadioChange('${a.id}')">
+                                                                <label for="${a.id}_specific_functions">Specific Function</label>
+                                                            </div>
+                                                        </div>
+                                                        <div class="checkboxes-grid">
+                                                            ${availableFunctions.length > 0 ? availableFunctions.map(f => {
+                                                                const functionId = String(f.id).toUpperCase();
+                                                                const normalizedFunctionIds = (a.functionIds || []).map(id => String(id).toUpperCase());
+                                                                const isChecked = isAllFunctions || normalizedFunctionIds.includes(functionId);
+                                                                return `
                                     <div class="checkbox-option ${isAllFunctions || !isEditMode ? 'disabled' : ''}">
                                         <input type="checkbox"
                                                id="${a.id}_func_${f.id}"
@@ -2428,10 +2428,10 @@
                                         <label for="${a.id}_func_${f.id}">${escapeHtml(f.name)}</label>
                                     </div>
                                 `;
-                                                    }).join('') : '<p style="padding: 10px; color: #666;">No functions available</p>'}
-                                                </div>
-                                            </div>
-                                        ` : ''}
+                                                            }).join('') : '<p style="padding: 10px; color: #666;">No functions available</p>'}
+                                                        </div>
+                                                    </div>
+                                                ` : ''}
 
                 <!-- ROLES -->
                 <div class="info-field">
@@ -2440,19 +2440,19 @@
                         ${availableRoles.length > 0 ? availableRoles.map(r => {
                             const isChecked = a.roleIds && a.roleIds.map(String).includes(String(r.id));
                             return `
-                                                        <div class="checkbox-option ${!isEditMode ? 'disabled' : ''}">
-                                                            <input type="checkbox"
-                                                                   id="${a.id}_role_${r.id}"
-                                                                   class="role-checkbox"
-                                                                   data-role-id="${r.id}"
-                                                                   data-role-code="${escapeHtml(r.code)}"
-                                                                   value="${r.id}"
-                                                                   ${isChecked ? 'checked' : ''}
-                                                                   ${!isEditMode ? 'disabled' : ''}
-                                                                   onchange="handleRoleCheckboxChange('${a.id}')">
-                                                            <label for="${a.id}_role_${r.id}">${escapeHtml(r.name)}</label>
-                                                        </div>
-                                                    `;
+                                                                <div class="checkbox-option ${!isEditMode ? 'disabled' : ''}">
+                                                                    <input type="checkbox"
+                                                                           id="${a.id}_role_${r.id}"
+                                                                           class="role-checkbox"
+                                                                           data-role-id="${r.id}"
+                                                                           data-role-code="${escapeHtml(r.code)}"
+                                                                           value="${r.id}"
+                                                                           ${isChecked ? 'checked' : ''}
+                                                                           ${!isEditMode ? 'disabled' : ''}
+                                                                           onchange="handleRoleCheckboxChange('${a.id}')">
+                                                                    <label for="${a.id}_role_${r.id}">${escapeHtml(r.name)}</label>
+                                                                </div>
+                                                            `;
                         }).join('') : '<p style="padding: 10px; color: #666;">No roles available for ' + escapeHtml(applicationCode) + '</p>'}
                     </div>
                 </div>
@@ -2675,15 +2675,15 @@
                 const highlightClass = isWindowsSignIn && !isAssigned ? 'windows-signin-highlight' : '';
 
                 return `
-                                                                                <div class="module-selector-card ${disabledClass} ${highlightClass}"
-                                                                                     data-module-id="${escapeHtml(String(m.id))}"
-                                                                                     ${disabledAttr}>
-                                                                                    <i class="fas ${isWindowsSignIn ? 'fa-shield-alt' : 'fa-cube'}"></i>
-                                                                                    <div class="module-name">${escapeHtml(m.name)}</div>
-                                                                                    ${isWindowsSignIn && !isAssigned ? '<div class="required-badge">Required</div>' : ''}
-                                                                                    ${isAssigned ? '<div class="already-assigned-badge">Already Assigned</div>' : ''}
-                                                                                </div>
-                                                                            `;
+                                                                                        <div class="module-selector-card ${disabledClass} ${highlightClass}"
+                                                                                             data-module-id="${escapeHtml(String(m.id))}"
+                                                                                             ${disabledAttr}>
+                                                                                            <i class="fas ${isWindowsSignIn ? 'fa-shield-alt' : 'fa-cube'}"></i>
+                                                                                            <div class="module-name">${escapeHtml(m.name)}</div>
+                                                                                            ${isWindowsSignIn && !isAssigned ? '<div class="required-badge">Required</div>' : ''}
+                                                                                            ${isAssigned ? '<div class="already-assigned-badge">Already Assigned</div>' : ''}
+                                                                                        </div>
+                                                                                    `;
             }).join('')}
         </div>
     `;
@@ -2717,6 +2717,8 @@
             });
         };
 
+        // Replace lines ~1450-1510 in your JavaScript section with:
+
         window.selectModule = (moduleId) => {
             Swal.close();
             const module = modulesData.find(m => m.id == moduleId);
@@ -2730,21 +2732,9 @@
             const assignId = `assign_${cardIdCounter++}`;
             const applicationCode = getApplicationCodeForSP(module);
 
-            // ✅ CHECK IF THIS IS WINDOWS SIGN-IN
             const isWindowsSignIn = module.name.toUpperCase().includes('WINDOWS SIGN') ||
                 module.name.toUpperCase().includes('WINDOWS SIGNIN');
             const isSCM = applicationCode === 'OPS' || applicationCode === 'OPS UAT';
-
-            // ✅ For Windows Sign-In, use first available location as default
-            let defaultLocation = null;
-            let defaultLocationId = null;
-            let defaultLocationCode = null;
-
-            if (isWindowsSignIn && locationsData.length > 0) {
-                defaultLocation = locationsData[0];
-                defaultLocationId = defaultLocation.id;
-                defaultLocationCode = defaultLocation.code;
-            }
 
             // Create the module card
             moduleCards[cardId] = {
@@ -2755,9 +2745,9 @@
                 application_id: module.application_id,
                 assignments: [{
                     id: assignId,
-                    location: isWindowsSignIn ? defaultLocationCode : '',
-                    locationIds: isWindowsSignIn ? [defaultLocationId] : [],
-                    locationCodes: isWindowsSignIn ? [defaultLocationCode] : [],
+                    location: isWindowsSignIn ? 'ALL' : '',
+                    locationIds: isWindowsSignIn ? ['ALL'] : [],
+                    locationCodes: isWindowsSignIn ? ['ALL'] : [],
                     role_id: '',
                     roleIds: [],
                     roleCodes: [],
@@ -2767,77 +2757,28 @@
                 }]
             };
 
-            renderAllCards();
-
-            // ✅ IF WINDOWS SIGN-IN: Check if it has roles
+            // ✅ WINDOWS SIGN-IN: Auto-save immediately, no modal
             if (isWindowsSignIn) {
-                // Fetch roles first
-                fetchRolesByApplicationCode(applicationCode).then(roles => {
-                    if (roles && roles.length > 0) {
-                        // Has roles - open modal to select them, but mark as already added
-                        console.log('🔵 Windows Sign-In has roles - opening modal for selection');
+                moduleCards[cardId].isNew = false;
+                renderAllCards();
+                toggleFormActions(true);
 
-                        // Mark as not new (already saved)
-                        moduleCards[cardId].isNew = false;
-
-                        // Show update button
-                        toggleFormActions(true);
-
-                        // Open modal with a banner explaining it's already added
-                        openModal(cardId);
-
-                        // Add a banner to the modal
-                        const modalBody = document.querySelector('.modal-body');
-                        if (modalBody) {
-                            const banner = document.createElement('div');
-                            banner.className = 'windows-signin-auto-added-banner';
-                            banner.style.cssText = `
-                        background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
-                        border: 2px solid #28a745;
-                        border-radius: 8px;
-                        padding: 12px 16px;
-                        margin-bottom: 20px;
-                        display: flex;
-                        align-items: center;
-                        gap: 12px;
-                    `;
-                            banner.innerHTML = `
-                        <i class="fas fa-check-circle" style="color: #28a745; font-size: 1.5em;"></i>
-                        <span style="color: #155724; font-weight: 600;">
-                            Windows Sign-In has been added! 
-                            ${roles.length > 0 ? 'Optionally select access roles below.' : ''}
-                        </span>
-                    `;
-                            modalBody.insertBefore(banner, modalBody.firstChild);
-                        }
-                    } else {
-                        // No roles - just add it without modal
-                        console.log('🔵 Windows Sign-In has no roles - auto-saving');
-
-                        moduleCards[cardId].isNew = false;
-                        renderAllCards();
-                        toggleFormActions(true);
-
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Windows Sign-In Added!',
-                            html: `
-                        <p><strong>${escapeHtml(module.name)}</strong> has been added.</p>
-                        <p style="color: #007bff; font-weight: 600; margin-top: 15px;">
-                            Click "Update User" to save all changes.
-                        </p>
-                    `,
-                            confirmButtonColor: '#3498db',
-                            timer: 3000,
-                            timerProgressBar: true
-                        });
-                    }
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Windows Sign-In Added!',
+                    html: `<p><strong>${escapeHtml(module.name)}</strong> has been added.</p>
+                   <p style="color: #007bff; font-weight: 600; margin-top: 15px;">
+                       Click "Update User" to save.
+                   </p>`,
+                    confirmButtonColor: '#3498db',
+                    timer: 2000,
+                    timerProgressBar: true
                 });
-
-                return; // Don't continue with normal modal opening
+                return;
             }
 
-            // ✅ FOR OTHER MODULES: Open modal as usual
+            // ✅ OTHER MODULES: Open modal as usual
+            renderAllCards();
             openModal(cardId);
         };
 
@@ -2873,10 +2814,10 @@
                     <i class="fas fa-lock"></i> This module is required for user activation.
                 </p>
                 ${card.isNew ? `
-                                    <p style="color: #007bff; font-weight: 600; margin-top: 15px;">
-                                        To remove it, click "Cancel Changes" to discard all unsaved changes.
-                                    </p>
-                                ` : ''}
+                                            <p style="color: #007bff; font-weight: 600; margin-top: 15px;">
+                                                To remove it, click "Cancel Changes" to discard all unsaved changes.
+                                            </p>
+                                        ` : ''}
             `,
                     confirmButtonColor: '#3498db',
                     confirmButtonText: 'OK'
@@ -3056,7 +2997,6 @@
             }
 
             Object.values(moduleCards).forEach(card => {
-                // ✅ ADD THIS DEBUG
                 console.log('🔍 Processing card:', {
                     id: card.id,
                     module_name: card.module_name,
@@ -3076,8 +3016,34 @@
                 }
 
                 const applicationCode = getApplicationCodeForSP(module);
+
+                // ✅ CHECK IF THIS IS WINDOWS SIGN-IN
+                const isWindowsSignIn = applicationCode.toUpperCase().includes('WINDOWS SIGN') ||
+                    card.module_name.toUpperCase().includes('WINDOWS SIGN');
+
+                // ✅ FOR WINDOWS SIGN-IN: Create minimal record and skip role/function processing
+                if (isWindowsSignIn) {
+                    console.log('✅ Processing Windows Sign-In (special handling)');
+
+                    validAssignments.push({
+                        module_id: card.module_id,
+                        application_id: module.application_id,
+                        application_name: module.name,
+                        location_id: locationsData[0]?.id || null,
+                        location_code: locationsData[0]?.code || null,
+                        role_id: null,
+                        role_code: null,
+                        function_id: null,
+                        function_code: null
+                    });
+
+                    return; // ← Skip normal processing for Windows Sign-In
+                }
+
+                // ✅ CONTINUE WITH NORMAL PROCESSING FOR OTHER MODULES
                 const isSCM = applicationCode === 'OPS' || applicationCode === 'OPS UAT' || applicationCode ===
                     'OPSUAT';
+
 
                 card.assignments.forEach(a => {
                     // ✅ ADD THIS DEBUG
@@ -3850,6 +3816,5 @@
                 errors: errors
             };
         }
-
     </script>
 @stop

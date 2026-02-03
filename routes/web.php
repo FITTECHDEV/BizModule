@@ -9,7 +9,7 @@ use App\Http\Controllers\TrackerController;
 use App\Http\Controllers\AzureUserManagementController;
 use App\Http\Controllers\OdooSyncController;
 use App\Http\Controllers\ShipmentReportController;
-
+use App\Http\Controllers\ScmProfitIntegrationController;
 
 use App\Models\Category;
 use App\Models\Office;
@@ -976,7 +976,22 @@ Route::middleware(['auth', 'can:approve-all-entity-request'])->group(function ()
         ->name('shipment-reports.data');
 
     Route::get('/shipment-reprts/stats', [ShipmentReportController::class, 'getstats'])
-    ->name('shipment-reports.stats');
+        ->name('shipment-reports.stats');
+});
+
+
+// ============================================================================
+// SCM PROFIT INTEGRATION ROUTES
+// ============================================================================
+Route::middleware(['auth', 'can:approve-all-entity-request'])->group(function () {
+    Route::get('/scm-profit-integration', [App\Http\Controllers\ScmProfitIntegrationController::class, 'index'])
+        ->name('scm-profit-integration.index');
+
+    Route::get('/scm-profit-integration/data', [App\Http\Controllers\ScmProfitIntegrationController::class, 'getData'])
+        ->name('scm-profit-integration.data');
+
+    Route::get('/scm-profit-integration/stats', [App\Http\Controllers\ScmProfitIntegrationController::class, 'getStatsData'])
+        ->name('scm-profit-integration.stats');
 });
 
 // ============================================================================
@@ -1262,12 +1277,12 @@ Route::get('/test-plain-email', function () {
 
 
 // Add this to your routes/web.php temporarily (remove after testing)
-Route::get('/test-sp-data', function() {
+Route::get('/test-sp-data', function () {
     $pdo = DB::connection('sqlsrv_auth')->getPdo();
     $stmt = $pdo->prepare('SET NOCOUNT ON; EXEC [dbo].[sp_EmailClientDetails]');
     $stmt->execute();
     $results = $stmt->fetchAll(\PDO::FETCH_OBJ);
-    
+
     if (!empty($results)) {
         $first = $results[0];
         return response()->json([
@@ -1276,6 +1291,6 @@ Route::get('/test-sp-data', function() {
             'has_property' => property_exists($first, 'NoofShip')
         ]);
     }
-    
+
     return response()->json(['error' => 'No results']);
 });

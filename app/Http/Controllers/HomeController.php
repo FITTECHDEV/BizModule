@@ -116,6 +116,25 @@ class HomeController extends Controller
 
             $shipment_reports_stats = ShipmentReportController::getHomeStats();
 
+            // Add SCM Profit Integration stats
+            $scm_profit_stats_obj = DB::table('CRM_SCMprofit_integration')
+                ->whereNotNull('clientid')
+                ->whereRaw("CAST(createdon as date) = CAST(DATEADD(day, -1, GETDATE()) as date)")
+                ->selectRaw("
+        COUNT(*) as total,
+        SUM(CASE WHEN LEN(ISNULL(SCMINTStatus,'')) <= 0 THEN 1 ELSE 0 END) as pending,
+        SUM(CASE WHEN CHARINDEX('success', LOWER(SCMINTStatus), 1) > 0 THEN 1 ELSE 0 END) as success,
+        SUM(CASE WHEN LEN(ISNULL(SCMINTStatus,'')) > 0 AND CHARINDEX('success', LOWER(SCMINTStatus), 1) = 0 THEN 1 ELSE 0 END) as failed
+    ")
+                ->first();
+
+            $scm_profit_stats = [
+                'total' => $scm_profit_stats_obj->total ?? 0,
+                'pending' => $scm_profit_stats_obj->pending ?? 0,
+                'success' => $scm_profit_stats_obj->success ?? 0,
+                'failed' => $scm_profit_stats_obj->failed ?? 0,
+            ];
+
             return view(
                 'dashboard.ticket',
                 compact(
@@ -133,7 +152,8 @@ class HomeController extends Controller
                     'total_users',
                     'tracker_stats',
                     'azureStats',
-                    'shipment_reports_stats'
+                    'shipment_reports_stats',
+                    'scm_profit_stats'
                 )
             );
         } catch (\Exception $e) {

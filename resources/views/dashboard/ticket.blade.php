@@ -482,6 +482,61 @@
                 </div>
             @endif
 
+            <!-- SCM Profit Integration -->
+            @if (Auth::user()->can('approve-all-entity-request'))
+                <div class="col-12 col-sm-6 col-lg-4 col-xl-3 mb-3">
+                    <a href="{{ route('scm-profit-integration.index') }}" style="text-decoration: none; color: inherit;">
+                        <div class="d-flex h-100 flex-column card card-widget widget-user shadow service-card scm-profit-card"
+                            style="cursor: pointer;">
+                            <div class="widget-user-header bg-info">
+                                <h3 class="widget-user-username">SCM PROFIT INTEGRATION</h3>
+                                <h5 class="widget-user-desc">Integration Status</h5>
+                            </div>
+                            <div class="widget-user-image">
+                                <img src="{{ asset('img/supply-chain-management.png') }}" alt="SCM Profit Integration"
+                                    class="img-circle elevation-2">
+                            </div>
+                            <div class="card-footer">
+                                <div class="row">
+                                    <div class="col-3 border-right">
+                                        <div class="description-block">
+                                            <h5 class="description-header text-primary">
+                                                {{ $scm_profit_stats['total'] ?? 0 }}
+                                            </h5>
+                                            <span class="description-text">Total</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-3 border-right">
+                                        <div class="description-block">
+                                            <h5 class="description-header text-warning">
+                                                {{ $scm_profit_stats['pending'] ?? 0 }}
+                                            </h5>
+                                            <span class="description-text">Pending</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-3 border-right">
+                                        <div class="description-block">
+                                            <h5 class="description-header text-success">
+                                                {{ $scm_profit_stats['success'] ?? 0 }}
+                                            </h5>
+                                            <span class="description-text">Success</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-3">
+                                        <div class="description-block">
+                                            <h5 class="description-header text-danger">
+                                                {{ $scm_profit_stats['failed'] ?? 0 }}
+                                            </h5>
+                                            <span class="description-text">Failed</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+            @endif
+
         </div>
     </div>
 @stop
