@@ -102,7 +102,8 @@ return [
     'imap' => [
         'host' => env('MAIL_IMAP_HOST'),
         'port' => env('MAIL_IMAP_PORT', 993),
-        'password' => env('MAIL_IMAP_PASSWORD'),
+        'username' => env('MAIL_IMAP_USERNAME', env('MAIL_USERNAME')), // Add this line
+        'password' => env('MAIL_IMAP_PASSWORD', env('MAIL_PASSWORD')), // Update this line
         'sent_folder' => env('MAIL_IMAP_SENT_FOLDER', 'Sent'),
     ],
 

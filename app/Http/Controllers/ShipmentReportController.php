@@ -93,16 +93,14 @@ class ShipmentReportController extends Controller
                     $query->where('SendRemark', 'No Email ID Present');
                     break;
                 case 'milestone_failures':
-                    $query->where('SendRemark', 'like', '%Failed%')
-                        ->where('SendRemark', '!=', 'Failed - Email sent successfully');
+                    $query->where('SendRemark', 'Milestones Not Configured');
                     break;
                 case 'failed':
-                    $query->where('Status', 'Failed');
+                    $query->where('SendRemark', 'Milestones Not Updated');
                     break;
                 case 'success':
                     $query->where('Status', 'Success');
                     break;
-                    // 'all' - no additional filter
             }
 
             // Apply search (only on actual table columns, not computed columns)
@@ -190,9 +188,9 @@ class ShipmentReportController extends Controller
                 ->select([
                     DB::raw("COUNT(*) as total_emails"),
                     DB::raw("SUM(CASE WHEN Status = 'Success' THEN 1 ELSE 0 END) as emails_sent"),
-                    DB::raw("SUM(CASE WHEN Status = 'Failed' THEN 1 ELSE 0 END) as emails_failed"),
                     DB::raw("SUM(CASE WHEN SendRemark = 'No Email ID Present' THEN 1 ELSE 0 END) as no_email"),
-                    DB::raw("SUM(CASE WHEN SendRemark LIKE '%Failed%' AND SendRemark != 'Failed - Email sent successfully' THEN 1 ELSE 0 END) as milestone_failures")
+                    DB::raw("SUM(CASE WHEN SendRemark = 'Milestones Not Updated' THEN 1 ELSE 0 END) as milestones_not_updated"),
+                    DB::raw("SUM(CASE WHEN SendRemark = 'Milestones Not Configured' THEN 1 ELSE 0 END) as milestones_not_configured")
                 ])
                 ->where(DB::raw('CAST(SubmittedOn as DATE)'), '>=', $startDate)
                 ->first();
@@ -200,9 +198,9 @@ class ShipmentReportController extends Controller
             return [
                 'total_emails' => $stats->total_emails ?? 0,
                 'emails_sent' => $stats->emails_sent ?? 0,
-                'emails_failed' => $stats->emails_failed ?? 0,
                 'no_email' => $stats->no_email ?? 0,
-                'milestone_failures' => $stats->milestone_failures ?? 0,
+                'emails_failed' => $stats->milestones_not_updated ?? 0,
+                'milestone_failures' => $stats->milestones_not_configured ?? 0,
             ];
         } catch (\Exception $e) {
             Log::error('Failed to get shipment reports statistics', [
@@ -213,8 +211,8 @@ class ShipmentReportController extends Controller
             return [
                 'total_emails' => 0,
                 'emails_sent' => 0,
-                'emails_failed' => 0,
                 'no_email' => 0,
+                'emails_failed' => 0,
                 'milestone_failures' => 0,
             ];
         }
@@ -314,7 +312,6 @@ class ShipmentReportController extends Controller
             } elseif (is_numeric($days)) {
                 $query->where(DB::raw('CAST(SubmittedOn as DATE)'), '>=', Carbon::now()->subDays((int)$days)->toDateString());
             }
-            // If days is "custom" and no dates provided, don't apply date filter
 
             // Apply office filter
             if ($office) {
@@ -325,17 +322,17 @@ class ShipmentReportController extends Controller
             $stats = $query->select([
                 DB::raw("COUNT(*) as total_emails"),
                 DB::raw("SUM(CASE WHEN Status = 'Success' THEN 1 ELSE 0 END) as emails_sent"),
-                DB::raw("SUM(CASE WHEN Status = 'Failed' THEN 1 ELSE 0 END) as emails_failed"),
                 DB::raw("SUM(CASE WHEN SendRemark = 'No Email ID Present' THEN 1 ELSE 0 END) as no_email"),
-                DB::raw("SUM(CASE WHEN SendRemark LIKE '%Failed%' AND SendRemark != 'Failed - Email sent successfully' THEN 1 ELSE 0 END) as milestone_failures")
+                DB::raw("SUM(CASE WHEN SendRemark = 'Milestones Not Updated' THEN 1 ELSE 0 END) as milestones_not_updated"),
+                DB::raw("SUM(CASE WHEN SendRemark = 'Milestones Not Configured' THEN 1 ELSE 0 END) as milestones_not_configured")
             ])->first();
 
             return response()->json([
                 'total_emails' => $stats->total_emails ?? 0,
                 'emails_sent' => $stats->emails_sent ?? 0,
-                'emails_failed' => $stats->emails_failed ?? 0,
                 'no_email' => $stats->no_email ?? 0,
-                'milestone_failures' => $stats->milestone_failures ?? 0,
+                'emails_failed' => $stats->milestones_not_updated ?? 0,
+                'milestone_failures' => $stats->milestones_not_configured ?? 0,
             ]);
         } catch (\Exception $e) {
             Log::error('Failed to get filtered shipment reports statistics', [
@@ -346,8 +343,8 @@ class ShipmentReportController extends Controller
             return response()->json([
                 'total_emails' => 0,
                 'emails_sent' => 0,
-                'emails_failed' => 0,
                 'no_email' => 0,
+                'emails_failed' => 0,
                 'milestone_failures' => 0,
             ], 500);
         }

@@ -325,13 +325,13 @@ class ShipmentReportService
             $toAddresses = array_filter($toAddresses);
 
             // Parse CC email addresses (semicolon or comma separated)
-            $ccAddresses = array_map('trim', preg_split('/[;,]/', $client->EmailIdCC ?? ''));
+            $ccAddresses = array_map('trim', preg_split('/[;,]/', $client->EmailCC ?? ''));
             $ccAddresses = array_filter($ccAddresses);
 
             // DEBUG: Check what we're getting
             Log::info('CC Email Debug', [
                 'client_id' => $client->ClientId,
-                'EmailIdCC_raw' => $client->EmailIdCC ?? 'NULL/EMPTY',  // Changed
+                'EmailIdCC_raw' => $client->EmailCC ?? 'NULL/EMPTY',  // Changed
                 'cc_addresses_parsed' => $ccAddresses,
                 'cc_count' => count($ccAddresses),
                 'is_empty' => empty($ccAddresses)
@@ -544,7 +544,7 @@ class ShipmentReportService
                 'NoofShipment' => $shipmentCount,
                 'EmailFrom' => config('mail.from.address'),
                 'EmailTo' => $client->EmailID,
-                'EmailIDCC' => $client->EmailIdCC ?? '',
+                'EmailIDCC' => $client->EmailCC ?? '',
                 'Subject' => $client->EmailSubject,
                 'BodyMessage' => $client->BodyDetails ?? '<body></body>',
                 'Status' => $status,
@@ -694,8 +694,8 @@ class ShipmentReportService
             $message .= "To: {$emailAddress}\r\n";
 
             // Add CC if present
-            if (!empty($client->EmailIdCC)) {
-                $message .= "Cc: {$client->EmailIdCC}\r\n";
+            if (!empty($client->EmailCC)) {
+                $message .= "Cc: {$client->EmailCC}\r\n";
             }
 
             $message .= "Subject: {$subject}\r\n";
