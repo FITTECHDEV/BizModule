@@ -18,8 +18,8 @@ class ShipmentReportController extends Controller
     public function index()
     {
         try {
-            // Get statistics for the cards (default: last 15 days)
-            $stats = $this->getStatistics(15);
+            // Get statistics for the cards (default: yesterday)
+            $stats = $this->getStatistics(1);
 
             // Get unique office names for the filter dropdown
             $offices = $this->getOfficeList();

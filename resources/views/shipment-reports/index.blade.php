@@ -104,7 +104,9 @@
                             {{-- Date Range Filter --}}
                             <div class="col-xl-3 col-lg-4 col-md-6 col-sm-6">
                                 <select id="dateFilter" class="form-control form-control-sm">
-                                    <option value="15" selected>Last 15 Days</option>
+                                    <option value="0">Today</option>
+                                    <option value="1" selected>Yesterday</option>
+                                    <option value="15">Last 15 Days</option>
                                     <option value="30">Last 30 Days</option>
                                     <option value="custom">Custom Range</option>
                                 </select>
@@ -606,10 +608,8 @@
                     return;
                 }
 
-                // Show button if either:
-                // - Date is set to 30 days (non-default)
-                // - Office filter is active (non-default)
-                if (dateFilter === '30' || officeFilter !== '') {
+                // Show button if non-default filters are active
+                if (dateFilter !== '1' || officeFilter !== '') {
                     $('#clearFiltersContainer').show();
                 } else {
                     $('#clearFiltersContainer').hide();
@@ -624,6 +624,16 @@
                     // Show custom date range inputs
                     $('#customDateRange').show();
                     $('#customDateRangeTo').show();
+                    updateClearButtonVisibility();
+                } else if (selectedValue === '0' || selectedValue === '1') {
+                    // Today or Yesterday - hide custom inputs and reload immediately
+                    $('#customDateRange').hide();
+                    $('#customDateRangeTo').hide();
+                    $('#startDate').val('');
+                    $('#endDate').val('');
+
+                    updateCardStats();
+                    table.ajax.reload();
                     updateClearButtonVisibility();
                 } else {
                     // Hide custom date range inputs and clear values
@@ -688,8 +698,8 @@
 
             // Clear All Filters button
             $('#clearAllFilters').on('click', function() {
-                // Reset date filter to default
-                $('#dateFilter').val('15');
+                // Reset date filter to default (yesterday)
+                $('#dateFilter').val('1');
 
                 // Clear custom date inputs if visible
                 $('#startDate').val('');
