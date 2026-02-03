@@ -36,7 +36,14 @@ class OdooSyncController extends Controller
 
             $odooUsers = DB::connection('pgsql')->select("
             SELECT 
-                ru.login AS userprincipalname,
+                -- ✅ CHANGED: Generate UPN from name as firstname.initial@domain
+                LOWER(split_part(he.name::text, ' ', 1)) || '.' || 
+                LOWER(LEFT(split_part(he.name::text, ' ', 2), 1)) || 
+                '@freight-in-time.com' AS userprincipalname,
+                
+                -- Store original Odoo login email separately
+                ru.login AS odoo_original_email,
+                
                 he.name AS displayname,
                 split_part(he.name::text, ' ', 2) AS surname,
                 he.work_email AS mail,
@@ -101,7 +108,7 @@ class OdooSyncController extends Controller
 
             // STEP 2: Begin transaction and process users
             echo "<p class='info'>⚙️ <strong>Step 2:</strong> Processing users...</p>";
-            echo '<table><tr><th>#</th><th>User Principal Name</th><th>User Type</th><th>Action</th><th>Azure AD</th><th>Status</th><th>Note</th></tr>';
+            echo '<table><tr><th>#</th><th>User Principal Name</th><th>Odoo Email</th><th>User Type</th><th>Action</th><th>Azure AD</th><th>Status</th><th>Note</th></tr>';
             flush();
 
             // Get Azure service instance
@@ -116,14 +123,14 @@ class OdooSyncController extends Controller
                         // Normalize user data
                         $userData = $this->normalizeUserData($user);
 
-                        // ✅ FIXED: Sequential matching to prevent duplicates
-                        // Step 1: Try to find by OdooUserId (primary identifier)
+                        // ✅ ENHANCED: Three-tier matching to prevent duplicates
+                        // Tier 1: Try to find by OdooUserId (primary identifier)
                         $existingUser = DB::connection('sqlsrv')
                             ->table('Azure_Users')
                             ->where('OdooUserId', $userData['OdooUserId'])
                             ->first();
 
-                        // Step 2: If not found, try to find by UPN (for manually-created users)
+                        // Tier 2: If not found, try to find by generated UPN (firstname.initial@domain)
                         if (!$existingUser) {
                             $existingUser = DB::connection('sqlsrv')
                                 ->table('Azure_Users')
@@ -131,7 +138,7 @@ class OdooSyncController extends Controller
                                 ->whereNull('OdooUserId')  // Only match if not yet linked to Odoo
                                 ->first();
 
-                            // If found by email but missing OdooUserId, link them
+                            // If found by UPN but missing OdooUserId, link them
                             if ($existingUser) {
                                 DB::connection('sqlsrv')
                                     ->table('Azure_Users')
@@ -144,8 +151,38 @@ class OdooSyncController extends Controller
                                         'OdooLoginType' => $userData['OdooLoginType'],
                                     ]);
 
-                                Log::info('Linked manually-created user to Odoo', [
+                                Log::info('Linked manually-created user to Odoo by UPN', [
                                     'user' => $userData['userPrincipalName'],
+                                    'odoo_user_id' => $userData['OdooUserId'],
+                                ]);
+                            }
+                        }
+
+                        // Tier 3: If still not found, try to find by Odoo original email (fallback)
+                        if (!$existingUser && !empty($user->odoo_original_email)) {
+                            $existingUser = DB::connection('sqlsrv')
+                                ->table('Azure_Users')
+                                ->where('userPrincipalName', $user->odoo_original_email)
+                                ->whereNull('OdooUserId')  // Only match if not yet linked to Odoo
+                                ->first();
+
+                            // If found by old email format, update UPN and link to Odoo
+                            if ($existingUser) {
+                                DB::connection('sqlsrv')
+                                    ->table('Azure_Users')
+                                    ->where('Id', $existingUser->Id)
+                                    ->update([
+                                        'userPrincipalName' => $userData['userPrincipalName'], // Update to new format
+                                        'OdooUserId' => $userData['OdooUserId'],
+                                        'OdooEmployeeId' => $userData['OdooEmployeeId'],
+                                        'OdooLoginId' => $userData['OdooLoginId'],
+                                        'OdooCreatedOn' => $userData['OdooCreatedOn'],
+                                        'OdooLoginType' => $userData['OdooLoginType'],
+                                    ]);
+
+                                Log::info('Linked user by old email format and updated UPN', [
+                                    'old_upn' => $user->odoo_original_email,
+                                    'new_upn' => $userData['userPrincipalName'],
                                     'odoo_user_id' => $userData['OdooUserId'],
                                 ]);
                             }
@@ -167,6 +204,7 @@ class OdooSyncController extends Controller
                                 $this->outputRow(
                                     $rowNumber,
                                     $userData['userPrincipalName'],
+                                    $user->odoo_original_email ?? 'N/A',
                                     $userData['OdooLoginType'],
                                     'INSERT',
                                     '✅ Provisioned',
@@ -186,6 +224,7 @@ class OdooSyncController extends Controller
                                 $this->outputRow(
                                     $rowNumber,
                                     $userData['userPrincipalName'],
+                                    $user->odoo_original_email ?? 'N/A',
                                     $userData['OdooLoginType'],
                                     'SKIPPED',
                                     '❌ Failed',
@@ -230,6 +269,7 @@ class OdooSyncController extends Controller
                                     $this->outputRow(
                                         $rowNumber,
                                         $userData['userPrincipalName'],
+                                        $user->odoo_original_email ?? 'N/A',
                                         $userData['OdooLoginType'],
                                         'UPDATE',
                                         '✅ Provisioned',
@@ -246,6 +286,7 @@ class OdooSyncController extends Controller
                                     $this->outputRow(
                                         $rowNumber,
                                         $userData['userPrincipalName'],
+                                        $user->odoo_original_email ?? 'N/A',
                                         $userData['OdooLoginType'],
                                         'UPDATE',
                                         '❌ Failed',
@@ -263,6 +304,7 @@ class OdooSyncController extends Controller
                                 $this->outputRow(
                                     $rowNumber,
                                     $userData['userPrincipalName'],
+                                    $user->odoo_original_email ?? 'N/A',
                                     $userData['OdooLoginType'],
                                     'UPDATE',
                                     '⊘ Exists',
@@ -282,6 +324,7 @@ class OdooSyncController extends Controller
                         $this->outputRow(
                             $rowNumber,
                             $userData['userPrincipalName'] ?? 'Unknown',
+                            $user->odoo_original_email ?? 'N/A',
                             'Unknown',
                             'FAILED',
                             '❌ Error',
@@ -897,7 +940,8 @@ class OdooSyncController extends Controller
         echo '</div><hr>';
     }
 
-    private function outputRow($num, $upn, $type, $action, $azureStatus, $success, $note = null): void
+
+    private function outputRow($num, $upn, $odooEmail, $type, $action, $azureStatus, $success, $note = null): void
     {
         $actionClass = $action === 'INSERT' ? 'success' : ($action === 'UPDATE' ? 'info' : 'error');
         $statusClass = $success ? 'success' : 'error';
@@ -906,6 +950,7 @@ class OdooSyncController extends Controller
         echo '<tr>';
         echo "<td>{$num}</td>";
         echo "<td>{$upn}</td>";
+        echo "<td>{$odooEmail}</td>";
         echo "<td>{$type}</td>";
         echo "<td><span class='{$actionClass}'>{$action}</span></td>";
         echo "<td>{$azureStatus}</td>";
@@ -913,6 +958,7 @@ class OdooSyncController extends Controller
         echo "<td>" . substr($note ?? '-', 0, 80) . "</td>";
         echo '</tr>';
     }
+
 
     private function outputSummary($startTime, $stats): void
     {

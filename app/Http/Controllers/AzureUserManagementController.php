@@ -666,10 +666,15 @@ class AzureUserManagementController extends Controller
             $givenName = $nameParts[0];
             $surname = $nameParts[1] ?? $nameParts[0];
 
-            // Extract email local part and generate proper UPN
-            $emailLocalPart = explode('@', $userEmail)[0];
+            // Generate UPN as firstname.initial@domain (e.g., nahashon.m@freight-in-time.com)
             $companyDomain = config('azure.tenant_domain', 'freight-in-time.com');
-            $userPrincipalName = $emailLocalPart . '@' . $companyDomain;
+
+            // Get first name and last name initial
+            $firstNameLower = strtolower($givenName);
+            $lastNameInitial = strtolower(substr($surname, 0, 1));
+
+            // Build UPN
+            $userPrincipalName = $firstNameLower . '.' . $lastNameInitial . '@' . $companyDomain;
 
             // Generate new GUID for user ID
             $userId = DB::connection('sqlsrv')
@@ -712,7 +717,7 @@ class AzureUserManagementController extends Controller
             $azureUserData = [
                 'accountEnabled' => true,
                 'displayName' => $request->name,
-                'mailNickname' => $emailLocalPart,
+                'mailNickname' => $firstNameLower . '.' . $lastNameInitial,
                 'userPrincipalName' => $userPrincipalName,
                 'givenName' => $givenName,
                 'surname' => $surname,
@@ -903,23 +908,22 @@ class AzureUserManagementController extends Controller
                 Log::info('Auto-generating EmployeeCode...');
 
                 $nextCode = DB::connection('sqlsrv')->select("
-                SELECT CAST(ISNULL(MAX(MaxCode), 0) + 1 AS VARCHAR(100)) as NextCode
-                FROM (
-                    SELECT MAX(CAST(CU.EmployeeCode AS BIGINT)) as MaxCode
-                    FROM Cust_User CU WITH (NOLOCK)
-                        WHERE CU.EmployeeCode IS NOT NULL 
-                        AND LEN(ISNULL(CU.EmployeeCode, '')) > 0
-                        AND ISNUMERIC(CU.EmployeeCode) = 1        
-                    UNION ALL
-        
-                    SELECT MAX(CAST(AU.EmployeCode AS BIGINT)) as MaxCode
-                    FROM Azure_Users AU WITH (NOLOCK)
-                    WHERE AU.EmployeCode IS NOT NULL  
-                        AND LEN(ISNULL(AU.EmployeCode, '')) > 0
-                        AND ISNUMERIC(AU.EmployeCode) = 1
+    SELECT CAST(ISNULL(MAX(MaxCode), 0) + 1 AS VARCHAR(100)) as NextCode
+    FROM (
+        SELECT MAX(CAST(CU.EmployeeCode AS BIGINT)) as MaxCode
+        FROM Cust_User CU WITH (NOLOCK)
+        WHERE CU.EmployeeCode IS NOT NULL 
+            AND LEN(ISNULL(CU.EmployeeCode, '')) > 0
+            -- Removed: AND ISNUMERIC(CU.EmployeeCode) = 1
+        UNION ALL
 
-                ) AS Combined
-            ");
+        SELECT MAX(CAST(AU.EmployeCode AS BIGINT)) as MaxCode
+        FROM Azure_Users AU WITH (NOLOCK)
+        WHERE AU.EmployeCode IS NOT NULL  
+            AND LEN(ISNULL(AU.EmployeCode, '')) > 0
+            -- Removed: AND ISNUMERIC(AU.EmployeCode) = 1
+    ) AS Combined
+");
 
                 $generatedEmployeeCode = $nextCode[0]->NextCode ?? '1';
 
@@ -1333,6 +1337,7 @@ class AzureUserManagementController extends Controller
                 ]);
             }
 
+
             // ====================================================================
             // STEP 10: Insert FUNCTIONS to Azure_Application_UserFunction
             // ====================================================================
@@ -1409,6 +1414,7 @@ class AzureUserManagementController extends Controller
             }
 
             $totalAssignmentsCreated = $insertedRolesCount + $insertedFunctionsCount;
+
 
             // ====================================================================
             // STEP 11: Provision user to D365 (if applicable)
@@ -1908,18 +1914,7 @@ class AzureUserManagementController extends Controller
         if (empty($user->EmployeCode)) {
             $errors[] = 'EmployeCode is required for BIZ/FIT provisioning. Please ensure EmployeeCode is set in Azure_Users table.';
         }
-        // Check 2: EmployeCode must be numeric
-        elseif (!is_numeric($user->EmployeCode)) {
-            $errors[] = "EmployeCode '{$user->EmployeCode}' must be numeric (found non-numeric value).";
-        }
-        // Check 3: EmployeCode must be positive integer
-        elseif ((int)$user->EmployeCode <= 0) {
-            $errors[] = "EmployeCode '{$user->EmployeCode}' must be a positive number.";
-        }
-        // ✅ Check 4: EmployeCode must fit in BIGINT range
-        elseif ((int)$user->EmployeCode > 9223372036854775807) {
-            $errors[] = "EmployeCode '{$user->EmployeCode}' exceeds maximum allowed value.";
-        }
+        // Removed all numeric validation checks
 
         return [
             'valid' => empty($errors),
@@ -2410,8 +2405,8 @@ class AzureUserManagementController extends Controller
                         'modules' => 'required|array|min:1',
                         'modules.*.module_id' => 'required|string',
                         'modules.*.application_id' => 'required|string',
-                        'modules.*.location_id' => 'required|string',
-                        'modules.*.location_code' => 'required|string',
+                        'modules.*.location_id' => 'nullable|string',
+                        'modules.*.location_code' => 'nullable|string',
                         'modules.*.role_id' => 'nullable|string',
                         'modules.*.role_code' => 'nullable|string',
                         'modules.*.function_id' => 'nullable|string',
@@ -2438,6 +2433,9 @@ class AzureUserManagementController extends Controller
                 $deletedRolesCount = DB::connection('sqlsrv')
                     ->table('Azure_Application_UserMapping')
                     ->where('user_id', $user->userPrincipalName)
+                    ->where(function ($q) {
+                        $q->whereNot('ApplicationName', 'Windows Sign-In');
+                    })
                     ->delete();
 
                 $deletedFunctionsCount = DB::connection('sqlsrv')
@@ -2466,13 +2464,21 @@ class AzureUserManagementController extends Controller
                     ]);
                 }
 
-                // ====================================================================
                 // STEP 6: Separate roles and functions
                 // ====================================================================
                 $roleAssignments = [];
                 $functionAssignments = [];
 
+                $windowsSignInRecord = null;
+
                 foreach ($modulesData as $moduleData) {
+                    // Windows Sign-In: bare record, no role/function/location
+                    $moduleName = strtoupper($moduleData['application_name'] ?? '');
+                    if (in_array($moduleName, ['WINDOWS SIGN-IN', 'WINDOWS SIGN IN', 'WINDOWS SIGNIN'])) {
+                        $windowsSignInRecord = $moduleData;
+                        continue;
+                    }
+
                     $hasRole = !empty($moduleData['role_id']);
                     $hasFunction = !empty($moduleData['function_id']);
 
@@ -2574,6 +2580,55 @@ class AzureUserManagementController extends Controller
                     $insertedRolesCount++;
                 }
 
+
+                // ====================================================================
+                // STEP 10.5: Ensure Windows Sign-In exists (idempotent insert)
+                // ====================================================================
+                if ($windowsSignInRecord) {
+                    try {
+                        $wsExists = DB::connection('sqlsrv')
+                            ->table('Azure_Application_UserMapping')
+                            ->where('user_id', $user->userPrincipalName)
+                            ->where('ApplicationName', 'Windows Sign-In')
+                            ->exists();
+
+                        if (!$wsExists) {
+                            DB::connection('sqlsrv')->table('Azure_Application_UserMapping')->insert([
+                                'Id' => \Illuminate\Support\Str::uuid()->toString(),
+                                'AzureUserID' => $user->Id,
+                                'user_id' => $user->userPrincipalName,
+                                'application_id' => $windowsSignInRecord['application_id'],
+                                'ApplicationName' => 'Windows Sign-In',
+                                'Username' => $user->displayName,
+                                'RoleID' => null,
+                                'RoleCode' => null,
+                                'OfficeID' => null,
+                                'OfficeCode' => null,
+                                'IsActive' => 1,
+                                'IsDelete' => 0,
+                                'CreatedBy' => Auth::user()->name ?? 'system',
+                                'CreatedOn' => DB::raw('GETDATE()'),
+                            ]);
+
+                            Log::info('✓ Step 10.5: Windows Sign-In inserted', [
+                                'user_id' => $user->Id,
+                                'application_id' => $windowsSignInRecord['application_id'],
+                            ]);
+                        } else {
+                            Log::info('⊘ Step 10.5: Windows Sign-In already exists — skipped', [
+                                'user_id' => $user->Id,
+                            ]);
+                        }
+                    } catch (\Exception $e) {
+                        Log::error('✗ Step 10.5: Windows Sign-In insert failed', [
+                            'user_id' => $user->Id,
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
+                } else {
+                    Log::debug('⊘ Step 10.5: No Windows Sign-In record to insert');
+                }
+
                 $insertedFunctionsCount = 0;
                 foreach ($validatedFunctions as $funcData) {
                     DB::connection('sqlsrv')->table('Azure_Application_UserFunction')->insert([
@@ -2607,16 +2662,23 @@ class AzureUserManagementController extends Controller
                 $user->refresh();
 
                 if (empty($user->EmployeCode)) {
+                    // Line ~1035 - Auto-generation query (remove ISNUMERIC filters)
                     $nextCode = DB::connection('sqlsrv')->select("
-                    SELECT CAST(ISNULL(MAX(MaxCode), 0) + 1 AS VARCHAR(100)) as NextCode
-                    FROM (
-                        SELECT MAX(CAST(CU.EmployeeCode AS BIGINT)) as MaxCode
-                        FROM Cust_User CU WHERE CU.EmployeeCode IS NOT NULL AND ISNUMERIC(CU.EmployeeCode) = 1
-                        UNION ALL
-                        SELECT MAX(CAST(AU.EmployeCode AS BIGINT)) as MaxCode
-                        FROM Azure_Users AU WHERE AU.EmployeCode IS NOT NULL AND ISNUMERIC(AU.EmployeCode) = 1
-                    ) AS Combined
-                ");
+    SELECT CAST(ISNULL(MAX(MaxCode), 0) + 1 AS VARCHAR(100)) as NextCode
+    FROM (
+        SELECT MAX(CAST(CU.EmployeeCode AS BIGINT)) as MaxCode
+        FROM Cust_User CU WITH (NOLOCK)
+            WHERE CU.EmployeeCode IS NOT NULL 
+            AND LEN(ISNULL(CU.EmployeeCode, '')) > 0
+        UNION ALL
+
+        SELECT MAX(CAST(AU.EmployeCode AS BIGINT)) as MaxCode
+        FROM Azure_Users AU WITH (NOLOCK)
+        WHERE AU.EmployeCode IS NOT NULL  
+            AND LEN(ISNULL(AU.EmployeCode, '')) > 0
+
+    ) AS Combined
+");
 
                     $generatedEmployeeCode = $nextCode[0]->NextCode ?? '1';
 
