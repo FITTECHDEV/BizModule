@@ -119,13 +119,12 @@ class HomeController extends Controller
             // Add SCM Profit Integration stats
             $scm_profit_stats_obj = DB::table('CRM_SCMprofit_integration')
                 ->whereNotNull('clientid')
-                ->whereRaw("CAST(createdon as date) = CAST(DATEADD(day, -1, GETDATE()) as date)")
-                ->selectRaw("
-        COUNT(*) as total,
-        SUM(CASE WHEN LEN(ISNULL(SCMINTStatus,'')) <= 0 THEN 1 ELSE 0 END) as pending,
-        SUM(CASE WHEN CHARINDEX('success', LOWER(SCMINTStatus), 1) > 0 THEN 1 ELSE 0 END) as success,
-        SUM(CASE WHEN LEN(ISNULL(SCMINTStatus,'')) > 0 AND CHARINDEX('success', LOWER(SCMINTStatus), 1) = 0 THEN 1 ELSE 0 END) as failed
-    ")
+                ->whereRaw("CAST(createdon as date) = CAST(GETDATE() as date)")->selectRaw("
+                    COUNT(*) as total,
+                        SUM(CASE WHEN LEN(ISNULL(SCMINTStatus,'')) <= 0 THEN 1 ELSE 0 END) as pending,
+                        SUM(CASE WHEN CHARINDEX('success', LOWER(SCMINTStatus), 1) > 0 THEN 1 ELSE 0 END) as success,
+                        SUM(CASE WHEN LEN(ISNULL(SCMINTStatus,'')) > 0 AND CHARINDEX('success', LOWER(SCMINTStatus), 1) = 0 THEN 1 ELSE 0 END) as failed
+                ")
                 ->first();
 
             $scm_profit_stats = [

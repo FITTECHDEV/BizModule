@@ -133,4 +133,32 @@ class ScmProfitIntegrationController extends Controller
             ->sort()
             ->values();
     }
+
+    public function retrigger(Request $request)
+    {
+        $request->validate([
+            'booking_no' => 'required|string'
+        ]);
+
+        try {
+            // Add your retrigger logic here
+            // Example: Call stored procedure or API
+
+            // Placeholder - replace with actual retrigger logic
+            $result = DB::connection('sqlsrv')->statement(
+                'EXEC sp_RetriggerSCMIntegration @BookingNo = ?',
+                [$request->booking_no]
+            );
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Successfully retriggered'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
 }

@@ -992,6 +992,9 @@ Route::middleware(['auth', 'can:approve-all-entity-request'])->group(function ()
 
     Route::get('/scm-profit-integration/stats', [App\Http\Controllers\ScmProfitIntegrationController::class, 'getStatsData'])
         ->name('scm-profit-integration.stats');
+
+    Route::post('/scm-profit-integration/retrigger', [App\Http\Controllers\ScmProfitIntegrationController::class, 'retrigger'])
+        ->name('scm-profit-integration.retrigger');
 });
 
 // ============================================================================
@@ -1256,20 +1259,20 @@ Route::middleware(['auth'])->prefix('jimi-test')->group(function () {
 
 
 
-Route::get('/azure-sync-user-apps/{email}', function($email) {
+Route::get('/azure-sync-user-apps/{email}', function ($email) {
     try {
         $user = \App\Models\AzureUser::where('userPrincipalName', $email)->first();
-        
+
         if (!$user) {
             return "❌ User not found: {$email}";
         }
-        
+
         if (empty($user->AzureId)) {
             return "❌ User has no Azure ID: {$user->displayName}";
         }
-        
+
         $azureService = app(\App\Services\AzureGraphService::class);
-        
+
         // Get all their modules from DB
         $modules = DB::connection('sqlsrv')
             ->table('Azure_Application_UserMapping')
@@ -1278,27 +1281,25 @@ Route::get('/azure-sync-user-apps/{email}', function($email) {
             ->where('IsDelete', 0)
             ->distinct()
             ->pluck('ApplicationName');
-        
+
         $results = [];
         $spMap = config('azure.service_principal_map', []);
-        
+
         foreach ($modules as $moduleName) {
             $spId = $spMap[$moduleName] ?? null;
-            
+
             if ($spId) {
                 $result = $azureService->assignUserToApplication($user->AzureId, $spId);
                 $results[$moduleName] = $result;
             }
         }
-        
+
         return view('azure-sync-result', [
             'user' => $user,
             'modules' => $modules,
             'results' => $results
         ]);
-        
     } catch (\Exception $e) {
         return "❌ Error: " . $e->getMessage();
     }
 })->middleware('auth');
-
