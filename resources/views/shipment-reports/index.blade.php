@@ -104,8 +104,8 @@
                             {{-- Date Range Filter --}}
                             <div class="col-xl-3 col-lg-4 col-md-6 col-sm-6">
                                 <select id="dateFilter" class="form-control form-control-sm">
-                                    <option value="0">Today</option>
-                                    <option value="1" selected>Yesterday</option>
+                                    <option value="0" selected>Today</option>
+                                    <option value="1">Yesterday</option>
                                     <option value="15">Last 15 Days</option>
                                     <option value="30">Last 30 Days</option>
                                     <option value="custom">Custom Range</option>
@@ -609,7 +609,7 @@
                 }
 
                 // Show button if non-default filters are active
-                if (dateFilter !== '1' || officeFilter !== '') {
+                if (dateFilter !== '0' || officeFilter !== '') {
                     $('#clearFiltersContainer').show();
                 } else {
                     $('#clearFiltersContainer').hide();
@@ -699,7 +699,7 @@
             // Clear All Filters button
             $('#clearAllFilters').on('click', function() {
                 // Reset date filter to default (yesterday)
-                $('#dateFilter').val('1');
+                $('#dateFilter').val('0');
 
                 // Clear custom date inputs if visible
                 $('#startDate').val('');

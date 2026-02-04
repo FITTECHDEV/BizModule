@@ -18,8 +18,8 @@ class ShipmentReportController extends Controller
     public function index()
     {
         try {
-            // Get statistics for the cards (default: yesterday)
-            $stats = $this->getStatistics(1);
+            // Get statistics for the cards (default: today)
+            $stats = $this->getStatistics(0);
 
             // Get unique office names for the filter dropdown
             $offices = $this->getOfficeList();
@@ -44,7 +44,7 @@ class ShipmentReportController extends Controller
     public function getData(Request $request)
     {
         try {
-            $days = $request->input('days', 15);
+            $days = $request->input('days', 0);
             $search = $request->input('search.value', '');
             $startDate = $request->input('start_date');
             $endDate = $request->input('end_date');
@@ -178,7 +178,7 @@ class ShipmentReportController extends Controller
      * @param int $days Number of days to look back
      * @return array
      */
-    private function getStatistics($days = 15)
+    private function getStatistics($days = 0)
     {
         try {
             $startDate = Carbon::now()->subDays($days)->toDateString();
@@ -296,7 +296,7 @@ class ShipmentReportController extends Controller
     public function getStats(Request $request)
     {
         try {
-            $days = $request->input('days', 15);
+            $days = $request->input('days', 0);
             $startDate = $request->input('start_date');
             $endDate = $request->input('end_date');
             $office = $request->input('office');
