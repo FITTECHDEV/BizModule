@@ -1469,4 +1469,52 @@ class AzureGraphService
             throw $e;
         }
     }
+
+    // Add to AzureGraphService.php
+    public function assignUserToApplication(string $azureUserId, string $servicePrincipalId): array
+    {
+        try {
+            Log::channel('azure')->info('Assigning user to application', [
+                'azure_user_id' => $azureUserId,
+                'service_principal_id' => $servicePrincipalId,
+            ]);
+
+            $defaultRoleId = '00000000-0000-0000-0000-000000000000';
+
+            $response = $this->makeRequestWithRetry(
+                'POST',
+                $this->graphApiBaseUrl . "/servicePrincipals/{$servicePrincipalId}/appRoleAssignments",
+                [
+                    'principalId' => $azureUserId,
+                    'resourceId' => $servicePrincipalId,
+                    'appRoleId' => $defaultRoleId
+                ]
+            );
+
+            if (!$response->successful()) {
+                if ($response->status() === 400 && str_contains($response->body(), 'already exists')) {
+                    Log::channel('azure')->info('User already assigned to app', [
+                        'azure_user_id' => $azureUserId,
+                        'service_principal_id' => $servicePrincipalId,
+                    ]);
+                    return ['success' => true, 'status' => 'already_assigned'];
+                }
+                throw new \Exception("Failed: " . $response->body());
+            }
+
+            Log::channel('azure')->info('User assigned to application successfully', [
+                'azure_user_id' => $azureUserId,
+                'service_principal_id' => $servicePrincipalId,
+            ]);
+
+            return ['success' => true, 'status' => 'assigned'];
+        } catch (\Exception $e) {
+            Log::channel('azure')->error('Failed to assign user to app', [
+                'azure_user_id' => $azureUserId,
+                'service_principal_id' => $servicePrincipalId,
+                'error' => $e->getMessage()
+            ]);
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
 }

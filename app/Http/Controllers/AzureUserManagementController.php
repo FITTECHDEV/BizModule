@@ -393,6 +393,9 @@ class AzureUserManagementController extends Controller
      */
     public function store(AzureStoreUserRequest $request)
     {
+
+        $azureService = app(\App\Services\AzureGraphService::class);
+
         // Variables to track what was created (for rollback)
         $userId = null;
         $azureId = null;
@@ -1302,23 +1305,29 @@ class AzureUserManagementController extends Controller
                         DB::connection('sqlsrv')
                             ->table('Azure_Application_UserMapping')
                             ->insert([
-                                'Id' => $mappingId,
+                                'Id'          => $mappingId,
                                 'AzureUserID' => $userId,
-                                'user_id' => $userPrincipalName,
-                                'application_id' => $roleData['application_id'],
-                                'Username' => $request->name,
-                                'ApplicationName' => $roleData['application_name'],
-                                'RoleCode' => $roleData['role_code'],
-                                'RoleID' => $roleData['role_id'],
-                                'OfficeCode' => $roleData['location_code'],
-                                'OfficeID' => $roleData['location_id'],
-                                'IsActive' => 1,
-                                'IsDelete' => 0,
-                                'CreatedBy' => Auth::user()->name ?? 'system',
-                                'CreatedOn' => DB::raw('GETDATE()'),
+                                'user_id'     => $userPrincipalName,
+                                'application_id'   => $roleData['application_id'],
+                                'Username'         => $request->name,
+                                'ApplicationName'  => $roleData['application_name'],
+                                'RoleCode'         => $roleData['role_code'],
+                                'RoleID'           => $roleData['role_id'],
+                                'OfficeCode'       => $roleData['location_code'],
+                                'OfficeID'         => $roleData['location_id'],
+                                'IsActive'         => 1,
+                                'IsDelete'         => 0,
+                                'CreatedBy'        => Auth::user()->name ?? 'system',
+                                'CreatedOn'        => DB::raw('GETDATE()'),
                             ]);
 
                         $insertedRolesCount++;
+                        $spMap = config('azure.service_principal_map', []);
+                        $spId = $spMap[$roleData['application_name']] ?? null;
+
+                        if ($spId) {
+                            $azureService->assignUserToApplication($azureId, $spId);
+                        }
                     } catch (\Exception $e) {
                         $roleInsertErrors[] = [
                             'data' => $roleData,
@@ -2306,6 +2315,8 @@ class AzureUserManagementController extends Controller
      */
     public function update(Request $request, AzureUser $user)
     {
+        $azureService = app(\App\Services\AzureGraphService::class);
+
         set_time_limit(120);
         error_reporting(E_ALL);
         ini_set('display_errors', 1);
@@ -2565,22 +2576,43 @@ class AzureUserManagementController extends Controller
                 $insertedRolesCount = 0;
                 foreach ($validatedRoles as $roleData) {
                     DB::connection('sqlsrv')->table('Azure_Application_UserMapping')->insert([
-                        'Id' => \Illuminate\Support\Str::uuid()->toString(),
-                        'AzureUserID' => $user->Id,
-                        'user_id' => $user->userPrincipalName,
-                        'application_id' => $roleData['application_id'],
+                        'Id'              => \Illuminate\Support\Str::uuid()->toString(),
+                        'AzureUserID'     => $user->Id,
+                        'user_id'         => $user->userPrincipalName,
+                        'application_id'  => $roleData['application_id'],
                         'ApplicationName' => $roleData['application_name'],
-                        'RoleID' => $roleData['role_id'],
-                        'RoleCode' => $roleData['role_code'],
-                        'OfficeID' => $roleData['location_id'],
-                        'OfficeCode' => $roleData['location_code'],
-                        'IsActive' => 1,
-                        'IsDelete' => 0,
-                        'CreatedBy' => Auth::user()->name ?? 'system',
-                        'CreatedOn' => DB::raw('GETDATE()'),
+                        'RoleID'          => $roleData['role_id'],
+                        'RoleCode'        => $roleData['role_code'],
+                        'OfficeID'        => $roleData['location_id'],
+                        'OfficeCode'      => $roleData['location_code'],
+                        'IsActive'        => 1,
+                        'IsDelete'        => 0,
+                        'CreatedBy'       => Auth::user()->name ?? 'system',
+                        'CreatedOn'       => DB::raw('GETDATE()'),
                     ]);
+
                     $insertedRolesCount++;
+
+                    $spMap = config('azure.service_principal_map', []);
+                    $spId = $spMap[$roleData['application_name']] ?? null;
+
+                    if ($spId) {
+                        $azureService->assignUserToApplication($user->AzureId, $spId);
+                    }
+
+                    $spMap = config('azure.service_principal_map', []);
+                    $spId  = $spMap[$roleData['application_name']] ?? null;
+
+                    if ($spId && $roleData['role_id']) {
+                        $azureService->assignAppRole(
+                            $user->AzureId,
+                            $spId,
+                            $roleData['role_id']
+                        );
+                    }
                 }
+
+
 
 
                 // ====================================================================

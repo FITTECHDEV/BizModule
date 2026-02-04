@@ -154,6 +154,13 @@ return [
         ],
     ],
 
+    'service_principal_map' => [
+        'OPS'         => 'fcc7aca8-c6e7-4092-b90b-5730cafdda2b', // ← paste OPS Object ID here
+        'BIZ PRO'     => 'fb35f983-72fa-483a-8309-a21377f155a7', 
+        'FIT Express' => '25028d65-033a-4ec4-80a5-608044bdc2d8', // ← paste FIT Express Object ID here
+        'D365 LIVE'   => '65974e4c-4515-433b-965e-9895210415cf', // ← paste D365 LIVE Object ID here
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Test Mode Configuration

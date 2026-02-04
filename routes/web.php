@@ -1256,41 +1256,49 @@ Route::middleware(['auth'])->prefix('jimi-test')->group(function () {
 
 
 
-
-Route::get('/test-plain-email', function () {
+Route::get('/azure-sync-user-apps/{email}', function($email) {
     try {
-        Mail::send([], [], function ($message) {
-            $message->to('nashonmwendwa04@gmail.com');
-            $message->subject('Plain Test Email - ' . now());
-            $message->setBody('<h1>Test Email</h1><p>This is a plain test without attachment.</p>', 'text/html');
-        });
-
-        return response()->json([
-            'status' => 'sent',
-            'note' => 'Plain email sent without attachment - check Gmail'
+        $user = \App\Models\AzureUser::where('userPrincipalName', $email)->first();
+        
+        if (!$user) {
+            return "❌ User not found: {$email}";
+        }
+        
+        if (empty($user->AzureId)) {
+            return "❌ User has no Azure ID: {$user->displayName}";
+        }
+        
+        $azureService = app(\App\Services\AzureGraphService::class);
+        
+        // Get all their modules from DB
+        $modules = DB::connection('sqlsrv')
+            ->table('Azure_Application_UserMapping')
+            ->where('AzureUserID', $user->Id)
+            ->where('IsActive', 1)
+            ->where('IsDelete', 0)
+            ->distinct()
+            ->pluck('ApplicationName');
+        
+        $results = [];
+        $spMap = config('azure.service_principal_map', []);
+        
+        foreach ($modules as $moduleName) {
+            $spId = $spMap[$moduleName] ?? null;
+            
+            if ($spId) {
+                $result = $azureService->assignUserToApplication($user->AzureId, $spId);
+                $results[$moduleName] = $result;
+            }
+        }
+        
+        return view('azure-sync-result', [
+            'user' => $user,
+            'modules' => $modules,
+            'results' => $results
         ]);
+        
     } catch (\Exception $e) {
-        return response()->json(['error' => $e->getMessage()], 500);
+        return "❌ Error: " . $e->getMessage();
     }
-});
+})->middleware('auth');
 
-
-
-// Add this to your routes/web.php temporarily (remove after testing)
-Route::get('/test-sp-data', function () {
-    $pdo = DB::connection('sqlsrv_auth')->getPdo();
-    $stmt = $pdo->prepare('SET NOCOUNT ON; EXEC [dbo].[sp_EmailClientDetails]');
-    $stmt->execute();
-    $results = $stmt->fetchAll(\PDO::FETCH_OBJ);
-
-    if (!empty($results)) {
-        $first = $results[0];
-        return response()->json([
-            'all_properties' => get_object_vars($first),
-            'NoofShip_value' => $first->NoofShip ?? 'NOT FOUND',
-            'has_property' => property_exists($first, 'NoofShip')
-        ]);
-    }
-
-    return response()->json(['error' => 'No results']);
-});
