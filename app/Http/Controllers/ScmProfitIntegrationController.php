@@ -137,23 +137,37 @@ class ScmProfitIntegrationController extends Controller
     public function retrigger(Request $request)
     {
         $request->validate([
-            'booking_no' => 'required|string'
+            'booking_no' => 'required'
         ]);
 
         try {
-            // Add your retrigger logic here
-            // Example: Call stored procedure or API
+            $bookingNo = $request->booking_no;
 
-            // Placeholder - replace with actual retrigger logic
-            $result = DB::connection('sqlsrv')->statement(
-                'EXEC sp_RetriggerSCMIntegration @BookingNo = ?',
-                [$request->booking_no]
-            );
+            // Call the stored procedure with output parameters
+            $pdo = DB::connection('sqlsrv')->getPdo();
+            $stmt = $pdo->prepare("
+            DECLARE @Status VARCHAR(15), @Remark VARCHAR(1000);
+            EXEC CRM_TO_SCM_BookingIntegrationRetrigger 
+                @BookingNo = ?, 
+                @Status = @Status OUTPUT, 
+                @Remark = @Remark OUTPUT;
+            SELECT @Status as Status, @Remark as Remark;
+        ");
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Successfully retriggered'
-            ]);
+            $stmt->execute([$bookingNo]);
+            $result = $stmt->fetch(\PDO::FETCH_OBJ);
+
+            if ($result && $result->Status === 'Success') {
+                return response()->json([
+                    'success' => true,
+                    'message' => $result->Remark ?? 'Successfully retriggered'
+                ]);
+            } else {
+                return response()->json([
+                    'success' => false,
+                    'message' => $result->Remark ?? 'Failed to retrigger'
+                ], 400);
+            }
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,

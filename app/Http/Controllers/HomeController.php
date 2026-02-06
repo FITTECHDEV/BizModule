@@ -139,7 +139,7 @@ class HomeController extends Controller
                 compact(
                     'ticketStatistics',
                     'entityStatistics',
-                    'tims_stats',
+                    'tims_stats',  
                     'efris_stats',
                     'traStatsTZ',
                     'traStatsADL',
