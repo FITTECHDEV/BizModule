@@ -5,7 +5,10 @@ use App\Http\Controllers\ClientPartyController;
 use App\Http\Controllers\EmailAccountController;
 use App\Http\Controllers\ImportController;
 use App\Http\Controllers\JimiTestController;
+use App\Http\Controllers\JimiWebhookController;
 use App\Http\Controllers\OdooSyncController;
+use App\Http\Controllers\RAIntegrationController;
+use App\Http\Controllers\ShipmentReportController;
 use App\Http\Controllers\StoredProcedureTestController;
 use App\Http\Controllers\TrackerController;
 use App\Models\Category;
@@ -695,6 +698,58 @@ Route::middleware(['auth'])->prefix('azure/sync')->name('azure.sync.')->group(fu
     })->name('status');
 });
 
+
+// ============================================================================
+// SHIPMENT EMAIL REPORTS ROUTES - Must come before wildcard routes
+// ============================================================================
+Route::middleware(['auth', 'can:approve-all-entity-request'])->group(function () {
+    Route::get('/shipment-reports', [ShipmentReportController::class, 'index'])
+        ->name('shipment-reports.index');
+
+    Route::get('/shipment-reports/data', [ShipmentReportController::class, 'getData'])
+        ->name('shipment-reports.data');
+
+    Route::get('/shipment-reprts/stats', [ShipmentReportController::class, 'getstats'])
+        ->name('shipment-reports.stats');
+});
+
+
+// ============================================================================
+// SCM PROFIT INTEGRATION ROUTES
+// ============================================================================
+Route::middleware(['auth', 'can:approve-all-entity-request'])->group(function () {
+    Route::get('/scm-profit-integration', [App\Http\Controllers\ScmProfitIntegrationController::class, 'index'])
+        ->name('scm-profit-integration.index');
+
+    Route::get('/scm-profit-integration/data', [App\Http\Controllers\ScmProfitIntegrationController::class, 'getData'])
+        ->name('scm-profit-integration.data');
+
+    Route::get('/scm-profit-integration/stats', [App\Http\Controllers\ScmProfitIntegrationController::class, 'getStatsData'])
+        ->name('scm-profit-integration.stats');
+
+    Route::post('/scm-profit-integration/retrigger', [App\Http\Controllers\ScmProfitIntegrationController::class, 'retrigger'])
+        ->name('scm-profit-integration.retrigger');
+});
+
+
+// ============================================================================
+// RA INTEGRATION ROUTES (Revenue Authority Integration)
+// ============================================================================
+Route::middleware(['auth', 'can:approve-all-entity-request'])->group(function () {
+    // Dashboard
+    Route::get('/ra-integration-dashboard', [App\Http\Controllers\RAIntegrationController::class, 'dashboard'])
+        ->name('ra-integration.dashboard');
+
+    // Dashboard data endpoint (for card refresh)
+    Route::get('/ra-integration-dashboard/data', [App\Http\Controllers\RAIntegrationController::class, 'getDashboardData'])
+        ->name('ra-integration.dashboard.data');
+
+    // Invoice table data endpoint (for DataTable)
+    Route::get('/ra-integration/invoices/data', [App\Http\Controllers\RAIntegrationController::class, 'getInvoicesData'])
+        ->name('ra-integration.invoices.data');
+});
+
+
 Route::get('/sync-odoo-users', [App\Http\Controllers\OdooSyncController::class, 'syncUsers']);
 Route::get('/test-odoo-columns', [App\Http\Controllers\OdooSyncController::class, 'testColumns']);
 Route::get('/test-pgsql-connection', [App\Http\Controllers\OdooSyncController::class, 'testConnection']);
@@ -1163,7 +1218,7 @@ Route::middleware(['auth'])->prefix('tracker')->name('tracker.')->group(function
     Route::post('/notifications/{id}/read', [TrackerController::class, 'markNotificationAsRead'])->name('notifications.read');
     Route::delete('/notifications/{id}', [TrackerController::class, 'deleteNotification'])->name('notifications.delete');
     Route::post('/notifications/map-to-trip', [TrackerController::class, 'mapNotificationsToTrip'])
-    ->name('notifications.map-to-trip');
+        ->name('notifications.map-to-trip');
 });
 
 

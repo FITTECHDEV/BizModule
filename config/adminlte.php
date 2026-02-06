@@ -350,6 +350,30 @@ return [
             'active' => ['azure/*'],
         ],
 
+        [
+            'text' => 'SHIPMENT EMAIL REPORTS',
+            'url'  => 'shipment-reports',
+            'icon' => 'fas fa-fw fa-envelope',
+            'active' => ['shipment-reports/*'],
+            'can'  => 'approve-all-entity-request'
+        ],
+
+        [
+            'text' => 'SCM PROFIT INTEGRATION',
+            'url'  => 'scm-profit-integration',
+            'icon' => 'fas fa-fw fa-plug',  // or 'fas fa-fw fa-sync-alt' or 'fas fa-fw fa-exchange-alt'
+            'active' => ['scm-profit-integration/*'],
+            'can'  => 'approve-all-entity-request'
+        ],
+
+        [
+            'text' => 'RA INTEGRATION',
+            'url'  => 'ra-integration-dashboard',
+            'icon' => 'fas fa-fw fa-file-invoice',
+            'active' => ['ra-integration-dashboard/*'],
+            'can'  => 'approve-all-entity-request'
+        ],
+
         // ['header' => 'account_settings'],
         [
             'text' => 'SETTINGS',

@@ -118,6 +118,39 @@ class HomeController extends Controller
             $inactive_users = $loginTrackerStats['inactive_users'];
             $total_users = $loginTrackerStats['total_users'];
 
+            $shipment_reports_stats = ShipmentReportController::getHomeStats();
+
+            // Add SCM Profit Integration stats
+            $scm_profit_stats_obj = DB::table('CRM_SCMprofit_integration')
+                ->whereNotNull('clientid')
+                ->whereRaw("CAST(createdon as date) = CAST(GETDATE() as date)")->selectRaw("
+                    COUNT(*) as total,
+                        SUM(CASE WHEN LEN(ISNULL(SCMINTStatus,'')) <= 0 THEN 1 ELSE 0 END) as pending,
+                        SUM(CASE WHEN CHARINDEX('success', LOWER(SCMINTStatus), 1) > 0 THEN 1 ELSE 0 END) as success,
+                        SUM(CASE WHEN LEN(ISNULL(SCMINTStatus,'')) > 0 AND CHARINDEX('success', LOWER(SCMINTStatus), 1) = 0 THEN 1 ELSE 0 END) as failed
+                ")
+                ->first();
+
+            $scm_profit_stats = [
+                'total' => $scm_profit_stats_obj->total ?? 0,
+                'pending' => $scm_profit_stats_obj->pending ?? 0,
+                'success' => $scm_profit_stats_obj->success ?? 0,
+                'failed' => $scm_profit_stats_obj->failed ?? 0,
+            ];
+
+            // Add RA Integration metrics
+            try {
+                $ra_metrics = \App\Http\Controllers\RAIntegrationController::getCardMetrics();
+            } catch (\Exception $e) {
+                \Log::error('RA Integration Stats Error: ' . $e->getMessage());
+                $ra_metrics = [
+                    'ra_pending_d365' => 0,
+                    'ra_total_failed' => 0,
+                    'ra_success_today' => 0,
+                ];
+            }
+
+
             // LOG BEFORE RETURNING VIEW
             \Log::info('About to return view with data', [
                 'ticketStatistics' => $ticketStatistics,
@@ -142,7 +175,10 @@ class HomeController extends Controller
                     'inactive_users',
                     'total_users',
                     'tracker_stats',
-                    'azureStats'
+                    'azureStats',
+                    'shipment_reports_stats',
+                    'scm_profit_stats',
+                    'ra_metrics'
                 )
             );
         } catch (\Exception $e) {

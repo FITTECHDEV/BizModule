@@ -1220,16 +1220,16 @@ $(document).ready(function () {
         animation: true,
     });
 
-    // NEW: Force open tab 1
-    setTimeout(function() {
-        if (window.stepper) {
-            window.stepper.to(0);
-            console.log('🔧 Stepper forced to tab 1 (Basic Details)');
+    // // NEW: Force open tab 1
+    // setTimeout(function() {
+    //     if (window.stepper) {
+    //         window.stepper.to(0);
+    //         console.log('🔧 Stepper forced to tab 1 (Basic Details)');
 
-            // Ensure navigation buttons are clickable
-            $('button[name="next"], button[name="previous"]').prop('disabled', false)
-                .removeClass('disabled')
-                .css('pointer-events', 'auto');
-        }
-    }, 500);
+    //         // Ensure navigation buttons are clickable
+    //         $('button[name="next"], button[name="previous"]').prop('disabled', false)
+    //             .removeClass('disabled')
+    //             .css('pointer-events', 'auto');
+    //     }
+    // }, 500);
 });

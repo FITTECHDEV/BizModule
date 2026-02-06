@@ -3,24 +3,31 @@
 @section('title', 'Client Party Dashboard')
 
 @section('content_header')
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h1 class="m-0 fw-bold text-dark" style="font-size: 2.6rem; letter-spacing: -0.5px;">
-                Client Party Dashboard
-            </h1>
-            <div class="mt-2 d-flex align-items-center gap-3 text-muted fs-5">
-                <i class="fas fa-calendar-alt fa-lg text-primary"></i>
-                <div>
-                    <span>Showing entity requests from the last 3 months</span>
-                    <div class="fw-bold text-dark mt-1" style="font-size: 1.35rem; letter-spacing: -0.3px;">
-                        {{ \Carbon\Carbon::now()->subMonths(3)->format('M d, Y') }} —
-                        {{ \Carbon\Carbon::now()->format('M d, Y') }}
+    <div class="client-party-header">
+        <div class="container-fluid">
+            <div class="d-flex justify-content-between align-items-center py-3">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="header-icon-badge">
+                        <i class="fas fa-users"></i>
                     </div>
+                    <div>
+                        <h1 class="header-title">Client Party Dashboard</h1>
+                        <p class="header-subtitle">Manage and monitor client party entities</p>
+                    </div>
+                </div>
+                <div class="date-range-badge">
+                    <i class="fas fa-calendar-range text-primary"></i>
+                    <span class="text-muted">Last 3 months:</span>
+                    <span class="fw-bold date-range-text">
+                        {{ \Carbon\Carbon::now()->subMonths(3)->format('M d') }} —
+                        {{ \Carbon\Carbon::now()->format('M d, Y') }}
+                    </span>
                 </div>
             </div>
         </div>
     </div>
 @stop
+
 
 @section('plugins.Datatables', true)
 
@@ -155,7 +162,7 @@
 
                 {{-- 1. Not Submitted --}}
                 <div class="col-12 col-sm-6 col-md-4 col-lg-auto mb-3">
-                    <a href="#" id="notSubmittedLegal" class="info-box-link">
+                    <a href="#" id="notSubmittedLegal" class="info-box-link" data-status="Not Submitted">
                         <div class="info-box bg-gradient-secondary shadow-sm hover-scale">
                             <span class="info-box-icon"><i class="fas fa-save"></i></span>
                             <div class="info-box-content">
@@ -172,7 +179,8 @@
 
                 {{-- 2. Country Approval --}}
                 <div class="col-12 col-sm-6 col-md-4 col-lg-auto mb-3">
-                    <a href="#" id="pendingCountryLegal" class="info-box-link">
+                    <a href="#" id="pendingCountryLegal" class="info-box-link"
+                        data-status="PendingCountryLevelApproval">
                         <div class="info-box bg-gradient-primary shadow-sm hover-scale">
                             <span class="info-box-icon"><i class="fas fa-hourglass-half"></i></span>
                             <div class="info-box-content">
@@ -190,7 +198,8 @@
 
                 {{-- 3. Group Approval --}}
                 <div class="col-12 col-sm-6 col-md-4 col-lg-auto mb-3">
-                    <a href="#" id="pendingGroupLegal" class="info-box-link">
+                    <a href="#" id="pendingGroupLegal" class="info-box-link"
+                        data-status="PendingGroupLevelApproval">
                         <div class="info-box bg-gradient-info shadow-sm hover-scale">
                             <span class="info-box-icon"><i class="fas fa-hourglass-half"></i></span>
                             <div class="info-box-content">
@@ -206,8 +215,8 @@
                 </div>
 
                 {{-- 4. Submitted --}}
-                <div class="col-12 col-sm-6 col-md-4 col-lg-auto mb-3">
-                    <a href="#" id="submittedLegal" class="info-box-link">
+                <div class="col-12 col-sm-6 col-md-4 col-lg-auto mb-3" data-status="Submitted">
+                    <a href="#" id="submittedLegal" class="info-box-link" data-status="Submitted">
                         <div class="info-box bg-gradient-warning shadow-sm hover-scale">
                             <span class="info-box-icon"><i class="fas fa-paper-plane"></i></span>
                             <div class="info-box-content">
@@ -224,7 +233,8 @@
 
                 {{-- 5. Pending IT Verification --}}
                 <div class="col-12 col-sm-6 col-md-4 col-lg-auto mb-3">
-                    <a href="#" id="pendingITVerificationLegal" class="info-box-link">
+                    <a href="#" id="pendingITVerificationLegal" class="info-box-link"
+                        data-status="PendingITVerification">
                         <div class="info-box bg-gradient-purple shadow-sm hover-scale">
                             <span class="info-box-icon"><i class="fas fa-laptop-code"></i></span>
                             <div class="info-box-content">
@@ -242,7 +252,7 @@
 
                 {{-- 6. Created --}}
                 <div class="col-12 col-sm-6 col-md-4 col-lg-auto mb-3">
-                    <a href="#" id="createdLegal" class="info-box-link">
+                    <a href="#" id="createdLegal" class="info-box-link" data-status="Created">
                         <div class="info-box bg-gradient-success shadow-sm hover-scale">
                             <span class="info-box-icon"><i class="fas fa-check-circle"></i></span>
                             <div class="info-box-content">
@@ -259,7 +269,7 @@
 
                 {{-- 7. Rejected --}}
                 <div class="col-12 col-sm-6 col-md-4 col-lg-auto mb-3">
-                    <a href="#" id="rejectedLegal" class="info-box-link">
+                    <a href="#" id="rejectedLegal" class="info-box-link" data-status="Rejected">
                         <div class="info-box bg-gradient-danger shadow-sm hover-scale">
                             <span class="info-box-icon"><i class="fas fa-times-circle"></i></span>
                             <div class="info-box-content">
@@ -276,7 +286,7 @@
 
                 {{-- 8. Review --}}
                 <div class="col-12 col-sm-6 col-md-4 col-lg-auto mb-3">
-                    <a href="#" id="reviewLegal" class="info-box-link">
+                    <a href="#" id="reviewLegal" class="info-box-link" data-status="Review">
                         <div class="info-box bg-gradient-info shadow-sm hover-scale">
                             <span class="info-box-icon"><i class="fas fa-sync-alt"></i></span>
                             <div class="info-box-content">
@@ -293,7 +303,7 @@
 
                 {{-- 9. All Requests --}}
                 <div class="col-12 col-sm-6 col-md-4 col-lg-auto mb-3">
-                    <a href="#" id="allEntityRequestsLegal" class="info-box-link">
+                    <a href="#" id="allEntityRequestsLegal" class="info-box-link" data-status="">
                         <div class="info-box bg-gradient-dark shadow-sm hover-scale">
                             <span class="info-box-icon"><i class="fas fa-list"></i></span>
                             <div class="info-box-content">
@@ -430,8 +440,67 @@
 @stop
 
 @section('css')
+
     <!-- SweetAlert2 CSS -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+
+    <style>
+        .client-party-header {
+            background: white;
+            border-bottom: 1px solid #dee2e6;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+            margin-bottom: 1.5rem;
+        }
+
+        .header-icon-badge {
+            background: rgba(13, 110, 253, 0.1);
+            border-radius: 50%;
+            padding: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .header-icon-badge i {
+            color: #0d6efd;
+            font-size: 1.5rem;
+        }
+
+        .header-title {
+            margin: 0 0 0.25rem 0;
+            font-weight: 700;
+            font-size: 1.75rem;
+            letter-spacing: -0.3px;
+        }
+
+        .header-subtitle {
+            margin: 0;
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+
+        .date-range-badge {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: #f8f9fa;
+            border-radius: 0.375rem;
+            padding: 0.75rem 1.25rem;
+        }
+
+        .date-range-badge i {
+            font-size: 1.25rem;
+        }
+
+        .date-range-badge .text-muted {
+            font-size: 1rem;
+        }
+
+        .date-range-text {
+            font-size: 1.25rem;
+            color: #212529;
+        }
+    </style>
 
     <style>
         /* Import Google Font */
@@ -447,8 +516,8 @@
         }
 
         /* ════════════════════════════════════════════════════════════
-               ULTRA-PROMINENT TAB STYLING - DRAMATIC VERSION
-               ════════════════════════════════════════════════════════════ */
+                                   ULTRA-PROMINENT TAB STYLING - DRAMATIC VERSION
+                                   ════════════════════════════════════════════════════════════ */
         #entityTypeTabs {
             background: #ffffff;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
@@ -615,8 +684,8 @@
         }
 
         /* ════════════════════════════════════════════════════════════
-               END TAB STYLING
-               ════════════════════════════════════════════════════════════ */
+                                   END TAB STYLING
+                                   ════════════════════════════════════════════════════════════ */
 
         /* Enhanced Info Box Styling with Hover Expansion */
         .info-box {
@@ -640,8 +709,8 @@
         }
 
         /* ────────────────────────────────────────────────
-                   Row & card layout – restored original hover behavior
-                ──────────────────────────────────────────────── */
+                                       Row & card layout – restored original hover behavior
+                                    ──────────────────────────────────────────────── */
         .entity-stats .row {
             display: flex;
             flex-wrap: nowrap;
@@ -809,8 +878,8 @@
         }
 
         /* ────────────────────────────────────────────────
-                   Fallback for narrow screens – allow wrapping
-                ──────────────────────────────────────────────── */
+                                       Fallback for narrow screens – allow wrapping
+                                    ──────────────────────────────────────────────── */
         @media (max-width: 1199px) {
             .entity-stats .row {
                 flex-wrap: wrap;
@@ -1065,6 +1134,99 @@
 @section('js')
     <!-- SweetAlert2 JavaScript -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.js"></script>
+    <!-- Render Laravel flashed alerts as SweetAlert2 -->
+    @if (session('success'))
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Success',
+                    text: '{{ session('success') }}',
+                    confirmButtonColor: '#28a745',
+                    timer: 5000,
+                    timerProgressBar: true,
+                    showConfirmButton: true,
+                    toast: false, // full popup instead of toast for visibility
+                    position: 'center',
+                    allowOutsideClick: false
+                }).then(() => {
+                    // Optional: clear session after showing (prevents repeat on refresh)
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                });
+            });
+        </script>
+    @endif
+
+    @if (session('error'))
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: '{{ session('error') }}',
+                    confirmButtonColor: '#dc3545',
+                    allowOutsideClick: false
+                }).then(() => {
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                });
+            });
+        </script>
+    @endif
+
+    @if (session('warning') || session('info'))
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Warning',
+                    text: '{{ session('warning') ?? session('info') }}',
+                    confirmButtonColor: '#ffc107',
+                    allowOutsideClick: true
+                }).then(() => {
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                });
+            });
+        </script>
+    @endif
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Read entity_type from URL query param (set by Laravel on redirect)
+            const urlParams = new URLSearchParams(window.location.search);
+            let entityType = urlParams.get('entity_type');
+
+            // Fallback: use last saved or default to operational
+            if (!entityType) {
+                entityType = sessionStorage.getItem('lastEntityType') || 'operational';
+            }
+
+            console.log('Activating tab for entity_type:', entityType);
+
+            // Map to your exact tab buttons using data-type
+            const tabSelector = `#entityTypeTabs button[data-type="${entityType}"]`;
+            const $targetTab = $(tabSelector);
+
+            if ($targetTab.length) {
+                $targetTab.tab('show');
+                console.log('Tab activated:', tabSelector);
+
+                // Also trigger the shown.bs.tab event so your existing tab logic runs
+                $targetTab.trigger('shown.bs.tab');
+            } else {
+                console.warn('Tab not found for type:', entityType);
+                // Fallback to operational tab
+                $('#operational-tab').tab('show');
+            }
+
+            // Save current type for future loads (optional)
+            sessionStorage.setItem('lastEntityType', entityType);
+
+            // Clean the URL (remove ?entity_type so refresh doesn't re-trigger)
+            if (urlParams.has('entity_type')) {
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
+        });
+    </script>
 
     <script src="{{ asset('vendor/adminlte/plugins/jquery/jquery.min.js') }}"></script>
     <script>
@@ -1540,6 +1702,47 @@
             // Initialize with operational tab
             // ────────────────────────────────────────────────
             $('#operational-tab').trigger('shown.bs.tab');
+        });
+    </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Get entity_type from URL query param (set by Laravel after creation)
+            const urlParams = new URLSearchParams(window.location.search);
+            let entityType = urlParams.get('entity_type');
+
+            // If no param (normal page load), default to operational or last saved
+            if (!entityType) {
+                entityType = sessionStorage.getItem('lastEntityType') || 'operational';
+            }
+
+            // Map to your exact tab IDs
+            const tabMap = {
+                'operational': '#operational-tab',
+                'accounting': '#legal-tab', // Legal Entities tab
+                'legal': '#legal-tab' // in case you use 'legal' somewhere
+            };
+
+            const targetTabId = tabMap[entityType] || '#operational-tab'; // fallback
+
+            // Activate the tab
+            const $targetTab = $(targetTabId);
+            if ($targetTab.length) {
+                $targetTab.tab('show');
+                console.log(`Activated tab after creation: ${entityType} → ${targetTabId}`);
+
+                // Also trigger the shown.bs.tab event manually (for your existing logic)
+                $targetTab.trigger('shown.bs.tab');
+            } else {
+                console.warn(`Tab not found for type: ${entityType}`);
+            }
+
+            // Save the type for future loads (optional)
+            sessionStorage.setItem('lastEntityType', entityType);
+
+            // Clean URL param so refresh doesn't re-activate
+            if (urlParams.has('entity_type')) {
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
         });
     </script>
 
