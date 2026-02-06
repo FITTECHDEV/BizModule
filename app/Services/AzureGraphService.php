@@ -774,15 +774,14 @@ class AzureGraphService
         $strategy = config('azure.upn_strategy', 'name_based');
 
         if ($strategy === 'name_based') {
-            // Support both 'name' and 'displayName' keys
             $name = $userData['name'] ?? $userData['displayName'] ?? 'user';
 
-            // firstname.lastname@domain.com
+            // firstname.initial@domain.com
             $nameParts = explode(' ', strtolower($name));
             $firstName = $nameParts[0] ?? 'user';
-            $lastName = end($nameParts);
+            $lastNameInitial = substr(end($nameParts), 0, 1);  
 
-            return "{$firstName}.{$lastName}@{$this->defaultDomain}";
+            return "{$firstName}.{$lastNameInitial}@{$this->defaultDomain}";
         }
 
         // employee_id based: employeeID@domain.com
