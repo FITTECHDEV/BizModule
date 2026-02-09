@@ -3927,6 +3927,158 @@ class AzureUserManagementController extends Controller
     }
 
     /**
+     * Provision user to all assigned applications using master SP
+     * 
+     * This SP automatically:
+     * - Detects all modules assigned to user in Azure_Application_UserMapping
+     * - Calls appropriate individual SPs (D365, SCM, BIZ, FIT)
+     * - Auto-activates user if ANY provisioning succeeds
+     * - Returns consolidated JSON results
+     * 
+     * CRITICAL: @AzureUserID parameter expects Azure_Users.Id (database PK), NOT AzureId!
+     * 
+     * @param string $userId - Azure_Users.Id (database primary key)
+     * @return array ['success' => bool, 'results' => array, 'message' => string, 'activated' => bool]
+     */
+    private function provisionUserToApplications(string $userId): array
+    {
+        try {
+            Log::info('→ Calling sp_Azure_UserCreationorUpdate (Master SP)', [
+                'user_id' => $userId,
+            ]);
+
+            // ✅ CRITICAL: Pass Azure_Users.Id (database PK), NOT AzureId column!
+            $spResult = DB::connection('sqlsrv')->select("
+            SET NOCOUNT ON;
+            DECLARE @Remark VARCHAR(MAX);
+            
+            EXEC sp_Azure_UserCreationorUpdate 
+                @AzureUserID = ?,
+                @sp_Remark = @Remark OUTPUT;
+            
+            SELECT @Remark as Remark;
+        ", [$userId]);
+
+            $remarkJson = $spResult[0]->Remark ?? null;
+
+            if (empty($remarkJson)) {
+                Log::warning('Master SP returned empty results', [
+                    'user_id' => $userId,
+                ]);
+
+                return [
+                    'success' => false,
+                    'results' => [],
+                    'message' => 'No applications provisioned (empty response)',
+                    'activated' => false,
+                ];
+            }
+
+            // Parse JSON results
+            $results = json_decode($remarkJson, true);
+
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                Log::error('Failed to parse Master SP JSON', [
+                    'user_id' => $userId,
+                    'json_error' => json_last_error_msg(),
+                    'raw_response' => substr($remarkJson, 0, 500),
+                ]);
+
+                return [
+                    'success' => false,
+                    'results' => [],
+                    'message' => 'Failed to parse provisioning results',
+                    'activated' => false,
+                ];
+            }
+
+            // Check if any provisioning succeeded
+            $anySucceeded = collect($results)
+                ->where('Status', '!=', 'Failed')
+                ->isNotEmpty();
+
+            // Check if user was auto-activated by the SP
+            $wasActivated = DB::connection('sqlsrv')
+                ->table('Azure_Users')
+                ->where('Id', $userId)
+                ->value('Status') === 'Active';
+
+            Log::info('✓ Master SP provisioning completed', [
+                'user_id' => $userId,
+                'any_succeeded' => $anySucceeded,
+                'was_activated' => $wasActivated,
+                'results_count' => count($results),
+            ]);
+
+            return [
+                'success' => $anySucceeded,
+                'results' => $results,
+                'message' => $this->buildProvisioningSummary($results),
+                'activated' => $wasActivated,
+            ];
+        } catch (\Exception $e) {
+            Log::error('Master SP provisioning failed', [
+                'user_id' => $userId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return [
+                'success' => false,
+                'results' => [],
+                'message' => 'Provisioning failed: ' . $e->getMessage(),
+                'activated' => false,
+            ];
+        }
+    }
+
+    /**
+     * Build human-readable summary from Master SP results
+     * 
+     * @param array $results - Array of provisioning results from Master SP
+     * @return string Formatted summary message
+     */
+    private function buildProvisioningSummary(array $results): string
+    {
+        if (empty($results)) {
+            return 'No applications provisioned';
+        }
+
+        $successful = [];
+        $failed = [];
+
+        foreach ($results as $result) {
+            $app = $result['Application'] ?? 'Unknown';
+            $status = $result['Status'] ?? 'Failed';
+            $remark = $result['Remark'] ?? '';
+
+            if ($status === 'Success' || $status === 'success') {
+                $successful[] = "{$app}: {$remark}";
+            } else {
+                $failed[] = "{$app}: {$remark}";
+            }
+        }
+
+        $summary = [];
+
+        if (!empty($successful)) {
+            $summary[] = "✓ Successful (" . count($successful) . "):";
+            foreach ($successful as $item) {
+                $summary[] = "  • {$item}";
+            }
+        }
+
+        if (!empty($failed)) {
+            $summary[] = "⚠ Failed (" . count($failed) . "):";
+            foreach ($failed as $item) {
+                $summary[] = "  • {$item}";
+            }
+        }
+
+        return implode("\n", $summary);
+    }
+
+    /**
      * Repair Azure ID for a user
      */
     public function repairAzureId(AzureUser $user)
@@ -4354,7 +4506,7 @@ class AzureUserManagementController extends Controller
                                         @Remark = @Remark OUTPUT;
 
                                     SELECT @Status as Status, @Remark as Remark;
-                                ', [$user->AzureId]);
+                                ', [$user->Id]);
 
                                     $d365Status = $d365Result[0]->Status ?? 'Failed';
                                     $d365Remark = $d365Result[0]->Remark ?? 'Unknown error';
@@ -4965,11 +5117,12 @@ class AzureUserManagementController extends Controller
                 'azure_id' => $user->AzureId,
             ]);
 
-            // Call stored procedure
+            // ✅ FIXED: Use $user->Id instead of $user->AzureId
+            // sp_Azure_SCMUserCreation expects @AzureUserID = Azure_Users.Id (database PK)
             $result = DB::connection('sqlsrv')->select(
                 'EXEC sp_Azure_SCMUserCreation ?, @Status = ? OUTPUT, @Remark = ? OUTPUT',
                 [
-                    $user->AzureId,
+                    $user->Id,  // ✅ CORRECT - pass database ID, not AzureId
                     ['', \PDO::PARAM_STR | \PDO::PARAM_INPUT_OUTPUT, 15],
                     ['', \PDO::PARAM_STR | \PDO::PARAM_INPUT_OUTPUT, 200],
                 ]

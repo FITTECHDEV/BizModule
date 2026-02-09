@@ -188,4 +188,11 @@ return [
         'request_delay_ms' => env('AZURE_REQUEST_DELAY_MS', 500),
     ],
 
+    /**
+     * use master provisioning sp instead of individual SPs
+     * Set to false to instantly rollback to old method
+     *
+     */
+
+    'use_master_provisioning_sp' => true, 
 ];
