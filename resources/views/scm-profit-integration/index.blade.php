@@ -3,7 +3,7 @@
 @section('title', 'SCM Profit Integration')
 
 @section('content_header')
-    <h1>SCM Profit Integration Dashboard</h1>
+    <h1>QUOTATION</h1>
 @stop
 
 @section('content')

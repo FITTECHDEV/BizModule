@@ -359,7 +359,7 @@ return [
         ],
 
         [
-            'text' => 'SCM PROFIT INTEGRATION',
+            'text' => 'QUOTATION',
             'url'  => 'scm-profit-integration',
             'icon' => 'fas fa-fw fa-plug',  // or 'fas fa-fw fa-sync-alt' or 'fas fa-fw fa-exchange-alt'
             'active' => ['scm-profit-integration/*'],
