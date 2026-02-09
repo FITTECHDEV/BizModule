@@ -101,8 +101,7 @@
 
                     {{-- Custom Date Range - Start Date --}}
                     <div class="col-12 col-sm-6 col-md-auto order-4" id="customDateRange" style="display: none;">
-                        <input type="date" id="startDate" class="form-control form-control-sm"
-                            placeholder="Start Date">
+                        <input type="date" id="startDate" class="form-control form-control-sm" placeholder="Start Date">
                     </div>
 
                     {{-- Custom Date Range - End Date --}}
@@ -118,8 +117,7 @@
                     </div>
 
                     {{-- Clear Filters Button --}}
-                    <div class="col-12 col-sm-6 col-md-auto order-6" id="clearFiltersContainer"
-                        style="display: none;">
+                    <div class="col-12 col-sm-6 col-md-auto order-6" id="clearFiltersContainer" style="display: none;">
                         <button type="button" id="clearAllFilters" class="btn btn-outline-secondary btn-sm w-100 w-md-auto"
                             title="Clear all filters">
                             <i class="fas fa-redo"></i> Clear Filters
@@ -162,8 +160,8 @@
 @section('css')
     <style>
         /* ============================================
-           COMPACT CARD STYLING
-           ============================================ */
+               COMPACT CARD STYLING
+               ============================================ */
         .compact-card {
             min-height: 90px !important;
             margin-bottom: 0.5rem;
@@ -213,8 +211,8 @@
         }
 
         /* ============================================
-           FORM CONTROLS
-           ============================================ */
+               FORM CONTROLS
+               ============================================ */
         .form-control-sm {
             height: calc(1.5em + 0.5rem + 2px);
             padding: 0.25rem 0.5rem;
@@ -222,8 +220,8 @@
         }
 
         /* ============================================
-           FILTER ROW LAYOUT
-           ============================================ */
+               FILTER ROW LAYOUT
+               ============================================ */
         #entriesContainer .dataTables_length,
         #searchContainer .dataTables_filter {
             margin: 0;
@@ -251,8 +249,8 @@
         }
 
         /* ============================================
-           BUTTON STYLING
-           ============================================ */
+               BUTTON STYLING
+               ============================================ */
         .input-group-sm .btn {
             padding: 0.25rem 0.5rem;
             font-size: 0.875rem;
@@ -300,16 +298,16 @@
         }
 
         /* ============================================
-           RESPONSIVE GRID SPACING
-           ============================================ */
+               RESPONSIVE GRID SPACING
+               ============================================ */
         .g-2 {
             --bs-gutter-x: 0.5rem;
             --bs-gutter-y: 0.5rem;
         }
 
         /* ============================================
-           TABLE RESPONSIVE WRAPPER
-           ============================================ */
+               TABLE RESPONSIVE WRAPPER
+               ============================================ */
         .table-responsive-wrapper {
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
@@ -325,61 +323,62 @@
         }
 
         /* ============================================
-           DATATABLE RESPONSIVE STYLING
-           ============================================ */
-        
+               DATATABLE RESPONSIVE STYLING
+               ============================================ */
+
         /* Child row (expandable detail) styling */
-        table.dataTable.dtr-inline.collapsed > tbody > tr > td.child,
-        table.dataTable.dtr-inline.collapsed > tbody > tr > th.child,
-        table.dataTable.dtr-inline.collapsed > tbody > tr > td.dataTables_empty {
+        table.dataTable.dtr-inline.collapsed>tbody>tr>td.child,
+        table.dataTable.dtr-inline.collapsed>tbody>tr>th.child,
+        table.dataTable.dtr-inline.collapsed>tbody>tr>td.dataTables_empty {
             cursor: default !important;
         }
 
-        table.dataTable.dtr-inline.collapsed > tbody > tr[role="row"] > td:first-child:before,
-        table.dataTable.dtr-inline.collapsed > tbody > tr[role="row"] > th:first-child:before {
+        table.dataTable.dtr-inline.collapsed>tbody>tr[role="row"]>td:first-child:before,
+        table.dataTable.dtr-inline.collapsed>tbody>tr[role="row"]>th:first-child:before {
             top: 50%;
             transform: translateY(-50%);
             line-height: 1;
         }
 
-        table.dataTable.dtr-inline.collapsed > tbody > tr.parent > td:first-child:before,
-        table.dataTable.dtr-inline.collapsed > tbody > tr.parent > th:first-child:before {
+        table.dataTable.dtr-inline.collapsed>tbody>tr.parent>td:first-child:before,
+        table.dataTable.dtr-inline.collapsed>tbody>tr.parent>th:first-child:before {
             background-color: #28a745;
         }
 
         /* Child row content styling */
-        table.dataTable > tbody > tr.child ul.dtr-details {
+        table.dataTable>tbody>tr.child ul.dtr-details {
             width: 100%;
         }
 
-        table.dataTable > tbody > tr.child ul.dtr-details > li {
+        table.dataTable>tbody>tr.child ul.dtr-details>li {
             border-bottom: 1px solid #efefef;
             padding: 0.5rem 0;
         }
 
-        table.dataTable > tbody > tr.child span.dtr-title {
+        table.dataTable>tbody>tr.child span.dtr-title {
             font-weight: bold;
             min-width: 120px;
             display: inline-block;
         }
 
         /* ============================================
-           DATATABLE INFO AND PAGINATION
-           ============================================ */
+               DATATABLE INFO AND PAGINATION
+               ============================================ */
         .dataTables_info,
         .dataTables_paginate {
             padding-top: 0.75rem;
         }
 
         /* Hide default DataTables wrapper elements */
-        .dataTables_wrapper > .row:first-child {
+        .dataTables_wrapper>.row:first-child {
             display: none;
         }
 
         /* ============================================
-           MOBILE RESPONSIVE ADJUSTMENTS
-           ============================================ */
+               MOBILE RESPONSIVE ADJUSTMENTS
+               ============================================ */
         @media (max-width: 767.98px) {
+
             /* Compact card mobile sizing */
             .compact-card .icon {
                 font-size: 40px !important;
@@ -423,8 +422,8 @@
         }
 
         /* ============================================
-           TABLET ADJUSTMENTS (768px - 1199px)
-           ============================================ */
+               TABLET ADJUSTMENTS (768px - 1199px)
+               ============================================ */
         @media (min-width: 768px) and (max-width: 1199.98px) {
             #searchContainer .dataTables_filter input {
                 max-width: 150px;
@@ -432,9 +431,10 @@
         }
 
         /* ============================================
-           DESKTOP ADJUSTMENTS (1200px+)
-           ============================================ */
+               DESKTOP ADJUSTMENTS (1200px+)
+               ============================================ */
         @media (min-width: 1200px) {
+
             /* Ensure proper button width on desktop */
             .w-md-auto {
                 width: auto !important;
@@ -442,8 +442,8 @@
         }
 
         /* ============================================
-           UTILITY CLASSES
-           ============================================ */
+               UTILITY CLASSES
+               ============================================ */
         .ms-md-auto {
             margin-left: auto !important;
         }
@@ -545,7 +545,7 @@
                                 if (data === 'Success') badgeClass = 'badge-success';
                                 else if (data === 'Failed') badgeClass = 'badge-danger';
                                 else if (data === 'Pending') badgeClass = 'badge-warning';
-                                
+
                                 return '<span class="badge ' + badgeClass + '">' + data + '</span>';
                             }
                             return data;
@@ -562,16 +562,12 @@
                         responsivePriority: 13
                     },
                     {
-                        data: null,
+                        data: 'action',
+                        name: 'action',
                         orderable: false,
                         searchable: false,
                         responsivePriority: 5,
-                        className: 'text-center',
-                        render: function(data, type, row) {
-                            return '<button class="btn btn-sm btn-primary btn-retrigger" data-booking="' +
-                                row.bookingno +
-                                '" title="Retrigger"><i class="fas fa-sync-alt"></i></button>';
-                        }
+                        className: 'text-center'
                     }
                 ],
                 order: [
@@ -585,7 +581,9 @@
                         renderer: function(api, rowIdx, columns) {
                             var data = $.map(columns, function(col, i) {
                                 return col.hidden ?
-                                    '<li data-dtr-index="' + col.columnIndex + '" data-dt-row="' + col.rowIndex + '" data-dt-column="' + col.columnIndex + '">' +
+                                    '<li data-dtr-index="' + col.columnIndex +
+                                    '" data-dt-row="' + col.rowIndex + '" data-dt-column="' +
+                                    col.columnIndex + '">' +
                                     '<span class="dtr-title">' + col.title + '</span> ' +
                                     '<span class="dtr-data">' + col.data + '</span>' +
                                     '</li>' :
@@ -597,12 +595,26 @@
                                 false;
                         }
                     },
-                    breakpoints: [
-                        { name: 'desktop', width: Infinity },
-                        { name: 'tablet-l', width: 1024 },
-                        { name: 'tablet-p', width: 768 },
-                        { name: 'mobile-l', width: 480 },
-                        { name: 'mobile-p', width: 320 }
+                    breakpoints: [{
+                            name: 'desktop',
+                            width: Infinity
+                        },
+                        {
+                            name: 'tablet-l',
+                            width: 1024
+                        },
+                        {
+                            name: 'tablet-p',
+                            width: 768
+                        },
+                        {
+                            name: 'mobile-l',
+                            width: 480
+                        },
+                        {
+                            name: 'mobile-p',
+                            width: 320
+                        }
                     ]
                 },
                 dom: 'lfrtip',
@@ -615,7 +627,7 @@
                     // Move DataTable controls to custom containers
                     $('.dataTables_length').appendTo('#entriesContainer');
                     $('.dataTables_filter').appendTo('#searchContainer');
-                    
+
                     // Adjust search input placeholder for mobile
                     adjustSearchPlaceholder();
                 }
@@ -637,50 +649,50 @@
             });
 
             // Retrigger button click handler with touch-friendly feedback
-            $('#scmProfitTable').on('click', '.btn-retrigger', function(e) {
-                e.stopPropagation(); // Prevent row expansion on mobile
-                
-                var $btn = $(this);
-                var bookingNo = $btn.data('booking');
+            // $('#scmProfitTable').on('click', '.btn-retrigger', function(e) {
+            //     e.stopPropagation(); // Prevent row expansion on mobile
 
-                if (!bookingNo) {
-                    alert('Booking number not found');
-                    return;
-                }
+            //     var $btn = $(this);
+            //     var bookingNo = $btn.data('booking');
 
-                if (!confirm('Are you sure you want to retrigger booking: ' + bookingNo + '?')) {
-                    return;
-                }
+            //     if (!bookingNo) {
+            //         alert('Booking number not found');
+            //         return;
+            //     }
 
-                $btn.prop('disabled', true);
-                $btn.html('<i class="fas fa-spinner fa-spin"></i>');
+            //     if (!confirm('Are you sure you want to retrigger booking: ' + bookingNo + '?')) {
+            //         return;
+            //     }
 
-                $.ajax({
-                    url: '{{ route('scm-profit-integration.retrigger') }}',
-                    type: 'POST',
-                    data: {
-                        _token: '{{ csrf_token() }}',
-                        booking_no: bookingNo
-                    },
-                    success: function(response) {
-                        if (response.success) {
-                            alert('Successfully retriggered booking: ' + bookingNo);
-                            table.ajax.reload(null, false);
-                        } else {
-                            alert('Failed to retrigger: ' + (response.message ||
-                                'Unknown error'));
-                        }
-                    },
-                    error: function(xhr) {
-                        alert('Error retriggering booking: ' + (xhr.responseJSON?.message ||
-                            'Server error'));
-                    },
-                    complete: function() {
-                        $btn.prop('disabled', false);
-                        $btn.html('<i class="fas fa-sync-alt"></i>');
-                    }
-                });
-            });
+            //     $btn.prop('disabled', true);
+            //     $btn.html('<i class="fas fa-spinner fa-spin"></i>');
+
+            //     $.ajax({
+            //         url: '{{ route('scm-profit-integration.retrigger') }}',
+            //         type: 'POST',
+            //         data: {
+            //             _token: '{{ csrf_token() }}',
+            //             booking_no: bookingNo
+            //         },
+            //         success: function(response) {
+            //             if (response.success) {
+            //                 alert('Successfully retriggered booking: ' + bookingNo);
+            //                 table.ajax.reload(null, false);
+            //             } else {
+            //                 alert('Failed to retrigger: ' + (response.message ||
+            //                     'Unknown error'));
+            //             }
+            //         },
+            //         error: function(xhr) {
+            //             alert('Error retriggering booking: ' + (xhr.responseJSON?.message ||
+            //                 'Server error'));
+            //         },
+            //         complete: function() {
+            //             $btn.prop('disabled', false);
+            //             $btn.html('<i class="fas fa-sync-alt"></i>');
+            //         }
+            //     });
+            // });
 
             // Update card statistics
             function updateCardStats() {
@@ -743,24 +755,24 @@
 
             // Card click filtering - Prevent on touch devices during scroll
             var touchMoved = false;
-            
+
             $('.card-filter-trigger').on('touchstart', function() {
                 touchMoved = false;
             });
-            
+
             $('.card-filter-trigger').on('touchmove', function() {
                 touchMoved = true;
             });
-            
+
             $('.card-filter-trigger').on('click touchend', function(e) {
                 if (e.type === 'touchend' && touchMoved) {
                     return;
                 }
-                
+
                 if (e.type === 'touchend') {
                     e.preventDefault();
                 }
-                
+
                 var filterType = $(this).data('filter');
                 $('.card-filter-trigger').removeClass('active');
                 $(this).addClass('active');

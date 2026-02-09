@@ -729,6 +729,15 @@ Route::middleware(['auth', 'can:approve-all-entity-request'])->group(function ()
 
     Route::post('/scm-profit-integration/retrigger', [App\Http\Controllers\ScmProfitIntegrationController::class, 'retrigger'])
         ->name('scm-profit-integration.retrigger');
+
+
+    // NEW ROUTES - Add these
+    Route::get('/scm-profit-integration/{bookingno}', [App\Http\Controllers\ScmProfitIntegrationController::class, 'show'])
+        ->name('scm-profit-integration.show');
+    Route::get('/scm-profit-integration/{bookingno}/edit', [App\Http\Controllers\ScmProfitIntegrationController::class, 'edit'])
+        ->name('scm-profit-integration.edit');
+    Route::put('/scm-profit-integration/{bookingno}', [App\Http\Controllers\ScmProfitIntegrationController::class, 'update'])
+        ->name('scm-profit-integration.update');
 });
 
 
