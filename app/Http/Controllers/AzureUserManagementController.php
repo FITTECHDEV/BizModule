@@ -1704,6 +1704,18 @@ FROM (
                 'method' => config('azure.use_master_provisioning_sp', false) ? 'master_sp' : 'individual_sps',
             ]);
 
+            // ✅ PRE-PROVISIONING: Clean up orphaned OPS/SCM references (safety check)
+            $cleanupResult = $this->cleanupOrphanedSCMReferences($userId);
+
+            if ($cleanupResult['cleaned']) {
+                Log::warning('Orphaned OPS/SCM references found during user creation (unusual)', [
+                    'user_id' => $userId,
+                    'message' => $cleanupResult['message'],
+                ]);
+            }
+
+            $this->cleanupOrphanedSCMReferences($userId);
+
             $provisioningResults = $this->provisionUser($userId, $validatedAssignments);
 
             // Build summary for success message
@@ -2902,6 +2914,7 @@ FROM (
                 // ====================================================================
                 // STEP 13: Provision to ALL external systems using Master SP
                 // ====================================================================
+                $this->cleanupOrphanedSCMReferences($user->Id);
 
                 Log::info('→ Step 13: Provisioning via Master SP...', [
                     'user_id' => $user->Id,
@@ -4348,6 +4361,8 @@ FROM (
      */
     private function provisionUser(string $userId, array $validatedAssignments): array
     {
+        $this->cleanupOrphanedSCMReferences($userId);
+
         $useMasterSP = config('azure.use_master_provisioning_sp', false);
 
         if ($useMasterSP) {
@@ -4723,6 +4738,70 @@ FROM (
                 'success' => false,
                 'message' => 'Repair failed: ' . $e->getMessage(),
             ], 500);
+        }
+    }
+
+    /**
+     * Clean up orphaned OPS/SCM references
+     */
+    private function cleanupOrphanedSCMReferences(string $userId): array
+    {
+        try {
+            $user = DB::connection('sqlsrv')
+                ->table('Azure_Users')
+                ->where('Id', $userId)
+                ->first(['SCMResourceID', 'SCMUserID', 'SCMLoginId']);
+
+            // No SCM references - nothing to clean
+            if (empty($user->SCMResourceID) && empty($user->SCMUserID) && empty($user->SCMLoginId)) {
+                return ['cleaned' => false, 'message' => 'No SCM references'];
+            }
+
+            // ✅ CRITICAL: Check BOTH Cust_Resource AND Cust_Users
+            $resourceExists = false;
+            $userExists = false;
+
+            if (!empty($user->SCMResourceID)) {
+                $resourceExists = DB::connection('sqlsrv')
+                    ->table('FITSCM.dbo.Cust_Resource')
+                    ->where('Id', $user->SCMResourceID)
+                    ->exists();
+            }
+
+            if (!empty($user->SCMUserID)) {
+                $userExists = DB::connection('sqlsrv')
+                    ->table('FITSCM.dbo.Cust_Users')
+                    ->where('Id', $user->SCMUserID)
+                    ->exists();
+            }
+
+            // Clear if EITHER is orphaned
+            if (!$resourceExists || !$userExists) {
+                DB::connection('sqlsrv')
+                    ->table('Azure_Users')
+                    ->where('Id', $userId)
+                    ->update([
+                        'SCMResourceID' => null,
+                        'SCMUserID' => null,
+                        'SCMLoginId' => null,
+                        'SCMCreatedOn' => null,
+                    ]);
+
+                Log::warning('Orphaned SCM references cleared', [
+                    'user_id' => $userId,
+                    'resource_orphaned' => !$resourceExists,
+                    'user_orphaned' => !$userExists,
+                    'old_resource_id' => $user->SCMResourceID,
+                    'old_user_id' => $user->SCMUserID,
+                ]);
+
+                return ['cleaned' => true, 'message' => 'Orphaned references cleared'];
+            }
+
+            return ['cleaned' => false, 'message' => 'References valid'];
+        } catch (\Exception $e) {
+            Log::error('Cleanup failed', ['error' => $e->getMessage()]);
+            return ['cleaned' => false, 'message' => 'Cleanup error'];
         }
     }
 

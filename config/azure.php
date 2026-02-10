@@ -194,5 +194,5 @@ return [
      *
      */
 
-    'use_master_provisioning_sp' => false, 
+    'use_master_provisioning_sp' => true, 
 ];
