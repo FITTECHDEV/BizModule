@@ -341,7 +341,6 @@
                         </div>
                     </div>
                 </div>
-
                 <!-- Revenue -->
                 <div class="card card-success">
                     <div class="card-header">
@@ -361,11 +360,8 @@
                                 <thead class="thead-light">
                                     <tr>
                                         <th>Charge Name</th>
-                                        <th>Quantity</th>
-                                        <th>Based On</th>
-                                        <th>UOM</th>
                                         <th>Rate</th>
-                                        <th>Currency</th>
+                                        <th>Based On</th>
                                         <th>Amount</th>
                                         <th>Base Amount</th>
                                         <th>Actions</th>
@@ -376,7 +372,7 @@
                                 </tbody>
                                 <tfoot>
                                     <tr class="font-weight-bold">
-                                        <td colspan="6" class="text-right">TOTAL REVENUE</td>
+                                        <td colspan="3" class="text-right">TOTAL REVENUE</td>
                                         <td id="totalRevenueAmount">0.00</td>
                                         <td id="totalRevenueBaseAmount">0.00</td>
                                         <td></td>
@@ -406,11 +402,8 @@
                                 <thead class="thead-light">
                                     <tr>
                                         <th>Charge Name</th>
-                                        <th>Quantity</th>
-                                        <th>Based On</th>
-                                        <th>UOM</th>
                                         <th>Rate</th>
-                                        <th>Currency</th>
+                                        <th>Based On</th>
                                         <th>Amount</th>
                                         <th>Base Amount</th>
                                         <th>Actions</th>
@@ -421,7 +414,7 @@
                                 </tbody>
                                 <tfoot>
                                     <tr class="font-weight-bold">
-                                        <td colspan="6" class="text-right">TOTAL COST</td>
+                                        <td colspan="3" class="text-right">TOTAL COST</td>
                                         <td id="totalCostAmount">0.00</td>
                                         <td id="totalCostBaseAmount">0.00</td>
                                         <td></td>
@@ -444,34 +437,49 @@
                     </div>
                     <div class="card-body">
                         <div class="row">
-                            <div class="col-md-3">
-                                <div class="form-group">
-                                    <label class="font-weight-bold">Exected Revenue</label>
-                                    <div>expected_</div>
+                            <div class="col-md-6">
+                                <div class="form-group row">
+                                    <label class="col-sm-5 col-form-label">Exected Revenue</label>
+                                    <div class="col-sm-7">
+                                        <input type="text" class="form-control form-control-sm"
+                                            placeholder="expected_" readonly>
+                                    </div>
                                 </div>
-                                <div class="form-group">
-                                    <label class="font-weight-bold">Quoted Revenue</label>
-                                    <div>Based on</div>
+                                <div class="form-group row">
+                                    <label class="col-sm-5 col-form-label">Quoted Revenue</label>
+                                    <div class="col-sm-7">
+                                        <input type="text" class="form-control form-control-sm" placeholder="Based on"
+                                            readonly>
+                                    </div>
                                 </div>
-                                <div class="form-group mb-0">
-                                    <label class="font-weight-bold">Actual Revenue</label>
-                                    <div>Blank</div>
+                                <div class="form-group row">
+                                    <label class="col-sm-5 col-form-label">Actual Revenue</label>
+                                    <div class="col-sm-7">
+                                        <input type="text" class="form-control form-control-sm" placeholder="Blank"
+                                            readonly>
+                                    </div>
                                 </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="form-group">
-                                    <label class="font-weight-bold">Quoted Margin</label>
-                                    <div>Based on Calculation</div>
-                                </div>
-                                <div class="form-group mb-0">
-                                    <label class="font-weight-bold">Actual Margin</label>
-                                    <div>Blank</div>
+                                <div class="form-group row mb-0">
+                                    <label class="col-sm-5 col-form-label">Terms & Condition Section</label>
+                                    <div class="col-sm-7">
+                                        <input type="text" class="form-control form-control-sm" readonly>
+                                    </div>
                                 </div>
                             </div>
                             <div class="col-md-6">
-                                <div class="form-group mb-0">
-                                    <label class="font-weight-bold">Terms & Condition Section</label>
-                                    <input type="text" class="form-control form-control-sm" readonly>
+                                <div class="form-group row">
+                                    <label class="col-sm-5 col-form-label">Quoted Margin</label>
+                                    <div class="col-sm-7">
+                                        <input type="text" class="form-control form-control-sm"
+                                            placeholder="Based on Calculation" readonly>
+                                    </div>
+                                </div>
+                                <div class="form-group row mb-0">
+                                    <label class="col-sm-5 col-form-label">Actual Margin</label>
+                                    <div class="col-sm-7">
+                                        <input type="text" class="form-control form-control-sm" placeholder="Blank"
+                                            readonly>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -676,8 +684,8 @@
         </div>
 
         <!-- Cost Modal -->
-        <div class="modal fade" id="addCostModal" tabindex="-1" role="dialog"
-            aria-labelledby="addCostModalLabel" aria-hidden="true">
+        <div class="modal fade" id="addCostModal" tabindex="-1" role="dialog" aria-labelledby="addCostModalLabel"
+            aria-hidden="true">
             <div class="modal-dialog modal-lg" role="document">
                 <div class="modal-content">
                     <div class="modal-header">
@@ -1043,6 +1051,16 @@
             background-color: #f4f6f9;
             border-top: 1px solid #dee2e6;
         }
+
+        /* Make card header clickable for collapse*/
+        .card-header {
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .card-header:hover {
+            opacity: 0.95;
+        }
     </style>
 @stop
 
@@ -1058,7 +1076,7 @@
             // ============================================
             // MODAL TRIGGERS
             // ============================================
-            
+
             $('#openRevenueModal').on('click', function(e) {
                 e.preventDefault();
                 clearRevenueModalForm();
@@ -1074,7 +1092,7 @@
             // ============================================
             // MODAL INITIALIZATION
             // ============================================
-            
+
             $('#addRevenueModal').on('show.bs.modal', function() {
                 $('#revenueTypeRevenue').prop('checked', true);
                 toggleRevenueFormFields('revenue');
@@ -1088,7 +1106,7 @@
             // ============================================
             // MODAL CLOSE/CANCEL HANDLERS
             // ============================================
-            
+
             // Revenue Modal - Cancel button
             $('#addRevenueModal .btn-secondary').on('click', function() {
                 $('#addRevenueModal').modal('hide');
@@ -1121,7 +1139,7 @@
             // ============================================
             // CHARGE TYPE TOGGLES
             // ============================================
-            
+
             $('input[name="revenueChargeType"]').on('change', function() {
                 toggleRevenueFormFields($(this).val());
             });
@@ -1203,7 +1221,7 @@
             // ============================================
             // MODAL FORM CLEARING
             // ============================================
-            
+
             function clearRevenueModalForm() {
                 $('#addRevenueModal input[type="text"]').val('');
                 $('#addRevenueModal input[type="number"]').val('0');
@@ -1222,7 +1240,7 @@
             // ============================================
             // SAVE CHARGES (REVENUE)
             // ============================================
-            
+
             $('#saveRevenueCharge').on('click', function() {
                 var chargeData = getRevenueModalData();
                 if (validateChargeData(chargeData)) {
@@ -1261,7 +1279,7 @@
             // ============================================
             // SAVE CHARGES (COST)
             // ============================================
-            
+
             $('#saveCostCharge').on('click', function() {
                 var chargeData = getCostModalData();
                 if (validateChargeData(chargeData)) {
@@ -1300,7 +1318,7 @@
             // ============================================
             // VALIDATION
             // ============================================
-            
+
             function validateChargeData(data) {
                 if (!data.chargeName || data.chargeName === 'Untitled Charge') {
                     showNotification('Please enter a charge code/name', 'error');
@@ -1312,7 +1330,7 @@
             // ============================================
             // RENDER FUNCTIONS
             // ============================================
-            
+
             function renderRevenueCharges() {
                 var tbody = $('#revenueChargesTable');
                 tbody.empty();
@@ -1321,38 +1339,74 @@
                 var totalBaseAmount = 0;
 
                 if (revenueCharges.length === 0) {
-                    tbody.append('<tr><td colspan="9" class="text-center text-muted">No charges added</td></tr>');
+                    tbody.append('<tr><td colspan="6" class="text-center text-muted">No charges added</td></tr>');
                 } else {
                     revenueCharges.forEach(function(charge, index) {
                         totalAmount += parseFloat(charge.amount);
                         totalBaseAmount += parseFloat(charge.baseAmount);
 
                         var row = `
-                    <tr>
-                        <td>${charge.chargeName}</td>
-                        <td class="text-right">${parseFloat(charge.quantity).toFixed(2)}</td>
-                        <td>${charge.basedOn}</td>
-                        <td>${charge.uom}</td>
-                        <td class="text-right">${parseFloat(charge.rate).toFixed(2)}</td>
-                        <td>${charge.currency}</td>
-                        <td class="text-right">${parseFloat(charge.amount).toFixed(2)}</td>
-                        <td class="text-right">${parseFloat(charge.baseAmount).toFixed(2)}</td>
-                        <td class="text-center">
-                            <button type="button" class="btn btn-warning btn-action edit-revenue-charge" data-index="${index}">
-                                <i class="fas fa-edit"></i>
-                            </button>
-                            <button type="button" class="btn btn-danger btn-action delete-revenue-charge" data-index="${index}">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </td>
-                    </tr>
-                `;
+                <tr>
+                    <td>${charge.chargeName}</td>
+                    <td class="text-right">${parseFloat(charge.rate).toFixed(2)}</td>
+                    <td>${charge.basedOn}</td>
+                    <td class="text-right">${parseFloat(charge.amount).toFixed(2)}</td>
+                    <td class="text-right">${parseFloat(charge.baseAmount).toFixed(2)}</td>
+                    <td class="text-center">
+                        <button type="button" class="btn btn-warning btn-action edit-revenue-charge" data-index="${index}">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button type="button" class="btn btn-danger btn-action delete-revenue-charge" data-index="${index}">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
                         tbody.append(row);
                     });
                 }
 
                 $('#totalRevenueAmount').text(totalAmount.toFixed(2));
                 $('#totalRevenueBaseAmount').text(totalBaseAmount.toFixed(2));
+            }
+
+            function renderCostCharges() {
+                var tbody = $('#costChargesTable');
+                tbody.empty();
+
+                var totalAmount = 0;
+                var totalBaseAmount = 0;
+
+                if (costCharges.length === 0) {
+                    tbody.append('<tr><td colspan="6" class="text-center text-muted">No charges added</td></tr>');
+                } else {
+                    costCharges.forEach(function(charge, index) {
+                        totalAmount += parseFloat(charge.amount);
+                        totalBaseAmount += parseFloat(charge.baseAmount);
+
+                        var row = `
+                <tr>
+                    <td>${charge.chargeName}</td>
+                    <td class="text-right">${parseFloat(charge.rate).toFixed(2)}</td>
+                    <td>${charge.basedOn}</td>
+                    <td class="text-right">${parseFloat(charge.amount).toFixed(2)}</td>
+                    <td class="text-right">${parseFloat(charge.baseAmount).toFixed(2)}</td>
+                    <td class="text-center">
+                        <button type="button" class="btn btn-warning btn-action edit-cost-charge" data-index="${index}">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button type="button" class="btn btn-danger btn-action delete-cost-charge" data-index="${index}">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+                        tbody.append(row);
+                    });
+                }
+
+                $('#totalCostAmount').text(totalAmount.toFixed(2));
+                $('#totalCostBaseAmount').text(totalBaseAmount.toFixed(2));
             }
 
             function renderCostCharges() {
@@ -1400,7 +1454,7 @@
             // ============================================
             // DELETE CHARGES
             // ============================================
-            
+
             $(document).on('click', '.delete-revenue-charge', function() {
                 var index = $(this).data('index');
                 if (confirm('Are you sure you want to delete this charge?')) {
@@ -1422,7 +1476,7 @@
             // ============================================
             // EDIT CHARGES (PLACEHOLDER)
             // ============================================
-            
+
             $(document).on('click', '.edit-revenue-charge', function() {
                 var index = $(this).data('index');
                 showNotification('Edit feature - Coming soon with backend integration', 'info');
@@ -1436,7 +1490,7 @@
             // ============================================
             // SUMMARY BUTTONS
             // ============================================
-            
+
             $('.btn-primary:contains("Generate Quote")').on('click', function(e) {
                 e.preventDefault();
                 showNotification('Generate Quote - Feature ready for backend integration', 'info');
@@ -1478,12 +1532,12 @@
             // ============================================
             // SHOW ITEMS TOGGLE
             // ============================================
-            
+
             $('.show-items-link').on('click', function(e) {
                 e.preventDefault();
                 var $card = $(this).closest('.card');
                 var $tableWrapper = $card.find('.table-responsive');
-                
+
                 if ($tableWrapper.is(':visible')) {
                     $tableWrapper.slideUp();
                     $(this).text('Show Items');
@@ -1496,7 +1550,7 @@
             // ============================================
             // CARD COLLAPSE
             // ============================================
-            
+
             $('[data-card-widget="collapse"]').on('click', function() {
                 var icon = $(this).find('i');
                 icon.toggleClass('fa-chevron-down fa-chevron-up');
@@ -1513,10 +1567,18 @@
                 }
             });
 
+            //Make entire card heaser clickable for collapse
+            $('.card-header').on('click', function(e) {
+                //Don't trigger if clicking the collapse button itself
+                if (!$(e.target).closest('[data-card-widget="collapse"]').length) {
+                    $(this).find('[data-card-widget="collapse"]').click();
+                }
+            })
+
             // ============================================
             // NOTIFICATIONS
             // ============================================
-            
+
             function showNotification(message, type) {
                 var alertClass = 'alert-info';
                 if (type === 'success') alertClass = 'alert-success';
@@ -1531,9 +1593,9 @@
                         </button>
                     </div>
                 `;
-                
+
                 $('body').append(notification);
-                
+
                 setTimeout(function() {
                     $('.notification-toast').fadeOut(function() {
                         $(this).remove();
@@ -1544,7 +1606,23 @@
             // ============================================
             // INITIALIZE
             // ============================================
-            
+
+            // Collapse all cards by default EXCEPT Revenue and Cost
+            $('.card').not('.card-success, .card-danger').each(function() {
+                var $card = $(this);
+                var $cardBody = $card.find('.card-body');
+                var $icon = $card.find('[data-card-widget="collapse"] i');
+
+                // Hide card body
+                $cardBody.hide();
+
+                // Change icon to down arrow
+                $icon.removeClass('fa-chevron-up').addClass('fa-chevron-down');
+
+                // Add collapsed-card class
+                $card.addClass('collapsed-card');
+            });
+
             renderRevenueCharges();
             renderCostCharges();
         });

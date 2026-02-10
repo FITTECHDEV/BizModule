@@ -446,11 +446,17 @@
                                         readonly>
                                 </div>
                             </div>
-                            <div class="form-group row mb-0">
+                            <div class="form-group row">
                                 <label class="col-sm-6 col-form-label">Actual Revenue</label>
                                 <div class="col-sm-6">
                                     <input type="text" class="form-control form-control-sm" placeholder="Blank"
                                         readonly>
+                                </div>
+                            </div>
+                            <div class="form-group row mb-0">
+                                <label class="col-sm-6 col-form-label">Terms & Condition Section</label>
+                                <div class="col-sm-6">
+                                    <input type="text" class="form-control form-control-sm" readonly>
                                 </div>
                             </div>
                         </div>
@@ -470,10 +476,6 @@
                                 </div>
                             </div>
                         </div>
-                    </div>
-                    <div class="form-group mt-3 mb-0">
-                        <label>Terms & Condition Section</label>
-                        <textarea class="form-control" rows="3" readonly></textarea>
                     </div>
                 </div>
             </div>
@@ -541,6 +543,16 @@
         .card-tools a:hover {
             opacity: 0.8;
         }
+
+        /* Make card header clickable for collapse */
+        .card-header {
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .card-header:hover {
+            opacity: 0.95;
+        }
     </style>
 @stop
 
@@ -549,10 +561,42 @@
         $(document).ready(function() {
             console.log('Booking Quotation View - Page Loaded');
 
+            // ============================================
+            // CARD COLLAPSE
+            // ============================================
+
             // Handle collapse arrow rotation
             $('[data-card-widget="collapse"]').on('click', function() {
                 var icon = $(this).find('i');
                 icon.toggleClass('fa-chevron-down fa-chevron-up');
+            });
+
+            // Make entire card header clickable for collapse
+            $('.card-header').on('click', function(e) {
+                // Don't trigger if clicking the collapse button itself
+                if (!$(e.target).closest('[data-card-widget="collapse"]').length) {
+                    $(this).find('[data-card-widget="collapse"]').click();
+                }
+            });
+
+            // ============================================
+            // INITIALIZE
+            // ============================================
+
+            // Collapse all cards by default EXCEPT Revenue and Cost
+            $('.card').not('.card-success, .card-danger').each(function() {
+                var $card = $(this);
+                var $cardBody = $card.find('.card-body');
+                var $icon = $card.find('[data-card-widget="collapse"] i');
+
+                // Hide card body
+                $cardBody.hide();
+
+                // Change icon to down arrow
+                $icon.removeClass('fa-chevron-up').addClass('fa-chevron-down');
+
+                // Add collapsed-card class
+                $card.addClass('collapsed-card');
             });
 
             // Set initial state for all collapse buttons
