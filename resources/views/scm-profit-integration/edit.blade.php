@@ -17,7 +17,7 @@
                 <!-- Booking Details -->
                 <div class="card card-primary">
                     <div class="card-header">
-                        <h3 class="card-title">Booking Details</h3>
+                        <h3 class="card-title">Inquiry Details</h3>
                         <div class="card-tools">
                             <button type="button" class="btn btn-tool" data-card-widget="collapse">
                                 <i class="fas fa-chevron-up"></i>
@@ -661,10 +661,10 @@
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-success btn-sm">
+                        <button type="button" class="btn btn-success btn-sm" id="saveRevenueCharge">
                             <i class="fas fa-save"></i> Save
                         </button>
-                        <button type="button" class="btn btn-primary btn-sm">
+                        <button type="button" class="btn btn-primary btn-sm" id="saveAddMoreRevenueCharge">
                             <i class="fas fa-plus"></i> Save & Add More
                         </button>
                         <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">
@@ -843,10 +843,10 @@
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-success btn-sm">
+                        <button type="button" class="btn btn-success btn-sm" id="saveCostCharge">
                             <i class="fas fa-save"></i> Save
                         </button>
-                        <button type="button" class="btn btn-primary btn-sm">
+                        <button type="button" class="btn btn-primary btn-sm" id="saveAddMoreCostCharge">
                             <i class="fas fa-plus"></i> Save & Add More
                         </button>
                         <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">
@@ -1050,49 +1050,84 @@
     <script>
         $(document).ready(function() {
             console.log('Booking Quotation View - Page Loaded');
-            console.log('jQuery loaded:', typeof jQuery !== 'undefined');
-            console.log('Bootstrap loaded:', typeof $.fn.modal !== 'undefined');
 
-            // Manual modal triggers
+            // In-memory data storage (no DB calls)
+            var revenueCharges = [];
+            var costCharges = [];
+
+            // ============================================
+            // MODAL TRIGGERS
+            // ============================================
+            
             $('#openRevenueModal').on('click', function(e) {
                 e.preventDefault();
-                console.log('Revenue modal button clicked');
+                clearRevenueModalForm();
                 $('#addRevenueModal').modal('show');
             });
 
             $('#openCostModal').on('click', function(e) {
                 e.preventDefault();
-                console.log('Cost modal button clicked');
+                clearCostModalForm();
                 $('#addCostModal').modal('show');
             });
 
-            // Modal event listeners for debugging
+            // ============================================
+            // MODAL INITIALIZATION
+            // ============================================
+            
             $('#addRevenueModal').on('show.bs.modal', function() {
-                console.log('Revenue modal is opening');
-                // Set default to Revenue option
                 $('#revenueTypeRevenue').prop('checked', true);
                 toggleRevenueFormFields('revenue');
             });
 
             $('#addCostModal').on('show.bs.modal', function() {
-                console.log('Cost modal is opening');
-                // Set default to Cost with markup option
                 $('#costTypeCostMarkup').prop('checked', true);
                 toggleCostFormFields('costmarkup');
             });
 
-            // Handle Revenue modal charge type changes
-            $('input[name="revenueChargeType"]').on('change', function() {
-                var selectedType = $(this).val();
-                console.log('Revenue charge type changed to:', selectedType);
-                toggleRevenueFormFields(selectedType);
+            // ============================================
+            // MODAL CLOSE/CANCEL HANDLERS
+            // ============================================
+            
+            // Revenue Modal - Cancel button
+            $('#addRevenueModal .btn-secondary').on('click', function() {
+                $('#addRevenueModal').modal('hide');
             });
 
-            // Handle Cost modal charge type changes
+            // Revenue Modal - X close button
+            $('#addRevenueModal .close').on('click', function() {
+                $('#addRevenueModal').modal('hide');
+            });
+
+            // Cost Modal - Cancel button
+            $('#addCostModal .btn-secondary').on('click', function() {
+                $('#addCostModal').modal('hide');
+            });
+
+            // Cost Modal - X close button
+            $('#addCostModal .close').on('click', function() {
+                $('#addCostModal').modal('hide');
+            });
+
+            // Clear forms when modals are closed
+            $('#addRevenueModal').on('hidden.bs.modal', function() {
+                clearRevenueModalForm();
+            });
+
+            $('#addCostModal').on('hidden.bs.modal', function() {
+                clearCostModalForm();
+            });
+
+            // ============================================
+            // CHARGE TYPE TOGGLES
+            // ============================================
+            
+            $('input[name="revenueChargeType"]').on('change', function() {
+                toggleRevenueFormFields($(this).val());
+            });
+
             $('input[name="costChargeType"]').on('change', function() {
-                var selectedType = $(this).val();
-                console.log('Cost charge type changed to:', selectedType);
-                toggleCostFormFields(selectedType);
+                toggleCostFormFields($(this).val());
             });
 
             // Function to toggle Revenue modal form fields
@@ -1102,15 +1137,13 @@
                 var $isAccruedCheckbox = $modal.find('.is-accrued-row');
 
                 if (type === 'costmarkup') {
-                    // Show "Increase By" field for Cost with markup
                     if ($increaseByRow.length === 0) {
-                        // Insert "Increase By" row after Rate row
                         var increaseByHtml = `
                             <div class="row increase-by-row">
                                 <div class="col-md-3">
                                     <div class="form-group">
                                         <label>Increase By</label>
-                                        <input type="number" class="form-control form-control-sm" value="0" step="0.01">
+                                        <input type="number" class="form-control form-control-sm revenue-increase-by" value="0" step="0.01">
                                     </div>
                                 </div>
                                 <div class="col-md-3">
@@ -1135,11 +1168,9 @@
                     $increaseByRow.show();
                     $isAccruedCheckbox.hide();
                 } else if (type === 'cost') {
-                    // Hide "Increase By" for Cost, show "Is Accrued"
                     $increaseByRow.hide();
                     $isAccruedCheckbox.show();
                 } else {
-                    // Revenue - hide both
                     $increaseByRow.hide();
                     $isAccruedCheckbox.show();
                 }
@@ -1152,19 +1183,16 @@
                 var $isAccruedCheckbox = $modal.find('.is-accrued-row');
 
                 if (type === 'costmarkup') {
-                    // Show "Increase By" field for Cost with markup
                     $increaseByRow.show();
                     if ($isAccruedCheckbox.length > 0) {
                         $isAccruedCheckbox.hide();
                     }
                 } else if (type === 'cost') {
-                    // Hide "Increase By" for Cost, show "Is Accrued" if exists
                     $increaseByRow.hide();
                     if ($isAccruedCheckbox.length > 0) {
                         $isAccruedCheckbox.show();
                     }
                 } else {
-                    // Revenue - hide "Increase By", show "Is Accrued" if exists
                     $increaseByRow.hide();
                     if ($isAccruedCheckbox.length > 0) {
                         $isAccruedCheckbox.show();
@@ -1172,38 +1200,119 @@
                 }
             }
 
-            // Handle collapse arrow rotation
-            $('[data-card-widget="collapse"]').on('click', function() {
-                var icon = $(this).find('i');
-                icon.toggleClass('fa-chevron-down fa-chevron-up');
-            });
+            // ============================================
+            // MODAL FORM CLEARING
+            // ============================================
+            
+            function clearRevenueModalForm() {
+                $('#addRevenueModal input[type="text"]').val('');
+                $('#addRevenueModal input[type="number"]').val('0');
+                $('#addRevenueModal select').prop('selectedIndex', 0);
+                $('#addRevenueModal input[type="checkbox"]').prop('checked', false);
+                $('#revenueTypeRevenue').prop('checked', true);
+            }
 
-            // Set initial state for all collapse buttons
-            $('.card').each(function() {
-                var card = $(this);
-                var collapseBtn = card.find('[data-card-widget="collapse"] i');
+            function clearCostModalForm() {
+                $('#addCostModal input[type="text"]').val('');
+                $('#addCostModal input[type="number"]').val('0');
+                $('#addCostModal select').prop('selectedIndex', 0);
+                $('#costTypeCostMarkup').prop('checked', true);
+            }
 
-                // Check if card body is visible
-                if (card.find('.card-body').is(':visible')) {
-                    collapseBtn.removeClass('fa-minus').addClass('fa-chevron-up');
-                } else {
-                    collapseBtn.removeClass('fa-minus').addClass('fa-chevron-down');
+            // ============================================
+            // SAVE CHARGES (REVENUE)
+            // ============================================
+            
+            $('#saveRevenueCharge').on('click', function() {
+                var chargeData = getRevenueModalData();
+                if (validateChargeData(chargeData)) {
+                    revenueCharges.push(chargeData);
+                    renderRevenueCharges();
+                    $('#addRevenueModal').modal('hide');
+                    showNotification('Revenue charge added successfully!', 'success');
                 }
             });
 
-            // Sample data for demonstration (remove this when integrating with backend)
-            var revenueCharges = [{
-                chargeName: 'Freight Charges (Auto)',
-                quantity: 1.00,
-                basedOn: 'Chargeable',
-                uom: 'KGS',
-                rate: 23.05,
-                currency: 'USD',
-                amount: 23.05,
-                baseAmount: 2973.45
-            }];
+            $('#saveAddMoreRevenueCharge').on('click', function() {
+                var chargeData = getRevenueModalData();
+                if (validateChargeData(chargeData)) {
+                    revenueCharges.push(chargeData);
+                    renderRevenueCharges();
+                    clearRevenueModalForm();
+                    showNotification('Revenue charge added! Add another.', 'success');
+                }
+            });
 
-            // Function to render revenue charges
+            function getRevenueModalData() {
+                var $modal = $('#addRevenueModal');
+                return {
+                    chargeType: $('input[name="revenueChargeType"]:checked').val(),
+                    chargeName: $modal.find('input[type="text"]').eq(0).val() || 'Untitled Charge',
+                    quantity: parseFloat($modal.find('input[type="number"]').eq(0).val()) || 0,
+                    basedOn: 'Manual',
+                    uom: 'Unit',
+                    rate: parseFloat($modal.find('input[type="number"]').eq(1).val()) || 0,
+                    currency: 'USD',
+                    amount: parseFloat($modal.find('input[type="number"]').eq(1).val()) || 0,
+                    baseAmount: parseFloat($modal.find('input[type="number"]').eq(1).val()) || 0
+                };
+            }
+
+            // ============================================
+            // SAVE CHARGES (COST)
+            // ============================================
+            
+            $('#saveCostCharge').on('click', function() {
+                var chargeData = getCostModalData();
+                if (validateChargeData(chargeData)) {
+                    costCharges.push(chargeData);
+                    renderCostCharges();
+                    $('#addCostModal').modal('hide');
+                    showNotification('Cost charge added successfully!', 'success');
+                }
+            });
+
+            $('#saveAddMoreCostCharge').on('click', function() {
+                var chargeData = getCostModalData();
+                if (validateChargeData(chargeData)) {
+                    costCharges.push(chargeData);
+                    renderCostCharges();
+                    clearCostModalForm();
+                    showNotification('Cost charge added! Add another.', 'success');
+                }
+            });
+
+            function getCostModalData() {
+                var $modal = $('#addCostModal');
+                return {
+                    chargeType: $('input[name="costChargeType"]:checked').val(),
+                    chargeName: $modal.find('input[type="text"]').eq(0).val() || 'Untitled Charge',
+                    quantity: parseFloat($modal.find('input[type="number"]').eq(0).val()) || 0,
+                    basedOn: 'Manual',
+                    uom: 'Unit',
+                    rate: parseFloat($modal.find('input[type="number"]').eq(1).val()) || 0,
+                    currency: 'USD',
+                    amount: parseFloat($modal.find('input[type="number"]').eq(1).val()) || 0,
+                    baseAmount: parseFloat($modal.find('input[type="number"]').eq(1).val()) || 0
+                };
+            }
+
+            // ============================================
+            // VALIDATION
+            // ============================================
+            
+            function validateChargeData(data) {
+                if (!data.chargeName || data.chargeName === 'Untitled Charge') {
+                    showNotification('Please enter a charge code/name', 'error');
+                    return false;
+                }
+                return true;
+            }
+
+            // ============================================
+            // RENDER FUNCTIONS
+            // ============================================
+            
             function renderRevenueCharges() {
                 var tbody = $('#revenueChargesTable');
                 tbody.empty();
@@ -1246,13 +1355,6 @@
                 $('#totalRevenueBaseAmount').text(totalBaseAmount.toFixed(2));
             }
 
-            // Initialize the table
-            renderRevenueCharges();
-
-            // Sample data for cost charges
-            var costCharges = [];
-
-            // Function to render cost charges
             function renderCostCharges() {
                 var tbody = $('#costChargesTable');
                 tbody.empty();
@@ -1295,40 +1397,156 @@
                 $('#totalCostBaseAmount').text(totalBaseAmount.toFixed(2));
             }
 
-            // Initialize cost table
-            renderCostCharges();
-
-            // Delete revenue charge
+            // ============================================
+            // DELETE CHARGES
+            // ============================================
+            
             $(document).on('click', '.delete-revenue-charge', function() {
                 var index = $(this).data('index');
                 if (confirm('Are you sure you want to delete this charge?')) {
                     revenueCharges.splice(index, 1);
                     renderRevenueCharges();
+                    showNotification('Revenue charge deleted', 'success');
                 }
             });
 
-            // Delete cost charge
             $(document).on('click', '.delete-cost-charge', function() {
                 var index = $(this).data('index');
                 if (confirm('Are you sure you want to delete this charge?')) {
                     costCharges.splice(index, 1);
                     renderCostCharges();
+                    showNotification('Cost charge deleted', 'success');
                 }
             });
 
-            // Edit revenue charge (placeholder - will open modal with pre-filled data)
+            // ============================================
+            // EDIT CHARGES (PLACEHOLDER)
+            // ============================================
+            
             $(document).on('click', '.edit-revenue-charge', function() {
                 var index = $(this).data('index');
-                // TODO: Open modal with charge data pre-filled
-                alert('Edit functionality will be implemented with backend integration');
+                showNotification('Edit feature - Coming soon with backend integration', 'info');
             });
 
-            // Edit cost charge (placeholder - will open modal with pre-filled data)
             $(document).on('click', '.edit-cost-charge', function() {
                 var index = $(this).data('index');
-                // TODO: Open modal with charge data pre-filled
-                alert('Edit functionality will be implemented with backend integration');
+                showNotification('Edit feature - Coming soon with backend integration', 'info');
             });
+
+            // ============================================
+            // SUMMARY BUTTONS
+            // ============================================
+            
+            $('.btn-primary:contains("Generate Quote")').on('click', function(e) {
+                e.preventDefault();
+                showNotification('Generate Quote - Feature ready for backend integration', 'info');
+            });
+
+            $('.btn-primary:contains("Email Quote")').on('click', function(e) {
+                e.preventDefault();
+                showNotification('Email Quote - Feature ready for backend integration', 'info');
+            });
+
+            $('.btn-link:contains("Close")').on('click', function(e) {
+                e.preventDefault();
+                if (confirm('Are you sure you want to close without saving?')) {
+                    window.location.href = '#'; // Update with actual route
+                }
+            });
+
+            $('.btn-warning:contains("Cancel")').on('click', function(e) {
+                e.preventDefault();
+                if (confirm('Are you sure you want to cancel this quotation?')) {
+                    showNotification('Quotation cancelled', 'info');
+                }
+            });
+
+            $('.btn-danger:contains("LOST")').on('click', function(e) {
+                e.preventDefault();
+                if (confirm('Mark this quotation as LOST?')) {
+                    showNotification('Quotation marked as LOST', 'warning');
+                }
+            });
+
+            $('.btn-success:contains("WON")').on('click', function(e) {
+                e.preventDefault();
+                if (confirm('Mark this quotation as WON?')) {
+                    showNotification('Quotation marked as WON!', 'success');
+                }
+            });
+
+            // ============================================
+            // SHOW ITEMS TOGGLE
+            // ============================================
+            
+            $('.show-items-link').on('click', function(e) {
+                e.preventDefault();
+                var $card = $(this).closest('.card');
+                var $tableWrapper = $card.find('.table-responsive');
+                
+                if ($tableWrapper.is(':visible')) {
+                    $tableWrapper.slideUp();
+                    $(this).text('Show Items');
+                } else {
+                    $tableWrapper.slideDown();
+                    $(this).text('Hide Items');
+                }
+            });
+
+            // ============================================
+            // CARD COLLAPSE
+            // ============================================
+            
+            $('[data-card-widget="collapse"]').on('click', function() {
+                var icon = $(this).find('i');
+                icon.toggleClass('fa-chevron-down fa-chevron-up');
+            });
+
+            $('.card').each(function() {
+                var card = $(this);
+                var collapseBtn = card.find('[data-card-widget="collapse"] i');
+
+                if (card.find('.card-body').is(':visible')) {
+                    collapseBtn.removeClass('fa-minus').addClass('fa-chevron-up');
+                } else {
+                    collapseBtn.removeClass('fa-minus').addClass('fa-chevron-down');
+                }
+            });
+
+            // ============================================
+            // NOTIFICATIONS
+            // ============================================
+            
+            function showNotification(message, type) {
+                var alertClass = 'alert-info';
+                if (type === 'success') alertClass = 'alert-success';
+                if (type === 'error') alertClass = 'alert-danger';
+                if (type === 'warning') alertClass = 'alert-warning';
+
+                var notification = `
+                    <div class="alert ${alertClass} alert-dismissible fade show notification-toast" role="alert" style="position: fixed; top: 20px; right: 20px; z-index: 9999; min-width: 300px;">
+                        <strong>${message}</strong>
+                        <button type="button" class="close" data-dismiss="alert">
+                            <span>&times;</span>
+                        </button>
+                    </div>
+                `;
+                
+                $('body').append(notification);
+                
+                setTimeout(function() {
+                    $('.notification-toast').fadeOut(function() {
+                        $(this).remove();
+                    });
+                }, 3000);
+            }
+
+            // ============================================
+            // INITIALIZE
+            // ============================================
+            
+            renderRevenueCharges();
+            renderCostCharges();
         });
     </script>
 @stop

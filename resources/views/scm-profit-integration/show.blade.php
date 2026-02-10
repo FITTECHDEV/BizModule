@@ -28,7 +28,7 @@
             <!-- Booking Details -->
             <div class="card card-primary">
                 <div class="card-header">
-                    <h3 class="card-title">Booking Details</h3>
+                    <h3 class="card-title">Inquiry Details</h3>
                     <div class="card-tools">
                         <button type="button" class="btn btn-tool" data-card-widget="collapse">
                             <i class="fas fa-chevron-up"></i>
