@@ -607,7 +607,7 @@
                             </div>
                         </div>
 
-                        <div class="row">
+                        <div class="row rate-row">
                             <div class="col-md-3">
                                 <div class="form-group">
                                     <label>Rate</label>
@@ -649,7 +649,7 @@
                             </div>
                         </div>
 
-                        <div class="row">
+                        <div class="row is-accrued-row">
                             <div class="col-md-12">
                                 <div class="form-check">
                                     <input class="form-check-input" type="checkbox" id="revenueIsAccrued">
@@ -775,7 +775,7 @@
                             </div>
                         </div>
 
-                        <div class="row">
+                        <div class="row rate-row">
                             <div class="col-md-3">
                                 <div class="form-group">
                                     <label>Rate</label>
@@ -800,7 +800,7 @@
                             </div>
                         </div>
 
-                        <div class="row">
+                        <div class="row increase-by-row">
                             <div class="col-md-3">
                                 <div class="form-group">
                                     <label>Increase By</label>
@@ -1131,6 +1131,7 @@
                         `;
                         $modal.find('.rate-row').after(increaseByHtml);
                     }
+                    $increaseByRow = $modal.find('.increase-by-row');
                     $increaseByRow.show();
                     $isAccruedCheckbox.hide();
                 } else if (type === 'cost') {
