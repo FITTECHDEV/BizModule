@@ -583,7 +583,7 @@ class OdooSyncController extends Controller
             $azureUserData = [
                 'accountEnabled' => true,
                 'displayName' => $userData['displayName'] ?? 'Unknown User',
-                'mailNickname' => explode('@', $userData['userPrincipalName'])[0],
+                'mailNickname' => $this->sanitizeMailNickname(explode('@', $userData['userPrincipalName'])[0]),
                 'userPrincipalName' => $userData['userPrincipalName'],
                 'givenName' => $givenName,
                 'surname' => $surname,
@@ -657,8 +657,9 @@ class OdooSyncController extends Controller
                 'user' => $userData['userPrincipalName'],
             ]);
 
-            // Map Odoo fields to Azure AD update format
+            // Map Odoo fields to Azure AD update format (exclude mailNickname - immutable)
             $azureUpdateData = [
+                'displayName' => $userData['displayName'],
                 'displayName' => $userData['displayName'],
                 'givenName' => $userData['givenName'],
                 'surname' => $userData['surname'],
@@ -739,6 +740,39 @@ class OdooSyncController extends Controller
 
         // Shuffle to avoid predictable pattern
         return str_shuffle($password);
+    }
+
+    /**
+     * Sanitize mail nickname for Azure AD
+     * Azure AD mailNickname requirements:
+     * - Only alphanumeric characters, periods, hyphens, and underscores
+     * - Cannot start or end with a period
+     * - Maximum 64 characters
+     * 
+     * @param string $nickname Raw nickname (typically username part of email)
+     * @return string Sanitized nickname
+     */
+    private function sanitizeMailNickname(string $nickname): string
+    {
+        // Remove any characters that aren't alphanumeric, period, hyphen, or underscore
+        $sanitized = preg_replace('/[^a-zA-Z0-9._-]/', '', $nickname);
+
+        // Remove leading/trailing periods
+        $sanitized = trim($sanitized, '.');
+
+        // Ensure it's not empty after sanitization
+        if (empty($sanitized)) {
+            $sanitized = 'user' . substr(md5(uniqid()), 0, 8);
+        }
+
+        // Enforce max length of 64 characters
+        if (strlen($sanitized) > 64) {
+            $sanitized = substr($sanitized, 0, 64);
+            // Ensure we didn't end with a period after truncation
+            $sanitized = rtrim($sanitized, '.');
+        }
+
+        return $sanitized;
     }
 
     /**

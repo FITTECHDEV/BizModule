@@ -752,7 +752,7 @@ class AzureUserManagementController extends Controller
             // ✅ IMPROVED: Use robust helper method with validation
             $azureResult = $this->getOrCreateAzureId($userPrincipalName, $request->name, $azureUserData);
 
-            if (!$azureResult['success'] || empty($azureResult['azure_id'])) {
+            if (!isset($azureResult['success']) || !$azureResult['success'] || empty($azureResult['azure_id'])) {
                 throw new \Exception('Failed to obtain Azure ID: ' . ($azureResult['message'] ?? 'Unknown error'));
             }
 
@@ -909,23 +909,25 @@ class AzureUserManagementController extends Controller
 
             if (empty($request->employee_id)) {
                 Log::info('Auto-generating EmployeeCode...');
-
                 $nextCode = DB::connection('sqlsrv')->select("
-    SELECT CAST(ISNULL(MAX(MaxCode), 0) + 1 AS VARCHAR(100)) as NextCode
-    FROM (
-        SELECT MAX(CAST(CU.EmployeeCode AS BIGINT)) as MaxCode
-        FROM Cust_User CU WITH (NOLOCK)
-        WHERE CU.EmployeeCode IS NOT NULL 
-            AND LEN(ISNULL(CU.EmployeeCode, '')) > 0
-            -- Removed: AND ISNUMERIC(CU.EmployeeCode) = 1
-        UNION ALL
-
-        SELECT MAX(CAST(AU.EmployeCode AS BIGINT)) as MaxCode
-        FROM Azure_Users AU WITH (NOLOCK)
-        WHERE AU.EmployeCode IS NOT NULL  
-            AND LEN(ISNULL(AU.EmployeCode, '')) > 0
-            -- Removed: AND ISNUMERIC(AU.EmployeCode) = 1
-    ) AS Combined
+SELECT CAST(ISNULL(MAX(MaxCode), 0) + 1 AS VARCHAR(100)) as NextCode
+FROM (
+    SELECT MAX(CAST(CU.EmployeeCode AS BIGINT)) as MaxCode
+    FROM Cust_User CU WITH (NOLOCK)
+    WHERE CU.EmployeeCode IS NOT NULL 
+        AND LEN(ISNULL(CU.EmployeeCode, '')) > 0
+        AND ISNUMERIC(CU.EmployeeCode) = 1
+        AND CU.EmployeeCode NOT LIKE '%[^0-9]%'
+    
+    UNION ALL
+    
+    SELECT MAX(CAST(AU.EmployeCode AS BIGINT)) as MaxCode
+    FROM Azure_Users AU WITH (NOLOCK)
+    WHERE AU.EmployeCode IS NOT NULL  
+        AND LEN(ISNULL(AU.EmployeCode, '')) > 0
+        AND ISNUMERIC(AU.EmployeCode) = 1
+        AND AU.EmployeCode NOT LIKE '%[^0-9]%'
+) AS Combined
 ");
 
                 $generatedEmployeeCode = $nextCode[0]->NextCode ?? '1';
@@ -1512,186 +1514,211 @@ class AzureUserManagementController extends Controller
             // STEP 12: Provision to OPS/SCM (if applicable)
             // ====================================================================
 
-            $hasOPSAssignment = collect($validatedAssignments)
-                ->contains(function ($assignment) {
-                    $appName = strtoupper($assignment['application_name']);
-                    return in_array($appName, ['OPS', 'OPS UAT', 'OPSUAT']);
-                });
+            // $hasOPSAssignment = collect($validatedAssignments)
+            //     ->contains(function ($assignment) {
+            //         $appName = strtoupper($assignment['application_name']);
+            //         return in_array($appName, ['OPS', 'OPS UAT', 'OPSUAT']);
+            //     });
 
-            if ($hasOPSAssignment) {
-                Log::info('→ Step 12: Provisioning user to OPS/SCM...', [
-                    'user_id' => $userId,
-                ]);
+            // if ($hasOPSAssignment) {
+            //     Log::info('→ Step 12: Provisioning user to OPS/SCM...', [
+            //         'user_id' => $userId,
+            //     ]);
 
-                try {
-                    $scmResult = DB::connection('sqlsrv')->select("
-                    SET NOCOUNT ON;
-                    DECLARE @Status VARCHAR(15), @Remark VARCHAR(200);
-                    EXEC sp_Azure_SCMUserCreation
-                        @AzureUserID = ?,
-                        @Status = @Status OUTPUT,
-                        @Remark = @Remark OUTPUT;
-                    SELECT @Status as Status, @Remark as Remark;
-                ", [$userId]);
+            //     try {
+            //         $scmResult = DB::connection('sqlsrv')->select("
+            //         SET NOCOUNT ON;
+            //         DECLARE @Status VARCHAR(15), @Remark VARCHAR(200);
+            //         EXEC sp_Azure_SCMUserCreation
+            //             @AzureUserID = ?,
+            //             @Status = @Status OUTPUT,
+            //             @Remark = @Remark OUTPUT;
+            //         SELECT @Status as Status, @Remark as Remark;
+            //     ", [$userId]);
 
-                    $scmStatus = $scmResult[0]->Status ?? 'Failed';
-                    $scmRemark = $scmResult[0]->Remark ?? 'Unknown error';
+            //         $scmStatus = $scmResult[0]->Status ?? 'Failed';
+            //         $scmRemark = $scmResult[0]->Remark ?? 'Unknown error';
 
-                    Log::info(strtoupper($scmStatus) === 'SUCCESS' ? '✓ Step 12: OPS provisioned' : '⚠ Step 12: OPS failed', [
-                        'status' => $scmStatus,
-                        'remark' => $scmRemark,
-                    ]);
-                } catch (\Exception $e) {
-                    Log::error('✗ Step 12: OPS provisioning error', [
-                        'error' => $e->getMessage(),
-                    ]);
-                }
-            } else {
-                Log::info('⊘ Step 12: OPS provisioning skipped (no OPS assignments)');
+            //         Log::info(strtoupper($scmStatus) === 'SUCCESS' ? '✓ Step 12: OPS provisioned' : '⚠ Step 12: OPS failed', [
+            //             'status' => $scmStatus,
+            //             'remark' => $scmRemark,
+            //         ]);
+            //     } catch (\Exception $e) {
+            //         Log::error('✗ Step 12: OPS provisioning error', [
+            //             'error' => $e->getMessage(),
+            //         ]);
+            //     }
+            // } else {
+            //     Log::info('⊘ Step 12: OPS provisioning skipped (no OPS assignments)');
+            // }
+
+            // // ====================================================================
+            // // STEP 13: Provision to BIZ PRO (if applicable)
+            // // ====================================================================
+
+            // $hasBizAssignment = collect($validatedAssignments)
+            //     ->contains(function ($assignment) {
+            //         return strtoupper($assignment['application_name']) === 'BIZ PRO';
+            //     });
+
+            // if ($hasBizAssignment) {
+            //     Log::info('→ Step 13: Provisioning user to BIZ PRO...', [
+            //         'user_id' => $userId,
+            //     ]);
+
+            //     // Get fresh user data for validation
+            //     $userForValidation = DB::connection('sqlsrv')
+            //         ->table('Azure_Users')
+            //         ->where('Id', $userId)
+            //         ->first();
+
+            //     // PRE-FLIGHT VALIDATION
+            //     $validation = $this->validateForBizProvisioning((object) [
+            //         'Id' => $userForValidation->Id,
+            //         'EmployeCode' => $userForValidation->EmployeCode,
+            //     ]);
+
+            //     if (!$validation['valid']) {
+            //         Log::warning('⊘ Step 13: BIZ PRO provisioning skipped - validation failed', [
+            //             'user_id' => $userId,
+            //             'errors' => $validation['errors'],
+            //         ]);
+            //     } else {
+            //         try {
+            //             $bizApp = DB::connection('sqlsrv')
+            //                 ->table('Azure_SoftwareMaster')
+            //                 ->where(function ($q) {
+            //                     $q->where('Name', 'LIKE', '%FITSYS%')
+            //                         ->orWhere('Name', 'LIKE', '%BIZ%');
+            //                 })
+            //                 ->first();
+
+            //             if ($bizApp) {
+            //                 $bizResult = DB::connection('sqlsrv')->select("
+            //                 SET NOCOUNT ON;
+            //                 DECLARE @Status VARCHAR(15), @Remark VARCHAR(200);
+            //                 EXEC sp_Azure_FITSYSUserCreation
+            //                     @AzureUserID = ?,
+            //                     @ApplicationID = ?,
+            //                     @Status = @Status OUTPUT,
+            //                     @Remark = @Remark OUTPUT;
+            //                 SELECT @Status as Status, @Remark as Remark;
+            //             ", [$userId, $bizApp->ApplicationId]);
+
+            //                 $bizStatus = $bizResult[0]->Status ?? 'Failed';
+            //                 $bizRemark = $bizResult[0]->Remark ?? 'Unknown error';
+
+            //                 Log::info(strtolower($bizStatus) === 'success' ? '✓ Step 13: BIZ PRO provisioned' : '⚠ Step 13: BIZ PRO failed', [
+            //                     'status' => $bizStatus,
+            //                     'remark' => $bizRemark,
+            //                 ]);
+            //             } else {
+            //                 Log::error('✗ Step 13: BIZ PRO application not found');
+            //             }
+            //         } catch (\Exception $e) {
+            //             Log::error('✗ Step 13: BIZ PRO provisioning error', [
+            //                 'error' => $e->getMessage(),
+            //             ]);
+            //         }
+            //     }
+            // } else {
+            //     Log::info('⊘ Step 13: BIZ PRO provisioning skipped (no BIZ PRO assignments)');
+            // }
+
+            // // ====================================================================
+            // // STEP 14: FIT Express (if applicable)
+            // // ====================================================================
+
+            // $hasFitAssignment = collect($validatedAssignments)
+            //     ->contains(function ($assignment) {
+            //         return stripos($assignment['application_name'], 'FIT EXPRESS') !== false;
+            //     });
+
+            // if ($hasFitAssignment) {
+            //     Log::info('→ Step 14: Provisioning user to FIT Express...', [
+            //         'user_id' => $userId,
+            //     ]);
+
+            //     // Get fresh user data for validation
+            //     $userForValidation = DB::connection('sqlsrv')
+            //         ->table('Azure_Users')
+            //         ->where('Id', $userId)
+            //         ->first();
+
+            //     // PRE-FLIGHT VALIDATION
+            //     $validation = $this->validateForBizProvisioning((object) [
+            //         'Id' => $userForValidation->Id,
+            //         'EmployeCode' => $userForValidation->EmployeCode,
+            //     ]);
+
+            //     if (!$validation['valid']) {
+            //         Log::warning('⊘ Step 14: FIT Express provisioning skipped - validation failed', [
+            //             'user_id' => $userId,
+            //             'errors' => $validation['errors'],
+            //         ]);
+            //     } else {
+            //         try {
+            //             $fitApp = DB::connection('sqlsrv')
+            //                 ->table('Azure_SoftwareMaster')
+            //                 ->where('Name', 'LIKE', '%FIT Express%')
+            //                 ->first();
+
+            //             if ($fitApp) {
+            //                 $fitResult = DB::connection('sqlsrv')->select("
+            //                 SET NOCOUNT ON;
+            //                 DECLARE @Status VARCHAR(15), @Remark VARCHAR(200);
+            //                 EXEC sp_Azure_FITSYSUserCreation
+            //                     @AzureUserID = ?,
+            //                     @ApplicationID = ?,
+            //                     @Status = @Status OUTPUT,
+            //                     @Remark = @Remark OUTPUT;
+            //                 SELECT @Status as Status, @Remark as Remark;
+            //             ", [$userId, $fitApp->ApplicationId]);
+
+            //                 $fitStatus = $fitResult[0]->Status ?? 'Failed';
+            //                 $fitRemark = $fitResult[0]->Remark ?? 'Unknown error';
+
+            //                 Log::info(strtolower($fitStatus) === 'success' ? '✓ Step 14: FIT Express provisioned' : '⚠ Step 14: FIT Express failed', [
+            //                     'status' => $fitStatus,
+            //                     'remark' => $fitRemark,
+            //                 ]);
+            //             } else {
+            //                 Log::error('✗ Step 14: FIT Express application not found');
+            //             }
+            //         } catch (\Exception $e) {
+            //             Log::error('✗ Step 14: FIT Express provisioning error', [
+            //                 'error' => $e->getMessage(),
+            //             ]);
+            //         }
+            //     }
+            // } else {
+            //     Log::info('⊘ Step 14: FIT Express provisioning skipped (no FIT Express assignments)');
+            // }
+
+            // ====================================================================
+            // STEP 11-14: Provision to ALL external systems
+            // ====================================================================
+
+            Log::info('→ Step 11-14: Provisioning to external systems...', [
+                'user_id' => $userId,
+                'method' => config('azure.use_master_provisioning_sp', false) ? 'master_sp' : 'individual_sps',
+            ]);
+
+            $provisioningResults = $this->provisionUser($userId, $validatedAssignments);
+
+            // Build summary for success message
+            $provisioningSummary = "\n\nProvisioning ({$provisioningResults['method']}):\n" . $provisioningResults['message'];
+
+            if ($provisioningResults['activated']) {
+                $provisioningSummary .= "\n\n✓ User auto-activated by provisioning system";
             }
 
-            // ====================================================================
-            // STEP 13: Provision to BIZ PRO (if applicable)
-            // ====================================================================
-
-            $hasBizAssignment = collect($validatedAssignments)
-                ->contains(function ($assignment) {
-                    return strtoupper($assignment['application_name']) === 'BIZ PRO';
-                });
-
-            if ($hasBizAssignment) {
-                Log::info('→ Step 13: Provisioning user to BIZ PRO...', [
-                    'user_id' => $userId,
-                ]);
-
-                // Get fresh user data for validation
-                $userForValidation = DB::connection('sqlsrv')
-                    ->table('Azure_Users')
-                    ->where('Id', $userId)
-                    ->first();
-
-                // PRE-FLIGHT VALIDATION
-                $validation = $this->validateForBizProvisioning((object) [
-                    'Id' => $userForValidation->Id,
-                    'EmployeCode' => $userForValidation->EmployeCode,
-                ]);
-
-                if (!$validation['valid']) {
-                    Log::warning('⊘ Step 13: BIZ PRO provisioning skipped - validation failed', [
-                        'user_id' => $userId,
-                        'errors' => $validation['errors'],
-                    ]);
-                } else {
-                    try {
-                        $bizApp = DB::connection('sqlsrv')
-                            ->table('Azure_SoftwareMaster')
-                            ->where(function ($q) {
-                                $q->where('Name', 'LIKE', '%FITSYS%')
-                                    ->orWhere('Name', 'LIKE', '%BIZ%');
-                            })
-                            ->first();
-
-                        if ($bizApp) {
-                            $bizResult = DB::connection('sqlsrv')->select("
-                            SET NOCOUNT ON;
-                            DECLARE @Status VARCHAR(15), @Remark VARCHAR(200);
-                            EXEC sp_Azure_FITSYSUserCreation
-                                @AzureUserID = ?,
-                                @ApplicationID = ?,
-                                @Status = @Status OUTPUT,
-                                @Remark = @Remark OUTPUT;
-                            SELECT @Status as Status, @Remark as Remark;
-                        ", [$userId, $bizApp->ApplicationId]);
-
-                            $bizStatus = $bizResult[0]->Status ?? 'Failed';
-                            $bizRemark = $bizResult[0]->Remark ?? 'Unknown error';
-
-                            Log::info(strtolower($bizStatus) === 'success' ? '✓ Step 13: BIZ PRO provisioned' : '⚠ Step 13: BIZ PRO failed', [
-                                'status' => $bizStatus,
-                                'remark' => $bizRemark,
-                            ]);
-                        } else {
-                            Log::error('✗ Step 13: BIZ PRO application not found');
-                        }
-                    } catch (\Exception $e) {
-                        Log::error('✗ Step 13: BIZ PRO provisioning error', [
-                            'error' => $e->getMessage(),
-                        ]);
-                    }
-                }
-            } else {
-                Log::info('⊘ Step 13: BIZ PRO provisioning skipped (no BIZ PRO assignments)');
-            }
-
-            // ====================================================================
-            // STEP 14: FIT Express (if applicable)
-            // ====================================================================
-
-            $hasFitAssignment = collect($validatedAssignments)
-                ->contains(function ($assignment) {
-                    return stripos($assignment['application_name'], 'FIT EXPRESS') !== false;
-                });
-
-            if ($hasFitAssignment) {
-                Log::info('→ Step 14: Provisioning user to FIT Express...', [
-                    'user_id' => $userId,
-                ]);
-
-                // Get fresh user data for validation
-                $userForValidation = DB::connection('sqlsrv')
-                    ->table('Azure_Users')
-                    ->where('Id', $userId)
-                    ->first();
-
-                // PRE-FLIGHT VALIDATION
-                $validation = $this->validateForBizProvisioning((object) [
-                    'Id' => $userForValidation->Id,
-                    'EmployeCode' => $userForValidation->EmployeCode,
-                ]);
-
-                if (!$validation['valid']) {
-                    Log::warning('⊘ Step 14: FIT Express provisioning skipped - validation failed', [
-                        'user_id' => $userId,
-                        'errors' => $validation['errors'],
-                    ]);
-                } else {
-                    try {
-                        $fitApp = DB::connection('sqlsrv')
-                            ->table('Azure_SoftwareMaster')
-                            ->where('Name', 'LIKE', '%FIT Express%')
-                            ->first();
-
-                        if ($fitApp) {
-                            $fitResult = DB::connection('sqlsrv')->select("
-                            SET NOCOUNT ON;
-                            DECLARE @Status VARCHAR(15), @Remark VARCHAR(200);
-                            EXEC sp_Azure_FITSYSUserCreation
-                                @AzureUserID = ?,
-                                @ApplicationID = ?,
-                                @Status = @Status OUTPUT,
-                                @Remark = @Remark OUTPUT;
-                            SELECT @Status as Status, @Remark as Remark;
-                        ", [$userId, $fitApp->ApplicationId]);
-
-                            $fitStatus = $fitResult[0]->Status ?? 'Failed';
-                            $fitRemark = $fitResult[0]->Remark ?? 'Unknown error';
-
-                            Log::info(strtolower($fitStatus) === 'success' ? '✓ Step 14: FIT Express provisioned' : '⚠ Step 14: FIT Express failed', [
-                                'status' => $fitStatus,
-                                'remark' => $fitRemark,
-                            ]);
-                        } else {
-                            Log::error('✗ Step 14: FIT Express application not found');
-                        }
-                    } catch (\Exception $e) {
-                        Log::error('✗ Step 14: FIT Express provisioning error', [
-                            'error' => $e->getMessage(),
-                        ]);
-                    }
-                }
-            } else {
-                Log::info('⊘ Step 14: FIT Express provisioning skipped (no FIT Express assignments)');
-            }
+            Log::info('✓ Step 11-14: Provisioning completed', [
+                'user_id' => $userId,
+                'success' => $provisioningResults['success'],
+                'activated' => $provisioningResults['activated'],
+                'method' => $provisioningResults['method'],
+            ]);
 
             // ====================================================================
             // STEP 15: Commit transaction - everything succeeded!
@@ -1718,26 +1745,49 @@ class AzureUserManagementController extends Controller
                 ->toArray();
 
             // Build success message
+            // $successMessage = sprintf(
+            //     '✓ User created successfully!<br>' .
+            //         'Azure ID: %s<br>' .
+            //         'Status: <strong>Pending</strong><br>' .
+            //         '%d role(s) and %d function(s) created across %d module(s): %s',
+            //     substr($azureId, 0, 8) . '...',
+            //     $insertedRolesCount,
+            //     $insertedFunctionsCount,
+            //     count($uniqueModules),
+            //     implode(', ', $uniqueModules)
+            // );
+
+            // // Add D365 status to message
+            // if ($d365ProvisioningStatus && $d365ProvisioningStatus['status'] !== 'Skipped') {
+            //     if ($d365ProvisioningStatus['success']) {
+            //         $successMessage .= '<br>✓ D365: User provisioned successfully';
+            //     } else {
+            //         $successMessage .= '<br>⚠ D365: Provisioning failed - ' . $d365ProvisioningStatus['message'];
+            //     }
+            // }
+
+
+            // Refresh user to get latest status
+            $userFresh = DB::connection('sqlsrv')
+                ->table('Azure_Users')
+                ->where('Id', $userId)
+                ->first();
+
+            $finalStatus = $userFresh->Status ?? 'Pending';
+
             $successMessage = sprintf(
                 '✓ User created successfully!<br>' .
                     'Azure ID: %s<br>' .
-                    'Status: <strong>Pending</strong><br>' .
-                    '%d role(s) and %d function(s) created across %d module(s): %s',
+                    'Status: <strong>%s</strong><br>' .
+                    '%d role(s) and %d function(s) created across %d module(s): %s%s',
                 substr($azureId, 0, 8) . '...',
+                $finalStatus,
                 $insertedRolesCount,
                 $insertedFunctionsCount,
                 count($uniqueModules),
-                implode(', ', $uniqueModules)
+                implode(', ', $uniqueModules),
+                $provisioningSummary
             );
-
-            // Add D365 status to message
-            if ($d365ProvisioningStatus && $d365ProvisioningStatus['status'] !== 'Skipped') {
-                if ($d365ProvisioningStatus['success']) {
-                    $successMessage .= '<br>✓ D365: User provisioned successfully';
-                } else {
-                    $successMessage .= '<br>⚠ D365: Provisioning failed - ' . $d365ProvisioningStatus['message'];
-                }
-            }
 
             // Return appropriate response
             if ($request->wantsJson() || $request->ajax() || $request->header('X-Requested-With') === 'XMLHttpRequest') {
@@ -1835,27 +1885,27 @@ class AzureUserManagementController extends Controller
      */
     private function ensureAzureIdExists(AzureUser $user): array
     {
-        // Check if AzureId already exists in database
-        $azureId = DB::connection('sqlsrv')
-            ->table('Azure_Users')
-            ->where('Id', $user->Id)
-            ->value('AzureId');
-
-        if (!empty($azureId) && $this->isValidUuid($azureId)) {
-            return [
-                'success' => true,
-                'azure_id' => trim($azureId),
-                'message' => 'AzureId already exists',
-            ];
-        }
-
-        // AzureId missing - attempt to fetch from Azure AD
-        Log::warning('AzureId missing - attempting lookup in Azure AD', [
-            'user_id' => $user->Id,
-            'upn' => $user->userPrincipalName,
-        ]);
-
         try {
+            // Check if AzureId already exists in database
+            $azureId = DB::connection('sqlsrv')
+                ->table('Azure_Users')
+                ->where('Id', $user->Id)
+                ->value('AzureId');
+
+            if (!empty($azureId) && $this->isValidUuid($azureId)) {
+                return [
+                    'success' => true,
+                    'azure_id' => trim($azureId),
+                    'message' => 'AzureId already exists',
+                ];
+            }
+
+            // AzureId missing - attempt to fetch from Azure AD
+            Log::warning('AzureId missing - attempting lookup in Azure AD', [
+                'user_id' => $user->Id,
+                'upn' => $user->userPrincipalName,
+            ]);
+
             $azureService = app(\App\Services\AzureGraphService::class);
             $azureUser = $azureService->findUserByUPN($user->userPrincipalName);
 
@@ -1896,11 +1946,11 @@ class AzureUserManagementController extends Controller
             ];
         } catch (\Exception $e) {
             Log::error('Failed to fetch AzureId from Azure AD', [
-                'user_id' => $user->Id,
-                'upn' => $user->userPrincipalName,
+                'user_id' => $user->Id ?? 'unknown',
                 'error' => $e->getMessage(),
             ]);
 
+            // ✅ CRITICAL: Always return array with 'success' key, even on exception
             return [
                 'success' => false,
                 'azure_id' => null,
@@ -1915,21 +1965,21 @@ class AzureUserManagementController extends Controller
      * @param AzureUser $user
      * @return array ['valid' => bool, 'errors' => array]
      */
-    private function validateForBizProvisioning(AzureUser $user): array
-    {
-        $errors = [];
+    // private function validateForBizProvisioning(AzureUser $user): array
+    // {
+    //     $errors = [];
 
-        // Check 1: EmployeCode must exist
-        if (empty($user->EmployeCode)) {
-            $errors[] = 'EmployeCode is required for BIZ/FIT provisioning. Please ensure EmployeeCode is set in Azure_Users table.';
-        }
-        // Removed all numeric validation checks
+    //     // Check 1: EmployeCode must exist
+    //     if (empty($user->EmployeCode)) {
+    //         $errors[] = 'EmployeCode is required for BIZ/FIT provisioning. Please ensure EmployeeCode is set in Azure_Users table.';
+    //     }
+    //     // Removed all numeric validation checks
 
-        return [
-            'valid' => empty($errors),
-            'errors' => $errors,
-        ];
-    }
+    //     return [
+    //         'valid' => empty($errors),
+    //         'errors' => $errors,
+    //     ];
+    // }
 
     /**
      * Display the specified user with module assignments
@@ -2698,21 +2748,25 @@ class AzureUserManagementController extends Controller
                 if (empty($user->EmployeCode)) {
                     // Line ~1035 - Auto-generation query (remove ISNUMERIC filters)
                     $nextCode = DB::connection('sqlsrv')->select("
-    SELECT CAST(ISNULL(MAX(MaxCode), 0) + 1 AS VARCHAR(100)) as NextCode
-    FROM (
-        SELECT MAX(CAST(CU.EmployeeCode AS BIGINT)) as MaxCode
-        FROM Cust_User CU WITH (NOLOCK)
-            WHERE CU.EmployeeCode IS NOT NULL 
-            AND LEN(ISNULL(CU.EmployeeCode, '')) > 0
-        UNION ALL
-
-        SELECT MAX(CAST(AU.EmployeCode AS BIGINT)) as MaxCode
-        FROM Azure_Users AU WITH (NOLOCK)
-        WHERE AU.EmployeCode IS NOT NULL  
-            AND LEN(ISNULL(AU.EmployeCode, '')) > 0
-
-    ) AS Combined
-");
+                        SELECT CAST(ISNULL(MAX(MaxCode), 0) + 1 AS VARCHAR(100)) as NextCode
+                        FROM (
+                            SELECT MAX(CAST(CU.EmployeeCode AS BIGINT)) as MaxCode
+                            FROM Cust_User CU WITH (NOLOCK)
+                            WHERE CU.EmployeeCode IS NOT NULL 
+                                AND LEN(ISNULL(CU.EmployeeCode, '')) > 0
+                                AND ISNUMERIC(CU.EmployeeCode) = 1
+                                AND CU.EmployeeCode NOT LIKE '%[^0-9]%'
+    
+                            UNION ALL
+    
+                            SELECT MAX(CAST(AU.EmployeCode AS BIGINT)) as MaxCode
+                            FROM Azure_Users AU WITH (NOLOCK)
+                            WHERE AU.EmployeCode IS NOT NULL  
+                                AND LEN(ISNULL(AU.EmployeCode, '')) > 0
+                                AND ISNUMERIC(AU.EmployeCode) = 1
+                                AND AU.EmployeCode NOT LIKE '%[^0-9]%'
+                            ) AS Combined
+                        ");
 
                     $generatedEmployeeCode = $nextCode[0]->NextCode ?? '1';
 
@@ -2724,125 +2778,183 @@ class AzureUserManagementController extends Controller
                     $user->refresh();
                 }
 
+                // // ====================================================================
+                // // STEP 13: Provision to external systems
+                // // ====================================================================
+                // $provisioningResults = [];
+                // $allValidatedAssignments = array_merge($validatedRoles, $validatedFunctions);
+
+                // $assignedModules = collect($allValidatedAssignments)
+                //     ->pluck('application_name')
+                //     ->unique()
+                //     ->map(fn($name) => strtoupper(trim($name)))
+                //     ->filter()
+                //     ->values();
+
+                // $userId = $user->Id;
+
+                // // D365
+                // if ($assignedModules->contains('D365 LIVE')) {
+                //     try {
+                //         $d365Result = DB::connection('sqlsrv')->select("
+                //         SET NOCOUNT ON;
+                //         DECLARE @Status VARCHAR(15), @Remark VARCHAR(200);
+                //         EXEC sp_Azure_D365UserCreation @AzureUserID = ?, @Status = @Status OUTPUT, @Remark = @Remark OUTPUT;
+                //         SELECT @Status as Status, @Remark as Remark;
+                //     ", [$userId]);
+
+                //         $provisioningResults['D365 LIVE'] = [
+                //             'success' => ($d365Result[0]->Status ?? 'Failed') === 'Success',
+                //             'message' => $d365Result[0]->Remark ?? 'Unknown error',
+                //         ];
+                //     } catch (\Exception $e) {
+                //         $provisioningResults['D365 LIVE'] = ['success' => false, 'message' => 'Exception: ' . $e->getMessage()];
+                //     }
+                // }
+
+                // // OPS/SCM  
+                // if ($assignedModules->contains('OPS') || $assignedModules->contains('OPS UAT') || $assignedModules->contains('OPSUAT')) {
+                //     try {
+                //         $scmResult = DB::connection('sqlsrv')->select("
+                //         SET NOCOUNT ON;
+                //         DECLARE @Status VARCHAR(15), @Remark VARCHAR(200);
+                //         EXEC sp_Azure_SCMUserCreation @AzureUserID = ?, @Status = @Status OUTPUT, @Remark = @Remark OUTPUT;
+                //         SELECT @Status as Status, @Remark as Remark;
+                //     ", [$userId]);
+
+                //         $provisioningResults['OPS'] = [
+                //             'success' => strtoupper($scmResult[0]->Status ?? 'Failed') === 'SUCCESS',
+                //             'message' => $scmResult[0]->Remark ?? 'Unknown error',
+                //         ];
+                //     } catch (\Exception $e) {
+                //         $provisioningResults['OPS'] = ['success' => false, 'message' => 'Exception: ' . $e->getMessage()];
+                //     }
+                // }
+
+                // // BIZ PRO
+                // if ($assignedModules->contains('BIZ PRO') || $assignedModules->contains('FITSYS')) {
+                //     $validation = $this->validateForBizProvisioning($user);
+
+                //     if (!$validation['valid']) {
+                //         $provisioningResults['BIZ PRO'] = [
+                //             'success' => false,
+                //             'message' => 'Validation failed: ' . implode('; ', $validation['errors']),
+                //         ];
+                //     } else {
+                //         try {
+                //             $bizApp = DB::connection('sqlsrv')->table('Azure_SoftwareMaster')
+                //                 ->where(function ($q) {
+                //                     $q->where('Name', 'LIKE', '%FITSYS%')->orWhere('Name', 'LIKE', '%BIZ%');
+                //                 })->first();
+
+                //             if ($bizApp) {
+                //                 $bizResult = DB::connection('sqlsrv')->select("
+                //                 SET NOCOUNT ON;
+                //                 DECLARE @Status VARCHAR(15), @Remark VARCHAR(200);
+                //                 EXEC sp_Azure_FITSYSUserCreation @AzureUserID = ?, @ApplicationID = ?, @Status = @Status OUTPUT, @Remark = @Remark OUTPUT;
+                //                 SELECT @Status as Status, @Remark as Remark;
+                //             ", [$userId, $bizApp->ApplicationId]);
+
+                //                 $provisioningResults['BIZ PRO'] = [
+                //                     'success' => strtolower($bizResult[0]->Status ?? 'Failed') === 'success',
+                //                     'message' => $bizResult[0]->Remark ?? 'Unknown error',
+                //                 ];
+                //             }
+                //         } catch (\Exception $e) {
+                //             $provisioningResults['BIZ PRO'] = ['success' => false, 'message' => 'Exception: ' . $e->getMessage()];
+                //         }
+                //     }
+                // }
+
+                // // FIT Express
+                // if ($assignedModules->contains('FIT EXPRESS')) {
+                //     $validation = $this->validateForBizProvisioning($user);
+
+                //     if (!$validation['valid']) {
+                //         $provisioningResults['FIT Express'] = [
+                //             'success' => false,
+                //             'message' => 'Validation failed: ' . implode('; ', $validation['errors']),
+                //         ];
+                //     } else {
+                //         try {
+                //             $fitApp = DB::connection('sqlsrv')->table('Azure_SoftwareMaster')
+                //                 ->where('Name', 'LIKE', '%FIT Express%')->first();
+
+                //             if ($fitApp) {
+                //                 $fitResult = DB::connection('sqlsrv')->select("
+                //                 SET NOCOUNT ON;
+                //                 DECLARE @Status VARCHAR(15), @Remark VARCHAR(200);
+                //                 EXEC sp_Azure_FITSYSUserCreation @AzureUserID = ?, @ApplicationID = ?, @Status = @Status OUTPUT, @Remark = @Remark OUTPUT;
+                //                 SELECT @Status as Status, @Remark as Remark;
+                //             ", [$userId, $fitApp->ApplicationId]);
+
+                //                 $provisioningResults['FIT Express'] = [
+                //                     'success' => strtolower($fitResult[0]->Status ?? 'Failed') === 'success',
+                //                     'message' => $fitResult[0]->Remark ?? 'Unknown error',
+                //                 ];
+                //             }
+                //         } catch (\Exception $e) {
+                //             $provisioningResults['FIT Express'] = ['success' => false, 'message' => 'Exception: ' . $e->getMessage()];
+                //         }
+                //     }
+                // }
+
                 // ====================================================================
-                // STEP 13: Provision to external systems
+                // STEP 13: Provision to ALL external systems using Master SP
                 // ====================================================================
-                $provisioningResults = [];
-                $allValidatedAssignments = array_merge($validatedRoles, $validatedFunctions);
 
-                $assignedModules = collect($allValidatedAssignments)
-                    ->pluck('application_name')
-                    ->unique()
-                    ->map(fn($name) => strtoupper(trim($name)))
-                    ->filter()
-                    ->values();
+                Log::info('→ Step 13: Provisioning via Master SP...', [
+                    'user_id' => $user->Id,
+                ]);
 
-                $userId = $user->Id;
+                $provisioningSummary = '';
+                $provisioningResults = []; // ✅ INITIALIZE THIS VARIABLE
 
-                // D365
-                if ($assignedModules->contains('D365 LIVE')) {
-                    try {
-                        $d365Result = DB::connection('sqlsrv')->select("
-                        SET NOCOUNT ON;
-                        DECLARE @Status VARCHAR(15), @Remark VARCHAR(200);
-                        EXEC sp_Azure_D365UserCreation @AzureUserID = ?, @Status = @Status OUTPUT, @Remark = @Remark OUTPUT;
-                        SELECT @Status as Status, @Remark as Remark;
-                    ", [$userId]);
+                try {
+                    $provisionResult = DB::connection('sqlsrv')->select("
+        SET NOCOUNT ON;
+        DECLARE @sp_Remark VARCHAR(MAX);
 
-                        $provisioningResults['D365 LIVE'] = [
-                            'success' => ($d365Result[0]->Status ?? 'Failed') === 'Success',
-                            'message' => $d365Result[0]->Remark ?? 'Unknown error',
-                        ];
-                    } catch (\Exception $e) {
-                        $provisioningResults['D365 LIVE'] = ['success' => false, 'message' => 'Exception: ' . $e->getMessage()];
-                    }
-                }
+        EXEC sp_Azure_UserCreationorUpdate 
+            @AzureUserID = ?,
+            @sp_Remark = @sp_Remark OUTPUT;
 
-                // OPS/SCM  
-                if ($assignedModules->contains('OPS') || $assignedModules->contains('OPS UAT') || $assignedModules->contains('OPSUAT')) {
-                    try {
-                        $scmResult = DB::connection('sqlsrv')->select("
-                        SET NOCOUNT ON;
-                        DECLARE @Status VARCHAR(15), @Remark VARCHAR(200);
-                        EXEC sp_Azure_SCMUserCreation @AzureUserID = ?, @Status = @Status OUTPUT, @Remark = @Remark OUTPUT;
-                        SELECT @Status as Status, @Remark as Remark;
-                    ", [$userId]);
+        SELECT @sp_Remark as Remark;
+    ", [$user->Id]);
 
-                        $provisioningResults['OPS'] = [
-                            'success' => strtoupper($scmResult[0]->Status ?? 'Failed') === 'SUCCESS',
-                            'message' => $scmResult[0]->Remark ?? 'Unknown error',
-                        ];
-                    } catch (\Exception $e) {
-                        $provisioningResults['OPS'] = ['success' => false, 'message' => 'Exception: ' . $e->getMessage()];
-                    }
-                }
+                    $remarkJson = $provisionResult[0]->Remark ?? null;
 
-                // BIZ PRO
-                if ($assignedModules->contains('BIZ PRO') || $assignedModules->contains('FITSYS')) {
-                    $validation = $this->validateForBizProvisioning($user);
+                    Log::info('Master SP Raw Response', [
+                        'user_id' => $user->Id,
+                        'raw_json' => $remarkJson,
+                        'raw_length' => strlen($remarkJson ?? ''),
+                    ]);
 
-                    if (!$validation['valid']) {
-                        $provisioningResults['BIZ PRO'] = [
-                            'success' => false,
-                            'message' => 'Validation failed: ' . implode('; ', $validation['errors']),
-                        ];
-                    } else {
+                    if ($remarkJson) {
                         try {
-                            $bizApp = DB::connection('sqlsrv')->table('Azure_SoftwareMaster')
-                                ->where(function ($q) {
-                                    $q->where('Name', 'LIKE', '%FITSYS%')->orWhere('Name', 'LIKE', '%BIZ%');
-                                })->first();
+                            $provisioningResults = $this->parseMasterSPResponse($remarkJson);
 
-                            if ($bizApp) {
-                                $bizResult = DB::connection('sqlsrv')->select("
-                                SET NOCOUNT ON;
-                                DECLARE @Status VARCHAR(15), @Remark VARCHAR(200);
-                                EXEC sp_Azure_FITSYSUserCreation @AzureUserID = ?, @ApplicationID = ?, @Status = @Status OUTPUT, @Remark = @Remark OUTPUT;
-                                SELECT @Status as Status, @Remark as Remark;
-                            ", [$userId, $bizApp->ApplicationId]);
+                            Log::info('✓ Step 13: Provisioning completed', [
+                                'results' => $provisioningResults,
+                            ]);
 
-                                $provisioningResults['BIZ PRO'] = [
-                                    'success' => strtolower($bizResult[0]->Status ?? 'Failed') === 'success',
-                                    'message' => $bizResult[0]->Remark ?? 'Unknown error',
-                                ];
-                            }
-                        } catch (\Exception $e) {
-                            $provisioningResults['BIZ PRO'] = ['success' => false, 'message' => 'Exception: ' . $e->getMessage()];
+                            $provisioningSummary = $this->buildProvisioningSummary($provisioningResults);
+                        } catch (\Exception $parseError) {
+                            Log::error('Failed to parse provisioning results', [
+                                'json_error' => $parseError->getMessage(),
+                                'raw_json_preview' => substr($remarkJson, 0, 500),
+                            ]);
+                            $provisioningSummary = "\n\nProvisioning: Completed (details unavailable - parsing failed)";
                         }
-                    }
-                }
-
-                // FIT Express
-                if ($assignedModules->contains('FIT EXPRESS')) {
-                    $validation = $this->validateForBizProvisioning($user);
-
-                    if (!$validation['valid']) {
-                        $provisioningResults['FIT Express'] = [
-                            'success' => false,
-                            'message' => 'Validation failed: ' . implode('; ', $validation['errors']),
-                        ];
                     } else {
-                        try {
-                            $fitApp = DB::connection('sqlsrv')->table('Azure_SoftwareMaster')
-                                ->where('Name', 'LIKE', '%FIT Express%')->first();
-
-                            if ($fitApp) {
-                                $fitResult = DB::connection('sqlsrv')->select("
-                                SET NOCOUNT ON;
-                                DECLARE @Status VARCHAR(15), @Remark VARCHAR(200);
-                                EXEC sp_Azure_FITSYSUserCreation @AzureUserID = ?, @ApplicationID = ?, @Status = @Status OUTPUT, @Remark = @Remark OUTPUT;
-                                SELECT @Status as Status, @Remark as Remark;
-                            ", [$userId, $fitApp->ApplicationId]);
-
-                                $provisioningResults['FIT Express'] = [
-                                    'success' => strtolower($fitResult[0]->Status ?? 'Failed') === 'success',
-                                    'message' => $fitResult[0]->Remark ?? 'Unknown error',
-                                ];
-                            }
-                        } catch (\Exception $e) {
-                            $provisioningResults['FIT Express'] = ['success' => false, 'message' => 'Exception: ' . $e->getMessage()];
-                        }
+                        $provisioningSummary = "\n\nProvisioning: No response from stored procedure";
                     }
+                } catch (\Exception $e) {
+                    Log::error('✗ Step 13: Provisioning failed', [
+                        'error' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString(),
+                    ]);
+                    $provisioningSummary = "\n\nProvisioning: Failed - " . $e->getMessage();
                 }
 
                 // ====================================================================
@@ -2850,13 +2962,37 @@ class AzureUserManagementController extends Controller
                 // ====================================================================
                 $provisioningSummary = '';
                 if (!empty($provisioningResults)) {
-                    $successCount = collect($provisioningResults)->where('success', true)->count();
+                    // ✅ FIX: Count successes by checking Status field (not 'success' key)
+                    $successCount = collect($provisioningResults)->filter(function ($result) {
+                        // Handle both new format (Status) and old format (success) for safety
+                        if (isset($result['Status'])) {
+                            return strtolower($result['Status']) === 'success';
+                        }
+                        if (isset($result['success'])) {
+                            return $result['success'] === true;
+                        }
+                        return false;
+                    })->count();
+
                     $totalCount = count($provisioningResults);
                     $provisioningSummary = "\n\nProvisioning: {$successCount}/{$totalCount} successful";
 
-                    foreach ($provisioningResults as $module => $result) {
-                        $icon = $result['success'] ? '✓' : '⚠';
-                        $provisioningSummary .= "\n{$icon} {$module}: {$result['message']}";
+                    foreach ($provisioningResults as $result) {
+                        // ✅ FIX: Handle both formats when building summary
+                        if (isset($result['Application'])) {
+                            // New Master SP format
+                            $icon = (strtolower($result['Status'] ?? '') === 'success') ? '✓' : '⚠';
+                            $provisioningSummary .= "\n{$icon} {$result['Application']}: {$result['Remark']}";
+                        } elseif (isset($result['success'])) {
+                            // Old individual SP format (fallback)
+                            $icon = $result['success'] ? '✓' : '⚠';
+                            $module = $result['module'] ?? 'Unknown';
+                            $message = $result['message'] ?? 'No details';
+                            $provisioningSummary .= "\n{$icon} {$module}: {$message}";
+                        } else {
+                            // Unknown format - log it
+                            $provisioningSummary .= "\n⚠ Unknown format: " . json_encode($result);
+                        }
                     }
                 }
 
@@ -3284,14 +3420,13 @@ class AzureUserManagementController extends Controller
 
             // Ensure Azure ID exists
             $azureIdCheck = $this->ensureAzureIdExists($user);
-            if (!$azureIdCheck['success']) {
+            if (!isset($azureIdCheck['success']) || !$azureIdCheck['success']) {  // ← ADD isset()
                 return response()->json([
                     'success' => false,
-                    'message' => 'Cannot disable: ' . $azureIdCheck['message']
+                    'message' => 'Cannot disable: ' . ($azureIdCheck['message'] ?? 'Unknown error')  // ← ADD null coalescing
                 ], 400);
             }
             $azureId = $azureIdCheck['azure_id'];
-
             // STEP 1: Attempt to disable in Azure AD
             $azureDisabled = false;
             $azureNotFound = false;
@@ -3621,6 +3756,8 @@ class AzureUserManagementController extends Controller
         }
     }
 
+
+
     /**
      * Normalize and validate Azure ID (GUID)
      * Handles UUIDs with or without braces
@@ -3683,10 +3820,10 @@ class AzureUserManagementController extends Controller
 
             // Ensure Azure ID exists
             $azureIdCheck = $this->ensureAzureIdExists($user);
-            if (!$azureIdCheck['success']) {
+            if (!isset($azureIdCheck['success']) || !$azureIdCheck['success']) {  // ← ADD isset()
                 return response()->json([
                     'success' => false,
-                    'message' => 'Cannot enable: ' . $azureIdCheck['message']
+                    'message' => 'Cannot disable: ' . ($azureIdCheck['message'] ?? 'Unknown error')  // ← ADD null coalescing
                 ], 400);
             }
             $azureId = $azureIdCheck['azure_id'];
@@ -3943,11 +4080,11 @@ class AzureUserManagementController extends Controller
     private function provisionUserToApplications(string $userId): array
     {
         try {
+
             Log::info('→ Calling sp_Azure_UserCreationorUpdate (Master SP)', [
                 'user_id' => $userId,
             ]);
 
-            // ✅ CRITICAL: Pass Azure_Users.Id (database PK), NOT AzureId column!
             $spResult = DB::connection('sqlsrv')->select("
             SET NOCOUNT ON;
             DECLARE @Remark VARCHAR(MAX);
@@ -3974,30 +4111,84 @@ class AzureUserManagementController extends Controller
                 ];
             }
 
-            // Parse JSON results
-            $results = json_decode($remarkJson, true);
+            // ========================================================================
+            // Parse invalid JSON format
+            // ========================================================================
+            $results = [];
 
-            if (json_last_error() !== JSON_ERROR_NONE) {
+            try {
+                $cleanedJson = trim($remarkJson);
+                $cleanedJson = preg_replace('/[\x00-\x1F\x7F]/u', '', $cleanedJson);
+
+                if (substr($cleanedJson, 0, 1) === '{' && strpos($cleanedJson, '}{') !== false) {
+                    $objects = preg_split('/\}\s*\{/', $cleanedJson);
+
+                    $objects = array_map(function ($obj, $index) use ($objects) {
+                        $obj = trim($obj);
+                        if ($index > 0 && substr($obj, 0, 1) !== '{') {
+                            $obj = '{' . $obj;
+                        }
+                        if ($index < count($objects) - 1 && substr($obj, -1) !== '}') {
+                            $obj = $obj . '}';
+                        }
+                        return $obj;
+                    }, $objects, array_keys($objects));
+
+                    foreach ($objects as $objString) {
+                        $parsed = json_decode($objString, true);
+                        if (json_last_error() === JSON_ERROR_NONE && is_array($parsed)) {
+                            $results[] = $parsed;
+                        } else {
+                            Log::warning('Failed to parse individual JSON object', [
+                                'object' => substr($objString, 0, 200),
+                                'error' => json_last_error_msg(),
+                            ]);
+                        }
+                    }
+                } else {
+                    $parsed = json_decode($cleanedJson, true);
+
+                    if (json_last_error() === JSON_ERROR_NONE) {
+                        $results = is_array($parsed) && isset($parsed[0]) ? $parsed : [$parsed];
+                    } else {
+                        throw new \Exception('Invalid JSON format: ' . json_last_error_msg());
+                    }
+                }
+
+                if (empty($results)) {
+                    throw new \Exception('No valid JSON objects found in response');
+                }
+
+                Log::info('Successfully parsed Master SP response', [
+                    'user_id' => $userId,
+                    'objects_parsed' => count($results),
+                    'results' => $results,
+                ]);
+            } catch (\Exception $e) {
                 Log::error('Failed to parse Master SP JSON', [
                     'user_id' => $userId,
-                    'json_error' => json_last_error_msg(),
+                    'error' => $e->getMessage(),
                     'raw_response' => substr($remarkJson, 0, 500),
                 ]);
 
                 return [
                     'success' => false,
                     'results' => [],
-                    'message' => 'Failed to parse provisioning results',
+                    'message' => 'Failed to parse provisioning results: ' . $e->getMessage(),
                     'activated' => false,
                 ];
             }
 
-            // Check if any provisioning succeeded
+            // ❌ DELETE LINES ~2093-2113 (duplicate old code below)
+            // Don't keep this old code:
+            // $results = json_decode($remarkJson, true);
+            // if (json_last_error() !== JSON_ERROR_NONE) { ... }
+
+            // ✅ Continue with existing logic
             $anySucceeded = collect($results)
                 ->where('Status', '!=', 'Failed')
                 ->isNotEmpty();
 
-            // Check if user was auto-activated by the SP
             $wasActivated = DB::connection('sqlsrv')
                 ->table('Azure_Users')
                 ->where('Id', $userId)
@@ -4033,10 +4224,56 @@ class AzureUserManagementController extends Controller
     }
 
     /**
+     * Parse Master SP JSON response (handles invalid multi-object format)
+     */
+    private function parseMasterSPResponse(string $remarkJson): array
+    {
+        $cleanedJson = trim($remarkJson);
+        $cleanedJson = preg_replace('/[\x00-\x1F\x7F]/u', '', $cleanedJson);
+
+        Log::debug('Parsing Master SP JSON', [
+            'original_length' => strlen($remarkJson),
+            'cleaned_length' => strlen($cleanedJson),
+            'first_100_chars' => substr($cleanedJson, 0, 100),
+        ]);
+
+        // ✅ FIX: Check for concatenated JSON objects (}{)
+        if (substr($cleanedJson, 0, 1) === '{' && strpos($cleanedJson, '},{') !== false) {
+            // Multiple JSON objects concatenated - wrap in array brackets
+            $wrappedJson = '[' . $cleanedJson . ']';
+
+            Log::debug('Detected concatenated JSON objects - wrapping in array', [
+                'wrapped_json_preview' => substr($wrappedJson, 0, 150),
+            ]);
+
+            $parsed = json_decode($wrappedJson, true);
+
+            if (json_last_error() === JSON_ERROR_NONE && is_array($parsed)) {
+                Log::info('✓ Successfully parsed concatenated JSON objects', [
+                    'object_count' => count($parsed),
+                ]);
+                return $parsed;
+            } else {
+                Log::error('Failed to parse wrapped JSON', [
+                    'json_error' => json_last_error_msg(),
+                    'wrapped_preview' => substr($wrappedJson, 0, 300),
+                ]);
+                throw new \Exception('Invalid JSON format after wrapping: ' . json_last_error_msg());
+            }
+        } else {
+            // Single JSON object or already valid array
+            $parsed = json_decode($cleanedJson, true);
+
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                throw new \Exception('Invalid JSON format: ' . json_last_error_msg());
+            }
+
+            return is_array($parsed) && isset($parsed[0]) ? $parsed : [$parsed];
+        }
+    }
+
+    /**
      * Build human-readable summary from Master SP results
-     * 
-     * @param array $results - Array of provisioning results from Master SP
-     * @return string Formatted summary message
      */
     private function buildProvisioningSummary(array $results): string
     {
@@ -4048,35 +4285,396 @@ class AzureUserManagementController extends Controller
         $failed = [];
 
         foreach ($results as $result) {
-            $app = $result['Application'] ?? 'Unknown';
-            $status = $result['Status'] ?? 'Failed';
-            $remark = $result['Remark'] ?? '';
+            // ✅ FIX: Normalize both old and new SP formats
+            // Old format: ['success' => bool, 'message' => string]
+            // New format: ['Application' => string, 'Status' => string, 'Remark' => string]
 
-            if ($status === 'Success' || $status === 'success') {
-                $successful[] = "{$app}: {$remark}";
+            if (isset($result['Application'])) {
+                // New Master SP format (current)
+                $app = $result['Application'];
+                $status = $result['Status'] ?? 'Unknown';
+                $remark = $result['Remark'] ?? 'No details';
+
+                // ✅ NORMALIZE: Check Status (case-insensitive) instead of 'success' key
+                if (strtolower($status) === 'success') {
+                    $successful[] = "{$app}: {$remark}";
+                } else {
+                    $failed[] = "{$app}: {$remark}";
+                }
+            } elseif (isset($result['success'])) {
+                // Old individual SP format (fallback for legacy code)
+                $success = $result['success'];
+                $message = $result['message'] ?? 'No message';
+
+                if ($success) {
+                    $successful[] = $message;
+                } else {
+                    $failed[] = $message;
+                }
             } else {
-                $failed[] = "{$app}: {$remark}";
+                // ✅ SAFETY: Handle unexpected format
+                $failed[] = 'Unknown result format: ' . json_encode($result);
             }
         }
 
         $summary = [];
+        $totalCount = count($successful) + count($failed);
+        $successCount = count($successful);
+
+        $summary[] = "Provisioning: {$successCount}/{$totalCount} successful";
 
         if (!empty($successful)) {
-            $summary[] = "✓ Successful (" . count($successful) . "):";
             foreach ($successful as $item) {
-                $summary[] = "  • {$item}";
+                $summary[] = "✓ {$item}";
             }
         }
 
         if (!empty($failed)) {
-            $summary[] = "⚠ Failed (" . count($failed) . "):";
             foreach ($failed as $item) {
-                $summary[] = "  • {$item}";
+                $summary[] = "⚠ {$item}";
             }
         }
 
-        return implode("\n", $summary);
+        return "\n\n" . implode("\n", $summary);
     }
+
+    /**
+     * Provision user to external systems
+     * Uses master SP if enabled, falls back to individual SPs
+     * 
+     * @param string $userId - Azure_Users.Id (database PK)
+     * @param array $validatedAssignments - Module assignments
+     * @return array ['success' => bool, 'results' => array, 'message' => string, 'method' => string]
+     */
+    private function provisionUser(string $userId, array $validatedAssignments): array
+    {
+        $useMasterSP = config('azure.use_master_provisioning_sp', false);
+
+        if ($useMasterSP) {
+            Log::info('→ Using MASTER SP for provisioning', ['user_id' => $userId]);
+
+            try {
+                $result = $this->provisionUserToApplications($userId);
+                $result['method'] = 'master_sp';
+
+                // ✅ SAFETY: Only build summary if results exist
+                if (!empty($result['results'])) {
+                    $result['message'] = $this->buildProvisioningSummary($result['results']);
+                } else {
+                    $result['message'] = "\n\nProvisioning: No results returned from stored procedure";
+                }
+
+                Log::info('✓ Master SP provisioning completed', [
+                    'success' => $result['success'],
+                    'activated' => $result['activated'],
+                ]);
+
+                return $result;
+            } catch (\Exception $e) {
+                Log::error('✗ Master SP FAILED - Falling back to individual SPs', [
+                    'error' => $e->getMessage(),
+                ]);
+
+                // FALLBACK: Use individual SPs
+                return $this->provisionUserIndividual($userId, $validatedAssignments);
+            }
+        } else {
+            Log::info('→ Using INDIVIDUAL SPs for provisioning (config disabled)', [
+                'user_id' => $userId,
+            ]);
+
+            return $this->provisionUserIndividual($userId, $validatedAssignments);
+        }
+    }
+
+    /**
+     * Provision user using individual SPs (legacy method)
+     * 
+     * CRITICAL: All SPs expect @AzureUserID = Azure_Users.Id (database PK), NOT AzureId column!
+     * 
+     * @param string $userId - Azure_Users.Id (database primary key)
+     * @param array $validatedAssignments
+     * @return array
+     */
+    private function provisionUserIndividual(string $userId, array $validatedAssignments): array
+    {
+        $results = [];
+        $anySucceeded = false;
+
+        // Extract unique modules
+        $assignedModules = collect($validatedAssignments)
+            ->pluck('application_name')
+            ->unique()
+            ->map(fn($name) => strtoupper(trim($name)))
+            ->filter()
+            ->values();
+
+        Log::info('→ Provisioning via individual SPs', [
+            'user_id' => $userId,
+            'modules' => $assignedModules->toArray(),
+        ]);
+
+        // ========================================================================
+        // D365 LIVE
+        // ========================================================================
+        if ($assignedModules->contains('D365 LIVE')) {
+            try {
+                Log::info('  → Calling sp_Azure_D365UserCreation', ['user_id' => $userId]);
+
+                $d365Result = DB::connection('sqlsrv')->select('
+                SET NOCOUNT ON;
+                DECLARE @Status VARCHAR(15), @Remark VARCHAR(200);
+                EXEC sp_Azure_D365UserCreation
+                    @AzureUserID = ?,
+                    @Status = @Status OUTPUT,
+                    @Remark = @Remark OUTPUT;
+                SELECT @Status as Status, @Remark as Remark;
+            ', [$userId]);
+
+                $status = $d365Result[0]->Status ?? 'Failed';
+                $remark = $d365Result[0]->Remark ?? 'Unknown error';
+
+                $results[] = [
+                    'Application' => 'D365 LIVE',
+                    'Status' => $status,
+                    'Remark' => $remark,
+                ];
+
+                if ($status === 'Success') {
+                    $anySucceeded = true;
+                }
+
+                Log::info($status === 'Success' ? '  ✓ D365 provisioned' : '  ⚠ D365 failed', [
+                    'status' => $status,
+                    'remark' => $remark,
+                ]);
+            } catch (\Exception $e) {
+                $results[] = [
+                    'Application' => 'D365 LIVE',
+                    'Status' => 'Failed',
+                    'Remark' => 'Exception: ' . $e->getMessage(),
+                ];
+
+                Log::error('  ✗ D365 provisioning error', ['error' => $e->getMessage()]);
+            }
+        }
+
+        // ========================================================================
+        // OPS/SCM
+        // ========================================================================
+        if ($assignedModules->contains('OPS') || $assignedModules->contains('OPS UAT') || $assignedModules->contains('OPSUAT')) {
+            try {
+                Log::info('  → Calling sp_Azure_SCMUserCreation', ['user_id' => $userId]);
+
+                // ✅ PRE-VALIDATION: Check if SCMResourceID exists in Cust_Resource
+                $user = DB::connection('sqlsrv')->table('Azure_Users')->where('Id', $userId)->first();
+
+                if (!empty($user->SCMResourceID)) {
+                    $resourceExists = DB::connection('sqlsrv')
+                        ->table('Cust_Resource')
+                        ->where('Id', $user->SCMResourceID)
+                        ->exists();
+
+                    if (!$resourceExists) {
+                        Log::warning('SCMResourceID orphaned - clearing it before provisioning', [
+                            'user_id' => $userId,
+                            'orphaned_resource_id' => $user->SCMResourceID,
+                        ]);
+
+                        // Clear orphaned IDs to force fresh creation
+                        DB::connection('sqlsrv')->table('Azure_Users')
+                            ->where('Id', $userId)
+                            ->update([
+                                'SCMResourceID' => null,
+                                'SCMUserID' => null,
+                                'SCMLoginId' => null,
+                            ]);
+                    }
+                }
+
+                $scmResult = DB::connection('sqlsrv')->select("
+            SET NOCOUNT ON;
+            DECLARE @Status VARCHAR(15), @Remark VARCHAR(200);
+            EXEC sp_Azure_SCMUserCreation
+                @AzureUserID = ?,
+                @Status = @Status OUTPUT,
+                @Remark = @Remark OUTPUT;
+            SELECT @Status as Status, @Remark as Remark;
+        ", [$userId]);
+
+                $status = $scmResult[0]->Status ?? 'Failed';
+                $remark = $scmResult[0]->Remark ?? 'Unknown error';
+
+                $results[] = [
+                    'Application' => 'OPS',
+                    'Status' => $status,
+                    'Remark' => $remark,
+                ];
+
+                if (strtoupper($status) === 'SUCCESS') {
+                    $anySucceeded = true;
+                }
+
+                Log::info(strtoupper($status) === 'SUCCESS' ? '  ✓ OPS provisioned' : '  ⚠ OPS failed', [
+                    'status' => $status,
+                    'remark' => $remark,
+                ]);
+            } catch (\Exception $e) {
+                $results[] = [
+                    'Application' => 'OPS',
+                    'Status' => 'Failed',
+                    'Remark' => 'Exception: ' . $e->getMessage(),
+                ];
+
+                Log::error('  ✗ OPS provisioning error', ['error' => $e->getMessage()]);
+            }
+        }
+
+        // ========================================================================
+        // BIZ PRO
+        // ========================================================================
+        if ($assignedModules->contains('BIZ PRO') || $assignedModules->contains('FITSYS')) {
+            try {
+                $bizApp = DB::connection('sqlsrv')
+                    ->table('Azure_SoftwareMaster')
+                    ->where(function ($q) {
+                        $q->where('Name', 'LIKE', '%FITSYS%')->orWhere('Name', 'LIKE', '%BIZ%');
+                    })
+                    ->first();
+
+                if ($bizApp) {
+                    Log::info('  → Calling sp_Azure_FITSYSUserCreation (BIZ PRO)', [
+                        'user_id' => $userId,
+                        'app_id' => $bizApp->ApplicationId,
+                    ]);
+
+                    $bizResult = DB::connection('sqlsrv')->select("
+                SET NOCOUNT ON;
+                DECLARE @Status VARCHAR(15), @Remark VARCHAR(200);
+                EXEC sp_Azure_FITSYSUserCreation
+                    @AzureUserID = ?,
+                    @ApplicationID = ?,
+                    @Status = @Status OUTPUT,
+                    @Remark = @Remark OUTPUT;
+                SELECT @Status as Status, @Remark as Remark;
+            ", [$userId, $bizApp->ApplicationId]);
+
+                    $status = $bizResult[0]->Status ?? 'Failed';
+                    $remark = $bizResult[0]->Remark ?? 'Unknown error';
+
+                    $results[] = [
+                        'Application' => 'BIZ PRO',
+                        'Status' => $status,
+                        'Remark' => $remark,
+                    ];
+
+                    if (strtolower($status) === 'success') {
+                        $anySucceeded = true;
+                    }
+
+                    Log::info(strtolower($status) === 'success' ? '  ✓ BIZ PRO provisioned' : '  ⚠ BIZ PRO failed', [
+                        'status' => $status,
+                        'remark' => $remark,
+                    ]);
+                } else {
+                    $results[] = [
+                        'Application' => 'BIZ PRO',
+                        'Status' => 'Failed',
+                        'Remark' => 'Application not found in Azure_SoftwareMaster',
+                    ];
+
+                    Log::error('  ✗ BIZ PRO application not found');
+                }
+            } catch (\Exception $e) {
+                $results[] = [
+                    'Application' => 'BIZ PRO',
+                    'Status' => 'Failed',
+                    'Remark' => 'Exception: ' . $e->getMessage(),
+                ];
+
+                Log::error('  ✗ BIZ PRO provisioning error', ['error' => $e->getMessage()]);
+            }
+        }
+
+        // ========================================================================
+        // FIT Express
+        // ========================================================================
+        if ($assignedModules->contains('FIT EXPRESS')) {
+            try {
+                $fitApp = DB::connection('sqlsrv')
+                    ->table('Azure_SoftwareMaster')
+                    ->where('Name', 'LIKE', '%FIT Express%')
+                    ->first();
+
+                if ($fitApp) {
+                    Log::info('  → Calling sp_Azure_FITSYSUserCreation (FIT Express)', [
+                        'user_id' => $userId,
+                        'app_id' => $fitApp->ApplicationId,
+                    ]);
+
+                    $fitResult = DB::connection('sqlsrv')->select("
+                SET NOCOUNT ON;
+                DECLARE @Status VARCHAR(15), @Remark VARCHAR(200);
+                EXEC sp_Azure_FITSYSUserCreation
+                    @AzureUserID = ?,
+                    @ApplicationID = ?,
+                    @Status = @Status OUTPUT,
+                    @Remark = @Remark OUTPUT;
+                SELECT @Status as Status, @Remark as Remark;
+            ", [$userId, $fitApp->ApplicationId]);
+
+                    $status = $fitResult[0]->Status ?? 'Failed';
+                    $remark = $fitResult[0]->Remark ?? 'Unknown error';
+
+                    $results[] = [
+                        'Application' => 'FIT Express',
+                        'Status' => $status,
+                        'Remark' => $remark,
+                    ];
+
+                    if (strtolower($status) === 'success') {
+                        $anySucceeded = true;
+                    }
+
+                    Log::info(strtolower($status) === 'success' ? '  ✓ FIT Express provisioned' : '  ⚠ FIT Express failed', [
+                        'status' => $status,
+                        'remark' => $remark,
+                    ]);
+                } else {
+                    $results[] = [
+                        'Application' => 'FIT Express',
+                        'Status' => 'Failed',
+                        'Remark' => 'Application not found in Azure_SoftwareMaster',
+                    ];
+
+                    Log::error('  ✗ FIT Express application not found');
+                }
+            } catch (\Exception $e) {
+                $results[] = [
+                    'Application' => 'FIT Express',
+                    'Status' => 'Failed',
+                    'Remark' => 'Exception: ' . $e->getMessage(),
+                ];
+
+                Log::error('  ✗ FIT Express provisioning error', ['error' => $e->getMessage()]);
+            }
+        }
+
+        Log::info('✓ Individual SP provisioning completed', [
+            'user_id' => $userId,
+            'total_apps' => count($results),
+            'any_succeeded' => $anySucceeded,
+        ]);
+
+        return [
+            'success' => $anySucceeded,
+            'results' => $results,
+            'message' => $this->buildProvisioningSummary($results),
+            'activated' => false, // Individual SPs don't auto-activate
+            'method' => 'individual_sps',
+        ];
+    }
+
 
     /**
      * Repair Azure ID for a user
