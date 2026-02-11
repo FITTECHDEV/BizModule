@@ -294,7 +294,7 @@
             @endif
 
             <!-- Log In Tracker -->
-            @if (Auth::user()->can('approve-all-entity-request'))
+            @if (Auth::user()->can('view-rate-calculator'))
                 <div class="col-12 col-sm-6 col-lg-4 col-xl-3 mb-3">
                     <a href="/dashboard" style="text-decoration: none; color: inherit;">
                         <div class="d-flex h-100 flex-column card card-widget widget-user shadow service-card login-tracker-card"
@@ -389,7 +389,7 @@
             @endif
 
             <!-- Azure Management Card -->
-            @if (Auth::user()->can('approve-all-entity-request'))
+            @if (Auth::user()->can('view-rate-calculator'))
                 <div class="col-12 col-sm-6 col-lg-4 col-xl-3 mb-3">
                     <a href="{{ route('azure.dashboard.index') }}" style="text-decoration: none; color: inherit;">
                         <div class="d-flex h-100 flex-column card card-widget widget-user shadow service-card"
@@ -436,7 +436,7 @@
             @endif
 
             <!-- Shipment Email Reports -->
-            @if (Auth::user()->can('approve-all-entity-request'))
+            @if (Auth::user()->can('view-rate-calculator'))
                 <div class="col-12 col-sm-6 col-lg-4 col-xl-3 mb-3">
                     <a href="{{ route('shipment-reports.index') }}" style="text-decoration: none; color: inherit;">
                         <div class="d-flex h-100 flex-column card card-widget widget-user shadow service-card shipment-reports-card"
@@ -482,14 +482,14 @@
                 </div>
             @endif
 
-            <!-- SCM Profit Integration -->
-            @if (Auth::user()->can('approve-all-entity-request'))
+            <!-- Quotation -->
+            @if (Auth::user()->can('view-rate-calculator'))
                 <div class="col-12 col-sm-6 col-lg-4 col-xl-3 mb-3">
                     <a href="{{ route('scm-profit-integration.index') }}" style="text-decoration: none; color: inherit;">
                         <div class="d-flex h-100 flex-column card card-widget widget-user shadow service-card scm-profit-card"
                             style="cursor: pointer;">
                             <div class="widget-user-header bg-info">
-                                <h3 class="widget-user-username">SCM PROFIT INTEGRATION</h3>
+                                <h3 class="widget-user-username">Quote INTEGRATION</h3>
                                 <h5 class="widget-user-desc">Integration Status</h5>
                             </div>
                             <div class="widget-user-image">
