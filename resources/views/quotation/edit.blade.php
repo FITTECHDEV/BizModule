@@ -362,7 +362,7 @@
                     </div>
                 </div>
 
-                <!-- Revenue -->
+                <!-- Revenue Section - CORRECTED -->
                 <div class="card card-success">
                     <div class="card-header">
                         <h3 class="card-title">Revenue</h3>
@@ -371,11 +371,6 @@
                         </div>
                     </div>
                     <div class="card-body">
-                        <div class="mb-2">
-                            <button type="button" class="btn btn-primary btn-sm" id="openRevenueModal">
-                                <i class="fas fa-plus"></i> Add Charges
-                            </button>
-                        </div>
                         <div class="table-responsive">
                             <table class="table table-bordered table-sm table-hover">
                                 <thead class="thead-light">
@@ -403,10 +398,15 @@
                                 </tfoot>
                             </table>
                         </div>
+                        <div class="mt-2">
+                            <button type="button" class="btn btn-primary btn-sm" id="openChargesModal">
+                                <i class="fas fa-plus"></i> Add Charges
+                            </button>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Cost -->
+                <!-- Cost Section - CORRECTED -->
                 <div class="card card-danger">
                     <div class="card-header">
                         <h3 class="card-title">Cost</h3>
@@ -415,11 +415,6 @@
                         </div>
                     </div>
                     <div class="card-body">
-                        <div class="mb-2">
-                            <button type="button" class="btn btn-primary btn-sm" id="openCostModal">
-                                <i class="fas fa-plus"></i> Add Charges
-                            </button>
-                        </div>
                         <div class="table-responsive">
                             <table class="table table-bordered table-sm table-hover">
                                 <thead class="thead-light">
@@ -982,22 +977,22 @@
             text-decoration: underline;
         }
 
-        /* Ensure consistent card header colors - all using #305496 with higher specificity */
+        /* Card header colors - Updated to #513d6b */
         .card-primary>.card-header,
         .card.card-primary>.card-header {
-            background-color: #305496 !important;
+            background-color: #513d6b !important;
             color: white !important;
         }
 
         .card-success>.card-header,
         .card.card-success>.card-header {
-            background-color: #305496 !important;
+            background-color: #513d6b !important;
             color: white !important;
         }
 
         .card-danger>.card-header,
         .card.card-danger>.card-header {
-            background-color: #305496 !important;
+            background-color: #513d6b !important;
             color: white !important;
         }
 
@@ -1008,10 +1003,20 @@
             font-size: 0.875rem;
         }
 
-        /* Readonly input styling */
+        /* Remove form control background - match left panel style */
         .form-control[readonly] {
-            background-color: #e9ecef;
+            background-color: transparent;
+            border: none;
             cursor: default;
+            padding-left: 0;
+            font-weight: 500;
+            color: #333;
+        }
+
+        /* Remove focus outline on readonly fields */
+        .form-control[readonly]:focus {
+            outline: none;
+            box-shadow: none;
         }
 
         /* Row spacing */
@@ -1085,42 +1090,209 @@
             color: white;
         }
 
-        /* Modal styling */
+        /* Modal styling - matching reference EXACTLY */
         .modal-header {
-            background-color: #f4f6f9;
+            background-color: #fff !important;
+            color: #000 !important;
             border-bottom: 1px solid #dee2e6;
+            padding: 1rem 1.5rem;
         }
 
         .modal-title {
-            font-size: 1.1rem;
+            font-size: 1.125rem;
             font-weight: 600;
+            color: #000 !important;
         }
 
-        .form-check-inline {
-            margin-right: 1.5rem;
+        .modal-header .btn-close,
+        .modal-header .close {
+            color: #000;
+            opacity: 0.5;
+            filter: none;
         }
 
-        .form-check-input {
-            margin-top: 0.25rem;
+        .modal-header .btn-close:hover,
+        .modal-header .close:hover {
+            opacity: 0.75;
         }
 
-        /* Modal form controls */
-        .modal-body .form-control-sm {
-            font-size: 0.875rem;
-        }
-
-        .modal-body label {
-            font-weight: 500;
-            margin-bottom: 0.25rem;
-            font-size: 0.875rem;
+        .modal-body {
+            padding: 1.5rem;
+            background-color: #fff;
         }
 
         .modal-footer {
-            background-color: #f4f6f9;
+            background-color: #fff;
+            border-top: 1px solid #dee2e6;
+            padding: 1rem 1.5rem;
+        }
+
+        /* Top row with radio buttons and base currency */
+        .modal-body .d-flex.justify-content-between {
+            margin-bottom: 1rem;
+        }
+
+        /* Form labels - smaller and less bold */
+        .modal-body label {
+            font-weight: 400;
+            margin-bottom: 0.25rem;
+            font-size: 0.813rem;
+            color: #495057;
+        }
+
+        .modal-body label .text-danger {
+            color: #dc3545 !important;
+        }
+
+        /* Form controls - standard Bootstrap styling */
+        .modal-body .form-control,
+        .modal-body .form-select {
+            border: 1px solid #ced4da;
+            background-color: #fff;
+            font-size: 0.875rem;
+            padding: 0.375rem 0.75rem;
+            height: calc(1.5em + 0.75rem + 2px);
+            border-radius: 0.25rem;
+        }
+
+        .modal-body .form-control:focus,
+        .modal-body .form-select:focus {
+            border-color: #80bdff;
+            outline: 0;
+            box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+        }
+
+        .modal-body .form-control[readonly] {
+            background-color: #e9ecef;
+            cursor: not-allowed;
+            border: 1px solid #ced4da;
+            padding: 0.375rem 0.75rem;
+        }
+
+        /* Radio buttons and checkboxes - standard alignment */
+        .modal-body .form-check-inline {
+            margin-right: 1rem;
+            display: inline-flex;
+            align-items: center;
+        }
+
+        .modal-body .form-check-input {
+            margin-top: 0;
+            margin-right: 0.5rem;
+        }
+
+        .modal-body .form-check-label {
+            margin-bottom: 0;
+            font-size: 0.875rem;
+            font-weight: 400;
+        }
+
+        /* Text muted - lighter */
+        .modal-body .text-muted {
+            color: #6c757d !important;
+            font-size: 0.813rem;
+        }
+
+        .modal-body .text-muted strong {
+            font-weight: 600;
+            color: #495057;
+        }
+
+        /* Horizontal rule */
+        .modal-body hr {
+            margin: 1rem 0;
             border-top: 1px solid #dee2e6;
         }
 
-        /* Make card header clickable for collapse*/
+        /* Input group styling */
+        .modal-body .input-group .form-control {
+            border-radius: 0.25rem 0 0 0.25rem;
+        }
+
+        .modal-body .input-group .form-select {
+            border-radius: 0 0.25rem 0.25rem 0;
+            border-left: 0;
+        }
+
+        /* Modal footer buttons - standard Bootstrap colors */
+        .modal-footer .btn {
+            font-size: 0.875rem;
+            padding: 0.375rem 0.75rem;
+            font-weight: 400;
+            border-radius: 0.25rem;
+        }
+
+        .modal-footer .btn-success {
+            background-color: #28a745;
+            border-color: #28a745;
+            color: #fff;
+        }
+
+        .modal-footer .btn-success:hover {
+            background-color: #218838;
+            border-color: #1e7e34;
+        }
+
+        .modal-footer .btn-primary {
+            background-color: #007bff;
+            border-color: #007bff;
+            color: #fff;
+        }
+
+        .modal-footer .btn-primary:hover {
+            background-color: #0069d9;
+            border-color: #0062cc;
+        }
+
+        .modal-footer .btn-secondary,
+        .modal-footer .btn-outline-secondary {
+            background-color: #6c757d;
+            border-color: #6c757d;
+            color: #fff;
+        }
+
+        .modal-footer .btn-secondary:hover,
+        .modal-footer .btn-outline-secondary:hover {
+            background-color: #5a6268;
+            border-color: #545b62;
+        }
+
+        /* Secondary Bill To Party Container */
+        #secondaryBillToPartyContainer {
+            display: none;
+            margin-top: 1rem;
+        }
+
+        /* Checkbox styling */
+        .modal-body .form-check {
+            margin-bottom: 0.5rem;
+        }
+
+        .modal-body .form-check .form-check-label.fw-semibold {
+            font-weight: 600;
+            font-size: 0.875rem;
+        }
+
+        .modal-body .form-check .form-check-label small {
+            font-size: 0.75rem;
+            font-weight: 400;
+        }
+
+        /* Row and column spacing */
+        .modal-body .row {
+            margin-bottom: 0;
+        }
+
+        .modal-body .mb-3 {
+            margin-bottom: 1rem !important;
+        }
+
+        .modal-body .col-md-6 .mb-3:last-child,
+        .modal-body .col-md-4 .mb-3:last-child {
+            margin-bottom: 1rem !important;
+        }
+
+        /* Make card header clickable for collapse */
         .card-header {
             cursor: pointer;
             user-select: none;
@@ -1128,6 +1300,103 @@
 
         .card-header:hover {
             opacity: 0.95;
+        }
+
+        /* Styling for improved table readability */
+        .custom-table {
+            border-collapse: separate;
+            border-spacing: 0;
+            background-color: #fff;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .custom-table thead th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+            padding: 0.75rem;
+            border-bottom: 1px solid #dee2e6;
+            vertical-align: middle;
+        }
+
+        .custom-table tbody td {
+            padding: 0.65rem 0.75rem;
+            border-top: 1px solid #dee2e6;
+            vertical-align: middle;
+            white-space: nowrap;
+        }
+
+        .custom-table tbody tr:nth-child(even) {
+            background-color: #fdfdfd;
+        }
+
+        .custom-table tbody tr.table-active {
+            background-color: #e9ecef !important;
+        }
+
+        .custom-table td.text-end,
+        .custom-table th.text-end {
+            text-align: right;
+        }
+
+        .custom-table td.text-center,
+        .custom-table th.text-center {
+            text-align: center;
+        }
+
+        /* Button spacing in actions */
+        .custom-table .btn-group .btn {
+            padding: 0.25rem 0.5rem;
+        }
+
+        /* Badge spacing inside accordion header */
+        .accordion-button .badge {
+            margin-left: auto;
+        }
+
+        /* Accordion tweaks for tighter spacing */
+        .accordion-button {
+            padding: 0.75rem 1rem;
+            font-size: 1rem;
+        }
+
+        /* Hide optional columns by default */
+        .optional-column {
+            display: none;
+        }
+
+        /* Show optional columns when toggled */
+        .show-optional .optional-column {
+            display: table-cell;
+        }
+
+        /* Sticky Actions column */
+        #revenueTable th:nth-child(11),
+        #costTable th:nth-child(11),
+        #revenueTable td:nth-child(11),
+        #costTable td:nth-child(11) {
+            position: sticky;
+            right: 0;
+            background-color: #fff;
+            z-index: 1;
+            min-width: 100px;
+            width: 100px;
+        }
+
+        /* Ensure table-responsive works */
+        .table-responsive {
+            overflow-x: auto;
+        }
+
+        /* Compact columns */
+        #revenueTable th,
+        #revenueTable td,
+        #costTable th,
+        #costTable td {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
     </style>
 @stop
@@ -1148,6 +1417,140 @@
             // Debug: Log loaded data
             console.log('Booking Number:', bookingNo);
             console.log('Quotation Status:', quotationStatus);
+
+            // ============================================
+            // MODAL CLOSE HANDLERS - X and Cancel buttons
+            // ============================================
+
+            // Revenue Modal - X button (close icon)
+            $('#addRevenueModal .close').on('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Revenue Modal X button clicked');
+                $('#addRevenueModal').modal('hide');
+            });
+
+            // Revenue Modal - Cancel button (in footer)
+            $('#addRevenueModal button[data-dismiss="modal"]').on('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Revenue Modal Cancel button clicked');
+                $('#addRevenueModal').modal('hide');
+            });
+
+            // Cost Modal - X button
+            $('#addCostModal .close').on('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Cost Modal X button clicked');
+                $('#addCostModal').modal('hide');
+            });
+
+            // Cost Modal - Cancel button
+            $('#addCostModal button[data-dismiss="modal"]').on('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Cost Modal Cancel button clicked');
+                $('#addCostModal').modal('hide');
+            });
+
+            // XML Viewer Modal - X button
+            $('#xmlViewerModal .close').on('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('XML Viewer Modal X button clicked');
+                $('#xmlViewerModal').modal('hide');
+            });
+
+            // XML Viewer Modal - Close button
+            $('#xmlViewerModal button[data-dismiss="modal"]').on('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('XML Viewer Modal Close button clicked');
+                $('#xmlViewerModal').modal('hide');
+            });
+
+            // Status Modal - X button (dynamically created)
+            $(document).on('click', '#statusModal .close', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Status Modal X button clicked');
+                $('#statusModal').modal('hide');
+            });
+
+            // Status Modal - Cancel button (dynamically created)
+            $(document).on('click', '#statusModal button[data-dismiss="modal"]', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Status Modal Cancel button clicked');
+                $('#statusModal').modal('hide');
+            });
+
+            // ============================================
+            // ESC KEY HANDLER - Close modals
+            // ============================================
+
+            $(document).on('keydown', function(e) {
+                if (e.key === 'Escape' || e.keyCode === 27) {
+                    // Close any open modals
+                    if ($('#addRevenueModal').hasClass('show')) {
+                        console.log('ESC pressed - closing Revenue Modal');
+                        $('#addRevenueModal').modal('hide');
+                    }
+                    if ($('#addCostModal').hasClass('show')) {
+                        console.log('ESC pressed - closing Cost Modal');
+                        $('#addCostModal').modal('hide');
+                    }
+                    if ($('#xmlViewerModal').hasClass('show')) {
+                        console.log('ESC pressed - closing XML Viewer Modal');
+                        $('#xmlViewerModal').modal('hide');
+                    }
+                    if ($('#statusModal').hasClass('show')) {
+                        console.log('ESC pressed - closing Status Modal');
+                        $('#statusModal').modal('hide');
+                    }
+                }
+            });
+
+            // ============================================
+            // BACKDROP CLICK HANDLER - Close modals
+            // ============================================
+
+            $('#addRevenueModal, #addCostModal, #xmlViewerModal').on('click', function(e) {
+                // Close modal if clicking on the backdrop (outside modal content)
+                if ($(e.target).hasClass('modal')) {
+                    console.log('Backdrop clicked - closing modal');
+                    $(this).modal('hide');
+                }
+            });
+
+            // For dynamically created status modal
+            $(document).on('click', '#statusModal', function(e) {
+                if ($(e.target).hasClass('modal')) {
+                    console.log('Status Modal backdrop clicked - closing modal');
+                    $(this).modal('hide');
+                }
+            });
+
+            // ============================================
+            // MODAL CLEANUP ON CLOSE
+            // ============================================
+
+            // Reset Revenue Modal when hidden
+            $('#addRevenueModal').on('hidden.bs.modal', function() {
+                console.log('Revenue Modal hidden, resetting form');
+                clearRevenueModalForm();
+                currentEditingCharge = null;
+                currentEditingType = null;
+            });
+
+            // Reset Cost Modal when hidden
+            $('#addCostModal').on('hidden.bs.modal', function() {
+                console.log('Cost Modal hidden, resetting form');
+                clearCostModalForm();
+                currentEditingCharge = null;
+                currentEditingType = null;
+            });
 
             // ============================================
             // LOAD EXISTING CHARGES ON PAGE LOAD
@@ -1190,10 +1593,8 @@
                     },
                     error: function(xhr) {
                         console.error('Failed to load charges:', xhr);
-                        console.error('Status:', xhr.status);
-                        console.error('Response:', xhr.responseText);
-                        showNotification('Failed to load charges: ' + (xhr.responseJSON?.message || xhr.statusText),
-                            'error');
+                        showNotification('Failed to load charges: ' + (xhr.responseJSON?.message || xhr
+                            .statusText), 'error');
                         $('#revenueChargesTable').html(
                             '<tr><td colspan="6" class="text-center text-danger">Failed to load charges</td></tr>'
                         );
@@ -1207,20 +1608,12 @@
             // ============================================
             // MODAL TRIGGERS
             // ============================================
-            $('#openRevenueModal').on('click', function(e) {
+            $('#openChargesModal').on('click', function(e) {
                 e.preventDefault();
                 currentEditingCharge = null;
                 currentEditingType = 'revenue';
                 clearRevenueModalForm();
                 $('#addRevenueModal').modal('show');
-            });
-
-            $('#openCostModal').on('click', function(e) {
-                e.preventDefault();
-                currentEditingCharge = null;
-                currentEditingType = 'cost';
-                clearCostModalForm();
-                $('#addCostModal').modal('show');
             });
 
             // ============================================
@@ -1323,7 +1716,6 @@
             // ============================================
             // AUTO-CALCULATE AMOUNTS
             // ============================================
-            // Revenue modal calculations
             $('#addRevenueModal').on('input',
                 'input[name="revenue_quantity"], input[name="revenue_rate"], input[name="revenue_exchange_rate"]',
                 function() {
@@ -1350,7 +1742,6 @@
                 $modal.find('input[name="revenue_amount"]').val(amount.toFixed(2));
                 $modal.find('input[name="revenue_base_amount"]').val(baseAmount.toFixed(2));
 
-                // Calculate markup if cost with markup is selected
                 const chargeType = $modal.find('input[name="revenueChargeType"]:checked').val();
                 if (chargeType === 'costmarkup') {
                     const increaseBy = parseFloat($modal.find('input[name="revenue_increase_by"]').val()) || 0;
@@ -1367,7 +1758,6 @@
                 }
             }
 
-            // Cost modal calculations
             $('#addCostModal').on('input',
                 'input[name="cost_quantity"], input[name="cost_rate"], input[name="cost_exchange_rate"]',
                 function() {
@@ -1394,7 +1784,6 @@
                 $modal.find('input[name="cost_amount"]').val(amount.toFixed(2));
                 $modal.find('input[name="cost_base_amount"]').val(baseAmount.toFixed(2));
 
-                // Calculate markup if cost with markup is selected
                 const chargeType = $modal.find('input[name="costChargeType"]:checked').val();
                 if (chargeType === 'costmarkup') {
                     const increaseBy = parseFloat($modal.find('input[name="cost_increase_by"]').val()) || 0;
@@ -1452,8 +1841,10 @@
                     quantity: parseFloat($modal.find('input[name="' + type + '_quantity"]').val()) || 0,
                     rate: parseFloat($modal.find('input[name="' + type + '_rate"]').val()) || 0,
                     amt_in_chg_curr: parseFloat($modal.find('input[name="' + type + '_amount"]').val()) || 0,
-                    amt_in_base_curr: parseFloat($modal.find('input[name="' + type + '_base_amount"]').val()) || 0,
-                    exchange_rate: parseFloat($modal.find('input[name="' + type + '_exchange_rate"]').val()) || 1,
+                    amt_in_base_curr: parseFloat($modal.find('input[name="' + type + '_base_amount"]').val()) ||
+                        0,
+                    exchange_rate: parseFloat($modal.find('input[name="' + type + '_exchange_rate"]').val()) ||
+                        1,
                     chg_curr: $modal.find('select[name="' + type + '_currency"]').val() || 'KES',
                     based_on_code: $modal.find('select[name="' + type + '_based_on"]').val() || '',
                     based_on_uom: $modal.find('select[name="' + type + '_based_on_uom"]').val() || '',
@@ -1464,15 +1855,13 @@
                     source_type: 'manual'
                 };
 
-                // Handle Cost with Markup
                 if (chargeType === 'costmarkup') {
-                    chargeData.increase_by = parseFloat($modal.find('input[name="' + type + '_increase_by"]').val()) ||
-                        0;
+                    chargeData.increase_by = parseFloat($modal.find('input[name="' + type + '_increase_by"]')
+                    .val()) || 0;
                     chargeData.increase_type = $modal.find('select[name="' + type + '_increase_type"]').val() ||
                         'Percentage';
                 }
 
-                // Validation
                 if (!chargeData.charge_code) {
                     showNotification('Please enter a charge code', 'error');
                     return;
@@ -1483,8 +1872,6 @@
                     return;
                 }
 
-                console.log('Saving charge:', chargeData);
-
                 $.ajax({
                     url: '{{ route('quotation.charge.save') }}',
                     type: 'POST',
@@ -1493,7 +1880,6 @@
                         $modal.find('.btn').prop('disabled', true);
                     },
                     success: function(response) {
-                        console.log('Save response:', response);
                         if (response.success) {
                             showNotification(response.message, 'success');
                             loadCharges();
@@ -1509,7 +1895,6 @@
                         }
                     },
                     error: function(xhr) {
-                        console.error('Save error:', xhr);
                         const message = xhr.responseJSON?.message || 'Failed to save charge';
                         showNotification(message, 'error');
                     },
@@ -1690,7 +2075,8 @@
             function updateSummary() {
                 const totalRevenue = revenueCharges.reduce((sum, charge) => sum + parseFloat(charge.amtInBaseCurr ||
                     0), 0);
-                const totalCost = costCharges.reduce((sum, charge) => sum + parseFloat(charge.amtInBaseCurr || 0), 0);
+                const totalCost = costCharges.reduce((sum, charge) => sum + parseFloat(charge.amtInBaseCurr || 0),
+                    0);
                 const margin = totalRevenue - totalCost;
                 const marginPercentage = totalRevenue > 0 ? (margin / totalRevenue * 100) : 0;
 
@@ -1719,15 +2105,14 @@
             });
 
             function showStatusModal(status) {
-                // Create modal dynamically
                 const modalHtml = `
             <div class="modal fade" id="statusModal" tabindex="-1">
                 <div class="modal-dialog">
                     <div class="modal-content">
                         <div class="modal-header">
                             <h5 class="modal-title">Update Status to ${status}</h5>
-                            <button type="button" class="close" data-dismiss="modal">
-                                <span>&times;</span>
+                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
                             </button>
                         </div>
                         <div class="modal-body">
@@ -1753,7 +2138,6 @@
 
                 $('body').append(modalHtml);
 
-                // Load reasons
                 $.ajax({
                     url: '{{ route('quotation.reasons') }}',
                     type: 'GET',
@@ -1822,7 +2206,9 @@
             // ============================================
             // XML VIEWER
             // ============================================
-            $('#viewXmlBtn').on('click', function() {
+            $('#viewXmlBtn').on('click', function(e) {
+                e.preventDefault();
+                console.log('View XML button clicked');
                 $('#xmlViewerModal').modal('show');
             });
 
