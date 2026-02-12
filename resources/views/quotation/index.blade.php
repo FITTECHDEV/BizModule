@@ -1,6 +1,6 @@
 @extends('adminlte::page')
 
-@section('title', 'SCM Profit Integration')
+@section('title', 'Quotation Management')
 
 @section('content_header')
     <h1>QUOTATION</h1>
@@ -9,29 +9,29 @@
 @section('content')
     <div class="container-fluid">
 
-        {{-- Statistics Cards - Pure Bootstrap Grid --}}
+        {{-- Statistics Cards --}}
         <div class="row mb-3">
-            {{-- 1. Pending --}}
-            <div class="col-6 col-md-6 col-lg-3 mb-2">
-                <div class="small-box bg-warning card-filter-trigger compact-card" data-filter="pending"
-                    title="Click to view pending records">
+            {{-- 1. In Progress --}}
+            <div class="col-6 col-md-6 col-lg-2 mb-2">
+                <div class="small-box bg-info card-filter-trigger compact-card" data-filter="in_progress"
+                    title="Click to view in progress records">
                     <div class="inner">
-                        <h3 id="stat-pending">{{ $stats['pending'] }}</h3>
-                        <p>Pending</p>
+                        <h3 id="stat-in-progress">{{ $stats['in_progress'] }}</h3>
+                        <p>In Progress</p>
                     </div>
                     <div class="icon">
-                        <i class="fas fa-clock"></i>
+                        <i class="fas fa-hourglass-half"></i>
                     </div>
                 </div>
             </div>
 
-            {{-- 2. Success --}}
-            <div class="col-6 col-md-6 col-lg-3 mb-2">
-                <div class="small-box bg-success card-filter-trigger compact-card" data-filter="success"
-                    title="Click to view successful records">
+            {{-- 2. Won --}}
+            <div class="col-6 col-md-6 col-lg-2 mb-2">
+                <div class="small-box bg-success card-filter-trigger compact-card" data-filter="won"
+                    title="Click to view won records">
                     <div class="inner">
-                        <h3 id="stat-success">{{ $stats['success'] }}</h3>
-                        <p>Success</p>
+                        <h3 id="stat-won">{{ $stats['won'] }}</h3>
+                        <p>Won</p>
                     </div>
                     <div class="icon">
                         <i class="fas fa-check-circle"></i>
@@ -39,13 +39,13 @@
                 </div>
             </div>
 
-            {{-- 3. Failed --}}
-            <div class="col-6 col-md-6 col-lg-3 mb-2">
-                <div class="small-box bg-danger card-filter-trigger compact-card" data-filter="failed"
-                    title="Click to view failed records">
+            {{-- 3. Lost --}}
+            <div class="col-6 col-md-6 col-lg-2 mb-2">
+                <div class="small-box bg-danger card-filter-trigger compact-card" data-filter="lost"
+                    title="Click to view lost records">
                     <div class="inner">
-                        <h3 id="stat-failed">{{ $stats['failed'] }}</h3>
-                        <p>Failed</p>
+                        <h3 id="stat-lost">{{ $stats['lost'] }}</h3>
+                        <p>Lost</p>
                     </div>
                     <div class="icon">
                         <i class="fas fa-times-circle"></i>
@@ -53,13 +53,41 @@
                 </div>
             </div>
 
-            {{-- 4. Total --}}
-            <div class="col-6 col-md-6 col-lg-3 mb-2">
-                <div class="small-box bg-info card-filter-trigger compact-card" data-filter="all"
+            {{-- 4. Canceled --}}
+            <div class="col-6 col-md-6 col-lg-2 mb-2">
+                <div class="small-box bg-warning card-filter-trigger compact-card" data-filter="canceled"
+                    title="Click to view canceled records">
+                    <div class="inner">
+                        <h3 id="stat-canceled">{{ $stats['canceled'] }}</h3>
+                        <p>Canceled</p>
+                    </div>
+                    <div class="icon">
+                        <i class="fas fa-ban"></i>
+                    </div>
+                </div>
+            </div>
+
+            {{-- 5. Failed Int. --}}
+            <div class="col-6 col-md-6 col-lg-2 mb-2">
+                <div class="small-box bg-danger card-filter-trigger compact-card" data-filter="failed_int"
+                    title="Click to view failed integration records">
+                    <div class="inner">
+                        <h3 id="stat-failed-int">{{ $stats['failed_int'] }}</h3>
+                        <p>Failed Int.</p>
+                    </div>
+                    <div class="icon">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                </div>
+            </div>
+
+            {{-- 6. Total --}}
+            <div class="col-6 col-md-6 col-lg-2 mb-2">
+                <div class="small-box bg-primary card-filter-trigger compact-card" data-filter="all"
                     title="Click to view all records">
                     <div class="inner">
                         <h3 id="stat-total">{{ $stats['total'] }}</h3>
-                        <p>Total Records</p>
+                        <p>Total</p>
                     </div>
                     <div class="icon">
                         <i class="fas fa-database"></i>
@@ -71,9 +99,9 @@
         {{-- Filters and Table Card --}}
         <div class="card">
             <div class="card-body">
-                {{-- Filters Row - Responsive Stacking --}}
+                {{-- Filters Row --}}
                 <div class="row mb-3 g-2">
-                    {{-- Show entries - Full width on mobile --}}
+                    {{-- Show entries --}}
                     <div class="col-12 col-md-auto order-1">
                         <div id="entriesContainer"></div>
                     </div>
@@ -124,15 +152,15 @@
                         </button>
                     </div>
 
-                    {{-- Search - Full width on mobile, auto on desktop --}}
+                    {{-- Search --}}
                     <div class="col-12 col-md-auto order-7 ms-md-auto">
                         <div id="searchContainer"></div>
                     </div>
                 </div>
 
-                {{-- DataTable - Responsive Wrapper --}}
+                {{-- DataTable --}}
                 <div class="table-responsive-wrapper">
-                    <table id="scmProfitTable" class="table table-bordered table-striped table-hover w-100 dtr-inline">
+                    <table id="quotationTable" class="table table-bordered table-striped table-hover w-100 dtr-inline">
                         <thead>
                             <tr>
                                 <th data-priority="1">Date</th>
@@ -159,9 +187,7 @@
 
 @section('css')
     <style>
-        /* ============================================
-               COMPACT CARD STYLING
-               ============================================ */
+        /* COMPACT CARD STYLING */
         .compact-card {
             min-height: 90px !important;
             margin-bottom: 0.5rem;
@@ -190,7 +216,6 @@
             right: 10px;
         }
 
-        /* Card hover and active states - Desktop only */
         @media (hover: hover) and (pointer: fine) {
             .card-filter-trigger:hover {
                 transform: translateY(-3px);
@@ -203,25 +228,20 @@
             transform: scale(1.03);
         }
 
-        /* Touch-friendly active state for mobile */
         @media (hover: none) and (pointer: coarse) {
             .card-filter-trigger:active {
                 opacity: 0.8;
             }
         }
 
-        /* ============================================
-               FORM CONTROLS
-               ============================================ */
+        /* FORM CONTROLS */
         .form-control-sm {
             height: calc(1.5em + 0.5rem + 2px);
             padding: 0.25rem 0.5rem;
             font-size: 0.875rem;
         }
 
-        /* ============================================
-               FILTER ROW LAYOUT
-               ============================================ */
+        /* FILTER ROW LAYOUT */
         #entriesContainer .dataTables_length,
         #searchContainer .dataTables_filter {
             margin: 0;
@@ -248,9 +268,7 @@
             max-width: 200px;
         }
 
-        /* ============================================
-               BUTTON STYLING
-               ============================================ */
+        /* BUTTON STYLING */
         .input-group-sm .btn {
             padding: 0.25rem 0.5rem;
             font-size: 0.875rem;
@@ -282,7 +300,6 @@
             border-color: #6c757d;
         }
 
-        /* Touch-friendly buttons on mobile (44px minimum) */
         @media (max-width: 767.98px) {
             .btn-retrigger {
                 min-width: 44px;
@@ -297,23 +314,18 @@
             }
         }
 
-        /* ============================================
-               RESPONSIVE GRID SPACING
-               ============================================ */
+        /* RESPONSIVE GRID SPACING */
         .g-2 {
             --bs-gutter-x: 0.5rem;
             --bs-gutter-y: 0.5rem;
         }
 
-        /* ============================================
-               TABLE RESPONSIVE WRAPPER
-               ============================================ */
+        /* TABLE RESPONSIVE WRAPPER */
         .table-responsive-wrapper {
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
         }
 
-        /* Prevent horizontal page scroll */
         body {
             overflow-x: hidden;
         }
@@ -322,11 +334,7 @@
             overflow-x: hidden;
         }
 
-        /* ============================================
-               DATATABLE RESPONSIVE STYLING
-               ============================================ */
-
-        /* Child row (expandable detail) styling */
+        /* DATATABLE RESPONSIVE STYLING */
         table.dataTable.dtr-inline.collapsed>tbody>tr>td.child,
         table.dataTable.dtr-inline.collapsed>tbody>tr>th.child,
         table.dataTable.dtr-inline.collapsed>tbody>tr>td.dataTables_empty {
@@ -345,7 +353,6 @@
             background-color: #28a745;
         }
 
-        /* Child row content styling */
         table.dataTable>tbody>tr.child ul.dtr-details {
             width: 100%;
         }
@@ -361,25 +368,18 @@
             display: inline-block;
         }
 
-        /* ============================================
-               DATATABLE INFO AND PAGINATION
-               ============================================ */
+        /* DATATABLE INFO AND PAGINATION */
         .dataTables_info,
         .dataTables_paginate {
             padding-top: 0.75rem;
         }
 
-        /* Hide default DataTables wrapper elements */
         .dataTables_wrapper>.row:first-child {
             display: none;
         }
 
-        /* ============================================
-               MOBILE RESPONSIVE ADJUSTMENTS
-               ============================================ */
+        /* MOBILE RESPONSIVE ADJUSTMENTS */
         @media (max-width: 767.98px) {
-
-            /* Compact card mobile sizing */
             .compact-card .icon {
                 font-size: 40px !important;
             }
@@ -392,7 +392,6 @@
                 font-size: 0.75rem;
             }
 
-            /* Full width search input on mobile */
             #searchContainer .dataTables_filter input {
                 max-width: 100%;
             }
@@ -403,14 +402,12 @@
                 gap: 0.25rem;
             }
 
-            /* Compact table text */
-            #scmProfitTable th,
-            #scmProfitTable td {
+            #quotationTable th,
+            #quotationTable td {
                 font-size: 0.85rem;
                 padding: 0.5rem;
             }
 
-            /* Better spacing for entries selector on mobile */
             #entriesContainer .dataTables_length label {
                 flex-direction: row;
                 align-items: center;
@@ -421,29 +418,21 @@
             }
         }
 
-        /* ============================================
-               TABLET ADJUSTMENTS (768px - 1199px)
-               ============================================ */
+        /* TABLET ADJUSTMENTS */
         @media (min-width: 768px) and (max-width: 1199.98px) {
             #searchContainer .dataTables_filter input {
                 max-width: 150px;
             }
         }
 
-        /* ============================================
-               DESKTOP ADJUSTMENTS (1200px+)
-               ============================================ */
+        /* DESKTOP ADJUSTMENTS */
         @media (min-width: 1200px) {
-
-            /* Ensure proper button width on desktop */
             .w-md-auto {
                 width: auto !important;
             }
         }
 
-        /* ============================================
-               UTILITY CLASSES
-               ============================================ */
+        /* UTILITY CLASSES */
         .ms-md-auto {
             margin-left: auto !important;
         }
@@ -454,7 +443,6 @@
             }
         }
 
-        /* Card header styling */
         .card-header {
             background-color: #17a2b8;
             color: white;
@@ -473,12 +461,12 @@
         $(document).ready(function() {
             var currentCardFilter = 'all';
 
-            // Initialize DataTable with Responsive Extension
-            var table = $('#scmProfitTable').DataTable({
+            // Initialize DataTable
+            var table = $('#quotationTable').DataTable({
                 processing: true,
                 serverSide: true,
                 ajax: {
-                    url: '{{ route('scm-profit-integration.data') }}',
+                    url: '{{ route('quotation.data') }}',
                     type: 'GET',
                     data: function(d) {
                         d.days = $('#dateFilter').val();
@@ -536,15 +524,17 @@
                         responsivePriority: 11
                     },
                     {
-                        data: 'SCMStatus',
-                        name: 'SCMStatus',
+                        data: 'QuotationStatus',
+                        name: 'QuotationStatus',
                         responsivePriority: 4,
                         render: function(data, type, row) {
                             if (type === 'display') {
                                 var badgeClass = 'badge-secondary';
-                                if (data === 'Success') badgeClass = 'badge-success';
-                                else if (data === 'Failed') badgeClass = 'badge-danger';
-                                else if (data === 'Pending') badgeClass = 'badge-warning';
+                                if (data === 'Won') badgeClass = 'badge-success';
+                                else if (data === 'Lost') badgeClass = 'badge-danger';
+                                else if (data === 'Canceled') badgeClass = 'badge-warning';
+                                else if (data === 'Failed Int.') badgeClass = 'badge-danger';
+                                else if (data === 'In Progress') badgeClass = 'badge-info';
 
                                 return '<span class="badge ' + badgeClass + '">' + data + '</span>';
                             }
@@ -624,16 +614,12 @@
                     lengthMenu: "Show _MENU_"
                 },
                 initComplete: function() {
-                    // Move DataTable controls to custom containers
                     $('.dataTables_length').appendTo('#entriesContainer');
                     $('.dataTables_filter').appendTo('#searchContainer');
-
-                    // Adjust search input placeholder for mobile
                     adjustSearchPlaceholder();
                 }
             });
 
-            // Adjust search placeholder based on screen size
             function adjustSearchPlaceholder() {
                 var $searchInput = $('.dataTables_filter input');
                 if ($(window).width() < 768) {
@@ -643,61 +629,59 @@
                 }
             }
 
-            // Re-adjust on window resize
             $(window).on('resize', function() {
                 adjustSearchPlaceholder();
             });
 
-            // Retrigger button click handler with touch-friendly feedback
-            // $('#scmProfitTable').on('click', '.btn-retrigger', function(e) {
-            //     e.stopPropagation(); // Prevent row expansion on mobile
+            // Retrigger button (placeholder)
+            $('#quotationTable').on('click', '.btn-retrigger', function(e) {
+                e.stopPropagation();
+                var $btn = $(this);
+                var bookingNo = $btn.data('booking');
 
-            //     var $btn = $(this);
-            //     var bookingNo = $btn.data('booking');
+                if (!bookingNo) {
+                    alert('Booking number not found');
+                    return;
+                }
 
-            //     if (!bookingNo) {
-            //         alert('Booking number not found');
-            //         return;
-            //     }
+                if (!confirm('Are you sure you want to retrigger booking: ' + bookingNo + '?')) {
+                    return;
+                }
 
-            //     if (!confirm('Are you sure you want to retrigger booking: ' + bookingNo + '?')) {
-            //         return;
-            //     }
+                $btn.prop('disabled', true);
+                $btn.html('<i class="fas fa-spinner fa-spin"></i>');
 
-            //     $btn.prop('disabled', true);
-            //     $btn.html('<i class="fas fa-spinner fa-spin"></i>');
-
-            //     $.ajax({
-            //         url: '{{ route('scm-profit-integration.retrigger') }}',
-            //         type: 'POST',
-            //         data: {
-            //             _token: '{{ csrf_token() }}',
-            //             booking_no: bookingNo
-            //         },
-            //         success: function(response) {
-            //             if (response.success) {
-            //                 alert('Successfully retriggered booking: ' + bookingNo);
-            //                 table.ajax.reload(null, false);
-            //             } else {
-            //                 alert('Failed to retrigger: ' + (response.message ||
-            //                     'Unknown error'));
-            //             }
-            //         },
-            //         error: function(xhr) {
-            //             alert('Error retriggering booking: ' + (xhr.responseJSON?.message ||
-            //                 'Server error'));
-            //         },
-            //         complete: function() {
-            //             $btn.prop('disabled', false);
-            //             $btn.html('<i class="fas fa-sync-alt"></i>');
-            //         }
-            //     });
-            // });
+                $.ajax({
+                    url: '{{ route('quotation.retrigger') }}',
+                    type: 'POST',
+                    data: {
+                        _token: '{{ csrf_token() }}',
+                        booking_no: bookingNo
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            alert('Successfully retriggered booking: ' + bookingNo);
+                            table.ajax.reload(null, false);
+                        } else {
+                            alert('Failed to retrigger: ' + (response.message ||
+                                'Unknown error'));
+                        }
+                    },
+                    error: function(xhr) {
+                        alert('Error retriggering booking: ' + (xhr.responseJSON?.message ||
+                            'Server error'));
+                    },
+                    complete: function() {
+                        $btn.prop('disabled', false);
+                        $btn.html('<i class="fas fa-sync-alt"></i>');
+                    }
+                });
+            });
 
             // Update card statistics
             function updateCardStats() {
                 $.ajax({
-                    url: '{{ route('scm-profit-integration.stats') }}',
+                    url: '{{ route('quotation.stats') }}',
                     type: 'GET',
                     data: {
                         days: $('#dateFilter').val(),
@@ -706,14 +690,12 @@
                         office: $('#officeFilter').val()
                     },
                     success: function(response) {
-                        animateValue('stat-total', parseInt($('#stat-total').text()), response.total,
-                            500);
-                        animateValue('stat-pending', parseInt($('#stat-pending').text()), response
-                            .pending, 500);
-                        animateValue('stat-success', parseInt($('#stat-success').text()), response
-                            .success, 500);
-                        animateValue('stat-failed', parseInt($('#stat-failed').text()), response.failed,
-                            500);
+                        animateValue('stat-total', parseInt($('#stat-total').text()), response.total, 500);
+                        animateValue('stat-in-progress', parseInt($('#stat-in-progress').text()), response.in_progress, 500);
+                        animateValue('stat-won', parseInt($('#stat-won').text()), response.won, 500);
+                        animateValue('stat-lost', parseInt($('#stat-lost').text()), response.lost, 500);
+                        animateValue('stat-canceled', parseInt($('#stat-canceled').text()), response.canceled, 500);
+                        animateValue('stat-failed-int', parseInt($('#stat-failed-int').text()), response.failed_int, 500);
                     },
                     error: function(xhr, error, code) {
                         console.error('Failed to update card statistics:', xhr, error, code);
@@ -721,7 +703,6 @@
                 });
             }
 
-            // Animate number changes
             function animateValue(id, start, end, duration) {
                 var element = document.getElementById(id);
                 if (!element) return;
@@ -753,7 +734,7 @@
                 }, stepTime);
             }
 
-            // Card click filtering - Prevent on touch devices during scroll
+            // Card click filtering
             var touchMoved = false;
 
             $('.card-filter-trigger').on('touchstart', function() {

@@ -715,31 +715,45 @@ Route::middleware(['auth', 'can:approve-all-entity-request'])->group(function ()
 
 
 // ============================================================================
-// SCM PROFIT INTEGRATION ROUTES
+// QUOTATION INTEGRATION ROUTES
 // ============================================================================
 Route::middleware(['auth', 'can:approve-all-entity-request'])->group(function () {
-    Route::get('/scm-profit-integration', [App\Http\Controllers\ScmProfitIntegrationController::class, 'index'])
-        ->name('scm-profit-integration.index');
+    Route::get('/quotation', [App\Http\Controllers\QuotationController::class, 'index'])
+        ->name('quotation.index');
 
-    Route::get('/scm-profit-integration/data', [App\Http\Controllers\ScmProfitIntegrationController::class, 'getData'])
-        ->name('scm-profit-integration.data');
+    Route::get('/quotation/data', [App\Http\Controllers\QuotationController::class, 'data'])
+        ->name('quotation.data');
 
-    Route::get('/scm-profit-integration/stats', [App\Http\Controllers\ScmProfitIntegrationController::class, 'getStatsData'])
-        ->name('scm-profit-integration.stats');
+    Route::get('/quotation/stats', [App\Http\Controllers\QuotationController::class, 'stats'])
+        ->name('quotation.stats');
 
-    Route::post('/scm-profit-integration/retrigger', [App\Http\Controllers\ScmProfitIntegrationController::class, 'retrigger'])
-        ->name('scm-profit-integration.retrigger');
+    Route::get('/quotation/charges', [App\Http\Controllers\QuotationController::class, 'getCharges'])
+        ->name('quotation.charges');
 
+    Route::get('/quotation/reasons', [App\Http\Controllers\QuotationController::class, 'getReasons'])
+        ->name('quotation.reasons');
 
-    // NEW ROUTES - Add these
-    Route::get('/scm-profit-integration/{bookingno}', [App\Http\Controllers\ScmProfitIntegrationController::class, 'show'])
-        ->name('scm-profit-integration.show');
-    Route::get('/scm-profit-integration/{bookingno}/edit', [App\Http\Controllers\ScmProfitIntegrationController::class, 'edit'])
-        ->name('scm-profit-integration.edit');
-    Route::put('/scm-profit-integration/{bookingno}', [App\Http\Controllers\ScmProfitIntegrationController::class, 'update'])
-        ->name('scm-profit-integration.update');
+    Route::post('/quotation/charge/save', [App\Http\Controllers\QuotationController::class, 'saveCharge'])
+        ->name('quotation.charge.save');
+
+    Route::post('/quotation/charge/delete', [App\Http\Controllers\QuotationController::class, 'deleteCharge'])
+        ->name('quotation.charge.delete');
+
+    Route::post('/quotation/status/update', [App\Http\Controllers\QuotationController::class, 'updateStatus'])
+        ->name('quotation.status.update');
+
+    Route::post('/quotation/retrigger', [App\Http\Controllers\QuotationController::class, 'retrigger'])
+        ->name('quotation.retrigger');
+
+    Route::get('/quotation/{id}', [App\Http\Controllers\QuotationController::class, 'view'])
+        ->name('quotation.view');
+
+    Route::get('/quotation/{id}/edit', [App\Http\Controllers\QuotationController::class, 'edit'])
+        ->name('quotation.edit');
+
+    Route::put('/quotation/{id}', [App\Http\Controllers\QuotationController::class, 'update'])
+        ->name('quotation.update');
 });
-
 
 // ============================================================================
 // RA INTEGRATION ROUTES (Revenue Authority Integration)
@@ -763,261 +777,6 @@ Route::get('/sync-odoo-users', [App\Http\Controllers\OdooSyncController::class, 
 Route::get('/test-odoo-columns', [App\Http\Controllers\OdooSyncController::class, 'testColumns']);
 Route::get('/test-pgsql-connection', [App\Http\Controllers\OdooSyncController::class, 'testConnection']);
 Route::get('/check-view-definition', [App\Http\Controllers\OdooSyncController::class, 'checkViewDefinition']);
-
-Route::get('/test-stored-procedures', function () {
-    try {
-        echo '<html><head><title>Stored Procedures Test</title>';
-        echo "<style>
-            body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
-            .container { max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-            h1 { color: #2c3e50; border-bottom: 3px solid #3498db; padding-bottom: 10px; }
-            h2 { color: #34495e; margin-top: 30px; }
-            .success { color: #27ae60; font-weight: bold; }
-            .error { color: #e74c3c; font-weight: bold; }
-            .info { color: #3498db; }
-            table { border-collapse: collapse; width: 100%; margin: 15px 0; }
-            th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
-            th { background-color: #3498db; color: white; font-weight: bold; }
-            tr:nth-child(even) { background-color: #f2f2f2; }
-            .section { background: #ecf0f1; padding: 15px; border-radius: 5px; margin: 15px 0; }
-            .code { background: #2c3e50; color: #ecf0f1; padding: 10px; border-radius: 4px; font-family: 'Courier New', monospace; margin: 10px 0; }
-        </style></head><body>";
-
-        echo "<div class='container'>";
-        echo '<h1>🔍 Stored Procedures Test</h1>';
-        echo "<p class='info'>Testing: <strong>sp_UserCreation_Resourcefunction</strong> and <strong>sp_UserCreation_ResourceRole</strong></p>";
-        echo '<hr>';
-
-        // ================================================================
-        // TEST 1: Check if sp_UserCreation_Resourcefunction exists
-        // ================================================================
-        echo "<div class='section'>";
-        echo '<h2>Test 1: sp_UserCreation_Resourcefunction (SCM Functions)</h2>';
-
-        try {
-            // Check if procedure exists
-            $procedureExists = DB::connection('sqlsrv')->select("
-                SELECT COUNT(*) as count
-                FROM sys.procedures
-                WHERE name = 'sp_UserCreation_Resourcefunction'
-            ");
-
-            if ($procedureExists[0]->count > 0) {
-                echo "<p class='success'>✅ Stored procedure EXISTS</p>";
-
-                // Try to execute it
-                echo "<p>Executing: <code class='code'>EXEC sp_UserCreation_Resourcefunction</code></p>";
-
-                $functions = DB::connection('sqlsrv')->select('EXEC sp_UserCreation_Resourcefunction');
-
-                echo "<p class='success'>✅ Execution successful! Found " . count($functions) . ' functions</p>';
-
-                if (count($functions) > 0) {
-                    echo '<table>';
-                    echo '<thead><tr>';
-
-                    // Get column names from first row
-                    $firstRow = $functions[0];
-                    foreach ($firstRow as $key => $value) {
-                        echo '<th>' . htmlspecialchars($key) . '</th>';
-                    }
-                    echo '</tr></thead><tbody>';
-
-                    // Display all rows
-                    foreach ($functions as $function) {
-                        echo '<tr>';
-                        foreach ($function as $value) {
-                            echo '<td>' . htmlspecialchars($value ?? 'NULL') . '</td>';
-                        }
-                        echo '</tr>';
-                    }
-                    echo '</tbody></table>';
-                } else {
-                    echo "<p class='info'>⚠️ No functions returned (empty result set)</p>";
-                }
-            } else {
-                echo "<p class='error'>❌ Stored procedure DOES NOT EXIST</p>";
-                echo '<p>Please create the stored procedure first.</p>';
-            }
-        } catch (\Exception $e) {
-            echo "<p class='error'>❌ Error: " . htmlspecialchars($e->getMessage()) . '</p>';
-            echo "<pre style='background: #fff3cd; padding: 10px; border-radius: 4px;'>" . htmlspecialchars($e->getTraceAsString()) . '</pre>';
-        }
-        echo '</div>';
-
-        // ================================================================
-        // TEST 2: Check if sp_UserCreation_ResourceRole exists
-        // ================================================================
-        echo "<div class='section'>";
-        echo '<h2>Test 2: sp_UserCreation_ResourceRole (Roles by Application Code)</h2>';
-
-        try {
-            // Check if procedure exists
-            $procedureExists = DB::connection('sqlsrv')->select("
-                SELECT COUNT(*) as count
-                FROM sys.procedures
-                WHERE name = 'sp_UserCreation_ResourceRole'
-            ");
-
-            if ($procedureExists[0]->count > 0) {
-                echo "<p class='success'>✅ Stored procedure EXISTS</p>";
-
-                // Test with different application codes
-                $testCodes = ['OPS', 'OPSUAT', 'ERP', 'CRM'];
-
-                foreach ($testCodes as $appCode) {
-                    echo "<h3>Testing with ApplicationCode: <strong>{$appCode}</strong></h3>";
-                    echo "<p>Executing: <code class='code'>EXEC sp_UserCreation_ResourceRole @ApplicationCode = '{$appCode}'</code></p>";
-
-                    try {
-                        $roles = DB::connection('sqlsrv')->select(
-                            'EXEC sp_UserCreation_ResourceRole @ApplicationCode = ?',
-                            [$appCode]
-                        );
-
-                        echo "<p class='success'>✅ Execution successful! Found " . count($roles) . ' roles</p>';
-
-                        if (count($roles) > 0) {
-                            echo '<table>';
-                            echo '<thead><tr>';
-
-                            // Get column names from first row
-                            $firstRow = $roles[0];
-                            foreach ($firstRow as $key => $value) {
-                                echo '<th>' . htmlspecialchars($key) . '</th>';
-                            }
-                            echo '</tr></thead><tbody>';
-
-                            // Display all rows
-                            foreach ($roles as $role) {
-                                echo '<tr>';
-                                foreach ($role as $value) {
-                                    echo '<td>' . htmlspecialchars($value ?? 'NULL') . '</td>';
-                                }
-                                echo '</tr>';
-                            }
-                            echo '</tbody></table>';
-                        } else {
-                            echo "<p class='info'>⚠️ No roles returned for {$appCode}</p>";
-                        }
-                    } catch (\Exception $e) {
-                        echo "<p class='error'>❌ Error for {$appCode}: " . htmlspecialchars($e->getMessage()) . '</p>';
-                    }
-                }
-            } else {
-                echo "<p class='error'>❌ Stored procedure DOES NOT EXIST</p>";
-                echo '<p>Please create the stored procedure first.</p>';
-            }
-        } catch (\Exception $e) {
-            echo "<p class='error'>❌ Error: " . htmlspecialchars($e->getMessage()) . '</p>';
-            echo "<pre style='background: #fff3cd; padding: 10px; border-radius: 4px;'>" . htmlspecialchars($e->getTraceAsString()) . '</pre>';
-        }
-        echo '</div>';
-
-        // ================================================================
-        // TEST 3: Check available modules
-        // ================================================================
-        echo "<div class='section'>";
-        echo '<h2>Test 3: Available Modules (Azure_SoftwareMaster)</h2>';
-
-        try {
-            $modules = DB::connection('sqlsrv')->select('
-                SELECT Id, Name, ApplicationId
-                FROM Azure_SoftwareMaster
-                WHERE IsActive = 1 AND IsDeleted = 0
-                ORDER BY Name
-            ');
-
-            echo "<p class='success'>✅ Found " . count($modules) . ' active modules</p>';
-
-            if (count($modules) > 0) {
-                echo '<table>';
-                echo '<thead><tr><th>ID</th><th>Name</th><th>Application ID</th><th>Is SCM?</th></tr></thead>';
-                echo '<tbody>';
-
-                foreach ($modules as $module) {
-                    $isSCM = in_array($module->ApplicationId, ['OPS', 'OPSUAT']);
-                    $scmBadge = $isSCM ? "<span style='background: #27ae60; color: white; padding: 2px 8px; border-radius: 3px; font-size: 0.85em;'>SCM</span>" : '';
-
-                    echo '<tr>';
-                    echo '<td>' . htmlspecialchars($module->Id) . '</td>';
-                    echo '<td>' . htmlspecialchars($module->Name) . '</td>';
-                    echo '<td><strong>' . htmlspecialchars($module->ApplicationId) . "</strong> {$scmBadge}</td>";
-                    echo '<td>' . ($isSCM ? 'Yes' : 'No') . '</td>';
-                    echo '</tr>';
-                }
-
-                echo '</tbody></table>';
-            }
-        } catch (\Exception $e) {
-            echo "<p class='error'>❌ Error: " . htmlspecialchars($e->getMessage()) . '</p>';
-        }
-        echo '</div>';
-
-        // ================================================================
-        // TEST 4: Check available locations
-        // ================================================================
-        echo "<div class='section'>";
-        echo '<h2>Test 4: Available Locations (Cust_Office)</h2>';
-
-        try {
-            $locations = DB::connection('sqlsrv')->select('
-                SELECT Id, Name, code
-                FROM Cust_Office
-                WHERE IsActive = 1 AND IsDeleted = 0
-                ORDER BY Name
-            ');
-
-            echo "<p class='success'>✅ Found " . count($locations) . ' active locations</p>';
-
-            if (count($locations) > 0) {
-                echo '<table>';
-                echo '<thead><tr><th>ID</th><th>Name</th><th>Code</th></tr></thead>';
-                echo '<tbody>';
-
-                foreach ($locations as $location) {
-                    echo '<tr>';
-                    echo '<td>' . htmlspecialchars($location->Id) . '</td>';
-                    echo '<td>' . htmlspecialchars($location->Name) . '</td>';
-                    echo '<td><strong>' . htmlspecialchars($location->code) . '</strong></td>';
-                    echo '</tr>';
-                }
-
-                echo '</tbody></table>';
-            }
-        } catch (\Exception $e) {
-            echo "<p class='error'>❌ Error: " . htmlspecialchars($e->getMessage()) . '</p>';
-        }
-        echo '</div>';
-
-        // Summary
-        echo '<hr>';
-        echo '<h2>Summary</h2>';
-        echo '<p><strong>Next Steps:</strong></p>';
-        echo '<ul>';
-        echo "<li>If stored procedures don't exist, create them in SQL Server</li>";
-        echo '<li>If stored procedures exist but return no data, populate the underlying tables</li>';
-        echo '<li>If everything works, deploy the updated create user form</li>';
-        echo '</ul>';
-
-        echo '</div></body></html>';
-    } catch (\Exception $e) {
-        echo "<div style='padding: 20px; background: #fee; border: 2px solid #e74c3c; border-radius: 4px;'>";
-        echo "<h2 style='color: #e74c3c;'>Critical Error</h2>";
-        echo '<p><strong>Error:</strong> ' . htmlspecialchars($e->getMessage()) . '</p>';
-        echo '<p><strong>File:</strong> ' . htmlspecialchars($e->getFile()) . '</p>';
-        echo '<p><strong>Line:</strong> ' . htmlspecialchars($e->getLine()) . '</p>';
-        echo '</div>';
-    }
-});
-
-Route::get('/test-azure-users', function () {
-    dd([
-        'raw_count' => DB::connection('sqlsrv')->table('Azure_Users')->count(),
-        'model_count' => App\Models\AzureUser::count(),
-        'first_user' => App\Models\AzureUser::first(),
-    ]);
-});
 
 // ============================================================================
 // LOGIN TRACKER SYSTEM ROUTES (User Activity Monitoring)
@@ -1106,78 +865,6 @@ Route::get('/users/cleanup-empty', [\App\Http\Controllers\UserController::class,
     ->middleware('auth')
     ->name('users.cleanup');
 
-Route::get('/debug-import-data', function () {
-    $dates = ['2025-10-10', '2025-10-23'];
-
-    $data = DB::table('Azure_LoginDetails')
-        ->selectRaw('CONVERT(DATE, date_utc) as login_date')
-        ->selectRaw('application')
-        ->selectRaw('username')
-        ->selectRaw('user_id')
-        ->selectRaw('COUNT(*) as count')
-        ->whereRaw('CONVERT(DATE, date_utc) IN (?, ?)', $dates)
-        ->groupBy(DB::raw('CONVERT(DATE, date_utc)'), 'application', 'username', 'user_id')
-        ->orderBy('login_date')
-        ->orderBy('username')
-        ->get();
-
-    $uniqueApps = $data->pluck('application')->unique()->values();
-    $systemMap = config('systemmap', []);
-
-    $appMappingStatus = [];
-    foreach ($uniqueApps as $app) {
-        $appLower = strtolower(trim($app));
-        $isMapped = isset($systemMap[$appLower]) || isset($systemMap[$app]);
-        $mappedTo = $systemMap[$appLower] ?? $systemMap[$app] ?? 'UNMAPPED';
-
-        $appMappingStatus[$app] = [
-            'is_mapped' => $isMapped,
-            'maps_to' => $mappedTo,
-            'in_display_systems' => in_array($mappedTo, [
-                'BIZ PRO',
-                'BIZ UAT',
-                'D365 LIVE',
-                'D365 UAT',
-                'FIT Express',
-                'FIT Express UAT',
-                'Odoo',
-                'OPS',
-                'OPS UAT',
-                'Windows Sign In',
-            ]),
-        ];
-    }
-
-    $amayData = $data->filter(function ($record) {
-        return stripos($record->username, 'amay') !== false;
-    })->values();
-
-    return response()->json([
-        'dates_checked' => $dates,
-        'total_records' => $data->count(),
-        'unique_applications' => $uniqueApps,
-        'application_mapping_status' => $appMappingStatus,
-        'amay_records' => [
-            'count' => $amayData->count(),
-            'data' => $amayData,
-
-        ],
-        'all_records' => $data->toArray(),
-        'display_systems' => [
-            'BIZ PRO',
-            'BIZ UAT',
-            'D365 LIVE',
-            'D365 UAT',
-            'FIT Express',
-            'FIT Express UAT',
-            'Odoo',
-            'OPS',
-            'OPS UAT',
-            'Windows Sign In',
-        ],
-    ]);
-})->middleware('auth');
-
 // ============================================================================
 // VEHICLE TRACKER SYSTEM ROUTES (GPS/Trip Tracking)
 // ============================================================================
@@ -1252,141 +939,6 @@ Route::middleware(['auth'])->prefix('jimi-test')->group(function () {
     Route::post('/track', [JimiTestController::class, 'getTrackData'])->name('jimi.test.track');
 });
 
-Route::get('/azure-management/test', function () {
-    $results = [
-        'config' => [],
-        'token' => [],
-        'create_user' => [],
-        'find_user' => [],
-    ];
-
-    // ============================================
-    // TEST 1: Configuration Check
-    // ============================================
-    try {
-        $results['config'] = [
-            'status' => 'success',
-            'tenant_id' => config('azure.tenant_id') ? 'Set ✅' : 'Missing ❌',
-            'client_id' => config('azure.client_id') ? 'Set ✅' : 'Missing ❌',
-            'client_secret' => config('azure.client_secret') ? 'Set ✅' : 'Missing ❌',
-            'domain' => config('azure.default_domain'),
-            'graph_url' => config('azure.graph_api_base_url'),
-        ];
-    } catch (\Exception $e) {
-        $results['config'] = [
-            'status' => 'failed',
-            'error' => $e->getMessage(),
-        ];
-    }
-
-    // ============================================
-    // TEST 2: Get Access Token
-    // ============================================
-    try {
-        $service = app(AzureGraphService::class);
-        $token = $service->getAccessToken();
-
-        $results['token'] = [
-            'status' => 'success',
-            'token_preview' => substr($token, 0, 50) . '...',
-            'token_length' => strlen($token),
-            'message' => '✅ Successfully obtained Azure AD token!',
-        ];
-    } catch (\Exception $e) {
-        $results['token'] = [
-            'status' => 'failed',
-            'error' => $e->getMessage(),
-            'message' => '❌ Failed to get token',
-        ];
-
-        // Stop here if token fails
-        return view('azure-management.test', compact('results'));
-    }
-
-    // ============================================
-    // TEST 3: Check if Test User Exists
-    // ============================================
-    if ($results['token']['status'] === 'success') {
-        try {
-            $testUpn = 'azuretest@freight-in-time.com';
-            $existingUser = $service->findUserByUPN($testUpn);
-
-            if ($existingUser) {
-                $results['find_user'] = [
-                    'status' => 'success',
-                    'found' => true,
-                    'azure_id' => $existingUser['id'],
-                    'upn' => $existingUser['userPrincipalName'],
-                    'display_name' => $existingUser['displayName'],
-                    'message' => '✅ Test user already exists (will not create duplicate)',
-                ];
-            } else {
-                $results['find_user'] = [
-                    'status' => 'success',
-                    'found' => false,
-                    'message' => 'Test user not found (ready to create)',
-                ];
-            }
-        } catch (\Exception $e) {
-            $results['find_user'] = [
-                'status' => 'failed',
-                'error' => $e->getMessage(),
-            ];
-        }
-    }
-
-    // ============================================
-    // TEST 4: Create Test User (Only if not exists)
-    // ============================================
-    if (
-        $results['token']['status'] === 'success' &&
-        isset($results['find_user']['found']) &&
-        ! $results['find_user']['found']
-    ) {
-        try {
-            $randomId = rand(1000, 9999);
-
-            $userData = [
-                'name' => "Azure Test User {$randomId}",
-                'email' => "azuretest{$randomId}@freight-in-time.com",
-                'employee_id' => "TEST{$randomId}",
-                'phone' => '+254712345678',
-                'job_title' => 'Test Engineer',
-                'department' => 'IT Testing',
-            ];
-
-            $result = $service->createUser($userData);
-
-            $results['create_user'] = [
-                'status' => 'success',
-                'azure_id' => $result['azure_id'],
-                'azure_upn' => $result['azure_upn'],
-                'display_name' => $result['azure_display_name'],
-                'password_generated' => ! empty($result['temporary_password']),
-                'message' => '✅ Test user created successfully in Azure AD!',
-                'note' => 'This is a real user - you may want to delete it from Azure AD portal',
-            ];
-        } catch (\Exception $e) {
-            $results['create_user'] = [
-                'status' => 'failed',
-                'error' => $e->getMessage(),
-                'message' => '❌ Failed to create test user',
-            ];
-        }
-    }
-
-    return view('azure-management.test', compact('results'));
-})->name('azure.test');
-
-// Route::post('/azure/users/{user}/sync', [AzureUserManagementController::class, 'sync'])
-//     ->name('azure.users.sync');
-
-// Route::get('/azure/users/{user}/sync-status', [AzureUserManagementController::class, 'syncStatus'])
-//     ->name('azure.users.sync-status');
-
-// Route::post('/azure/users', [AzureUserManagementController::class, 'store'])
-//        ->middleware(['auth', 'permission:create-azure-users']);
-
 /*
 |--------------------------------------------------------------------------
 | Email Account API Routes
@@ -1448,10 +1000,9 @@ Route::prefix('admin/sp-test')->middleware(['auth'])->group(function () {
 
 
 
-
-
 // Stored Procedure Testing Routes (Admin only)
 Route::prefix('admin/sp-test')
+
     ->middleware(['auth']) // Add more middleware if needed
     ->name('sp-test.')
     ->group(function () {
@@ -1475,210 +1026,4 @@ Route::prefix('admin/sp-test')
     });
 
 
-
-
-
-
-Route::get('/test/azure-sync-status/{email}', function ($email) {
-    try {
-        // 1. Get user from local database
-        $user = App\Models\AzureUser::where('userPrincipalName', $email)
-            ->orWhere('mail', $email)
-            ->firstOrFail();
-
-        Log::info('=== AZURE SYNC DIAGNOSTIC ===', ['email' => $email]);
-
-        // ✅ FIX: Use email as user_id (not UUID)
-        $userId = $user->mail ?? $user->userPrincipalName;
-
-        // 2. Get all module assignments from database
-        $roleAssignments = DB::table('Azure_Application_UserMapping')
-            ->join('Azure_SoftwareMaster', 'Azure_Application_UserMapping.application_id', '=', 'Azure_SoftwareMaster.ApplicationId')
-            ->where('Azure_Application_UserMapping.user_id', $userId) // ✅ FIXED
-            ->where('Azure_Application_UserMapping.IsActive', 1)
-            ->where('Azure_Application_UserMapping.IsDelete', 0)
-            ->select(
-                'Azure_SoftwareMaster.Name as module_name',
-                'Azure_Application_UserMapping.OfficeCode',
-                'Azure_Application_UserMapping.RoleCode',
-                'Azure_Application_UserMapping.RoleID'
-            )
-            ->get();
-
-        $functionAssignments = DB::table('Azure_Application_UserFunction')
-            ->join('Azure_SoftwareMaster', 'Azure_Application_UserFunction.application_id', '=', 'Azure_SoftwareMaster.ApplicationId')
-            ->where('Azure_Application_UserFunction.user_id', $userId) // ✅ FIXED
-            ->where('Azure_Application_UserFunction.IsActive', 1)
-            ->where('Azure_Application_UserFunction.IsDelete', 0)
-            ->select(
-                'Azure_SoftwareMaster.Name as module_name',
-                'Azure_Application_UserFunction.OfficeCode',
-                'Azure_Application_UserFunction.FunctionCode',
-                'Azure_Application_UserFunction.FunctionID'
-            )
-            ->get();
-
-        Log::info('Database Assignments', [
-            'user_id_used' => $userId,
-            'roles_count' => $roleAssignments->count(),
-            'functions_count' => $functionAssignments->count()
-        ]);
-
-        // 3. Check Azure provisioning status
-        $azureStatus = [
-            'azure_id' => $user->AzureId,
-            'is_provisioned' => !empty($user->AzureId),
-            'last_updated' => $user->updated_at ?? 'Never'
-        ];
-
-        // 4. Group assignments by module for better readability
-        $rolesByModule = $roleAssignments->groupBy('module_name')->map(function ($roles) {
-            return [
-                'count' => $roles->count(),
-                'assignments' => $roles->map(function ($role) {
-                    return [
-                        'office' => trim($role->OfficeCode),
-                        'role' => $role->RoleCode
-                    ];
-                })->toArray()
-            ];
-        })->toArray();
-
-        $functionsByModule = $functionAssignments->groupBy('module_name')->map(function ($functions) {
-            return [
-                'count' => $functions->count(),
-                'assignments' => $functions->map(function ($func) {
-                    return [
-                        'office' => trim($func->OfficeCode),
-                        'function' => $func->FunctionCode
-                    ];
-                })->toArray()
-            ];
-        })->toArray();
-
-        // 5. Summary
-        $totalDbAssignments = $roleAssignments->count() + $functionAssignments->count();
-
-        $summary = [
-            'total_roles' => $roleAssignments->count(),
-            'total_functions' => $functionAssignments->count(),
-            'total_assignments' => $totalDbAssignments,
-            'unique_modules' => count(array_unique(array_merge(
-                $roleAssignments->pluck('module_name')->toArray(),
-                $functionAssignments->pluck('module_name')->toArray()
-            ))),
-            'modules_with_roles' => array_keys($rolesByModule),
-            'modules_with_functions' => array_keys($functionsByModule)
-        ];
-
-        // Build recommendation
-        $recommendation = '';
-        if (empty($user->AzureId)) {
-            $recommendation = '⚠️ User NOT provisioned to Azure - Run provision script';
-        } else {
-            $recommendation = "✅ User is provisioned to Azure (Azure ID: {$user->AzureId}). Database has {$totalDbAssignments} assignments ready to sync.";
-        }
-
-        return response()->json([
-            'success' => true,
-            'user' => [
-                'id' => $user->Id,
-                'name' => $user->displayName,
-                'email' => $userId,
-                'azure_id' => $user->AzureId,
-                'status' => $user->Status ?? 'unknown',
-                'base_office' => $user->BaseOfficeCode ?? 'Not set'
-            ],
-            'summary' => $summary,
-            'roles_by_module' => $rolesByModule,
-            'functions_by_module' => $functionsByModule,
-            'azure_status' => $azureStatus,
-            'recommendation' => $recommendation
-        ], 200);
-    } catch (\Exception $e) {
-        Log::error('Azure sync diagnostic failed', [
-            'email' => $email,
-            'error' => $e->getMessage(),
-            'line' => $e->getLine()
-        ]);
-
-        return response()->json([
-            'success' => false,
-            'error' => $e->getMessage()
-        ], 500);
-    }
-});
-
-
-
-Route::get('/test/check-biz-sync/{email}', function ($email) {
-    try {
-        $user = App\Models\AzureUser::where('userPrincipalName', $email)
-            ->orWhere('mail', $email)
-            ->firstOrFail();
-
-        $userId = $user->mail ?? $user->userPrincipalName;
-
-        Log::info('=== CHECKING BIZ PRO SYNC ===', ['user' => $userId]);
-
-        // 1. Get BIZ PRO assignments from database
-        $bizRoles = DB::table('Azure_Application_UserMapping as aaum')
-            ->join('Azure_SoftwareMaster as asm', 'aaum.application_id', '=', 'asm.ApplicationId')
-            ->where('aaum.user_id', $userId)
-            ->where('asm.Name', 'BIZ PRO')
-            ->where('aaum.IsActive', 1)
-            ->where('aaum.IsDelete', 0)
-            ->select(
-                'aaum.*',
-                'asm.Name as ApplicationName',
-                'asm.ApplicationId'
-            )
-            ->get();
-
-        // 2. Check if BIZ user ID exists
-        $bizUserId = $user->BizUserID;
-        $bizLoginId = $user->BizLoginId;
-        $bizCreatedOn = $user->BizCreatedOn;
-
-        // 3. Check for sync status or provisioning flags
-        $provisioningStatus = DB::table('Azure_Application_UserProvisioningStatus')
-            ->where('user_id', $user->Id)
-            ->orWhere('user_id', $userId)
-            ->get();
-
-        return response()->json([
-            'success' => true,
-            'user' => [
-                'email' => $userId,
-                'azure_id' => $user->AzureId,
-                'biz_user_id' => $bizUserId,
-                'biz_login_id' => $bizLoginId,
-                'biz_created_on' => $bizCreatedOn
-            ],
-            'biz_assignments_in_database' => [
-                'count' => $bizRoles->count(),
-                'roles' => $bizRoles->map(function ($role) {
-                    return [
-                        'office' => trim($role->OfficeCode),
-                        'role' => $role->RoleCode,
-                        'role_id' => $role->RoleID,
-                        'created_at' => $role->created_at ?? 'Unknown',
-                        'updated_at' => $role->updated_at ?? 'Unknown'
-                    ];
-                })->toArray()
-            ],
-            'provisioning_status' => $provisioningStatus->toArray(),
-            'diagnosis' => [
-                'has_biz_user_id' => !empty($bizUserId),
-                'roles_in_database' => $bizRoles->count(),
-                'needs_sync' => empty($bizUserId) || $bizRoles->isEmpty()
-            ]
-        ]);
-    } catch (\Exception $e) {
-        return response()->json([
-            'success' => false,
-            'error' => $e->getMessage()
-        ], 500);
-    }
-});
 Route::post('/webhooks/jimi/notifications', [App\Http\Controllers\JimiWebhookController::class, 'receiveNotification']);

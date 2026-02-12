@@ -5,14 +5,14 @@
 @section('content_header')
     <div class="d-flex justify-content-between align-items-center">
         <div>
-            <h1><i class="fas fa-file-invoice"></i> Inquiry No - &lt;&lt;Booking No&gt;&gt;</h1>
+            <h1><i class="fas fa-file-invoice"></i> Inquiry No - {{ $quotation->bookingno ?? 'N/A' }}</h1>
             <p class="text-muted mb-0">View booking quotation details</p>
         </div>
         <div>
-            <a href="#" class="btn btn-secondary btn-sm">
+            <a href="{{ route('quotation.index') }}" class="btn btn-secondary btn-sm">
                 <i class="fas fa-arrow-left"></i> Back to List
             </a>
-            <a href="#" class="btn btn-warning btn-sm">
+            <a href="{{ route('quotation.edit', $quotation->ID) }}" class="btn btn-warning btn-sm">
                 <i class="fas fa-edit"></i> Edit Booking
             </a>
         </div>
@@ -39,26 +39,26 @@
                     <div class="form-group row">
                         <label class="col-sm-5 col-form-label">Source</label>
                         <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm" placeholder="<< Search Engine >>"
+                            <input type="text" class="form-control form-control-sm" value="{{ $quotation->source ?? '' }}"
                                 readonly>
                         </div>
                     </div>
                     <div class="form-group row">
                         <label class="col-sm-5 col-form-label">Status</label>
                         <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm" placeholder="<< Status >>" readonly>
+                            <input type="text" class="form-control form-control-sm" value="{{ $quotation->status ?? '' }}" readonly>
                         </div>
                     </div>
                     <div class="form-group row">
                         <label class="col-sm-5 col-form-label">Sales person</label>
                         <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm" placeholder="<<username>>" readonly>
+                            <input type="text" class="form-control form-control-sm" value="{{ $quotation->username ?? '' }}" readonly>
                         </div>
                     </div>
                     <div class="form-group row mb-0">
                         <label class="col-sm-5 col-form-label">Office</label>
                         <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm" placeholder="<<teamname>>" readonly>
+                            <input type="text" class="form-control form-control-sm" value="{{ $quotation->teamname ?? '' }}" readonly>
                         </div>
                     </div>
                 </div>
@@ -78,54 +78,54 @@
                     <div class="form-group row">
                         <label class="col-sm-5 col-form-label">Service</label>
                         <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm" placeholder="<<ServiceVerticalname>>"
+                            <input type="text" class="form-control form-control-sm" value="{{ $quotation->serviceverticalname ?? '' }}"
                                 readonly>
                         </div>
                     </div>
                     <div class="form-group row">
                         <label class="col-sm-5 col-form-label">Process</label>
                         <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm" placeholder="<<process>>" readonly>
+                            <input type="text" class="form-control form-control-sm" value="{{ $quotation->process ?? '' }}" readonly>
                         </div>
                     </div>
                     <div class="form-group row">
                         <label class="col-sm-5 col-form-label">Origin Country</label>
                         <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm" placeholder="<<origincountry>>"
+                            <input type="text" class="form-control form-control-sm" value="{{ $quotation->origincountry ?? '' }}"
                                 readonly>
                         </div>
                     </div>
                     <div class="form-group row">
                         <label class="col-sm-5 col-form-label">Destination Country</label>
                         <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm" placeholder="<<destinationcountry>>"
+                            <input type="text" class="form-control form-control-sm" value="{{ $quotation->destinationcountry ?? '' }}"
                                 readonly>
                         </div>
                     </div>
                     <div class="form-group row">
                         <label class="col-sm-5 col-form-label">InCO Terms</label>
                         <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm" placeholder="<<incoterms>>" readonly>
+                            <input type="text" class="form-control form-control-sm" value="{{ $quotation->incoterm ?? '' }}" readonly>
                         </div>
                     </div>
                     <div class="form-group row">
                         <label class="col-sm-5 col-form-label">Shipment Mode</label>
                         <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm" placeholder="<<shipmentmode>>"
+                            <input type="text" class="form-control form-control-sm" value="{{ $quotation->shipmentmode ?? '' }}"
                                 readonly>
                         </div>
                     </div>
                     <div class="form-group row">
                         <label class="col-sm-5 col-form-label">Transport Mode</label>
                         <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm" placeholder="<<TransportMode>>"
+                            <input type="text" class="form-control form-control-sm" value="{{ $quotation->TransportMode ?? '' }}"
                                 readonly>
                         </div>
                     </div>
                     <div class="form-group row mb-0">
                         <label class="col-sm-5 col-form-label">Service Class</label>
                         <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm" placeholder="<<ServiceClass>>"
+                            <input type="text" class="form-control form-control-sm" value="{{ $quotation->ServiceClass ?? '' }}"
                                 readonly>
                         </div>
                     </div>
@@ -146,28 +146,28 @@
                     <div class="form-group row">
                         <label class="col-sm-5 col-form-label">Commodity</label>
                         <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm" placeholder="<<commodity>>"
+                            <input type="text" class="form-control form-control-sm" value="{{ $quotation->commodity ?? '' }}"
                                 readonly>
                         </div>
                     </div>
                     <div class="form-group row">
                         <label class="col-sm-5 col-form-label">Scope Of Volume</label>
                         <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm" placeholder="<<scopevolume>>"
+                            <input type="text" class="form-control form-control-sm" value="{{ $quotation->scopevolume ?? '' }}"
                                 readonly>
                         </div>
                     </div>
                     <div class="form-group row">
                         <label class="col-sm-5 col-form-label">Cargo Volume</label>
                         <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm" placeholder="<<cargovolume>>"
+                            <input type="text" class="form-control form-control-sm" value="{{ $quotation->cargovolume ?? '' }}"
                                 readonly>
                         </div>
                     </div>
                     <div class="form-group row mb-0">
                         <label class="col-sm-5 col-form-label">Container List</label>
                         <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm" placeholder="<<containerlist>>"
+                            <input type="text" class="form-control form-control-sm" value="{{ $quotation->containerlist ?? '' }}"
                                 readonly>
                         </div>
                     </div>
@@ -226,34 +226,33 @@
                     <div class="form-group row">
                         <label class="col-sm-5 col-form-label">Client Status</label>
                         <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm" placeholder="ClientIntegration"
+                            <input type="text" class="form-control form-control-sm" value="{{ $quotation->ClientIntegration ?? '' }}"
                                 readonly>
                         </div>
                     </div>
                     <div class="form-group row">
                         <label class="col-sm-5 col-form-label">Boking No</label>
                         <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm" placeholder="SCMBookingNo"
+                            <input type="text" class="form-control form-control-sm" value="{{ $quotation->SCMBookingNo ?? '' }}"
                                 readonly>
                         </div>
                     </div>
                     <div class="form-group row">
                         <label class="col-sm-5 col-form-label">Booking Integration</label>
                         <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm" placeholder="SCMINTStatus"
+                            <input type="text" class="form-control form-control-sm" value="{{ $quotation->SCMINTStatus ?? '' }}"
                                 readonly>
                         </div>
                     </div>
                     <div class="form-group row mb-0">
                         <label class="col-sm-5 col-form-label">Booking XML</label>
                         <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm" placeholder="SCMBookingXML"
+                            <input type="text" class="form-control form-control-sm" value="{{ $quotation->SCMBookingXML ?? '' }}"
                                 readonly>
                         </div>
                     </div>
                 </div>
             </div>
-
         </div>
 
         <!-- RIGHT COLUMN -->
@@ -276,42 +275,42 @@
                                 <label class="col-sm-4 col-form-label">Company</label>
                                 <div class="col-sm-8">
                                     <input type="text" class="form-control form-control-sm"
-                                        placeholder="<< companyname>>" readonly>
+                                        value="{{ $quotation->companyname ?? '' }}" readonly>
                                 </div>
                             </div>
                             <div class="form-group row">
                                 <label class="col-sm-4 col-form-label">Address 1</label>
                                 <div class="col-sm-8">
                                     <input type="text" class="form-control form-control-sm"
-                                        placeholder="pri_partner_street" readonly>
+                                        value="{{ $quotation->pri_partner_steet ?? '' }}" readonly>
                                 </div>
                             </div>
                             <div class="form-group row">
                                 <label class="col-sm-4 col-form-label">City</label>
                                 <div class="col-sm-8">
                                     <input type="text" class="form-control form-control-sm"
-                                        placeholder="pri_partner_city" readonly>
+                                        value="{{ $quotation->pri_partner_city ?? '' }}" readonly>
                                 </div>
                             </div>
                             <div class="form-group row">
                                 <label class="col-sm-4 col-form-label">State</label>
                                 <div class="col-sm-8">
                                     <input type="text" class="form-control form-control-sm"
-                                        placeholder="pri_partner_state" readonly>
+                                        value="{{ $quotation->pri_partner_statename ?? '' }}" readonly>
                                 </div>
                             </div>
                             <div class="form-group row">
                                 <label class="col-sm-4 col-form-label">Contact Person</label>
                                 <div class="col-sm-8">
                                     <input type="text" class="form-control form-control-sm"
-                                        placeholder="pri_partnername" readonly>
+                                        value="{{ $quotation->pri_partnermaster_name ?? '' }}" readonly>
                                 </div>
                             </div>
                             <div class="form-group row mb-0">
                                 <label class="col-sm-4 col-form-label">Phone No</label>
                                 <div class="col-sm-8">
                                     <input type="text" class="form-control form-control-sm"
-                                        placeholder="pri_partner_phon" readonly>
+                                        value="{{ $quotation->pri_partner_phone ?? '' }}" readonly>
                                 </div>
                             </div>
                         </div>
@@ -320,42 +319,42 @@
                                 <label class="col-sm-4 col-form-label">Client ID</label>
                                 <div class="col-sm-8">
                                     <input type="text" class="form-control form-control-sm"
-                                        placeholder="<<Client ID>>" readonly>
+                                        value="{{ $quotation->clientid ?? '' }}" readonly>
                                 </div>
                             </div>
                             <div class="form-group row">
                                 <label class="col-sm-4 col-form-label">Address 2</label>
                                 <div class="col-sm-8">
                                     <input type="text" class="form-control form-control-sm"
-                                        placeholder="pri_partner_street2" readonly>
+                                        value="{{ $quotation->pri_partner_steet2 ?? '' }}" readonly>
                                 </div>
                             </div>
                             <div class="form-group row">
                                 <label class="col-sm-4 col-form-label">Zip</label>
                                 <div class="col-sm-8">
                                     <input type="text" class="form-control form-control-sm"
-                                        placeholder="pri_partner_zip" readonly>
+                                        value="{{ $quotation->pri_partner_zip ?? '' }}" readonly>
                                 </div>
                             </div>
                             <div class="form-group row">
                                 <label class="col-sm-4 col-form-label">Country</label>
                                 <div class="col-sm-8">
                                     <input type="text" class="form-control form-control-sm"
-                                        placeholder="pri_partner_countryname" readonly>
+                                        value="{{ $quotation->pri_partner_countryname ?? '' }}" readonly>
                                 </div>
                             </div>
                             <div class="form-group row">
                                 <label class="col-sm-4 col-form-label">Email ID</label>
                                 <div class="col-sm-8">
                                     <input type="text" class="form-control form-control-sm"
-                                        placeholder="pri_partner_email" readonly>
+                                        value="{{ $quotation->pri_partner_email ?? '' }}" readonly>
                                 </div>
                             </div>
                             <div class="form-group row mb-0">
                                 <label class="col-sm-4 col-form-label">Industry</label>
                                 <div class="col-sm-8">
                                     <input type="text" class="form-control form-control-sm"
-                                        placeholder="<<Industryname>>" readonly>
+                                        value="{{ $quotation->industryname ?? '' }}" readonly>
                                 </div>
                             </div>
                         </div>
@@ -435,14 +434,14 @@
                             <div class="form-group row">
                                 <label class="col-sm-6 col-form-label">Exected Revenue</label>
                                 <div class="col-sm-6">
-                                    <input type="text" class="form-control form-control-sm" placeholder="expected_"
+                                    <input type="text" class="form-control form-control-sm" value="{{ $quotation->expected_revenue ?? '' }}"
                                         readonly>
                                 </div>
                             </div>
                             <div class="form-group row">
                                 <label class="col-sm-6 col-form-label">Quoted Revenue</label>
                                 <div class="col-sm-6">
-                                    <input type="text" class="form-control form-control-sm" placeholder="Based on"
+                                    <input type="text" class="form-control form-control-sm" value="{{ $quotation->quoted_revenue ?? '' }}"
                                         readonly>
                                 </div>
                             </div>
@@ -479,7 +478,6 @@
                     </div>
                 </div>
             </div>
-
         </div>
     </div>
 
@@ -561,50 +559,33 @@
         $(document).ready(function() {
             console.log('Booking Quotation View - Page Loaded');
 
-            // ============================================
             // CARD COLLAPSE
-            // ============================================
-
-            // Handle collapse arrow rotation
             $('[data-card-widget="collapse"]').on('click', function() {
                 var icon = $(this).find('i');
                 icon.toggleClass('fa-chevron-down fa-chevron-up');
             });
 
-            // Make entire card header clickable for collapse
             $('.card-header').on('click', function(e) {
-                // Don't trigger if clicking the collapse button itself
                 if (!$(e.target).closest('[data-card-widget="collapse"]').length) {
                     $(this).find('[data-card-widget="collapse"]').click();
                 }
             });
 
-            // ============================================
-            // INITIALIZE
-            // ============================================
-
-            // Collapse all cards by default EXCEPT Revenue and Cost
+            // INITIALIZE - Collapse all cards by default EXCEPT Revenue and Cost
             $('.card').not('.card-success, .card-danger').each(function() {
                 var $card = $(this);
                 var $cardBody = $card.find('.card-body');
                 var $icon = $card.find('[data-card-widget="collapse"] i');
 
-                // Hide card body
                 $cardBody.hide();
-
-                // Change icon to down arrow
                 $icon.removeClass('fa-chevron-up').addClass('fa-chevron-down');
-
-                // Add collapsed-card class
                 $card.addClass('collapsed-card');
             });
 
-            // Set initial state for all collapse buttons
             $('.card').each(function() {
                 var card = $(this);
                 var collapseBtn = card.find('[data-card-widget="collapse"] i');
 
-                // Check if card body is visible
                 if (card.find('.card-body').is(':visible')) {
                     collapseBtn.removeClass('fa-minus').addClass('fa-chevron-up');
                 } else {

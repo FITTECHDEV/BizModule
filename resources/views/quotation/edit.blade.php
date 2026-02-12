@@ -1,9 +1,9 @@
 @extends('adminlte::page')
 
-@section('title', 'Booking Quotation')
+@section('title', 'Edit Booking Quotation')
 
 @section('content_header')
-    <h1>Inquiry No - &lt;&lt;Booking No&gt;&gt;</h1>
+    <h1>Inquiry No - {{ $quotation->bookingno ?? 'N/A' }}</h1>
 @stop
 
 @section('content')
@@ -29,25 +29,28 @@
                             <label class="col-sm-5 col-form-label">Source</label>
                             <div class="col-sm-7">
                                 <input type="text" class="form-control form-control-sm"
-                                    placeholder="<< Search Engine >>">
+                                    value="{{ $quotation->source ?? 'N/A' }}" readonly>
                             </div>
                         </div>
                         <div class="form-group row">
                             <label class="col-sm-5 col-form-label">Status</label>
                             <div class="col-sm-7">
-                                <input type="text" class="form-control form-control-sm" placeholder="<< Status >>">
+                                <input type="text" class="form-control form-control-sm"
+                                    value="{{ $quotation->status ?? 'Proposal' }}" readonly>
                             </div>
                         </div>
                         <div class="form-group row">
                             <label class="col-sm-5 col-form-label">Sales person</label>
                             <div class="col-sm-7">
-                                <input type="text" class="form-control form-control-sm" placeholder="<<username>>">
+                                <input type="text" class="form-control form-control-sm"
+                                    value="{{ $quotation->username ?? 'N/A' }}" readonly>
                             </div>
                         </div>
                         <div class="form-group row mb-0">
                             <label class="col-sm-5 col-form-label">Office</label>
                             <div class="col-sm-7">
-                                <input type="text" class="form-control form-control-sm" placeholder="<<teamname>>">
+                                <input type="text" class="form-control form-control-sm"
+                                    value="{{ $quotation->teamname ?? 'N/A' }}" readonly>
                             </div>
                         </div>
                     </div>
@@ -68,50 +71,56 @@
                             <label class="col-sm-5 col-form-label">Service</label>
                             <div class="col-sm-7">
                                 <input type="text" class="form-control form-control-sm"
-                                    placeholder="<<ServiceVerticalname>>">
+                                    value="{{ $quotation->ServiceVerticalname ?? 'N/A' }}" readonly>
                             </div>
                         </div>
                         <div class="form-group row">
                             <label class="col-sm-5 col-form-label">Process</label>
                             <div class="col-sm-7">
-                                <input type="text" class="form-control form-control-sm" placeholder="<<process>>">
+                                <input type="text" class="form-control form-control-sm"
+                                    value="{{ $quotation->process ?? 'N/A' }}" readonly>
                             </div>
                         </div>
                         <div class="form-group row">
                             <label class="col-sm-5 col-form-label">Origin Country</label>
                             <div class="col-sm-7">
-                                <input type="text" class="form-control form-control-sm" placeholder="<<origincountry>>">
+                                <input type="text" class="form-control form-control-sm"
+                                    value="{{ $quotation->origincountry ?? 'N/A' }}" readonly>
                             </div>
                         </div>
                         <div class="form-group row">
                             <label class="col-sm-5 col-form-label">Destination Country</label>
                             <div class="col-sm-7">
                                 <input type="text" class="form-control form-control-sm"
-                                    placeholder="<<destinationcountry>>">
+                                    value="{{ $quotation->destinationcountry ?? 'N/A' }}" readonly>
                             </div>
                         </div>
                         <div class="form-group row">
                             <label class="col-sm-5 col-form-label">InCO Terms</label>
                             <div class="col-sm-7">
-                                <input type="text" class="form-control form-control-sm" placeholder="<<incoterms>>">
+                                <input type="text" class="form-control form-control-sm"
+                                    value="{{ $quotation->incoterms ?? 'N/A' }}" readonly>
                             </div>
                         </div>
                         <div class="form-group row">
                             <label class="col-sm-5 col-form-label">Shipment Mode</label>
                             <div class="col-sm-7">
-                                <input type="text" class="form-control form-control-sm" placeholder="<<shipmentmode>>">
+                                <input type="text" class="form-control form-control-sm"
+                                    value="{{ $quotation->shipmentmode ?? 'N/A' }}" readonly>
                             </div>
                         </div>
                         <div class="form-group row">
                             <label class="col-sm-5 col-form-label">Transport Mode</label>
                             <div class="col-sm-7">
-                                <input type="text" class="form-control form-control-sm" placeholder="<<TransportMode>>">
+                                <input type="text" class="form-control form-control-sm"
+                                    value="{{ $quotation->TransportMode ?? 'N/A' }}" readonly>
                             </div>
                         </div>
                         <div class="form-group row mb-0">
                             <label class="col-sm-5 col-form-label">Service Class</label>
                             <div class="col-sm-7">
-                                <input type="text" class="form-control form-control-sm" placeholder="<<ServiceClass>>">
+                                <input type="text" class="form-control form-control-sm"
+                                    value="{{ $quotation->ServiceClass ?? 'N/A' }}" readonly>
                             </div>
                         </div>
                     </div>
@@ -131,26 +140,29 @@
                         <div class="form-group row">
                             <label class="col-sm-5 col-form-label">Commodity</label>
                             <div class="col-sm-7">
-                                <input type="text" class="form-control form-control-sm" placeholder="<<commodity>>">
+                                <input type="text" class="form-control form-control-sm"
+                                    value="{{ $quotation->commodity ?? 'N/A' }}" readonly>
                             </div>
                         </div>
                         <div class="form-group row">
                             <label class="col-sm-5 col-form-label">Scope Of Volume</label>
                             <div class="col-sm-7">
-                                <input type="text" class="form-control form-control-sm" placeholder="<<scopevolume>>">
+                                <input type="text" class="form-control form-control-sm"
+                                    value="{{ $quotation->scopevolume ?? 'N/A' }}" readonly>
                             </div>
                         </div>
                         <div class="form-group row">
                             <label class="col-sm-5 col-form-label">Cargo Volume</label>
                             <div class="col-sm-7">
-                                <input type="text" class="form-control form-control-sm" placeholder="<<cargovolume>>">
+                                <input type="text" class="form-control form-control-sm"
+                                    value="{{ $quotation->cargovolume ?? 'N/A' }}" readonly>
                             </div>
                         </div>
                         <div class="form-group row mb-0">
                             <label class="col-sm-5 col-form-label">Container List</label>
                             <div class="col-sm-7">
                                 <input type="text" class="form-control form-control-sm"
-                                    placeholder="<<containerlist>>">
+                                    value="{{ $quotation->containerlist ?? 'N/A' }}" readonly>
                             </div>
                         </div>
                     </div>
@@ -209,25 +221,33 @@
                             <label class="col-sm-5 col-form-label">Client Status</label>
                             <div class="col-sm-7">
                                 <input type="text" class="form-control form-control-sm"
-                                    placeholder="ClientIntegration">
+                                    value="{{ $quotation->ClientIntegration ?? 'N/A' }}" readonly>
                             </div>
                         </div>
                         <div class="form-group row">
-                            <label class="col-sm-5 col-form-label">Boking No</label>
+                            <label class="col-sm-5 col-form-label">Booking No</label>
                             <div class="col-sm-7">
-                                <input type="text" class="form-control form-control-sm" placeholder="SCMBookingNo">
+                                <input type="text" class="form-control form-control-sm"
+                                    value="{{ $quotation->SCMBookingNo ?? 'N/A' }}" readonly>
                             </div>
                         </div>
                         <div class="form-group row">
                             <label class="col-sm-5 col-form-label">Booking Integration</label>
                             <div class="col-sm-7">
-                                <input type="text" class="form-control form-control-sm" placeholder="SCMINTStatus">
+                                <input type="text" class="form-control form-control-sm"
+                                    value="{{ $quotation->SCMINTStatus ?? 'N/A' }}" readonly>
                             </div>
                         </div>
                         <div class="form-group row mb-0">
                             <label class="col-sm-5 col-form-label">Booking XML</label>
                             <div class="col-sm-7">
-                                <input type="text" class="form-control form-control-sm" placeholder="SCMBookingXML">
+                                @if ($quotation->SCMBookingXML)
+                                    <button type="button" class="btn btn-sm btn-info" id="viewXmlBtn">
+                                        <i class="fas fa-code"></i> View XML
+                                    </button>
+                                @else
+                                    <input type="text" class="form-control form-control-sm" value="N/A" readonly>
+                                @endif
                             </div>
                         </div>
                     </div>
@@ -255,42 +275,42 @@
                                     <label class="col-sm-4 col-form-label">Company</label>
                                     <div class="col-sm-8">
                                         <input type="text" class="form-control form-control-sm"
-                                            placeholder="<< companyname>>">
+                                            value="{{ $quotation->companyname ?? 'N/A' }}" readonly>
                                     </div>
                                 </div>
                                 <div class="form-group row">
                                     <label class="col-sm-4 col-form-label">Address 1</label>
                                     <div class="col-sm-8">
                                         <input type="text" class="form-control form-control-sm"
-                                            placeholder="pri_partner_street">
+                                            value="{{ $quotation->pri_partner_street ?? 'N/A' }}" readonly>
                                     </div>
                                 </div>
                                 <div class="form-group row">
                                     <label class="col-sm-4 col-form-label">City</label>
                                     <div class="col-sm-8">
                                         <input type="text" class="form-control form-control-sm"
-                                            placeholder="pri_partner_city">
+                                            value="{{ $quotation->pri_partner_city ?? 'N/A' }}" readonly>
                                     </div>
                                 </div>
                                 <div class="form-group row">
                                     <label class="col-sm-4 col-form-label">State</label>
                                     <div class="col-sm-8">
                                         <input type="text" class="form-control form-control-sm"
-                                            placeholder="pri_partner_state">
+                                            value="{{ $quotation->pri_partner_state ?? 'N/A' }}" readonly>
                                     </div>
                                 </div>
                                 <div class="form-group row">
                                     <label class="col-sm-4 col-form-label">Contact Person</label>
                                     <div class="col-sm-8">
                                         <input type="text" class="form-control form-control-sm"
-                                            placeholder="pri_partnername">
+                                            value="{{ $quotation->pri_partnername ?? 'N/A' }}" readonly>
                                     </div>
                                 </div>
                                 <div class="form-group row mb-0">
                                     <label class="col-sm-4 col-form-label">Phone No</label>
                                     <div class="col-sm-8">
                                         <input type="text" class="form-control form-control-sm"
-                                            placeholder="pri_partner_phon">
+                                            value="{{ $quotation->pri_partner_phone ?? 'N/A' }}" readonly>
                                     </div>
                                 </div>
                             </div>
@@ -299,48 +319,49 @@
                                     <label class="col-sm-4 col-form-label">Client ID</label>
                                     <div class="col-sm-8">
                                         <input type="text" class="form-control form-control-sm"
-                                            placeholder="<<Client ID>>">
+                                            value="{{ $quotation->clientid ?? 'N/A' }}" readonly>
                                     </div>
                                 </div>
                                 <div class="form-group row">
                                     <label class="col-sm-4 col-form-label">Address 2</label>
                                     <div class="col-sm-8">
                                         <input type="text" class="form-control form-control-sm"
-                                            placeholder="pri_partner_street2">
+                                            value="{{ $quotation->pri_partner_street2 ?? 'N/A' }}" readonly>
                                     </div>
                                 </div>
                                 <div class="form-group row">
                                     <label class="col-sm-4 col-form-label">Zip</label>
                                     <div class="col-sm-8">
                                         <input type="text" class="form-control form-control-sm"
-                                            placeholder="pri_partner_zip">
+                                            value="{{ $quotation->pri_partner_zip ?? 'N/A' }}" readonly>
                                     </div>
                                 </div>
                                 <div class="form-group row">
                                     <label class="col-sm-4 col-form-label">Country</label>
                                     <div class="col-sm-8">
                                         <input type="text" class="form-control form-control-sm"
-                                            placeholder="pri_partner_countryname">
+                                            value="{{ $quotation->pri_partner_countryname ?? 'N/A' }}" readonly>
                                     </div>
                                 </div>
                                 <div class="form-group row">
                                     <label class="col-sm-4 col-form-label">Email ID</label>
                                     <div class="col-sm-8">
                                         <input type="text" class="form-control form-control-sm"
-                                            placeholder="pri_partner_email">
+                                            value="{{ $quotation->pri_partner_email ?? 'N/A' }}" readonly>
                                     </div>
                                 </div>
                                 <div class="form-group row mb-0">
                                     <label class="col-sm-4 col-form-label">Industry</label>
                                     <div class="col-sm-8">
                                         <input type="text" class="form-control form-control-sm"
-                                            placeholder="<<Industryname>>">
+                                            value="{{ $quotation->Industryname ?? 'N/A' }}" readonly>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
+
                 <!-- Revenue -->
                 <div class="card card-success">
                     <div class="card-header">
@@ -368,7 +389,9 @@
                                     </tr>
                                 </thead>
                                 <tbody id="revenueChargesTable">
-                                    <!-- Dynamic rows will be added here -->
+                                    <tr>
+                                        <td colspan="6" class="text-center text-muted">Loading charges...</td>
+                                    </tr>
                                 </tbody>
                                 <tfoot>
                                     <tr class="font-weight-bold">
@@ -410,7 +433,9 @@
                                     </tr>
                                 </thead>
                                 <tbody id="costChargesTable">
-                                    <!-- Dynamic rows will be added here -->
+                                    <tr>
+                                        <td colspan="6" class="text-center text-muted">Loading charges...</td>
+                                    </tr>
                                 </tbody>
                                 <tfoot>
                                     <tr class="font-weight-bold">
@@ -439,30 +464,31 @@
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="form-group row">
-                                    <label class="col-sm-5 col-form-label">Exected Revenue</label>
+                                    <label class="col-sm-5 col-form-label">Expected Revenue</label>
                                     <div class="col-sm-7">
-                                        <input type="text" class="form-control form-control-sm"
-                                            placeholder="expected_" readonly>
+                                        <input type="text" class="form-control form-control-sm" id="expectedRevenue"
+                                            value="0.00" readonly>
                                     </div>
                                 </div>
                                 <div class="form-group row">
                                     <label class="col-sm-5 col-form-label">Quoted Revenue</label>
                                     <div class="col-sm-7">
-                                        <input type="text" class="form-control form-control-sm" placeholder="Based on"
-                                            readonly>
+                                        <input type="text" class="form-control form-control-sm" id="quotedRevenue"
+                                            value="0.00" readonly>
                                     </div>
                                 </div>
                                 <div class="form-group row">
                                     <label class="col-sm-5 col-form-label">Actual Revenue</label>
                                     <div class="col-sm-7">
-                                        <input type="text" class="form-control form-control-sm" placeholder="Blank"
-                                            readonly>
+                                        <input type="text" class="form-control form-control-sm" id="actualRevenue"
+                                            value="N/A" readonly>
                                     </div>
                                 </div>
                                 <div class="form-group row mb-0">
-                                    <label class="col-sm-5 col-form-label">Terms & Condition Section</label>
+                                    <label class="col-sm-5 col-form-label">Terms & Condition</label>
                                     <div class="col-sm-7">
-                                        <input type="text" class="form-control form-control-sm" readonly>
+                                        <input type="text" class="form-control form-control-sm"
+                                            value="{{ $quotation->terms_condition ?? 'N/A' }}" readonly>
                                     </div>
                                 </div>
                             </div>
@@ -470,15 +496,15 @@
                                 <div class="form-group row">
                                     <label class="col-sm-5 col-form-label">Quoted Margin</label>
                                     <div class="col-sm-7">
-                                        <input type="text" class="form-control form-control-sm"
-                                            placeholder="Based on Calculation" readonly>
+                                        <input type="text" class="form-control form-control-sm" id="quotedMargin"
+                                            value="0.00" readonly>
                                     </div>
                                 </div>
                                 <div class="form-group row mb-0">
                                     <label class="col-sm-5 col-form-label">Actual Margin</label>
                                     <div class="col-sm-7">
-                                        <input type="text" class="form-control form-control-sm" placeholder="Blank"
-                                            readonly>
+                                        <input type="text" class="form-control form-control-sm" id="actualMargin"
+                                            value="N/A" readonly>
                                     </div>
                                 </div>
                             </div>
@@ -486,22 +512,22 @@
 
                         <div class="row mt-3">
                             <div class="col-md-12">
-                                <button type="button" class="btn btn-primary">
+                                <button type="button" class="btn btn-primary" id="generateQuoteBtn">
                                     <i class="fas fa-file-alt"></i> Generate Quote
                                 </button>
-                                <button type="button" class="btn btn-primary">
+                                <button type="button" class="btn btn-primary" id="emailQuoteBtn">
                                     <i class="fas fa-envelope"></i> Email Quote
                                 </button>
-                                <a href="#" class="btn btn-link">Close</a>
+                                <a href="{{ route('quotation.index') }}" class="btn btn-link">Close</a>
 
                                 <div class="float-right">
-                                    <button type="button" class="btn btn-warning">
+                                    <button type="button" class="btn btn-warning" id="cancelQuoteBtn">
                                         <i class="fas fa-ban"></i> Cancel
                                     </button>
-                                    <button type="button" class="btn btn-danger">
+                                    <button type="button" class="btn btn-danger" id="lostQuoteBtn">
                                         <i class="fas fa-times"></i> LOST
                                     </button>
-                                    <button type="button" class="btn btn-success">
+                                    <button type="button" class="btn btn-success" id="wonQuoteBtn">
                                         <i class="fas fa-check"></i> WON
                                     </button>
                                 </div>
@@ -513,7 +539,7 @@
             </div>
         </div>
 
-        <!-- MODALS - PLACED OUTSIDE THE ROW/COLUMNS -->
+        <!-- MODALS -->
 
         <!-- Revenue Modal -->
         <div class="modal fade" id="addRevenueModal" tabindex="-1" role="dialog"
@@ -561,13 +587,14 @@
                             <div class="col-md-4">
                                 <div class="form-group">
                                     <label>* Charge Code</label>
-                                    <input type="text" class="form-control form-control-sm">
+                                    <input type="text" class="form-control form-control-sm" name="revenue_charge_code"
+                                        required>
                                 </div>
                             </div>
                             <div class="col-md-4">
                                 <div class="form-group">
                                     <label>Tax Applicable</label>
-                                    <select class="form-control form-control-sm">
+                                    <select class="form-control form-control-sm" name="revenue_tax_applicable">
                                         <option value="">Select</option>
                                     </select>
                                 </div>
@@ -575,7 +602,8 @@
                             <div class="col-md-4">
                                 <div class="form-group">
                                     <label>Description</label>
-                                    <input type="text" class="form-control form-control-sm">
+                                    <input type="text" class="form-control form-control-sm"
+                                        name="revenue_description">
                                 </div>
                             </div>
                         </div>
@@ -584,7 +612,7 @@
                             <div class="col-md-6">
                                 <div class="form-group">
                                     <label>* Based On</label>
-                                    <select class="form-control form-control-sm">
+                                    <select class="form-control form-control-sm" name="revenue_based_on" required>
                                         <option value="">Select</option>
                                     </select>
                                 </div>
@@ -592,7 +620,7 @@
                             <div class="col-md-6">
                                 <div class="form-group">
                                     <label>* Based On UOM</label>
-                                    <select class="form-control form-control-sm">
+                                    <select class="form-control form-control-sm" name="revenue_based_on_uom" required>
                                         <option value="">Select</option>
                                     </select>
                                 </div>
@@ -603,14 +631,14 @@
                             <div class="col-md-6">
                                 <div class="form-group">
                                     <label>Quantity</label>
-                                    <input type="number" class="form-control form-control-sm" value="0"
-                                        step="0.01">
+                                    <input type="number" class="form-control form-control-sm" name="revenue_quantity"
+                                        value="0" step="0.01">
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="form-group">
                                     <label>Remark</label>
-                                    <input type="text" class="form-control form-control-sm">
+                                    <input type="text" class="form-control form-control-sm" name="revenue_remark">
                                 </div>
                             </div>
                         </div>
@@ -619,23 +647,25 @@
                             <div class="col-md-3">
                                 <div class="form-group">
                                     <label>Rate</label>
-                                    <input type="number" class="form-control form-control-sm" value="0"
-                                        step="0.01">
+                                    <input type="number" class="form-control form-control-sm" name="revenue_rate"
+                                        value="0" step="0.01">
                                 </div>
                             </div>
                             <div class="col-md-3">
                                 <div class="form-group">
-                                    <label>&nbsp;</label>
-                                    <select class="form-control form-control-sm">
-                                        <option value="">Select</option>
+                                    <label>Currency</label>
+                                    <select class="form-control form-control-sm" name="revenue_currency">
+                                        <option value="KES" selected>KES</option>
+                                        <option value="USD">USD</option>
+                                        <option value="EUR">EUR</option>
                                     </select>
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="form-group">
                                     <label>Amount</label>
-                                    <input type="number" class="form-control form-control-sm" value="0.00"
-                                        step="0.01" readonly>
+                                    <input type="number" class="form-control form-control-sm" name="revenue_amount"
+                                        value="0.00" step="0.01" readonly>
                                 </div>
                             </div>
                         </div>
@@ -644,15 +674,15 @@
                             <div class="col-md-6">
                                 <div class="form-group">
                                     <label>* Exchange Rate</label>
-                                    <input type="number" class="form-control form-control-sm" value="0.00"
-                                        step="0.01">
+                                    <input type="number" class="form-control form-control-sm"
+                                        name="revenue_exchange_rate" value="1.00" step="0.01" required>
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="form-group">
                                     <label>Amount in Base Currency (KES)</label>
-                                    <input type="number" class="form-control form-control-sm" value="0.00"
-                                        step="0.01" readonly>
+                                    <input type="number" class="form-control form-control-sm" name="revenue_base_amount"
+                                        value="0.00" step="0.01" readonly>
                                 </div>
                             </div>
                         </div>
@@ -660,7 +690,8 @@
                         <div class="row is-accrued-row">
                             <div class="col-md-12">
                                 <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="revenueIsAccrued">
+                                    <input class="form-check-input" type="checkbox" id="revenueIsAccrued"
+                                        name="revenue_is_accrued">
                                     <label class="form-check-label" for="revenueIsAccrued">
                                         Is Accrued <span class="text-muted">(Adds to Cost)</span>
                                     </label>
@@ -706,12 +737,12 @@
                                     </div>
                                     <div class="form-check form-check-inline">
                                         <input class="form-check-input" type="radio" name="costChargeType"
-                                            id="costTypeCost" value="cost">
+                                            id="costTypeCost" value="cost" checked>
                                         <label class="form-check-label" for="costTypeCost">Cost</label>
                                     </div>
                                     <div class="form-check form-check-inline">
                                         <input class="form-check-input" type="radio" name="costChargeType"
-                                            id="costTypeCostMarkup" value="costmarkup" checked>
+                                            id="costTypeCostMarkup" value="costmarkup">
                                         <label class="form-check-label" for="costTypeCostMarkup">Cost with
                                             markup</label>
                                     </div>
@@ -724,18 +755,19 @@
 
                         <hr>
 
-                        <!-- Form fields for Cost with markup -->
+                        <!-- Form fields for Cost -->
                         <div class="row">
                             <div class="col-md-4">
                                 <div class="form-group">
                                     <label>* Charge Code</label>
-                                    <input type="text" class="form-control form-control-sm">
+                                    <input type="text" class="form-control form-control-sm" name="cost_charge_code"
+                                        required>
                                 </div>
                             </div>
                             <div class="col-md-4">
                                 <div class="form-group">
                                     <label>Tax Applicable</label>
-                                    <select class="form-control form-control-sm">
+                                    <select class="form-control form-control-sm" name="cost_tax_applicable">
                                         <option value="">Select</option>
                                     </select>
                                 </div>
@@ -743,7 +775,7 @@
                             <div class="col-md-4">
                                 <div class="form-group">
                                     <label>Description</label>
-                                    <input type="text" class="form-control form-control-sm">
+                                    <input type="text" class="form-control form-control-sm" name="cost_description">
                                 </div>
                             </div>
                         </div>
@@ -752,7 +784,7 @@
                             <div class="col-md-6">
                                 <div class="form-group">
                                     <label>* Based On</label>
-                                    <select class="form-control form-control-sm">
+                                    <select class="form-control form-control-sm" name="cost_based_on" required>
                                         <option value="">Select</option>
                                     </select>
                                 </div>
@@ -760,7 +792,7 @@
                             <div class="col-md-6">
                                 <div class="form-group">
                                     <label>* Based On UOM</label>
-                                    <select class="form-control form-control-sm">
+                                    <select class="form-control form-control-sm" name="cost_based_on_uom" required>
                                         <option value="">Select</option>
                                     </select>
                                 </div>
@@ -771,14 +803,14 @@
                             <div class="col-md-6">
                                 <div class="form-group">
                                     <label>Quantity</label>
-                                    <input type="number" class="form-control form-control-sm" value="0"
-                                        step="0.01">
+                                    <input type="number" class="form-control form-control-sm" name="cost_quantity"
+                                        value="0" step="0.01">
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="form-group">
                                     <label>Remark</label>
-                                    <input type="text" class="form-control form-control-sm">
+                                    <input type="text" class="form-control form-control-sm" name="cost_remark">
                                 </div>
                             </div>
                         </div>
@@ -787,48 +819,51 @@
                             <div class="col-md-3">
                                 <div class="form-group">
                                     <label>Rate</label>
-                                    <input type="number" class="form-control form-control-sm" value="0"
-                                        step="0.01">
+                                    <input type="number" class="form-control form-control-sm" name="cost_rate"
+                                        value="0" step="0.01">
                                 </div>
                             </div>
                             <div class="col-md-3">
                                 <div class="form-group">
-                                    <label>&nbsp;</label>
-                                    <select class="form-control form-control-sm">
-                                        <option value="">Select</option>
+                                    <label>Currency</label>
+                                    <select class="form-control form-control-sm" name="cost_currency">
+                                        <option value="KES" selected>KES</option>
+                                        <option value="USD">USD</option>
+                                        <option value="EUR">EUR</option>
                                     </select>
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="form-group">
                                     <label>Amount</label>
-                                    <input type="number" class="form-control form-control-sm" value="0.00"
-                                        step="0.01" readonly>
+                                    <input type="number" class="form-control form-control-sm" name="cost_amount"
+                                        value="0.00" step="0.01" readonly>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="row increase-by-row">
+                        <div class="row increase-by-row" style="display: none;">
                             <div class="col-md-3">
                                 <div class="form-group">
                                     <label>Increase By</label>
-                                    <input type="number" class="form-control form-control-sm" value="0"
-                                        step="0.01">
+                                    <input type="number" class="form-control form-control-sm" name="cost_increase_by"
+                                        value="0" step="0.01">
                                 </div>
                             </div>
                             <div class="col-md-3">
                                 <div class="form-group">
-                                    <label>&nbsp;</label>
-                                    <select class="form-control form-control-sm">
-                                        <option value="">Select</option>
+                                    <label>Type</label>
+                                    <select class="form-control form-control-sm" name="cost_increase_type">
+                                        <option value="Percentage">Percentage</option>
+                                        <option value="Fixed">Fixed</option>
                                     </select>
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="form-group">
-                                    <label>Amount</label>
-                                    <input type="number" class="form-control form-control-sm" value="0.00"
-                                        step="0.01" readonly>
+                                    <label>Revenue Amount</label>
+                                    <input type="number" class="form-control form-control-sm" name="cost_revenue_amount"
+                                        value="0.00" step="0.01" readonly>
                                 </div>
                             </div>
                         </div>
@@ -837,15 +872,27 @@
                             <div class="col-md-6">
                                 <div class="form-group">
                                     <label>* Exchange Rate</label>
-                                    <input type="number" class="form-control form-control-sm" value="0.00"
-                                        step="0.01">
+                                    <input type="number" class="form-control form-control-sm" name="cost_exchange_rate"
+                                        value="1.00" step="0.01" required>
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="form-group">
                                     <label>Amount in Base Currency (KES)</label>
-                                    <input type="number" class="form-control form-control-sm" value="0.00"
-                                        step="0.01" readonly>
+                                    <input type="number" class="form-control form-control-sm" name="cost_base_amount"
+                                        value="0.00" step="0.01" readonly>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row is-accrued-row">
+                            <div class="col-md-12">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="costIsAccrued"
+                                        name="cost_is_accrued">
+                                    <label class="form-check-label" for="costIsAccrued">
+                                        Is Accrued <span class="text-muted">(Adds to Cost)</span>
+                                    </label>
                                 </div>
                             </div>
                         </div>
@@ -860,6 +907,27 @@
                         <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">
                             <i class="fas fa-times"></i> Cancel
                         </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- XML Viewer Modal -->
+        <div class="modal fade" id="xmlViewerModal" tabindex="-1" role="dialog">
+            <div class="modal-dialog modal-xl" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Booking XML</h5>
+                        <button type="button" class="close" data-dismiss="modal">
+                            <span>&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <pre id="xmlContent"
+                            style="max-height: 500px; overflow-y: auto; background-color: #f4f4f4; padding: 15px; border-radius: 4px;">{{ $quotation->SCMBookingXML ?? 'No XML available' }}</pre>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
                     </div>
                 </div>
             </div>
@@ -1067,24 +1135,90 @@
 @section('js')
     <script>
         $(document).ready(function() {
-            console.log('Booking Quotation View - Page Loaded');
+            console.log('Booking Quotation Edit - Page Loaded');
 
-            // In-memory data storage (no DB calls)
-            var revenueCharges = [];
-            var costCharges = [];
+            // Global variables
+            const bookingNo = '{{ $quotation->bookingno ?? '' }}';
+            const quotationStatus = '{{ $quotation->status ?? 'Proposal' }}';
+            let revenueCharges = [];
+            let costCharges = [];
+            let currentEditingCharge = null;
+            let currentEditingType = null;
+
+            // Debug: Log loaded data
+            console.log('Booking Number:', bookingNo);
+            console.log('Quotation Status:', quotationStatus);
+
+            // ============================================
+            // LOAD EXISTING CHARGES ON PAGE LOAD
+            // ============================================
+            if (bookingNo) {
+                loadCharges();
+            } else {
+                console.error('No booking number found!');
+                showNotification('Cannot load charges: No booking number', 'error');
+            }
+
+            function loadCharges() {
+                console.log('Loading charges for booking:', bookingNo);
+
+                $.ajax({
+                    url: '{{ route('quotation.charges') }}',
+                    type: 'GET',
+                    data: {
+                        booking_no: bookingNo
+                    },
+                    beforeSend: function() {
+                        $('#revenueChargesTable').html(
+                            '<tr><td colspan="6" class="text-center"><i class="fas fa-spinner fa-spin"></i> Loading charges...</td></tr>'
+                        );
+                        $('#costChargesTable').html(
+                            '<tr><td colspan="6" class="text-center"><i class="fas fa-spinner fa-spin"></i> Loading charges...</td></tr>'
+                        );
+                    },
+                    success: function(response) {
+                        console.log('Charges loaded successfully:', response);
+                        if (response.success) {
+                            revenueCharges = response.revenue || [];
+                            costCharges = response.cost || [];
+                            renderRevenueCharges();
+                            renderCostCharges();
+                            updateSummary();
+                        } else {
+                            showNotification('Failed to load charges', 'error');
+                        }
+                    },
+                    error: function(xhr) {
+                        console.error('Failed to load charges:', xhr);
+                        console.error('Status:', xhr.status);
+                        console.error('Response:', xhr.responseText);
+                        showNotification('Failed to load charges: ' + (xhr.responseJSON?.message || xhr.statusText),
+                            'error');
+                        $('#revenueChargesTable').html(
+                            '<tr><td colspan="6" class="text-center text-danger">Failed to load charges</td></tr>'
+                        );
+                        $('#costChargesTable').html(
+                            '<tr><td colspan="6" class="text-center text-danger">Failed to load charges</td></tr>'
+                        );
+                    }
+                });
+            }
 
             // ============================================
             // MODAL TRIGGERS
             // ============================================
-
             $('#openRevenueModal').on('click', function(e) {
                 e.preventDefault();
+                currentEditingCharge = null;
+                currentEditingType = 'revenue';
                 clearRevenueModalForm();
                 $('#addRevenueModal').modal('show');
             });
 
             $('#openCostModal').on('click', function(e) {
                 e.preventDefault();
+                currentEditingCharge = null;
+                currentEditingType = 'cost';
                 clearCostModalForm();
                 $('#addCostModal').modal('show');
             });
@@ -1092,54 +1226,23 @@
             // ============================================
             // MODAL INITIALIZATION
             // ============================================
-
             $('#addRevenueModal').on('show.bs.modal', function() {
-                $('#revenueTypeRevenue').prop('checked', true);
-                toggleRevenueFormFields('revenue');
+                if (!currentEditingCharge) {
+                    $('#revenueTypeRevenue').prop('checked', true);
+                    toggleRevenueFormFields('revenue');
+                }
             });
 
             $('#addCostModal').on('show.bs.modal', function() {
-                $('#costTypeCostMarkup').prop('checked', true);
-                toggleCostFormFields('costmarkup');
-            });
-
-            // ============================================
-            // MODAL CLOSE/CANCEL HANDLERS
-            // ============================================
-
-            // Revenue Modal - Cancel button
-            $('#addRevenueModal .btn-secondary').on('click', function() {
-                $('#addRevenueModal').modal('hide');
-            });
-
-            // Revenue Modal - X close button
-            $('#addRevenueModal .close').on('click', function() {
-                $('#addRevenueModal').modal('hide');
-            });
-
-            // Cost Modal - Cancel button
-            $('#addCostModal .btn-secondary').on('click', function() {
-                $('#addCostModal').modal('hide');
-            });
-
-            // Cost Modal - X close button
-            $('#addCostModal .close').on('click', function() {
-                $('#addCostModal').modal('hide');
-            });
-
-            // Clear forms when modals are closed
-            $('#addRevenueModal').on('hidden.bs.modal', function() {
-                clearRevenueModalForm();
-            });
-
-            $('#addCostModal').on('hidden.bs.modal', function() {
-                clearCostModalForm();
+                if (!currentEditingCharge) {
+                    $('#costTypeCost').prop('checked', true);
+                    toggleCostFormFields('cost');
+                }
             });
 
             // ============================================
             // CHARGE TYPE TOGGLES
             // ============================================
-
             $('input[name="revenueChargeType"]').on('change', function() {
                 toggleRevenueFormFields($(this).val());
             });
@@ -1148,38 +1251,38 @@
                 toggleCostFormFields($(this).val());
             });
 
-            // Function to toggle Revenue modal form fields
             function toggleRevenueFormFields(type) {
-                var $modal = $('#addRevenueModal');
-                var $increaseByRow = $modal.find('.increase-by-row');
-                var $isAccruedCheckbox = $modal.find('.is-accrued-row');
+                const $modal = $('#addRevenueModal');
+                let $increaseByRow = $modal.find('.increase-by-row');
+                const $isAccruedCheckbox = $modal.find('.is-accrued-row');
 
                 if (type === 'costmarkup') {
                     if ($increaseByRow.length === 0) {
-                        var increaseByHtml = `
-                            <div class="row increase-by-row">
-                                <div class="col-md-3">
-                                    <div class="form-group">
-                                        <label>Increase By</label>
-                                        <input type="number" class="form-control form-control-sm revenue-increase-by" value="0" step="0.01">
-                                    </div>
-                                </div>
-                                <div class="col-md-3">
-                                    <div class="form-group">
-                                        <label>&nbsp;</label>
-                                        <select class="form-control form-control-sm">
-                                            <option value="">Select</option>
-                                        </select>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="form-group">
-                                        <label>Amount</label>
-                                        <input type="number" class="form-control form-control-sm" value="0.00" step="0.01" readonly>
-                                    </div>
-                                </div>
+                        const increaseByHtml = `
+                    <div class="row increase-by-row">
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label>Increase By</label>
+                                <input type="number" class="form-control form-control-sm" name="revenue_increase_by" value="0" step="0.01">
                             </div>
-                        `;
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label>Type</label>
+                                <select class="form-control form-control-sm" name="revenue_increase_type">
+                                    <option value="Percentage">Percentage</option>
+                                    <option value="Fixed">Fixed</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>Revenue Amount</label>
+                                <input type="number" class="form-control form-control-sm" name="revenue_markup_amount" value="0.00" step="0.01" readonly>
+                            </div>
+                        </div>
+                    </div>
+                `;
                         $modal.find('.rate-row').after(increaseByHtml);
                     }
                     $increaseByRow = $modal.find('.increase-by-row');
@@ -1194,11 +1297,10 @@
                 }
             }
 
-            // Function to toggle Cost modal form fields
             function toggleCostFormFields(type) {
-                var $modal = $('#addCostModal');
-                var $increaseByRow = $modal.find('.increase-by-row');
-                var $isAccruedCheckbox = $modal.find('.is-accrued-row');
+                const $modal = $('#addCostModal');
+                const $increaseByRow = $modal.find('.increase-by-row');
+                const $isAccruedCheckbox = $modal.find('.is-accrued-row');
 
                 if (type === 'costmarkup') {
                     $increaseByRow.show();
@@ -1219,225 +1321,317 @@
             }
 
             // ============================================
-            // MODAL FORM CLEARING
+            // AUTO-CALCULATE AMOUNTS
             // ============================================
+            // Revenue modal calculations
+            $('#addRevenueModal').on('input',
+                'input[name="revenue_quantity"], input[name="revenue_rate"], input[name="revenue_exchange_rate"]',
+                function() {
+                    calculateRevenueAmount();
+                });
 
-            function clearRevenueModalForm() {
-                $('#addRevenueModal input[type="text"]').val('');
-                $('#addRevenueModal input[type="number"]').val('0');
-                $('#addRevenueModal select').prop('selectedIndex', 0);
-                $('#addRevenueModal input[type="checkbox"]').prop('checked', false);
-                $('#revenueTypeRevenue').prop('checked', true);
-            }
+            $('#addRevenueModal').on('input', 'input[name="revenue_increase_by"]', function() {
+                calculateRevenueAmount();
+            });
 
-            function clearCostModalForm() {
-                $('#addCostModal input[type="text"]').val('');
-                $('#addCostModal input[type="number"]').val('0');
-                $('#addCostModal select').prop('selectedIndex', 0);
-                $('#costTypeCostMarkup').prop('checked', true);
-            }
+            $('#addRevenueModal').on('change', 'select[name="revenue_increase_type"]', function() {
+                calculateRevenueAmount();
+            });
 
-            // ============================================
-            // SAVE CHARGES (REVENUE)
-            // ============================================
+            function calculateRevenueAmount() {
+                const $modal = $('#addRevenueModal');
+                const quantity = parseFloat($modal.find('input[name="revenue_quantity"]').val()) || 0;
+                const rate = parseFloat($modal.find('input[name="revenue_rate"]').val()) || 0;
+                const exchangeRate = parseFloat($modal.find('input[name="revenue_exchange_rate"]').val()) || 1;
 
-            $('#saveRevenueCharge').on('click', function() {
-                var chargeData = getRevenueModalData();
-                if (validateChargeData(chargeData)) {
-                    revenueCharges.push(chargeData);
-                    renderRevenueCharges();
-                    $('#addRevenueModal').modal('hide');
-                    showNotification('Revenue charge added successfully!', 'success');
+                const amount = quantity * rate;
+                const baseAmount = amount * exchangeRate;
+
+                $modal.find('input[name="revenue_amount"]').val(amount.toFixed(2));
+                $modal.find('input[name="revenue_base_amount"]').val(baseAmount.toFixed(2));
+
+                // Calculate markup if cost with markup is selected
+                const chargeType = $modal.find('input[name="revenueChargeType"]:checked').val();
+                if (chargeType === 'costmarkup') {
+                    const increaseBy = parseFloat($modal.find('input[name="revenue_increase_by"]').val()) || 0;
+                    const increaseType = $modal.find('select[name="revenue_increase_type"]').val();
+
+                    let markupAmount = 0;
+                    if (increaseType === 'Percentage') {
+                        markupAmount = amount + (amount * increaseBy / 100);
+                    } else {
+                        markupAmount = amount + increaseBy;
+                    }
+
+                    $modal.find('input[name="revenue_markup_amount"]').val(markupAmount.toFixed(2));
                 }
+            }
+
+            // Cost modal calculations
+            $('#addCostModal').on('input',
+                'input[name="cost_quantity"], input[name="cost_rate"], input[name="cost_exchange_rate"]',
+                function() {
+                    calculateCostAmount();
+                });
+
+            $('#addCostModal').on('input', 'input[name="cost_increase_by"]', function() {
+                calculateCostAmount();
+            });
+
+            $('#addCostModal').on('change', 'select[name="cost_increase_type"]', function() {
+                calculateCostAmount();
+            });
+
+            function calculateCostAmount() {
+                const $modal = $('#addCostModal');
+                const quantity = parseFloat($modal.find('input[name="cost_quantity"]').val()) || 0;
+                const rate = parseFloat($modal.find('input[name="cost_rate"]').val()) || 0;
+                const exchangeRate = parseFloat($modal.find('input[name="cost_exchange_rate"]').val()) || 1;
+
+                const amount = quantity * rate;
+                const baseAmount = amount * exchangeRate;
+
+                $modal.find('input[name="cost_amount"]').val(amount.toFixed(2));
+                $modal.find('input[name="cost_base_amount"]').val(baseAmount.toFixed(2));
+
+                // Calculate markup if cost with markup is selected
+                const chargeType = $modal.find('input[name="costChargeType"]:checked').val();
+                if (chargeType === 'costmarkup') {
+                    const increaseBy = parseFloat($modal.find('input[name="cost_increase_by"]').val()) || 0;
+                    const increaseType = $modal.find('select[name="cost_increase_type"]').val();
+
+                    let markupAmount = 0;
+                    if (increaseType === 'Percentage') {
+                        markupAmount = amount + (amount * increaseBy / 100);
+                    } else {
+                        markupAmount = amount + increaseBy;
+                    }
+
+                    $modal.find('input[name="cost_revenue_amount"]').val(markupAmount.toFixed(2));
+                }
+            }
+
+            // ============================================
+            // SAVE CHARGES
+            // ============================================
+            $('#saveRevenueCharge').on('click', function() {
+                saveCharge('revenue', false);
             });
 
             $('#saveAddMoreRevenueCharge').on('click', function() {
-                var chargeData = getRevenueModalData();
-                if (validateChargeData(chargeData)) {
-                    revenueCharges.push(chargeData);
-                    renderRevenueCharges();
-                    clearRevenueModalForm();
-                    showNotification('Revenue charge added! Add another.', 'success');
-                }
+                saveCharge('revenue', true);
             });
 
-            function getRevenueModalData() {
-                var $modal = $('#addRevenueModal');
-                return {
-                    chargeType: $('input[name="revenueChargeType"]:checked').val(),
-                    chargeName: $modal.find('input[type="text"]').eq(0).val() || 'Untitled Charge',
-                    quantity: parseFloat($modal.find('input[type="number"]').eq(0).val()) || 0,
-                    basedOn: 'Manual',
-                    uom: 'Unit',
-                    rate: parseFloat($modal.find('input[type="number"]').eq(1).val()) || 0,
-                    currency: 'USD',
-                    amount: parseFloat($modal.find('input[type="number"]').eq(1).val()) || 0,
-                    baseAmount: parseFloat($modal.find('input[type="number"]').eq(1).val()) || 0
-                };
-            }
-
-            // ============================================
-            // SAVE CHARGES (COST)
-            // ============================================
-
             $('#saveCostCharge').on('click', function() {
-                var chargeData = getCostModalData();
-                if (validateChargeData(chargeData)) {
-                    costCharges.push(chargeData);
-                    renderCostCharges();
-                    $('#addCostModal').modal('hide');
-                    showNotification('Cost charge added successfully!', 'success');
-                }
+                saveCharge('cost', false);
             });
 
             $('#saveAddMoreCostCharge').on('click', function() {
-                var chargeData = getCostModalData();
-                if (validateChargeData(chargeData)) {
-                    costCharges.push(chargeData);
-                    renderCostCharges();
-                    clearCostModalForm();
-                    showNotification('Cost charge added! Add another.', 'success');
-                }
+                saveCharge('cost', true);
             });
 
-            function getCostModalData() {
-                var $modal = $('#addCostModal');
-                return {
-                    chargeType: $('input[name="costChargeType"]:checked').val(),
-                    chargeName: $modal.find('input[type="text"]').eq(0).val() || 'Untitled Charge',
-                    quantity: parseFloat($modal.find('input[type="number"]').eq(0).val()) || 0,
-                    basedOn: 'Manual',
-                    uom: 'Unit',
-                    rate: parseFloat($modal.find('input[type="number"]').eq(1).val()) || 0,
-                    currency: 'USD',
-                    amount: parseFloat($modal.find('input[type="number"]').eq(1).val()) || 0,
-                    baseAmount: parseFloat($modal.find('input[type="number"]').eq(1).val()) || 0
+            function saveCharge(type, addMore) {
+                const $modal = type === 'revenue' ? $('#addRevenueModal') : $('#addCostModal');
+                const chargeType = $modal.find('input[name="' + type + 'ChargeType"]:checked').val();
+
+                let revenueOrCost = 'Revenue';
+                if (chargeType === 'cost') {
+                    revenueOrCost = 'Cost';
+                } else if (chargeType === 'costmarkup') {
+                    revenueOrCost = 'Cost with Markup';
+                }
+
+                const chargeData = {
+                    _token: '{{ csrf_token() }}',
+                    action: currentEditingCharge ? 'Edit' : 'Add',
+                    booking_no: bookingNo,
+                    quote_charge_id: currentEditingCharge || '',
+                    party_code: '',
+                    revenue_or_cost: revenueOrCost,
+                    charge_code: $modal.find('input[name="' + type + '_charge_code"]').val(),
+                    quantity: parseFloat($modal.find('input[name="' + type + '_quantity"]').val()) || 0,
+                    rate: parseFloat($modal.find('input[name="' + type + '_rate"]').val()) || 0,
+                    amt_in_chg_curr: parseFloat($modal.find('input[name="' + type + '_amount"]').val()) || 0,
+                    amt_in_base_curr: parseFloat($modal.find('input[name="' + type + '_base_amount"]').val()) || 0,
+                    exchange_rate: parseFloat($modal.find('input[name="' + type + '_exchange_rate"]').val()) || 1,
+                    chg_curr: $modal.find('select[name="' + type + '_currency"]').val() || 'KES',
+                    based_on_code: $modal.find('select[name="' + type + '_based_on"]').val() || '',
+                    based_on_uom: $modal.find('select[name="' + type + '_based_on_uom"]').val() || '',
+                    charge_remark: $modal.find('input[name="' + type + '_remark"]').val() || '',
+                    to_be_added: chargeType === 'cost' || chargeType === 'revenue' ? 1 : 0,
+                    increase_by: 0,
+                    increase_type: 'Percentage',
+                    source_type: 'manual'
                 };
+
+                // Handle Cost with Markup
+                if (chargeType === 'costmarkup') {
+                    chargeData.increase_by = parseFloat($modal.find('input[name="' + type + '_increase_by"]').val()) ||
+                        0;
+                    chargeData.increase_type = $modal.find('select[name="' + type + '_increase_type"]').val() ||
+                        'Percentage';
+                }
+
+                // Validation
+                if (!chargeData.charge_code) {
+                    showNotification('Please enter a charge code', 'error');
+                    return;
+                }
+
+                if (!chargeData.based_on_code) {
+                    showNotification('Please select Based On', 'error');
+                    return;
+                }
+
+                console.log('Saving charge:', chargeData);
+
+                $.ajax({
+                    url: '{{ route('quotation.charge.save') }}',
+                    type: 'POST',
+                    data: chargeData,
+                    beforeSend: function() {
+                        $modal.find('.btn').prop('disabled', true);
+                    },
+                    success: function(response) {
+                        console.log('Save response:', response);
+                        if (response.success) {
+                            showNotification(response.message, 'success');
+                            loadCharges();
+
+                            if (addMore) {
+                                clearModalForm(type);
+                            } else {
+                                $modal.modal('hide');
+                            }
+                            currentEditingCharge = null;
+                        } else {
+                            showNotification(response.message, 'error');
+                        }
+                    },
+                    error: function(xhr) {
+                        console.error('Save error:', xhr);
+                        const message = xhr.responseJSON?.message || 'Failed to save charge';
+                        showNotification(message, 'error');
+                    },
+                    complete: function() {
+                        $modal.find('.btn').prop('disabled', false);
+                    }
+                });
             }
 
             // ============================================
-            // VALIDATION
+            // DELETE CHARGES
             // ============================================
+            $(document).on('click', '.delete-revenue-charge, .delete-cost-charge', function() {
+                const chargeId = $(this).data('id');
+                const $btn = $(this);
 
-            function validateChargeData(data) {
-                if (!data.chargeName || data.chargeName === 'Untitled Charge') {
-                    showNotification('Please enter a charge code/name', 'error');
-                    return false;
+                if (!confirm('Are you sure you want to delete this charge?')) {
+                    return;
                 }
-                return true;
+
+                $.ajax({
+                    url: '{{ route('quotation.charge.delete') }}',
+                    type: 'POST',
+                    data: {
+                        _token: '{{ csrf_token() }}',
+                        booking_no: bookingNo,
+                        quote_charge_id: chargeId
+                    },
+                    beforeSend: function() {
+                        $btn.prop('disabled', true);
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            showNotification('Charge deleted successfully', 'success');
+                            loadCharges();
+                        } else {
+                            showNotification(response.message, 'error');
+                        }
+                    },
+                    error: function(xhr) {
+                        showNotification('Failed to delete charge', 'error');
+                    },
+                    complete: function() {
+                        $btn.prop('disabled', false);
+                    }
+                });
+            });
+
+            // ============================================
+            // EDIT CHARGES
+            // ============================================
+            $(document).on('click', '.edit-revenue-charge', function() {
+                const index = $(this).data('index');
+                const charge = revenueCharges[index];
+                currentEditingCharge = charge.id;
+                currentEditingType = 'revenue';
+
+                populateRevenueModal(charge);
+                $('#addRevenueModal').modal('show');
+            });
+
+            $(document).on('click', '.edit-cost-charge', function() {
+                const index = $(this).data('index');
+                const charge = costCharges[index];
+                currentEditingCharge = charge.id;
+                currentEditingType = 'cost';
+
+                populateCostModal(charge);
+                $('#addCostModal').modal('show');
+            });
+
+            function populateRevenueModal(charge) {
+                const $modal = $('#addRevenueModal');
+                $modal.find('input[name="revenue_charge_code"]').val(charge.chargeCode);
+                $modal.find('input[name="revenue_remark"]').val(charge.chargeRemark);
+                $modal.find('input[name="revenue_quantity"]').val(charge.quantity);
+                $modal.find('input[name="revenue_rate"]').val(charge.rate);
+                $modal.find('input[name="revenue_exchange_rate"]').val(charge.exChangeRate);
+                $modal.find('select[name="revenue_currency"]').val(charge.chgCurr);
+                calculateRevenueAmount();
+            }
+
+            function populateCostModal(charge) {
+                const $modal = $('#addCostModal');
+                $modal.find('input[name="cost_charge_code"]').val(charge.chargeCode);
+                $modal.find('input[name="cost_remark"]').val(charge.chargeRemark);
+                $modal.find('input[name="cost_quantity"]').val(charge.quantity);
+                $modal.find('input[name="cost_rate"]').val(charge.rate);
+                $modal.find('input[name="cost_exchange_rate"]').val(charge.exChangeRate);
+                $modal.find('select[name="cost_currency"]').val(charge.chgCurr);
+                calculateCostAmount();
             }
 
             // ============================================
             // RENDER FUNCTIONS
             // ============================================
-
             function renderRevenueCharges() {
-                var tbody = $('#revenueChargesTable');
+                const tbody = $('#revenueChargesTable');
                 tbody.empty();
 
-                var totalAmount = 0;
-                var totalBaseAmount = 0;
+                let totalAmount = 0;
+                let totalBaseAmount = 0;
 
                 if (revenueCharges.length === 0) {
                     tbody.append('<tr><td colspan="6" class="text-center text-muted">No charges added</td></tr>');
                 } else {
                     revenueCharges.forEach(function(charge, index) {
-                        totalAmount += parseFloat(charge.amount);
-                        totalBaseAmount += parseFloat(charge.baseAmount);
+                        totalAmount += parseFloat(charge.amtInChgCurr || 0);
+                        totalBaseAmount += parseFloat(charge.amtInBaseCurr || 0);
 
-                        var row = `
-                <tr>
-                    <td>${charge.chargeName}</td>
-                    <td class="text-right">${parseFloat(charge.rate).toFixed(2)}</td>
-                    <td>${charge.basedOn}</td>
-                    <td class="text-right">${parseFloat(charge.amount).toFixed(2)}</td>
-                    <td class="text-right">${parseFloat(charge.baseAmount).toFixed(2)}</td>
-                    <td class="text-center">
-                        <button type="button" class="btn btn-warning btn-action edit-revenue-charge" data-index="${index}">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                        <button type="button" class="btn btn-danger btn-action delete-revenue-charge" data-index="${index}">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </td>
-                </tr>
-            `;
-                        tbody.append(row);
-                    });
-                }
-
-                $('#totalRevenueAmount').text(totalAmount.toFixed(2));
-                $('#totalRevenueBaseAmount').text(totalBaseAmount.toFixed(2));
-            }
-
-            function renderCostCharges() {
-                var tbody = $('#costChargesTable');
-                tbody.empty();
-
-                var totalAmount = 0;
-                var totalBaseAmount = 0;
-
-                if (costCharges.length === 0) {
-                    tbody.append('<tr><td colspan="6" class="text-center text-muted">No charges added</td></tr>');
-                } else {
-                    costCharges.forEach(function(charge, index) {
-                        totalAmount += parseFloat(charge.amount);
-                        totalBaseAmount += parseFloat(charge.baseAmount);
-
-                        var row = `
-                <tr>
-                    <td>${charge.chargeName}</td>
-                    <td class="text-right">${parseFloat(charge.rate).toFixed(2)}</td>
-                    <td>${charge.basedOn}</td>
-                    <td class="text-right">${parseFloat(charge.amount).toFixed(2)}</td>
-                    <td class="text-right">${parseFloat(charge.baseAmount).toFixed(2)}</td>
-                    <td class="text-center">
-                        <button type="button" class="btn btn-warning btn-action edit-cost-charge" data-index="${index}">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                        <button type="button" class="btn btn-danger btn-action delete-cost-charge" data-index="${index}">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </td>
-                </tr>
-            `;
-                        tbody.append(row);
-                    });
-                }
-
-                $('#totalCostAmount').text(totalAmount.toFixed(2));
-                $('#totalCostBaseAmount').text(totalBaseAmount.toFixed(2));
-            }
-
-            function renderCostCharges() {
-                var tbody = $('#costChargesTable');
-                tbody.empty();
-
-                var totalAmount = 0;
-                var totalBaseAmount = 0;
-
-                if (costCharges.length === 0) {
-                    tbody.append('<tr><td colspan="9" class="text-center text-muted">No charges added</td></tr>');
-                } else {
-                    costCharges.forEach(function(charge, index) {
-                        totalAmount += parseFloat(charge.amount);
-                        totalBaseAmount += parseFloat(charge.baseAmount);
-
-                        var row = `
+                        const row = `
                     <tr>
-                        <td>${charge.chargeName}</td>
-                        <td class="text-right">${parseFloat(charge.quantity).toFixed(2)}</td>
-                        <td>${charge.basedOn}</td>
-                        <td>${charge.uom}</td>
-                        <td class="text-right">${parseFloat(charge.rate).toFixed(2)}</td>
-                        <td>${charge.currency}</td>
-                        <td class="text-right">${parseFloat(charge.amount).toFixed(2)}</td>
-                        <td class="text-right">${parseFloat(charge.baseAmount).toFixed(2)}</td>
+                        <td>${charge.chargeName || charge.chargeCode || 'N/A'}</td>
+                        <td class="text-right">${parseFloat(charge.rate || 0).toFixed(2)}</td>
+                        <td>${charge.basedOn || 'N/A'}</td>
+                        <td class="text-right">${charge.chgCurr || 'KES'} ${parseFloat(charge.amtInChgCurr || 0).toFixed(2)}</td>
+                        <td class="text-right">KES ${parseFloat(charge.amtInBaseCurr || 0).toFixed(2)}</td>
                         <td class="text-center">
-                            <button type="button" class="btn btn-warning btn-action edit-cost-charge" data-index="${index}">
+                            <button type="button" class="btn btn-warning btn-action edit-revenue-charge" data-index="${index}" data-id="${charge.id}" title="Edit">
                                 <i class="fas fa-edit"></i>
                             </button>
-                            <button type="button" class="btn btn-danger btn-action delete-cost-charge" data-index="${index}">
+                            <button type="button" class="btn btn-danger btn-action delete-revenue-charge" data-index="${index}" data-id="${charge.id}" title="Delete">
                                 <i class="fas fa-trash"></i>
                             </button>
                         </td>
@@ -1447,152 +1641,238 @@
                     });
                 }
 
-                $('#totalCostAmount').text(totalAmount.toFixed(2));
-                $('#totalCostBaseAmount').text(totalBaseAmount.toFixed(2));
+                $('#totalRevenueAmount').text('KES ' + totalAmount.toFixed(2));
+                $('#totalRevenueBaseAmount').text('KES ' + totalBaseAmount.toFixed(2));
+            }
+
+            function renderCostCharges() {
+                const tbody = $('#costChargesTable');
+                tbody.empty();
+
+                let totalAmount = 0;
+                let totalBaseAmount = 0;
+
+                if (costCharges.length === 0) {
+                    tbody.append('<tr><td colspan="6" class="text-center text-muted">No charges added</td></tr>');
+                } else {
+                    costCharges.forEach(function(charge, index) {
+                        totalAmount += parseFloat(charge.amtInChgCurr || 0);
+                        totalBaseAmount += parseFloat(charge.amtInBaseCurr || 0);
+
+                        const row = `
+                    <tr>
+                        <td>${charge.chargeName || charge.chargeCode || 'N/A'}</td>
+                        <td class="text-right">${parseFloat(charge.rate || 0).toFixed(2)}</td>
+                        <td>${charge.basedOn || 'N/A'}</td>
+                        <td class="text-right">${charge.chgCurr || 'KES'} ${parseFloat(charge.amtInChgCurr || 0).toFixed(2)}</td>
+                        <td class="text-right">KES ${parseFloat(charge.amtInBaseCurr || 0).toFixed(2)}</td>
+                        <td class="text-center">
+                            <button type="button" class="btn btn-warning btn-action edit-cost-charge" data-index="${index}" data-id="${charge.id}" title="Edit">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button type="button" class="btn btn-danger btn-action delete-cost-charge" data-index="${index}" data-id="${charge.id}" title="Delete">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+                        tbody.append(row);
+                    });
+                }
+
+                $('#totalCostAmount').text('KES ' + totalAmount.toFixed(2));
+                $('#totalCostBaseAmount').text('KES ' + totalBaseAmount.toFixed(2));
             }
 
             // ============================================
-            // DELETE CHARGES
+            // UPDATE SUMMARY
             // ============================================
+            function updateSummary() {
+                const totalRevenue = revenueCharges.reduce((sum, charge) => sum + parseFloat(charge.amtInBaseCurr ||
+                    0), 0);
+                const totalCost = costCharges.reduce((sum, charge) => sum + parseFloat(charge.amtInBaseCurr || 0), 0);
+                const margin = totalRevenue - totalCost;
+                const marginPercentage = totalRevenue > 0 ? (margin / totalRevenue * 100) : 0;
 
-            $(document).on('click', '.delete-revenue-charge', function() {
-                var index = $(this).data('index');
-                if (confirm('Are you sure you want to delete this charge?')) {
-                    revenueCharges.splice(index, 1);
-                    renderRevenueCharges();
-                    showNotification('Revenue charge deleted', 'success');
-                }
-            });
-
-            $(document).on('click', '.delete-cost-charge', function() {
-                var index = $(this).data('index');
-                if (confirm('Are you sure you want to delete this charge?')) {
-                    costCharges.splice(index, 1);
-                    renderCostCharges();
-                    showNotification('Cost charge deleted', 'success');
-                }
-            });
+                $('#quotedRevenue').val('KES ' + totalRevenue.toFixed(2));
+                $('#quotedMargin').val('KES ' + margin.toFixed(2) + ' (' + marginPercentage.toFixed(2) + '%)');
+            }
 
             // ============================================
-            // EDIT CHARGES (PLACEHOLDER)
+            // STATUS UPDATE BUTTONS
             // ============================================
-
-            $(document).on('click', '.edit-revenue-charge', function() {
-                var index = $(this).data('index');
-                showNotification('Edit feature - Coming soon with backend integration', 'info');
-            });
-
-            $(document).on('click', '.edit-cost-charge', function() {
-                var index = $(this).data('index');
-                showNotification('Edit feature - Coming soon with backend integration', 'info');
-            });
-
-            // ============================================
-            // SUMMARY BUTTONS
-            // ============================================
-
-            $('.btn-primary:contains("Generate Quote")').on('click', function(e) {
+            $('#cancelQuoteBtn').on('click', function(e) {
                 e.preventDefault();
-                showNotification('Generate Quote - Feature ready for backend integration', 'info');
+                showStatusModal('Cancel');
             });
 
-            $('.btn-primary:contains("Email Quote")').on('click', function(e) {
+            $('#lostQuoteBtn').on('click', function(e) {
                 e.preventDefault();
-                showNotification('Email Quote - Feature ready for backend integration', 'info');
+                showStatusModal('Lost');
             });
 
-            $('.btn-link:contains("Close")').on('click', function(e) {
-                e.preventDefault();
-                if (confirm('Are you sure you want to close without saving?')) {
-                    window.location.href = '#'; // Update with actual route
-                }
-            });
-
-            $('.btn-warning:contains("Cancel")').on('click', function(e) {
-                e.preventDefault();
-                if (confirm('Are you sure you want to cancel this quotation?')) {
-                    showNotification('Quotation cancelled', 'info');
-                }
-            });
-
-            $('.btn-danger:contains("LOST")').on('click', function(e) {
-                e.preventDefault();
-                if (confirm('Mark this quotation as LOST?')) {
-                    showNotification('Quotation marked as LOST', 'warning');
-                }
-            });
-
-            $('.btn-success:contains("WON")').on('click', function(e) {
+            $('#wonQuoteBtn').on('click', function(e) {
                 e.preventDefault();
                 if (confirm('Mark this quotation as WON?')) {
-                    showNotification('Quotation marked as WON!', 'success');
+                    updateStatus('Won', '', '');
                 }
             });
 
-            // ============================================
-            // SHOW ITEMS TOGGLE
-            // ============================================
+            function showStatusModal(status) {
+                // Create modal dynamically
+                const modalHtml = `
+            <div class="modal fade" id="statusModal" tabindex="-1">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Update Status to ${status}</h5>
+                            <button type="button" class="close" data-dismiss="modal">
+                                <span>&times;</span>
+                            </button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="form-group">
+                                <label>* Reason</label>
+                                <select class="form-control" id="reasonCode" required>
+                                    <option value="">Select Reason</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Remarks</label>
+                                <textarea class="form-control" id="reasonRemark" rows="3"></textarea>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                            <button type="button" class="btn btn-primary" id="confirmStatus">Confirm</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
 
-            $('.show-items-link').on('click', function(e) {
-                e.preventDefault();
-                var $card = $(this).closest('.card');
-                var $tableWrapper = $card.find('.table-responsive');
+                $('body').append(modalHtml);
 
-                if ($tableWrapper.is(':visible')) {
-                    $tableWrapper.slideUp();
-                    $(this).text('Show Items');
-                } else {
-                    $tableWrapper.slideDown();
-                    $(this).text('Hide Items');
-                }
+                // Load reasons
+                $.ajax({
+                    url: '{{ route('quotation.reasons') }}',
+                    type: 'GET',
+                    data: {
+                        reason_type: status
+                    },
+                    success: function(response) {
+                        if (response.success && response.reasons) {
+                            response.reasons.forEach(function(reason) {
+                                $('#reasonCode').append(
+                                    `<option value="${reason.Code}">${reason.Description}</option>`
+                                );
+                            });
+                        }
+                    }
+                });
+
+                $('#statusModal').modal('show');
+
+                $('#confirmStatus').on('click', function() {
+                    const reasonCode = $('#reasonCode').val();
+                    const reasonRemark = $('#reasonRemark').val();
+
+                    if (!reasonCode) {
+                        showNotification('Please select a reason', 'error');
+                        return;
+                    }
+
+                    updateStatus(status, reasonCode, reasonRemark);
+                });
+
+                $('#statusModal').on('hidden.bs.modal', function() {
+                    $(this).remove();
+                });
+            }
+
+            function updateStatus(status, reasonCode, reasonRemark) {
+                $.ajax({
+                    url: '{{ route('quotation.status.update') }}',
+                    type: 'POST',
+                    data: {
+                        _token: '{{ csrf_token() }}',
+                        booking_no: bookingNo,
+                        status: status,
+                        reason_code: reasonCode,
+                        reason_remark: reasonRemark
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            showNotification(response.message, 'success');
+                            $('#statusModal').modal('hide');
+                            setTimeout(function() {
+                                window.location.href = '{{ route('quotation.index') }}';
+                            }, 1500);
+                        } else {
+                            showNotification(response.message, 'error');
+                        }
+                    },
+                    error: function(xhr) {
+                        const message = xhr.responseJSON?.message || 'Failed to update status';
+                        showNotification(message, 'error');
+                    }
+                });
+            }
+
+            // ============================================
+            // XML VIEWER
+            // ============================================
+            $('#viewXmlBtn').on('click', function() {
+                $('#xmlViewerModal').modal('show');
             });
 
             // ============================================
-            // CARD COLLAPSE
+            // GENERATE & EMAIL QUOTE BUTTONS
             // ============================================
-
-            $('[data-card-widget="collapse"]').on('click', function() {
-                var icon = $(this).find('i');
-                icon.toggleClass('fa-chevron-down fa-chevron-up');
+            $('#generateQuoteBtn').on('click', function() {
+                showNotification('Generate Quote functionality coming soon', 'info');
             });
 
-            $('.card').each(function() {
-                var card = $(this);
-                var collapseBtn = card.find('[data-card-widget="collapse"] i');
-
-                if (card.find('.card-body').is(':visible')) {
-                    collapseBtn.removeClass('fa-minus').addClass('fa-chevron-up');
-                } else {
-                    collapseBtn.removeClass('fa-minus').addClass('fa-chevron-down');
-                }
+            $('#emailQuoteBtn').on('click', function() {
+                showNotification('Email Quote functionality coming soon', 'info');
             });
 
-            //Make entire card heaser clickable for collapse
-            $('.card-header').on('click', function(e) {
-                //Don't trigger if clicking the collapse button itself
-                if (!$(e.target).closest('[data-card-widget="collapse"]').length) {
-                    $(this).find('[data-card-widget="collapse"]').click();
-                }
-            })
+            // ============================================
+            // HELPER FUNCTIONS
+            // ============================================
+            function clearModalForm(type) {
+                const $modal = type === 'revenue' ? $('#addRevenueModal') : $('#addCostModal');
+                $modal.find('input[type="text"]').val('');
+                $modal.find('input[type="number"]').val('0');
+                $modal.find('select').prop('selectedIndex', 0);
+                $modal.find('input[type="checkbox"]').prop('checked', false);
+            }
 
-            // ============================================
-            // NOTIFICATIONS
-            // ============================================
+            function clearRevenueModalForm() {
+                clearModalForm('revenue');
+                $('#revenueTypeRevenue').prop('checked', true);
+                toggleRevenueFormFields('revenue');
+            }
+
+            function clearCostModalForm() {
+                clearModalForm('cost');
+                $('#costTypeCost').prop('checked', true);
+                toggleCostFormFields('cost');
+            }
 
             function showNotification(message, type) {
-                var alertClass = 'alert-info';
-                if (type === 'success') alertClass = 'alert-success';
-                if (type === 'error') alertClass = 'alert-danger';
-                if (type === 'warning') alertClass = 'alert-warning';
+                const alertClass = type === 'success' ? 'alert-success' :
+                    type === 'error' ? 'alert-danger' :
+                    type === 'warning' ? 'alert-warning' : 'alert-info';
 
-                var notification = `
-                    <div class="alert ${alertClass} alert-dismissible fade show notification-toast" role="alert" style="position: fixed; top: 20px; right: 20px; z-index: 9999; min-width: 300px;">
-                        <strong>${message}</strong>
-                        <button type="button" class="close" data-dismiss="alert">
-                            <span>&times;</span>
-                        </button>
-                    </div>
-                `;
+                const notification = `
+            <div class="alert ${alertClass} alert-dismissible fade show notification-toast" role="alert" style="position: fixed; top: 20px; right: 20px; z-index: 9999; min-width: 300px;">
+                <strong>${message}</strong>
+                <button type="button" class="close" data-dismiss="alert">
+                    <span>&times;</span>
+                </button>
+            </div>
+        `;
 
                 $('body').append(notification);
 
@@ -1604,27 +1884,44 @@
             }
 
             // ============================================
-            // INITIALIZE
+            // CARD COLLAPSE & SHOW ITEMS
             // ============================================
+            $('.show-items-link').on('click', function(e) {
+                e.preventDefault();
+                const $card = $(this).closest('.card');
+                const $tableWrapper = $card.find('.table-responsive');
 
-            // Collapse all cards by default EXCEPT Revenue and Cost
-            $('.card').not('.card-success, .card-danger').each(function() {
-                var $card = $(this);
-                var $cardBody = $card.find('.card-body');
-                var $icon = $card.find('[data-card-widget="collapse"] i');
-
-                // Hide card body
-                $cardBody.hide();
-
-                // Change icon to down arrow
-                $icon.removeClass('fa-chevron-up').addClass('fa-chevron-down');
-
-                // Add collapsed-card class
-                $card.addClass('collapsed-card');
+                if ($tableWrapper.is(':visible')) {
+                    $tableWrapper.slideUp();
+                    $(this).text('Show Items');
+                } else {
+                    $tableWrapper.slideDown();
+                    $(this).text('Hide Items');
+                }
             });
 
-            renderRevenueCharges();
-            renderCostCharges();
+            $('[data-card-widget="collapse"]').on('click', function() {
+                const icon = $(this).find('i');
+                icon.toggleClass('fa-chevron-down fa-chevron-up');
+            });
+
+            $('.card-header').on('click', function(e) {
+                if (!$(e.target).closest('[data-card-widget="collapse"]').length &&
+                    !$(e.target).closest('.show-items-link').length) {
+                    $(this).find('[data-card-widget="collapse"]').click();
+                }
+            });
+
+            // Initialize collapsed cards (except Revenue and Cost)
+            $('.card').not('.card-success, .card-danger').each(function() {
+                const $card = $(this);
+                const $cardBody = $card.find('.card-body');
+                const $icon = $card.find('[data-card-widget="collapse"] i');
+
+                $cardBody.hide();
+                $icon.removeClass('fa-chevron-up').addClass('fa-chevron-down');
+                $card.addClass('collapsed-card');
+            });
         });
     </script>
 @stop
