@@ -550,7 +550,7 @@
                     <div class="modal-body">
                         <form id="addRevenueChargesForm">
                             <input type="hidden" id="FITExpressChargeID" name="revenue_charge_id" />
-                            
+
                             <!-- Top Row: Revenue/Cost + Base Currency -->
                             <div class="d-flex justify-content-between align-items-center mb-3">
                                 <div>
@@ -567,7 +567,8 @@
                                     <div class="form-check form-check-inline">
                                         <input class="form-check-input" type="radio" name="revenueChargeType"
                                             id="revenueTypeCostMarkup" value="costmarkup">
-                                        <label class="form-check-label" for="revenueTypeCostMarkup">Cost with markup</label>
+                                        <label class="form-check-label" for="revenueTypeCostMarkup">Cost with
+                                            markup</label>
                                     </div>
                                 </div>
                                 <div class="text-end">
@@ -579,21 +580,26 @@
                                 <!-- Left Column -->
                                 <div class="col-md-6">
                                     <div class="mb-3">
-                                        <label for="revenue_charge_code" class="form-label"><span class="text-danger">*</span>
+                                        <label for="revenue_charge_code" class="form-label"><span
+                                                class="text-danger">*</span>
                                             Charge Code</label>
-                                        <input type="text" class="form-control" id="revenue_charge_code" name="revenue_charge_code" required>
+                                        <input type="text" class="form-control" id="revenue_charge_code"
+                                            name="revenue_charge_code" required>
                                     </div>
                                     <div class="mb-3">
-                                        <label for="revenue_bill_to_party" class="form-label"><span class="text-danger">*</span>
+                                        <label for="revenue_bill_to_party" class="form-label">
                                             Bill to Party</label>
-                                        <input type="text" class="form-control" id="revenue_bill_to_party" name="revenue_bill_to_party" required>
+                                        <input type="text" class="form-control" id="revenue_bill_to_party"
+                                            name="revenue_bill_to_party">
                                         <input type="hidden" class="form-control" id="revenue_bill_to_party_code"
                                             name="revenue_bill_to_party_code" />
                                     </div>
                                     <div class="mb-3">
-                                        <label for="revenue_based_on" class="form-label"><span class="text-danger">*</span> Based
+                                        <label for="revenue_based_on" class="form-label"><span
+                                                class="text-danger">*</span> Based
                                             On</label>
-                                        <select class="form-select form-control" id="revenue_based_on" name="revenue_based_on" required>
+                                        <select class="form-select form-control" id="revenue_based_on"
+                                            name="revenue_based_on" required>
                                             <option value="">Select</option>
                                         </select>
                                     </div>
@@ -601,24 +607,26 @@
                                     <!-- Quantity only -->
                                     <div class="mb-3">
                                         <label for="revenue_quantity" class="form-label">Quantity</label>
-                                        <input type="number" class="form-control" id="revenue_quantity" name="revenue_quantity" step="0.01">
+                                        <input type="number" class="form-control" id="revenue_quantity"
+                                            name="revenue_quantity" step="0.01">
                                     </div>
 
-                                    <div class="row mb-3">
+                                    <div class="row mb-3 rate-row">
                                         <div class="col-6">
                                             <label for="revenue_rate" class="form-label">Rate</label>
                                             <div class="input-group">
-                                                <input type="number" class="form-control" id="revenue_rate" name="revenue_rate"
-                                                    step="0.01">
-                                                <select class="form-select form-control" id="revenue_currency" name="revenue_currency">
+                                                <input type="number" class="form-control" id="revenue_rate"
+                                                    name="revenue_rate" step="0.01">
+                                                <select class="form-select form-control" id="revenue_currency"
+                                                    name="revenue_currency">
                                                     <option value="">Select</option>
                                                 </select>
                                             </div>
                                         </div>
                                         <div class="col-6">
                                             <label for="revenue_amount" class="form-label">Amount</label>
-                                            <input type="number" class="form-control" id="revenue_amount" name="revenue_amount" step="0.01"
-                                                value="0.00" readonly>
+                                            <input type="number" class="form-control" id="revenue_amount"
+                                                name="revenue_amount" step="0.01" value="0.00" readonly>
                                         </div>
                                     </div>
 
@@ -626,13 +634,14 @@
                                         <div class="col-6">
                                             <label for="revenue_exchange_rate" class="form-label"><span
                                                     class="text-danger">*</span> Exchange Rate</label>
-                                            <input type="number" class="form-control" id="revenue_exchange_rate" name="revenue_exchange_rate" readonly>
+                                            <input type="number" class="form-control" id="revenue_exchange_rate"
+                                                name="revenue_exchange_rate" readonly>
                                         </div>
                                         <div class="col-6">
                                             <label for="revenue_base_amount" class="form-label text-nowrap">Amount in
                                                 Base Currency <span class="text-muted">(KES)</span></label>
-                                            <input type="number" class="form-control" id="revenue_base_amount" name="revenue_base_amount"
-                                                step="0.01" value="0.00" readonly>
+                                            <input type="number" class="form-control" id="revenue_base_amount"
+                                                name="revenue_base_amount" step="0.01" value="0.00" readonly>
                                         </div>
                                     </div>
                                 </div>
@@ -642,29 +651,34 @@
                                     <!-- Remark moved here -->
                                     <div class="mb-3">
                                         <label for="revenue_description" class="form-label">Description</label>
-                                        <input type="text" class="form-control" id="revenue_description" name="revenue_description" readonly>
+                                        <input type="text" class="form-control" id="revenue_description"
+                                            name="revenue_description" readonly>
                                     </div>
 
                                     <div class="mb-3">
                                         <label for="revenue_tax_applicable" class="form-label">Tax Applicable</label>
-                                        <input type="number" class="form-control" id="revenue_tax_applicable" name="revenue_tax_applicable" step="0.01"
-                                            readonly>
+                                        <input type="number" class="form-control" id="revenue_tax_applicable"
+                                            name="revenue_tax_applicable" step="0.01" readonly>
                                     </div>
                                     <div class="mb-3">
-                                        <label for="revenue_based_on_uom" class="form-label"><span class="text-danger">*</span> Based
+                                        <label for="revenue_based_on_uom" class="form-label"><span
+                                                class="text-danger">*</span> Based
                                             On UOM</label>
-                                        <select class="form-select form-control" id="revenue_based_on_uom" name="revenue_based_on_uom" required>
+                                        <select class="form-select form-control" id="revenue_based_on_uom"
+                                            name="revenue_based_on_uom" required>
                                             <option value="">Select</option>
                                         </select>
                                     </div>
                                     <div class="mb-3">
                                         <label for="revenue_remark" class="form-label">Remark</label>
-                                        <input type="text" class="form-control" id="revenue_remark" name="revenue_remark">
+                                        <input type="text" class="form-control" id="revenue_remark"
+                                            name="revenue_remark">
                                     </div>
 
                                     <!-- Checkboxes -->
                                     <div class="mb-3">
-                                        <div class="form-check mb-2" id="revenueIsReimbursedContainer" style="display:none;">
+                                        <div class="form-check mb-2" id="revenueIsReimbursedContainer"
+                                            style="display:none;">
                                             <input class="form-check-input" type="checkbox" id="revenueIsReimbursed"
                                                 name="revenue_is_reimbursed">
                                             <label class="form-check-label fw-semibold" for="revenueIsReimbursed">
@@ -679,7 +693,8 @@
                                             </label>
                                         </div>
 
-                                        <div class="mb-3" id="revenueSecondaryBillToPartyContainer" style="display:none;">
+                                        <div class="mb-3" id="revenueSecondaryBillToPartyContainer"
+                                            style="display:none;">
                                             <label for="revenueSecondaryBillToParty" class="form-label"><span
                                                     class="text-danger">*</span> Secondary Bill To Party</label>
                                             <input type="text" class="form-control" id="revenueSecondaryBillToParty"
@@ -693,7 +708,8 @@
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-success" id="saveRevenueCharge">Save</button>
-                        <button type="button" class="btn btn-primary" id="saveAddMoreRevenueCharge">Save & Add More</button>
+                        <button type="button" class="btn btn-primary" id="saveAddMoreRevenueCharge">Save & Add
+                            More</button>
                         <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
                     </div>
                 </div>
@@ -714,7 +730,7 @@
                     <div class="modal-body">
                         <form id="addCostChargesForm">
                             <input type="hidden" id="FITExpressChargeIDCost" name="cost_charge_id" />
-                            
+
                             <!-- Top Row: Revenue/Cost + Base Currency -->
                             <div class="d-flex justify-content-between align-items-center mb-3">
                                 <div>
@@ -743,21 +759,26 @@
                                 <!-- Left Column -->
                                 <div class="col-md-6">
                                     <div class="mb-3">
-                                        <label for="cost_charge_code" class="form-label"><span class="text-danger">*</span>
+                                        <label for="cost_charge_code" class="form-label"><span
+                                                class="text-danger">*</span>
                                             Charge Code</label>
-                                        <input type="text" class="form-control" id="cost_charge_code" name="cost_charge_code" required>
+                                        <input type="text" class="form-control" id="cost_charge_code"
+                                            name="cost_charge_code" required>
                                     </div>
                                     <div class="mb-3">
-                                        <label for="cost_bill_to_party" class="form-label"><span class="text-danger">*</span>
+                                        <label for="cost_bill_to_party" class="form-label">
                                             Bill to Party</label>
-                                        <input type="text" class="form-control" id="cost_bill_to_party" name="cost_bill_to_party" required>
+                                        <input type="text" class="form-control" id="cost_bill_to_party"
+                                            name="cost_bill_to_party">
                                         <input type="hidden" class="form-control" id="cost_bill_to_party_code"
                                             name="cost_bill_to_party_code" />
                                     </div>
                                     <div class="mb-3">
-                                        <label for="cost_based_on" class="form-label"><span class="text-danger">*</span> Based
+                                        <label for="cost_based_on" class="form-label"><span class="text-danger">*</span>
+                                            Based
                                             On</label>
-                                        <select class="form-select form-control" id="cost_based_on" name="cost_based_on" required>
+                                        <select class="form-select form-control" id="cost_based_on" name="cost_based_on"
+                                            required>
                                             <option value="">Select</option>
                                         </select>
                                     </div>
@@ -765,24 +786,26 @@
                                     <!-- Quantity only -->
                                     <div class="mb-3">
                                         <label for="cost_quantity" class="form-label">Quantity</label>
-                                        <input type="number" class="form-control" id="cost_quantity" name="cost_quantity" step="0.01">
+                                        <input type="number" class="form-control" id="cost_quantity"
+                                            name="cost_quantity" step="0.01">
                                     </div>
 
-                                    <div class="row mb-3">
+                                    <div class="row mb-3 rate-row">
                                         <div class="col-6">
                                             <label for="cost_rate" class="form-label">Rate</label>
                                             <div class="input-group">
-                                                <input type="number" class="form-control" id="cost_rate" name="cost_rate"
-                                                    step="0.01">
-                                                <select class="form-select form-control" id="cost_currency" name="cost_currency">
+                                                <input type="number" class="form-control" id="cost_rate"
+                                                    name="cost_rate" step="0.01">
+                                                <select class="form-select form-control" id="cost_currency"
+                                                    name="cost_currency">
                                                     <option value="">Select</option>
                                                 </select>
                                             </div>
                                         </div>
                                         <div class="col-6">
                                             <label for="cost_amount" class="form-label">Amount</label>
-                                            <input type="number" class="form-control" id="cost_amount" name="cost_amount" step="0.01"
-                                                value="0.00" readonly>
+                                            <input type="number" class="form-control" id="cost_amount"
+                                                name="cost_amount" step="0.01" value="0.00" readonly>
                                         </div>
                                     </div>
 
@@ -790,13 +813,14 @@
                                         <div class="col-6">
                                             <label for="cost_exchange_rate" class="form-label"><span
                                                     class="text-danger">*</span> Exchange Rate</label>
-                                            <input type="number" class="form-control" id="cost_exchange_rate" name="cost_exchange_rate" readonly>
+                                            <input type="number" class="form-control" id="cost_exchange_rate"
+                                                name="cost_exchange_rate" readonly>
                                         </div>
                                         <div class="col-6">
                                             <label for="cost_base_amount" class="form-label text-nowrap">Amount in
                                                 Base Currency <span class="text-muted">(KES)</span></label>
-                                            <input type="number" class="form-control" id="cost_base_amount" name="cost_base_amount"
-                                                step="0.01" value="0.00" readonly>
+                                            <input type="number" class="form-control" id="cost_base_amount"
+                                                name="cost_base_amount" step="0.01" value="0.00" readonly>
                                         </div>
                                     </div>
                                 </div>
@@ -806,18 +830,21 @@
                                     <!-- Remark moved here -->
                                     <div class="mb-3">
                                         <label for="cost_description" class="form-label">Description</label>
-                                        <input type="text" class="form-control" id="cost_description" name="cost_description" readonly>
+                                        <input type="text" class="form-control" id="cost_description"
+                                            name="cost_description" readonly>
                                     </div>
 
                                     <div class="mb-3">
                                         <label for="cost_tax_applicable" class="form-label">Tax Applicable</label>
-                                        <input type="number" class="form-control" id="cost_tax_applicable" name="cost_tax_applicable" step="0.01"
-                                            readonly>
+                                        <input type="number" class="form-control" id="cost_tax_applicable"
+                                            name="cost_tax_applicable" step="0.01" readonly>
                                     </div>
                                     <div class="mb-3">
-                                        <label for="cost_based_on_uom" class="form-label"><span class="text-danger">*</span> Based
+                                        <label for="cost_based_on_uom" class="form-label"><span
+                                                class="text-danger">*</span> Based
                                             On UOM</label>
-                                        <select class="form-select form-control" id="cost_based_on_uom" name="cost_based_on_uom" required>
+                                        <select class="form-select form-control" id="cost_based_on_uom"
+                                            name="cost_based_on_uom" required>
                                             <option value="">Select</option>
                                         </select>
                                     </div>
@@ -857,7 +884,8 @@
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-success" id="saveCostCharge">Save</button>
-                        <button type="button" class="btn btn-primary" id="saveAddMoreCostCharge">Save & Add More</button>
+                        <button type="button" class="btn btn-primary" id="saveAddMoreCostCharge">Save & Add
+                            More</button>
                         <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
                     </div>
                 </div>
@@ -888,341 +916,360 @@
     </form>
 @stop
 
+@section('css')
+    <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.min.css">
+    <style>
+        /* =============================================
+                       MODAL STYLING — matched to FitExpress UI
+                       ============================================= */
 
-<style>
-    /* =============================================
-       MODAL STYLING — matched to FitExpress UI
-       ============================================= */
+        .modal-header {
+            background-color: #fff !important;
+            color: #000 !important;
+            border-bottom: 1px solid #dee2e6;
+            padding: 1rem 1.5rem;
+        }
 
-    .modal-header {
-        background-color: #fff !important;
-        color: #000 !important;
-        border-bottom: 1px solid #dee2e6;
-        padding: 1rem 1.5rem;
-    }
+        .modal-title {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: #000 !important;
+        }
 
-    .modal-title {
-        font-size: 1.125rem;
-        font-weight: 600;
-        color: #000 !important;
-    }
+        .modal-header .close {
+            color: #000;
+            opacity: 0.5;
+        }
 
-    .modal-header .close {
-        color: #000;
-        opacity: 0.5;
-    }
+        .modal-header .close:hover {
+            opacity: 0.75;
+        }
 
-    .modal-header .close:hover {
-        opacity: 0.75;
-    }
+        .modal-body {
+            padding: 1.5rem;
+            background-color: #fff;
+        }
 
-    .modal-body {
-        padding: 1.5rem;
-        background-color: #fff;
-    }
+        .modal-footer {
+            background-color: #fff;
+            border-top: 1px solid #dee2e6;
+            padding: 1rem 1.5rem;
+        }
 
-    .modal-footer {
-        background-color: #fff;
-        border-top: 1px solid #dee2e6;
-        padding: 1rem 1.5rem;
-    }
+        /* Top charge-type row */
+        .modal-body .charge-type-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
 
-    /* Top charge-type row */
-    .modal-body .charge-type-row {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 1rem;
-    }
+        /* Form labels */
+        .modal-body label {
+            font-weight: 400;
+            margin-bottom: 0.25rem;
+            font-size: 0.875rem;
+            color: #495057;
+            display: block;
+        }
 
-    /* Form labels */
-    .modal-body label {
-        font-weight: 400;
-        margin-bottom: 0.25rem;
-        font-size: 0.875rem;
-        color: #495057;
-        display: block;
-    }
+        .modal-body label .text-danger {
+            color: #dc3545 !important;
+        }
 
-    .modal-body label .text-danger {
-        color: #dc3545 !important;
-    }
+        /* mb-3 spacing inside modal */
+        .modal-body .mb-3 {
+            margin-bottom: 1rem !important;
+        }
 
-    /* mb-3 spacing inside modal */
-    .modal-body .mb-3 {
-        margin-bottom: 1rem !important;
-    }
+        /* Standard form controls inside modal */
+        .modal-body .form-control,
+        .modal-body .form-select,
+        .modal-body select.form-control {
+            border: 1px solid #ced4da;
+            background-color: #fff;
+            font-size: 0.875rem;
+            padding: 0.375rem 0.75rem;
+            height: calc(1.5em + 0.75rem + 2px);
+            border-radius: 0.25rem;
+            width: 100%;
+        }
 
-    /* Standard form controls inside modal */
-    .modal-body .form-control,
-    .modal-body .form-select,
-    .modal-body select.form-control {
-        border: 1px solid #ced4da;
-        background-color: #fff;
-        font-size: 0.875rem;
-        padding: 0.375rem 0.75rem;
-        height: calc(1.5em + 0.75rem + 2px);
-        border-radius: 0.25rem;
-        width: 100%;
-    }
+        .modal-body .form-control:focus,
+        .modal-body select.form-control:focus {
+            border-color: #80bdff;
+            outline: 0;
+            box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+        }
 
-    .modal-body .form-control:focus,
-    .modal-body select.form-control:focus {
-        border-color: #80bdff;
-        outline: 0;
-        box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
-    }
+        .modal-body .form-control[readonly] {
+            background-color: #e9ecef;
+            cursor: not-allowed;
+            border: 1px solid #ced4da;
+            padding: 0.375rem 0.75rem;
+            font-weight: 400;
+            color: #495057;
+        }
 
-    .modal-body .form-control[readonly] {
-        background-color: #e9ecef;
-        cursor: not-allowed;
-        border: 1px solid #ced4da;
-        padding: 0.375rem 0.75rem;
-        font-weight: 400;
-        color: #495057;
-    }
+        .modal-body .form-control[readonly]:focus {
+            outline: none;
+            box-shadow: none;
+        }
 
-    .modal-body .form-control[readonly]:focus {
-        outline: none;
-        box-shadow: none;
-    }
+        /* Input group — rate + currency */
+        .modal-body .input-group {
+            display: flex;
+            width: 100%;
+        }
 
-    /* Input group — rate + currency */
-    .modal-body .input-group {
-        display: flex;
-        width: 100%;
-    }
+        .modal-body .input-group .form-control {
+            border-radius: 0.25rem 0 0 0.25rem;
+            flex: 1;
+        }
 
-    .modal-body .input-group .form-control {
-        border-radius: 0.25rem 0 0 0.25rem;
-        flex: 1;
-    }
+        .modal-body .input-group select.form-control {
+            border-radius: 0 0.25rem 0.25rem 0;
+            border-left: 0;
+            flex: 0 0 auto;
+            width: auto;
+            min-width: 80px;
+        }
 
-    .modal-body .input-group select.form-control {
-        border-radius: 0 0.25rem 0.25rem 0;
-        border-left: 0;
-        flex: 0 0 auto;
-        width: auto;
-        min-width: 80px;
-    }
+        /* Radio buttons */
+        .modal-body .form-check-inline {
+            margin-right: 1rem;
+            display: inline-flex;
+            align-items: center;
+        }
 
-    /* Radio buttons */
-    .modal-body .form-check-inline {
-        margin-right: 1rem;
-        display: inline-flex;
-        align-items: center;
-    }
+        .modal-body .form-check-input {
+            margin-top: 0;
+            margin-right: 0.5rem;
+        }
 
-    .modal-body .form-check-input {
-        margin-top: 0;
-        margin-right: 0.5rem;
-    }
+        .modal-body .form-check-label {
+            margin-bottom: 0;
+            font-size: 0.875rem;
+            font-weight: 400;
+        }
 
-    .modal-body .form-check-label {
-        margin-bottom: 0;
-        font-size: 0.875rem;
-        font-weight: 400;
-    }
+        /* Checkbox labels — semibold with small muted */
+        .modal-body .form-check .fw-semibold {
+            font-weight: 600;
+            font-size: 0.875rem;
+        }
 
-    /* Checkbox labels — semibold with small muted */
-    .modal-body .form-check .fw-semibold {
-        font-weight: 600;
-        font-size: 0.875rem;
-    }
+        .modal-body .form-check .fw-semibold small {
+            font-weight: 400;
+            font-size: 0.75rem;
+        }
 
-    .modal-body .form-check .fw-semibold small {
-        font-weight: 400;
-        font-size: 0.75rem;
-    }
+        .modal-body .text-muted {
+            color: #6c757d !important;
+            font-size: 0.875rem;
+        }
 
-    .modal-body .text-muted {
-        color: #6c757d !important;
-        font-size: 0.875rem;
-    }
+        .modal-body .text-muted strong {
+            font-weight: 600;
+            color: #495057;
+        }
 
-    .modal-body .text-muted strong {
-        font-weight: 600;
-        color: #495057;
-    }
+        .modal-body hr {
+            margin: 1rem 0;
+            border-top: 1px solid #dee2e6;
+        }
 
-    .modal-body hr {
-        margin: 1rem 0;
-        border-top: 1px solid #dee2e6;
-    }
+        /* Secondary Bill To Party */
+        #secondaryBillToPartyContainerRevenue,
+        #secondaryBillToPartyContainerCost {
+            display: none;
+            margin-top: 1rem;
+        }
 
-    /* Secondary Bill To Party */
-    #secondaryBillToPartyContainerRevenue,
-    #secondaryBillToPartyContainerCost {
-        display: none;
-        margin-top: 1rem;
-    }
+        /* Modal footer buttons */
+        .modal-footer .btn {
+            font-size: 0.875rem;
+            padding: 0.375rem 0.75rem;
+            font-weight: 400;
+            border-radius: 0.25rem;
+        }
 
-    /* Modal footer buttons */
-    .modal-footer .btn {
-        font-size: 0.875rem;
-        padding: 0.375rem 0.75rem;
-        font-weight: 400;
-        border-radius: 0.25rem;
-    }
+        .modal-footer .btn-success {
+            background-color: #28a745;
+            border-color: #28a745;
+            color: #fff;
+        }
 
-    .modal-footer .btn-success {
-        background-color: #28a745;
-        border-color: #28a745;
-        color: #fff;
-    }
+        .modal-footer .btn-success:hover {
+            background-color: #218838;
+            border-color: #1e7e34;
+        }
 
-    .modal-footer .btn-success:hover {
-        background-color: #218838;
-        border-color: #1e7e34;
-    }
+        .modal-footer .btn-primary {
+            background-color: #007bff;
+            border-color: #007bff;
+            color: #fff;
+        }
 
-    .modal-footer .btn-primary {
-        background-color: #007bff;
-        border-color: #007bff;
-        color: #fff;
-    }
+        .modal-footer .btn-primary:hover {
+            background-color: #0069d9;
+            border-color: #0062cc;
+        }
 
-    .modal-footer .btn-primary:hover {
-        background-color: #0069d9;
-        border-color: #0062cc;
-    }
+        .modal-footer .btn-secondary {
+            background-color: #6c757d;
+            border-color: #6c757d;
+            color: #fff;
+        }
 
-    .modal-footer .btn-secondary {
-        background-color: #6c757d;
-        border-color: #6c757d;
-        color: #fff;
-    }
+        .modal-footer .btn-secondary:hover {
+            background-color: #5a6268;
+            border-color: #545b62;
+        }
 
-    .modal-footer .btn-secondary:hover {
-        background-color: #5a6268;
-        border-color: #545b62;
-    }
+        /* Increase-by row (for costmarkup mode) */
+        .increase-by-row {
+            display: none;
+        }
 
-    /* Increase-by row (for costmarkup mode) */
-    .increase-by-row {
-        display: none;
-    }
+        /* General form styling */
+        .form-control-sm {
+            height: calc(1.5em + 0.5rem + 2px);
+            padding: 0.25rem 0.5rem;
+            font-size: 0.875rem;
+        }
 
-    /* General form styling */
-    .form-control-sm {
-        height: calc(1.5em + 0.5rem + 2px);
-        padding: 0.25rem 0.5rem;
-        font-size: 0.875rem;
-    }
+        /* Autocomplete dropdown */
+        /* Autocomplete dropdown */
+        .ui-autocomplete {
+            z-index: 99999 !important;
+            /* Increased from 9999 */
+            max-height: 300px;
+            overflow-y: auto;
+            background: white;
+            border: 1px solid #ced4da;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
 
-    /* Autocomplete dropdown */
-    .ui-autocomplete {
-        z-index: 9999 !important;
-        max-height: 300px;
-        overflow-y: auto;
-    }
+        .ui-menu-item {
+            padding: 8px 12px;
+            cursor: pointer;
+            list-style: none;
+        }
 
-    .ui-autocomplete .ui-state-disabled {
-        color: #999;
-        font-style: italic;
-        cursor: not-allowed;
-        pointer-events: none;
-    }
+        .ui-menu-item:hover,
+        .ui-state-focus {
+            background-color: #f0f0f0;
+        }
 
-    .ui-autocomplete .ui-state-disabled div {
-        padding: 8px 12px;
-    }
+        .ui-autocomplete .ui-state-disabled {
+            color: #999;
+            font-style: italic;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
 
-    /* Revenue and Cost table styling */
-    .table-responsive {
-        overflow-x: auto;
-    }
+        .ui-autocomplete .ui-state-disabled div {
+            padding: 8px 12px;
+        }
 
-    .table-hover tbody tr:hover {
-        background-color: #f5f5f5;
-    }
+        /* Revenue and Cost table styling */
+        .table-responsive {
+            overflow-x: auto;
+        }
 
-    .thead-light th {
-        background-color: #e9ecef;
-        border-color: #dee2e6;
-        font-weight: 600;
-        font-size: 0.85rem;
-    }
+        .table-hover tbody tr:hover {
+            background-color: #f5f5f5;
+        }
 
-    .table-sm th,
-    .table-sm td {
-        padding: 0.4rem;
-        vertical-align: middle;
-        font-size: 0.85rem;
-    }
+        .thead-light th {
+            background-color: #e9ecef;
+            border-color: #dee2e6;
+            font-weight: 600;
+            font-size: 0.85rem;
+        }
 
-    .table tfoot td {
-        background-color: #f8f9fa;
-        border-top: 2px solid #dee2e6;
-    }
+        .table-sm th,
+        .table-sm td {
+            padding: 0.4rem;
+            vertical-align: middle;
+            font-size: 0.85rem;
+        }
 
-    .btn-action {
-        padding: 0.15rem 0.4rem;
-        font-size: 0.75rem;
-    }
+        .table tfoot td {
+            background-color: #f8f9fa;
+            border-top: 2px solid #dee2e6;
+        }
 
-    /* Card styling */
-    .card-primary>.card-header,
-    .card.card-primary>.card-header {
-        background-color: #513d6b !important;
-        color: white !important;
-    }
+        .btn-action {
+            padding: 0.15rem 0.4rem;
+            font-size: 0.75rem;
+        }
 
-    .card-success>.card-header,
-    .card.card-success>.card-header {
-        background-color: #513d6b !important;
-        color: white !important;
-    }
+        /* Card styling */
+        .card-primary>.card-header,
+        .card.card-primary>.card-header {
+            background-color: #513d6b !important;
+            color: white !important;
+        }
 
-    .card-danger>.card-header,
-    .card.card-danger>.card-header {
-        background-color: #513d6b !important;
-        color: white !important;
-    }
+        .card-success>.card-header,
+        .card.card-success>.card-header {
+            background-color: #513d6b !important;
+            color: white !important;
+        }
 
-    .card-tools a {
-        text-decoration: underline;
-    }
+        .card-danger>.card-header,
+        .card.card-danger>.card-header {
+            background-color: #513d6b !important;
+            color: white !important;
+        }
 
-    .card-tools a:hover {
-        opacity: 0.8;
-    }
+        .card-tools a {
+            text-decoration: underline;
+        }
 
-    /* Buttons */
-    .btn-primary {
-        background-color: #5b9bd5;
-        border-color: #5b9bd5;
-    }
+        .card-tools a:hover {
+            opacity: 0.8;
+        }
 
-    .btn-primary:hover {
-        background-color: #4a8bc2;
-        border-color: #4a8bc2;
-    }
+        /* Buttons */
+        .btn-primary {
+            background-color: #5b9bd5;
+            border-color: #5b9bd5;
+        }
 
-    .btn-warning {
-        background-color: #ed7d31;
-        border-color: #ed7d31;
-        color: white;
-    }
+        .btn-primary:hover {
+            background-color: #4a8bc2;
+            border-color: #4a8bc2;
+        }
 
-    .btn-warning:hover {
-        background-color: #d96b28;
-        border-color: #d96b28;
-        color: white;
-    }
+        .btn-warning {
+            background-color: #ed7d31;
+            border-color: #ed7d31;
+            color: white;
+        }
 
-    .btn-success {
-        background-color: #a9d08e;
-        border-color: #a9d08e;
-        color: white;
-    }
+        .btn-warning:hover {
+            background-color: #d96b28;
+            border-color: #d96b28;
+            color: white;
+        }
 
-    .btn-success:hover {
-        background-color: #95bb7a;
-        border-color: #95bb7a;
-        color: white;
-    }
-</style>
+        .btn-success {
+            background-color: #a9d08e;
+            border-color: #a9d08e;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background-color: #95bb7a;
+            border-color: #95bb7a;
+            color: white;
+        }
+    </style>
+@stop
+
 
 
 @section('js')
@@ -1402,9 +1449,13 @@
                     $('#revenueTypeRevenue').prop('checked', true);
                     toggleRevenueFormFields('revenue');
                     loadBasedOnList('revenue');
-                    populateCurrencyDropdown('revenue'); // NEW: Load currencies
+                    populateCurrencyDropdown('revenue');
                 }
-                initializeChargeCodeAutocomplete('revenue');
+
+                // Initialize autocomplete with a small delay to ensure modal is fully rendered
+                setTimeout(function() {
+                    initializeChargeCodeAutocomplete('revenue');
+                }, 100);
             });
 
             $('#addCostModal').on('shown.bs.modal', function() {
@@ -1412,9 +1463,13 @@
                     $('#costTypeCost').prop('checked', true);
                     toggleCostFormFields('cost');
                     loadBasedOnList('cost');
-                    populateCurrencyDropdown('cost'); // NEW: Load currencies
+                    populateCurrencyDropdown('cost');
                 }
-                initializeChargeCodeAutocomplete('cost');
+
+                // Initialize autocomplete with a small delay to ensure modal is fully rendered
+                setTimeout(function() {
+                    initializeChargeCodeAutocomplete('cost');
+                }, 100);
             });
 
             // ============================================
@@ -1750,57 +1805,75 @@
             function toggleRevenueFormFields(type) {
                 const $modal = $('#addRevenueModal');
                 let $increaseByRow = $modal.find('.increase-by-row');
-                const $isAccruedCheckbox = $modal.find('.is-accrued-row');
+                const $isReimbursedContainer = $('#revenueIsReimbursedContainer'); // FIX THIS
 
                 if (type === 'costmarkup') {
                     if ($increaseByRow.length === 0) {
                         const increaseByHtml = `
-                            <div class="row increase-by-row">
-                                <div class="col-md-3">
-                                    <div class="form-group">
-                                        <label>Increase By</label>
-                                        <input type="number" class="form-control form-control-sm" name="revenue_increase_by" value="0" step="0.01">
-                                    </div>
-                                </div>
-                                <div class="col-md-3">
-                                    <div class="form-group">
-                                        <label>Type</label>
-                                        <select class="form-control form-control-sm" name="revenue_increase_type">
-                                            <option value="Percentage">Percentage</option>
-                                            <option value="Fixed">Fixed</option>
-                                        </select>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="form-group">
-                                        <label>Revenue Amount</label>
-                                        <input type="number" class="form-control form-control-sm" name="revenue_markup_amount" value="0.00" step="0.01" readonly>
-                                    </div>
-                                </div>
-                            </div>
-                        `;
+                <div class="row mb-3 increase-by-row">
+                    <div class="col-6">
+                        <label for="revenue_increase_by" class="form-label">Increase By</label>
+                        <div class="input-group">
+                            <input type="number" class="form-control" id="revenue_increase_by" name="revenue_increase_by" step="0.01">
+                            <select class="form-select form-control" id="revenue_increase_type" name="revenue_increase_type">
+                                <option value="Percentage">Percentage</option>
+                                <option value="Fixed">Fixed</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <label for="revenue_markup_amount" class="form-label">Amount</label>
+                        <input type="number" class="form-control" id="revenue_markup_amount" name="revenue_markup_amount" step="0.01" value="0.00" readonly>
+                    </div>
+                </div>
+            `;
                         $modal.find('.rate-row').after(increaseByHtml);
                     }
                     $increaseByRow = $modal.find('.increase-by-row');
                     $increaseByRow.show();
-                    $isAccruedCheckbox.hide();
-                } else {
+                    $isReimbursedContainer.hide(); // Hide "Is Reimbursed" for markup
+                } else if (type === 'cost') {
                     $increaseByRow.hide();
-                    $isAccruedCheckbox.show();
+                    $isReimbursedContainer.show(); // Show "Is Reimbursed" for cost
+                } else { // revenue
+                    $increaseByRow.hide();
+                    $isReimbursedContainer.hide(); // Hide for revenue
                 }
             }
 
             function toggleCostFormFields(type) {
                 const $modal = $('#addCostModal');
-                const $increaseByRow = $modal.find('.increase-by-row');
-                const $isAccruedCheckbox = $modal.find('.is-accrued-row');
+                let $increaseByRow = $modal.find('.increase-by-row');
+                const $isReimbursedContainer = $('#costIsReimbursed').closest('.form-check');
 
                 if (type === 'costmarkup') {
+                    if ($increaseByRow.length === 0) {
+                        const increaseByHtml = `
+                <div class="row mb-3 increase-by-row">
+                    <div class="col-6">
+                        <label for="cost_increase_by" class="form-label">Increase By</label>
+                        <div class="input-group">
+                            <input type="number" class="form-control" id="cost_increase_by" name="cost_increase_by" step="0.01">
+                            <select class="form-select form-control" id="cost_increase_type" name="cost_increase_type">
+                                <option value="Percentage">Percentage</option>
+                                <option value="Fixed">Fixed</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <label for="cost_markup_amount" class="form-label">Amount</label>
+                        <input type="number" class="form-control" id="cost_markup_amount" name="cost_markup_amount" step="0.01" value="0.00" readonly>
+                    </div>
+                </div>
+            `;
+                        $modal.find('.rate-row').after(increaseByHtml);
+                    }
+                    $increaseByRow = $modal.find('.increase-by-row');
                     $increaseByRow.show();
-                    $isAccruedCheckbox.hide();
+                    $isReimbursedContainer.hide();
                 } else {
                     $increaseByRow.hide();
-                    $isAccruedCheckbox.show();
+                    $isReimbursedContainer.show();
                 }
             }
 

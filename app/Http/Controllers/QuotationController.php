@@ -938,9 +938,6 @@ class QuotationController extends Controller
         }
     }
 
-    /**
-     * Get office code from team ID
-     */
     public function getOfficeCode(Request $request)
     {
         try {
@@ -955,11 +952,13 @@ class QuotationController extends Controller
                 ], 400);
             }
 
-            // Try to find office by TeamId
+            // ✅ FIX: Use TeamCode (int column), not TeamId
             $office = DB::connection('sqlsrv')
                 ->table('Cust_Office')
-                ->where('TeamId', $teamId)
-                ->select('Code', 'TeamId')
+                ->where('TeamCode', $teamId)           // ✅ Changed from TeamId
+                ->where('IsActive', 1)                 // ✅ Added active filter
+                ->where('IsDeleted', 0)                // ✅ Added deleted filter
+                ->select('Code', 'TeamCode')           // ✅ Changed from TeamId
                 ->first();
 
             Log::info('Office lookup result', [
@@ -979,7 +978,9 @@ class QuotationController extends Controller
                 if ($quotation) {
                     $office = DB::connection('sqlsrv')
                         ->table('Cust_Office')
-                        ->where('TeamId', $quotation->teamid)
+                        ->where('TeamCode', $quotation->teamid)  // ✅ Changed from TeamId
+                        ->where('IsActive', 1)
+                        ->where('IsDeleted', 0)
                         ->select('Code')
                         ->first();
                 }
@@ -1027,18 +1028,22 @@ class QuotationController extends Controller
                 ], 400);
             }
 
-            // Call stored procedure to get currencies
-            $pdo = DB::connection('sqlsrv')->getPdo();
-            $stmt = $pdo->prepare("EXEC sp_GetCurrencyByOffice ?");
-            $stmt->execute([$officeCode]);
-
-            $currencies = [];
-            do {
-                $results = $stmt->fetchAll(\PDO::FETCH_OBJ);
-                if (!empty($results)) {
-                    $currencies = array_merge($currencies, $results);
-                }
-            } while ($stmt->nextRowset());
+            // Query FITSCMUAT database (where currency data lives)
+            $currencies = DB::connection('sqlsrv')
+                ->select("
+                SELECT DISTINCT CC.Id as CurrencyID, CC.Code as CurrencyCode, CC.Name as CurrencyName
+                FROM [FITSCMUAT].dbo.Cust_Office CO WITH (NOLOCK)
+                INNER JOIN [FITSCMUAT].dbo.Bill_ChargeCodeOfficeMap BCO WITH (NOLOCK) 
+                    ON BCO.OfficeId = CO.Id AND BCO.IsActive = 1
+                INNER JOIN [FITSCMUAT].dbo.Cust_Currency CC WITH (NOLOCK) 
+                    ON CC.Id = BCO.DefaultCurrencyId
+                WHERE CO.Code = ?
+                    AND CO.IsActive = 1 
+                    AND CO.IsDeleted = 0
+                    AND CC.IsActive = 1 
+                    AND CC.IsDeleted = 0
+                ORDER BY CC.Code
+            ", [trim($officeCode)]);
 
             Log::info('Currencies fetched', [
                 'office_code' => $officeCode,
@@ -1066,6 +1071,9 @@ class QuotationController extends Controller
     /**
      * Get exchange rate for currency
      */
+    /**
+     * Get exchange rate for currency
+     */
     public function getExchangeRate(Request $request)
     {
         try {
@@ -1084,21 +1092,31 @@ class QuotationController extends Controller
                 ], 400);
             }
 
-            // Call stored procedure to get exchange rate
-            $pdo = DB::connection('sqlsrv')->getPdo();
-            $stmt = $pdo->prepare("EXEC sp_GetExchangeRate ?, ?");
-            $stmt->execute([$officeCode, $fromCurrency]);
+            // Query FITSCMUAT database (where exchange rate data lives)
+            $result = DB::connection('sqlsrv')
+                ->select("
+                SELECT TOP 1 ER.ExchangeRate as ExRate
+                FROM [FITSCMUAT].dbo.Cust_Office CO WITH (NOLOCK)
+                INNER JOIN [FITSCMUAT].dbo.Cust_ExchangeRate ER WITH (NOLOCK) 
+                    ON ER.OfficeId = CO.Id
+                    AND ER.FromCurrencyCode = ?
+                    AND CAST(GETDATE() AS DATE) BETWEEN ER.FromDate AND ER.ToDate
+                    AND ER.IsActive = 1 
+                    AND ER.IsDeleted = 0
+                WHERE CO.Code = ?
+                    AND CO.IsActive = 1 
+                    AND CO.IsDeleted = 0
+                ORDER BY ER.FromDate DESC
+            ", [$fromCurrency, trim($officeCode)]);
 
-            $result = $stmt->fetch(\PDO::FETCH_OBJ);
-
-            if (!$result || !isset($result->ExRate)) {
+            if (empty($result) || !isset($result[0]->ExRate)) {
                 Log::warning('Exchange rate not found', [
                     'office_code' => $officeCode,
                     'from_currency' => $fromCurrency
                 ]);
 
                 return response()->json([
-                    'success' => true, // Changed to true with fallback
+                    'success' => true,
                     'message' => 'Exchange rate not found, using default',
                     'exchange_rate' => 1.000000
                 ]);
@@ -1107,12 +1125,12 @@ class QuotationController extends Controller
             Log::info('Exchange rate fetched', [
                 'office_code' => $officeCode,
                 'from_currency' => $fromCurrency,
-                'rate' => $result->ExRate
+                'rate' => $result[0]->ExRate
             ]);
 
             return response()->json([
                 'success' => true,
-                'exchange_rate' => floatval($result->ExRate)
+                'exchange_rate' => floatval($result[0]->ExRate)
             ]);
         } catch (\Exception $e) {
             Log::error('Failed to get exchange rate', [
@@ -1123,7 +1141,7 @@ class QuotationController extends Controller
             ]);
 
             return response()->json([
-                'success' => true, // Changed to true with fallback
+                'success' => true,
                 'message' => 'Failed to retrieve exchange rate, using default',
                 'exchange_rate' => 1.000000
             ]);
