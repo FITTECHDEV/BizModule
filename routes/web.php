@@ -733,6 +733,25 @@ Route::middleware(['auth', 'can:approve-all-entity-request'])->group(function ()
     Route::get('/quotation/reasons', [App\Http\Controllers\QuotationController::class, 'getReasons'])
         ->name('quotation.reasons');
 
+    // NEW ROUTES - Add these
+    Route::get('/quotation/communication/templates', [App\Http\Controllers\QuotationController::class, 'getCommunicationTemplates'])
+        ->name('quotation.communication.templates');
+
+    Route::get('/quotation/communication/description', [App\Http\Controllers\QuotationController::class, 'getCommunicationDescription'])
+        ->name('quotation.communication.description');
+
+    Route::get('/quotation/charge-codes', [App\Http\Controllers\QuotationController::class, 'getChargeCodes'])
+        ->name('quotation.charge-codes');
+
+    Route::get('/quotation/legal-entities', [App\Http\Controllers\QuotationController::class, 'getLegalEntities'])
+        ->name('quotation.legal-entities');
+
+    Route::get('/quotation/based-on-list', [App\Http\Controllers\QuotationController::class, 'getBasedOnList'])
+        ->name('quotation.based-on-list');
+
+    Route::get('/quotation/based-on-uom', [App\Http\Controllers\QuotationController::class, 'getBasedOnUOM'])
+        ->name('quotation.based-on-uom');
+        
     Route::post('/quotation/charge/save', [App\Http\Controllers\QuotationController::class, 'saveCharge'])
         ->name('quotation.charge.save');
 

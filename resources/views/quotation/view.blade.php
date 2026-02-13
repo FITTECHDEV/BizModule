@@ -39,26 +39,29 @@
                     <div class="form-group row">
                         <label class="col-sm-5 col-form-label">Source</label>
                         <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm" value="{{ $quotation->source ?? 'N/A' }}"
-                                readonly>
+                            <input type="text" class="form-control form-control-sm"
+                                value="{{ $quotation->source ?? 'N/A' }}" readonly>
                         </div>
                     </div>
                     <div class="form-group row">
                         <label class="col-sm-5 col-form-label">Status</label>
                         <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm" value="{{ $quotation->status ?? 'N/A' }}" readonly>
+                            <input type="text" class="form-control form-control-sm"
+                                value="{{ $quotation->status ?? 'N/A' }}" readonly>
                         </div>
                     </div>
                     <div class="form-group row">
                         <label class="col-sm-5 col-form-label">Sales person</label>
                         <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm" value="{{ $quotation->username ?? 'N/A' }}" readonly>
+                            <input type="text" class="form-control form-control-sm"
+                                value="{{ $quotation->username ?? 'N/A' }}" readonly>
                         </div>
                     </div>
                     <div class="form-group row mb-0">
                         <label class="col-sm-5 col-form-label">Office</label>
                         <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm" value="{{ $quotation->teamname ?? 'N/A' }}" readonly>
+                            <input type="text" class="form-control form-control-sm"
+                                value="{{ $quotation->teamname ?? 'N/A' }}" readonly>
                         </div>
                     </div>
                 </div>
@@ -78,55 +81,57 @@
                     <div class="form-group row">
                         <label class="col-sm-5 col-form-label">Service</label>
                         <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm" value="{{ $quotation->serviceverticalname ?? 'N/A' }}"
-                                readonly>
+                            <input type="text" class="form-control form-control-sm"
+                                value="{{ $quotation->serviceverticalname ?? 'N/A' }}" readonly>
                         </div>
                     </div>
                     <div class="form-group row">
                         <label class="col-sm-5 col-form-label">Process</label>
                         <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm" value="{{ $quotation->process ?? 'N/A' }}" readonly>
+                            <input type="text" class="form-control form-control-sm"
+                                value="{{ $quotation->process ?? 'N/A' }}" readonly>
                         </div>
                     </div>
                     <div class="form-group row">
                         <label class="col-sm-5 col-form-label">Origin Country</label>
                         <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm" value="{{ $quotation->origincountry ?? 'N/A' }}"
-                                readonly>
+                            <input type="text" class="form-control form-control-sm"
+                                value="{{ $quotation->origincountry ?? 'N/A' }}" readonly>
                         </div>
                     </div>
                     <div class="form-group row">
                         <label class="col-sm-5 col-form-label">Destination Country</label>
                         <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm" value="{{ $quotation->destinationcountry ?? 'N/A' }}"
-                                readonly>
+                            <input type="text" class="form-control form-control-sm"
+                                value="{{ $quotation->destinationcountry ?? 'N/A' }}" readonly>
                         </div>
                     </div>
                     <div class="form-group row">
                         <label class="col-sm-5 col-form-label">InCO Terms</label>
                         <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm" value="{{ $quotation->incoterm ?? 'N/A' }}" readonly>
+                            <input type="text" class="form-control form-control-sm"
+                                value="{{ $quotation->incoterm ?? 'N/A' }}" readonly>
                         </div>
                     </div>
                     <div class="form-group row">
                         <label class="col-sm-5 col-form-label">Shipment Mode</label>
                         <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm" value="{{ $quotation->shipmentmode ?? 'N/A' }}"
-                                readonly>
+                            <input type="text" class="form-control form-control-sm"
+                                value="{{ $quotation->shipmentmode ?? 'N/A' }}" readonly>
                         </div>
                     </div>
                     <div class="form-group row">
                         <label class="col-sm-5 col-form-label">Transport Mode</label>
                         <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm" value="{{ $quotation->TransportMode ?? 'N/A' }}"
-                                readonly>
+                            <input type="text" class="form-control form-control-sm"
+                                value="{{ $quotation->TransportMode ?? 'N/A' }}" readonly>
                         </div>
                     </div>
                     <div class="form-group row mb-0">
                         <label class="col-sm-5 col-form-label">Service Class</label>
                         <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm" value="{{ $quotation->ServiceClass ?? 'N/A' }}"
-                                readonly>
+                            <input type="text" class="form-control form-control-sm"
+                                value="{{ $quotation->ServiceClass ?? 'N/A' }}" readonly>
                         </div>
                     </div>
                 </div>
@@ -146,29 +151,29 @@
                     <div class="form-group row">
                         <label class="col-sm-5 col-form-label">Commodity</label>
                         <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm" value="{{ $quotation->commodity ?? 'N/A' }}"
-                                readonly>
+                            <input type="text" class="form-control form-control-sm"
+                                value="{{ $quotation->commodity ?? 'N/A' }}" readonly>
                         </div>
                     </div>
                     <div class="form-group row">
                         <label class="col-sm-5 col-form-label">Scope Of Volume</label>
                         <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm" value="{{ $quotation->scopevolume ?? 'N/A' }}"
-                                readonly>
+                            <input type="text" class="form-control form-control-sm"
+                                value="{{ $quotation->scopevolume ?? 'N/A' }}" readonly>
                         </div>
                     </div>
                     <div class="form-group row">
                         <label class="col-sm-5 col-form-label">Cargo Volume</label>
                         <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm" value="{{ $quotation->cargovolume ?? 'N/A' }}"
-                                readonly>
+                            <input type="text" class="form-control form-control-sm"
+                                value="{{ $quotation->cargovolume ?? 'N/A' }}" readonly>
                         </div>
                     </div>
                     <div class="form-group row mb-0">
                         <label class="col-sm-5 col-form-label">Container List</label>
                         <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm" value="{{ $quotation->containerlist ?? 'N/A' }}"
-                                readonly>
+                            <input type="text" class="form-control form-control-sm"
+                                value="{{ $quotation->containerlist ?? 'N/A' }}" readonly>
                         </div>
                     </div>
                 </div>
@@ -226,29 +231,29 @@
                     <div class="form-group row">
                         <label class="col-sm-5 col-form-label">Client Status</label>
                         <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm" value="{{ $quotation->ClientIntegration ?? 'N/A' }}"
-                                readonly>
+                            <input type="text" class="form-control form-control-sm"
+                                value="{{ $quotation->ClientIntegration ?? 'N/A' }}" readonly>
                         </div>
                     </div>
                     <div class="form-group row">
                         <label class="col-sm-5 col-form-label">Booking No</label>
                         <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm" value="{{ $quotation->SCMBookingNo ?? 'N/A' }}"
-                                readonly>
+                            <input type="text" class="form-control form-control-sm"
+                                value="{{ $quotation->SCMBookingNo ?? 'N/A' }}" readonly>
                         </div>
                     </div>
                     <div class="form-group row">
                         <label class="col-sm-5 col-form-label">Booking Integration</label>
                         <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm" value="{{ $quotation->SCMINTStatus ?? 'N/A' }}"
-                                readonly>
+                            <input type="text" class="form-control form-control-sm"
+                                value="{{ $quotation->SCMINTStatus ?? 'N/A' }}" readonly>
                         </div>
                     </div>
                     <div class="form-group row mb-0">
                         <label class="col-sm-5 col-form-label">Booking XML</label>
                         <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm" value="{{ $quotation->SCMBookingXML ?? 'N/A' }}"
-                                readonly>
+                            <input type="text" class="form-control form-control-sm"
+                                value="{{ $quotation->SCMBookingXML ?? 'N/A' }}" readonly>
                         </div>
                     </div>
                 </div>
@@ -434,28 +439,28 @@
                             <div class="form-group row">
                                 <label class="col-sm-6 col-form-label">Expected Revenue</label>
                                 <div class="col-sm-6">
-                                    <input type="text" class="form-control form-control-sm" value="{{ $quotation->expected_revenue ?? 'N/A' }}"
-                                        readonly>
+                                    <input type="text" class="form-control form-control-sm"
+                                        value="{{ $quotation->expected_revenue ?? 'N/A' }}" readonly>
                                 </div>
                             </div>
                             <div class="form-group row">
                                 <label class="col-sm-6 col-form-label">Quoted Revenue</label>
                                 <div class="col-sm-6">
-                                    <input type="text" class="form-control form-control-sm" value="{{ $quotation->quoted_revenue ?? 'N/A' }}"
-                                        readonly>
+                                    <input type="text" class="form-control form-control-sm"
+                                        value="{{ $quotation->quoted_revenue ?? 'N/A' }}" readonly>
                                 </div>
                             </div>
                             <div class="form-group row">
                                 <label class="col-sm-6 col-form-label">Actual Revenue</label>
                                 <div class="col-sm-6">
-                                    <input type="text" class="form-control form-control-sm" value="N/A"
-                                        readonly>
+                                    <input type="text" class="form-control form-control-sm" value="N/A" readonly>
                                 </div>
                             </div>
                             <div class="form-group row mb-0">
                                 <label class="col-sm-6 col-form-label">Terms & Condition Section</label>
                                 <div class="col-sm-6">
-                                    <input type="text" class="form-control form-control-sm" value="{{ $quotation->terms_condition ?? 'N/A' }}" readonly>
+                                    <input type="text" class="form-control form-control-sm"
+                                        value="{{ $quotation->terms_condition ?? 'N/A' }}" readonly>
                                 </div>
                             </div>
                         </div>
@@ -470,8 +475,7 @@
                             <div class="form-group row mb-0">
                                 <label class="col-sm-6 col-form-label">Actual Margin</label>
                                 <div class="col-sm-6">
-                                    <input type="text" class="form-control form-control-sm" value="N/A"
-                                        readonly>
+                                    <input type="text" class="form-control form-control-sm" value="N/A" readonly>
                                 </div>
                             </div>
                         </div>
@@ -569,7 +573,167 @@
         $(document).ready(function() {
             console.log('Booking Quotation View - Page Loaded');
 
-            // CARD COLLAPSE
+            const bookingNo = '{{ $quotation->bookingno ?? '' }}';
+
+            // ============================================
+            // LOAD CHARGES ON PAGE LOAD
+            // ============================================
+            if (bookingNo) {
+                loadChargesForView();
+            } else {
+                console.error('No booking number found');
+            }
+
+            function loadChargesForView() {
+                console.log('Loading charges for booking:', bookingNo);
+
+                $.ajax({
+                    url: '{{ route('quotation.charges') }}',
+                    type: 'GET',
+                    data: {
+                        booking_no: bookingNo
+                    },
+                    beforeSend: function() {
+                        $('.card-success tbody').html(
+                            '<tr><td colspan="5" class="text-center"><i class="fas fa-spinner fa-spin"></i> Loading charges...</td></tr>'
+                        );
+                        $('.card-danger tbody').html(
+                            '<tr><td colspan="5" class="text-center"><i class="fas fa-spinner fa-spin"></i> Loading charges...</td></tr>'
+                        );
+                    },
+                    success: function(response) {
+                        console.log('Charges loaded:', response);
+                        if (response.success) {
+                            renderRevenueChargesView(response.revenue || []);
+                            renderCostChargesView(response.cost || []);
+                            updateViewSummary(response.revenue || [], response.cost || []);
+                        } else {
+                            console.error('Failed to load charges');
+                            $('.card-success tbody').html(
+                                '<tr><td colspan="5" class="text-center text-danger">Failed to load charges</td></tr>'
+                            );
+                            $('.card-danger tbody').html(
+                                '<tr><td colspan="5" class="text-center text-danger">Failed to load charges</td></tr>'
+                            );
+                        }
+                    },
+                    error: function(xhr) {
+                        console.error('Error loading charges:', xhr);
+                        $('.card-success tbody').html(
+                            '<tr><td colspan="5" class="text-center text-danger">Error loading charges</td></tr>'
+                        );
+                        $('.card-danger tbody').html(
+                            '<tr><td colspan="5" class="text-center text-danger">Error loading charges</td></tr>'
+                        );
+                    }
+                });
+            }
+
+            // ============================================
+            // RENDER REVENUE CHARGES (VIEW-ONLY)
+            // ============================================
+            function renderRevenueChargesView(charges) {
+                const tbody = $('.card-success tbody');
+                tbody.empty();
+
+                if (charges.length === 0) {
+                    tbody.append(
+                        '<tr><td colspan="5" class="text-center text-muted">No revenue charges found</td></tr>');
+                    return;
+                }
+
+                charges.forEach(function(charge) {
+                    const row = `
+                        <tr>
+                            <td>${charge.chargeName || charge.chargeCode || 'N/A'}</td>
+                            <td class="text-right">${parseFloat(charge.rate || 0).toFixed(2)}</td>
+                            <td>${charge.basedOn || 'N/A'}</td>
+                            <td class="text-right">${charge.chgCurr || 'KES'} ${parseFloat(charge.amtInChgCurr || 0).toFixed(2)}</td>
+                            <td class="text-right">KES ${parseFloat(charge.amtInBaseCurr || 0).toFixed(2)}</td>
+                        </tr>
+                    `;
+                    tbody.append(row);
+                });
+
+                // Add total row
+                const totalAmount = charges.reduce((sum, charge) => sum + parseFloat(charge.amtInChgCurr || 0), 0);
+                const totalBaseAmount = charges.reduce((sum, charge) => sum + parseFloat(charge.amtInBaseCurr || 0),
+                    0);
+
+                const totalRow = `
+                    <tr class="font-weight-bold bg-light">
+                        <td colspan="3" class="text-right">TOTAL REVENUE</td>
+                        <td class="text-right">KES ${totalAmount.toFixed(2)}</td>
+                        <td class="text-right">KES ${totalBaseAmount.toFixed(2)}</td>
+                    </tr>
+                `;
+                tbody.append(totalRow);
+            }
+
+            // ============================================
+            // RENDER COST CHARGES (VIEW-ONLY)
+            // ============================================
+            function renderCostChargesView(charges) {
+                const tbody = $('.card-danger tbody');
+                tbody.empty();
+
+                if (charges.length === 0) {
+                    tbody.append(
+                        '<tr><td colspan="5" class="text-center text-muted">No cost charges found</td></tr>');
+                    return;
+                }
+
+                charges.forEach(function(charge) {
+                    const row = `
+                        <tr>
+                            <td>${charge.chargeName || charge.chargeCode || 'N/A'}</td>
+                            <td class="text-right">${parseFloat(charge.rate || 0).toFixed(2)}</td>
+                            <td>${charge.basedOn || 'N/A'}</td>
+                            <td class="text-right">${charge.chgCurr || 'KES'} ${parseFloat(charge.amtInChgCurr || 0).toFixed(2)}</td>
+                            <td class="text-right">KES ${parseFloat(charge.amtInBaseCurr || 0).toFixed(2)}</td>
+                        </tr>
+                    `;
+                    tbody.append(row);
+                });
+
+                // Add total row
+                const totalAmount = charges.reduce((sum, charge) => sum + parseFloat(charge.amtInChgCurr || 0), 0);
+                const totalBaseAmount = charges.reduce((sum, charge) => sum + parseFloat(charge.amtInBaseCurr || 0),
+                    0);
+
+                const totalRow = `
+                    <tr class="font-weight-bold bg-light">
+                        <td colspan="3" class="text-right">TOTAL COST</td>
+                        <td class="text-right">KES ${totalAmount.toFixed(2)}</td>
+                        <td class="text-right">KES ${totalBaseAmount.toFixed(2)}</td>
+                    </tr>
+                `;
+                tbody.append(totalRow);
+            }
+
+            // ============================================
+            // UPDATE SUMMARY SECTION WITH ACTUAL DATA
+            // ============================================
+            function updateViewSummary(revenueCharges, costCharges) {
+                const totalRevenue = revenueCharges.reduce((sum, charge) =>
+                    sum + parseFloat(charge.amtInBaseCurr || 0), 0);
+                const totalCost = costCharges.reduce((sum, charge) =>
+                    sum + parseFloat(charge.amtInBaseCurr || 0), 0);
+                const margin = totalRevenue - totalCost;
+                const marginPercentage = totalRevenue > 0 ? (margin / totalRevenue * 100) : 0;
+
+                // Update summary fields if they exist
+                $('input[value*="Expected Revenue"]').closest('.form-group').find('.col-sm-6 input').val('KES ' +
+                    totalRevenue.toFixed(2));
+                $('input[value*="Quoted Revenue"]').closest('.form-group').find('.col-sm-6 input').val('KES ' +
+                    totalRevenue.toFixed(2));
+                $('input[value*="Quoted Margin"]').closest('.form-group').find('.col-sm-6 input').val('KES ' +
+                    margin.toFixed(2) + ' (' + marginPercentage.toFixed(2) + '%)');
+            }
+
+            // ============================================
+            // CARD COLLAPSE FUNCTIONALITY
+            // ============================================
             $('[data-card-widget="collapse"]').on('click', function() {
                 var icon = $(this).find('i');
                 icon.toggleClass('fa-chevron-down fa-chevron-up');
@@ -581,7 +745,29 @@
                 }
             });
 
+            // ============================================
+            // SHOW/HIDE ITEMS TOGGLE
+            // ============================================
+            $('.card-tools a').on('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                const $card = $(this).closest('.card');
+                const $tableWrapper = $card.find('table').closest('div');
+                const $link = $(this);
+
+                if ($tableWrapper.is(':visible')) {
+                    $tableWrapper.slideUp(300);
+                    $link.text('Show Items');
+                } else {
+                    $tableWrapper.slideDown(300);
+                    $link.text('Hide Items');
+                }
+            });
+
+            // ============================================
             // INITIALIZE - Collapse all cards by default EXCEPT Revenue and Cost
+            // ============================================
             $('.card').not('.card-success, .card-danger').each(function() {
                 var $card = $(this);
                 var $cardBody = $card.find('.card-body');
@@ -592,6 +778,7 @@
                 $card.addClass('collapsed-card');
             });
 
+            // Ensure correct icons for all cards
             $('.card').each(function() {
                 var card = $(this);
                 var collapseBtn = card.find('[data-card-widget="collapse"] i');

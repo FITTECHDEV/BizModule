@@ -932,6 +932,9 @@
 @stop
 
 @section('css')
+    <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
+
+
     <style>
         /* Revenue and Cost table styling */
         .table-responsive {
@@ -1402,6 +1405,8 @@
 @stop
 
 @section('js')
+    <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
+
     <script>
         $(document).ready(function() {
             console.log('Booking Quotation Edit - Page Loaded');
@@ -1617,20 +1622,189 @@
             });
 
             // ============================================
-            // MODAL INITIALIZATION
+            // MODAL INITIALIZATION WITH DROPDOWN LOADING
             // ============================================
             $('#addRevenueModal').on('show.bs.modal', function() {
                 if (!currentEditingCharge) {
                     $('#revenueTypeRevenue').prop('checked', true);
                     toggleRevenueFormFields('revenue');
+                    loadBasedOnList('revenue');
                 }
+                initializeChargeCodeAutocomplete('revenue');
             });
 
             $('#addCostModal').on('show.bs.modal', function() {
                 if (!currentEditingCharge) {
                     $('#costTypeCost').prop('checked', true);
                     toggleCostFormFields('cost');
+                    loadBasedOnList('cost');
                 }
+                initializeChargeCodeAutocomplete('cost');
+            });
+
+            // ============================================
+            // LOAD BASED ON LIST
+            // ============================================
+            function loadBasedOnList(type) {
+                const prefix = type === 'revenue' ? 'revenue' : 'cost';
+                const $basedOnSelect = $(`select[name="${prefix}_based_on"]`);
+
+                $.ajax({
+                    url: '{{ route('quotation.based-on-list') }}',
+                    type: 'GET',
+                    beforeSend: function() {
+                        $basedOnSelect.prop('disabled', true);
+                        $basedOnSelect.empty().append('<option value="">Loading...</option>');
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            $basedOnSelect.empty().append('<option value="">Select Based On</option>');
+
+                            response.based_on_list.forEach(function(item) {
+                                $basedOnSelect.append(
+                                    `<option value="${item.Code}" data-id="${item.Id}">${item.Name}</option>`
+                                );
+                            });
+                        } else {
+                            showNotification('Failed to load Based On list', 'error');
+                            $basedOnSelect.empty().append('<option value="">Failed to load</option>');
+                        }
+                    },
+                    error: function(xhr) {
+                        console.error('Failed to load Based On list:', xhr);
+                        showNotification('Failed to load Based On list', 'error');
+                        $basedOnSelect.empty().append('<option value="">Failed to load</option>');
+                    },
+                    complete: function() {
+                        $basedOnSelect.prop('disabled', false);
+                    }
+                });
+            }
+
+            // ============================================
+            // LOAD UOM WHEN BASED ON CHANGES
+            // ============================================
+
+            // Revenue Based On change handler
+            $(document).on('change', 'select[name="revenue_based_on"]', function() {
+                const basedOnCode = $(this).val();
+                loadBasedOnUOM('revenue', basedOnCode);
+            });
+
+            // Cost Based On change handler
+            $(document).on('change', 'select[name="cost_based_on"]', function() {
+                const basedOnCode = $(this).val();
+                loadBasedOnUOM('cost', basedOnCode);
+            });
+
+            function loadBasedOnUOM(type, basedOnCode) {
+                const prefix = type === 'revenue' ? 'revenue' : 'cost';
+                const $uomSelect = $(`select[name="${prefix}_based_on_uom"]`);
+
+                if (!basedOnCode) {
+                    $uomSelect.empty().append('<option value="">Select Based On first</option>');
+                    $uomSelect.prop('disabled', true);
+                    return;
+                }
+
+                $.ajax({
+                    url: '{{ route('quotation.based-on-uom') }}',
+                    type: 'GET',
+                    data: {
+                        based_on_code: basedOnCode
+                    },
+                    beforeSend: function() {
+                        $uomSelect.prop('disabled', true);
+                        $uomSelect.empty().append('<option value="">Loading...</option>');
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            $uomSelect.empty().append('<option value="">Select UOM</option>');
+
+                            response.uom_list.forEach(function(uom) {
+                                $uomSelect.append(
+                                    `<option value="${uom.Code}">${uom.Name}</option>`
+                                );
+                            });
+
+                            $uomSelect.prop('disabled', false);
+                        } else {
+                            showNotification('Failed to load UOM list', 'error');
+                            $uomSelect.empty().append('<option value="">Failed to load</option>');
+                        }
+                    },
+                    error: function(xhr) {
+                        console.error('Failed to load UOM list:', xhr);
+                        showNotification('Failed to load UOM list', 'error');
+                        $uomSelect.empty().append('<option value="">Failed to load</option>');
+                    }
+                });
+            }
+
+            // Add after document.ready
+            function initializeChargeCodeAutocomplete(type) {
+                const prefix = type === 'revenue' ? 'revenue' : 'cost';
+                const $input = $(`input[name="${prefix}_charge_code"]`);
+                const officeId = '{{ $quotation->teamid ?? '' }}';
+
+                console.log('=== AUTOCOMPLETE DEBUG ===');
+                console.log('Office ID:', officeId);
+                console.log('Route URL:', '{{ route('quotation.charge-codes') }}');
+
+                if (!officeId) {
+                    console.error('No office ID available');
+                    return;
+                }
+
+                $input.autocomplete({
+                    source: function(request, response) {
+                        console.log('Autocomplete triggered. Term:', request.term);
+
+                        $.ajax({
+                            url: '{{ route('quotation.charge-codes') }}',
+                            type: 'GET',
+                            data: {
+                                office_id: officeId,
+                                charge_type: type === 'revenue' ? 'Revenue' : 'Cost',
+                                filter: request.term
+                            },
+                            success: function(data) {
+                                console.log('SUCCESS Response:', data);
+                                if (data.success && data.charge_codes) {
+                                    response(data.charge_codes.map(item => ({
+                                        label: item.Name + ' (' + item
+                                            .Code + ')',
+                                        value: item.Code
+                                    })));
+                                } else {
+                                    console.error('No charge codes in response');
+                                    response([]);
+                                }
+                            },
+                            error: function(xhr, status, error) {
+                                console.error('AJAX ERROR:', status, error);
+                                console.error('Response:', xhr.responseText);
+                                response([]);
+                            }
+                        });
+                    },
+                    minLength: 2,
+                    select: function(event, ui) {
+                        if (ui.item.value) {
+                            $(this).val(ui.item.value);
+                        }
+                        return false;
+                    }
+                });
+            }
+
+            // Call when modals open
+            $('#addRevenueModal').on('shown.bs.modal', function() {
+                initializeChargeCodeAutocomplete('revenue');
+            });
+
+            $('#addCostModal').on('shown.bs.modal', function() {
+                initializeChargeCodeAutocomplete('cost');
             });
 
             // ============================================
@@ -1857,7 +2031,7 @@
 
                 if (chargeType === 'costmarkup') {
                     chargeData.increase_by = parseFloat($modal.find('input[name="' + type + '_increase_by"]')
-                    .val()) || 0;
+                        .val()) || 0;
                     chargeData.increase_type = $modal.find('select[name="' + type + '_increase_type"]').val() ||
                         'Percentage';
                 }
@@ -1968,23 +2142,66 @@
 
             function populateRevenueModal(charge) {
                 const $modal = $('#addRevenueModal');
+
+                // Populate basic fields
                 $modal.find('input[name="revenue_charge_code"]').val(charge.chargeCode);
                 $modal.find('input[name="revenue_remark"]').val(charge.chargeRemark);
                 $modal.find('input[name="revenue_quantity"]').val(charge.quantity);
                 $modal.find('input[name="revenue_rate"]').val(charge.rate);
                 $modal.find('input[name="revenue_exchange_rate"]').val(charge.exChangeRate);
                 $modal.find('select[name="revenue_currency"]').val(charge.chgCurr);
+
+                // Load Based On dropdown first
+                loadBasedOnList('revenue');
+
+                // Wait for dropdown to populate, then set values
+                setTimeout(function() {
+                    $modal.find('select[name="revenue_based_on"]').val(charge.basedOnCode);
+
+                    // Load UOM based on selected Based On
+                    if (charge.basedOnCode) {
+                        loadBasedOnUOM('revenue', charge.basedOnCode);
+
+                        // Set UOM value after it loads
+                        setTimeout(function() {
+                            $modal.find('select[name="revenue_based_on_uom"]').val(charge
+                                .basedOnUOM);
+                        }, 500);
+                    }
+                }, 500);
+
                 calculateRevenueAmount();
             }
 
             function populateCostModal(charge) {
                 const $modal = $('#addCostModal');
+
+                // Populate basic fields
                 $modal.find('input[name="cost_charge_code"]').val(charge.chargeCode);
                 $modal.find('input[name="cost_remark"]').val(charge.chargeRemark);
                 $modal.find('input[name="cost_quantity"]').val(charge.quantity);
                 $modal.find('input[name="cost_rate"]').val(charge.rate);
                 $modal.find('input[name="cost_exchange_rate"]').val(charge.exChangeRate);
                 $modal.find('select[name="cost_currency"]').val(charge.chgCurr);
+
+                // Load Based On dropdown first
+                loadBasedOnList('cost');
+
+                // Wait for dropdown to populate, then set values
+                setTimeout(function() {
+                    $modal.find('select[name="cost_based_on"]').val(charge.basedOnCode);
+
+                    // Load UOM based on selected Based On
+                    if (charge.basedOnCode) {
+                        loadBasedOnUOM('cost', charge.basedOnCode);
+
+                        // Set UOM value after it loads
+                        setTimeout(function() {
+                            $modal.find('select[name="cost_based_on_uom"]').val(charge.basedOnUOM);
+                        }, 500);
+                    }
+                }, 500);
+
                 calculateCostAmount();
             }
 
@@ -2232,6 +2449,13 @@
                 $modal.find('input[type="number"]').val('0');
                 $modal.find('select').prop('selectedIndex', 0);
                 $modal.find('input[type="checkbox"]').prop('checked', false);
+
+                // Reload dropdowns for fresh state
+                if (type === 'revenue') {
+                    loadBasedOnList('revenue');
+                } else {
+                    loadBasedOnList('cost');
+                }
             }
 
             function clearRevenueModalForm() {

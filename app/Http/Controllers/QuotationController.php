@@ -301,34 +301,34 @@ class QuotationController extends Controller
         }
 
         try {
-            $charges = DB::table('Quote_Quotation_ChargeSheet as QC')
-                ->join('Quote_QuotationInfo as QI', 'QI.id', '=', 'QC.QuotationInfoID')
-                ->leftJoin('[FITSCMUAT].dbo.Bill_ChargeCode as BC', 'BC.Id', '=', 'QC.ChargeCodeId')
-                ->leftJoin('[FITSCMUAT].dbo.Cust_Currency as CC', 'CC.Id', '=', 'QC.EstChargeCurrencyId')
-                ->leftJoin('[FITSCMUAT].dbo.Cust_ChargecodeBasedOn as CB', 'CB.ID', '=', 'QC.BasedOnId')
-                ->leftJoin('[FITSCMUAT].dbo.Sys_UOM as SU', 'SU.Id', '=', 'QC.UOMId')
-                ->leftJoin('[FITSCMUAT].dbo.Cust_Party as CP', 'CP.Id', '=', 'QC.PartyID')
-                ->where('QI.bookingno', $bookingNo)
-                ->where('QC.IsDeleted', 0)
-                ->select([
-                    'QC.Id as QuoteChargeID',
-                    'BC.Code as ChargeCode',
-                    'BC.Name as ChargeName',
-                    'QC.Quantity',
-                    'QC.EstChargeRate as Rate',
-                    'QC.EstChargeAmount as AmtInChgCurr',
-                    'QC.EstBaseAmount as AmtInBaseCurr',
-                    'QC.BaseExchRate as ExChangeRate',
-                    'CC.Code as ChgCurr',
-                    'CB.Code as BasedOnCode',
-                    'CB.BasedOn as BasedOn',
-                    'SU.Code as BasedOnUOM',
-                    'QC.Remarks as ChargeRemark',
-                    'QC.IsRevenue',
-                    'CP.Code as PartyCode',
-                    'QC.ChargeType as SourceType'
-                ])
-                ->get();
+            $charges = DB::select("
+            SELECT 
+                QC.Id as QuoteChargeID,
+                BC.Code as ChargeCode,
+                BC.Name as ChargeName,
+                QC.Quantity,
+                QC.EstChargeRate as Rate,
+                QC.EstChargeAmount as AmtInChgCurr,
+                QC.EstBaseAmount as AmtInBaseCurr,
+                QC.BaseExchRate as ExChangeRate,
+                CC.Code as ChgCurr,
+                CB.Code as BasedOnCode,
+                CB.BasedOn as BasedOn,
+                SU.Code as BasedOnUOM,
+                QC.Remarks as ChargeRemark,
+                QC.IsRevenue,
+                CP.Code as PartyCode,
+                QC.ChargeType as SourceType
+            FROM Quote_Quotation_ChargeSheet QC WITH (NOLOCK)
+            INNER JOIN Quote_QuotationInfo QI WITH (NOLOCK) ON QI.id = QC.QuotationInfoID
+            LEFT JOIN [FITSCMUAT].dbo.Bill_ChargeCode BC WITH (NOLOCK) ON BC.Id = QC.ChargeCodeId
+            LEFT JOIN [FITSCMUAT].dbo.Cust_Currency CC WITH (NOLOCK) ON CC.Id = QC.EstChargeCurrencyId
+            LEFT JOIN Cust_ChargecodeBasedOn CB WITH (NOLOCK) ON CB.Id = QC.BasedOnId
+            LEFT JOIN [FITSCMUAT].dbo.Sys_UOM SU WITH (NOLOCK) ON SU.Id = QC.UOMId
+            LEFT JOIN [FITSCMUAT].dbo.Cust_Party CP WITH (NOLOCK) ON CP.Id = QC.PartyID
+            WHERE QI.bookingno = ?
+                AND QC.IsDeleted = 0
+        ", [$bookingNo]);
 
             $revenue = [];
             $cost = [];
@@ -366,7 +366,6 @@ class QuotationController extends Controller
             ]);
         } catch (\Exception $e) {
             Log::error('Get charges failed: ' . $e->getMessage());
-
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to load charges: ' . $e->getMessage()
@@ -377,6 +376,50 @@ class QuotationController extends Controller
     public function saveCharge(Request $request)
     {
         try {
+            // ============================================
+            // LOG INCOMING REQUEST
+            // ============================================
+            Log::info('Save Charge Request - Start', [
+                'booking_no' => $request->input('booking_no'),
+                'charge_code' => $request->input('charge_code'),
+                'based_on_code' => $request->input('based_on_code'),
+                'based_on_uom' => $request->input('based_on_uom'),
+                'action' => $request->input('action'),
+                'revenue_or_cost' => $request->input('revenue_or_cost'),
+                'quantity' => $request->input('quantity'),
+                'rate' => $request->input('rate'),
+                'amt_in_chg_curr' => $request->input('amt_in_chg_curr'),
+                'amt_in_base_curr' => $request->input('amt_in_base_curr'),
+                'exchange_rate' => $request->input('exchange_rate'),
+                'chg_curr' => $request->input('chg_curr'),
+                'user' => Auth::user()->username ?? Auth::user()->email,
+            ]);
+
+            // ============================================
+            // VALIDATE REQUIRED FIELDS
+            // ============================================
+            $validator = \Validator::make($request->all(), [
+                'booking_no' => 'required|string',
+                'charge_code' => 'required|string',
+                'based_on_code' => 'required|string',
+                'revenue_or_cost' => 'required|string',
+                'action' => 'required|in:Add,Edit,Delete',
+            ]);
+
+            if ($validator->fails()) {
+                Log::warning('Save Charge Validation Failed', [
+                    'errors' => $validator->errors()->toArray()
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validation failed: ' . $validator->errors()->first()
+                ], 422);
+            }
+
+            // ============================================
+            // PREPARE STORED PROCEDURE INPUT
+            // ============================================
             $inputJson = json_encode([
                 'OperationType' => 'QuotationAddorEditCharge',
                 'SubmittedDatetime' => now()->format('YmdHis'),
@@ -397,39 +440,143 @@ class QuotationController extends Controller
                 'BasedOnUOM' => $request->input('based_on_uom', ''),
                 'ChargeRemark' => $request->input('charge_remark', ''),
                 'ToBeAdded' => (int)$request->input('to_be_added', 0),
-                'IncreaseBy' => (int)$request->input('increase_by', 0),
+                'IncreaseBy' => (float)$request->input('increase_by', 0),
                 'IncreaseType' => $request->input('increase_type', 'Percentage'),
                 'SourceType' => $request->input('source_type', 'manual')
             ]);
 
-            $outputJson = '';
-
-            DB::statement('EXEC sp_Quote_Quotaiton_ChargesAddorEdit ?, ? OUTPUT', [
-                $inputJson,
-                &$outputJson
+            Log::info('Stored Procedure Input JSON', [
+                'json' => $inputJson,
+                'json_decoded' => json_decode($inputJson, true)
             ]);
 
-            $result = DB::select('SELECT ? as OutputJson', [$outputJson]);
-            $output = json_decode($result[0]->OutputJson ?? '{}', true);
+            // ============================================
+            // EXECUTE STORED PROCEDURE
+            // ============================================
+            Log::info('Executing Stored Procedure: sp_Quote_Quotaiton_ChargesAddorEdit');
 
+            $result = DB::select('
+            DECLARE @OutputJson VARCHAR(2000);
+            EXEC sp_Quote_Quotaiton_ChargesAddorEdit ?, @OutputJson OUTPUT;
+            SELECT @OutputJson AS OutputJson
+        ', [$inputJson]);
+
+            // ============================================
+            // LOG RAW STORED PROCEDURE OUTPUT
+            // ============================================
+            Log::info('Stored Procedure Raw Output', [
+                'result' => $result,
+                'output_json' => $result[0]->OutputJson ?? null
+            ]);
+
+            // ============================================
+            // PARSE OUTPUT
+            // ============================================
+            $outputJson = $result[0]->OutputJson ?? '{}';
+            $output = json_decode($outputJson, true);
+
+            // Check if JSON decode failed
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                Log::error('Failed to decode stored procedure output', [
+                    'json_error' => json_last_error_msg(),
+                    'raw_output' => $outputJson
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to parse stored procedure response: ' . json_last_error_msg()
+                ], 500);
+            }
+
+            Log::info('Stored Procedure Parsed Output', [
+                'output' => $output,
+                'status' => $output['Status'] ?? 'Unknown',
+                'remarks' => $output['Remarks'] ?? []
+            ]);
+
+            // ============================================
+            // HANDLE SUCCESS RESPONSE
+            // ============================================
             if (($output['Status'] ?? '') === 'Success') {
+                Log::info('Charge saved successfully', [
+                    'booking_no' => $request->input('booking_no'),
+                    'charge_id' => $output['ChargeID'] ?? null,
+                    'action' => $request->input('action')
+                ]);
+
                 return response()->json([
                     'success' => true,
                     'message' => $output['Remarks'][0]['Remark'] ?? 'Charge saved successfully',
-                    'charge_id' => $output['ChargeID'] ?? null
+                    'charge_id' => $output['ChargeID'] ?? null,
+                    'data' => $output
                 ]);
+            }
+
+            // ============================================
+            // HANDLE FAILURE RESPONSE
+            // ============================================
+            $errorMessage = $output['Remarks'][0]['Remark'] ?? 'Failed to save charge';
+
+            Log::warning('Stored Procedure returned failure', [
+                'status' => $output['Status'] ?? 'Unknown',
+                'message' => $errorMessage,
+                'full_output' => $output
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => $errorMessage,
+                'details' => $output['Remarks'] ?? []
+            ], 422);
+        } catch (\Illuminate\Database\QueryException $e) {
+            // ============================================
+            // DATABASE-SPECIFIC ERRORS
+            // ============================================
+            Log::error('Database error while saving charge', [
+                'error_code' => $e->getCode(),
+                'error_message' => $e->getMessage(),
+                'sql' => $e->getSql() ?? 'N/A',
+                'bindings' => $e->getBindings() ?? [],
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            // Check for common SQL Server errors
+            $errorMessage = 'Database error occurred';
+
+            if (str_contains($e->getMessage(), 'sp_Quote_Quotaiton_ChargesAddorEdit')) {
+                $errorMessage = 'Stored procedure not found. Please contact system administrator.';
+            } elseif (str_contains($e->getMessage(), 'timeout')) {
+                $errorMessage = 'Database timeout. Please try again.';
+            } elseif (str_contains($e->getMessage(), 'deadlock')) {
+                $errorMessage = 'Database deadlock detected. Please try again.';
             }
 
             return response()->json([
                 'success' => false,
-                'message' => $output['Remarks'][0]['Remark'] ?? 'Failed to save charge'
-            ], 422);
+                'message' => $errorMessage,
+                'error_code' => 'DB_ERROR',
+                'details' => config('app.debug') ? $e->getMessage() : null
+            ], 500);
         } catch (\Exception $e) {
-            Log::error('Save charge failed: ' . $e->getMessage());
+            // ============================================
+            // GENERAL ERRORS
+            // ============================================
+            Log::error('Save charge failed with exception', [
+                'error_message' => $e->getMessage(),
+                'error_file' => $e->getFile(),
+                'error_line' => $e->getLine(),
+                'trace' => $e->getTraceAsString(),
+                'request_data' => $request->all()
+            ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to save charge: ' . $e->getMessage()
+                'message' => 'Failed to save charge: ' . $e->getMessage(),
+                'error_code' => 'GENERAL_ERROR',
+                'details' => config('app.debug') ? [
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                ] : null
             ], 500);
         }
     }
@@ -462,14 +609,12 @@ class QuotationController extends Controller
                 'SourceType' => 'manual'
             ]);
 
-            $outputJson = '';
+            $result = DB::select('
+            DECLARE @OutputJson VARCHAR(2000);
+            EXEC sp_Quote_Quotaiton_ChargesAddorEdit ?, @OutputJson OUTPUT;
+            SELECT @OutputJson AS OutputJson
+        ', [$inputJson]);
 
-            DB::statement('EXEC sp_Quote_Quotaiton_ChargesAddorEdit ?, ? OUTPUT', [
-                $inputJson,
-                &$outputJson
-            ]);
-
-            $result = DB::select('SELECT ? as OutputJson', [$outputJson]);
             $output = json_decode($result[0]->OutputJson ?? '{}', true);
 
             if (($output['Status'] ?? '') === 'Success') {
@@ -485,7 +630,6 @@ class QuotationController extends Controller
             ], 422);
         } catch (\Exception $e) {
             Log::error('Delete charge failed: ' . $e->getMessage());
-
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to delete charge: ' . $e->getMessage()
@@ -507,14 +651,12 @@ class QuotationController extends Controller
                 'ReasonRemark' => $request->input('reason_remark', '')
             ]);
 
-            $outputJson = '';
+            $result = DB::select('
+            DECLARE @OutputJson VARCHAR(2000);
+            EXEC sp_Quote_Quotaiton_StatusUpdate ?, @OutputJson OUTPUT;
+            SELECT @OutputJson AS OutputJson
+        ', [$inputJson]);
 
-            DB::statement('EXEC sp_Quote_Quotaiton_StatusUpdate ?, ? OUTPUT', [
-                $inputJson,
-                &$outputJson
-            ]);
-
-            $result = DB::select('SELECT ? as OutputJson', [$outputJson]);
             $output = json_decode($result[0]->OutputJson ?? '{}', true);
 
             if (($output['Status'] ?? '') === 'Success') {
@@ -530,7 +672,6 @@ class QuotationController extends Controller
             ], 422);
         } catch (\Exception $e) {
             Log::error('Update status failed: ' . $e->getMessage());
-
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to update status: ' . $e->getMessage()
@@ -597,6 +738,196 @@ class QuotationController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Retrigger failed: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function getCommunicationTemplates(Request $request)
+    {
+        $module = $request->input('module', 'Quotation');
+        $subModule = $request->input('sub_module');
+        $officeCode = $request->input('office_code');
+
+        if (!$subModule || !$officeCode) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Sub module and office code are required'
+            ], 400);
+        }
+
+        try {
+            $templates = DB::select(
+                "SELECT Name, Description 
+                FROM Cust_CommunicationDetails WITH (NOLOCK)
+                WHERE Module = ? AND SubModule = ? AND OfficeCode = ? AND IsActive = 1",
+                [$module, $subModule, $officeCode]
+            );
+
+            return response()->json([
+                'success' => true,
+                'templates' => $templates
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Get communication templates failed: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to load templates: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function getCommunicationDescription(Request $request)
+    {
+        $module = $request->input('module', 'Quotation');
+        $subModule = $request->input('sub_module');
+        $officeCode = $request->input('office_code');
+        $name = $request->input('name');
+
+        if (!$subModule || !$officeCode || !$name) {
+            return response()->json([
+                'success' => false,
+                'message' => 'All parameters are required'
+            ], 400);
+        }
+
+        try {
+            $result = DB::select('
+            DECLARE @Status VARCHAR(15), @Remark VARCHAR(1000), @Description NVARCHAR(MAX);
+            EXEC sp_CommunicationDetails_GetDescription ?, ?, ?, ?, 
+                @Status OUTPUT, @Remark OUTPUT, @Description OUTPUT;
+            SELECT @Status AS Status, @Remark AS Remark, @Description AS Description
+        ', [$module, $subModule, $officeCode, $name]);
+
+            if ($result[0]->Status === 'Success') {
+                return response()->json([
+                    'success' => true,
+                    'description' => $result[0]->Description
+                ]);
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => $result[0]->Remark
+            ], 422);
+        } catch (\Exception $e) {
+            Log::error('Get communication description failed: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to load description: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+
+    public function getChargeCodes(Request $request)
+    {
+        $officeId = $request->input('office_id');
+        $chargeType = $request->input('charge_type', 'Revenue');
+        $filter = $request->input('filter', '');
+
+        if (!$officeId) {
+            return response()->json(['success' => false, 'message' => 'Office ID required'], 400);
+        }
+
+        try {
+            $officeCode = 'KE';
+
+            // SET NOCOUNT ON suppresses row count messages that interfere with result sets
+            $chargeCodes = DB::select("
+            SET NOCOUNT ON;
+            EXEC sp_ChargeCode ?, ?, ?
+        ", [$officeCode, $chargeType, $filter]);
+
+            return response()->json([
+                'success' => true,
+                'charge_codes' => $chargeCodes
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Charge codes error: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+
+    public function getLegalEntities(Request $request)
+    {
+        $officeCode = $request->input('office_code');
+        $chargeType = $request->input('charge_type', 'Cost');
+        $filter = $request->input('filter', '');
+
+        if (!$officeCode) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Office code is required'
+            ], 400);
+        }
+
+        try {
+            $parties = DB::select('EXEC sp_LegalEntityList ?, ?, ?', [
+                $officeCode,
+                $chargeType,
+                $filter
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'parties' => $parties
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Get legal entities failed: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to load legal entities: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function getBasedOnList(Request $request)
+    {
+        try {
+            $basedOnList = DB::select(
+                "SELECT Id, Code, Name, BasedOn 
+                    FROM Cust_ChargecodeBasedOn WITH (NOLOCK)
+                    WHERE IsActive = 1
+                ORDER BY Name"
+            );
+
+            return response()->json([
+                'success' => true,
+                'based_on_list' => $basedOnList
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Get based on list failed: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to load based on list: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function getBasedOnUOM(Request $request)
+    {
+        $basedOnCode = $request->input('based_on_code');
+
+        if (!$basedOnCode) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Based on code is required'
+            ], 400);
+        }
+
+        try {
+            $uomList = DB::select('EXEC sp_ChargeBasedOnUOM ?', [$basedOnCode]);
+
+            return response()->json([
+                'success' => true,
+                'uom_list' => $uomList
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Get based on UOM failed: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to load UOM list: ' . $e->getMessage()
             ], 500);
         }
     }
