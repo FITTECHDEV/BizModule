@@ -1401,6 +1401,24 @@
             overflow: hidden;
             text-overflow: ellipsis;
         }
+
+        .ui-autocomplete {
+            z-index: 9999 !important;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        /* Autocomplete disabled items */
+        .ui-autocomplete .ui-state-disabled {
+            color: #999;
+            font-style: italic;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+
+        .ui-autocomplete .ui-state-disabled div {
+            padding: 8px 12px;
+        }
     </style>
 @stop
 
@@ -1741,63 +1759,131 @@
                 });
             }
 
-            // Add after document.ready
             function initializeChargeCodeAutocomplete(type) {
                 const prefix = type === 'revenue' ? 'revenue' : 'cost';
-                const $input = $(`input[name="${prefix}_charge_code"]`);
-                const officeId = '{{ $quotation->teamid ?? '' }}';
+                const $chargeCodeInput = $(`input[name="${prefix}_charge_code"]`);
 
-                console.log('=== AUTOCOMPLETE DEBUG ===');
-                console.log('Office ID:', officeId);
-                console.log('Route URL:', '{{ route('quotation.charge-codes') }}');
+                console.log('Initializing autocomplete for:', prefix, 'Input found:', $chargeCodeInput.length);
 
-                if (!officeId) {
-                    console.error('No office ID available');
+                if ($chargeCodeInput.length === 0) {
+                    console.error('Charge code input not found for type:', type);
                     return;
                 }
 
-                $input.autocomplete({
+                // Destroy existing autocomplete if present
+                if ($chargeCodeInput.hasClass('ui-autocomplete-input')) {
+                    $chargeCodeInput.autocomplete('destroy');
+                }
+
+                $chargeCodeInput.autocomplete({
                     source: function(request, response) {
-                        console.log('Autocomplete triggered. Term:', request.term);
+                        const chargeType = type === 'revenue' ? 'Revenue' : 'Cost';
+
+                        console.log('Autocomplete source triggered:', {
+                            filter: request.term,
+                            length: request.term.length,
+                            chargeType: chargeType,
+                            bookingNo: bookingNo
+                        });
+
+                        // Only fetch if 3 or more characters
+                        if (request.term.length < 3) {
+                            console.log('Filter too short, minimum 3 characters required');
+                            response([]);
+                            return;
+                        }
 
                         $.ajax({
-                            url: '{{ route('quotation.charge-codes') }}',
+                            url: '/quotation/charge-codes',
                             type: 'GET',
                             data: {
-                                office_id: officeId,
-                                charge_type: type === 'revenue' ? 'Revenue' : 'Cost',
+                                booking_no: bookingNo,
+                                charge_type: chargeType,
                                 filter: request.term
                             },
+                            dataType: 'json',
                             success: function(data) {
-                                console.log('SUCCESS Response:', data);
-                                if (data.success && data.charge_codes) {
+                                console.log('Charge codes response:', data);
+
+                                if (data.success && data.charge_codes && data.charge_codes
+                                    .length > 0) {
                                     response(data.charge_codes.map(item => ({
-                                        label: item.Name + ' (' + item
-                                            .Code + ')',
-                                        value: item.Code
+                                        label: item.Code + ' - ' + item
+                                            .Name,
+                                        value: item.Code,
+                                        name: item.Name,
+                                        currency: item.Curr,
+                                        vat: item.VAT
                                     })));
                                 } else {
-                                    console.error('No charge codes in response');
-                                    response([]);
+                                    // UPDATED: Show "no results" message
+                                    console.warn('No charge codes found for filter:',
+                                        request.term);
+                                    response([{
+                                        label: 'No charge codes found matching "' +
+                                            request.term + '"',
+                                        value: request.term,
+                                        disabled: true
+                                    }]);
                                 }
                             },
                             error: function(xhr, status, error) {
-                                console.error('AJAX ERROR:', status, error);
-                                console.error('Response:', xhr.responseText);
-                                response([]);
+                                console.error('Autocomplete AJAX error:', {
+                                    status: status,
+                                    error: error,
+                                    xhr: xhr,
+                                    responseText: xhr.responseText
+                                });
+                                response([{
+                                    label: 'Error loading charge codes',
+                                    value: '',
+                                    disabled: true
+                                }]);
                             }
                         });
                     },
-                    minLength: 2,
+                    minLength: 3,
+                    delay: 300,
                     select: function(event, ui) {
-                        if (ui.item.value) {
-                            $(this).val(ui.item.value);
+                        // UPDATED: Prevent selection of disabled items
+                        if (ui.item.disabled) {
+                            event.preventDefault();
+                            return false;
                         }
-                        return false;
-                    }
-                });
-            }
 
+                        console.log('Item selected:', ui.item);
+
+                        $chargeCodeInput.val(ui.item.value);
+                        $(`input[name="${prefix}_description"]`).val(ui.item.name);
+                        $(`select[name="${prefix}_currency"]`).val(ui.item.currency);
+
+                        // Parse VAT if present
+                        if (ui.item.vat && ui.item.vat.includes('@')) {
+                            const vatValue = parseFloat(ui.item.vat.split('@')[1]) || 0;
+                            $(`select[name="${prefix}_tax_applicable"]`).val(vatValue);
+                        }
+
+                        return false;
+                    },
+                    open: function() {
+                        console.log('Autocomplete dropdown opened');
+                    },
+                    close: function() {
+                        console.log('Autocomplete dropdown closed');
+                    },
+                    response: function(event, ui) {
+                        console.log('Autocomplete response received:', ui.content.length + ' items');
+                    }
+                }).autocomplete("instance")._renderItem = function(ul, item) {
+                    // UPDATED: Custom render for disabled items
+                    return $("<li>")
+                        .addClass(item.disabled ? "ui-state-disabled" : "")
+                        .append($("<div>").text(item.label))
+                        .appendTo(ul);
+                };
+
+                console.log('Autocomplete initialized successfully for:', prefix);
+            }
             // Call when modals open
             $('#addRevenueModal').on('shown.bs.modal', function() {
                 initializeChargeCodeAutocomplete('revenue');

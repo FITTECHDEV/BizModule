@@ -693,11 +693,29 @@ class QuotationController extends Controller
         }
 
         try {
-            $reasons = DB::select('EXEC sp_ReasonMasterList ?, ?, ?', [
-                $module,
-                $reasonType,
-                $filter
-            ]);
+            // Use raw PDO to handle multiple result sets from SP
+            $pdo = DB::connection()->getPdo();
+            $stmt = $pdo->prepare("SET NOCOUNT ON; EXEC sp_ReasonMasterList ?, ?, ?");
+            $stmt->execute([$module, $reasonType, $filter]);
+
+            $reasons = [];
+
+            // Loop through result sets until we find the data
+            do {
+                try {
+                    $results = $stmt->fetchAll(\PDO::FETCH_OBJ);
+                    if (!empty($results)) {
+                        $firstRow = $results[0];
+                        // Check if this is the data result set (has ID, Code, Description)
+                        if (isset($firstRow->ID) && isset($firstRow->Code) && isset($firstRow->Description)) {
+                            $reasons = $results;
+                            break;
+                        }
+                    }
+                } catch (\Exception $e) {
+                    continue; // Skip empty result sets
+                }
+            } while ($stmt->nextRowset());
 
             return response()->json([
                 'success' => true,
@@ -705,7 +723,6 @@ class QuotationController extends Controller
             ]);
         } catch (\Exception $e) {
             Log::error('Get reasons failed: ' . $e->getMessage());
-
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to load reasons: ' . $e->getMessage()
@@ -821,33 +838,105 @@ class QuotationController extends Controller
 
     public function getChargeCodes(Request $request)
     {
-        $officeId = $request->input('office_id');
+        $bookingNo = $request->input('booking_no');
         $chargeType = $request->input('charge_type', 'Revenue');
         $filter = $request->input('filter', '');
 
-        if (!$officeId) {
-            return response()->json(['success' => false, 'message' => 'Office ID required'], 400);
+        Log::info('=== GET CHARGE CODES CALLED ===', [
+            'booking_no' => $bookingNo,
+            'charge_type' => $chargeType,
+            'filter' => $filter,
+            'filter_length' => strlen($filter)
+        ]);
+
+        if (!$bookingNo) {
+            return response()->json(['success' => false, 'message' => 'Booking number required'], 400);
         }
 
         try {
-            $officeCode = 'KE';
+            $quotation = DB::table('Quote_QuotationInfo')
+                ->where('bookingno', $bookingNo)
+                ->first(['teamid']);
 
-            // SET NOCOUNT ON suppresses row count messages that interfere with result sets
-            $chargeCodes = DB::select("
-            SET NOCOUNT ON;
-            EXEC sp_ChargeCode ?, ?, ?
-        ", [$officeCode, $chargeType, $filter]);
+            if (!$quotation) {
+                Log::warning('Quotation not found', ['booking_no' => $bookingNo]);
+                return response()->json(['success' => false, 'message' => 'Quotation not found'], 404);
+            }
+
+            Log::info('Quotation found', ['team_id' => $quotation->teamid]);
+
+            $office = DB::table('Cust_Office')
+                ->where('TeamCode', $quotation->teamid)
+                ->where('IsActive', 1)
+                ->where('IsDeleted', 0)
+                ->first(['Code']);
+
+            if (!$office) {
+                Log::warning('Office not found', ['team_id' => $quotation->teamid]);
+                return response()->json(['success' => false, 'message' => 'Office not found'], 404);
+            }
+
+            // FIX: Trim the office code to remove trailing spaces
+            $officeCode = trim($office->Code);
+
+            Log::info('=== EXECUTING SP_CHARGECODE ===', [
+                'office_code' => $officeCode,
+                'office_code_raw' => $office->Code, // Log both to compare
+                'charge_type' => $chargeType,
+                'filter' => $filter
+            ]);
+
+            $pdo = DB::connection()->getPdo();
+            $stmt = $pdo->prepare("SET NOCOUNT ON; EXEC sp_ChargeCode ?, ?, ?");
+            $stmt->execute([$officeCode, $chargeType, $filter]); // Use trimmed code
+
+            $chargeCodes = [];
+            $resultSetCount = 0;
+
+            do {
+                $resultSetCount++;
+                try {
+                    $results = $stmt->fetchAll(\PDO::FETCH_OBJ);
+
+                    Log::info("Result set #$resultSetCount", [
+                        'count' => count($results),
+                        'first_row' => !empty($results) ? (array)$results[0] : null
+                    ]);
+
+                    if (!empty($results)) {
+                        $firstRow = $results[0];
+                        // Check if this is the data result set
+                        if (isset($firstRow->Id) && isset($firstRow->Code)) {
+                            $chargeCodes = $results;
+                            Log::info('✓ Found charge codes result set', ['count' => count($chargeCodes)]);
+                            break;
+                        }
+                    }
+                } catch (\Exception $e) {
+                    Log::debug("Result set #$resultSetCount error", ['error' => $e->getMessage()]);
+                    continue;
+                }
+            } while ($stmt->nextRowset());
+
+            Log::info('=== FINAL RESULT ===', [
+                'charge_codes_found' => count($chargeCodes),
+                'total_result_sets' => $resultSetCount
+            ]);
 
             return response()->json([
                 'success' => true,
                 'charge_codes' => $chargeCodes
             ]);
         } catch (\Exception $e) {
-            \Log::error('Charge codes error: ' . $e->getMessage());
-            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+            Log::error('Charge codes error: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString()
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to load charge codes: ' . $e->getMessage()
+            ], 500);
         }
     }
-
 
     public function getLegalEntities(Request $request)
     {
