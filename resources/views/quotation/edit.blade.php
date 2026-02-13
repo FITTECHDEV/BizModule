@@ -534,394 +534,337 @@
             </div>
         </div>
 
-        <!-- MODALS -->
+        <!-- MODALS - EXACT COPY FROM DOCUMENT 2 WITH YOUR NAMING -->
 
-        {{-- ============================================================
-             REVENUE MODAL
-             CHANGED: modal-body only — two-column field pairing applied.
-             All name attributes, ids, and JS hooks are untouched.
-             ============================================================ --}}
+        {{-- REVENUE MODAL - Using Document 2 structure with your field names --}}
         <div class="modal fade" id="addRevenueModal" tabindex="-1" role="dialog"
             aria-labelledby="addRevenueModalLabel" aria-hidden="true">
             <div class="modal-dialog modal-lg" role="document">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title" id="addRevenueModalLabel">Add Manual Charges</h5>
+                        <h2 class="modal-title" id="addRevenueModalLabel">Add Manual Charges</h2>
                         <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                             <span aria-hidden="true">&times;</span>
                         </button>
                     </div>
-
                     <div class="modal-body">
-
-                        {{-- Charge type + base currency --}}
-                        <div class="charge-type-row">
-                            <div>
-                                <div class="form-check form-check-inline">
-                                    <input class="form-check-input" type="radio" name="revenueChargeType"
-                                        id="revenueTypeRevenue" value="revenue" checked>
-                                    <label class="form-check-label" for="revenueTypeRevenue">Revenue</label>
-                                </div>
-                                <div class="form-check form-check-inline">
-                                    <input class="form-check-input" type="radio" name="revenueChargeType"
-                                        id="revenueTypeCost" value="cost">
-                                    <label class="form-check-label" for="revenueTypeCost">Cost</label>
-                                </div>
-                                <div class="form-check form-check-inline">
-                                    <input class="form-check-input" type="radio" name="revenueChargeType"
-                                        id="revenueTypeCostMarkup" value="costmarkup">
-                                    <label class="form-check-label" for="revenueTypeCostMarkup">Cost with markup</label>
-                                </div>
-                            </div>
-                            <div>
-                                <span class="text-muted">Base Currency: <strong>KES</strong></span>
-                            </div>
-                        </div>
-
-                        <hr>
-
-                        {{-- Row 1: Charge Code | Description --}}
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <label><span class="text-danger">*</span> Charge Code</label>
-                                <input type="text" class="form-control" name="revenue_charge_code" required>
-                            </div>
-                            <div class="col-md-6">
-                                <label>Description</label>
-                                <input type="text" class="form-control" name="revenue_description" readonly>
-                            </div>
-                        </div>
-
-                        {{-- Row 2: Bill to Party | Tax Applicable --}}
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <label><span class="text-danger">*</span> Bill to Party</label>
-                                <input type="text" class="form-control" name="revenue_bill_to_party" required>
-                                <input type="hidden" name="revenue_bill_to_party_code">
-                            </div>
-                            <div class="col-md-6">
-                                <label>Tax Applicable</label>
-                                <select class="form-control" name="revenue_tax_applicable" readonly>
-                                    <option value="">Select</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        {{-- Row 3: Based On | Based On UOM --}}
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <label><span class="text-danger">*</span> Based On</label>
-                                <select class="form-control" name="revenue_based_on" required>
-                                    <option value="">Select</option>
-                                </select>
-                            </div>
-                            <div class="col-md-6">
-                                <label><span class="text-danger">*</span> Based On UOM</label>
-                                <select class="form-control" name="revenue_based_on_uom" required>
-                                    <option value="">Select</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        {{-- Row 4: Quantity | Remark --}}
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <label>Quantity</label>
-                                <input type="number" class="form-control" name="revenue_quantity" value="0"
-                                    step="0.01">
-                            </div>
-                            <div class="col-md-6">
-                                <label>Remark</label>
-                                <input type="text" class="form-control" name="revenue_remark">
-                            </div>
-                        </div>
-
-                        {{-- Row 5: Rate (+ currency) | Amount --}}
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <label>Rate</label>
-                                <div class="input-group">
-                                    <input type="number" class="form-control" name="revenue_rate" value="0"
-                                        step="0.01">
-                                    <select class="form-control modal-currency-select" name="revenue_currency">
-                                        <option value="">CCY</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <label>Amount</label>
-                                <input type="number" class="form-control" name="revenue_amount" value="0.00"
-                                    step="0.01" readonly>
-                            </div>
-                        </div>
-
-                        {{-- Row 6: Exchange Rate | Amount in Base Currency --}}
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <label><span class="text-danger">*</span> Exchange Rate</label>
-                                <input type="number" class="form-control" name="revenue_exchange_rate" value="1.00"
-                                    step="0.01" required readonly>
-                            </div>
-                            <div class="col-md-6">
-                                <label>Amount in Base Currency (KES)</label>
-                                <input type="number" class="form-control" name="revenue_base_amount" value="0.00"
-                                    step="0.01" readonly>
-                            </div>
-                        </div>
-
-                        {{-- Increase By row — shown only for costmarkup --}}
-                        <div class="increase-by-row">
-                            <div class="row mb-3">
-                                <div class="col-md-6">
-                                    <label>Increase By</label>
-                                    <div class="input-group">
-                                        <input type="number" class="form-control" name="revenue_increase_by"
-                                            value="0" step="0.01">
-                                        <select class="form-control modal-currency-select" name="revenue_increase_type">
-                                            <option value="Percentage">Percentage</option>
-                                            <option value="Fixed">Fixed</option>
-                                        </select>
+                        <form id="addRevenueChargesForm">
+                            <input type="hidden" id="FITExpressChargeID" name="revenue_charge_id" />
+                            
+                            <!-- Top Row: Revenue/Cost + Base Currency -->
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="radio" name="revenueChargeType"
+                                            id="revenueTypeRevenue" value="revenue" checked>
+                                        <label class="form-check-label" for="revenueTypeRevenue">Revenue</label>
+                                    </div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="radio" name="revenueChargeType"
+                                            id="revenueTypeCost" value="cost">
+                                        <label class="form-check-label" for="revenueTypeCost">Cost</label>
+                                    </div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="radio" name="revenueChargeType"
+                                            id="revenueTypeCostMarkup" value="costmarkup">
+                                        <label class="form-check-label" for="revenueTypeCostMarkup">Cost with markup</label>
                                     </div>
                                 </div>
-                                <div class="col-md-6">
-                                    <label>Revenue Amount</label>
-                                    <input type="number" class="form-control" name="revenue_markup_amount"
-                                        value="0.00" step="0.01" readonly>
+                                <div class="text-end">
+                                    <p class="text-muted mb-0">Base Currency: <strong>KES</strong></p>
                                 </div>
                             </div>
-                        </div>
 
-                        {{-- Is Accrued + Secondary Bill To Party --}}
-                        <div class="is-accrued-row">
-                            <div class="form-check mb-2">
-                                <input class="form-check-input" type="checkbox" id="revenueIsAccrued"
-                                    name="revenue_is_accrued">
-                                <label class="form-check-label fw-semibold" for="revenueIsAccrued">
-                                    Is Accrued <small class="text-muted">(Adds to Cost)</small>
-                                </label>
+                            <div class="row">
+                                <!-- Left Column -->
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="revenue_charge_code" class="form-label"><span class="text-danger">*</span>
+                                            Charge Code</label>
+                                        <input type="text" class="form-control" id="revenue_charge_code" name="revenue_charge_code" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="revenue_bill_to_party" class="form-label"><span class="text-danger">*</span>
+                                            Bill to Party</label>
+                                        <input type="text" class="form-control" id="revenue_bill_to_party" name="revenue_bill_to_party" required>
+                                        <input type="hidden" class="form-control" id="revenue_bill_to_party_code"
+                                            name="revenue_bill_to_party_code" />
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="revenue_based_on" class="form-label"><span class="text-danger">*</span> Based
+                                            On</label>
+                                        <select class="form-select form-control" id="revenue_based_on" name="revenue_based_on" required>
+                                            <option value="">Select</option>
+                                        </select>
+                                    </div>
+
+                                    <!-- Quantity only -->
+                                    <div class="mb-3">
+                                        <label for="revenue_quantity" class="form-label">Quantity</label>
+                                        <input type="number" class="form-control" id="revenue_quantity" name="revenue_quantity" step="0.01">
+                                    </div>
+
+                                    <div class="row mb-3">
+                                        <div class="col-6">
+                                            <label for="revenue_rate" class="form-label">Rate</label>
+                                            <div class="input-group">
+                                                <input type="number" class="form-control" id="revenue_rate" name="revenue_rate"
+                                                    step="0.01">
+                                                <select class="form-select form-control" id="revenue_currency" name="revenue_currency">
+                                                    <option value="">Select</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="col-6">
+                                            <label for="revenue_amount" class="form-label">Amount</label>
+                                            <input type="number" class="form-control" id="revenue_amount" name="revenue_amount" step="0.01"
+                                                value="0.00" readonly>
+                                        </div>
+                                    </div>
+
+                                    <div class="row mb-3">
+                                        <div class="col-6">
+                                            <label for="revenue_exchange_rate" class="form-label"><span
+                                                    class="text-danger">*</span> Exchange Rate</label>
+                                            <input type="number" class="form-control" id="revenue_exchange_rate" name="revenue_exchange_rate" readonly>
+                                        </div>
+                                        <div class="col-6">
+                                            <label for="revenue_base_amount" class="form-label text-nowrap">Amount in
+                                                Base Currency <span class="text-muted">(KES)</span></label>
+                                            <input type="number" class="form-control" id="revenue_base_amount" name="revenue_base_amount"
+                                                step="0.01" value="0.00" readonly>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Right Column -->
+                                <div class="col-md-6">
+                                    <!-- Remark moved here -->
+                                    <div class="mb-3">
+                                        <label for="revenue_description" class="form-label">Description</label>
+                                        <input type="text" class="form-control" id="revenue_description" name="revenue_description" readonly>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="revenue_tax_applicable" class="form-label">Tax Applicable</label>
+                                        <input type="number" class="form-control" id="revenue_tax_applicable" name="revenue_tax_applicable" step="0.01"
+                                            readonly>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="revenue_based_on_uom" class="form-label"><span class="text-danger">*</span> Based
+                                            On UOM</label>
+                                        <select class="form-select form-control" id="revenue_based_on_uom" name="revenue_based_on_uom" required>
+                                            <option value="">Select</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="revenue_remark" class="form-label">Remark</label>
+                                        <input type="text" class="form-control" id="revenue_remark" name="revenue_remark">
+                                    </div>
+
+                                    <!-- Checkboxes -->
+                                    <div class="mb-3">
+                                        <div class="form-check mb-2" id="revenueIsReimbursedContainer" style="display:none;">
+                                            <input class="form-check-input" type="checkbox" id="revenueIsReimbursed"
+                                                name="revenue_is_reimbursed">
+                                            <label class="form-check-label fw-semibold" for="revenueIsReimbursed">
+                                                Is Reimbursed <small class="text-muted">(Adds to Revenue)</small>
+                                            </label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="revenueIsAccrued"
+                                                name="revenue_is_accrued">
+                                            <label class="form-check-label fw-semibold" for="revenueIsAccrued">
+                                                Is Accrued <small class="text-muted">(Adds to Cost)</small>
+                                            </label>
+                                        </div>
+
+                                        <div class="mb-3" id="revenueSecondaryBillToPartyContainer" style="display:none;">
+                                            <label for="revenueSecondaryBillToParty" class="form-label"><span
+                                                    class="text-danger">*</span> Secondary Bill To Party</label>
+                                            <input type="text" class="form-control" id="revenueSecondaryBillToParty"
+                                                placeholder="Select Secondary Party">
+                                            <input type="hidden" id="revenueSecondaryBillToPartyCode">
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                            <div id="secondaryBillToPartyContainerRevenue">
-                                <label><span class="text-danger">*</span> Secondary Bill To Party</label>
-                                <input type="text" class="form-control" id="revenueSecondaryBillToParty"
-                                    placeholder="Select Secondary Party">
-                                <input type="hidden" id="revenueSecondaryBillToPartyCode">
-                            </div>
-                        </div>
-
-                    </div>{{-- end modal-body --}}
-
+                        </form>
+                    </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-success btn-sm" id="saveRevenueCharge">
-                            <i class="fas fa-save"></i> Save
-                        </button>
-                        <button type="button" class="btn btn-primary btn-sm" id="saveAddMoreRevenueCharge">
-                            <i class="fas fa-plus"></i> Save & Add More
-                        </button>
-                        <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">
-                            <i class="fas fa-times"></i> Cancel
-                        </button>
+                        <button type="button" class="btn btn-success" id="saveRevenueCharge">Save</button>
+                        <button type="button" class="btn btn-primary" id="saveAddMoreRevenueCharge">Save & Add More</button>
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
                     </div>
                 </div>
             </div>
         </div>
 
-        {{-- ============================================================
-             COST MODAL
-             CHANGED: modal-body only — two-column field pairing applied.
-             All name attributes, ids, and JS hooks are untouched.
-             ============================================================ --}}
+        {{-- COST MODAL - Using Document 2 structure with your field names --}}
         <div class="modal fade" id="addCostModal" tabindex="-1" role="dialog" aria-labelledby="addCostModalLabel"
             aria-hidden="true">
             <div class="modal-dialog modal-lg" role="document">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title" id="addCostModalLabel">Add Manual Charges</h5>
+                        <h2 class="modal-title" id="addCostModalLabel">Add Manual Charges</h2>
                         <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                             <span aria-hidden="true">&times;</span>
                         </button>
                     </div>
-
                     <div class="modal-body">
-
-                        {{-- Charge type + base currency --}}
-                        <div class="charge-type-row">
-                            <div>
-                                <div class="form-check form-check-inline">
-                                    <input class="form-check-input" type="radio" name="costChargeType"
-                                        id="costTypeRevenue" value="revenue">
-                                    <label class="form-check-label" for="costTypeRevenue">Revenue</label>
-                                </div>
-                                <div class="form-check form-check-inline">
-                                    <input class="form-check-input" type="radio" name="costChargeType"
-                                        id="costTypeCost" value="cost" checked>
-                                    <label class="form-check-label" for="costTypeCost">Cost</label>
-                                </div>
-                                <div class="form-check form-check-inline">
-                                    <input class="form-check-input" type="radio" name="costChargeType"
-                                        id="costTypeCostMarkup" value="costmarkup">
-                                    <label class="form-check-label" for="costTypeCostMarkup">Cost with markup</label>
-                                </div>
-                            </div>
-                            <div>
-                                <span class="text-muted">Base Currency: <strong>KES</strong></span>
-                            </div>
-                        </div>
-
-                        <hr>
-
-                        {{-- Row 1: Charge Code | Description --}}
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <label><span class="text-danger">*</span> Charge Code</label>
-                                <input type="text" class="form-control" name="cost_charge_code" required>
-                            </div>
-                            <div class="col-md-6">
-                                <label>Description</label>
-                                <input type="text" class="form-control" name="cost_description" readonly>
-                            </div>
-                        </div>
-
-                        {{-- Row 2: Bill to Party | Tax Applicable --}}
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <label><span class="text-danger">*</span> Bill to Party</label>
-                                <input type="text" class="form-control" name="cost_bill_to_party" required>
-                                <input type="hidden" name="cost_bill_to_party_code">
-                            </div>
-                            <div class="col-md-6">
-                                <label>Tax Applicable</label>
-                                <select class="form-control" name="cost_tax_applicable" readonly>
-                                    <option value="">Select</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        {{-- Row 3: Based On | Based On UOM --}}
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <label><span class="text-danger">*</span> Based On</label>
-                                <select class="form-control" name="cost_based_on" required>
-                                    <option value="">Select</option>
-                                </select>
-                            </div>
-                            <div class="col-md-6">
-                                <label><span class="text-danger">*</span> Based On UOM</label>
-                                <select class="form-control" name="cost_based_on_uom" required>
-                                    <option value="">Select</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        {{-- Row 4: Quantity | Remark --}}
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <label>Quantity</label>
-                                <input type="number" class="form-control" name="cost_quantity" value="0"
-                                    step="0.01">
-                            </div>
-                            <div class="col-md-6">
-                                <label>Remark</label>
-                                <input type="text" class="form-control" name="cost_remark">
-                            </div>
-                        </div>
-
-                        {{-- Row 5: Rate (+ currency) | Amount --}}
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <label>Rate</label>
-                                <div class="input-group">
-                                    <input type="number" class="form-control" name="cost_rate" value="0"
-                                        step="0.01">
-                                    <select class="form-control modal-currency-select" name="cost_currency">
-                                        <option value="">CCY</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <label>Amount</label>
-                                <input type="number" class="form-control" name="cost_amount" value="0.00"
-                                    step="0.01" readonly>
-                            </div>
-                        </div>
-
-                        {{-- Row 6: Exchange Rate | Amount in Base Currency --}}
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <label><span class="text-danger">*</span> Exchange Rate</label>
-                                <input type="number" class="form-control" name="cost_exchange_rate" value="1.00"
-                                    step="0.01" required readonly>
-                            </div>
-                            <div class="col-md-6">
-                                <label>Amount in Base Currency (KES)</label>
-                                <input type="number" class="form-control" name="cost_base_amount" value="0.00"
-                                    step="0.01" readonly>
-                            </div>
-                        </div>
-
-                        {{-- Increase By row — shown only for costmarkup --}}
-                        <div class="increase-by-row">
-                            <div class="row mb-3">
-                                <div class="col-md-6">
-                                    <label>Increase By</label>
-                                    <div class="input-group">
-                                        <input type="number" class="form-control" name="cost_increase_by"
-                                            value="0" step="0.01">
-                                        <select class="form-control modal-currency-select" name="cost_increase_type">
-                                            <option value="Percentage">Percentage</option>
-                                            <option value="Fixed">Fixed</option>
-                                        </select>
+                        <form id="addCostChargesForm">
+                            <input type="hidden" id="FITExpressChargeIDCost" name="cost_charge_id" />
+                            
+                            <!-- Top Row: Revenue/Cost + Base Currency -->
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="radio" name="costChargeType"
+                                            id="costTypeRevenue" value="revenue">
+                                        <label class="form-check-label" for="costTypeRevenue">Revenue</label>
+                                    </div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="radio" name="costChargeType"
+                                            id="costTypeCost" value="cost" checked>
+                                        <label class="form-check-label" for="costTypeCost">Cost</label>
+                                    </div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="radio" name="costChargeType"
+                                            id="costTypeCostMarkup" value="costmarkup">
+                                        <label class="form-check-label" for="costTypeCostMarkup">Cost with markup</label>
                                     </div>
                                 </div>
-                                <div class="col-md-6">
-                                    <label>Revenue Amount</label>
-                                    <input type="number" class="form-control" name="cost_revenue_amount" value="0.00"
-                                        step="0.01" readonly>
+                                <div class="text-end">
+                                    <p class="text-muted mb-0">Base Currency: <strong>KES</strong></p>
                                 </div>
                             </div>
-                        </div>
 
-                        {{-- Is Accrued / Is Reimbursed + Secondary Bill To Party --}}
-                        <div class="is-accrued-row">
-                            <div class="form-check mb-2">
-                                <input class="form-check-input" type="checkbox" id="costIsAccrued"
-                                    name="cost_is_accrued">
-                                <label class="form-check-label fw-semibold" for="costIsAccrued">
-                                    Is Accrued <small class="text-muted">(Adds to Cost)</small>
-                                </label>
-                            </div>
-                            <div class="form-check mb-2">
-                                <input class="form-check-input" type="checkbox" id="costIsReimbursed"
-                                    name="cost_is_reimbursed">
-                                <label class="form-check-label fw-semibold" for="costIsReimbursed">
-                                    Is Reimbursed <small class="text-muted">(Adds to Revenue)</small>
-                                </label>
-                            </div>
-                            <div id="secondaryBillToPartyContainerCost">
-                                <label><span class="text-danger">*</span> Secondary Bill To Party</label>
-                                <input type="text" class="form-control" id="costSecondaryBillToParty"
-                                    placeholder="Select Secondary Party">
-                                <input type="hidden" id="costSecondaryBillToPartyCode">
-                            </div>
-                        </div>
+                            <div class="row">
+                                <!-- Left Column -->
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="cost_charge_code" class="form-label"><span class="text-danger">*</span>
+                                            Charge Code</label>
+                                        <input type="text" class="form-control" id="cost_charge_code" name="cost_charge_code" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="cost_bill_to_party" class="form-label"><span class="text-danger">*</span>
+                                            Bill to Party</label>
+                                        <input type="text" class="form-control" id="cost_bill_to_party" name="cost_bill_to_party" required>
+                                        <input type="hidden" class="form-control" id="cost_bill_to_party_code"
+                                            name="cost_bill_to_party_code" />
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="cost_based_on" class="form-label"><span class="text-danger">*</span> Based
+                                            On</label>
+                                        <select class="form-select form-control" id="cost_based_on" name="cost_based_on" required>
+                                            <option value="">Select</option>
+                                        </select>
+                                    </div>
 
-                    </div>{{-- end modal-body --}}
+                                    <!-- Quantity only -->
+                                    <div class="mb-3">
+                                        <label for="cost_quantity" class="form-label">Quantity</label>
+                                        <input type="number" class="form-control" id="cost_quantity" name="cost_quantity" step="0.01">
+                                    </div>
 
+                                    <div class="row mb-3">
+                                        <div class="col-6">
+                                            <label for="cost_rate" class="form-label">Rate</label>
+                                            <div class="input-group">
+                                                <input type="number" class="form-control" id="cost_rate" name="cost_rate"
+                                                    step="0.01">
+                                                <select class="form-select form-control" id="cost_currency" name="cost_currency">
+                                                    <option value="">Select</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="col-6">
+                                            <label for="cost_amount" class="form-label">Amount</label>
+                                            <input type="number" class="form-control" id="cost_amount" name="cost_amount" step="0.01"
+                                                value="0.00" readonly>
+                                        </div>
+                                    </div>
+
+                                    <div class="row mb-3">
+                                        <div class="col-6">
+                                            <label for="cost_exchange_rate" class="form-label"><span
+                                                    class="text-danger">*</span> Exchange Rate</label>
+                                            <input type="number" class="form-control" id="cost_exchange_rate" name="cost_exchange_rate" readonly>
+                                        </div>
+                                        <div class="col-6">
+                                            <label for="cost_base_amount" class="form-label text-nowrap">Amount in
+                                                Base Currency <span class="text-muted">(KES)</span></label>
+                                            <input type="number" class="form-control" id="cost_base_amount" name="cost_base_amount"
+                                                step="0.01" value="0.00" readonly>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Right Column -->
+                                <div class="col-md-6">
+                                    <!-- Remark moved here -->
+                                    <div class="mb-3">
+                                        <label for="cost_description" class="form-label">Description</label>
+                                        <input type="text" class="form-control" id="cost_description" name="cost_description" readonly>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="cost_tax_applicable" class="form-label">Tax Applicable</label>
+                                        <input type="number" class="form-control" id="cost_tax_applicable" name="cost_tax_applicable" step="0.01"
+                                            readonly>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="cost_based_on_uom" class="form-label"><span class="text-danger">*</span> Based
+                                            On UOM</label>
+                                        <select class="form-select form-control" id="cost_based_on_uom" name="cost_based_on_uom" required>
+                                            <option value="">Select</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="cost_remark" class="form-label">Remark</label>
+                                        <input type="text" class="form-control" id="cost_remark" name="cost_remark">
+                                    </div>
+
+                                    <!-- Checkboxes -->
+                                    <div class="mb-3">
+                                        <div class="form-check mb-2">
+                                            <input class="form-check-input" type="checkbox" id="costIsReimbursed"
+                                                name="cost_is_reimbursed">
+                                            <label class="form-check-label fw-semibold" for="costIsReimbursed">
+                                                Is Reimbursed <small class="text-muted">(Adds to Revenue)</small>
+                                            </label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="costIsAccrued"
+                                                name="cost_is_accrued">
+                                            <label class="form-check-label fw-semibold" for="costIsAccrued">
+                                                Is Accrued <small class="text-muted">(Adds to Cost)</small>
+                                            </label>
+                                        </div>
+
+                                        <div class="mb-3" id="costSecondaryBillToPartyContainer" style="display:none;">
+                                            <label for="costSecondaryBillToParty" class="form-label"><span
+                                                    class="text-danger">*</span> Secondary Bill To Party</label>
+                                            <input type="text" class="form-control" id="costSecondaryBillToParty"
+                                                placeholder="Select Secondary Party">
+                                            <input type="hidden" id="costSecondaryBillToPartyCode">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-success btn-sm" id="saveCostCharge">
-                            <i class="fas fa-save"></i> Save
-                        </button>
-                        <button type="button" class="btn btn-primary btn-sm" id="saveAddMoreCostCharge">
-                            <i class="fas fa-plus"></i> Save & Add More
-                        </button>
-                        <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">
-                            <i class="fas fa-times"></i> Cancel
-                        </button>
+                        <button type="button" class="btn btn-success" id="saveCostCharge">Save</button>
+                        <button type="button" class="btn btn-primary" id="saveAddMoreCostCharge">Save & Add More</button>
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- XML Viewer Modal — unchanged -->
+        <!-- XML Viewer Modal -->
         <div class="modal fade" id="xmlViewerModal" tabindex="-1" role="dialog">
             <div class="modal-dialog modal-xl" role="document">
                 <div class="modal-content">
@@ -944,6 +887,8 @@
 
     </form>
 @stop
+
+
 <style>
     /* =============================================
        MODAL STYLING — matched to FitExpress UI
