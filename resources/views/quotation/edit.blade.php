@@ -1519,7 +1519,7 @@
                     },
                     success: function(response) {
                         if (response.success && response.currencies && response.currencies.length > 0) {
-                            $currencySelect.empty().append('<option value="">Select Currency</option>');
+                            $currencySelect.empty().append('<option value="">Select</option>');
 
                             // Build currency map and populate dropdown
                             currencyMap = {};
