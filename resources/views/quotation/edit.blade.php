@@ -920,8 +920,8 @@
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.min.css">
     <style>
         /* =============================================
-                       MODAL STYLING — matched to FitExpress UI
-                       ============================================= */
+                               MODAL STYLING — matched to FitExpress UI
+                               ============================================= */
 
         .modal-header {
             background-color: #fff !important;
@@ -1805,7 +1805,7 @@
             function toggleRevenueFormFields(type) {
                 const $modal = $('#addRevenueModal');
                 let $increaseByRow = $modal.find('.increase-by-row');
-                const $isReimbursedContainer = $('#revenueIsReimbursedContainer'); // FIX THIS
+                const $isReimbursedContainer = $('#revenueIsReimbursedContainer');
 
                 if (type === 'costmarkup') {
                     if ($increaseByRow.length === 0) {
@@ -1831,13 +1831,11 @@
                     }
                     $increaseByRow = $modal.find('.increase-by-row');
                     $increaseByRow.show();
-                    $isReimbursedContainer.hide(); // Hide "Is Reimbursed" for markup
-                } else if (type === 'cost') {
+                    $isReimbursedContainer.hide();
+                } else {
                     $increaseByRow.hide();
-                    $isReimbursedContainer.show(); // Show "Is Reimbursed" for cost
-                } else { // revenue
-                    $increaseByRow.hide();
-                    $isReimbursedContainer.hide(); // Hide for revenue
+                    // FIX: Revenue modal should only show "Is Accrued" checkbox
+                    $isReimbursedContainer.hide();
                 }
             }
 
@@ -1873,10 +1871,10 @@
                     $isReimbursedContainer.hide();
                 } else {
                     $increaseByRow.hide();
+                    // FIX: Cost modal should show "Is Reimbursed" checkbox
                     $isReimbursedContainer.show();
                 }
             }
-
             // ============================================
             // AUTO-CALCULATE AMOUNTS (ENHANCED)
             // ============================================
@@ -1945,10 +1943,11 @@
                 const $modal = type === 'revenue' ? $('#addRevenueModal') : $('#addCostModal');
                 const chargeType = $modal.find('input[name="' + type + 'ChargeType"]:checked').val();
 
-                let revenueOrCost = 'Revenue';
-                if (chargeType === 'cost') {
-                    revenueOrCost = 'Cost';
-                } else if (chargeType === 'costmarkup') {
+                // FIX: Modal type determines revenue/cost, not radio buttons
+                let revenueOrCost = type === 'revenue' ? 'Revenue' : 'Cost';
+
+                // Only "Cost with Markup" changes the type
+                if (chargeType === 'costmarkup') {
                     revenueOrCost = 'Cost with Markup';
                 }
 
@@ -1972,7 +1971,10 @@
                     based_on_code: $modal.find('select[name="' + type + '_based_on"]').val() || '',
                     based_on_uom: $modal.find('select[name="' + type + '_based_on_uom"]').val() || '',
                     charge_remark: $modal.find('input[name="' + type + '_remark"]').val() || '',
-                    to_be_added: chargeType === 'cost' || chargeType === 'revenue' ? 1 : 0,
+                    // FIX: Only add opposite entry if "Is Reimbursed" (for cost) or "Is Accrued" (for revenue) is checked
+                    to_be_added: type === 'cost' ?
+                        ($modal.find('#' + type + 'IsReimbursed').is(':checked') ? 1 : 0) : ($modal.find('#' +
+                            type + 'IsAccrued').is(':checked') ? 1 : 0),
                     increase_by: 0,
                     increase_type: 'Percentage',
                     source_type: 'manual'
@@ -1980,8 +1982,8 @@
 
                 if (chargeType === 'costmarkup') {
                     chargeData.increase_by = parseFloat($modal.find('input[name="' + type + '_increase_by"]')
-                        .val()) || 0;
-                    chargeData.increase_type = $modal.find('select[name="' + type + '_increase_type"]').val() ||
+                            .val()) || 0,
+                        chargeData.increase_type = $modal.find('select[name="' + type + '_increase_type"]').val() ||
                         'Percentage';
                 }
 
@@ -2024,7 +2026,6 @@
                     }
                 });
             }
-
             // ============================================
             // DELETE CHARGES
             // ============================================

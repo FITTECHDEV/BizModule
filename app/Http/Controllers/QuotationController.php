@@ -386,12 +386,6 @@ class QuotationController extends Controller
                 'based_on_uom' => $request->input('based_on_uom'),
                 'action' => $request->input('action'),
                 'revenue_or_cost' => $request->input('revenue_or_cost'),
-                'quantity' => $request->input('quantity'),
-                'rate' => $request->input('rate'),
-                'amt_in_chg_curr' => $request->input('amt_in_chg_curr'),
-                'amt_in_base_curr' => $request->input('amt_in_base_curr'),
-                'exchange_rate' => $request->input('exchange_rate'),
-                'chg_curr' => $request->input('chg_curr'),
                 'user' => Auth::user()->username ?? Auth::user()->email,
             ]);
 
@@ -418,12 +412,28 @@ class QuotationController extends Controller
             }
 
             // ============================================
+            // DEBUG AUTH USER
+            // ============================================
+            $user = Auth::user();
+            Log::info('Current authenticated user', [
+                'user' => $user ? [
+                    'id' => $user->id ?? null,
+                    'username' => $user->username ?? null,
+                    'email' => $user->email ?? null,
+                    'name' => $user->name ?? null,
+                ] : 'No user authenticated'
+            ]);
+
+
+            // ============================================
             // PREPARE STORED PROCEDURE INPUT
             // ============================================
             $inputJson = json_encode([
                 'OperationType' => 'QuotationAddorEditCharge',
                 'SubmittedDatetime' => now()->format('YmdHis'),
-                'SubmittedBy' => Auth::user()->username ?? Auth::user()->email,
+                'SubmittedBy' => Auth::check()
+                    ? (Auth::user()->username ?? Auth::user()->email ?? Auth::user()->name ?? 'unknown')
+                    : 'system',
                 'Action' => $request->input('action', 'Add'),
                 'BookingNo' => $request->input('booking_no'),
                 'QuoteChargeID' => $request->input('quote_charge_id', ''),
@@ -451,15 +461,57 @@ class QuotationController extends Controller
             ]);
 
             // ============================================
-            // EXECUTE STORED PROCEDURE
+            // EXECUTE STORED PROCEDURE WITH PDO
             // ============================================
             Log::info('Executing Stored Procedure: sp_Quote_Quotaiton_ChargesAddorEdit');
 
-            $result = DB::select('
+            $pdo = DB::connection()->getPdo();
+            $stmt = $pdo->prepare("
+            SET NOCOUNT ON;
             DECLARE @OutputJson VARCHAR(2000);
             EXEC sp_Quote_Quotaiton_ChargesAddorEdit ?, @OutputJson OUTPUT;
             SELECT @OutputJson AS OutputJson
-        ', [$inputJson]);
+        ");
+            $stmt->execute([$inputJson]);
+
+            // Skip empty result sets and get the final output
+            $result = null;
+            $resultSetCount = 0;
+
+            do {
+                $resultSetCount++;
+                try {
+                    $rows = $stmt->fetchAll(\PDO::FETCH_OBJ);
+
+                    Log::debug("Result set #$resultSetCount", [
+                        'count' => count($rows),
+                        'first_row' => !empty($rows) ? (array)$rows[0] : null
+                    ]);
+
+                    if (!empty($rows) && isset($rows[0]->OutputJson)) {
+                        $result = $rows;
+                        Log::info('✓ Found OutputJson in result set #' . $resultSetCount);
+                        break;
+                    }
+                } catch (\PDOException $e) {
+                    // Skip empty result sets
+                    Log::debug("Result set #$resultSetCount error (skipping)", [
+                        'error' => $e->getMessage()
+                    ]);
+                    continue;
+                }
+            } while ($stmt->nextRowset());
+
+            if (!$result) {
+                Log::error('Stored procedure did not return OutputJson', [
+                    'total_result_sets' => $resultSetCount
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Stored procedure did not return expected output'
+                ], 500);
+            }
 
             // ============================================
             // LOG RAW STORED PROCEDURE OUTPUT
@@ -528,35 +580,6 @@ class QuotationController extends Controller
                 'message' => $errorMessage,
                 'details' => $output['Remarks'] ?? []
             ], 422);
-        } catch (\Illuminate\Database\QueryException $e) {
-            // ============================================
-            // DATABASE-SPECIFIC ERRORS
-            // ============================================
-            Log::error('Database error while saving charge', [
-                'error_code' => $e->getCode(),
-                'error_message' => $e->getMessage(),
-                'sql' => $e->getSql() ?? 'N/A',
-                'bindings' => $e->getBindings() ?? [],
-                'trace' => $e->getTraceAsString()
-            ]);
-
-            // Check for common SQL Server errors
-            $errorMessage = 'Database error occurred';
-
-            if (str_contains($e->getMessage(), 'sp_Quote_Quotaiton_ChargesAddorEdit')) {
-                $errorMessage = 'Stored procedure not found. Please contact system administrator.';
-            } elseif (str_contains($e->getMessage(), 'timeout')) {
-                $errorMessage = 'Database timeout. Please try again.';
-            } elseif (str_contains($e->getMessage(), 'deadlock')) {
-                $errorMessage = 'Database deadlock detected. Please try again.';
-            }
-
-            return response()->json([
-                'success' => false,
-                'message' => $errorMessage,
-                'error_code' => 'DB_ERROR',
-                'details' => config('app.debug') ? $e->getMessage() : null
-            ], 500);
         } catch (\Exception $e) {
             // ============================================
             // GENERAL ERRORS
@@ -584,52 +607,176 @@ class QuotationController extends Controller
     public function deleteCharge(Request $request)
     {
         try {
+            $bookingNo = $request->input('booking_no');
+            $chargeId = $request->input('quote_charge_id');
+
+            // FIX: Fetch the charge details first (SP validates all fields even for DELETE)
+            $charge = DB::selectOne("
+            SELECT 
+                QC.Id as QuoteChargeID,
+                BC.Code as ChargeCode,
+                QC.Quantity,
+                QC.EstChargeRate as Rate,
+                QC.EstChargeAmount as AmtInChgCurr,
+                QC.EstBaseAmount as AmtInBaseCurr,
+                QC.BaseExchRate as ExChangeRate,
+                CC.Code as ChgCurr,
+                CB.Code as BasedOnCode,
+                ISNULL(SU.Code, '') as BasedOnUOM,
+                ISNULL(QC.Remarks, '') as ChargeRemark,
+                QC.IsRevenue,
+                ISNULL(CP.Code, '') as PartyCode,
+                ISNULL(QC.ChargeType, 'manual') as SourceType
+            FROM Quote_Quotation_ChargeSheet QC WITH (NOLOCK)
+            INNER JOIN Quote_QuotationInfo QI WITH (NOLOCK) ON QI.id = QC.QuotationInfoID
+            LEFT JOIN [FITSCMUAT].dbo.Bill_ChargeCode BC WITH (NOLOCK) ON BC.Id = QC.ChargeCodeId
+            LEFT JOIN [FITSCMUAT].dbo.Cust_Currency CC WITH (NOLOCK) ON CC.Id = QC.EstChargeCurrencyId
+            LEFT JOIN Cust_ChargecodeBasedOn CB WITH (NOLOCK) ON CB.Id = QC.BasedOnId
+            LEFT JOIN [FITSCMUAT].dbo.Sys_UOM SU WITH (NOLOCK) ON SU.Id = QC.UOMId
+            LEFT JOIN [FITSCMUAT].dbo.Cust_Party CP WITH (NOLOCK) ON CP.Id = QC.PartyID
+            WHERE QC.Id = ?
+                AND QC.IsDeleted = 0
+        ", [$chargeId]);
+
+            if (!$charge) {
+                Log::warning('Charge not found for deletion', [
+                    'charge_id' => $chargeId,
+                    'booking_no' => $bookingNo
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Charge not found or already deleted'
+                ], 404);
+            }
+
+            $submittedBy = Auth::check()
+                ? (Auth::user()->username ?? Auth::user()->email ?? Auth::user()->name ?? 'system')
+                : 'system';
+
+            // FIX: Use real charge data (SP validates all fields even for DELETE)
             $inputJson = json_encode([
                 'OperationType' => 'QuotationAddorEditCharge',
                 'SubmittedDatetime' => now()->format('YmdHis'),
-                'SubmittedBy' => Auth::user()->username ?? Auth::user()->email,
+                'SubmittedBy' => $submittedBy,
                 'Action' => 'Delete',
-                'BookingNo' => $request->input('booking_no'),
-                'QuoteChargeID' => $request->input('quote_charge_id'),
-                'PartyCode' => '',
-                'RevenueOrCost' => 'Revenue',
-                'ChargeCode' => '',
-                'Quantity' => 0,
-                'Rate' => 0,
-                'AmtInChgCurr' => 0,
-                'AmtInBaseCurr' => 0,
-                'ExChangeRate' => 1,
-                'ChgCurr' => 'KES',
-                'BasedOnCode' => '',
-                'BasedOnUOM' => '',
-                'ChargeRemark' => '',
+                'BookingNo' => $bookingNo,
+                'QuoteChargeID' => $chargeId,
+                'PartyCode' => $charge->PartyCode ?? '',
+                'RevenueOrCost' => $charge->IsRevenue ? 'Revenue' : 'Cost',
+                'ChargeCode' => $charge->ChargeCode,
+                'Quantity' => (float)$charge->Quantity,
+                'Rate' => (float)$charge->Rate,
+                'AmtInChgCurr' => (float)$charge->AmtInChgCurr,
+                'AmtInBaseCurr' => (float)$charge->AmtInBaseCurr,
+                'ExChangeRate' => (float)$charge->ExChangeRate,
+                'ChgCurr' => $charge->ChgCurr ?? 'KES',
+                'BasedOnCode' => $charge->BasedOnCode,
+                'BasedOnUOM' => $charge->BasedOnUOM ?? '',
+                'ChargeRemark' => $charge->ChargeRemark ?? '',
                 'ToBeAdded' => 0,
                 'IncreaseBy' => 0,
                 'IncreaseType' => 'Percentage',
-                'SourceType' => 'manual'
+                'SourceType' => $charge->SourceType ?? 'manual'
             ]);
 
-            $result = DB::select('
+            Log::info('Delete Charge Request', [
+                'booking_no' => $bookingNo,
+                'charge_id' => $chargeId,
+                'charge_code' => $charge->ChargeCode,
+                'user' => $submittedBy
+            ]);
+
+            $pdo = DB::connection()->getPdo();
+            $stmt = $pdo->prepare("
+            SET NOCOUNT ON;
             DECLARE @OutputJson VARCHAR(2000);
             EXEC sp_Quote_Quotaiton_ChargesAddorEdit ?, @OutputJson OUTPUT;
             SELECT @OutputJson AS OutputJson
-        ', [$inputJson]);
+        ");
+            $stmt->execute([$inputJson]);
 
-            $output = json_decode($result[0]->OutputJson ?? '{}', true);
+            // Skip empty result sets and get the final output
+            $result = null;
+            $resultSetCount = 0;
+
+            do {
+                $resultSetCount++;
+                try {
+                    $rows = $stmt->fetchAll(\PDO::FETCH_OBJ);
+
+                    if (!empty($rows) && isset($rows[0]->OutputJson)) {
+                        $result = $rows;
+                        Log::info('✓ Found OutputJson in result set #' . $resultSetCount);
+                        break;
+                    }
+                } catch (\PDOException $e) {
+                    Log::debug("Delete - Result set #$resultSetCount error (skipping)", [
+                        'error' => $e->getMessage()
+                    ]);
+                    continue;
+                }
+            } while ($stmt->nextRowset());
+
+            if (!$result) {
+                Log::error('Delete - Stored procedure did not return OutputJson', [
+                    'total_result_sets' => $resultSetCount
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Stored procedure did not return expected output'
+                ], 500);
+            }
+
+            $outputJson = $result[0]->OutputJson ?? '{}';
+            $output = json_decode($outputJson, true);
+
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                Log::error('Delete - Failed to decode stored procedure output', [
+                    'json_error' => json_last_error_msg(),
+                    'raw_output' => $outputJson
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to parse stored procedure response: ' . json_last_error_msg()
+                ], 500);
+            }
 
             if (($output['Status'] ?? '') === 'Success') {
+                Log::info('Charge deleted successfully', [
+                    'booking_no' => $bookingNo,
+                    'charge_id' => $chargeId,
+                    'charge_code' => $charge->ChargeCode
+                ]);
+
                 return response()->json([
                     'success' => true,
                     'message' => 'Charge deleted successfully'
                 ]);
             }
 
+            Log::warning('Delete charge failed - SP returned failure', [
+                'status' => $output['Status'] ?? 'Unknown',
+                'remarks' => $output['Remarks'] ?? []
+            ]);
+
             return response()->json([
                 'success' => false,
-                'message' => $output['Remarks'][0]['Remark'] ?? 'Failed to delete charge'
+                'message' => $output['Remarks'][0]['Remark'] ?? 'Failed to delete charge',
+                'details' => $output['Remarks'] ?? []
             ], 422);
         } catch (\Exception $e) {
-            Log::error('Delete charge failed: ' . $e->getMessage());
+            Log::error('Delete charge failed with exception', [
+                'error_message' => $e->getMessage(),
+                'error_file' => $e->getFile(),
+                'error_line' => $e->getLine(),
+                'trace' => $e->getTraceAsString(),
+                'booking_no' => $request->input('booking_no'),
+                'charge_id' => $request->input('quote_charge_id')
+            ]);
+
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to delete charge: ' . $e->getMessage()

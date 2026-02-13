@@ -2055,7 +2055,7 @@
             }
 
             function filterCompanies(searchTerm) {
-                if (!searchTerm || searchTerm.length < 2) {
+                if (!searchTerm) {
                     return companiesData.slice(0, 100);
                 }
 
@@ -2064,7 +2064,7 @@
                     company.code.toLowerCase().includes(searchTerm.toLowerCase())
                 );
 
-                return filtered.slice(0, 100); // Limit to 20 results for performance
+                return filtered.slice(0, 100);
             }
 
             function selectCompany(company) {
@@ -2178,7 +2178,7 @@
 
                 // Clear selections if input is cleared
                 if (!searchTerm) {
-                    companyNameInput.val(''); // Clear the original companyName field
+                    companyNameInput.val('');
                     companyIdInput.val('');
                     companyCodeInput.val('');
                     companySelectHidden.val('');
