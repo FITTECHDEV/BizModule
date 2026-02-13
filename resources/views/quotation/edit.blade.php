@@ -398,11 +398,6 @@
                                 </tfoot>
                             </table>
                         </div>
-                        <div class="mt-2">
-                            <button type="button" class="btn btn-primary btn-sm" id="openChargesModal">
-                                <i class="fas fa-plus"></i> Add Charges
-                            </button>
-                        </div>
                     </div>
                 </div>
 
@@ -449,11 +444,6 @@
                 <div class="card card-primary">
                     <div class="card-header">
                         <h3 class="card-title">Summary</h3>
-                        <div class="card-tools">
-                            <button type="button" class="btn btn-tool" data-card-widget="collapse">
-                                <i class="fas fa-chevron-up"></i>
-                            </button>
-                        </div>
                     </div>
                     <div class="card-body">
                         <div class="row">
@@ -512,6 +502,9 @@
                                 </button>
                                 <button type="button" class="btn btn-primary" id="emailQuoteBtn">
                                     <i class="fas fa-envelope"></i> Email Quote
+                                </button>
+                                <button type="button" class="btn btn-primary" id="openChargesModal">
+                                    <i class="fas fa-plus"></i> Add Charges
                                 </button>
                                 <a href="{{ route('quotation.index') }}" class="btn btn-link">Close</a>
 
@@ -920,8 +913,8 @@
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.min.css">
     <style>
         /* =============================================
-                               MODAL STYLING — matched to FitExpress UI
-                               ============================================= */
+                                           MODAL STYLING — matched to FitExpress UI
+                                           ============================================= */
 
         .modal-header {
             background-color: #fff !important;
@@ -2405,9 +2398,15 @@
                 }
             });
 
-            // Initialize collapsed cards (except Revenue and Cost)
+            // Initialize collapsed cards (except Revenue, Cost, and Summary)
             $('.card').not('.card-success, .card-danger').each(function() {
                 const $card = $(this);
+
+                // Skip Summary card
+                if ($card.find('.card-title').text().trim() === 'Summary') {
+                    return;
+                }
+
                 const $cardBody = $card.find('.card-body');
                 const $icon = $card.find('[data-card-widget="collapse"] i');
 
