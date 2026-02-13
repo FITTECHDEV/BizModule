@@ -938,6 +938,198 @@ class QuotationController extends Controller
         }
     }
 
+    /**
+     * Get office code from team ID
+     */
+    public function getOfficeCode(Request $request)
+    {
+        try {
+            $teamId = $request->team_id;
+
+            Log::info('getOfficeCode called', ['team_id' => $teamId]);
+
+            if (!$teamId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Team ID is required'
+                ], 400);
+            }
+
+            // Try to find office by TeamId
+            $office = DB::connection('sqlsrv')
+                ->table('Cust_Office')
+                ->where('TeamId', $teamId)
+                ->select('Code', 'TeamId')
+                ->first();
+
+            Log::info('Office lookup result', [
+                'team_id' => $teamId,
+                'office_found' => $office ? 'yes' : 'no',
+                'office_code' => $office ? $office->Code : null
+            ]);
+
+            if (!$office) {
+                // Fallback: Try to get from quotation
+                $quotation = DB::connection('sqlsrv')
+                    ->table('Quote_QuotationInfo')
+                    ->where('teamid', $teamId)
+                    ->select('teamid')
+                    ->first();
+
+                if ($quotation) {
+                    $office = DB::connection('sqlsrv')
+                        ->table('Cust_Office')
+                        ->where('TeamId', $quotation->teamid)
+                        ->select('Code')
+                        ->first();
+                }
+            }
+
+            if (!$office) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Office not found for team ID: ' . $teamId
+                ], 404);
+            }
+
+            return response()->json([
+                'success' => true,
+                'office_code' => trim($office->Code)
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to get office code', [
+                'team_id' => $request->team_id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve office code: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get currencies for office
+     */
+    public function getCurrencies(Request $request)
+    {
+        try {
+            $officeCode = $request->office_code;
+
+            Log::info('getCurrencies called', ['office_code' => $officeCode]);
+
+            if (!$officeCode) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Office code is required'
+                ], 400);
+            }
+
+            // Call stored procedure to get currencies
+            $pdo = DB::connection('sqlsrv')->getPdo();
+            $stmt = $pdo->prepare("EXEC sp_GetCurrencyByOffice ?");
+            $stmt->execute([$officeCode]);
+
+            $currencies = [];
+            do {
+                $results = $stmt->fetchAll(\PDO::FETCH_OBJ);
+                if (!empty($results)) {
+                    $currencies = array_merge($currencies, $results);
+                }
+            } while ($stmt->nextRowset());
+
+            Log::info('Currencies fetched', [
+                'office_code' => $officeCode,
+                'count' => count($currencies)
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'currencies' => $currencies
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to get currencies', [
+                'office_code' => $request->office_code,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve currencies: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get exchange rate for currency
+     */
+    public function getExchangeRate(Request $request)
+    {
+        try {
+            $officeCode = $request->office_code;
+            $fromCurrency = $request->from_currency;
+
+            Log::info('getExchangeRate called', [
+                'office_code' => $officeCode,
+                'from_currency' => $fromCurrency
+            ]);
+
+            if (!$officeCode || !$fromCurrency) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Office code and currency are required'
+                ], 400);
+            }
+
+            // Call stored procedure to get exchange rate
+            $pdo = DB::connection('sqlsrv')->getPdo();
+            $stmt = $pdo->prepare("EXEC sp_GetExchangeRate ?, ?");
+            $stmt->execute([$officeCode, $fromCurrency]);
+
+            $result = $stmt->fetch(\PDO::FETCH_OBJ);
+
+            if (!$result || !isset($result->ExRate)) {
+                Log::warning('Exchange rate not found', [
+                    'office_code' => $officeCode,
+                    'from_currency' => $fromCurrency
+                ]);
+
+                return response()->json([
+                    'success' => true, // Changed to true with fallback
+                    'message' => 'Exchange rate not found, using default',
+                    'exchange_rate' => 1.000000
+                ]);
+            }
+
+            Log::info('Exchange rate fetched', [
+                'office_code' => $officeCode,
+                'from_currency' => $fromCurrency,
+                'rate' => $result->ExRate
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'exchange_rate' => floatval($result->ExRate)
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to get exchange rate', [
+                'office_code' => $request->office_code,
+                'from_currency' => $request->from_currency,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => true, // Changed to true with fallback
+                'message' => 'Failed to retrieve exchange rate, using default',
+                'exchange_rate' => 1.000000
+            ]);
+        }
+    }
+
     public function getLegalEntities(Request $request)
     {
         $officeCode = $request->input('office_code');
@@ -994,29 +1186,95 @@ class QuotationController extends Controller
         }
     }
 
+    /**
+     * Get UOM list based on Based On code
+     */
     public function getBasedOnUOM(Request $request)
     {
-        $basedOnCode = $request->input('based_on_code');
-
-        if (!$basedOnCode) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Based on code is required'
-            ], 400);
-        }
-
         try {
-            $uomList = DB::select('EXEC sp_ChargeBasedOnUOM ?', [$basedOnCode]);
+            $basedOnCode = $request->based_on_code;
+
+            Log::info('Get based on UOM called', ['based_on_code' => $basedOnCode]);
+
+            if (!$basedOnCode) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Based On code is required'
+                ], 400);
+            }
+
+            // Execute stored procedure
+            $pdo = DB::connection('sqlsrv')->getPdo();
+            $stmt = $pdo->prepare("EXEC sp_ChargeBasedOnUOM ?");
+            $stmt->execute([$basedOnCode]);
+
+            $uomList = [];
+            $hasResults = false;
+
+            // Handle multiple result sets
+            do {
+                try {
+                    $results = $stmt->fetchAll(\PDO::FETCH_OBJ);
+
+                    if (!empty($results)) {
+                        // Check if it's an error message from the SP
+                        $firstRow = $results[0];
+                        $firstColumn = current((array)$firstRow);
+
+                        // If the SP returns "Failed - ..." message
+                        if (is_string($firstColumn) && strpos($firstColumn, 'Failed') === 0) {
+                            Log::warning('SP returned failure message', [
+                                'based_on_code' => $basedOnCode,
+                                'message' => $firstColumn
+                            ]);
+                            continue; // Skip this result set
+                        }
+
+                        // Valid UOM data
+                        $uomList = array_merge($uomList, $results);
+                        $hasResults = true;
+                        Log::info('UOM result set fetched', ['count' => count($results)]);
+                    }
+                } catch (\PDOException $e) {
+                    // Skip empty result sets (this is normal for this SP)
+                    if (strpos($e->getMessage(), 'no fields') === false) {
+                        throw $e; // Re-throw if it's a real error
+                    }
+                    Log::debug('Empty result set skipped', ['error' => $e->getMessage()]);
+                }
+            } while ($stmt->nextRowset());
+
+            // If no UOM found, it means this Based On doesn't have UOM requirements
+            // This is valid for things like AssessableValue, CommercialInvoiceVal, etc.
+            if (empty($uomList)) {
+                Log::info('No UOM required for this Based On', ['based_on_code' => $basedOnCode]);
+
+                return response()->json([
+                    'success' => true,
+                    'uom_list' => [],
+                    'message' => 'No UOM selection required for this Based On type'
+                ]);
+            }
+
+            Log::info('UOM list fetched successfully', [
+                'based_on_code' => $basedOnCode,
+                'count' => count($uomList)
+            ]);
 
             return response()->json([
                 'success' => true,
                 'uom_list' => $uomList
             ]);
         } catch (\Exception $e) {
-            Log::error('Get based on UOM failed: ' . $e->getMessage());
+            Log::error('Get based on UOM failed', [
+                'based_on_code' => $request->based_on_code,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to load UOM list: ' . $e->getMessage()
+                'message' => 'Failed to get UOM list: ' . $e->getMessage()
             ], 500);
         }
     }

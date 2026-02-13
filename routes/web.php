@@ -733,7 +733,6 @@ Route::middleware(['auth', 'can:approve-all-entity-request'])->group(function ()
     Route::get('/quotation/reasons', [App\Http\Controllers\QuotationController::class, 'getReasons'])
         ->name('quotation.reasons');
 
-    // NEW ROUTES - Add these
     Route::get('/quotation/communication/templates', [App\Http\Controllers\QuotationController::class, 'getCommunicationTemplates'])
         ->name('quotation.communication.templates');
 
@@ -751,7 +750,20 @@ Route::middleware(['auth', 'can:approve-all-entity-request'])->group(function ()
 
     Route::get('/quotation/based-on-uom', [App\Http\Controllers\QuotationController::class, 'getBasedOnUOM'])
         ->name('quotation.based-on-uom');
-        
+
+    // ============================================
+    // NEW ROUTES FOR CURRENCY FEATURES
+    // ============================================
+    Route::get('/quotation/office-code', [App\Http\Controllers\QuotationController::class, 'getOfficeCode'])
+        ->name('quotation.office-code');
+
+    Route::get('/quotation/currencies', [App\Http\Controllers\QuotationController::class, 'getCurrencies'])
+        ->name('quotation.currencies');
+
+    Route::get('/quotation/exchange-rate', [App\Http\Controllers\QuotationController::class, 'getExchangeRate'])
+        ->name('quotation.exchange-rate');
+    // ============================================
+
     Route::post('/quotation/charge/save', [App\Http\Controllers\QuotationController::class, 'saveCharge'])
         ->name('quotation.charge.save');
 
