@@ -57,9 +57,10 @@ class QuotationController extends Controller
             $query->where('createdon', '>=', now()->subDays(15));
         } elseif ($days == 30) {
             $query->where('createdon', '>=', now()->subDays(30));
-        } else {
+        } elseif ($days == 0) {
             $query->whereDate('createdon', today());
         }
+        // else: No date filter - show all records
 
         // Office filtering
         if ($office) {
@@ -68,9 +69,10 @@ class QuotationController extends Controller
 
         $total = $query->count();
 
-        $inProgress = (clone $query)->whereIn('status', ['Proposal', null])
-            ->orWhereNull('status')
-            ->count();
+        $inProgress = (clone $query)->where(function ($q) {
+            $q->whereIn('status', ['Proposal', 'Pending'])
+                ->orWhereNull('status');
+        })->count();
 
         $won = (clone $query)->where('status', 'Won')
             ->where(function ($q) {
@@ -105,6 +107,14 @@ class QuotationController extends Controller
         $office = $request->input('office');
         $cardFilter = $request->input('card_filter', 'all');
 
+        Log::info('Quotation data request', [
+            'days' => $days,
+            'start_date' => $startDate,
+            'end_date' => $endDate,
+            'office' => $office,
+            'card_filter' => $cardFilter
+        ]);
+
         $query = DB::table('Quote_QuotationInfo')
             ->select([
                 'ID',
@@ -116,6 +126,7 @@ class QuotationController extends Controller
                 'origincountry',
                 'destinationcountry',
                 'status',
+                'QuoteStatus',
                 'SCMINTStatus',
                 'createdon',
                 'updatedon'
@@ -130,9 +141,10 @@ class QuotationController extends Controller
             $query->where('createdon', '>=', now()->subDays(15));
         } elseif ($days == 30) {
             $query->where('createdon', '>=', now()->subDays(30));
-        } else {
+        } elseif ($days == 0) {
             $query->whereDate('createdon', today());
         }
+        // else: No date filter - show all records
 
         // Office filtering
         if ($office) {
@@ -143,7 +155,7 @@ class QuotationController extends Controller
         switch ($cardFilter) {
             case 'in_progress':
                 $query->where(function ($q) {
-                    $q->whereIn('status', ['Proposal', null])
+                    $q->whereIn('status', ['Proposal', 'Pending'])
                         ->orWhereNull('status');
                 });
                 break;
@@ -190,14 +202,14 @@ class QuotationController extends Controller
                 return $row->destinationcountry ?? '-';
             })
             ->addColumn('QuotationStatus', function ($row) {
-                // Determine the display status
-                $status = $row->status ?? 'In Progress';
+                // Use QuoteStatus first, fallback to status
+                $status = $row->QuoteStatus ?? $row->status ?? 'Proposal';
 
                 if ($status == 'Won' && $row->SCMINTStatus && $row->SCMINTStatus != 'Success') {
                     return 'Failed Int.';
                 }
 
-                if ($status == 'Proposal' || is_null($status)) {
+                if (in_array($status, ['Proposal', 'Pending']) || is_null($status)) {
                     return 'In Progress';
                 }
 
@@ -214,28 +226,29 @@ class QuotationController extends Controller
                 return $row->bookingno ?? '-';
             })
             ->addColumn('action', function ($row) {
-                $status = $row->status ?? 'Proposal';
+                // Use QuoteStatus first, fallback to status
+                $status = $row->QuoteStatus ?? $row->status ?? 'Proposal';
                 $scmStatus = $row->SCMINTStatus;
 
                 $viewBtn = '<a href="' . route('quotation.view', $row->ID) . '" class="btn btn-info btn-sm" title="View">
-                    <i class="fas fa-eye"></i>
-                </a>';
+                <i class="fas fa-eye"></i>
+            </a>';
 
                 $editBtn = '';
                 $retriggerBtn = '';
 
                 // In Progress - View & Edit
-                if (in_array($status, ['Proposal', null])) {
+                if (in_array($status, ['Proposal', 'Pending', null])) {
                     $editBtn = ' <a href="' . route('quotation.edit', $row->ID) . '" class="btn btn-warning btn-sm" title="Edit">
-                        <i class="fas fa-edit"></i>
-                    </a>';
+                    <i class="fas fa-edit"></i>
+                </a>';
                 }
 
                 // Failed Int - View & Retrigger
                 if ($status == 'Won' && $scmStatus && $scmStatus != 'Success') {
                     $retriggerBtn = ' <button class="btn btn-danger btn-sm btn-retrigger" data-booking="' . $row->bookingno . '" title="Retrigger">
-                        <i class="fas fa-sync-alt"></i>
-                    </button>';
+                    <i class="fas fa-sync-alt"></i>
+                </button>';
                 }
 
                 return $viewBtn . $editBtn . $retriggerBtn;
@@ -787,38 +800,148 @@ class QuotationController extends Controller
     public function updateStatus(Request $request)
     {
         try {
+            $bookingNo = $request->input('booking_no');
+            $targetStatus = $request->input('status');
+            $reasonCode = $request->input('reason_code', '');
+            $reasonRemark = $request->input('reason_remark', '');
+
+            $submittedBy = Auth::check()
+                ? (Auth::user()->username ?? Auth::user()->email ?? Auth::user()->name ?? 'system')
+                : 'system';
+
+            Log::info('Update Status Request', [
+                'booking_no' => $bookingNo,
+                'target_status' => $targetStatus,
+                'user' => $submittedBy
+            ]);
+
+            // Get current status
+            $quotation = DB::table('Quote_QuotationInfo')
+                ->where('bookingno', $bookingNo)
+                ->first(['QuoteStatus', 'status']);
+
+            if (!$quotation) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Quotation not found'
+                ], 404);
+            }
+
+            $currentStatus = $quotation->QuoteStatus ?? $quotation->status ?? 'Proposal';
+
+            Log::info('Current quotation status', [
+                'booking_no' => $bookingNo,
+                'current_status' => $currentStatus,
+                'target_status' => $targetStatus
+            ]);
+
+            // Handle status transitions based on SP business rules
+            $needsPendingFirst = false;
+
+            if ($targetStatus === 'Lost') {
+                // Lost requires current status to be Pending
+                if ($currentStatus !== 'Pending') {
+                    $needsPendingFirst = true;
+                    Log::info('Lost requires Pending status, updating first', [
+                        'current' => $currentStatus
+                    ]);
+                }
+            } elseif ($targetStatus === 'Cancel') {
+                // Cancel requires current status to be Pending or Won
+                if (!in_array($currentStatus, ['Pending', 'Won'])) {
+                    $needsPendingFirst = true;
+                    Log::info('Cancel requires Pending/Won status, updating to Pending first', [
+                        'current' => $currentStatus
+                    ]);
+                }
+            }
+            // Won has no restrictions, can be set from any status
+
+            // Update to Pending first if needed
+            if ($needsPendingFirst) {
+                DB::table('Quote_QuotationInfo')
+                    ->where('bookingno', $bookingNo)
+                    ->update([
+                        'QuoteStatus' => 'Pending',
+                        'status' => 'Pending',
+                        'LastModifiedBy' => $submittedBy,
+                        'updatedon' => now()
+                    ]);
+
+                Log::info('Updated to Pending, now proceeding with final status');
+            }
+
+            // Now execute the SP with the target status
             $inputJson = json_encode([
                 'OperationType' => 'QuotationStatusUpdate',
                 'SubmittedDatetime' => now()->format('YmdHis'),
-                'SubmittedBy' => Auth::user()->username ?? Auth::user()->email,
+                'SubmittedBy' => $submittedBy,
                 'Action' => 'Edit',
-                'BookingNo' => $request->input('booking_no'),
-                'Status' => $request->input('status'),
-                'ReasonCode' => $request->input('reason_code', ''),
-                'ReasonRemark' => $request->input('reason_remark', '')
+                'BookingNo' => $bookingNo,
+                'Status' => $targetStatus,
+                'ReasonCode' => $reasonCode,
+                'ReasonRemark' => $reasonRemark
             ]);
 
-            $result = DB::select('
+            $pdo = DB::connection()->getPdo();
+            $stmt = $pdo->prepare("
+            SET NOCOUNT ON;
             DECLARE @OutputJson VARCHAR(2000);
             EXEC sp_Quote_Quotaiton_StatusUpdate ?, @OutputJson OUTPUT;
             SELECT @OutputJson AS OutputJson
-        ', [$inputJson]);
+        ");
+            $stmt->execute([$inputJson]);
+
+            // Skip empty result sets
+            $result = null;
+            do {
+                try {
+                    $rows = $stmt->fetchAll(\PDO::FETCH_OBJ);
+                    if (!empty($rows) && isset($rows[0]->OutputJson)) {
+                        $result = $rows;
+                        break;
+                    }
+                } catch (\PDOException $e) {
+                    continue;
+                }
+            } while ($stmt->nextRowset());
+
+            if (!$result) {
+                Log::error('Status update SP did not return OutputJson');
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Stored procedure did not return expected output'
+                ], 500);
+            }
 
             $output = json_decode($result[0]->OutputJson ?? '{}', true);
 
             if (($output['Status'] ?? '') === 'Success') {
+                Log::info('Status updated successfully', [
+                    'booking_no' => $bookingNo,
+                    'final_status' => $targetStatus
+                ]);
+
                 return response()->json([
                     'success' => true,
                     'message' => $output['Remarks'][0]['Remark'] ?? 'Status updated successfully'
                 ]);
             }
 
+            Log::warning('Status update failed', [
+                'output' => $output
+            ]);
+
             return response()->json([
                 'success' => false,
                 'message' => $output['Remarks'][0]['Remark'] ?? 'Failed to update status'
             ], 422);
         } catch (\Exception $e) {
-            Log::error('Update status failed: ' . $e->getMessage());
+            Log::error('Update status exception', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to update status: ' . $e->getMessage()

@@ -109,7 +109,8 @@
                     {{-- Date Filter --}}
                     <div class="col-12 col-sm-6 col-md-auto order-2">
                         <select id="dateFilter" class="form-control form-control-sm">
-                            <option value="0" selected>Today</option>
+                            <option value="all" selected>All Time</option>
+                            <option value="0">Today</option>
                             <option value="1">Yesterday</option>
                             <option value="15">Last 15 Days</option>
                             <option value="30">Last 30 Days</option>
@@ -620,6 +621,19 @@
                 }
             });
 
+            // DEBUG: Log when table loads
+            table.on('xhr', function() {
+                var json = table.ajax.json();
+                console.log('DataTable Response:', json);
+            });
+
+            // DEBUG: Log current filters
+            console.log('Initial Filters:', {
+                days: $('#dateFilter').val(),
+                office: $('#officeFilter').val(),
+                card_filter: currentCardFilter
+            });
+
             function adjustSearchPlaceholder() {
                 var $searchInput = $('.dataTables_filter input');
                 if ($(window).width() < 768) {
@@ -689,16 +703,27 @@
                         end_date: $('#endDate').val(),
                         office: $('#officeFilter').val()
                     },
+                    beforeSend: function() {
+                        // Optional: Add loading indicator
+                        $('.compact-card .inner h3').css('opacity', '0.5');
+                    },
                     success: function(response) {
-                        animateValue('stat-total', parseInt($('#stat-total').text()), response.total, 500);
-                        animateValue('stat-in-progress', parseInt($('#stat-in-progress').text()), response.in_progress, 500);
+                        animateValue('stat-total', parseInt($('#stat-total').text()), response.total,
+                            500);
+                        animateValue('stat-in-progress', parseInt($('#stat-in-progress').text()),
+                            response.in_progress, 500);
                         animateValue('stat-won', parseInt($('#stat-won').text()), response.won, 500);
                         animateValue('stat-lost', parseInt($('#stat-lost').text()), response.lost, 500);
-                        animateValue('stat-canceled', parseInt($('#stat-canceled').text()), response.canceled, 500);
-                        animateValue('stat-failed-int', parseInt($('#stat-failed-int').text()), response.failed_int, 500);
+                        animateValue('stat-canceled', parseInt($('#stat-canceled').text()), response
+                            .canceled, 500);
+                        animateValue('stat-failed-int', parseInt($('#stat-failed-int').text()), response
+                            .failed_int, 500);
                     },
                     error: function(xhr, error, code) {
                         console.error('Failed to update card statistics:', xhr, error, code);
+                    },
+                    complete: function() {
+                        $('.compact-card .inner h3').css('opacity', '1');
                     }
                 });
             }
