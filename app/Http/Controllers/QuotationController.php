@@ -70,22 +70,34 @@ class QuotationController extends Controller
         $total = $query->count();
 
         $inProgress = (clone $query)->where(function ($q) {
-            $q->whereIn('status', ['Proposal', 'Pending'])
-                ->orWhereNull('status');
+            $q->where(function ($sub) {
+                $sub->whereIn('QuoteStatus', ['Proposal', 'Pending'])
+                    ->orWhereIn('status', ['Proposal', 'Pending'])
+                    ->orWhereNull('QuoteStatus')
+                    ->orWhereNull('status');
+            });
         })->count();
 
-        $won = (clone $query)->where('status', 'Won')
-            ->where(function ($q) {
-                $q->whereNull('SCMINTStatus')
-                    ->orWhere('SCMINTStatus', 'Success');
-            })->count();
+        $won = (clone $query)->where(function ($q) {
+            $q->where('QuoteStatus', 'Won')
+                ->orWhere('status', 'Won');
+        })->where(function ($q) {
+            $q->whereNull('SCMINTStatus')
+                ->orWhere('SCMINTStatus', 'Success');
+        })->count();
 
-        $lost = (clone $query)->where('status', 'Lost')->count();
-
-        $canceled = (clone $query)->where('status', 'Cancel')->count();
-
-        $failedInt = (clone $query)->where('status', 'Won')
-            ->whereNotNull('SCMINTStatus')
+        $lost = (clone $query)->where(function ($q) {
+            $q->where('QuoteStatus', 'Lost')
+                ->orWhere('status', 'Lost');
+        })->count();
+        $canceled = (clone $query)->where(function ($q) {
+            $q->where('QuoteStatus', 'Cancel')
+                ->orWhere('status', 'Cancel');
+        })->count();
+        $failedInt = (clone $query)->where(function ($q) {
+            $q->where('QuoteStatus', 'Won')
+                ->orWhere('status', 'Won');
+        })->whereNotNull('SCMINTStatus')
             ->where('SCMINTStatus', '!=', 'Success')
             ->count();
 
@@ -232,23 +244,23 @@ class QuotationController extends Controller
 
                 $viewBtn = '<a href="' . route('quotation.view', $row->ID) . '" class="btn btn-info btn-sm" title="View">
                 <i class="fas fa-eye"></i>
-            </a>';
+                </a>';
 
                 $editBtn = '';
                 $retriggerBtn = '';
 
-                // In Progress - View & Edit
-                if (in_array($status, ['Proposal', 'Pending', null])) {
+                // Pending only - View & Edit
+                if ($status === 'Pending') {
                     $editBtn = ' <a href="' . route('quotation.edit', $row->ID) . '" class="btn btn-warning btn-sm" title="Edit">
                     <i class="fas fa-edit"></i>
-                </a>';
+                    </a>';
                 }
 
                 // Failed Int - View & Retrigger
                 if ($status == 'Won' && $scmStatus && $scmStatus != 'Success') {
                     $retriggerBtn = ' <button class="btn btn-danger btn-sm btn-retrigger" data-booking="' . $row->bookingno . '" title="Retrigger">
                     <i class="fas fa-sync-alt"></i>
-                </button>';
+                    </button>';
                 }
 
                 return $viewBtn . $editBtn . $retriggerBtn;
