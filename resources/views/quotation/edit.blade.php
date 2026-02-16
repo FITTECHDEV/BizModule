@@ -938,8 +938,8 @@
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.min.css">
     <style>
         /* =============================================
-                                                                MODAL STYLING — matched to FitExpress UI
-                                                                ============================================= */
+                                                                                        MODAL STYLING — matched to FitExpress UI
+                                                                                        ============================================= */
 
         .modal-header {
             background-color: #fff !important;
@@ -1145,9 +1145,16 @@
             border-color: #545b62;
         }
 
-        /* Increase-by row (for costmarkup mode) */
-        .increase-by-row {
+        /* Increase-by row and cost-markup-row - FIXED */
+        .increase-by-row,
+        .cost-markup-row {
             display: none;
+        }
+
+        /* When active, show as flex layout */
+        .increase-by-row.active,
+        .cost-markup-row.active {
+            display: flex !important;
         }
 
         /* General form styling */
@@ -1158,10 +1165,8 @@
         }
 
         /* Autocomplete dropdown */
-        /* Autocomplete dropdown */
         .ui-autocomplete {
             z-index: 99999 !important;
-            /* Increased from 9999 */
             max-height: 300px;
             overflow-y: auto;
             background: white;
@@ -1286,37 +1291,11 @@
             color: white;
         }
 
+        /* Vertical separator for side-by-side columns */
         .vertical-separator {
             border-left: 2px solid #dee2e6 !important;
             padding-left: 15px !important;
             margin-left: -1px;
-        }
-
-        .cost-markup-row,
-        .increase-by-row {
-            display: none !important;
-        }
-
-        /* When visible, force flex layout for side-by-side columns */
-        .cost-markup-row.active,
-        .increase-by-row.active {
-            display: flex !important;
-        }
-
-        .cost-markup-row {
-            display: none !important;
-            /* Hidden by default */
-        }
-
-        /* Force proper display when shown */
-        .cost-markup-row.show-markup {
-            display: flex !important;
-        }
-
-        /* Ensure Bootstrap grid works properly */
-        .cost-markup-row .col-md-6 {
-            flex: 0 0 50%;
-            max-width: 50%;
         }
 
         /* Padding adjustments for separation */
@@ -1329,7 +1308,6 @@
         }
     </style>
 @stop
-
 
 
 @section('js')
@@ -1504,7 +1482,10 @@
             // ============================================
             // MODAL INITIALIZATION - SHOWN EVENT
             // ============================================
-            $('#addRevenueModal').on('shown.bs.modal', function() {
+            $('#addRevenueModal').on('show.bs.modal', function() {
+                // Hide any markup rows when modal opens
+                $(this).find('.increase-by-row').removeClass('active').css('display', 'none');
+
                 if (!currentEditingCharge) {
                     $('#revenueTypeRevenue').prop('checked', true);
                     toggleRevenueFormFields('revenue');
@@ -1512,13 +1493,15 @@
                     populateCurrencyDropdown('revenue');
                 }
 
-                // Initialize autocomplete with a small delay to ensure modal is fully rendered
                 setTimeout(function() {
                     initializeChargeCodeAutocomplete('revenue');
                 }, 100);
             });
 
-            $('#addCostModal').on('shown.bs.modal', function() {
+            $('#addCostModal').on('show.bs.modal', function() {
+                // Hide any markup rows when modal opens
+                $(this).find('.cost-markup-row').removeClass('active').css('display', 'none');
+
                 if (!currentEditingCharge) {
                     $('#costTypeCost').prop('checked', true);
                     toggleCostFormFields('cost');
@@ -1526,7 +1509,6 @@
                     populateCurrencyDropdown('cost');
                 }
 
-                // Initialize autocomplete with a small delay to ensure modal is fully rendered
                 setTimeout(function() {
                     initializeChargeCodeAutocomplete('cost');
                 }, 100);
@@ -1854,15 +1836,27 @@
             // ============================================
             // CHARGE TYPE TOGGLES
             // ============================================
-            $('input[name="revenueChargeType"]').on('change', function() {
+            // REVENUE MODAL - Radio button changes
+            $('#addRevenueModal').on('change', 'input[name="revenueChargeType"]', function() {
                 const selectedValue = $(this).val();
                 console.log('Revenue Charge Type Changed:', selectedValue);
+
+                // FIRST: Hide ALL markup rows in this modal
+                $('#addRevenueModal .increase-by-row').removeClass('active').css('display', 'none');
+
+                // THEN: Call toggle function
                 toggleRevenueFormFields(selectedValue);
             });
 
-            $('input[name="costChargeType"]').on('change', function() {
+            // COST MODAL - Radio button changes
+            $('#addCostModal').on('change', 'input[name="costChargeType"]', function() {
                 const selectedValue = $(this).val();
                 console.log('Cost Charge Type Changed:', selectedValue);
+
+                // FIRST: Hide ALL markup rows in this modal
+                $('#addCostModal .cost-markup-row').removeClass('active').css('display', 'none');
+
+                // THEN: Call toggle function
                 toggleCostFormFields(selectedValue);
             });
 
@@ -1871,10 +1865,15 @@
                 let $increaseByRow = $modal.find('.increase-by-row');
                 const $isReimbursedContainer = $('#revenueIsReimbursedContainer');
 
+                // Always start fresh - hide everything
+                $increaseByRow.removeClass('active').css('display', 'none');
+                $isReimbursedContainer.hide();
+
                 if (type === 'costmarkup') {
+                    // Create if doesn't exist
                     if ($increaseByRow.length === 0) {
                         const increaseByHtml = `
-                <div class="row mb-3 increase-by-row active" style="display: flex !important;">
+                <div class="row mb-3 increase-by-row" style="display: none;">
                     <div class="col-6">
                         <label for="revenue_increase_by" class="form-label">Increase By</label>
                         <div class="input-group">
@@ -1893,14 +1892,36 @@
             `;
                         $modal.find('.rate-row').after(increaseByHtml);
                         $increaseByRow = $modal.find('.increase-by-row');
-                    } else {
-                        $increaseByRow.addClass('active').css('display', 'flex');
                     }
-                    $isReimbursedContainer.hide();
-                } else {
-                    $increaseByRow.removeClass('active').css('display', 'none');
-                    $isReimbursedContainer.hide();
+
+                    // NOW show it
+                    $increaseByRow.addClass('active').css('display', 'flex');
+                } else if (type === 'cost') {
+                    // Show "Is Reimbursed" only for Cost type
+                    $isReimbursedContainer.show();
                 }
+                // For 'revenue' type, everything stays hidden (already done above)
+            }
+
+            function toggleCostFormFields(type) {
+                const $modal = $('#addCostModal');
+                const $markupRow = $modal.find('.cost-markup-row');
+                const $isReimbursedContainer = $('#costIsReimbursed').closest('.form-check');
+
+                // Always start fresh - hide everything
+                $markupRow.removeClass('active').css('display', 'none');
+                $isReimbursedContainer.hide();
+
+                if (type === 'costmarkup') {
+                    // Show markup row
+                    $markupRow.addClass('active').css('display', 'flex');
+                    console.log('Showing cost markup row');
+                } else if (type === 'cost') {
+                    // Show "Is Reimbursed" checkbox
+                    $isReimbursedContainer.show();
+                    console.log('Showing Is Reimbursed for Cost');
+                }
+                // For 'revenue' type, everything stays hidden (already done above)
             }
 
             function toggleCostFormFields(type) {
@@ -1909,14 +1930,26 @@
                 const $isReimbursedContainer = $('#costIsReimbursed').closest('.form-check');
 
                 if (type === 'costmarkup') {
-                    // The row already exists in your HTML, just show it
+                    // Show the markup row
                     $markupRow.addClass('active').css('display', 'flex');
                     $isReimbursedContainer.hide();
                     console.log('Showing cost markup row - display set to flex');
-                } else {
+                } else if (type === 'revenue') {
+                    // Hide markup row and "Is Reimbursed" for revenue
                     $markupRow.removeClass('active').css('display', 'none');
+                    // Reset markup row values
+                    $markupRow.find('input[type="number"]').val('0.00');
+                    $markupRow.find('select').prop('selectedIndex', 0);
+                    $isReimbursedContainer.hide();
+                    console.log('Hiding cost markup row - Revenue selected');
+                } else {
+                    // type === 'cost' - Hide markup row, show "Is Reimbursed"
+                    $markupRow.removeClass('active').css('display', 'none');
+                    // Reset markup row values
+                    $markupRow.find('input[type="number"]').val('0.00');
+                    $markupRow.find('select').prop('selectedIndex', 0);
                     $isReimbursedContainer.show();
-                    console.log('Hiding cost markup row');
+                    console.log('Hiding cost markup row - Cost selected');
                 }
             }
 
@@ -2381,6 +2414,15 @@
                 $modal.find('select').prop('selectedIndex', 0);
                 $modal.find('input[type="checkbox"]').prop('checked', false);
 
+                // ADDED: Hide and reset markup rows
+                if (type === 'revenue') {
+                    $modal.find('.increase-by-row').removeClass('active').css('display', 'none');
+                    $modal.find('.increase-by-row input[type="number"]').val('0.00');
+                } else {
+                    $modal.find('.cost-markup-row').removeClass('active').css('display', 'none');
+                    $modal.find('.cost-markup-row input[type="number"]').val('0.00');
+                }
+
                 // Reload dropdowns
                 loadBasedOnList(type);
                 populateCurrencyDropdown(type);
@@ -2390,12 +2432,16 @@
                 clearModalForm('revenue');
                 $('#revenueTypeRevenue').prop('checked', true);
                 toggleRevenueFormFields('revenue');
+                // ADDED: Explicitly hide increase-by row
+                $('#addRevenueModal .increase-by-row').removeClass('active').css('display', 'none');
             }
 
             function clearCostModalForm() {
                 clearModalForm('cost');
                 $('#costTypeCost').prop('checked', true);
                 toggleCostFormFields('cost');
+                // ADDED: Explicitly hide markup row
+                $('#addCostModal .cost-markup-row').removeClass('active').css('display', 'none');
             }
 
             function showNotification(message, type) {
