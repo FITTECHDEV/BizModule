@@ -83,8 +83,7 @@
 
             {{-- 6. Total --}}
             <div class="col-6 col-md-6 col-lg-2 mb-2">
-                <div class="small-box bg-primary card-filter-trigger compact-card" data-filter="all"
-                    title="Click to view all records">
+                <div class="small-box bg-primary compact-card" title="Total records">
                     <div class="inner">
                         <h3 id="stat-total">{{ $stats['total'] }}</h3>
                         <p>Total</p>
@@ -185,6 +184,7 @@
         </div>
     </div>
 @stop
+
 
 @section('css')
     <style>
@@ -454,13 +454,53 @@
             font-size: 1.1rem;
             margin-bottom: 0;
         }
+
+        /* COMPACT CARD STYLING */
+        .compact-card {
+            min-height: 90px !important;
+            margin-bottom: 0.5rem;
+            cursor: pointer;
+            border-radius: 0.25rem;
+            transition: all 0.3s ease;
+        }
+
+        /* ✅ FIX: Total card should not appear clickable */
+        .compact-card:not(.card-filter-trigger) {
+            cursor: default;
+        }
+
+        .compact-card.card-filter-trigger:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .action-buttons {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: nowrap;
+        }
+
+        .action-buttons .btn {
+            padding: 0.35rem 0.5rem;
+            min-width: 34px;
+        }
+
+        @media (max-width: 576px) {
+            .action-buttons .btn {
+                padding: 0.4rem;
+            }
+        }
     </style>
 @stop
+
 
 @section('js')
     <script>
         $(document).ready(function() {
             var currentCardFilter = 'all';
+            var statsUpdateTimer = null; // Debounce timer
 
             // Initialize DataTable
             var table = $('#quotationTable').DataTable({
@@ -557,9 +597,16 @@
                         name: 'action',
                         orderable: false,
                         searchable: false,
-                        responsivePriority: 5,
-                        className: 'text-center'
+                        responsivePriority: 1, // keep always visible
+                        className: 'text-center action-column',
+                        render: function(data, type, row) {
+                            if (type === 'display') {
+                                return '<div class="action-buttons">' + data + '</div>';
+                            }
+                            return data;
+                        }
                     }
+
                 ],
                 order: [
                     [0, 'desc']
@@ -568,7 +615,7 @@
                 responsive: {
                     details: {
                         type: 'inline',
-                        display: $.fn.dataTable.Responsive.display.childRowImmediate,
+                        display: $.fn.dataTable.Responsive.display.childRow,
                         renderer: function(api, rowIdx, columns) {
                             var data = $.map(columns, function(col, i) {
                                 return col.hidden ?
@@ -618,6 +665,9 @@
                     $('.dataTables_length').appendTo('#entriesContainer');
                     $('.dataTables_filter').appendTo('#searchContainer');
                     adjustSearchPlaceholder();
+
+                    // ✅ FIX: Update stats after table initializes
+                    updateCardStats();
                 }
             });
 
@@ -625,13 +675,6 @@
             table.on('xhr', function() {
                 var json = table.ajax.json();
                 console.log('DataTable Response:', json);
-            });
-
-            // DEBUG: Log current filters
-            console.log('Initial Filters:', {
-                days: $('#dateFilter').val(),
-                office: $('#officeFilter').val(),
-                card_filter: currentCardFilter
             });
 
             function adjustSearchPlaceholder() {
@@ -647,7 +690,7 @@
                 adjustSearchPlaceholder();
             });
 
-            // Retrigger button (placeholder)
+            // Retrigger button
             $('#quotationTable').on('click', '.btn-retrigger', function(e) {
                 e.stopPropagation();
                 var $btn = $(this);
@@ -692,40 +735,51 @@
                 });
             });
 
-            // Update card statistics
+            // ✅ FIX: Debounced stats update to prevent rapid-fire requests
             function updateCardStats() {
-                $.ajax({
-                    url: '{{ route('quotation.stats') }}',
-                    type: 'GET',
-                    data: {
-                        days: $('#dateFilter').val(),
-                        start_date: $('#startDate').val(),
-                        end_date: $('#endDate').val(),
-                        office: $('#officeFilter').val()
-                    },
-                    beforeSend: function() {
-                        // Optional: Add loading indicator
-                        $('.compact-card .inner h3').css('opacity', '0.5');
-                    },
-                    success: function(response) {
-                        animateValue('stat-total', parseInt($('#stat-total').text()), response.total,
-                            500);
-                        animateValue('stat-in-progress', parseInt($('#stat-in-progress').text()),
-                            response.in_progress, 500);
-                        animateValue('stat-won', parseInt($('#stat-won').text()), response.won, 500);
-                        animateValue('stat-lost', parseInt($('#stat-lost').text()), response.lost, 500);
-                        animateValue('stat-canceled', parseInt($('#stat-canceled').text()), response
-                            .canceled, 500);
-                        animateValue('stat-failed-int', parseInt($('#stat-failed-int').text()), response
-                            .failed_int, 500);
-                    },
-                    error: function(xhr, error, code) {
-                        console.error('Failed to update card statistics:', xhr, error, code);
-                    },
-                    complete: function() {
-                        $('.compact-card .inner h3').css('opacity', '1');
-                    }
-                });
+                // Clear existing timer
+                if (statsUpdateTimer) {
+                    clearTimeout(statsUpdateTimer);
+                }
+
+                // Set new timer (300ms debounce)
+                statsUpdateTimer = setTimeout(function() {
+                    $.ajax({
+                        url: '{{ route('quotation.stats') }}',
+                        type: 'GET',
+                        data: {
+                            days: $('#dateFilter').val(),
+                            start_date: $('#startDate').val(),
+                            end_date: $('#endDate').val(),
+                            office: $('#officeFilter').val()
+                        },
+                        beforeSend: function() {
+                            $('.compact-card .inner h3').css('opacity', '0.5');
+                        },
+                        success: function(response) {
+                            animateValue('stat-total', parseInt($('#stat-total').text()) || 0,
+                                response.total, 500);
+                            animateValue('stat-in-progress', parseInt($('#stat-in-progress')
+                                .text()) || 0, response.in_progress, 500);
+                            animateValue('stat-won', parseInt($('#stat-won').text()) || 0,
+                                response.won, 500);
+                            animateValue('stat-lost', parseInt($('#stat-lost').text()) || 0,
+                                response.lost, 500);
+                            animateValue('stat-canceled', parseInt($('#stat-canceled')
+                                .text()) || 0, response.canceled, 500);
+                            animateValue('stat-failed-int', parseInt($('#stat-failed-int')
+                                .text()) || 0, response.failed_int, 500);
+                        },
+                        error: function(xhr, error, code) {
+                            console.error('Failed to update card statistics:', xhr, error,
+                                code);
+                            $('.compact-card .inner h3').css('opacity', '1');
+                        },
+                        complete: function() {
+                            $('.compact-card .inner h3').css('opacity', '1');
+                        }
+                    });
+                }, 300); // 300ms debounce
             }
 
             function animateValue(id, start, end, duration) {
@@ -780,9 +834,23 @@
                 }
 
                 var filterType = $(this).data('filter');
+
+                // Debug log
+                console.log('Card clicked:', filterType);
+
+                // ✅ FIX: Don't do anything if no filter type (Total card)
+                if (!filterType) {
+                    return;
+                }
+
                 $('.card-filter-trigger').removeClass('active');
                 $(this).addClass('active');
                 currentCardFilter = filterType;
+
+                // Debug log
+                console.log('Current card filter set to:', currentCardFilter);
+
+                updateCardStats();
                 table.ajax.reload();
             });
 
@@ -811,14 +879,7 @@
                     $('#customDateRange').show();
                     $('#customDateRangeTo').show();
                     updateClearButtonVisibility();
-                } else if (selectedValue === '0' || selectedValue === '1') {
-                    $('#customDateRange').hide();
-                    $('#customDateRangeTo').hide();
-                    $('#startDate').val('');
-                    $('#endDate').val('');
-                    updateCardStats();
-                    table.ajax.reload();
-                    updateClearButtonVisibility();
+                    // Don't update stats yet - wait for dates to be selected
                 } else {
                     $('#customDateRange').hide();
                     $('#customDateRangeTo').hide();
@@ -874,9 +935,13 @@
                 $('#customDateRange').hide();
                 $('#customDateRangeTo').hide();
                 $('#officeFilter').val('');
+
+                // ✅ FIX: Remove active class from all cards (no default selection)
                 $('.card-filter-trigger').removeClass('active');
-                $('.card-filter-trigger[data-filter="all"]').addClass('active');
+
+                // ✅ FIX: Reset to show all records (no card filter)
                 currentCardFilter = 'all';
+
                 updateCardStats();
                 table.ajax.reload();
                 updateClearButtonVisibility();

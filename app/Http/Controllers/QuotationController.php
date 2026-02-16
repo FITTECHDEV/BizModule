@@ -164,33 +164,61 @@ class QuotationController extends Controller
         }
 
         // Card filter
+        Log::info('Applying card filter', ['card_filter' => $cardFilter]);
+
         switch ($cardFilter) {
             case 'in_progress':
                 $query->where(function ($q) {
-                    $q->whereIn('status', ['Proposal', 'Pending'])
+                    $q->whereIn('QuoteStatus', ['Proposal', 'Pending'])
+                        ->orWhereIn('status', ['Proposal', 'Pending'])
+                        ->orWhereNull('QuoteStatus')
                         ->orWhereNull('status');
                 });
+                Log::info('Applied in_progress filter');
                 break;
+
             case 'won':
-                $query->where('status', 'Won')
-                    ->where(function ($q) {
-                        $q->whereNull('SCMINTStatus')
-                            ->orWhere('SCMINTStatus', 'Success');
-                    });
+                $query->where(function ($q) {
+                    $q->where('QuoteStatus', 'Won')
+                        ->orWhere('status', 'Won');
+                })->where(function ($q) {
+                    $q->whereNull('SCMINTStatus')
+                        ->orWhere('SCMINTStatus', 'Success');
+                });
+                Log::info('Applied won filter');
                 break;
+
             case 'lost':
-                $query->where('status', 'Lost');
+                $query->where(function ($q) {
+                    $q->where('QuoteStatus', 'Lost')
+                        ->orWhere('status', 'Lost');
+                });
+                Log::info('Applied lost filter');
                 break;
+
             case 'canceled':
-                $query->where('status', 'Cancel');
+                $query->where(function ($q) {
+                    $q->where('QuoteStatus', 'Cancel')
+                        ->orWhere('status', 'Cancel');
+                });
+                Log::info('Applied canceled filter');
                 break;
+
             case 'failed_int':
-                $query->where('status', 'Won')
-                    ->whereNotNull('SCMINTStatus')
+                $query->where(function ($q) {
+                    $q->where('QuoteStatus', 'Won')
+                        ->orWhere('status', 'Won');
+                })->whereNotNull('SCMINTStatus')
                     ->where('SCMINTStatus', '!=', 'Success');
+                Log::info('Applied failed_int filter');
+                break;
+
+            case 'all':
+            default:
+                // No additional filtering - show all records
+                Log::info('No card filter applied - showing all records');
                 break;
         }
-
         return DataTables::of($query)
             ->addColumn('report_date', function ($row) {
                 return $row->createdon ? date('Y-m-d H:i', strtotime($row->createdon)) : '-';
@@ -237,30 +265,35 @@ class QuotationController extends Controller
             ->addColumn('BookingNo', function ($row) {
                 return $row->bookingno ?? '-';
             })
-            ->addColumn('action', function ($row) {
+            ->addColumn('action', function ($row) use ($cardFilter) {
                 // Use QuoteStatus first, fallback to status
                 $status = $row->QuoteStatus ?? $row->status ?? 'Proposal';
                 $scmStatus = $row->SCMINTStatus;
 
+                // Determine what category this record belongs to
+                $isInProgress = in_array($status, ['Pending', 'Proposal']) || is_null($status);
+                $isFailedInt = ($status == 'Won' && $scmStatus && $scmStatus != 'Success');
+
+                // View button - always visible
                 $viewBtn = '<a href="' . route('quotation.view', $row->ID) . '" class="btn btn-info btn-sm" title="View">
-                <i class="fas fa-eye"></i>
-                </a>';
+        <i class="fas fa-eye"></i>
+    </a>';
 
                 $editBtn = '';
                 $retriggerBtn = '';
 
-                // Pending only - View & Edit
-                if ($status === 'Pending') {
+                // Edit button ONLY when viewing "In Progress" card AND record is actually in progress
+                if ($cardFilter === 'in_progress' && $isInProgress) {
                     $editBtn = ' <a href="' . route('quotation.edit', $row->ID) . '" class="btn btn-warning btn-sm" title="Edit">
-                    <i class="fas fa-edit"></i>
-                    </a>';
+            <i class="fas fa-edit"></i>
+        </a>';
                 }
 
-                // Failed Int - View & Retrigger
-                if ($status == 'Won' && $scmStatus && $scmStatus != 'Success') {
+                // Retrigger button ONLY when viewing "Failed Int" card AND record is actually failed integration
+                if ($cardFilter === 'failed_int' && $isFailedInt) {
                     $retriggerBtn = ' <button class="btn btn-danger btn-sm btn-retrigger" data-booking="' . $row->bookingno . '" title="Retrigger">
-                    <i class="fas fa-sync-alt"></i>
-                    </button>';
+            <i class="fas fa-sync-alt"></i>
+        </button>';
                 }
 
                 return $viewBtn . $editBtn . $retriggerBtn;
