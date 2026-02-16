@@ -783,6 +783,7 @@
                                             name="cost_quantity" step="0.01">
                                     </div>
 
+                                    <!-- Rate Row with separator -->
                                     <div class="row mb-3 rate-row">
                                         <div class="col-6">
                                             <label for="cost_rate" class="form-label">Rate</label>
@@ -795,13 +796,37 @@
                                                 </select>
                                             </div>
                                         </div>
-                                        <div class="col-6">
+                                        <div class="col-6 vertical-separator">
                                             <label for="cost_amount" class="form-label">Amount</label>
                                             <input type="number" class="form-control" id="cost_amount"
                                                 name="cost_amount" step="0.01" value="0.00" readonly>
                                         </div>
                                     </div>
 
+                                    <!-- Increase By Row with separator (for Cost with Markup) -->
+                                    <div class="row mb-3 cost-markup-row" style="display: none;">
+                                        <div class="col-6">
+                                            <label for="cost_increase_by_value" class="form-label">Increase By</label>
+                                            <div class="input-group">
+                                                <input type="number" class="form-control" id="cost_increase_by_value"
+                                                    name="cost_increase_by_value" step="0.01" value="0.00"
+                                                    placeholder="0">
+                                                <select class="form-select form-control" id="cost_increase_by_type"
+                                                    name="cost_increase_by_type" style="max-width: 120px;">
+                                                    <option value="">Select</option>
+                                                    <option value="percentage">Percentage</option>
+                                                    <option value="amount">Amount</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="col-6 vertical-separator">
+                                            <label for="cost_markup_amount" class="form-label">Amount</label>
+                                            <input type="number" class="form-control" id="cost_markup_amount"
+                                                name="cost_markup_amount" step="0.01" value="0.00" readonly>
+                                        </div>
+                                    </div>
+
+                                    <!-- Exchange Rate Row (unchanged) -->
                                     <div class="row mb-3">
                                         <div class="col-6">
                                             <label for="cost_exchange_rate" class="form-label"><span
@@ -913,8 +938,8 @@
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.min.css">
     <style>
         /* =============================================
-                                           MODAL STYLING — matched to FitExpress UI
-                                           ============================================= */
+                                                                MODAL STYLING — matched to FitExpress UI
+                                                                ============================================= */
 
         .modal-header {
             background-color: #fff !important;
@@ -1259,6 +1284,48 @@
             background-color: #95bb7a;
             border-color: #95bb7a;
             color: white;
+        }
+
+        .vertical-separator {
+            border-left: 2px solid #dee2e6 !important;
+            padding-left: 15px !important;
+            margin-left: -1px;
+        }
+
+        .cost-markup-row,
+        .increase-by-row {
+            display: none !important;
+        }
+
+        /* When visible, force flex layout for side-by-side columns */
+        .cost-markup-row.active,
+        .increase-by-row.active {
+            display: flex !important;
+        }
+
+        .cost-markup-row {
+            display: none !important;
+            /* Hidden by default */
+        }
+
+        /* Force proper display when shown */
+        .cost-markup-row.show-markup {
+            display: flex !important;
+        }
+
+        /* Ensure Bootstrap grid works properly */
+        .cost-markup-row .col-md-6 {
+            flex: 0 0 50%;
+            max-width: 50%;
+        }
+
+        /* Padding adjustments for separation */
+        .pr-2 {
+            padding-right: 0.5rem !important;
+        }
+
+        .pl-2 {
+            padding-left: 0.5rem !important;
         }
     </style>
 @stop
@@ -1788,11 +1855,15 @@
             // CHARGE TYPE TOGGLES
             // ============================================
             $('input[name="revenueChargeType"]').on('change', function() {
-                toggleRevenueFormFields($(this).val());
+                const selectedValue = $(this).val();
+                console.log('Revenue Charge Type Changed:', selectedValue);
+                toggleRevenueFormFields(selectedValue);
             });
 
             $('input[name="costChargeType"]').on('change', function() {
-                toggleCostFormFields($(this).val());
+                const selectedValue = $(this).val();
+                console.log('Cost Charge Type Changed:', selectedValue);
+                toggleCostFormFields(selectedValue);
             });
 
             function toggleRevenueFormFields(type) {
@@ -1803,71 +1874,52 @@
                 if (type === 'costmarkup') {
                     if ($increaseByRow.length === 0) {
                         const increaseByHtml = `
-                <div class="row mb-3 increase-by-row">
+                <div class="row mb-3 increase-by-row active" style="display: flex !important;">
                     <div class="col-6">
                         <label for="revenue_increase_by" class="form-label">Increase By</label>
                         <div class="input-group">
-                            <input type="number" class="form-control" id="revenue_increase_by" name="revenue_increase_by" step="0.01">
-                            <select class="form-select form-control" id="revenue_increase_type" name="revenue_increase_type">
+                            <input type="number" class="form-control" id="revenue_increase_by" name="revenue_increase_by" step="0.01" value="0.00">
+                            <select class="form-select form-control" id="revenue_increase_type" name="revenue_increase_type" style="max-width: 120px;">
                                 <option value="Percentage">Percentage</option>
                                 <option value="Fixed">Fixed</option>
                             </select>
                         </div>
                     </div>
-                    <div class="col-6">
+                    <div class="col-6 vertical-separator">
                         <label for="revenue_markup_amount" class="form-label">Amount</label>
                         <input type="number" class="form-control" id="revenue_markup_amount" name="revenue_markup_amount" step="0.01" value="0.00" readonly>
                     </div>
                 </div>
             `;
                         $modal.find('.rate-row').after(increaseByHtml);
+                        $increaseByRow = $modal.find('.increase-by-row');
+                    } else {
+                        $increaseByRow.addClass('active').css('display', 'flex');
                     }
-                    $increaseByRow = $modal.find('.increase-by-row');
-                    $increaseByRow.show();
                     $isReimbursedContainer.hide();
                 } else {
-                    $increaseByRow.hide();
-                    // FIX: Revenue modal should only show "Is Accrued" checkbox
+                    $increaseByRow.removeClass('active').css('display', 'none');
                     $isReimbursedContainer.hide();
                 }
             }
 
             function toggleCostFormFields(type) {
                 const $modal = $('#addCostModal');
-                let $increaseByRow = $modal.find('.increase-by-row');
+                const $markupRow = $modal.find('.cost-markup-row');
                 const $isReimbursedContainer = $('#costIsReimbursed').closest('.form-check');
 
                 if (type === 'costmarkup') {
-                    if ($increaseByRow.length === 0) {
-                        const increaseByHtml = `
-                <div class="row mb-3 increase-by-row">
-                    <div class="col-6">
-                        <label for="cost_increase_by" class="form-label">Increase By</label>
-                        <div class="input-group">
-                            <input type="number" class="form-control" id="cost_increase_by" name="cost_increase_by" step="0.01">
-                            <select class="form-select form-control" id="cost_increase_type" name="cost_increase_type">
-                                <option value="Percentage">Percentage</option>
-                                <option value="Fixed">Fixed</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="col-6">
-                        <label for="cost_markup_amount" class="form-label">Amount</label>
-                        <input type="number" class="form-control" id="cost_markup_amount" name="cost_markup_amount" step="0.01" value="0.00" readonly>
-                    </div>
-                </div>
-            `;
-                        $modal.find('.rate-row').after(increaseByHtml);
-                    }
-                    $increaseByRow = $modal.find('.increase-by-row');
-                    $increaseByRow.show();
+                    // The row already exists in your HTML, just show it
+                    $markupRow.addClass('active').css('display', 'flex');
                     $isReimbursedContainer.hide();
+                    console.log('Showing cost markup row - display set to flex');
                 } else {
-                    $increaseByRow.hide();
-                    // FIX: Cost modal should show "Is Reimbursed" checkbox
+                    $markupRow.removeClass('active').css('display', 'none');
                     $isReimbursedContainer.show();
+                    console.log('Hiding cost markup row');
                 }
             }
+
             // ============================================
             // AUTO-CALCULATE AMOUNTS (ENHANCED)
             // ============================================
@@ -2414,6 +2466,25 @@
                 $icon.removeClass('fa-chevron-up').addClass('fa-chevron-down');
                 $card.addClass('collapsed-card');
             });
+        });
+
+
+        // Handle Cost Modal radio button changes
+        $(document).on('change', 'input[name="costChargeType"]', function() {
+            const selectedValue = $(this).val();
+            console.log('Cost Charge Type Changed:', selectedValue);
+
+            const $markupRow = $('.cost-markup-row');
+
+            if (selectedValue === 'costmarkup') {
+                $markupRow.removeClass('cost-markup-row').addClass('cost-markup-row show-markup');
+                $markupRow.css('display', 'flex');
+                console.log('Showing cost markup row');
+            } else {
+                $markupRow.removeClass('show-markup');
+                $markupRow.css('display', 'none');
+                console.log('Hiding cost markup row');
+            }
         });
     </script>
 @stop
