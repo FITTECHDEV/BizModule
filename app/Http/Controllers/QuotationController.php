@@ -860,10 +860,10 @@ class QuotationController extends Controller
                 'user' => $submittedBy
             ]);
 
-            // Get current status
+            // Get quotation
             $quotation = DB::table('Quote_QuotationInfo')
                 ->where('bookingno', $bookingNo)
-                ->first(['QuoteStatus', 'status']);
+                ->first(['ID', 'QuoteStatus', 'status']);
 
             if (!$quotation) {
                 return response()->json([
@@ -880,7 +880,60 @@ class QuotationController extends Controller
                 'target_status' => $targetStatus
             ]);
 
-            // Handle status transitions based on SP business rules
+            // ============================================
+            // HANDLE "WON" STATUS SEPARATELY (NOT IN SP)
+            // ============================================
+            if ($targetStatus === 'Won') {
+                DB::beginTransaction();
+                try {
+                    // Update quotation status
+                    DB::table('Quote_QuotationInfo')
+                        ->where('bookingno', $bookingNo)
+                        ->update([
+                            'QuoteStatus' => 'Won',
+                            'status' => 'Won',
+                            'LastModifiedBy' => $submittedBy,
+                            'updatedon' => now()
+                        ]);
+
+                    // Insert history record
+                    DB::table('Cust_EntityHistory')->insert([
+                        'ID' => DB::raw('NEWID()'),
+                        'CustEntityID' => $quotation->ID,
+                        'RequestNo' => (string)$bookingNo,
+                        'Comment' => $reasonRemark ?: 'Status updated to Won',
+                        'Type' => 'Quotation Status Update',
+                        'PreviousValue' => $currentStatus,
+                        'NewValue' => 'Won',
+                        'CreatedBy' => $submittedBy,
+                        'CreatedOn' => now(),
+                        'LastModifiedBy' => $submittedBy,
+                        'LastModifiedOn' => now(),
+                        'IsActive' => 1,
+                        'IsDeleted' => 0
+                    ]);
+
+                    DB::commit();
+
+                    Log::info('Status updated to Won successfully', [
+                        'booking_no' => $bookingNo
+                    ]);
+
+                    return response()->json([
+                        'success' => true,
+                        'message' => 'Quotation marked as WON successfully'
+                    ]);
+                } catch (\Exception $e) {
+                    DB::rollBack();
+                    throw $e;
+                }
+            }
+
+            // ============================================
+            // HANDLE "LOST" AND "CANCEL" VIA STORED PROCEDURE
+            // ============================================
+
+            // Handle status transition requirements
             $needsPendingFirst = false;
 
             if ($targetStatus === 'Lost') {
@@ -900,7 +953,6 @@ class QuotationController extends Controller
                     ]);
                 }
             }
-            // Won has no restrictions, can be set from any status
 
             // Update to Pending first if needed
             if ($needsPendingFirst) {
@@ -916,7 +968,7 @@ class QuotationController extends Controller
                 Log::info('Updated to Pending, now proceeding with final status');
             }
 
-            // Now execute the SP with the target status
+            // Execute the stored procedure for Lost/Cancel
             $inputJson = json_encode([
                 'OperationType' => 'QuotationStatusUpdate',
                 'SubmittedDatetime' => now()->format('YmdHis'),

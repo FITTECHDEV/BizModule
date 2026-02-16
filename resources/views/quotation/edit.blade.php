@@ -670,21 +670,21 @@
 
                                     <!-- Checkboxes -->
                                     <div class="mb-3">
-                                        <div class="form-check mb-2" id="revenueIsReimbursedContainer"
+                                        {{-- <div class="form-check mb-2" id="revenueIsReimbursedContainer"
                                             style="display:none;">
                                             <input class="form-check-input" type="checkbox" id="revenueIsReimbursed"
                                                 name="revenue_is_reimbursed">
                                             <label class="form-check-label fw-semibold" for="revenueIsReimbursed">
                                                 Is Reimbursed <small class="text-muted">(Adds to Revenue)</small>
                                             </label>
-                                        </div>
-                                        <div class="form-check">
+                                        </div> --}}
+                                        {{-- <div class="form-check">
                                             <input class="form-check-input" type="checkbox" id="revenueIsAccrued"
                                                 name="revenue_is_accrued">
                                             <label class="form-check-label fw-semibold" for="revenueIsAccrued">
                                                 Is Accrued <small class="text-muted">(Adds to Cost)</small>
                                             </label>
-                                        </div>
+                                        </div> --}}
 
                                         <div class="mb-3" id="revenueSecondaryBillToPartyContainer"
                                             style="display:none;">
