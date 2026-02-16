@@ -1202,19 +1202,19 @@
         /* Card styling */
         .card-primary>.card-header,
         .card.card-primary>.card-header {
-            background-color: #513d6b !important;
+            background-color: #4B49AC !important;
             color: white !important;
         }
 
         .card-success>.card-header,
         .card.card-success>.card-header {
-            background-color: #513d6b !important;
+            background-color: #4B49AC !important;
             color: white !important;
         }
 
         .card-danger>.card-header,
         .card.card-danger>.card-header {
-            background-color: #513d6b !important;
+            background-color: #4B49AC !important;
             color: white !important;
         }
 

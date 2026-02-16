@@ -424,15 +424,11 @@
             </div>
 
             <!-- Summary -->
-            <div class="card card-primary">
+            <div class="card card-primary summary-card">
                 <div class="card-header">
                     <h3 class="card-title">Summary</h3>
-                    <div class="card-tools">
-                        <button type="button" class="btn btn-tool" data-card-widget="collapse">
-                            <i class="fas fa-chevron-up"></i>
-                        </button>
-                    </div>
                 </div>
+
                 <div class="card-body">
                     <div class="row">
                         <div class="col-md-6">
@@ -492,19 +488,19 @@
         /* Ensure consistent card header colors - all using #305496 with higher specificity */
         .card-primary>.card-header,
         .card.card-primary>.card-header {
-            background-color: #513d6b !important;
+            background-color: #4B49AC !important;
             color: white !important;
         }
 
         .card-success>.card-header,
         .card.card-success>.card-header {
-            background-color: #513d6b !important;
+            background-color: #4B49AC !important;
             color: white !important;
         }
 
         .card-danger>.card-header,
         .card.card-danger>.card-header {
-            background-color: #513d6b !important;
+            background-color: #4B49AC !important;
             color: white !important;
         }
 
@@ -768,7 +764,7 @@
             // ============================================
             // INITIALIZE - Collapse all cards by default EXCEPT Revenue and Cost
             // ============================================
-            $('.card').not('.card-success, .card-danger').each(function() {
+            $('.card').not('.card-success, .card-danger, .summary-card').each(function() {
                 var $card = $(this);
                 var $cardBody = $card.find('.card-body');
                 var $icon = $card.find('[data-card-widget="collapse"] i');
@@ -776,6 +772,12 @@
                 $cardBody.hide();
                 $icon.removeClass('fa-chevron-up').addClass('fa-chevron-down');
                 $card.addClass('collapsed-card');
+            });
+
+            $('.summary-card').each(function() {
+                var $card = $(this);
+                $card.removeClass('collapsed-card');
+                $card.find('.card-body').show();
             });
 
             // Ensure correct icons for all cards
