@@ -215,11 +215,69 @@ class QuotationController extends Controller
 
             case 'all':
             default:
-                // No additional filtering - show all records
                 Log::info('No card filter applied - showing all records');
                 break;
         }
+
         return DataTables::of($query)
+            ->filterColumn('OfficeName', function ($query, $keyword) {
+                $query->where('teamname', 'like', "%{$keyword}%");
+            })
+            ->filterColumn('ClientName', function ($query, $keyword) {
+                $query->where('companyname', 'like', "%{$keyword}%");
+            })
+            ->filterColumn('ClientID', function ($query, $keyword) {
+                $query->where('clientid', 'like', "%{$keyword}%");
+            })
+            ->filterColumn('SalesPerson', function ($query, $keyword) {
+                $query->where('username', 'like', "%{$keyword}%");
+            })
+            ->filterColumn('OriginCountry', function ($query, $keyword) {
+                $query->where('origincountry', 'like', "%{$keyword}%");
+            })
+            ->filterColumn('DestinationCountry', function ($query, $keyword) {
+                $query->where('destinationcountry', 'like', "%{$keyword}%");
+            })
+            ->filterColumn('QuotationStatus', function ($query, $keyword) {
+                $keyword = strtolower(trim($keyword));
+                $query->where(function ($q) use ($keyword) {
+                    if (str_contains($keyword, 'progress') || str_contains($keyword, 'pending') || str_contains($keyword, 'proposal')) {
+                        $q->where(function ($sub) {
+                            $sub->whereIn('QuoteStatus', ['Proposal', 'Pending'])
+                                ->orWhereIn('status', ['Proposal', 'Pending'])
+                                ->orWhereNull('QuoteStatus')
+                                ->orWhereNull('status');
+                        });
+                    } elseif (str_contains($keyword, 'won')) {
+                        $q->where(function ($sub) {
+                            $sub->where('QuoteStatus', 'Won')->orWhere('status', 'Won');
+                        })->where(function ($sub) {
+                            $sub->whereNull('SCMINTStatus')->orWhere('SCMINTStatus', 'Success');
+                        });
+                    } elseif (str_contains($keyword, 'lost')) {
+                        $q->where(function ($sub) {
+                            $sub->where('QuoteStatus', 'Lost')->orWhere('status', 'Lost');
+                        });
+                    } elseif (str_contains($keyword, 'cancel')) {
+                        $q->where(function ($sub) {
+                            $sub->where('QuoteStatus', 'Cancel')->orWhere('status', 'Cancel');
+                        });
+                    } elseif (str_contains($keyword, 'failed') || str_contains($keyword, 'int')) {
+                        $q->where(function ($sub) {
+                            $sub->where('QuoteStatus', 'Won')->orWhere('status', 'Won');
+                        })->whereNotNull('SCMINTStatus')->where('SCMINTStatus', '!=', 'Success');
+                    } else {
+                        $q->where('QuoteStatus', 'like', "%{$keyword}%")
+                            ->orWhere('status', 'like', "%{$keyword}%");
+                    }
+                });
+            })
+            ->filterColumn('StatusRemark', function ($query, $keyword) {
+                $query->where('SCMINTStatus', 'like', "%{$keyword}%");
+            })
+            ->filterColumn('BookingNo', function ($query, $keyword) {
+                $query->where('bookingno', 'like', "%{$keyword}%");
+            })
             ->addColumn('report_date', function ($row) {
                 return $row->createdon ? date('Y-m-d H:i', strtotime($row->createdon)) : '-';
             })
@@ -242,7 +300,6 @@ class QuotationController extends Controller
                 return $row->destinationcountry ?? '-';
             })
             ->addColumn('QuotationStatus', function ($row) {
-                // Use QuoteStatus first, fallback to status
                 $status = $row->QuoteStatus ?? $row->status ?? 'Proposal';
 
                 if ($status == 'Won' && $row->SCMINTStatus && $row->SCMINTStatus != 'Success') {
@@ -266,34 +323,29 @@ class QuotationController extends Controller
                 return $row->bookingno ?? '-';
             })
             ->addColumn('action', function ($row) use ($cardFilter) {
-                // Use QuoteStatus first, fallback to status
                 $status = $row->QuoteStatus ?? $row->status ?? 'Proposal';
                 $scmStatus = $row->SCMINTStatus;
 
-                // Determine what category this record belongs to
                 $isInProgress = in_array($status, ['Pending', 'Proposal']) || is_null($status);
                 $isFailedInt = ($status == 'Won' && $scmStatus && $scmStatus != 'Success');
 
-                // View button - always visible
                 $viewBtn = '<a href="' . route('quotation.view', $row->ID) . '" class="btn btn-info btn-sm" title="View">
-        <i class="fas fa-eye"></i>
-    </a>';
+                <i class="fas fa-eye"></i>
+            </a>';
 
                 $editBtn = '';
                 $retriggerBtn = '';
 
-                // Edit button ONLY when viewing "In Progress" card AND record is actually in progress
                 if ($cardFilter === 'in_progress' && $isInProgress) {
                     $editBtn = ' <a href="' . route('quotation.edit', $row->ID) . '" class="btn btn-warning btn-sm" title="Edit">
-            <i class="fas fa-edit"></i>
-        </a>';
+                    <i class="fas fa-edit"></i>
+                </a>';
                 }
 
-                // Retrigger button ONLY when viewing "Failed Int" card AND record is actually failed integration
                 if ($cardFilter === 'failed_int' && $isFailedInt) {
                     $retriggerBtn = ' <button class="btn btn-danger btn-sm btn-retrigger" data-booking="' . $row->bookingno . '" title="Retrigger">
-            <i class="fas fa-sync-alt"></i>
-        </button>';
+                    <i class="fas fa-sync-alt"></i>
+                </button>';
                 }
 
                 return $viewBtn . $editBtn . $retriggerBtn;
@@ -433,14 +485,17 @@ class QuotationController extends Controller
     {
         try {
             // ============================================
-            // FIND THE ORIGINAL QUOTATION BY BOOKING NUMBER
+            // FIND ORIGINAL QUOTATION UUID BY BOOKING NUMBER
             // ============================================
             $original = DB::table('Quote_QuotationInfo')
                 ->where('bookingno', $bookingno)
+                ->select('ID', 'bookingno')
                 ->first();
 
             if (!$original) {
-                Log::error('Copy Quotation - Original not found', ['bookingno' => $bookingno]);
+                Log::error('Copy Quotation - Original not found', [
+                    'bookingno' => $bookingno
+                ]);
                 return response()->json([
                     'success' => false,
                     'message' => 'Quotation not found for booking number: ' . $bookingno
@@ -453,207 +508,85 @@ class QuotationController extends Controller
 
             Log::info('Copy Quotation - Starting', [
                 'original_booking_no' => $original->bookingno,
+                'original_id'         => $original->ID,
                 'copied_by'           => $submittedBy,
             ]);
 
-            DB::beginTransaction();
+            // ============================================
+            // CALL COPY SP
+            // Handles header + charges internally
+            // ============================================
+            $pdo = DB::getPdo();
+
+            $sql = "
+            DECLARE @Status  VARCHAR(25)
+            DECLARE @Remark  VARCHAR(200)
+            DECLARE @QuoteNo VARCHAR(50)
+
+            EXEC dbo.sp_Quote_QuotationCopy ?,
+                @Status  = @Status  OUTPUT,
+                @Remark  = @Remark  OUTPUT,
+                @QuoteNo = @QuoteNo OUTPUT
+
+            SELECT @Status AS Status, @Remark AS Remark, @QuoteNo AS QuoteNo
+        ";
+
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute([$original->ID]);
+            $result = $stmt->fetch(\PDO::FETCH_ASSOC);
+
+            if (!$result || strtolower($result['Status']) !== 'success') {
+                $remark = $result['Remark'] ?? 'Unknown error from copy SP';
+                Log::error('Copy Quotation - SP Failed', [
+                    'original_booking_no' => $original->bookingno,
+                    'sp_status'           => $result['Status'] ?? null,
+                    'sp_remark'           => $remark,
+                ]);
+                return response()->json([
+                    'success' => false,
+                    'message' => $remark
+                ], 500);
+            }
+
+            $newBookingNo = $result['QuoteNo'];
 
             // ============================================
-            // GENERATE NEW BOOKING NUMBER
-            // lockForUpdate prevents race conditions
+            // FETCH NEW QUOTATION ID FOR REDIRECT
             // ============================================
-            $newBookingNo = DB::table('Quote_QuotationInfo')
-                ->lockForUpdate()
-                ->max('bookingno') + 1;
+            $newQuotation = DB::table('Quote_QuotationInfo')
+                ->where('bookingno', $newBookingNo)
+                ->select('ID')
+                ->first();
 
-            $newId = (string) \Illuminate\Support\Str::uuid();
-            $now   = now();
-
-            // ============================================
-            // INSERT COPIED RECORD
-            // ============================================
-            DB::table('Quote_QuotationInfo')->insert([
-                'ID'                           => $newId,
-                'bookingno'                    => $newBookingNo,
-
-                // --- Customer ---
-                'companyname'                  => $original->companyname,
-                'clientid'                     => $original->clientid,
-
-                // --- Source / Medium / Stage ---
-                'source_id'                    => $original->source_id,
-                'source'                       => $original->source,
-                'medium_id'                    => $original->medium_id,
-                'medium'                       => $original->medium,
-                'stage_id'                     => $original->stage_id,
-
-                // --- Status: always reset to Proposal ---
-                'status'                       => 'Proposal',
-                'QuoteStatus'                  => 'Proposal',
-                'won_status'                   => null,
-                'ReasonCode'                   => null,
-                'ReasonRemark'                 => null,
-
-                // --- Sales / Team ---
-                'userid'                       => $original->userid,
-                'userpartnerid'                => $original->userpartnerid,
-                'username'                     => $original->username,
-                'teamid'                       => $original->teamid,
-                'teamname'                     => $original->teamname,
-                'SalesPersonCode'              => $original->SalesPersonCode,
-
-                // --- Geography ---
-                'stateid'                      => $original->stateid,
-                'statename'                    => $original->statename,
-                'countryid'                    => $original->countryid,
-                'countrycode'                  => $original->countrycode,
-                'countryname'                  => $original->countryname,
-
-                // --- Industry ---
-                'industryid'                   => $original->industryid,
-                'industryname'                 => $original->industryname,
-
-                // --- Service ---
-                'serviceverticalid'            => $original->serviceverticalid,
-                'serviceverticalname'          => $original->serviceverticalname,
-                'ServiceVertical'              => $original->ServiceVertical,
-                'SVName'                       => $original->SVName,
-                'process'                      => $original->process,
-                'storage'                      => $original->storage,
-                'other'                        => $original->other,
-                'state'                        => $original->state,
-
-                // --- Shipment ---
-                'origin_country_id'            => $original->origin_country_id,
-                'origincountry'                => $original->origincountry,
-                'origin_country_code'          => $original->origin_country_code,
-                'dest_country_id'              => $original->dest_country_id,
-                'destination_country_code'     => $original->destination_country_code,
-                'destinationcountry'           => $original->destinationcountry,
-                'shipmentmode'                 => $original->shipmentmode,
-                'TransportMode'                => $original->TransportMode,
-                'ServiceClass'                 => $original->ServiceClass,
-                'incoterm'                     => $original->incoterm,
-
-                // --- Cargo ---
-                'commodity'                    => $original->commodity,
-                'scopevolume'                  => $original->scopevolume,
-                'scope_of_volume'              => $original->scope_of_volume,
-                'cargovolume'                  => $original->cargovolume,
-                'cargo_volume'                 => $original->cargo_volume,
-                'containerlist'                => $original->containerlist,
-
-                // --- Revenue: reset ---
-                'quoted_revenue'               => null,
-                'expected_revenue'             => null,
-                'prorated_revenue'             => null,
-
-                // --- Contact / CRM fields ---
-                'source_name'                  => $original->source_name,
-                'quotationo'                   => $original->quotationo,
-                'type'                         => $original->type,
-                'contact_name'                 => $original->contact_name,
-                'partner_name'                 => $original->partner_name,
-                'function'                     => $original->function,
-                'email_from'                   => $original->email_from,
-                'phone'                        => $original->phone,
-                'mobile'                       => $original->mobile,
-                'street'                       => $original->street,
-                'street2'                      => $original->street2,
-                'zip'                          => $original->zip,
-                'city'                         => $original->city,
-                'date_deadline'                => $original->date_deadline,
-                'date_closed'                  => null,
-                'phone_sanitized'              => $original->phone_sanitized,
-                'email_normalized'             => $original->email_normalized,
-                'companyname_crm'              => $original->companyname_crm,
-
-                // --- Primary partner ---
-                'pri_id'                       => $original->pri_id,
-                'pri_partnermaster_name'       => $original->pri_partnermaster_name,
-                'pri_partner_stateid'          => $original->pri_partner_stateid,
-                'pri_partner_statename'        => $original->pri_partner_statename,
-                'pri_partner_countryid'        => $original->pri_partner_countryid,
-                'pri_partner_countrycode'      => $original->pri_partner_countrycode,
-                'pri_partner_countryname'      => $original->pri_partner_countryname,
-                'pri_rrp_industryid'           => $original->pri_rrp_industryid,
-                'pri_partner_industrttypecode' => $original->pri_partner_industrttypecode,
-                'pri_partner_industrttype'     => $original->pri_partner_industrttype,
-                'pri_partner_function'         => $original->pri_partner_function,
-                'pri_partner_steet'            => $original->pri_partner_steet,
-                'pri_partner_steet2'           => $original->pri_partner_steet2,
-                'pri_partner_zip'              => $original->pri_partner_zip,
-                'pri_partner_city'             => $original->pri_partner_city,
-                'pri_partner_email'            => $original->pri_partner_email,
-                'pri_partner_phone'            => $original->pri_partner_phone,
-                'pri_partner_mobile'           => $original->pri_partner_mobile,
-
-                // --- Secondary partner ---
-                'partnermaster_name'           => $original->partnermaster_name,
-                'partner_stateid'              => $original->partner_stateid,
-                'partner_statename'            => $original->partner_statename,
-                'partner_countryid'            => $original->partner_countryid,
-                'partner_country_code'         => $original->partner_country_code,
-                'partner_countryname'          => $original->partner_countryname,
-                'industry_id'                  => $original->industry_id,
-                'partner_industrttypecode'     => $original->partner_industrttypecode,
-                'partner_industrttype'         => $original->partner_industrttype,
-                'partner_function'             => $original->partner_function,
-                'partner_steet'                => $original->partner_steet,
-                'partner_steet2'               => $original->partner_steet2,
-                'partner_zip'                  => $original->partner_zip,
-                'partner_city'                 => $original->partner_city,
-                'partner_email'                => $original->partner_email,
-                'partner_phone'                => $original->partner_phone,
-                'partner_mobile'               => $original->partner_mobile,
-
-                // --- Audit ---
-                'createdon'                    => $now,
-                'updatedon'                    => $now,
-                'CreatedBy'                    => $submittedBy,
-                'LastModifiedBy'               => $submittedBy,
-
-                // --- SCM Integration: always wiped on copy ---
-                'INTCreatedOn'                 => null,
-                'INTUpdatedOn'                 => null,
-                'ClientCreated'                => null,
-                'ClientCodeINSCM'              => null,
-                'ClientIDINSCM'                => null,
-                'ClientIntegration'            => null,
-                'SCMBookingID'                 => null,
-                'SCMBookingNo'                 => null,
-                'SCMJobID'                     => null,
-                'SCMJobNo'                     => null,
-                'SCMINTStatus'                 => null,
-                'SCMBookingXML'                => null,
-                'CreatedOnInSCM'               => null,
-                'UpdatedOninSCM'               => null,
-            ]);
-
-            DB::commit();
+            if (!$newQuotation) {
+                Log::error('Copy Quotation - New record not found after SP', [
+                    'new_booking_no' => $newBookingNo,
+                ]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Copy succeeded but new quotation record could not be located.'
+                ], 500);
+            }
 
             Log::info('Copy Quotation - Success', [
                 'original_booking_no' => $original->bookingno,
                 'new_booking_no'      => $newBookingNo,
-                'new_id'              => $newId,
+                'new_id'              => $newQuotation->ID,
                 'copied_by'           => $submittedBy,
             ]);
 
             return response()->json([
                 'success'        => true,
                 'new_booking_no' => $newBookingNo,
-                'new_id'         => $newId,
-                'redirect_url'   => route('quotation.edit', $newId) . '?copied=1',
+                'new_id'         => $newQuotation->ID,
+                'redirect_url'   => route('quotation.edit', $newQuotation->ID) . '?copied=1',
             ]);
         } catch (\Exception $e) {
-            DB::rollBack();
-
             Log::error('Copy Quotation - Failed', [
                 'original_bookingno' => $bookingno,
                 'error'              => $e->getMessage(),
                 'file'               => $e->getFile(),
                 'line'               => $e->getLine(),
-                'trace'              => $e->getTraceAsString(),
             ]);
 
             return response()->json([

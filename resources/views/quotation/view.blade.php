@@ -24,7 +24,6 @@
     </div>
 @stop
 
-
 @section('content')
 
     <div class="row">
@@ -375,26 +374,33 @@
 
             <!-- Revenue -->
             <div class="card card-success">
-                <div class="card-header">
-                    <h3 class="card-title">Revenue</h3>
-                    <div class="card-tools">
-                        <a href="#" class="text-white">Show Items</a>
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h3 class="card-title mb-0">Revenue</h3>
+                    <div class="d-flex align-items-center ml-auto">
+                        <span class="text-white mr-3 small">
+                            Total: <strong id="revenueTotalHeaderAmount">0.00</strong>
+                        </span>
+                        <a href="#" class="text-white show-items-link" data-table="revenue">
+                            <i class="fas fa-columns mr-1"></i> Show More
+                        </a>
                     </div>
                 </div>
                 <div class="card-body">
-                    <table class="table table-bordered table-sm">
-                        <thead>
+                    <table class="table table-bordered table-sm table-hover">
+                        <thead class="thead-light">
                             <tr>
                                 <th>Charge Name</th>
                                 <th>Rate</th>
-                                <th>Based On</th>
+                                <th class="col-extra">Quantity</th>
+                                <th class="col-extra">Based On UOM</th>
+                                <th class="col-extra">Currency</th>
                                 <th>Amount</th>
-                                <th>Based Amount</th>
+                                <th>Base Amount</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody id="revenueChargesViewTable">
                             <tr>
-                                <td colspan="5" class="text-center text-muted">No charges added</td>
+                                <td colspan="7" class="text-center text-muted">Loading charges...</td>
                             </tr>
                         </tbody>
                     </table>
@@ -403,26 +409,33 @@
 
             <!-- Cost -->
             <div class="card card-danger">
-                <div class="card-header">
-                    <h3 class="card-title">Cost</h3>
-                    <div class="card-tools">
-                        <a href="#" class="text-white">Show Items</a>
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h3 class="card-title mb-0">Cost</h3>
+                    <div class="d-flex align-items-center ml-auto">
+                        <span class="text-white mr-3 small">
+                            Total: <strong id="costTotalHeaderAmount">0.00</strong>
+                        </span>
+                        <a href="#" class="text-white show-items-link" data-table="cost">
+                            <i class="fas fa-columns mr-1"></i> Show More
+                        </a>
                     </div>
                 </div>
                 <div class="card-body">
-                    <table class="table table-bordered table-sm">
-                        <thead>
+                    <table class="table table-bordered table-sm table-hover">
+                        <thead class="thead-light">
                             <tr>
                                 <th>Charge Name</th>
                                 <th>Rate</th>
-                                <th>Based On</th>
+                                <th class="col-extra">Quantity</th>
+                                <th class="col-extra">Based On UOM</th>
+                                <th class="col-extra">Currency</th>
                                 <th>Amount</th>
-                                <th>Based Amount</th>
+                                <th>Base Amount</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody id="costChargesViewTable">
                             <tr>
-                                <td colspan="5" class="text-center text-muted">No charges added</td>
+                                <td colspan="7" class="text-center text-muted">Loading charges...</td>
                             </tr>
                         </tbody>
                     </table>
@@ -440,14 +453,14 @@
                             <div class="form-group row">
                                 <label class="col-sm-6 col-form-label">Expected Revenue</label>
                                 <div class="col-sm-6">
-                                    <input type="text" class="form-control form-control-sm"
+                                    <input type="text" class="form-control form-control-sm" id="viewExpectedRevenue"
                                         value="{{ $quotation->expected_revenue ?? 'N/A' }}" readonly>
                                 </div>
                             </div>
                             <div class="form-group row">
                                 <label class="col-sm-6 col-form-label">Quoted Revenue</label>
                                 <div class="col-sm-6">
-                                    <input type="text" class="form-control form-control-sm"
+                                    <input type="text" class="form-control form-control-sm" id="viewQuotedRevenue"
                                         value="{{ $quotation->quoted_revenue ?? 'N/A' }}" readonly>
                                 </div>
                             </div>
@@ -458,7 +471,7 @@
                                 </div>
                             </div>
                             <div class="form-group row mb-0">
-                                <label class="col-sm-6 col-form-label">Terms & Condition Section</label>
+                                <label class="col-sm-6 col-form-label">Terms & Condition</label>
                                 <div class="col-sm-6">
                                     <input type="text" class="form-control form-control-sm"
                                         value="{{ $quotation->terms_condition ?? 'N/A' }}" readonly>
@@ -469,7 +482,7 @@
                             <div class="form-group row">
                                 <label class="col-sm-6 col-form-label">Quoted Margin</label>
                                 <div class="col-sm-6">
-                                    <input type="text" class="form-control form-control-sm"
+                                    <input type="text" class="form-control form-control-sm" id="viewQuotedMargin"
                                         value="{{ $quotation->quoted_margin ?? 'N/A' }}" readonly>
                                 </div>
                             </div>
@@ -486,37 +499,10 @@
         </div>
     </div>
 
-    {{-- ============================================ --}}
-    {{-- COPY BOOKING SUCCESS MODAL                   --}}
-    {{-- ============================================ --}}
-    <div class="modal fade" id="copySuccessModal" tabindex="-1" role="dialog" data-backdrop="static"
-        data-keyboard="false">
-        <div class="modal-dialog modal-dialog-centered" role="document">
-            <div class="modal-content">
-                <div class="modal-header" style="background-color: #4B49AC;">
-                    <h5 class="modal-title text-white">
-                        <i class="fas fa-check-circle"></i> Booking Copied Successfully
-                    </h5>
-                </div>
-                <div class="modal-body text-center py-4">
-                    <p class="mb-1 text-muted">A new inquiry has been created:</p>
-                    <h2 class="font-weight-bold mt-2" id="newBookingNoDisplay" style="color: #4B49AC;"></h2>
-                    <p class="text-muted mt-2 mb-0">Click below to open the new booking.</p>
-                </div>
-                <div class="modal-footer justify-content-center">
-                    <a href="#" id="btnGoToNewBooking" class="btn btn-primary">
-                        <i class="fas fa-arrow-right"></i> Open New Booking
-                    </a>
-                </div>
-            </div>
-        </div>
-    </div>
-
 @stop
 
 @section('css')
     <style>
-        /* Ensure consistent card header colors - all using #305496 with higher specificity */
         .card-primary>.card-header,
         .card.card-primary>.card-header {
             background-color: #4B49AC !important;
@@ -535,14 +521,12 @@
             color: white !important;
         }
 
-        /* Small form controls for compact layout */
         .form-control-sm {
             height: calc(1.5em + 0.5rem + 2px);
             padding: 0.25rem 0.5rem;
             font-size: 0.875rem;
         }
 
-        /* Remove form control background - match left panel style */
         .form-control[readonly] {
             background-color: transparent;
             border: none;
@@ -552,38 +536,24 @@
             color: #333;
         }
 
-        /* Remove focus outline on readonly fields */
         .form-control[readonly]:focus {
             outline: none;
             box-shadow: none;
         }
 
-        /* Row spacing */
         .form-group.row {
             margin-bottom: 0.5rem;
         }
 
-        /* Card body padding */
         .card-body {
             padding: 1rem;
         }
 
-        /* Table styling */
         .table-sm th,
         .table-sm td {
             padding: 0.3rem;
         }
 
-        /* Links in card headers */
-        .card-tools a {
-            text-decoration: underline;
-        }
-
-        .card-tools a:hover {
-            opacity: 0.8;
-        }
-
-        /* Make card header clickable for collapse */
         .card-header {
             cursor: pointer;
             user-select: none;
@@ -595,25 +565,16 @@
     </style>
 @stop
 
+
 @section('js')
     <script>
         $(document).ready(function() {
             console.log('Booking Quotation View - Page Loaded');
 
-            // ============================================
-            // FLASH MESSAGES FROM COPY/REDIRECT
-            // ============================================
-            @if (session('success'))
-                alert('{{ session('success') }}');
-            @endif
-            @if (session('error'))
-                alert('{{ session('error') }}');
-            @endif
-
             const bookingNo = '{{ $quotation->bookingno ?? '' }}';
 
             // ============================================
-            // COPY BOOKING - AJAX + MODAL
+            // COPY BOOKING — INLINE LINK RESULT
             // ============================================
             $('#btnCopyBooking').on('click', function() {
                 if (!confirm('Copy booking ' + bookingNo + '? A new inquiry will be created.')) {
@@ -631,22 +592,26 @@
                     },
                     success: function(response) {
                         if (response.success) {
-                            $('#newBookingNoDisplay').text('Inquiry No: ' + response
-                                .new_booking_no);
-                            $('#btnGoToNewBooking').attr('href', response.redirect_url);
-                            $('#copySuccessModal').modal('show');
+                            $btn.replaceWith(`
+                                <a href="${response.redirect_url}"
+                                   class="btn btn-success btn-sm"
+                                   id="newInquiryLink">
+                                    <i class="fas fa-check-circle mr-1"></i>
+                                    Copied — Inquiry No: ${response.new_booking_no}
+                                </a>
+                            `);
                         } else {
                             alert('Failed to copy booking: ' + response.message);
+                            $btn.prop('disabled', false)
+                                .html('<i class="fas fa-copy"></i> Copy Booking');
                         }
                     },
                     error: function(xhr) {
                         const msg = xhr.responseJSON ? xhr.responseJSON.message :
                             'An unexpected error occurred.';
                         alert('Error: ' + msg);
-                    },
-                    complete: function() {
-                        $btn.prop('disabled', false).html(
-                            '<i class="fas fa-copy"></i> Copy Booking');
+                        $btn.prop('disabled', false)
+                            .html('<i class="fas fa-copy"></i> Copy Booking');
                     }
                 });
             });
@@ -661,8 +626,6 @@
             }
 
             function loadChargesForView() {
-                console.log('Loading charges for booking:', bookingNo);
-
                 $.ajax({
                     url: '{{ route('quotation.charges') }}',
                     type: 'GET',
@@ -670,36 +633,33 @@
                         booking_no: bookingNo
                     },
                     beforeSend: function() {
-                        $('.card-success tbody').html(
-                            '<tr><td colspan="5" class="text-center"><i class="fas fa-spinner fa-spin"></i> Loading charges...</td></tr>'
+                        $('#revenueChargesViewTable').html(
+                            '<tr><td colspan="7" class="text-center"><i class="fas fa-spinner fa-spin"></i> Loading...</td></tr>'
                         );
-                        $('.card-danger tbody').html(
-                            '<tr><td colspan="5" class="text-center"><i class="fas fa-spinner fa-spin"></i> Loading charges...</td></tr>'
+                        $('#costChargesViewTable').html(
+                            '<tr><td colspan="7" class="text-center"><i class="fas fa-spinner fa-spin"></i> Loading...</td></tr>'
                         );
                     },
                     success: function(response) {
-                        console.log('Charges loaded:', response);
                         if (response.success) {
                             renderRevenueChargesView(response.revenue || []);
                             renderCostChargesView(response.cost || []);
                             updateViewSummary(response.revenue || [], response.cost || []);
                         } else {
-                            console.error('Failed to load charges');
-                            $('.card-success tbody').html(
-                                '<tr><td colspan="5" class="text-center text-danger">Failed to load charges</td></tr>'
+                            $('#revenueChargesViewTable').html(
+                                '<tr><td colspan="7" class="text-center text-danger">Failed to load charges</td></tr>'
                             );
-                            $('.card-danger tbody').html(
-                                '<tr><td colspan="5" class="text-center text-danger">Failed to load charges</td></tr>'
+                            $('#costChargesViewTable').html(
+                                '<tr><td colspan="7" class="text-center text-danger">Failed to load charges</td></tr>'
                             );
                         }
                     },
-                    error: function(xhr) {
-                        console.error('Error loading charges:', xhr);
-                        $('.card-success tbody').html(
-                            '<tr><td colspan="5" class="text-center text-danger">Error loading charges</td></tr>'
+                    error: function() {
+                        $('#revenueChargesViewTable').html(
+                            '<tr><td colspan="7" class="text-center text-danger">Error loading charges</td></tr>'
                         );
-                        $('.card-danger tbody').html(
-                            '<tr><td colspan="5" class="text-center text-danger">Error loading charges</td></tr>'
+                        $('#costChargesViewTable').html(
+                            '<tr><td colspan="7" class="text-center text-danger">Error loading charges</td></tr>'
                         );
                     }
                 });
@@ -709,161 +669,129 @@
             // RENDER REVENUE CHARGES (VIEW-ONLY)
             // ============================================
             function renderRevenueChargesView(charges) {
-                const tbody = $('.card-success tbody');
+                const tbody = $('#revenueChargesViewTable');
                 tbody.empty();
 
                 if (charges.length === 0) {
                     tbody.append(
-                        '<tr><td colspan="5" class="text-center text-muted">No revenue charges found</td></tr>');
+                        '<tr><td colspan="7" class="text-center text-muted">No revenue charges found</td></tr>');
                     return;
                 }
 
+                let totalBaseAmount = 0;
                 charges.forEach(function(charge) {
-                    const row = `
+                    totalBaseAmount += parseFloat(charge.amtInBaseCurr || 0);
+                    tbody.append(`
                         <tr>
                             <td>${charge.chargeName || charge.chargeCode || 'N/A'}</td>
                             <td class="text-right">${parseFloat(charge.rate || 0).toFixed(2)}</td>
-                            <td>${charge.basedOn || 'N/A'}</td>
-                            <td class="text-right">${charge.chgCurr || 'KES'} ${parseFloat(charge.amtInChgCurr || 0).toFixed(2)}</td>
-                            <td class="text-right">KES ${parseFloat(charge.amtInBaseCurr || 0).toFixed(2)}</td>
+                            <td class="text-right col-extra">${parseFloat(charge.quantity || 0).toFixed(2)}</td>
+                            <td class="col-extra">${charge.basedOnUOM || 'N/A'}</td>
+                            <td class="col-extra">${charge.chgCurr || 'KES'}</td>
+                            <td class="text-right">${parseFloat(charge.amtInChgCurr || 0).toFixed(2)}</td>
+                            <td class="text-right">${parseFloat(charge.amtInBaseCurr || 0).toFixed(2)}</td>
                         </tr>
-                    `;
-                    tbody.append(row);
+                    `);
                 });
 
-                const totalAmount = charges.reduce((sum, charge) => sum + parseFloat(charge.amtInChgCurr || 0), 0);
-                const totalBaseAmount = charges.reduce((sum, charge) => sum + parseFloat(charge.amtInBaseCurr || 0),
-                    0);
-
-                tbody.append(`
-                    <tr class="font-weight-bold bg-light">
-                        <td colspan="3" class="text-right">TOTAL REVENUE</td>
-                        <td class="text-right">KES ${totalAmount.toFixed(2)}</td>
-                        <td class="text-right">KES ${totalBaseAmount.toFixed(2)}</td>
-                    </tr>
-                `);
+                $('#revenueTotalHeaderAmount').text(totalBaseAmount.toFixed(2));
             }
 
             // ============================================
             // RENDER COST CHARGES (VIEW-ONLY)
             // ============================================
             function renderCostChargesView(charges) {
-                const tbody = $('.card-danger tbody');
+                const tbody = $('#costChargesViewTable');
                 tbody.empty();
 
                 if (charges.length === 0) {
                     tbody.append(
-                        '<tr><td colspan="5" class="text-center text-muted">No cost charges found</td></tr>');
+                        '<tr><td colspan="7" class="text-center text-muted">No cost charges found</td></tr>');
                     return;
                 }
 
+                let totalBaseAmount = 0;
                 charges.forEach(function(charge) {
-                    const row = `
+                    totalBaseAmount += parseFloat(charge.amtInBaseCurr || 0);
+                    tbody.append(`
                         <tr>
                             <td>${charge.chargeName || charge.chargeCode || 'N/A'}</td>
                             <td class="text-right">${parseFloat(charge.rate || 0).toFixed(2)}</td>
-                            <td>${charge.basedOn || 'N/A'}</td>
-                            <td class="text-right">${charge.chgCurr || 'KES'} ${parseFloat(charge.amtInChgCurr || 0).toFixed(2)}</td>
-                            <td class="text-right">KES ${parseFloat(charge.amtInBaseCurr || 0).toFixed(2)}</td>
+                            <td class="text-right col-extra">${parseFloat(charge.quantity || 0).toFixed(2)}</td>
+                            <td class="col-extra">${charge.basedOnUOM || 'N/A'}</td>
+                            <td class="col-extra">${charge.chgCurr || 'KES'}</td>
+                            <td class="text-right">${parseFloat(charge.amtInChgCurr || 0).toFixed(2)}</td>
+                            <td class="text-right">${parseFloat(charge.amtInBaseCurr || 0).toFixed(2)}</td>
                         </tr>
-                    `;
-                    tbody.append(row);
+                    `);
                 });
 
-                const totalAmount = charges.reduce((sum, charge) => sum + parseFloat(charge.amtInChgCurr || 0), 0);
-                const totalBaseAmount = charges.reduce((sum, charge) => sum + parseFloat(charge.amtInBaseCurr || 0),
-                    0);
-
-                tbody.append(`
-                    <tr class="font-weight-bold bg-light">
-                        <td colspan="3" class="text-right">TOTAL COST</td>
-                        <td class="text-right">KES ${totalAmount.toFixed(2)}</td>
-                        <td class="text-right">KES ${totalBaseAmount.toFixed(2)}</td>
-                    </tr>
-                `);
+                $('#costTotalHeaderAmount').text(totalBaseAmount.toFixed(2));
             }
 
             // ============================================
-            // UPDATE SUMMARY SECTION WITH ACTUAL DATA
+            // UPDATE SUMMARY
             // ============================================
             function updateViewSummary(revenueCharges, costCharges) {
-                const totalRevenue = revenueCharges.reduce((sum, charge) =>
-                    sum + parseFloat(charge.amtInBaseCurr || 0), 0);
-                const totalCost = costCharges.reduce((sum, charge) =>
-                    sum + parseFloat(charge.amtInBaseCurr || 0), 0);
+                const totalRevenue = revenueCharges.reduce((sum, c) => sum + parseFloat(c.amtInBaseCurr || 0), 0);
+                const totalCost = costCharges.reduce((sum, c) => sum + parseFloat(c.amtInBaseCurr || 0), 0);
                 const margin = totalRevenue - totalCost;
-                const marginPercentage = totalRevenue > 0 ? (margin / totalRevenue * 100) : 0;
+                const marginPct = totalRevenue > 0 ? (margin / totalRevenue * 100) : 0;
 
-                $('input[value*="Expected Revenue"]').closest('.form-group').find('.col-sm-6 input').val('KES ' +
-                    totalRevenue.toFixed(2));
-                $('input[value*="Quoted Revenue"]').closest('.form-group').find('.col-sm-6 input').val('KES ' +
-                    totalRevenue.toFixed(2));
-                $('input[value*="Quoted Margin"]').closest('.form-group').find('.col-sm-6 input').val('KES ' +
-                    margin.toFixed(2) + ' (' + marginPercentage.toFixed(2) + '%)');
+                $('#viewQuotedRevenue').val('KES ' + totalRevenue.toFixed(2));
+                $('#viewQuotedMargin').val('KES ' + margin.toFixed(2) + ' (' + marginPct.toFixed(2) + '%)');
             }
 
             // ============================================
-            // CARD COLLAPSE FUNCTIONALITY
+            // SHOW MORE / SHOW LESS TOGGLE
+            // ============================================
+            $('.col-extra').hide();
+
+            $('.show-items-link').on('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                const tableId = $(this).data('table');
+                const $table = tableId === 'revenue' ?
+                    $('#revenueChargesViewTable').closest('table') :
+                    $('#costChargesViewTable').closest('table');
+
+                const $extraCols = $table.find('.col-extra');
+                const isExpanded = $(this).data('expanded') || false;
+
+                if (isExpanded) {
+                    $extraCols.hide();
+                    $(this).html('<i class="fas fa-columns mr-1"></i> Show More');
+                    $(this).data('expanded', false);
+                } else {
+                    $extraCols.show();
+                    $(this).html('<i class="fas fa-columns mr-1"></i> Show Less');
+                    $(this).data('expanded', true);
+                }
+            });
+
+            // ============================================
+            // CARD COLLAPSE
             // ============================================
             $('[data-card-widget="collapse"]').on('click', function() {
-                var icon = $(this).find('i');
-                icon.toggleClass('fa-chevron-down fa-chevron-up');
+                $(this).find('i').toggleClass('fa-chevron-down fa-chevron-up');
             });
 
             $('.card-header').on('click', function(e) {
-                if (!$(e.target).closest('[data-card-widget="collapse"]').length) {
+                if (!$(e.target).closest('[data-card-widget="collapse"]').length &&
+                    !$(e.target).closest('.show-items-link').length) {
                     $(this).find('[data-card-widget="collapse"]').click();
                 }
             });
 
             // ============================================
-            // SHOW/HIDE ITEMS TOGGLE
-            // ============================================
-            $('.card-tools a').on('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-
-                const $card = $(this).closest('.card');
-                const $tableWrapper = $card.find('table').closest('div');
-                const $link = $(this);
-
-                if ($tableWrapper.is(':visible')) {
-                    $tableWrapper.slideUp(300);
-                    $link.text('Show Items');
-                } else {
-                    $tableWrapper.slideDown(300);
-                    $link.text('Hide Items');
-                }
-            });
-
-            // ============================================
-            // INITIALIZE - Collapse all cards by default EXCEPT Revenue, Cost and Summary
+            // INITIALIZE — collapse all except Revenue, Cost, Summary
             // ============================================
             $('.card').not('.card-success, .card-danger, .summary-card').each(function() {
-                var $card = $(this);
-                var $cardBody = $card.find('.card-body');
-                var $icon = $card.find('[data-card-widget="collapse"] i');
-
-                $cardBody.hide();
-                $icon.removeClass('fa-chevron-up').addClass('fa-chevron-down');
-                $card.addClass('collapsed-card');
-            });
-
-            $('.summary-card').each(function() {
-                var $card = $(this);
-                $card.removeClass('collapsed-card');
-                $card.find('.card-body').show();
-            });
-
-            $('.card').each(function() {
-                var card = $(this);
-                var collapseBtn = card.find('[data-card-widget="collapse"] i');
-
-                if (card.find('.card-body').is(':visible')) {
-                    collapseBtn.removeClass('fa-minus').addClass('fa-chevron-up');
-                } else {
-                    collapseBtn.removeClass('fa-minus').addClass('fa-chevron-down');
-                }
+                $(this).find('.card-body').hide();
+                $(this).find('[data-card-widget="collapse"] i')
+                    .removeClass('fa-chevron-up').addClass('fa-chevron-down');
+                $(this).addClass('collapsed-card');
             });
 
         });

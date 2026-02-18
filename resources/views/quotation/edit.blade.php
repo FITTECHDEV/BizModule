@@ -3,7 +3,20 @@
 @section('title', 'Edit Booking Quotation')
 
 @section('content_header')
-    <h1>Inquiry No - {{ $quotation->bookingno ?? 'N/A' }}</h1>
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <h1><i class="fas fa-file-invoice"></i> Inquiry No - {{ $quotation->bookingno ?? 'N/A' }}</h1>
+            <p class="text-muted mb-0">Edit booking quotation</p>
+        </div>
+        <div>
+            <a href="{{ route('quotation.index') }}" class="btn btn-secondary btn-sm">
+                <i class="fas fa-arrow-left"></i> Back to List
+            </a>
+            <a href="{{ route('quotation.view', $quotation->ID) }}" class="btn btn-info btn-sm">
+                <i class="fas fa-eye"></i> Back to View
+            </a>
+        </div>
+    </div>
 @stop
 
 @section('content')
@@ -57,7 +70,8 @@
                 </div>
 
                 <!-- Shipment Details -->
-                <div class="card card-primary">
+                <!-- Shipment Details -->
+                <div class="card card-primary" id="shipmentDetailsCard">
                     <div class="card-header">
                         <h3 class="card-title">Shipment Details</h3>
                         <div class="card-tools">
@@ -127,7 +141,7 @@
                 </div>
 
                 <!-- Cargo Details -->
-                <div class="card card-primary">
+                <div class="card card-primary" id="cargoDetailsCard">
                     <div class="card-header">
                         <h3 class="card-title">Cargo Details</h3>
                         <div class="card-tools">
@@ -276,7 +290,7 @@
             <div class="col-md-8">
 
                 <!-- Customer Details -->
-                <div class="card card-primary">
+                <div class="card card-primary" id="customerDetailsCard">
                     <div class="card-header">
                         <h3 class="card-title">Customer Details</h3>
                         <div class="card-tools">
@@ -1006,8 +1020,8 @@
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.min.css">
     <style>
         /* =============================================
-                                                                                                                                                                                                                    MODAL STYLING — matched to FitExpress UI
-                                                                                                                                                                                                                    ============================================= */
+                                                                                                                                                                                                                                        MODAL STYLING — matched to FitExpress UI
+                                                                                                                                                                                                                                        ============================================= */
 
         .modal-header {
             background-color: #fff !important;
@@ -2749,24 +2763,50 @@
 
             // Trigger on page load after officeCode is ready
             loadTermsTemplates();
-        });
 
+            // ============================================
+            // COPIED BOOKING — UNLOCK EDITABLE FIELDS
+            // Only activates when ?copied=1 is in the URL
+            // ============================================
+            if (isCopiedBooking) {
 
-        // Handle Cost Modal radio button changes
-        $(document).on('change', 'input[name="costChargeType"]', function() {
-            const selectedValue = $(this).val();
-            console.log('Cost Charge Type Changed:', selectedValue);
+                const editableCards = [
+                    '#customerDetailsCard',
+                    '#shipmentDetailsCard',
+                    '#cargoDetailsCard'
+                ];
 
-            const $markupRow = $('.cost-markup-row');
+                // Expand all three cards so user can see the fields
+                editableCards.forEach(function(cardId) {
+                    const $card = $(cardId);
 
-            if (selectedValue === 'costmarkup') {
-                $markupRow.removeClass('cost-markup-row').addClass('cost-markup-row show-markup');
-                $markupRow.css('display', 'flex');
-                console.log('Showing cost markup row');
-            } else {
-                $markupRow.removeClass('show-markup');
-                $markupRow.css('display', 'none');
-                console.log('Hiding cost markup row');
+                    // Expand if collapsed
+                    $card.find('.card-body').show();
+                    $card.find('[data-card-widget="collapse"] i')
+                        .removeClass('fa-chevron-down').addClass('fa-chevron-up');
+                    $card.removeClass('collapsed-card');
+
+                    // Unlock all readonly inputs
+                    $card.find('input[readonly]').each(function() {
+                        $(this).removeAttr('readonly')
+                            .css({
+                                'background-color': '#fff',
+                                'border': '1px solid #ced4da',
+                                'border-radius': '4px',
+                                'padding': '0.25rem 0.5rem',
+                                'cursor': 'text'
+                            });
+                    });
+                });
+
+                // Info banner under the page heading
+                $('.content-header h1, .content-header .d-flex').first().after(`
+                    <div class="alert alert-info alert-dismissible fade show mx-3 mt-2" role="alert">
+                        <i class="fas fa-copy mr-1"></i>
+                        <strong>Copied Booking</strong> — Customer, Shipment and Cargo details are now editable. Update them before sending this quotation.
+                        <button type="button" class="close" data-dismiss="alert"><span>&times;</span></button>
+                    </div>
+                `);
             }
         });
     </script>
