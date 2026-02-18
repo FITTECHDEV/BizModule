@@ -1120,6 +1120,31 @@
             animation: spin 1s ease-in-out infinite;
         }
 
+        .autocomplete-item strong {
+            background-color: #fff3cd;
+            padding: 1px 3px;
+            border-radius: 2px;
+        }
+
+        .autocomplete-loading,
+        .autocomplete-no-results {
+            padding: 10px 14px;
+            color: #6c757d;
+            font-style: italic;
+        }
+
+        .autocomplete-item.highlighted {
+            background-color: #e9ecef !important;
+        }
+
+        .company-autocomplete-container input.is-invalid {
+            border-color: #dc3545 !important;
+        }
+
+        .company-autocomplete-container input.is-valid {
+            border-color: #28a745 !important;
+        }
+
         @keyframes spin {
             to {
                 transform: rotate(360deg);
@@ -1393,9 +1418,13 @@
             const clientCodeInput = $('#clientCode');
 
             // Company autocomplete variables
+            // Company autocomplete variables
             let companiesData = [];
             let selectedIndex = -1;
-            let searchTimeout;
+            let searchTimeout = null;
+
+            const DEBOUNCE_DELAY = 350; // ms — feels responsive but avoids typing storm
+            const MAX_RESULTS = 40; // sweet spot between speed and usability
 
             // File upload variables
             let attachmentCount = 1;
@@ -2028,24 +2057,44 @@
                 companyAutocompleteList.empty();
 
                 if (!companies || companies.length === 0) {
-                    companyAutocompleteList.html('<div class="autocomplete-no-results">No companies found</div>');
-                    companyAutocompleteList.addClass('show');
+                    companyAutocompleteList.html(
+                        '<div class="autocomplete-no-results">No matching companies found</div>'
+                    ).addClass('show');
                     return;
                 }
 
+                const searchTerm = companyAutocomplete.val().trim().toLowerCase();
+                const terms = searchTerm ? searchTerm.split(/\s+/).filter(t => t) : [];
+
                 companies.forEach((company, index) => {
+                    let nameHtml = escapeHtml(company.name);
+
+                    // Highlight matches (optional but very nice UX)
+                    if (terms.length > 0) {
+                        terms.forEach(term => {
+                            if (!term) return;
+                            const regex = new RegExp(`(${escapeRegExp(term)})`, 'gi');
+                            nameHtml = nameHtml.replace(regex, '<strong>$1</strong>');
+                        });
+                    }
+
                     const item = $(`
-                <div class="autocomplete-item" data-index="${index}">
-                    <div class="company-name">${escapeHtml(company.name)}</div>
-                    <div class="company-code">Code: ${escapeHtml(company.code)}</div>
-                </div>
-            `);
+            <div class="autocomplete-item" data-index="${index}">
+                <div class="company-name">${nameHtml}</div>
+                <div class="company-code">Code: ${escapeHtml(company.code || '—')}</div>
+            </div>
+        `);
 
                     item.data('company', company);
                     companyAutocompleteList.append(item);
                 });
 
                 companyAutocompleteList.addClass('show');
+            }
+
+            // Helper for safe regex
+            function escapeRegExp(string) {
+                return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
             }
 
             function escapeHtml(text) {
@@ -2055,16 +2104,21 @@
             }
 
             function filterCompanies(searchTerm) {
-                if (!searchTerm) {
-                    return companiesData.slice(0, 100);
+                if (!searchTerm.trim()) {
+                    return companiesData.slice(0, MAX_RESULTS);
                 }
 
-                const filtered = companiesData.filter(company =>
-                    company.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                    company.code.toLowerCase().includes(searchTerm.toLowerCase())
-                );
+                const terms = searchTerm.toLowerCase().split(/\s+/).filter(t => t.length > 0);
 
-                return filtered.slice(0, 100);
+                return companiesData.filter(company => {
+                    const nameLower = company.name.toLowerCase();
+                    const codeLower = (company.code || '').toLowerCase();
+
+                    // Every search word must appear in name OR code
+                    return terms.every(term =>
+                        nameLower.includes(term) || codeLower.includes(term)
+                    );
+                });
             }
 
             function selectCompany(company) {
@@ -2171,37 +2225,59 @@
                 });
             }
 
-            // Event handlers for autocomplete
             companyAutocomplete.on('input', function() {
                 clearTimeout(searchTimeout);
-                const searchTerm = $(this).val().trim();
 
-                // Clear selections if input is cleared
-                if (!searchTerm) {
-                    companyNameInput.val('');
-                    companyIdInput.val('');
-                    companyCodeInput.val('');
-                    companySelectHidden.val('');
+                const term = $(this).val().trim();
+
+                // Clear everything when input is emptied
+                if (!term) {
+                    clearCompanySelection();
                     toggleAutocompleteDropdown(false);
-
-                    // Clear Other fields when autocomplete is cleared
-                    if (requestType === 'accounting') {
-                        $('#otherInput').val('');
-                        $('#otherID').val('');
-                        $('#otherCode').val('');
-                        $('#other_Input').text('');
-                    }
+                    companyAutocomplete.removeClass('is-invalid is-valid');
                     return;
                 }
 
+                // Show mini loading state
+                companyAutocompleteList
+                    .html('<div class="autocomplete-loading">Searching...</div>')
+                    .addClass('show');
+
                 searchTimeout = setTimeout(() => {
-                    if (companiesData.length > 0) {
-                        const filteredCompanies = filterCompanies(searchTerm);
-                        renderAutocompleteItems(filteredCompanies);
-                        selectedIndex = -1;
-                    }
-                }, 300);
+                    const filtered = filterCompanies(term);
+                    renderAutocompleteItems(filtered.slice(0, MAX_RESULTS));
+                }, DEBOUNCE_DELAY);
             });
+
+
+            function clearCompanySelection() {
+                companyNameInput.val('');
+                companyAutocomplete.val('');
+                companyIdInput.val('');
+                companyCodeInput.val('');
+                companySelectHidden.val('');
+
+                // Critical for accounting mode — reset dependent fields
+                if (requestType === 'accounting') {
+                    $('#otherInput, #hiddenOtherInput').val('');
+                    $('#otherID, #hiddenOtherID').val('');
+                    $('#otherCode, #hiddenOtherCode').val('');
+                    $('#other_Input').text('');
+                    $('#otherCheck').prop('checked', false);
+                    $('#hiddenOtherCheck').val('0');
+                }
+
+                toggleAutocompleteDropdown(false);
+                selectedIndex = -1;
+                companyAutocomplete.removeClass('is-valid').removeClass('is-invalid');
+            }
+
+
+
+
+
+
+
 
             companyAutocomplete.on('focus', function() {
                 const searchTerm = $(this).val().trim();
@@ -2216,12 +2292,21 @@
             });
 
             companyAutocomplete.on('blur', function(e) {
-                // Delay hiding to allow click events on items
                 setTimeout(() => {
-                    if (!companyAutocompleteList.is(':hover')) {
+                    // Only hide if user is not hovering the list or focused back
+                    if (!companyAutocompleteList.is(':hover') &&
+                        !companyAutocomplete.is(':focus')) {
+
                         toggleAutocompleteDropdown(false);
+
+                        // Visual feedback: red if typed something but didn't select
+                        if (companyAutocomplete.val().trim() && !companyIdInput.val()) {
+                            companyAutocomplete.addClass('is-invalid');
+                        } else if (companyIdInput.val()) {
+                            companyAutocomplete.addClass('is-valid');
+                        }
                     }
-                }, 150);
+                }, 220); // slightly longer → more forgiving
             });
 
             // Keyboard navigation for autocomplete
@@ -4234,5 +4319,6 @@
             });
         };
     </script>
+
     <script src="{{ asset('js/client-party/show-create-client-party.js') }}"></script>
 @stop

@@ -302,6 +302,89 @@ class QuotationController extends Controller
             ->make(true);
     }
 
+    public function update(Request $request, $id)
+    {
+        try {
+            $quotation = DB::table('Quote_QuotationInfo')
+                ->where('ID', $id)
+                ->first();
+
+            if (!$quotation) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Quotation not found'
+                ], 404);
+            }
+
+            $submittedBy = Auth::check()
+                ? (Auth::user()->username ?? Auth::user()->email ?? Auth::user()->name ?? 'system')
+                : 'system';
+
+            Log::info('Update Quotation - Starting', [
+                'id'         => $id,
+                'booking_no' => $quotation->bookingno,
+                'updated_by' => $submittedBy,
+            ]);
+
+            DB::table('Quote_QuotationInfo')
+                ->where('ID', $id)
+                ->update([
+                    // Shipment
+                    'origincountry'       => $request->input('origincountry'),
+                    'destinationcountry'  => $request->input('destinationcountry'),
+                    'incoterm'            => $request->input('incoterm'),
+                    'shipmentmode'        => $request->input('shipmentmode'),
+                    'TransportMode'       => $request->input('TransportMode'),
+                    'ServiceClass'        => $request->input('ServiceClass'),
+                    'serviceverticalname' => $request->input('serviceverticalname'),
+                    'process'             => $request->input('process'),
+
+                    // Cargo
+                    'commodity'     => $request->input('commodity'),
+                    'scopevolume'   => $request->input('scopevolume'),
+                    'cargovolume'   => $request->input('cargovolume'),
+                    'containerlist' => $request->input('containerlist'),
+
+                    // Customer
+                    'companyname'             => $request->input('companyname'),
+                    'pri_partner_steet'       => $request->input('pri_partner_steet'),
+                    'pri_partner_steet2'      => $request->input('pri_partner_steet2'),
+                    'pri_partner_city'        => $request->input('pri_partner_city'),
+                    'pri_partner_zip'         => $request->input('pri_partner_zip'),
+                    'pri_partner_countryname' => $request->input('pri_partner_countryname'),
+                    'pri_partner_email'       => $request->input('pri_partner_email'),
+                    'pri_partner_phone'       => $request->input('pri_partner_phone'),
+
+                    // Audit
+                    'LastModifiedBy' => $submittedBy,
+                    'updatedon'      => now(),
+                ]);
+
+            Log::info('Update Quotation - Success', [
+                'id'         => $id,
+                'booking_no' => $quotation->bookingno,
+                'updated_by' => $submittedBy,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Booking updated successfully'
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Update Quotation - Failed', [
+                'id'    => $id,
+                'error' => $e->getMessage(),
+                'file'  => $e->getFile(),
+                'line'  => $e->getLine(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
     public function view($id)
     {
         $quotation = QuotationInfo::where('ID', $id)->firstOrFail();
@@ -346,6 +429,239 @@ class QuotationController extends Controller
         }
     }
 
+    public function copy($bookingno)
+    {
+        try {
+            // ============================================
+            // FIND THE ORIGINAL QUOTATION BY BOOKING NUMBER
+            // ============================================
+            $original = DB::table('Quote_QuotationInfo')
+                ->where('bookingno', $bookingno)
+                ->first();
+
+            if (!$original) {
+                Log::error('Copy Quotation - Original not found', ['bookingno' => $bookingno]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Quotation not found for booking number: ' . $bookingno
+                ], 404);
+            }
+
+            $submittedBy = Auth::check()
+                ? (Auth::user()->username ?? Auth::user()->email ?? Auth::user()->name ?? 'system')
+                : 'system';
+
+            Log::info('Copy Quotation - Starting', [
+                'original_booking_no' => $original->bookingno,
+                'copied_by'           => $submittedBy,
+            ]);
+
+            DB::beginTransaction();
+
+            // ============================================
+            // GENERATE NEW BOOKING NUMBER
+            // lockForUpdate prevents race conditions
+            // ============================================
+            $newBookingNo = DB::table('Quote_QuotationInfo')
+                ->lockForUpdate()
+                ->max('bookingno') + 1;
+
+            $newId = (string) \Illuminate\Support\Str::uuid();
+            $now   = now();
+
+            // ============================================
+            // INSERT COPIED RECORD
+            // ============================================
+            DB::table('Quote_QuotationInfo')->insert([
+                'ID'                           => $newId,
+                'bookingno'                    => $newBookingNo,
+
+                // --- Customer ---
+                'companyname'                  => $original->companyname,
+                'clientid'                     => $original->clientid,
+
+                // --- Source / Medium / Stage ---
+                'source_id'                    => $original->source_id,
+                'source'                       => $original->source,
+                'medium_id'                    => $original->medium_id,
+                'medium'                       => $original->medium,
+                'stage_id'                     => $original->stage_id,
+
+                // --- Status: always reset to Proposal ---
+                'status'                       => 'Proposal',
+                'QuoteStatus'                  => 'Proposal',
+                'won_status'                   => null,
+                'ReasonCode'                   => null,
+                'ReasonRemark'                 => null,
+
+                // --- Sales / Team ---
+                'userid'                       => $original->userid,
+                'userpartnerid'                => $original->userpartnerid,
+                'username'                     => $original->username,
+                'teamid'                       => $original->teamid,
+                'teamname'                     => $original->teamname,
+                'SalesPersonCode'              => $original->SalesPersonCode,
+
+                // --- Geography ---
+                'stateid'                      => $original->stateid,
+                'statename'                    => $original->statename,
+                'countryid'                    => $original->countryid,
+                'countrycode'                  => $original->countrycode,
+                'countryname'                  => $original->countryname,
+
+                // --- Industry ---
+                'industryid'                   => $original->industryid,
+                'industryname'                 => $original->industryname,
+
+                // --- Service ---
+                'serviceverticalid'            => $original->serviceverticalid,
+                'serviceverticalname'          => $original->serviceverticalname,
+                'ServiceVertical'              => $original->ServiceVertical,
+                'SVName'                       => $original->SVName,
+                'process'                      => $original->process,
+                'storage'                      => $original->storage,
+                'other'                        => $original->other,
+                'state'                        => $original->state,
+
+                // --- Shipment ---
+                'origin_country_id'            => $original->origin_country_id,
+                'origincountry'                => $original->origincountry,
+                'origin_country_code'          => $original->origin_country_code,
+                'dest_country_id'              => $original->dest_country_id,
+                'destination_country_code'     => $original->destination_country_code,
+                'destinationcountry'           => $original->destinationcountry,
+                'shipmentmode'                 => $original->shipmentmode,
+                'TransportMode'                => $original->TransportMode,
+                'ServiceClass'                 => $original->ServiceClass,
+                'incoterm'                     => $original->incoterm,
+
+                // --- Cargo ---
+                'commodity'                    => $original->commodity,
+                'scopevolume'                  => $original->scopevolume,
+                'scope_of_volume'              => $original->scope_of_volume,
+                'cargovolume'                  => $original->cargovolume,
+                'cargo_volume'                 => $original->cargo_volume,
+                'containerlist'                => $original->containerlist,
+
+                // --- Revenue: reset ---
+                'quoted_revenue'               => null,
+                'expected_revenue'             => null,
+                'prorated_revenue'             => null,
+
+                // --- Contact / CRM fields ---
+                'source_name'                  => $original->source_name,
+                'quotationo'                   => $original->quotationo,
+                'type'                         => $original->type,
+                'contact_name'                 => $original->contact_name,
+                'partner_name'                 => $original->partner_name,
+                'function'                     => $original->function,
+                'email_from'                   => $original->email_from,
+                'phone'                        => $original->phone,
+                'mobile'                       => $original->mobile,
+                'street'                       => $original->street,
+                'street2'                      => $original->street2,
+                'zip'                          => $original->zip,
+                'city'                         => $original->city,
+                'date_deadline'                => $original->date_deadline,
+                'date_closed'                  => null,
+                'phone_sanitized'              => $original->phone_sanitized,
+                'email_normalized'             => $original->email_normalized,
+                'companyname_crm'              => $original->companyname_crm,
+
+                // --- Primary partner ---
+                'pri_id'                       => $original->pri_id,
+                'pri_partnermaster_name'       => $original->pri_partnermaster_name,
+                'pri_partner_stateid'          => $original->pri_partner_stateid,
+                'pri_partner_statename'        => $original->pri_partner_statename,
+                'pri_partner_countryid'        => $original->pri_partner_countryid,
+                'pri_partner_countrycode'      => $original->pri_partner_countrycode,
+                'pri_partner_countryname'      => $original->pri_partner_countryname,
+                'pri_rrp_industryid'           => $original->pri_rrp_industryid,
+                'pri_partner_industrttypecode' => $original->pri_partner_industrttypecode,
+                'pri_partner_industrttype'     => $original->pri_partner_industrttype,
+                'pri_partner_function'         => $original->pri_partner_function,
+                'pri_partner_steet'            => $original->pri_partner_steet,
+                'pri_partner_steet2'           => $original->pri_partner_steet2,
+                'pri_partner_zip'              => $original->pri_partner_zip,
+                'pri_partner_city'             => $original->pri_partner_city,
+                'pri_partner_email'            => $original->pri_partner_email,
+                'pri_partner_phone'            => $original->pri_partner_phone,
+                'pri_partner_mobile'           => $original->pri_partner_mobile,
+
+                // --- Secondary partner ---
+                'partnermaster_name'           => $original->partnermaster_name,
+                'partner_stateid'              => $original->partner_stateid,
+                'partner_statename'            => $original->partner_statename,
+                'partner_countryid'            => $original->partner_countryid,
+                'partner_country_code'         => $original->partner_country_code,
+                'partner_countryname'          => $original->partner_countryname,
+                'industry_id'                  => $original->industry_id,
+                'partner_industrttypecode'     => $original->partner_industrttypecode,
+                'partner_industrttype'         => $original->partner_industrttype,
+                'partner_function'             => $original->partner_function,
+                'partner_steet'                => $original->partner_steet,
+                'partner_steet2'               => $original->partner_steet2,
+                'partner_zip'                  => $original->partner_zip,
+                'partner_city'                 => $original->partner_city,
+                'partner_email'                => $original->partner_email,
+                'partner_phone'                => $original->partner_phone,
+                'partner_mobile'               => $original->partner_mobile,
+
+                // --- Audit ---
+                'createdon'                    => $now,
+                'updatedon'                    => $now,
+                'CreatedBy'                    => $submittedBy,
+                'LastModifiedBy'               => $submittedBy,
+
+                // --- SCM Integration: always wiped on copy ---
+                'INTCreatedOn'                 => null,
+                'INTUpdatedOn'                 => null,
+                'ClientCreated'                => null,
+                'ClientCodeINSCM'              => null,
+                'ClientIDINSCM'                => null,
+                'ClientIntegration'            => null,
+                'SCMBookingID'                 => null,
+                'SCMBookingNo'                 => null,
+                'SCMJobID'                     => null,
+                'SCMJobNo'                     => null,
+                'SCMINTStatus'                 => null,
+                'SCMBookingXML'                => null,
+                'CreatedOnInSCM'               => null,
+                'UpdatedOninSCM'               => null,
+            ]);
+
+            DB::commit();
+
+            Log::info('Copy Quotation - Success', [
+                'original_booking_no' => $original->bookingno,
+                'new_booking_no'      => $newBookingNo,
+                'new_id'              => $newId,
+                'copied_by'           => $submittedBy,
+            ]);
+
+            return response()->json([
+                'success'        => true,
+                'new_booking_no' => $newBookingNo,
+                'new_id'         => $newId,
+                'redirect_url'   => route('quotation.edit', $newId) . '?copied=1',
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            Log::error('Copy Quotation - Failed', [
+                'original_bookingno' => $bookingno,
+                'error'              => $e->getMessage(),
+                'file'               => $e->getFile(),
+                'line'               => $e->getLine(),
+                'trace'              => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
 
     public function getCharges(Request $request)
     {
@@ -2039,7 +2355,7 @@ class QuotationController extends Controller
         }
     }
 
-    
+
     public function getReasons(Request $request)
     {
         $module = $request->input('module', 'Quotation');
@@ -2087,6 +2403,64 @@ class QuotationController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to load reasons: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function saveTermsCondition(Request $request)
+    {
+        $bookingNo  = $request->input('booking_no');
+        $termsText  = $request->input('terms_condition');
+        $submittedBy = Auth::check()
+            ? (Auth::user()->username ?? Auth::user()->email ?? Auth::user()->name ?? 'system')
+            : 'system';
+
+        if (!$bookingNo) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Booking number is required'
+            ], 400);
+        }
+
+        try {
+            $updated = DB::table('Quote_QuotationInfo')
+                ->where('bookingno', $bookingNo)
+                ->update([
+                    'terms_condition'  => $termsText,
+                    'LastModifiedBy'   => $submittedBy,
+                    'updatedon'        => now(),
+                ]);
+
+            if ($updated === 0) {
+                Log::warning('saveTermsCondition - No rows updated', [
+                    'booking_no'  => $bookingNo,
+                    'user'        => $submittedBy,
+                ]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No matching quotation found to update'
+                ], 404);
+            }
+
+            Log::info('saveTermsCondition - Success', [
+                'booking_no'  => $bookingNo,
+                'user'        => $submittedBy,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Terms & Conditions saved successfully'
+            ]);
+        } catch (\Exception $e) {
+            Log::error('saveTermsCondition - Failed', [
+                'booking_no'  => $bookingNo,
+                'error'       => $e->getMessage(),
+                'file'        => $e->getFile(),
+                'line'        => $e->getLine(),
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to save Terms & Conditions: ' . $e->getMessage()
             ], 500);
         }
     }

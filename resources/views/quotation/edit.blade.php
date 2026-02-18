@@ -168,6 +168,18 @@
                     </div>
                 </div>
 
+                <!-- Email Quote Action Bar -->
+                <div class="card card-primary">
+                    <div class="card-header d-flex justify-content-between align-items-center py-2">
+                        <h3 class="card-title mb-0">
+                            <i class="fas fa-envelope mr-2"></i>Quote Communication
+                        </h3>
+                        <button type="button" class="btn btn-email-quote btn-sm" id="emailQuoteBtn">
+                            <i class="fas fa-paper-plane mr-1"></i> Email Quote
+                        </button>
+                    </div>
+                </div>
+
                 <!-- Quotation Document -->
                 <div class="card card-primary">
                     <div class="card-header">
@@ -197,11 +209,16 @@
                                 <a href="#" class="text-primary">DocumentDownloadLink</a>
                             </div>
                         </div>
-                        <div class="form-group row mb-0">
+                        <div class="form-group row">
                             <label class="col-sm-4 col-form-label">Version 4</label>
                             <div class="col-sm-8">
                                 <a href="#" class="text-primary">DocumentDownloadLink</a>
                             </div>
+                        </div>
+                        <div class="mt-3 pt-2" style="border-top: 1px solid #dee2e6;">
+                            <button type="button" class="btn btn-primary btn-sm btn-block" id="generateQuoteBtn">
+                                <i class="fas fa-file-alt mr-1"></i> Generate QA Quote
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -364,20 +381,38 @@
 
                 <!-- Revenue Section -->
                 <div class="card card-success">
-                    <div class="card-header">
-                        <h3 class="card-title">Revenue</h3>
-                        <div class="card-tools">
-                            <a href="#" class="text-white show-items-link">Show Items</a>
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h3 class="card-title mb-0">Revenue</h3>
+                        <div class="d-flex align-items-center ml-auto">
+                            <span class="text-white mr-3 small" id="revenueTotalHeader">
+                                Total: <strong id="revenueTotalHeaderAmount">0.00</strong>
+                            </span>
+                            <a href="#" class="text-white show-items-link" data-table="revenue">
+                                <i class="fas fa-columns mr-1"></i> Show more
+                            </a>
                         </div>
                     </div>
                     <div class="card-body">
                         <div class="table-responsive">
                             <table class="table table-bordered table-sm table-hover">
-                                <thead class="thead-light">
+                                {{-- <thead class="thead-light">
                                     <tr>
                                         <th>Charge Name</th>
                                         <th>Rate</th>
                                         <th>Based On</th>
+                                        <th>Amount</th>
+                                        <th>Base Amount</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead> --}}
+
+                                <thead class="thead-light">
+                                    <tr>
+                                        <th>Charge Name</th>
+                                        <th>Rate</th>
+                                        <th class="col-extra">Quantity</th>
+                                        <th class="col-extra">Based On UOM</th>
+                                        <th class="col-extra">Currency</th>
                                         <th>Amount</th>
                                         <th>Base Amount</th>
                                         <th>Actions</th>
@@ -388,14 +423,14 @@
                                         <td colspan="6" class="text-center text-muted">Loading charges...</td>
                                     </tr>
                                 </tbody>
-                                <tfoot>
+                                {{-- <tfoot>
                                     <tr class="font-weight-bold">
                                         <td colspan="3" class="text-right">TOTAL REVENUE</td>
                                         <td id="totalRevenueAmount">0.00</td>
                                         <td id="totalRevenueBaseAmount">0.00</td>
                                         <td></td>
                                     </tr>
-                                </tfoot>
+                                </tfoot> --}}
                             </table>
                         </div>
                     </div>
@@ -403,10 +438,15 @@
 
                 <!-- Cost Section -->
                 <div class="card card-danger">
-                    <div class="card-header">
-                        <h3 class="card-title">Cost</h3>
-                        <div class="card-tools">
-                            <a href="#" class="text-white show-items-link">Show Items</a>
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h3 class="card-title mb-0">Cost</h3>
+                        <div class="d-flex align-items-center ml-auto">
+                            <span class="text-white mr-3 small" id="costTotalHeader">
+                                Total: <strong id="costTotalHeaderAmount">0.00</strong>
+                            </span>
+                            <a href="#" class="text-white show-items-link" data-table="cost">
+                                <i class="fas fa-columns mr-1"></i> Show More
+                            </a>
                         </div>
                     </div>
                     <div class="card-body">
@@ -416,7 +456,9 @@
                                     <tr>
                                         <th>Charge Name</th>
                                         <th>Rate</th>
-                                        <th>Based On</th>
+                                        <th class="col-extra">Quantity</th>
+                                        <th class="col-extra">Based On UOM</th>
+                                        <th class="col-extra">Currency</th>
                                         <th>Amount</th>
                                         <th>Base Amount</th>
                                         <th>Actions</th>
@@ -427,14 +469,14 @@
                                         <td colspan="6" class="text-center text-muted">Loading charges...</td>
                                     </tr>
                                 </tbody>
-                                <tfoot>
+                                {{-- <tfoot>
                                     <tr class="font-weight-bold">
                                         <td colspan="3" class="text-right">TOTAL COST</td>
                                         <td id="totalCostAmount">0.00</td>
                                         <td id="totalCostBaseAmount">0.00</td>
                                         <td></td>
                                     </tr>
-                                </tfoot>
+                                </tfoot> --}}
                             </table>
                         </div>
                     </div>
@@ -472,8 +514,17 @@
                                 <div class="form-group row mb-0">
                                     <label class="col-sm-5 col-form-label">Terms & Condition</label>
                                     <div class="col-sm-7">
-                                        <input type="text" class="form-control form-control-sm"
-                                            value="{{ $quotation->terms_condition ?? 'N/A' }}" readonly>
+                                        <select class="form-control form-control-sm" id="termsTemplateSelect">
+                                            <option value="">-- Select Template --</option>
+                                        </select>
+                                        <div id="termsDescriptionWrapper" style="display:none; margin-top: 6px;">
+                                            <textarea id="termsDescriptionPreview" class="form-control form-control-sm" rows="4" readonly
+                                                style="background-color: #e9ecef; font-size: 0.8rem; resize: none;"></textarea>
+                                            <button type="button" class="btn btn-primary btn-sm btn-block mt-2"
+                                                id="applyTermsBtn">
+                                                <i class="fas fa-save mr-1"></i> Apply Terms
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -497,18 +548,15 @@
 
                         <div class="row mt-3">
                             <div class="col-md-12">
-                                <button type="button" class="btn btn-primary" id="generateQuoteBtn">
+                                {{-- <button type="button" class="btn btn-primary" id="generateQuoteBtn">
                                     <i class="fas fa-file-alt"></i> Generate Quote
-                                </button>
-                                <button type="button" class="btn btn-primary" id="emailQuoteBtn">
-                                    <i class="fas fa-envelope"></i> Email Quote
-                                </button>
+                                </button> --}}
                                 <button type="button" class="btn btn-primary" id="openChargesModal">
                                     <i class="fas fa-plus"></i> Add Charges
                                 </button>
                                 <a href="{{ route('quotation.index') }}" class="btn btn-link">Close</a>
 
-                                <div class="float-right">
+                                {{-- <div class="float-right">
                                     <button type="button" class="btn btn-warning" id="cancelQuoteBtn">
                                         <i class="fas fa-ban"></i> Cancel
                                     </button>
@@ -518,6 +566,26 @@
                                     <button type="button" class="btn btn-success" id="wonQuoteBtn">
                                         <i class="fas fa-check"></i> WON
                                     </button>
+                                </div> --}}
+
+                                <div class="float-right">
+                                    <div class="btn-group" id="quoteActionDropdown">
+                                        <button type="button" class="btn btn-secondary dropdown-toggle"
+                                            data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                            <i class="fas fa-ellipsis-v mr-1"></i> Action
+                                        </button>
+                                        <div class="dropdown-menu dropdown-menu-right">
+                                            <a class="dropdown-item" href="#" id="cancelQuoteBtn">
+                                                <i class="fas fa-ban mr-2 text-warning"></i> Cancel
+                                            </a>
+                                            <a class="dropdown-item" href="#" id="lostQuoteBtn">
+                                                <i class="fas fa-times mr-2 text-danger"></i> Lost
+                                            </a>
+                                            <a class="dropdown-item" href="#" id="wonQuoteBtn">
+                                                <i class="fas fa-check mr-2 text-success"></i> Won
+                                            </a>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -938,8 +1006,8 @@
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.min.css">
     <style>
         /* =============================================
-                                                                                        MODAL STYLING — matched to FitExpress UI
-                                                                                        ============================================= */
+                                                                                                                                                                                                                    MODAL STYLING — matched to FitExpress UI
+                                                                                                                                                                                                                    ============================================= */
 
         .modal-header {
             background-color: #fff !important;
@@ -1306,6 +1374,41 @@
         .pl-2 {
             padding-left: 0.5rem !important;
         }
+
+        /* Email Quote Action Bar */
+        .card-primary .btn-email-quote {
+            background-color: #ffffff;
+            color: #4B49AC;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            font-size: 0.8rem;
+            padding: 0.25rem 0.75rem;
+            border-radius: 4px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .card-primary .btn-email-quote:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+            color: #ffffff;
+            border-color: #ffffff;
+        }
+
+        .card-primary .card-title {
+            font-size: 1rem;
+            font-weight: 500;
+        }
+
+        /* Dropdown closes after item click — handled by Bootstrap automatically */
+        #quoteActionDropdown .dropdown-item {
+            font-size: 0.875rem;
+            padding: 0.45rem 1rem;
+        }
+
+        /* Show/Hide extra columns */
+        .col-extra {
+            display: none;
+            /* hidden by default — JS controls visibility */
+        }
     </style>
 @stop
 
@@ -1314,6 +1417,9 @@
     <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
 
     <script>
+        const isCopiedBooking = {{ request()->query('copied', 0) ? 'true' : 'false' }};
+        const quotationId = '{{ $quotation->ID }}';
+
         $(document).ready(function() {
             console.log('Booking Quotation Edit - Page Loaded');
 
@@ -1908,27 +2014,6 @@
                 const $markupRow = $modal.find('.cost-markup-row');
                 const $isReimbursedContainer = $('#costIsReimbursed').closest('.form-check');
 
-                // Always start fresh - hide everything
-                $markupRow.removeClass('active').css('display', 'none');
-                $isReimbursedContainer.hide();
-
-                if (type === 'costmarkup') {
-                    // Show markup row
-                    $markupRow.addClass('active').css('display', 'flex');
-                    console.log('Showing cost markup row');
-                } else if (type === 'cost') {
-                    // Show "Is Reimbursed" checkbox
-                    $isReimbursedContainer.show();
-                    console.log('Showing Is Reimbursed for Cost');
-                }
-                // For 'revenue' type, everything stays hidden (already done above)
-            }
-
-            function toggleCostFormFields(type) {
-                const $modal = $('#addCostModal');
-                const $markupRow = $modal.find('.cost-markup-row');
-                const $isReimbursedContainer = $('#costIsReimbursed').closest('.form-check');
-
                 if (type === 'costmarkup') {
                     // Show the markup row
                     $markupRow.addClass('active').css('display', 'flex');
@@ -2199,13 +2284,28 @@
                     revenueCharges.forEach(function(charge, index) {
                         totalAmount += parseFloat(charge.amtInChgCurr || 0);
                         totalBaseAmount += parseFloat(charge.amtInBaseCurr || 0);
+                        // tbody.append(`
+                    //     <tr>
+                    //         <td>${charge.chargeName || charge.chargeCode || 'N/A'}</td>
+                    //         <td class="text-right">${parseFloat(charge.rate || 0).toFixed(2)}</td>
+                    //         <td>${charge.basedOn || 'N/A'}</td>
+                    //         <td class="text-right">${charge.chgCurr || 'KES'} ${parseFloat(charge.amtInChgCurr || 0).toFixed(2)}</td>
+                    //         <td class="text-right">KES ${parseFloat(charge.amtInBaseCurr || 0).toFixed(2)}</td>
+                    //         <td class="text-center">
+                    //             <button type="button" class="btn btn-warning btn-action edit-revenue-charge" data-index="${index}" data-id="${charge.id}"><i class="fas fa-edit"></i></button>
+                    //             <button type="button" class="btn btn-danger btn-action delete-revenue-charge" data-index="${index}" data-id="${charge.id}"><i class="fas fa-trash"></i></button>
+                    //         </td>
+                    //     </tr>
+                    // `);
                         tbody.append(`
                             <tr>
                                 <td>${charge.chargeName || charge.chargeCode || 'N/A'}</td>
                                 <td class="text-right">${parseFloat(charge.rate || 0).toFixed(2)}</td>
-                                <td>${charge.basedOn || 'N/A'}</td>
-                                <td class="text-right">${charge.chgCurr || 'KES'} ${parseFloat(charge.amtInChgCurr || 0).toFixed(2)}</td>
-                                <td class="text-right">KES ${parseFloat(charge.amtInBaseCurr || 0).toFixed(2)}</td>
+                                <td class="text-right col-extra">${parseFloat(charge.quantity || 0).toFixed(2)}</td>
+                                <td class="col-extra">${charge.basedOnUOM || 'N/A'}</td>
+                                <td class="col-extra">${charge.chgCurr || 'KES'}</td>
+                                <td class="text-right">${parseFloat(charge.amtInChgCurr || 0).toFixed(2)}</td>
+                                <td class="text-right">${parseFloat(charge.amtInBaseCurr || 0).toFixed(2)}</td>
                                 <td class="text-center">
                                     <button type="button" class="btn btn-warning btn-action edit-revenue-charge" data-index="${index}" data-id="${charge.id}"><i class="fas fa-edit"></i></button>
                                     <button type="button" class="btn btn-danger btn-action delete-revenue-charge" data-index="${index}" data-id="${charge.id}"><i class="fas fa-trash"></i></button>
@@ -2217,6 +2317,8 @@
 
                 $('#totalRevenueAmount').text('KES ' + totalAmount.toFixed(2));
                 $('#totalRevenueBaseAmount').text('KES ' + totalBaseAmount.toFixed(2));
+                $('#revenueTotalHeaderAmount').text(totalBaseAmount.toFixed(2));
+
             }
 
             function renderCostCharges() {
@@ -2235,13 +2337,14 @@
                             <tr>
                                 <td>${charge.chargeName || charge.chargeCode || 'N/A'}</td>
                                 <td class="text-right">${parseFloat(charge.rate || 0).toFixed(2)}</td>
-                                <td>${charge.basedOn || 'N/A'}</td>
-                                <td class="text-right">${charge.chgCurr || 'KES'} ${parseFloat(charge.amtInChgCurr || 0).toFixed(2)}</td>
-                                <td class="text-right">KES ${parseFloat(charge.amtInBaseCurr || 0).toFixed(2)}</td>
+                                <td class="text-right col-extra">${parseFloat(charge.quantity || 0).toFixed(2)}</td>
+                                <td class="col-extra">${charge.basedOnUOM || 'N/A'}</td>
+                                <td class="col-extra">${charge.chgCurr || 'KES'}</td>
+                                <td class="text-right">${parseFloat(charge.amtInChgCurr || 0).toFixed(2)}</td>
+                                <td class="text-right">${parseFloat(charge.amtInBaseCurr || 0).toFixed(2)}</td>
                                 <td class="text-center">
                                     <button type="button" class="btn btn-warning btn-action edit-cost-charge" data-index="${index}" data-id="${charge.id}"><i class="fas fa-edit"></i></button>
-                                    <button type="button" class="btn btn-danger btn-action delete-cost-charge" data-index="${index}" data-id="${charge.id}"><i class="fas fa-trash"></i></button>
-                                </td>
+                                    <button type="button" class="btn btn-danger btn-action delete-cost-charge" data-index="${index}" data-id="${charge.id}"><i class="fas fa-trash"></i><v /button>                                </td>
                             </tr>
                         `);
                     });
@@ -2249,6 +2352,8 @@
 
                 $('#totalCostAmount').text('KES ' + totalAmount.toFixed(2));
                 $('#totalCostBaseAmount').text('KES ' + totalBaseAmount.toFixed(2));
+                $('#costTotalHeaderAmount').text(totalBaseAmount.toFixed(2));
+
             }
 
             // ============================================
@@ -2470,17 +2575,26 @@
             // ============================================
             // CARD COLLAPSE & SHOW ITEMS
             // ============================================
+            $('.col-extra').hide();
+
             $('.show-items-link').on('click', function(e) {
                 e.preventDefault();
-                const $card = $(this).closest('.card');
-                const $tableWrapper = $card.find('.table-responsive');
+                const tableId = $(this).data('table'); // 'revenue' or 'cost'
+                const $table = tableId === 'revenue' ?
+                    $('#revenueChargesTable').closest('table') :
+                    $('#costChargesTable').closest('table');
 
-                if ($tableWrapper.is(':visible')) {
-                    $tableWrapper.slideUp();
-                    $(this).text('Show Items');
+                const $extraCols = $table.find('.col-extra');
+                const isExpanded = $(this).data('expanded') || false;
+
+                if (isExpanded) {
+                    $extraCols.hide();
+                    $(this).html('<i class="fas fa-columns mr-1"></i> Show Items');
+                    $(this).data('expanded', false);
                 } else {
-                    $tableWrapper.slideDown();
-                    $(this).text('Hide Items');
+                    $extraCols.show();
+                    $(this).html('<i class="fas fa-columns mr-1"></i> Show Less');
+                    $(this).data('expanded', true);
                 }
             });
 
@@ -2512,6 +2626,129 @@
                 $icon.removeClass('fa-chevron-up').addClass('fa-chevron-down');
                 $card.addClass('collapsed-card');
             });
+
+            // ============================================
+            // TERMS & CONDITIONS
+            // ============================================
+            function loadTermsTemplates() {
+                if (!officeCode) {
+                    // officeCode loads asynchronously — retry once it's ready
+                    setTimeout(loadTermsTemplates, 500);
+                    return;
+                }
+
+                $.ajax({
+                    url: '{{ route('quotation.communication.templates') }}',
+                    type: 'GET',
+                    data: {
+                        module: 'Quotation',
+                        sub_module: 'T&C',
+                        office_code: officeCode
+                    },
+                    success: function(response) {
+                        if (response.success && response.templates.length > 0) {
+                            const $select = $('#termsTemplateSelect');
+                            $select.empty().append('<option value="">-- Select Template --</option>');
+                            response.templates.forEach(function(t) {
+                                $select.append(
+                                    `<option value="${t.Name}">${t.Name}</option>`
+                                );
+                            });
+
+                            // Pre-select if quotation already has terms saved
+                            @if ($quotation->terms_condition)
+                                // Description is already saved — show it in preview directly
+                                $('#termsDescriptionPreview').val(
+                                    '{{ addslashes($quotation->terms_condition) }}');
+                                $('#termsDescriptionWrapper').show();
+                            @endif
+                        }
+                    },
+                    error: function() {
+                        console.warn('Could not load T&C templates');
+                    }
+                });
+            }
+
+            $('#termsTemplateSelect').on('change', function() {
+                const selectedName = $(this).val();
+
+                if (!selectedName) {
+                    $('#termsDescriptionWrapper').hide();
+                    $('#termsDescriptionPreview').val('');
+                    return;
+                }
+
+                $.ajax({
+                    url: '{{ route('quotation.communication.description') }}',
+                    type: 'GET',
+                    data: {
+                        module: 'Quotation',
+                        sub_module: 'T&C',
+                        office_code: officeCode,
+                        name: selectedName
+                    },
+                    beforeSend: function() {
+                        $('#termsDescriptionPreview').val('Loading...');
+                        $('#termsDescriptionWrapper').show();
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            $('#termsDescriptionPreview').val(response.description);
+                        } else {
+                            $('#termsDescriptionPreview').val('Failed to load description.');
+                            showNotification('Could not load T&C description', 'warning');
+                        }
+                    },
+                    error: function() {
+                        $('#termsDescriptionPreview').val('Error loading description.');
+                        showNotification('Error loading T&C description', 'error');
+                    }
+                });
+            });
+
+            $('#applyTermsBtn').on('click', function() {
+                const description = $('#termsDescriptionPreview').val();
+
+                if (!description || description === 'Loading...') {
+                    showNotification('No Terms & Conditions to apply', 'warning');
+                    return;
+                }
+
+                $.ajax({
+                    url: '{{ route('quotation.communication.save-terms') }}',
+                    type: 'POST',
+                    data: {
+                        _token: '{{ csrf_token() }}',
+                        booking_no: bookingNo,
+                        terms_condition: description
+                    },
+                    beforeSend: function() {
+                        $('#applyTermsBtn').prop('disabled', true)
+                            .html('<i class="fas fa-spinner fa-spin mr-1"></i> Saving...');
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            showNotification('Terms & Conditions applied successfully',
+                                'success');
+                        } else {
+                            showNotification(response.message || 'Failed to apply Terms',
+                                'error');
+                        }
+                    },
+                    error: function(xhr) {
+                        showNotification(xhr.responseJSON?.message || 'Failed to apply Terms',
+                            'error');
+                    },
+                    complete: function() {
+                        $('#applyTermsBtn').prop('disabled', false)
+                            .html('<i class="fas fa-save mr-1"></i> Apply Terms');
+                    }
+                });
+            });
+
+            // Trigger on page load after officeCode is ready
+            loadTermsTemplates();
         });
 
 

@@ -739,6 +739,9 @@ Route::middleware(['auth', 'can:approve-all-entity-request'])->group(function ()
     Route::get('/quotation/communication/description', [App\Http\Controllers\QuotationController::class, 'getCommunicationDescription'])
         ->name('quotation.communication.description');
 
+    Route::post('/quotation/communication/save-terms', [App\Http\Controllers\QuotationController::class, 'saveTermsCondition'])
+        ->name('quotation.communication.save-terms');
+
     Route::get('/quotation/charge-codes', [App\Http\Controllers\QuotationController::class, 'getChargeCodes'])
         ->name('quotation.charge-codes');
 
@@ -776,13 +779,16 @@ Route::middleware(['auth', 'can:approve-all-entity-request'])->group(function ()
     Route::post('/quotation/retrigger', [App\Http\Controllers\QuotationController::class, 'retrigger'])
         ->name('quotation.retrigger');
 
+    Route::post('/quotation/{bookingno}/copy', [App\Http\Controllers\QuotationController::class, 'copy'])
+        ->name('quotation.copy');
+
     Route::get('/quotation/{id}', [App\Http\Controllers\QuotationController::class, 'view'])
         ->name('quotation.view');
 
     Route::get('/quotation/{id}/edit', [App\Http\Controllers\QuotationController::class, 'edit'])
         ->name('quotation.edit');
 
-    Route::put('/quotation/{id}', [App\Http\Controllers\QuotationController::class, 'update'])
+    Route::post('/quotation/{id}/update', [App\Http\Controllers\QuotationController::class, 'update'])
         ->name('quotation.update');
 });
 

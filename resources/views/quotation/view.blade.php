@@ -12,12 +12,18 @@
             <a href="{{ route('quotation.index') }}" class="btn btn-secondary btn-sm">
                 <i class="fas fa-arrow-left"></i> Back to List
             </a>
+
+            <button type="button" class="btn btn-info btn-sm" id="btnCopyBooking" data-bookingno="{{ $quotation->bookingno }}">
+                <i class="fas fa-copy"></i> Copy Booking
+            </button>
+
             <a href="{{ route('quotation.edit', $quotation->ID) }}" class="btn btn-warning btn-sm">
                 <i class="fas fa-edit"></i> Edit Booking
             </a>
         </div>
     </div>
 @stop
+
 
 @section('content')
 
@@ -428,7 +434,6 @@
                 <div class="card-header">
                     <h3 class="card-title">Summary</h3>
                 </div>
-
                 <div class="card-body">
                     <div class="row">
                         <div class="col-md-6">
@@ -476,6 +481,32 @@
                             </div>
                         </div>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- ============================================ --}}
+    {{-- COPY BOOKING SUCCESS MODAL                   --}}
+    {{-- ============================================ --}}
+    <div class="modal fade" id="copySuccessModal" tabindex="-1" role="dialog" data-backdrop="static"
+        data-keyboard="false">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <div class="modal-header" style="background-color: #4B49AC;">
+                    <h5 class="modal-title text-white">
+                        <i class="fas fa-check-circle"></i> Booking Copied Successfully
+                    </h5>
+                </div>
+                <div class="modal-body text-center py-4">
+                    <p class="mb-1 text-muted">A new inquiry has been created:</p>
+                    <h2 class="font-weight-bold mt-2" id="newBookingNoDisplay" style="color: #4B49AC;"></h2>
+                    <p class="text-muted mt-2 mb-0">Click below to open the new booking.</p>
+                </div>
+                <div class="modal-footer justify-content-center">
+                    <a href="#" id="btnGoToNewBooking" class="btn btn-primary">
+                        <i class="fas fa-arrow-right"></i> Open New Booking
+                    </a>
                 </div>
             </div>
         </div>
@@ -569,7 +600,56 @@
         $(document).ready(function() {
             console.log('Booking Quotation View - Page Loaded');
 
+            // ============================================
+            // FLASH MESSAGES FROM COPY/REDIRECT
+            // ============================================
+            @if (session('success'))
+                alert('{{ session('success') }}');
+            @endif
+            @if (session('error'))
+                alert('{{ session('error') }}');
+            @endif
+
             const bookingNo = '{{ $quotation->bookingno ?? '' }}';
+
+            // ============================================
+            // COPY BOOKING - AJAX + MODAL
+            // ============================================
+            $('#btnCopyBooking').on('click', function() {
+                if (!confirm('Copy booking ' + bookingNo + '? A new inquiry will be created.')) {
+                    return;
+                }
+
+                const $btn = $(this);
+                $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Copying...');
+
+                $.ajax({
+                    url: '/quotation/' + bookingNo + '/copy',
+                    type: 'POST',
+                    data: {
+                        _token: '{{ csrf_token() }}'
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            $('#newBookingNoDisplay').text('Inquiry No: ' + response
+                                .new_booking_no);
+                            $('#btnGoToNewBooking').attr('href', response.redirect_url);
+                            $('#copySuccessModal').modal('show');
+                        } else {
+                            alert('Failed to copy booking: ' + response.message);
+                        }
+                    },
+                    error: function(xhr) {
+                        const msg = xhr.responseJSON ? xhr.responseJSON.message :
+                            'An unexpected error occurred.';
+                        alert('Error: ' + msg);
+                    },
+                    complete: function() {
+                        $btn.prop('disabled', false).html(
+                            '<i class="fas fa-copy"></i> Copy Booking');
+                    }
+                });
+            });
 
             // ============================================
             // LOAD CHARGES ON PAGE LOAD
@@ -651,19 +731,17 @@
                     tbody.append(row);
                 });
 
-                // Add total row
                 const totalAmount = charges.reduce((sum, charge) => sum + parseFloat(charge.amtInChgCurr || 0), 0);
                 const totalBaseAmount = charges.reduce((sum, charge) => sum + parseFloat(charge.amtInBaseCurr || 0),
                     0);
 
-                const totalRow = `
+                tbody.append(`
                     <tr class="font-weight-bold bg-light">
                         <td colspan="3" class="text-right">TOTAL REVENUE</td>
                         <td class="text-right">KES ${totalAmount.toFixed(2)}</td>
                         <td class="text-right">KES ${totalBaseAmount.toFixed(2)}</td>
                     </tr>
-                `;
-                tbody.append(totalRow);
+                `);
             }
 
             // ============================================
@@ -692,19 +770,17 @@
                     tbody.append(row);
                 });
 
-                // Add total row
                 const totalAmount = charges.reduce((sum, charge) => sum + parseFloat(charge.amtInChgCurr || 0), 0);
                 const totalBaseAmount = charges.reduce((sum, charge) => sum + parseFloat(charge.amtInBaseCurr || 0),
                     0);
 
-                const totalRow = `
+                tbody.append(`
                     <tr class="font-weight-bold bg-light">
                         <td colspan="3" class="text-right">TOTAL COST</td>
                         <td class="text-right">KES ${totalAmount.toFixed(2)}</td>
                         <td class="text-right">KES ${totalBaseAmount.toFixed(2)}</td>
                     </tr>
-                `;
-                tbody.append(totalRow);
+                `);
             }
 
             // ============================================
@@ -718,7 +794,6 @@
                 const margin = totalRevenue - totalCost;
                 const marginPercentage = totalRevenue > 0 ? (margin / totalRevenue * 100) : 0;
 
-                // Update summary fields if they exist
                 $('input[value*="Expected Revenue"]').closest('.form-group').find('.col-sm-6 input').val('KES ' +
                     totalRevenue.toFixed(2));
                 $('input[value*="Quoted Revenue"]').closest('.form-group').find('.col-sm-6 input').val('KES ' +
@@ -762,7 +837,7 @@
             });
 
             // ============================================
-            // INITIALIZE - Collapse all cards by default EXCEPT Revenue and Cost
+            // INITIALIZE - Collapse all cards by default EXCEPT Revenue, Cost and Summary
             // ============================================
             $('.card').not('.card-success, .card-danger, .summary-card').each(function() {
                 var $card = $(this);
@@ -780,7 +855,6 @@
                 $card.find('.card-body').show();
             });
 
-            // Ensure correct icons for all cards
             $('.card').each(function() {
                 var card = $(this);
                 var collapseBtn = card.find('[data-card-widget="collapse"] i');
@@ -791,6 +865,7 @@
                     collapseBtn.removeClass('fa-minus').addClass('fa-chevron-down');
                 }
             });
+
         });
     </script>
 @stop

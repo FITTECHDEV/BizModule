@@ -4,44 +4,21 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-    class QuotationInfo extends Model
+class QuotationInfo extends Model
 {
-    /**
-     * The table associated with the model.
-     *
-     * @var string
-     */
     protected $table = 'Quote_QuotationInfo';
 
-    /**
-     * The primary key associated with the table.
-     *
-     * @var string
-     */
     protected $primaryKey = 'ID';
+    public $incrementing = false;        // ← ADD THIS
+    protected $keyType = 'string';       // ← ADD THIS
 
-    /**
-     * Indicates if the model should be timestamped.
-     *
-     * @var bool
-     */
     public $timestamps = false;
 
-    /**
-     * The attributes that should be cast.
-     *
-     * @var array
-     */
     protected $casts = [
         'createdon' => 'datetime',
         'updatedon' => 'datetime',
     ];
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array
-     */
     protected $fillable = [
         'bookingno',
         'companyname',

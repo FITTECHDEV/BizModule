@@ -2313,6 +2313,14 @@ class ClientPartyController extends Controller
     //         return redirect()->route('client-party.index');
     // }
 
+
+
+
+
+
+
+    
+
     // public function update(UpdateClientPartyRequest $request, $id)
     // {
     //     $user = Auth::user();
