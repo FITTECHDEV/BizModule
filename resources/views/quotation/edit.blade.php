@@ -1022,8 +1022,8 @@
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.min.css">
     <style>
         /* =============================================
-                                                                                                                                                                                                                                                                                                        MODAL STYLING — matched to FitExpress UI
-                                                                                                                                                                                                                                                                                                        ============================================= */
+                                                                                                                                                                                                                                                                                                                            MODAL STYLING — matched to FitExpress UI
+                                                                                                                                                                                                                                                                                                                            ============================================= */
 
         .modal-header {
             background-color: #fff !important;
@@ -1499,6 +1499,8 @@
                         if (response.success && response.office_code) {
                             officeCode = response.office_code.trim();
                             console.log('Office Code loaded:', officeCode);
+
+                            loadTermsTemplates()
                         }
                     },
                     error: function(xhr) {
@@ -1986,15 +1988,21 @@
                     $input.autocomplete('destroy');
                 }
 
+                $input.off('keydown.billToParty keyup.billToParty keypress.billToParty');
+
+                // ✅ Track % presses manually — independent of autocomplete entirely
+                let percentCount = 0;
+                let percentTimer = null;
+
                 function doSearch(term, response) {
                     const chargeType = type === 'revenue' ? 'Revenue' : 'Cost';
 
-                    function execSearch(resolvedCode) {
+                    function execSearch(resolvedOfficeCode) {
                         $.ajax({
                             url: '/quotation/legal-entities',
                             type: 'GET',
                             data: {
-                                office_code: resolvedCode,
+                                office_code: resolvedOfficeCode,
                                 charge_type: chargeType,
                                 filter: term
                             },
@@ -2055,17 +2063,49 @@
                     }
                 }
 
+                // ✅ Use a manual trigger function — completely bypasses autocomplete's key handling
+                function triggerWildcardSearch() {
+                    $input.val('');
+                    percentCount = 0;
+
+                    // Temporarily drop minLength, search, restore
+                    $input.autocomplete('option', 'minLength', 0);
+
+                    // Store pending response so source() can use it
+                    $input.autocomplete('search', 'WILDCARD__SEARCH');
+                }
+
                 $input.autocomplete({
+                    minLength: 3,
+                    delay: 300,
+
                     source: function(request, response) {
-                        // Guard: wildcard searches are handled by keydown, not here
-                        if (request.term === '' || request.term === '%' || request.term === '%%') {
+                        const term = request.term;
+
+                        // ✅ Wildcard trigger — special sentinel value
+                        if (term === 'WILDCARD__SEARCH') {
+                            // Restore minLength right away
+                            setTimeout(function() {
+                                $input.autocomplete('option', 'minLength', 3);
+                            }, 100);
+                            doSearch('', response);
+                            return;
+                        }
+
+                        // Block % characters from triggering normal search
+                        if (term.indexOf('%') !== -1) {
                             response([]);
                             return;
                         }
-                        doSearch(request.term, response);
+
+                        if (term.length >= 3) {
+                            doSearch(term, response);
+                            return;
+                        }
+
+                        response([]);
                     },
-                    minLength: 3, // ✅ FIX: Prevents autocomplete fighting backspace/erase
-                    delay: 300,
+
                     select: function(event, ui) {
                         if (ui.item.disabled) {
                             event.preventDefault();
@@ -2073,8 +2113,10 @@
                         }
                         $input.val(ui.item.value);
                         $codeInput.val(ui.item.code);
+                        percentCount = 0;
                         return false;
                     }
+
                 }).autocomplete('instance')._renderItem = function(ul, item) {
                     return $('<li>')
                         .addClass(item.disabled ? 'ui-state-disabled' : '')
@@ -2082,36 +2124,41 @@
                         .appendTo(ul);
                 };
 
-                // ✅ FIX: keydown intercepts BEFORE autocomplete processes the character
-                // ✅ FIX: keyup only clears the hidden code — doesn't fight autocomplete
-                $input.off('keydown.billToParty keyup.billToParty')
-                    .on('keydown.billToParty', function(e) {
-                        // Detect second '%' typed while field already contains exactly '%'
-                        if (e.key === '%' && $(this).val() === '%') {
-                            e.preventDefault(); // Stop '%' being appended to field
-                            $(this).val(''); // Clear the field cleanly
+                // ✅ keypress fires AFTER keydown but BEFORE keyup
+                // e.which gives us the char code reliably for printable characters
+                $input.on('keypress.billToParty', function(e) {
+                    if (e.which === 37) { // ASCII 37 = '%'
+                        percentCount++;
 
-                            const $self = $(this);
-                            setTimeout(function() {
-                                // Temporarily drop minLength to 0 for this one wildcard search
-                                $self.autocomplete('option', 'minLength', 0);
-                                $self.autocomplete('search', '');
-                                // Restore after the search fires so normal typing works correctly
-                                setTimeout(function() {
-                                    $self.autocomplete('option', 'minLength', 3);
-                                }, 500);
-                            }, 50);
+                        // Clear reset timer
+                        if (percentTimer) clearTimeout(percentTimer);
+
+                        if (percentCount === 1) {
+                            // First % — let it appear naturally, start timer to reset if no second %
+                            percentTimer = setTimeout(function() {
+                                percentCount = 0;
+                            }, 1500); // Reset after 1.5s if no second % follows
+                        } else if (percentCount >= 2) {
+                            // Second % — fire wildcard search
+                            e.preventDefault(); // Don't add second % to field
+                            clearTimeout(percentTimer);
+                            triggerWildcardSearch();
                         }
-                    })
-                    .on('keyup.billToParty', function() {
-                        // Field was cleared by backspace/delete — just clear the hidden code value
-                        if ($(this).val() === '') {
-                            $codeInput.val('');
-                            // Note: do NOT call autocomplete('close') here — it can conflict
-                            // with autocomplete's own keyup handling and break the erase flow
-                        }
-                    });
+                    } else {
+                        // Any other key resets the % counter
+                        percentCount = 0;
+                        if (percentTimer) clearTimeout(percentTimer);
+                    }
+                });
+
+                $input.on('keyup.billToParty', function() {
+                    if ($(this).val() === '') {
+                        $codeInput.val('');
+                        percentCount = 0;
+                    }
+                });
             }
+
 
             // ============================================
             // CHARGE TYPE TOGGLES
@@ -2960,9 +3007,6 @@
                     }
                 });
             });
-
-            // Trigger on page load after officeCode is ready
-            loadTermsTemplates();
 
             // ============================================
             // COPIED BOOKING — UNLOCK EDITABLE FIELDS
