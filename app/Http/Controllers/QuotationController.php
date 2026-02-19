@@ -2429,9 +2429,9 @@ class QuotationController extends Controller
 
     public function getCommunicationTemplates(Request $request)
     {
-        $module = $request->input('module', 'Quotation');
-        $subModule = $request->input('sub_module');
-        $officeCode = $request->input('office_code');
+        $module     = $request->input('module', 'Quotation');
+        $subModule  = $request->input('sub_module');
+        $officeCode = trim($request->input('office_code', ''));
 
         if (!$subModule || !$officeCode) {
             return response()->json([
@@ -2441,19 +2441,65 @@ class QuotationController extends Controller
         }
 
         try {
+            // ✅ First verify the office itself exists
+            $officeExists = DB::table('Cust_Office')
+                ->whereRaw("TRIM(Code) = ?", [$officeCode])
+                ->where('IsActive', 1)
+                ->where('IsDeleted', 0)
+                ->exists();
+
+            if (!$officeExists) {
+                Log::warning('getCommunicationTemplates - Office not found', [
+                    'office_code' => $officeCode,
+                    'module'      => $module,
+                    'sub_module'  => $subModule,
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'code'    => 'OFFICE_NOT_FOUND',
+                    'message' => "Office '{$officeCode}' is not configured in the system."
+                ], 404);
+            }
+
+            // ✅ TRIM on both sides to avoid trailing space mismatch
             $templates = DB::select(
-                "SELECT Name, Description 
-                FROM Cust_CommunicationDetails WITH (NOLOCK)
-                WHERE Module = ? AND SubModule = ? AND OfficeCode = ? AND IsActive = 1",
+                "SELECT Name, Description
+             FROM Cust_CommunicationDetails WITH (NOLOCK)
+             WHERE Module     = ?
+               AND SubModule  = ?
+               AND TRIM(OfficeCode) = ?
+               AND IsActive   = 1
+             ORDER BY Name",
                 [$module, $subModule, $officeCode]
             );
 
+            Log::info('getCommunicationTemplates', [
+                'office_code'     => $officeCode,
+                'module'          => $module,
+                'sub_module'      => $subModule,
+                'template_count'  => count($templates),
+            ]);
+
+            // ✅ Office exists but no templates configured for this module/submodule
+            if (empty($templates)) {
+                return response()->json([
+                    'success' => false,
+                    'code'    => 'NOT_CONFIGURED',
+                    'message' => "Terms & Conditions templates are not configured for office '{$officeCode}'. Please contact your administrator."
+                ], 404);
+            }
+
             return response()->json([
-                'success' => true,
+                'success'   => true,
                 'templates' => $templates
             ]);
         } catch (\Exception $e) {
-            Log::error('Get communication templates failed: ' . $e->getMessage());
+            Log::error('getCommunicationTemplates failed', [
+                'office_code' => $officeCode,
+                'error'       => $e->getMessage(),
+            ]);
+
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to load templates: ' . $e->getMessage()
@@ -2463,10 +2509,10 @@ class QuotationController extends Controller
 
     public function getCommunicationDescription(Request $request)
     {
-        $module = $request->input('module', 'Quotation');
-        $subModule = $request->input('sub_module');
-        $officeCode = $request->input('office_code');
-        $name = $request->input('name');
+        $module     = $request->input('module', 'Quotation');
+        $subModule  = $request->input('sub_module');
+        $officeCode = trim($request->input('office_code', ''));  // ✅ trim here too
+        $name       = $request->input('name');
 
         if (!$subModule || !$officeCode || !$name) {
             return response()->json([
@@ -2477,25 +2523,41 @@ class QuotationController extends Controller
 
         try {
             $result = DB::select('
-            DECLARE @Status VARCHAR(15), @Remark VARCHAR(1000), @Description NVARCHAR(MAX);
-            EXEC sp_CommunicationDetails_GetDescription ?, ?, ?, ?, 
-                @Status OUTPUT, @Remark OUTPUT, @Description OUTPUT;
+            DECLARE @Status      VARCHAR(15);
+            DECLARE @Remark      VARCHAR(1000);
+            DECLARE @Description NVARCHAR(MAX);
+            EXEC sp_CommunicationDetails_GetDescription ?, ?, ?, ?,
+                @Status      = @Status      OUTPUT,
+                @Remark      = @Remark      OUTPUT,
+                @Description = @Description OUTPUT;
             SELECT @Status AS Status, @Remark AS Remark, @Description AS Description
         ', [$module, $subModule, $officeCode, $name]);
 
+            if (empty($result)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No response from stored procedure'
+                ], 500);
+            }
+
             if ($result[0]->Status === 'Success') {
                 return response()->json([
-                    'success' => true,
+                    'success'     => true,
                     'description' => $result[0]->Description
                 ]);
             }
 
             return response()->json([
                 'success' => false,
-                'message' => $result[0]->Remark
+                'message' => $result[0]->Remark ?? 'Failed to load description'
             ], 422);
         } catch (\Exception $e) {
-            Log::error('Get communication description failed: ' . $e->getMessage());
+            Log::error('getCommunicationDescription failed', [
+                'office_code' => $officeCode,
+                'name'        => $name,
+                'error'       => $e->getMessage(),
+            ]);
+
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to load description: ' . $e->getMessage()
@@ -2816,38 +2878,195 @@ class QuotationController extends Controller
         }
     }
 
-    public function getLegalEntities(Request $request)
+    public function getContractCharges(Request $request)
     {
-        $officeCode = $request->input('office_code');
-        $chargeType = $request->input('charge_type', 'Cost');
-        $filter = $request->input('filter', '');
+        $bookingNo = $request->input('booking_no');
 
-        if (!$officeCode) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Office code is required'
-            ], 400);
+        if (!$bookingNo) {
+            return response()->json(['success' => false, 'message' => 'Booking number is required'], 400);
         }
 
         try {
-            $parties = DB::select('EXEC sp_LegalEntityList ?, ?, ?', [
-                $officeCode,
-                $chargeType,
-                $filter
+            $quotation = DB::table('Quote_QuotationInfo')
+                ->where('bookingno', $bookingNo)
+                ->first([
+                    'clientid',
+                    'ServiceVerticalname',
+                    'process',
+                    'origincountry',
+                    'destinationcountry',
+                    'incoterm',
+                    'shipmentmode',
+                    'TransportMode',
+                    'ServiceClass',
+                    'commodity',
+                    'containerlist',
+                    'scopevolume',
+                    'cargovolume',
+                ]);
+
+            if (!$quotation) {
+                return response()->json(['success' => false, 'message' => 'Quotation not found'], 404);
+            }
+
+            // Parse containerlist — try JSON first, otherwise pass empty array
+            $equipment = [];
+            if (!empty($quotation->containerlist)) {
+                $decoded = json_decode($quotation->containerlist, true);
+                if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                    $equipment = $decoded;
+                }
+            }
+
+            $inputJson = json_encode([
+                'Service'   => $quotation->ServiceVerticalname ?? '',
+                'Process'   => $quotation->process ?? '',
+                'Client'    => $quotation->clientid ?? '',
+                'Weight'    => (float)($quotation->scopevolume ?? 0),
+                'Volume'    => (float)($quotation->cargovolume ?? 0),
+                'Filter'    => [
+                    ['Code' => 'Inco Terms',             'Value' => $quotation->incoterm ?? ''],
+                    ['Code' => 'Country Of Origin',      'Value' => $quotation->origincountry ?? ''],
+                    ['Code' => 'Country Of Destination', 'Value' => $quotation->destinationcountry ?? ''],
+                    ['Code' => 'Place Of Reciept',       'Value' => ''],
+                    ['Code' => 'Place Of Delivery',      'Value' => ''],
+                    ['Code' => 'Port Of Loading',        'Value' => ''],
+                    ['Code' => 'Port Of Discharge',      'Value' => ''],
+                    ['Code' => 'Service Class',          'Value' => $quotation->ServiceClass ?? ''],
+                    ['Code' => 'Commodity',              'Value' => $quotation->commodity ?? ''],
+                    ['Code' => 'Shipment Mode',          'Value' => $quotation->shipmentmode ?? ''],
+                    ['Code' => 'Shipment Type',          'Value' => ''],
+                    ['Code' => 'Movement Type',          'Value' => $quotation->TransportMode ?? ''],
+                    ['Code' => 'Forwarder',              'Value' => ''],
+                    ['Code' => 'Shipping Line',          'Value' => ''],
+                    ['Code' => 'Air Line',               'Value' => ''],
+                    ['Code' => 'Trucker',                'Value' => ''],
+                ],
+                'Equipment' => $equipment,
             ]);
 
-            return response()->json([
-                'success' => true,
-                'parties' => $parties
+            Log::info('getContractCharges - Input JSON', [
+                'booking_no' => $bookingNo,
+                'input_json' => $inputJson,
             ]);
+
+            $pdo  = DB::connection()->getPdo();
+            $stmt = $pdo->prepare("
+            DECLARE @Output VARCHAR(MAX);
+            EXEC dbo.sp_Quote_QuotationCharges ?, @Output = @Output OUTPUT;
+            SELECT @Output AS OutputJson
+        ");
+            $stmt->execute([$inputJson]);
+
+            // Walk result sets to find the OutputJson row
+            $outputJson = null;
+            do {
+                try {
+                    $rows = $stmt->fetchAll(\PDO::FETCH_OBJ);
+                    if (!empty($rows) && isset($rows[0]->OutputJson)) {
+                        $outputJson = $rows[0]->OutputJson;
+                        break;
+                    }
+                } catch (\PDOException $e) {
+                    continue;
+                }
+            } while ($stmt->nextRowset());
+
+            if ($outputJson === null) {
+                Log::warning('getContractCharges - SP returned no output', ['booking_no' => $bookingNo]);
+                return response()->json(['success' => true, 'charges' => []]);
+            }
+
+            $output = json_decode($outputJson, true);
+
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                Log::error('getContractCharges - Failed to decode SP output', [
+                    'booking_no' => $bookingNo,
+                    'raw'        => $outputJson,
+                ]);
+                return response()->json(['success' => false, 'message' => 'Failed to parse contract charges'], 500);
+            }
+
+            // SP may return {"Charges": [...]} or a raw array
+            $charges = $output['Charges'] ?? (isset($output[0]) ? $output : []);
+
+            Log::info('getContractCharges - Success', [
+                'booking_no'   => $bookingNo,
+                'charge_count' => count($charges),
+            ]);
+
+            return response()->json(['success' => true, 'charges' => $charges]);
         } catch (\Exception $e) {
-            Log::error('Get legal entities failed: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to load legal entities: ' . $e->getMessage()
-            ], 500);
+            Log::error('getContractCharges - Failed', [
+                'booking_no' => $bookingNo,
+                'error'      => $e->getMessage(),
+                'file'       => $e->getFile(),
+                'line'       => $e->getLine(),
+            ]);
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }
+
+    public function getLegalEntities(Request $request)
+    {
+        $officeCode = trim($request->input('office_code', ''));
+        $chargeType = $request->input('charge_type', 'Cost');
+        $filter     = $request->input('filter', '');
+
+        if (!$officeCode) {
+            return response()->json(['success' => false, 'message' => 'Office code is required'], 400);
+        }
+
+        if (!in_array($chargeType, ['Revenue', 'Cost'])) {
+            $chargeType = 'Cost';
+        }
+
+        try {
+            $pdo  = DB::connection()->getPdo();
+            $stmt = $pdo->prepare("SET NOCOUNT ON; EXEC sp_LegalEntityList ?, ?, ?");
+            $stmt->execute([$officeCode, $chargeType, $filter]);
+
+            $parties = [];
+
+            do {
+                try {
+                    $results = $stmt->fetchAll(\PDO::FETCH_OBJ);
+
+                    if (empty($results)) continue;
+
+                    $firstRow = (array) $results[0];
+                    $firstVal = array_values($firstRow)[0] ?? '';
+
+                    // Skip SP error/status result sets
+                    if (is_string($firstVal) && str_starts_with((string)$firstVal, 'Failed')) {
+                        Log::warning('sp_LegalEntityList returned failure', [
+                            'office_code' => $officeCode,
+                            'charge_type' => $chargeType,
+                            'message'     => $firstVal,
+                        ]);
+                        continue;
+                    }
+
+                    // Valid data result set — must have Id and Code
+                    if (isset($results[0]->Id) && isset($results[0]->Code)) {
+                        $parties = $results;
+                        break;
+                    }
+                } catch (\Exception $e) {
+                    continue;
+                }
+            } while ($stmt->nextRowset());
+
+            return response()->json(['success' => true, 'parties' => $parties]);
+        } catch (\Exception $e) {
+            Log::error('getLegalEntities failed', [
+                'office_code' => $officeCode,
+                'error'       => $e->getMessage(),
+            ]);
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
 
     public function getBasedOnList(Request $request)
     {

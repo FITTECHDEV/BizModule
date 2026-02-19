@@ -1022,8 +1022,8 @@
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.min.css">
     <style>
         /* =============================================
-                                                                                                                                                                                                                                                        MODAL STYLING — matched to FitExpress UI
-                                                                                                                                                                                                                                                        ============================================= */
+                                                                                                                                                                                                                                                                                                        MODAL STYLING — matched to FitExpress UI
+                                                                                                                                                                                                                                                                                                        ============================================= */
 
         .modal-header {
             background-color: #fff !important;
@@ -1503,7 +1503,6 @@
                     },
                     error: function(xhr) {
                         console.error('Failed to load office code:', xhr);
-                        // Fallback: will be fetched in modal if needed
                     }
                 });
             }
@@ -1630,34 +1629,30 @@
             // MODAL INITIALIZATION - SHOWN EVENT
             // ============================================
             $('#addRevenueModal').on('show.bs.modal', function() {
-                // Hide any markup rows when modal opens
                 $(this).find('.increase-by-row').removeClass('active').css('display', 'none');
-
                 if (!currentEditingCharge) {
                     $('#revenueTypeRevenue').prop('checked', true);
                     toggleRevenueFormFields('revenue');
                     loadBasedOnList('revenue');
                     populateCurrencyDropdown('revenue');
                 }
-
                 setTimeout(function() {
                     initializeChargeCodeAutocomplete('revenue');
+                    initializeBillToPartyAutocomplete('revenue'); // ADD
                 }, 100);
             });
 
             $('#addCostModal').on('show.bs.modal', function() {
-                // Hide any markup rows when modal opens
                 $(this).find('.cost-markup-row').removeClass('active').css('display', 'none');
-
                 if (!currentEditingCharge) {
                     $('#costTypeCost').prop('checked', true);
                     toggleCostFormFields('cost');
                     loadBasedOnList('cost');
                     populateCurrencyDropdown('cost');
                 }
-
                 setTimeout(function() {
                     initializeChargeCodeAutocomplete('cost');
+                    initializeBillToPartyAutocomplete('cost'); // ADD
                 }, 100);
             });
 
@@ -1978,6 +1973,144 @@
                         .append($("<div>").text(item.label))
                         .appendTo(ul);
                 };
+            }
+
+            function initializeBillToPartyAutocomplete(type) {
+                const prefix = type === 'revenue' ? 'revenue' : 'cost';
+                const $input = $(`input[name="${prefix}_bill_to_party"]`);
+                const $codeInput = $(`input[name="${prefix}_bill_to_party_code"]`);
+
+                if ($input.length === 0) return;
+
+                if ($input.hasClass('ui-autocomplete-input')) {
+                    $input.autocomplete('destroy');
+                }
+
+                function doSearch(term, response) {
+                    const chargeType = type === 'revenue' ? 'Revenue' : 'Cost';
+
+                    function execSearch(resolvedCode) {
+                        $.ajax({
+                            url: '/quotation/legal-entities',
+                            type: 'GET',
+                            data: {
+                                office_code: resolvedCode,
+                                charge_type: chargeType,
+                                filter: term
+                            },
+                            success: function(data) {
+                                if (data.success && data.parties && data.parties.length > 0) {
+                                    response(data.parties.map(item => ({
+                                        label: item.Code + ' - ' + item.Name,
+                                        value: item.Name,
+                                        code: item.Code
+                                    })));
+                                } else {
+                                    response([{
+                                        label: 'No parties found',
+                                        value: term,
+                                        disabled: true
+                                    }]);
+                                }
+                            },
+                            error: function() {
+                                response([{
+                                    label: 'Error loading parties',
+                                    value: '',
+                                    disabled: true
+                                }]);
+                            }
+                        });
+                    }
+
+                    if (officeCode) {
+                        execSearch(officeCode);
+                    } else {
+                        $.ajax({
+                            url: '/quotation/office-code',
+                            type: 'GET',
+                            data: {
+                                team_id: teamId
+                            },
+                            success: function(res) {
+                                if (res.success && res.office_code) {
+                                    officeCode = res.office_code.trim();
+                                    execSearch(officeCode);
+                                } else {
+                                    response([{
+                                        label: 'Could not resolve office code',
+                                        value: '',
+                                        disabled: true
+                                    }]);
+                                }
+                            },
+                            error: function() {
+                                response([{
+                                    label: 'Error resolving office code',
+                                    value: '',
+                                    disabled: true
+                                }]);
+                            }
+                        });
+                    }
+                }
+
+                $input.autocomplete({
+                    source: function(request, response) {
+                        // Guard: wildcard searches are handled by keydown, not here
+                        if (request.term === '' || request.term === '%' || request.term === '%%') {
+                            response([]);
+                            return;
+                        }
+                        doSearch(request.term, response);
+                    },
+                    minLength: 3, // ✅ FIX: Prevents autocomplete fighting backspace/erase
+                    delay: 300,
+                    select: function(event, ui) {
+                        if (ui.item.disabled) {
+                            event.preventDefault();
+                            return false;
+                        }
+                        $input.val(ui.item.value);
+                        $codeInput.val(ui.item.code);
+                        return false;
+                    }
+                }).autocomplete('instance')._renderItem = function(ul, item) {
+                    return $('<li>')
+                        .addClass(item.disabled ? 'ui-state-disabled' : '')
+                        .append($('<div>').text(item.label))
+                        .appendTo(ul);
+                };
+
+                // ✅ FIX: keydown intercepts BEFORE autocomplete processes the character
+                // ✅ FIX: keyup only clears the hidden code — doesn't fight autocomplete
+                $input.off('keydown.billToParty keyup.billToParty')
+                    .on('keydown.billToParty', function(e) {
+                        // Detect second '%' typed while field already contains exactly '%'
+                        if (e.key === '%' && $(this).val() === '%') {
+                            e.preventDefault(); // Stop '%' being appended to field
+                            $(this).val(''); // Clear the field cleanly
+
+                            const $self = $(this);
+                            setTimeout(function() {
+                                // Temporarily drop minLength to 0 for this one wildcard search
+                                $self.autocomplete('option', 'minLength', 0);
+                                $self.autocomplete('search', '');
+                                // Restore after the search fires so normal typing works correctly
+                                setTimeout(function() {
+                                    $self.autocomplete('option', 'minLength', 3);
+                                }, 500);
+                            }, 50);
+                        }
+                    })
+                    .on('keyup.billToParty', function() {
+                        // Field was cleared by backspace/delete — just clear the hidden code value
+                        if ($(this).val() === '') {
+                            $codeInput.val('');
+                            // Note: do NOT call autocomplete('close') here — it can conflict
+                            // with autocomplete's own keyup handling and break the erase flow
+                        }
+                    });
             }
 
             // ============================================
@@ -2672,8 +2805,9 @@
             // TERMS & CONDITIONS
             // ============================================
             function loadTermsTemplates() {
-                if (!officeCode) {
-                    // officeCode loads asynchronously — retry once it's ready
+                const codeToUse = officeCode;
+
+                if (!codeToUse) {
                     setTimeout(loadTermsTemplates, 500);
                     return;
                 }
@@ -2684,12 +2818,13 @@
                     data: {
                         module: 'Quotation',
                         sub_module: 'T&C',
-                        office_code: officeCode
+                        office_code: codeToUse
                     },
                     success: function(response) {
                         if (response.success && response.templates.length > 0) {
                             const $select = $('#termsTemplateSelect');
                             $select.empty().append('<option value="">-- Select Template --</option>');
+
                             response.templates.forEach(function(t) {
                                 $select.append(
                                     `<option value="${t.Name}">${t.Name}</option>`
@@ -2698,15 +2833,53 @@
 
                             // Pre-select if quotation already has terms saved
                             @if ($quotation->terms_condition)
-                                // Description is already saved — show it in preview directly
                                 $('#termsDescriptionPreview').val(
                                     '{{ addslashes($quotation->terms_condition) }}');
                                 $('#termsDescriptionWrapper').show();
                             @endif
+
+                        } else {
+                            // ✅ Show a clear message in the dropdown based on error code
+                            const $select = $('#termsTemplateSelect');
+                            $select.empty();
+
+                            if (response.code === 'NOT_CONFIGURED') {
+                                $select.append(
+                                    `<option value="" disabled>⚠ T&C not configured for office: ${codeToUse}</option>`
+                                );
+                                console.warn('T&C not configured for office:', codeToUse);
+                            } else if (response.code === 'OFFICE_NOT_FOUND') {
+                                $select.append(
+                                    `<option value="" disabled>⚠ Office not found: ${codeToUse}</option>`
+                                );
+                                console.warn('Office not found:', codeToUse);
+                            } else {
+                                $select.append(
+                                    `<option value="" disabled>-- No templates available --</option>`
+                                );
+                            }
                         }
                     },
-                    error: function() {
-                        console.warn('Could not load T&C templates');
+                    error: function(xhr) {
+                        const response = xhr.responseJSON;
+                        const $select = $('#termsTemplateSelect');
+                        $select.empty();
+
+                        if (response && response.code === 'NOT_CONFIGURED') {
+                            $select.append(
+                                `<option value="" disabled>⚠ T&C not configured for office: ${codeToUse}</option>`
+                            );
+                        } else if (response && response.code === 'OFFICE_NOT_FOUND') {
+                            $select.append(
+                                `<option value="" disabled>⚠ Office not found: ${codeToUse}</option>`
+                            );
+                        } else {
+                            $select.append(
+                                `<option value="" disabled>-- Failed to load templates --</option>`
+                            );
+                        }
+
+                        console.warn('loadTermsTemplates error:', response?.message || xhr.status);
                     }
                 });
             }

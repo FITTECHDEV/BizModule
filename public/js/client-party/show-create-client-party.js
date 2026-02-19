@@ -636,7 +636,7 @@ $(document).ready(function () {
                 $("#other_Input").html(ui.item.code);
                 return false;
             },
-            minLength: 0, // Allow empty query to show all results
+            minLength: 2, // Allow empty query to show all results
         })
         .on("click", function () {
             // Show full list on click

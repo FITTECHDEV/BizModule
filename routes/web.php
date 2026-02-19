@@ -765,6 +765,9 @@ Route::middleware(['auth', 'can:approve-all-entity-request'])->group(function ()
 
     Route::get('/quotation/exchange-rate', [App\Http\Controllers\QuotationController::class, 'getExchangeRate'])
         ->name('quotation.exchange-rate');
+
+    Route::get('/quotation/contract-charges', [App\Http\Controllers\QuotationController::class, 'getContractCharges'])
+        ->name('quotation.contract.charges');
     // ============================================
 
     Route::post('/quotation/charge/save', [App\Http\Controllers\QuotationController::class, 'saveCharge'])
