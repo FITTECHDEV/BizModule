@@ -878,7 +878,7 @@
                                                 </select>
                                             </div>
                                         </div>
-                                        <div class="col-6 vertical-separator">
+                                        <div class="col-6">
                                             <label for="cost_amount" class="form-label">Amount</label>
                                             <input type="number" class="form-control" id="cost_amount"
                                                 name="cost_amount" step="0.01" value="0.00" readonly>
@@ -889,7 +889,7 @@
                                     <div class="row mb-3 cost-markup-row" style="display: none;">
                                         <div class="col-6">
                                             <label for="cost_increase_by_value" class="form-label">Increase By</label>
-                                            <div class="input-group">
+                                            <div class="input-group no-divider">
                                                 <input type="number" class="form-control" id="cost_increase_by_value"
                                                     name="cost_increase_by_value" step="0.01" value="0.00"
                                                     placeholder="0">
@@ -901,12 +901,14 @@
                                                 </select>
                                             </div>
                                         </div>
-                                        <div class="col-6 vertical-separator">
+
+                                        <div class="col-6">
                                             <label for="cost_markup_amount" class="form-label">Amount</label>
                                             <input type="number" class="form-control" id="cost_markup_amount"
                                                 name="cost_markup_amount" step="0.01" value="0.00" readonly>
                                         </div>
                                     </div>
+
 
                                     <!-- Exchange Rate Row (unchanged) -->
                                     <div class="row mb-3">
@@ -1020,8 +1022,8 @@
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.min.css">
     <style>
         /* =============================================
-                                                                                                                                                                                                                                                MODAL STYLING — matched to FitExpress UI
-                                                                                                                                                                                                                                                ============================================= */
+                                                                                                                                                                                                                                                        MODAL STYLING — matched to FitExpress UI
+                                                                                                                                                                                                                                                        ============================================= */
 
         .modal-header {
             background-color: #fff !important;
@@ -1439,6 +1441,14 @@
             border-left: 1px solid #dee2e6;
             margin-left: -1px;
             /* Prevent double thickness */
+        }
+
+        .no-divider .form-control {
+            border-right: 1px solid #ced4da;
+        }
+
+        .no-divider select.form-control {
+            border-left: 0;
         }
     </style>
 @stop
@@ -2021,7 +2031,7 @@
                             </select>
                         </div>
                     </div>
-                    <div class="col-6 vertical-separator">
+                    <div class="col-6">
                         <label for="revenue_markup_amount" class="form-label">Amount</label>
                         <input type="number" class="form-control" id="revenue_markup_amount" name="revenue_markup_amount" step="0.01" value="0.00" readonly>
                     </div>
