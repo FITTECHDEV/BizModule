@@ -1020,8 +1020,8 @@
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.min.css">
     <style>
         /* =============================================
-                                                                                                                                                                                                                                        MODAL STYLING — matched to FitExpress UI
-                                                                                                                                                                                                                                        ============================================= */
+                                                                                                                                                                                                                                                MODAL STYLING — matched to FitExpress UI
+                                                                                                                                                                                                                                                ============================================= */
 
         .modal-header {
             background-color: #fff !important;
@@ -1129,11 +1129,18 @@
 
         .modal-body .input-group select.form-control {
             border-radius: 0 0.25rem 0.25rem 0;
-            border-left: 0;
+            border-left: 1px solid #dee2e6;
+            /* Divider */
             flex: 0 0 auto;
             width: auto;
             min-width: 80px;
         }
+
+        .modal-body .input-group .form-control:not(:last-child) {
+            border-right: 0;
+            /* Prevent double border */
+        }
+
 
         /* Radio buttons */
         .modal-body .form-check-inline {
@@ -1422,6 +1429,16 @@
         .col-extra {
             display: none;
             /* hidden by default — JS controls visibility */
+        }
+
+        .input-group {
+            position: relative;
+        }
+
+        #cost_currency {
+            border-left: 1px solid #dee2e6;
+            margin-left: -1px;
+            /* Prevent double thickness */
         }
     </style>
 @stop
