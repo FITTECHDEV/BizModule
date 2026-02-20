@@ -126,7 +126,9 @@
                         @endif
                         <select id="officeFilter" class="form-control form-control-sm"
                             {{ $offices->isEmpty() ? 'disabled' : '' }}>
-                            <option value="">All Offices</option>
+                            @if ($offices->count() > 1)
+                                <option value="">All Offices</option>
+                            @endif
                             @foreach ($offices as $office)
                                 <option value="{{ $office }}" {{ $office === $defaultOffice ? 'selected' : '' }}>
                                     {{ $office }}
