@@ -16,33 +16,123 @@ class QuotationController extends Controller
         $this->middleware(['auth']);
     }
 
+
+
+    private function officeCodeMap(): array
+    {
+        return [
+            'DJ' => 'Djibouti',
+            'ET' => 'Ethiopia',
+            'KE' => 'Kenya',
+            'RW' => 'Rwanda',
+            'SA' => 'Sales',
+            'SS' => 'South Sudan',
+            'TZ' => 'Tanzania',
+            'UG' => 'Uganda',
+            'ZM' => 'Zambia',
+        ];
+    }
+
+
     public function index()
     {
-        // Get unique offices for filter dropdown
-        $offices = DB::table('Quote_QuotationInfo')
-            ->whereNotNull('teamname')
-            ->distinct()
-            ->pluck('teamname')
+        // ============================================
+        // RESOLVE USER'S MAPPED OFFICES FROM Azure_Users
+        // Auth user model uses 'Email' (capital E)
+        // matched against Azure_Users.userPrincipalName
+        // ============================================
+        $userPrincipalName = Auth::user()->Email ?? null;
+
+        $userOfficeCodes = DB::table('Azure_Users')
+            ->where('userPrincipalName', $userPrincipalName)
+            ->whereNotNull('BaseOfficeCode')
+            ->pluck('BaseOfficeCode')
+            ->map(fn($code) => trim($code))
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($userOfficeCodes->isEmpty()) {
+            Log::warning('Quotation index - No BaseOfficeCode found for user', [
+                'userPrincipalName' => $userPrincipalName,
+            ]);
+
+            return view('quotation.index', [
+                'offices'       => collect(),
+                'stats'         => $this->getStats('all', null, null, null),
+                'defaultOffice' => null,
+                'officeError'   => 'Your account is not mapped to any office. Please contact your administrator.',
+            ]);
+        }
+
+        $map = $this->officeCodeMap();
+
+        $offices = $userOfficeCodes
+            ->map(fn($code) => $map[$code] ?? null)
+            ->filter()
             ->sort()
             ->values();
 
-        // Get initial stats for today
-        $stats = $this->getStats(0, null, null, null);
+        $unmappedCodes = $userOfficeCodes->reject(fn($code) => isset($map[$code]));
 
-        return view('quotation.index', compact('offices', 'stats'));
+        if ($unmappedCodes->isNotEmpty()) {
+            Log::warning('Quotation index - Unmapped BaseOfficeCode(s) found', [
+                'userPrincipalName' => $userPrincipalName,
+                'unmapped_codes'    => $unmappedCodes->toArray(),
+            ]);
+
+            $fallbackOffices = DB::table('Quote_QuotationInfo')
+                ->whereNotNull('teamname')
+                ->whereIn('teamname', $unmappedCodes->toArray())
+                ->distinct()
+                ->pluck('teamname');
+
+            $offices = $offices->merge($fallbackOffices)->unique()->sort()->values();
+        }
+
+        if ($offices->isEmpty()) {
+            Log::warning('Quotation index - BaseOfficeCode(s) could not be resolved to any office', [
+                'userPrincipalName' => $userPrincipalName,
+                'base_office_codes' => $userOfficeCodes->toArray(),
+            ]);
+
+            return view('quotation.index', [
+                'offices'       => collect(),
+                'stats'         => $this->getStats('all', null, null, null),
+                'defaultOffice' => null,
+                'officeError'   => 'Your office mapping could not be resolved. Please contact your administrator.',
+            ]);
+        }
+
+        $defaultOffice = $offices->first();
+
+        $stats = $this->getStats('all', null, null, $defaultOffice);
+
+        Log::info('Quotation index - Resolved user offices', [
+            'userPrincipalName' => $userPrincipalName,
+            'base_office_codes' => $userOfficeCodes->toArray(),
+            'resolved_offices'  => $offices->toArray(),
+            'default_office'    => $defaultOffice,
+        ]);
+
+        return view('quotation.index', compact('offices', 'stats', 'defaultOffice'));
     }
+
 
     public function stats(Request $request)
     {
-        $days = $request->input('days', 0);
+        $days      = $request->input('days', 0);
         $startDate = $request->input('start_date');
-        $endDate = $request->input('end_date');
-        $office = $request->input('office');
+        $endDate   = $request->input('end_date');
+
+        // Default to logged-in user's office if none provided
+        $office = $request->input('office') ?: (Auth::user()->OfficeCode ?? null);
 
         $stats = $this->getStats($days, $startDate, $endDate, $office);
 
         return response()->json($stats);
     }
+
 
     private function getStats($days, $startDate, $endDate, $office)
     {
@@ -113,18 +203,21 @@ class QuotationController extends Controller
 
     public function data(Request $request)
     {
-        $days = $request->input('days', 0);
-        $startDate = $request->input('start_date');
-        $endDate = $request->input('end_date');
-        $office = $request->input('office');
-        $cardFilter = $request->input('card_filter', 'all');
+        $days       = $request->input('days', 0);
+        $startDate  = $request->input('start_date');
+        $endDate    = $request->input('end_date');
+        $cardFilter = $request->input('card_filter', 'in_progress'); // ← default changed from 'all'
+
+        // Default to logged-in user's office if no office param sent
+        $office = $request->input('office') ?: (Auth::user()->OfficeCode ?? null);
 
         Log::info('Quotation data request', [
-            'days' => $days,
-            'start_date' => $startDate,
-            'end_date' => $endDate,
-            'office' => $office,
-            'card_filter' => $cardFilter
+            'days'         => $days,
+            'start_date'   => $startDate,
+            'end_date'     => $endDate,
+            'office'       => $office,
+            'card_filter'  => $cardFilter,
+            'default_from' => $request->input('office') ? 'request' : 'user_profile',
         ]);
 
         $query = DB::table('Quote_QuotationInfo')
@@ -156,14 +249,13 @@ class QuotationController extends Controller
         } elseif ($days == 0) {
             $query->whereDate('createdon', today());
         }
-        // else: No date filter - show all records
 
-        // Office filtering
+        // Office filtering — user's default office if nothing explicitly passed
         if ($office) {
             $query->where('teamname', $office);
         }
 
-        // Card filter
+        // Card filter — defaults to in_progress
         Log::info('Applying card filter', ['card_filter' => $cardFilter]);
 
         switch ($cardFilter) {
@@ -323,17 +415,17 @@ class QuotationController extends Controller
                 return $row->bookingno ?? '-';
             })
             ->addColumn('action', function ($row) use ($cardFilter) {
-                $status = $row->QuoteStatus ?? $row->status ?? 'Proposal';
+                $status    = $row->QuoteStatus ?? $row->status ?? 'Proposal';
                 $scmStatus = $row->SCMINTStatus;
 
                 $isInProgress = in_array($status, ['Pending', 'Proposal']) || is_null($status);
-                $isFailedInt = ($status == 'Won' && $scmStatus && $scmStatus != 'Success');
+                $isFailedInt  = ($status == 'Won' && $scmStatus && $scmStatus != 'Success');
 
                 $viewBtn = '<a href="' . route('quotation.view', $row->ID) . '" class="btn btn-info btn-sm" title="View">
                 <i class="fas fa-eye"></i>
             </a>';
 
-                $editBtn = '';
+                $editBtn      = '';
                 $retriggerBtn = '';
 
                 if ($cardFilter === 'in_progress' && $isInProgress) {
@@ -2565,6 +2657,105 @@ class QuotationController extends Controller
         }
     }
 
+    public function sendEmailQuote(Request $request)
+    {
+        try {
+            $bookingNo  = $request->input('booking_no');
+            $quoteId    = $request->input('quote_id');
+            $templateId = $request->input('template_id');
+            $toEmail    = $request->input('to_email');
+            $fromEmail  = $request->input('from_email');
+            $subject    = $request->input('subject');
+            $body       = $request->input('body');
+
+            $submittedBy = Auth::check()
+                ? (Auth::user()->username ?? Auth::user()->email ?? Auth::user()->name ?? 'system')
+                : 'system';
+
+            // ============================================
+            // VALIDATE REQUIRED FIELDS
+            // ============================================
+            $validator = \Validator::make($request->all(), [
+                'booking_no'  => 'required|string',
+                'quote_id'    => 'required|string',
+                'template_id' => 'required|string',
+                'to_email'    => 'required|email',
+                'from_email'  => 'required|email',
+                'subject'     => 'required|string',
+                'body'        => 'required|string',
+            ]);
+
+            if ($validator->fails()) {
+                Log::warning('sendEmailQuote - Validation failed', [
+                    'booking_no' => $bookingNo,
+                    'errors'     => $validator->errors()->toArray(),
+                    'user'       => $submittedBy,
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validation failed: ' . $validator->errors()->first(),
+                    'errors'  => $validator->errors()->toArray(),
+                ], 422);
+            }
+
+            // ============================================
+            // VERIFY QUOTATION EXISTS
+            // ============================================
+            $quotation = DB::table('Quote_QuotationInfo')
+                ->where('bookingno', $bookingNo)
+                ->first(['ID', 'companyname', 'teamid']);
+
+            if (!$quotation) {
+                Log::error('sendEmailQuote - Quotation not found', [
+                    'booking_no' => $bookingNo,
+                    'user'       => $submittedBy,
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Quotation not found for booking number: ' . $bookingNo,
+                ], 404);
+            }
+
+            Log::info('sendEmailQuote - Request received', [
+                'booking_no'  => $bookingNo,
+                'quote_id'    => $quoteId,
+                'template_id' => $templateId,
+                'to_email'    => $toEmail,
+                'from_email'  => $fromEmail,
+                'subject'     => $subject,
+                'user'        => $submittedBy,
+                'company'     => $quotation->companyname ?? 'N/A',
+            ]);
+
+            // ============================================
+            // TODO: Insert into Std. Email table
+            // Pending confirmation of:
+            //   - Table name
+            //   - Column schema (sent_on, to_email, from_email, subject, body,
+            //                    template_id, booking_no, quote_id, created_by)
+            // ============================================
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Email sending is not yet configured. Awaiting table configuration.',
+            ], 200);
+        } catch (\Exception $e) {
+            Log::error('sendEmailQuote - General exception', [
+                'booking_no'   => $request->input('booking_no'),
+                'error_message' => $e->getMessage(),
+                'error_file'   => $e->getFile(),
+                'error_line'   => $e->getLine(),
+                'trace'        => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to send email: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
 
     public function getChargeCodes(Request $request)
     {

@@ -119,10 +119,18 @@
 
                     {{-- Office Filter --}}
                     <div class="col-12 col-sm-6 col-md-auto order-3">
-                        <select id="officeFilter" class="form-control form-control-sm">
+                        @if (!empty($officeError))
+                            <div class="alert alert-danger py-1 px-2 mb-1" style="font-size:0.85rem;">
+                                <i class="fas fa-exclamation-triangle"></i> {{ $officeError }}
+                            </div>
+                        @endif
+                        <select id="officeFilter" class="form-control form-control-sm"
+                            {{ $offices->isEmpty() ? 'disabled' : '' }}>
                             <option value="">All Offices</option>
                             @foreach ($offices as $office)
-                                <option value="{{ $office }}">{{ $office }}</option>
+                                <option value="{{ $office }}" {{ $office === $defaultOffice ? 'selected' : '' }}>
+                                    {{ $office }}
+                                </option>
                             @endforeach
                         </select>
                     </div>
@@ -499,8 +507,12 @@
 @section('js')
     <script>
         $(document).ready(function() {
-            var currentCardFilter = 'all';
-            var statsUpdateTimer = null; // Debounce timer
+            var currentCardFilter = 'in_progress';
+            var statsUpdateTimer = null;
+
+            // Set date filter to All Time BEFORE DataTable initialises
+            // so the first AJAX request picks up the correct value
+            $('#dateFilter').val('all');
 
             // Initialize DataTable
             var table = $('#quotationTable').DataTable({
@@ -597,7 +609,7 @@
                         name: 'action',
                         orderable: false,
                         searchable: false,
-                        responsivePriority: 1, // keep always visible
+                        responsivePriority: 1,
                         className: 'text-center action-column',
                         render: function(data, type, row) {
                             if (type === 'display') {
@@ -606,7 +618,6 @@
                             return data;
                         }
                     }
-
                 ],
                 order: [
                     [0, 'desc']
@@ -620,17 +631,14 @@
                             var data = $.map(columns, function(col, i) {
                                 return col.hidden ?
                                     '<li data-dtr-index="' + col.columnIndex +
-                                    '" data-dt-row="' + col.rowIndex + '" data-dt-column="' +
-                                    col.columnIndex + '">' +
+                                    '" data-dt-row="' + col.rowIndex +
+                                    '" data-dt-column="' + col.columnIndex + '">' +
                                     '<span class="dtr-title">' + col.title + '</span> ' +
                                     '<span class="dtr-data">' + col.data + '</span>' +
-                                    '</li>' :
-                                    '';
+                                    '</li>' : '';
                             }).join('');
 
-                            return data ?
-                                $('<ul class="dtr-details"/>').append(data) :
-                                false;
+                            return data ? $('<ul class="dtr-details"/>').append(data) : false;
                         }
                     },
                     breakpoints: [{
@@ -666,17 +674,26 @@
                     $('.dataTables_filter').appendTo('#searchContainer');
                     adjustSearchPlaceholder();
 
-                    // ✅ FIX: Update stats after table initializes
-                    updateCardStats();
+                    // Highlight In Progress card as active on load
+                    $('.card-filter-trigger[data-filter="in_progress"]').addClass('active');
+
+                    // Stats are already server-rendered correctly — do not call
+                    // updateCardStats() or table.ajax.reload() here, as that
+                    // would race and wipe the cards with stale data.
                 }
             });
 
-            // DEBUG: Log when table loads
+            // ============================================
+            // DEBUG
+            // ============================================
             table.on('xhr', function() {
                 var json = table.ajax.json();
                 console.log('DataTable Response:', json);
             });
 
+            // ============================================
+            // SEARCH PLACEHOLDER
+            // ============================================
             function adjustSearchPlaceholder() {
                 var $searchInput = $('.dataTables_filter input');
                 if ($(window).width() < 768) {
@@ -690,7 +707,9 @@
                 adjustSearchPlaceholder();
             });
 
-            // Retrigger button
+            // ============================================
+            // RETRIGGER BUTTON
+            // ============================================
             $('#quotationTable').on('click', '.btn-retrigger', function(e) {
                 e.stopPropagation();
                 var $btn = $(this);
@@ -735,14 +754,15 @@
                 });
             });
 
-            // ✅ FIX: Debounced stats update to prevent rapid-fire requests
+            // ============================================
+            // STATS UPDATE (debounced)
+            // Only called when user interacts with filters
+            // ============================================
             function updateCardStats() {
-                // Clear existing timer
                 if (statsUpdateTimer) {
                     clearTimeout(statsUpdateTimer);
                 }
 
-                // Set new timer (300ms debounce)
                 statsUpdateTimer = setTimeout(function() {
                     $.ajax({
                         url: '{{ route('quotation.stats') }}',
@@ -779,7 +799,7 @@
                             $('.compact-card .inner h3').css('opacity', '1');
                         }
                     });
-                }, 300); // 300ms debounce
+                }, 300);
             }
 
             function animateValue(id, start, end, duration) {
@@ -813,7 +833,9 @@
                 }, stepTime);
             }
 
-            // Card click filtering
+            // ============================================
+            // CARD CLICK FILTERING
+            // ============================================
             var touchMoved = false;
 
             $('.card-filter-trigger').on('touchstart', function() {
@@ -825,53 +847,45 @@
             });
 
             $('.card-filter-trigger').on('click touchend', function(e) {
-                if (e.type === 'touchend' && touchMoved) {
-                    return;
-                }
-
-                if (e.type === 'touchend') {
-                    e.preventDefault();
-                }
+                if (e.type === 'touchend' && touchMoved) return;
+                if (e.type === 'touchend') e.preventDefault();
 
                 var filterType = $(this).data('filter');
-
-                // Debug log
-                console.log('Card clicked:', filterType);
-
-                // ✅ FIX: Don't do anything if no filter type (Total card)
-                if (!filterType) {
-                    return;
-                }
+                if (!filterType) return;
 
                 $('.card-filter-trigger').removeClass('active');
                 $(this).addClass('active');
                 currentCardFilter = filterType;
 
-                // Debug log
-                console.log('Current card filter set to:', currentCardFilter);
+                console.log('Card filter set to:', currentCardFilter);
 
                 updateCardStats();
                 table.ajax.reload();
             });
 
-            // Show/hide clear filters button
+            // ============================================
+            // CLEAR BUTTON VISIBILITY
+            // ============================================
             function updateClearButtonVisibility() {
                 var dateFilter = $('#dateFilter').val();
                 var officeFilter = $('#officeFilter').val();
+                var defaultOffice = '{{ $defaultOffice ?? '' }}';
 
                 if (dateFilter === 'custom') {
                     $('#clearFiltersContainer').hide();
                     return;
                 }
 
-                if (dateFilter !== '0' || officeFilter !== '') {
+                if (dateFilter !== 'all' || officeFilter !== defaultOffice) {
                     $('#clearFiltersContainer').show();
                 } else {
                     $('#clearFiltersContainer').hide();
                 }
             }
 
-            // Date filter change
+            // ============================================
+            // DATE FILTER
+            // ============================================
             $('#dateFilter').on('change', function() {
                 var selectedValue = $(this).val();
 
@@ -879,7 +893,6 @@
                     $('#customDateRange').show();
                     $('#customDateRangeTo').show();
                     updateClearButtonVisibility();
-                    // Don't update stats yet - wait for dates to be selected
                 } else {
                     $('#customDateRange').hide();
                     $('#customDateRangeTo').hide();
@@ -891,7 +904,9 @@
                 }
             });
 
-            // Custom date range change
+            // ============================================
+            // CUSTOM DATE RANGE
+            // ============================================
             $('#startDate, #endDate').on('change', function() {
                 if ($('#startDate').val() && $('#endDate').val()) {
                     var startDate = new Date($('#startDate').val());
@@ -909,38 +924,42 @@
                 }
             });
 
-            // Clear custom date range
             $('#clearCustomDates').on('click', function() {
                 $('#startDate').val('');
                 $('#endDate').val('');
                 $('#customDateRange').hide();
                 $('#customDateRangeTo').hide();
-                $('#dateFilter').val('0');
+                $('#dateFilter').val('all');
                 updateCardStats();
                 table.ajax.reload();
             });
 
-            // Office filter change
+            // ============================================
+            // OFFICE FILTER
+            // ============================================
             $('#officeFilter').on('change', function() {
                 updateCardStats();
                 table.ajax.reload();
                 updateClearButtonVisibility();
             });
 
-            // Clear all filters
+            // ============================================
+            // CLEAR ALL FILTERS
+            // ============================================
             $('#clearAllFilters').on('click', function() {
-                $('#dateFilter').val('0');
+                $('#dateFilter').val('all');
                 $('#startDate').val('');
                 $('#endDate').val('');
                 $('#customDateRange').hide();
                 $('#customDateRangeTo').hide();
-                $('#officeFilter').val('');
 
-                // ✅ FIX: Remove active class from all cards (no default selection)
+                // Reset to user's default office
+                $('#officeFilter').val('{{ $defaultOffice ?? '' }}');
+
+                // Reset card filter to In Progress
                 $('.card-filter-trigger').removeClass('active');
-
-                // ✅ FIX: Reset to show all records (no card filter)
-                currentCardFilter = 'all';
+                $('.card-filter-trigger[data-filter="in_progress"]').addClass('active');
+                currentCardFilter = 'in_progress';
 
                 updateCardStats();
                 table.ajax.reload();

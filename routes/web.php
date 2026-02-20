@@ -754,6 +754,9 @@ Route::middleware(['auth', 'can:approve-all-entity-request'])->group(function ()
     Route::get('/quotation/based-on-uom', [App\Http\Controllers\QuotationController::class, 'getBasedOnUOM'])
         ->name('quotation.based-on-uom');
 
+    Route::post('/quotation/email/send', [App\Http\Controllers\QuotationController::class, 'sendEmailQuote'])
+        ->name('quotation.email.send');
+
     // ============================================
     // NEW ROUTES FOR CURRENCY FEATURES
     // ============================================

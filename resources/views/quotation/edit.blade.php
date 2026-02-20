@@ -27,7 +27,7 @@
             <!-- LEFT COLUMN -->
             <div class="col-md-4">
 
-                <!-- Booking Details -->
+                <!-- Inquiry Details -->
                 <div class="card card-primary">
                     <div class="card-header">
                         <h3 class="card-title">Inquiry Details</h3>
@@ -69,7 +69,6 @@
                     </div>
                 </div>
 
-                <!-- Shipment Details -->
                 <!-- Shipment Details -->
                 <div class="card card-primary" id="shipmentDetailsCard">
                     <div class="card-header">
@@ -182,23 +181,14 @@
                     </div>
                 </div>
 
-                <!-- Email Quote Action Bar -->
+                <!-- Quotation Document (with Generate Quote button in title bar + T&C in body) -->
                 <div class="card card-primary">
-                    <div class="card-header d-flex justify-content-between align-items-center py-2">
-                        <h3 class="card-title mb-0">
-                            <i class="fas fa-envelope mr-2"></i>Quote Communication
-                        </h3>
-                        <button type="button" class="btn btn-email-quote btn-sm" id="emailQuoteBtn">
-                            <i class="fas fa-paper-plane mr-1"></i> Email Quote
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Quotation Document -->
-                <div class="card card-primary">
-                    <div class="card-header">
-                        <h3 class="card-title">Quotation Document</h3>
-                        <div class="card-tools">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h3 class="card-title mb-0">Quotation Document</h3>
+                        <div class="card-tools d-flex align-items-center">
+                            <button type="button" class="btn btn-email-quote btn-sm mr-2" id="generateQuoteBtn">
+                                <i class="fas fa-file-alt mr-1"></i> Generate Quote
+                            </button>
                             <button type="button" class="btn btn-tool" data-card-widget="collapse">
                                 <i class="fas fa-chevron-up"></i>
                             </button>
@@ -229,10 +219,57 @@
                                 <a href="#" class="text-primary">DocumentDownloadLink</a>
                             </div>
                         </div>
+
+                        <!-- Terms & Conditions -->
                         <div class="mt-3 pt-2" style="border-top: 1px solid #dee2e6;">
-                            <button type="button" class="btn btn-primary btn-sm btn-block" id="generateQuoteBtn">
-                                <i class="fas fa-file-alt mr-1"></i> Generate QA Quote
-                            </button>
+                            <div class="form-group row mb-0">
+                                <label class="col-sm-4 col-form-label">Terms & Conditions</label>
+                                <div class="col-sm-8">
+                                    <select class="form-control form-control-sm" id="termsTemplateSelect">
+                                        <option value="">-- Select Template --</option>
+                                    </select>
+                                    <div id="termsDescriptionWrapper" style="display:none; margin-top: 6px;">
+                                        <textarea id="termsDescriptionPreview"
+                                            class="form-control form-control-sm" rows="4" readonly
+                                            style="background-color: #e9ecef; font-size: 0.8rem; resize: none;"></textarea>
+                                        <button type="button" class="btn btn-primary btn-sm btn-block mt-2"
+                                            id="applyTermsBtn">
+                                            <i class="fas fa-save mr-1"></i> Apply Terms
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quote Communication -->
+                <div class="card card-primary">
+                    <div class="card-header d-flex justify-content-between align-items-center py-2">
+                        <h3 class="card-title mb-0">
+                            <i class="fas fa-envelope mr-2"></i>Quote Communication
+                        </h3>
+                        <button type="button" class="btn btn-email-quote btn-sm" id="emailQuoteBtn">
+                            <i class="fas fa-paper-plane mr-1"></i> Email Quote
+                        </button>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-sm table-hover mb-0">
+                                <thead class="thead-light">
+                                    <tr>
+                                        <th>Sent On</th>
+                                        <th>To Email ID</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="emailHistoryTable">
+                                    <tr>
+                                        <td colspan="2" class="text-center text-muted">
+                                            <i class="fas fa-spinner fa-spin"></i> Loading...
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
@@ -285,6 +322,7 @@
                 </div>
 
             </div>
+            <!-- END LEFT COLUMN -->
 
             <!-- RIGHT COLUMN -->
             <div class="col-md-8">
@@ -409,17 +447,6 @@
                     <div class="card-body">
                         <div class="table-responsive">
                             <table class="table table-bordered table-sm table-hover">
-                                {{-- <thead class="thead-light">
-                                    <tr>
-                                        <th>Charge Name</th>
-                                        <th>Rate</th>
-                                        <th>Based On</th>
-                                        <th>Amount</th>
-                                        <th>Base Amount</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead> --}}
-
                                 <thead class="thead-light">
                                     <tr>
                                         <th>Charge Name</th>
@@ -434,17 +461,9 @@
                                 </thead>
                                 <tbody id="revenueChargesTable">
                                     <tr>
-                                        <td colspan="6" class="text-center text-muted">Loading charges...</td>
+                                        <td colspan="8" class="text-center text-muted">Loading charges...</td>
                                     </tr>
                                 </tbody>
-                                {{-- <tfoot>
-                                    <tr class="font-weight-bold">
-                                        <td colspan="3" class="text-right">TOTAL REVENUE</td>
-                                        <td id="totalRevenueAmount">0.00</td>
-                                        <td id="totalRevenueBaseAmount">0.00</td>
-                                        <td></td>
-                                    </tr>
-                                </tfoot> --}}
                             </table>
                         </div>
                     </div>
@@ -480,17 +499,9 @@
                                 </thead>
                                 <tbody id="costChargesTable">
                                     <tr>
-                                        <td colspan="6" class="text-center text-muted">Loading charges...</td>
+                                        <td colspan="8" class="text-center text-muted">Loading charges...</td>
                                     </tr>
                                 </tbody>
-                                {{-- <tfoot>
-                                    <tr class="font-weight-bold">
-                                        <td colspan="3" class="text-right">TOTAL COST</td>
-                                        <td id="totalCostAmount">0.00</td>
-                                        <td id="totalCostBaseAmount">0.00</td>
-                                        <td></td>
-                                    </tr>
-                                </tfoot> --}}
                             </table>
                         </div>
                     </div>
@@ -507,38 +518,22 @@
                                 <div class="form-group row">
                                     <label class="col-sm-5 col-form-label">Expected Revenue</label>
                                     <div class="col-sm-7">
-                                        <input type="text" class="form-control form-control-sm" id="expectedRevenue"
-                                            value="0.00" readonly>
+                                        <input type="text" class="form-control form-control-sm"
+                                            id="expectedRevenue" value="0.00" readonly>
                                     </div>
                                 </div>
                                 <div class="form-group row">
                                     <label class="col-sm-5 col-form-label">Quoted Revenue</label>
                                     <div class="col-sm-7">
-                                        <input type="text" class="form-control form-control-sm" id="quotedRevenue"
-                                            value="0.00" readonly>
-                                    </div>
-                                </div>
-                                <div class="form-group row">
-                                    <label class="col-sm-5 col-form-label">Actual Revenue</label>
-                                    <div class="col-sm-7">
-                                        <input type="text" class="form-control form-control-sm" id="actualRevenue"
-                                            value="N/A" readonly>
+                                        <input type="text" class="form-control form-control-sm"
+                                            id="quotedRevenue" value="0.00" readonly>
                                     </div>
                                 </div>
                                 <div class="form-group row mb-0">
-                                    <label class="col-sm-5 col-form-label">Terms & Condition</label>
+                                    <label class="col-sm-5 col-form-label">Actual Revenue</label>
                                     <div class="col-sm-7">
-                                        <select class="form-control form-control-sm" id="termsTemplateSelect">
-                                            <option value="">-- Select Template --</option>
-                                        </select>
-                                        <div id="termsDescriptionWrapper" style="display:none; margin-top: 6px;">
-                                            <textarea id="termsDescriptionPreview" class="form-control form-control-sm" rows="4" readonly
-                                                style="background-color: #e9ecef; font-size: 0.8rem; resize: none;"></textarea>
-                                            <button type="button" class="btn btn-primary btn-sm btn-block mt-2"
-                                                id="applyTermsBtn">
-                                                <i class="fas fa-save mr-1"></i> Apply Terms
-                                            </button>
-                                        </div>
+                                        <input type="text" class="form-control form-control-sm"
+                                            id="actualRevenue" value="N/A" readonly>
                                     </div>
                                 </div>
                             </div>
@@ -546,15 +541,15 @@
                                 <div class="form-group row">
                                     <label class="col-sm-5 col-form-label">Quoted Margin</label>
                                     <div class="col-sm-7">
-                                        <input type="text" class="form-control form-control-sm" id="quotedMargin"
-                                            value="0.00" readonly>
+                                        <input type="text" class="form-control form-control-sm"
+                                            id="quotedMargin" value="0.00" readonly>
                                     </div>
                                 </div>
                                 <div class="form-group row mb-0">
                                     <label class="col-sm-5 col-form-label">Actual Margin</label>
                                     <div class="col-sm-7">
-                                        <input type="text" class="form-control form-control-sm" id="actualMargin"
-                                            value="N/A" readonly>
+                                        <input type="text" class="form-control form-control-sm"
+                                            id="actualMargin" value="N/A" readonly>
                                     </div>
                                 </div>
                             </div>
@@ -562,25 +557,10 @@
 
                         <div class="row mt-3">
                             <div class="col-md-12">
-                                {{-- <button type="button" class="btn btn-primary" id="generateQuoteBtn">
-                                    <i class="fas fa-file-alt"></i> Generate Quote
-                                </button> --}}
                                 <button type="button" class="btn btn-primary" id="openChargesModal">
                                     <i class="fas fa-plus"></i> Add Charges
                                 </button>
                                 <a href="{{ route('quotation.index') }}" class="btn btn-link">Close</a>
-
-                                {{-- <div class="float-right">
-                                    <button type="button" class="btn btn-warning" id="cancelQuoteBtn">
-                                        <i class="fas fa-ban"></i> Cancel
-                                    </button>
-                                    <button type="button" class="btn btn-danger" id="lostQuoteBtn">
-                                        <i class="fas fa-times"></i> LOST
-                                    </button>
-                                    <button type="button" class="btn btn-success" id="wonQuoteBtn">
-                                        <i class="fas fa-check"></i> WON
-                                    </button>
-                                </div> --}}
 
                                 <div class="float-right">
                                     <div class="btn-group" id="quoteActionDropdown">
@@ -607,11 +587,16 @@
                 </div>
 
             </div>
+            <!-- END RIGHT COLUMN -->
+
         </div>
+        <!-- END ROW -->
 
-        <!-- MODALS - EXACT COPY FROM DOCUMENT 2 WITH YOUR NAMING -->
+        <!-- ============================================
+             MODALS
+             ============================================ -->
 
-        {{-- REVENUE MODAL - Using Document 2 structure with your field names --}}
+        {{-- REVENUE MODAL --}}
         <div class="modal fade" id="addRevenueModal" tabindex="-1" role="dialog"
             aria-labelledby="addRevenueModalLabel" aria-hidden="true">
             <div class="modal-dialog modal-lg" role="document">
@@ -626,7 +611,6 @@
                         <form id="addRevenueChargesForm">
                             <input type="hidden" id="FITExpressChargeID" name="revenue_charge_id" />
 
-                            <!-- Top Row: Revenue/Cost + Base Currency -->
                             <div class="d-flex justify-content-between align-items-center mb-3">
                                 <div>
                                     <div class="form-check form-check-inline">
@@ -642,8 +626,7 @@
                                     <div class="form-check form-check-inline">
                                         <input class="form-check-input" type="radio" name="revenueChargeType"
                                             id="revenueTypeCostMarkup" value="costmarkup">
-                                        <label class="form-check-label" for="revenueTypeCostMarkup">Cost with
-                                            markup</label>
+                                        <label class="form-check-label" for="revenueTypeCostMarkup">Cost with markup</label>
                                     </div>
                                 </div>
                                 <div class="text-end">
@@ -652,40 +635,33 @@
                             </div>
 
                             <div class="row">
-                                <!-- Left Column -->
                                 <div class="col-md-6">
                                     <div class="mb-3">
-                                        <label for="revenue_charge_code" class="form-label"><span
-                                                class="text-danger">*</span>
-                                            Charge Code</label>
+                                        <label for="revenue_charge_code" class="form-label">
+                                            <span class="text-danger">*</span> Charge Code</label>
                                         <input type="text" class="form-control" id="revenue_charge_code"
                                             name="revenue_charge_code" required>
                                     </div>
                                     <div class="mb-3">
-                                        <label for="revenue_bill_to_party" class="form-label">
-                                            Bill to Party</label>
+                                        <label for="revenue_bill_to_party" class="form-label">Bill to Party</label>
                                         <input type="text" class="form-control" id="revenue_bill_to_party"
                                             name="revenue_bill_to_party">
-                                        <input type="hidden" class="form-control" id="revenue_bill_to_party_code"
+                                        <input type="hidden" id="revenue_bill_to_party_code"
                                             name="revenue_bill_to_party_code" />
                                     </div>
                                     <div class="mb-3">
-                                        <label for="revenue_based_on" class="form-label"><span
-                                                class="text-danger">*</span> Based
-                                            On</label>
+                                        <label for="revenue_based_on" class="form-label">
+                                            <span class="text-danger">*</span> Based On</label>
                                         <select class="form-select form-control" id="revenue_based_on"
                                             name="revenue_based_on" required>
                                             <option value="">Select</option>
                                         </select>
                                     </div>
-
-                                    <!-- Quantity only -->
                                     <div class="mb-3">
                                         <label for="revenue_quantity" class="form-label">Quantity</label>
                                         <input type="number" class="form-control" id="revenue_quantity"
                                             name="revenue_quantity" step="0.01">
                                     </div>
-
                                     <div class="row mb-3 rate-row">
                                         <div class="col-6">
                                             <label for="revenue_rate" class="form-label">Rate</label>
@@ -704,41 +680,35 @@
                                                 name="revenue_amount" step="0.01" value="0.00" readonly>
                                         </div>
                                     </div>
-
                                     <div class="row mb-3">
                                         <div class="col-6">
-                                            <label for="revenue_exchange_rate" class="form-label"><span
-                                                    class="text-danger">*</span> Exchange Rate</label>
+                                            <label for="revenue_exchange_rate" class="form-label">
+                                                <span class="text-danger">*</span> Exchange Rate</label>
                                             <input type="number" class="form-control" id="revenue_exchange_rate"
                                                 name="revenue_exchange_rate" readonly>
                                         </div>
                                         <div class="col-6">
-                                            <label for="revenue_base_amount" class="form-label text-nowrap">Amount in
-                                                Base Currency <span class="text-muted">(KES)</span></label>
+                                            <label for="revenue_base_amount" class="form-label text-nowrap">
+                                                Amount in Base Currency <span class="text-muted">(KES)</span></label>
                                             <input type="number" class="form-control" id="revenue_base_amount"
                                                 name="revenue_base_amount" step="0.01" value="0.00" readonly>
                                         </div>
                                     </div>
                                 </div>
-
-                                <!-- Right Column -->
                                 <div class="col-md-6">
-                                    <!-- Remark moved here -->
                                     <div class="mb-3">
                                         <label for="revenue_description" class="form-label">Description</label>
                                         <input type="text" class="form-control" id="revenue_description"
                                             name="revenue_description" readonly>
                                     </div>
-
                                     <div class="mb-3">
                                         <label for="revenue_tax_applicable" class="form-label">Tax Applicable</label>
                                         <input type="number" class="form-control" id="revenue_tax_applicable"
                                             name="revenue_tax_applicable" step="0.01" readonly>
                                     </div>
                                     <div class="mb-3">
-                                        <label for="revenue_based_on_uom" class="form-label"><span
-                                                class="text-danger">*</span> Based
-                                            On UOM</label>
+                                        <label for="revenue_based_on_uom" class="form-label">
+                                            <span class="text-danger">*</span> Based On UOM</label>
                                         <select class="form-select form-control" id="revenue_based_on_uom"
                                             name="revenue_based_on_uom" required>
                                             <option value="">Select</option>
@@ -749,30 +719,13 @@
                                         <input type="text" class="form-control" id="revenue_remark"
                                             name="revenue_remark">
                                     </div>
-
-                                    <!-- Checkboxes -->
                                     <div class="mb-3">
-                                        {{-- <div class="form-check mb-2" id="revenueIsReimbursedContainer"
-                                            style="display:none;">
-                                            <input class="form-check-input" type="checkbox" id="revenueIsReimbursed"
-                                                name="revenue_is_reimbursed">
-                                            <label class="form-check-label fw-semibold" for="revenueIsReimbursed">
-                                                Is Reimbursed <small class="text-muted">(Adds to Revenue)</small>
-                                            </label>
-                                        </div> --}}
-                                        {{-- <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" id="revenueIsAccrued"
-                                                name="revenue_is_accrued">
-                                            <label class="form-check-label fw-semibold" for="revenueIsAccrued">
-                                                Is Accrued <small class="text-muted">(Adds to Cost)</small>
-                                            </label>
-                                        </div> --}}
-
                                         <div class="mb-3" id="revenueSecondaryBillToPartyContainer"
                                             style="display:none;">
-                                            <label for="revenueSecondaryBillToParty" class="form-label"><span
-                                                    class="text-danger">*</span> Secondary Bill To Party</label>
-                                            <input type="text" class="form-control" id="revenueSecondaryBillToParty"
+                                            <label for="revenueSecondaryBillToParty" class="form-label">
+                                                <span class="text-danger">*</span> Secondary Bill To Party</label>
+                                            <input type="text" class="form-control"
+                                                id="revenueSecondaryBillToParty"
                                                 placeholder="Select Secondary Party">
                                             <input type="hidden" id="revenueSecondaryBillToPartyCode">
                                         </div>
@@ -783,17 +736,16 @@
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-success" id="saveRevenueCharge">Save</button>
-                        <button type="button" class="btn btn-primary" id="saveAddMoreRevenueCharge">Save & Add
-                            More</button>
+                        <button type="button" class="btn btn-primary" id="saveAddMoreRevenueCharge">Save & Add More</button>
                         <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
                     </div>
                 </div>
             </div>
         </div>
 
-        {{-- COST MODAL - Using Document 2 structure with your field names --}}
-        <div class="modal fade" id="addCostModal" tabindex="-1" role="dialog" aria-labelledby="addCostModalLabel"
-            aria-hidden="true">
+        {{-- COST MODAL --}}
+        <div class="modal fade" id="addCostModal" tabindex="-1" role="dialog"
+            aria-labelledby="addCostModalLabel" aria-hidden="true">
             <div class="modal-dialog modal-lg" role="document">
                 <div class="modal-content">
                     <div class="modal-header">
@@ -806,7 +758,6 @@
                         <form id="addCostChargesForm">
                             <input type="hidden" id="FITExpressChargeIDCost" name="cost_charge_id" />
 
-                            <!-- Top Row: Revenue/Cost + Base Currency -->
                             <div class="d-flex justify-content-between align-items-center mb-3">
                                 <div>
                                     <div class="form-check form-check-inline">
@@ -831,41 +782,33 @@
                             </div>
 
                             <div class="row">
-                                <!-- Left Column -->
                                 <div class="col-md-6">
                                     <div class="mb-3">
-                                        <label for="cost_charge_code" class="form-label"><span
-                                                class="text-danger">*</span>
-                                            Charge Code</label>
+                                        <label for="cost_charge_code" class="form-label">
+                                            <span class="text-danger">*</span> Charge Code</label>
                                         <input type="text" class="form-control" id="cost_charge_code"
                                             name="cost_charge_code" required>
                                     </div>
                                     <div class="mb-3">
-                                        <label for="cost_bill_to_party" class="form-label">
-                                            Bill to Party</label>
+                                        <label for="cost_bill_to_party" class="form-label">Bill to Party</label>
                                         <input type="text" class="form-control" id="cost_bill_to_party"
                                             name="cost_bill_to_party">
-                                        <input type="hidden" class="form-control" id="cost_bill_to_party_code"
+                                        <input type="hidden" id="cost_bill_to_party_code"
                                             name="cost_bill_to_party_code" />
                                     </div>
                                     <div class="mb-3">
-                                        <label for="cost_based_on" class="form-label"><span class="text-danger">*</span>
-                                            Based
-                                            On</label>
-                                        <select class="form-select form-control" id="cost_based_on" name="cost_based_on"
-                                            required>
+                                        <label for="cost_based_on" class="form-label">
+                                            <span class="text-danger">*</span> Based On</label>
+                                        <select class="form-select form-control" id="cost_based_on"
+                                            name="cost_based_on" required>
                                             <option value="">Select</option>
                                         </select>
                                     </div>
-
-                                    <!-- Quantity only -->
                                     <div class="mb-3">
                                         <label for="cost_quantity" class="form-label">Quantity</label>
                                         <input type="number" class="form-control" id="cost_quantity"
                                             name="cost_quantity" step="0.01">
                                     </div>
-
-                                    <!-- Rate Row with separator -->
                                     <div class="row mb-3 rate-row">
                                         <div class="col-6">
                                             <label for="cost_rate" class="form-label">Rate</label>
@@ -884,15 +827,13 @@
                                                 name="cost_amount" step="0.01" value="0.00" readonly>
                                         </div>
                                     </div>
-
-                                    <!-- Increase By Row with separator (for Cost with Markup) -->
                                     <div class="row mb-3 cost-markup-row" style="display: none;">
                                         <div class="col-6">
                                             <label for="cost_increase_by_value" class="form-label">Increase By</label>
                                             <div class="input-group no-divider">
-                                                <input type="number" class="form-control" id="cost_increase_by_value"
-                                                    name="cost_increase_by_value" step="0.01" value="0.00"
-                                                    placeholder="0">
+                                                <input type="number" class="form-control"
+                                                    id="cost_increase_by_value" name="cost_increase_by_value"
+                                                    step="0.01" value="0.00" placeholder="0">
                                                 <select class="form-select form-control" id="cost_increase_by_type"
                                                     name="cost_increase_by_type" style="max-width: 120px;">
                                                     <option value="">Select</option>
@@ -901,50 +842,41 @@
                                                 </select>
                                             </div>
                                         </div>
-
                                         <div class="col-6">
                                             <label for="cost_markup_amount" class="form-label">Amount</label>
                                             <input type="number" class="form-control" id="cost_markup_amount"
                                                 name="cost_markup_amount" step="0.01" value="0.00" readonly>
                                         </div>
                                     </div>
-
-
-                                    <!-- Exchange Rate Row (unchanged) -->
                                     <div class="row mb-3">
                                         <div class="col-6">
-                                            <label for="cost_exchange_rate" class="form-label"><span
-                                                    class="text-danger">*</span> Exchange Rate</label>
+                                            <label for="cost_exchange_rate" class="form-label">
+                                                <span class="text-danger">*</span> Exchange Rate</label>
                                             <input type="number" class="form-control" id="cost_exchange_rate"
                                                 name="cost_exchange_rate" readonly>
                                         </div>
                                         <div class="col-6">
-                                            <label for="cost_base_amount" class="form-label text-nowrap">Amount in
-                                                Base Currency <span class="text-muted">(KES)</span></label>
+                                            <label for="cost_base_amount" class="form-label text-nowrap">
+                                                Amount in Base Currency <span class="text-muted">(KES)</span></label>
                                             <input type="number" class="form-control" id="cost_base_amount"
                                                 name="cost_base_amount" step="0.01" value="0.00" readonly>
                                         </div>
                                     </div>
                                 </div>
-
-                                <!-- Right Column -->
                                 <div class="col-md-6">
-                                    <!-- Remark moved here -->
                                     <div class="mb-3">
                                         <label for="cost_description" class="form-label">Description</label>
                                         <input type="text" class="form-control" id="cost_description"
                                             name="cost_description" readonly>
                                     </div>
-
                                     <div class="mb-3">
                                         <label for="cost_tax_applicable" class="form-label">Tax Applicable</label>
                                         <input type="number" class="form-control" id="cost_tax_applicable"
                                             name="cost_tax_applicable" step="0.01" readonly>
                                     </div>
                                     <div class="mb-3">
-                                        <label for="cost_based_on_uom" class="form-label"><span
-                                                class="text-danger">*</span> Based
-                                            On UOM</label>
+                                        <label for="cost_based_on_uom" class="form-label">
+                                            <span class="text-danger">*</span> Based On UOM</label>
                                         <select class="form-select form-control" id="cost_based_on_uom"
                                             name="cost_based_on_uom" required>
                                             <option value="">Select</option>
@@ -952,10 +884,9 @@
                                     </div>
                                     <div class="mb-3">
                                         <label for="cost_remark" class="form-label">Remark</label>
-                                        <input type="text" class="form-control" id="cost_remark" name="cost_remark">
+                                        <input type="text" class="form-control" id="cost_remark"
+                                            name="cost_remark">
                                     </div>
-
-                                    <!-- Checkboxes -->
                                     <div class="mb-3">
                                         <div class="form-check mb-2">
                                             <input class="form-check-input" type="checkbox" id="costIsReimbursed"
@@ -971,11 +902,12 @@
                                                 Is Accrued <small class="text-muted">(Adds to Cost)</small>
                                             </label>
                                         </div>
-
-                                        <div class="mb-3" id="costSecondaryBillToPartyContainer" style="display:none;">
-                                            <label for="costSecondaryBillToParty" class="form-label"><span
-                                                    class="text-danger">*</span> Secondary Bill To Party</label>
-                                            <input type="text" class="form-control" id="costSecondaryBillToParty"
+                                        <div class="mb-3 mt-2" id="costSecondaryBillToPartyContainer"
+                                            style="display:none;">
+                                            <label for="costSecondaryBillToParty" class="form-label">
+                                                <span class="text-danger">*</span> Secondary Bill To Party</label>
+                                            <input type="text" class="form-control"
+                                                id="costSecondaryBillToParty"
                                                 placeholder="Select Secondary Party">
                                             <input type="hidden" id="costSecondaryBillToPartyCode">
                                         </div>
@@ -986,8 +918,7 @@
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-success" id="saveCostCharge">Save</button>
-                        <button type="button" class="btn btn-primary" id="saveAddMoreCostCharge">Save & Add
-                            More</button>
+                        <button type="button" class="btn btn-primary" id="saveAddMoreCostCharge">Save & Add More</button>
                         <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
                     </div>
                 </div>
@@ -1015,6 +946,72 @@
             </div>
         </div>
 
+        <!-- Email Quote Modal -->
+        <div class="modal fade" id="emailQuoteModal" tabindex="-1" role="dialog"
+            aria-labelledby="emailQuoteModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-lg" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h2 class="modal-title" id="emailQuoteModalLabel">
+                            <i class="fas fa-paper-plane mr-2"></i>Email Quote
+                        </h2>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="emailQuoteForm">
+                            <div class="mb-3">
+                                <label for="emailTemplateSelect" class="form-label">
+                                    <span class="text-danger">*</span> Template
+                                </label>
+                                <select class="form-control" id="emailTemplateSelect"
+                                    name="email_template_id" required>
+                                    <option value="">-- Select Template --</option>
+                                    {{-- TODO: Populate via endpoint when template source is confirmed --}}
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="emailTo" class="form-label">
+                                    <span class="text-danger">*</span> To Email
+                                </label>
+                                <input type="email" class="form-control" id="emailTo" name="email_to"
+                                    value="{{ $quotation->pri_partner_email ?? '' }}" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="emailFrom" class="form-label">
+                                    <span class="text-danger">*</span> From Email
+                                </label>
+                                <input type="email" class="form-control" id="emailFrom" name="email_from"
+                                    value="{{ $quotation->user_email ?? '' }}" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="emailSubject" class="form-label">
+                                    <span class="text-danger">*</span> Subject
+                                </label>
+                                <input type="text" class="form-control" id="emailSubject"
+                                    name="email_subject" placeholder="Enter subject" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="emailBody" class="form-label">
+                                    <span class="text-danger">*</span> Body
+                                </label>
+                                <textarea class="form-control" id="emailBody" name="email_body" rows="6"
+                                    placeholder="Email body will auto-populate when a template is selected"
+                                    required></textarea>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-success" id="sendEmailQuoteBtn">
+                            <i class="fas fa-paper-plane mr-1"></i> Send
+                        </button>
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </form>
 @stop
 
@@ -1022,8 +1019,8 @@
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.min.css">
     <style>
         /* =============================================
-                                                                                                                                                                                                                                                                                                                            MODAL STYLING — matched to FitExpress UI
-                                                                                                                                                                                                                                                                                                                            ============================================= */
+                                                                                                                                                                                                                                                                                                                                                MODAL STYLING — matched to FitExpress UI
+                                                                                                                                                                                                                                                                                                                                                ============================================= */
 
         .modal-header {
             background-color: #fff !important;
@@ -1449,6 +1446,13 @@
 
         .no-divider select.form-control {
             border-left: 0;
+        }
+
+        #revenueTotalHeaderAmount,
+        #costTotalHeaderAmount {
+            font-size: 1.2rem;
+            font-weight: 700;
+            letter-spacing: 0.02em;
         }
     </style>
 @stop
@@ -2726,9 +2730,180 @@
                 showNotification('Generate Quote functionality coming soon', 'info');
             });
 
+            // ============================================
+            // EMAIL QUOTE — MODAL OPEN & POPULATE
+            // ============================================
             $('#emailQuoteBtn').on('click', function() {
-                showNotification('Email Quote functionality coming soon', 'info');
+                // Reset form state
+                $('#emailQuoteForm')[0].reset();
+                $('#emailBody').val('');
+                $('#emailTemplateSelect').empty().append('<option value="">-- Select Template --</option>');
+
+                // Re-populate To/From since reset clears them
+                $('#emailTo').val('{{ $quotation->pri_partner_email ?? '' }}');
+                $('#emailFrom').val('{{ $quotation->user_email ?? '' }}');
+
+                // TODO: Load email templates when endpoint is confirmed
+                // $.ajax({ url: '/quotation/email-templates', ... });
+
+                $('#emailQuoteModal').modal('show');
             });
+
+            // ============================================
+            // EMAIL QUOTE — BODY AUTO-POPULATE ON TEMPLATE CHANGE
+            // ============================================
+            $(document).on('change', '#emailTemplateSelect', function() {
+                const templateId = $(this).val();
+                if (!templateId) {
+                    $('#emailBody').val('');
+                    return;
+                }
+
+                // TODO: Fetch template body when endpoint is confirmed
+                // $.ajax({
+                //     url: '/quotation/email-template-body',
+                //     data: { template_id: templateId },
+                //     success: function (response) {
+                //         $('#emailBody').val(response.body);
+                //         $('#emailSubject').val(response.subject || $('#emailSubject').val());
+                //     }
+                // });
+            });
+
+            // ============================================
+            // EMAIL QUOTE — SEND BUTTON
+            // ============================================
+            $('#sendEmailQuoteBtn').on('click', function() {
+                const templateId = $('#emailTemplateSelect').val();
+                const toEmail = $('#emailTo').val().trim();
+                const fromEmail = $('#emailFrom').val().trim();
+                const subject = $('#emailSubject').val().trim();
+                const body = $('#emailBody').val().trim();
+
+                // Validation
+                if (!templateId) {
+                    showNotification('Please select a template', 'error');
+                    return;
+                }
+                if (!toEmail) {
+                    showNotification('To Email is required', 'error');
+                    return;
+                }
+                if (!fromEmail) {
+                    showNotification('From Email is required', 'error');
+                    return;
+                }
+                if (!subject) {
+                    showNotification('Subject is required', 'error');
+                    return;
+                }
+                if (!body) {
+                    showNotification('Email body is required', 'error');
+                    return;
+                }
+
+                // TODO: Replace 'quotation.email.send' with confirmed route name
+                // and confirm Std. Email table name before backend is wired
+                $.ajax({
+                    url: '{{ route('quotation.email.send') }}',
+                    type: 'POST',
+                    data: {
+                        _token: '{{ csrf_token() }}',
+                        booking_no: bookingNo,
+                        quote_id: quotationId,
+                        template_id: templateId,
+                        to_email: toEmail,
+                        from_email: fromEmail,
+                        subject: subject,
+                        body: body
+                    },
+                    beforeSend: function() {
+                        $('#sendEmailQuoteBtn').prop('disabled', true)
+                            .html('<i class="fas fa-spinner fa-spin mr-1"></i> Sending...');
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            showNotification('Email sent successfully', 'success');
+                            $('#emailQuoteModal').modal('hide');
+                            loadEmailHistory(); // Refresh communication table
+                        } else {
+                            showNotification(response.message || 'Failed to send email',
+                                'error');
+                        }
+                    },
+                    error: function(xhr) {
+                        showNotification(xhr.responseJSON?.message || 'Failed to send email',
+                            'error');
+                    },
+                    complete: function() {
+                        $('#sendEmailQuoteBtn').prop('disabled', false)
+                            .html('<i class="fas fa-paper-plane mr-1"></i> Send');
+                    }
+                });
+            });
+
+            // ============================================
+            // EMAIL HISTORY — LOAD INTO COMMUNICATION TABLE
+            // ============================================
+            function loadEmailHistory() {
+                // TODO: Replace with confirmed endpoint when email table name is provided
+                // $.ajax({
+                //     url: '/quotation/email-history',
+                //     type: 'GET',
+                //     data: { booking_no: bookingNo },
+                //     success: function (response) {
+                //         renderEmailHistory(response.emails || []);
+                //     },
+                //     error: function () {
+                //         $('#emailHistoryTable').html(
+                //             '<tr><td colspan="2" class="text-center text-danger">Failed to load</td></tr>'
+                //         );
+                //     }
+                // });
+
+                // Placeholder until endpoint is confirmed
+                $('#emailHistoryTable').html(
+                    '<tr><td colspan="2" class="text-center text-muted">No emails sent yet</td></tr>'
+                );
+            }
+
+            function renderEmailHistory(emails) {
+                const tbody = $('#emailHistoryTable');
+                tbody.empty();
+
+                if (!emails.length) {
+                    tbody.html('<tr><td colspan="2" class="text-center text-muted">No emails sent yet</td></tr>');
+                    return;
+                }
+
+                emails.forEach(function(email) {
+                    tbody.append(`
+            <tr>
+                <td>${email.sent_on ?? 'N/A'}</td>
+                <td>${email.to_email ?? 'N/A'}</td>
+            </tr>
+        `);
+                });
+            }
+
+            // ============================================
+            // EMAIL QUOTE MODAL — CLOSE HANDLERS
+            // ============================================
+            $('#emailQuoteModal .close, #emailQuoteModal button[data-dismiss="modal"]').on('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                $('#emailQuoteModal').modal('hide');
+            });
+
+            $('#emailQuoteModal').on('hidden.bs.modal', function() {
+                $('#emailQuoteForm')[0].reset();
+                $('#emailBody').val('');
+            });
+
+            // ============================================
+            // LOAD EMAIL HISTORY ON PAGE LOAD
+            // ============================================
+            loadEmailHistory();
 
             // ============================================
             // HELPER FUNCTIONS
