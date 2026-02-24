@@ -473,11 +473,13 @@
                 <!-- Revenue Section -->
                 <div class="card card-success">
                     <div class="card-header d-flex justify-content-between align-items-center">
-                        <h3 class="card-title mb-0">Revenue</h3>
-                        <div class="d-flex align-items-center ml-auto">
-                            <span class="text-white mr-3 small" id="revenueTotalHeader">
+                        <div class="d-flex align-items-center">
+                            <h3 class="card-title mb-0 mr-3">Revenue</h3>
+                            <span class="text-white small" id="revenueTotalHeader">
                                 Total: <strong id="revenueTotalHeaderAmount">0.00</strong>
                             </span>
+                        </div>
+                        <div class="d-flex align-items-center ml-auto">
                             <a href="#" class="text-white show-items-link" data-table="revenue">
                                 <i class="fas fa-columns mr-1"></i> Show more
                             </a>
@@ -632,8 +634,8 @@
         <!-- END ROW -->
 
         <!-- ============================================
-                                                 MODALS
-                                                 ============================================ -->
+                                                         MODALS
+                                                         ============================================ -->
 
         {{-- REVENUE MODAL --}}
         <div class="modal fade" id="addRevenueModal" tabindex="-1" role="dialog"
@@ -1056,8 +1058,8 @@
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.min.css">
     <style>
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                    MODAL STYLING — matched to FitExpress UI
-                                                                                                                                                                                                                                                                                                                                                                                    ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                            MODAL STYLING — matched to FitExpress UI
+                                                                                                                                                                                                                                                                                                                                                                                            ============================================= */
 
         .modal-header {
             background-color: #fff !important;
@@ -1490,6 +1492,13 @@
             font-size: 1.2rem;
             font-weight: 700;
             letter-spacing: 0.02em;
+        }
+
+        .modal-body textarea.form-control {
+            height: auto;
+            min-height: 120px;
+            /* adjust to taste */
+            resize: vertical;
         }
     </style>
 @stop
@@ -2635,7 +2644,7 @@
                                     </div>
                                     <div class="form-group">
                                         <label>* Remarks <span class="text-danger">(required)</span></label>
-                                        <textarea class="form-control" id="reasonRemark" rows="3"
+                                        <textarea class="form-control" id="reasonRemark" rows="5"
                                             placeholder="Enter a remark..." required></textarea>
                                     </div>
                                 </div>
@@ -3084,15 +3093,15 @@
                             if (response.code === 'NOT_CONFIGURED') {
                                 $select.append(
                                     `<option value="" disabled>⚠ T&C not configured for office: ${codeToUse}</option>`
-                                    );
+                                );
                             } else if (response.code === 'OFFICE_NOT_FOUND') {
                                 $select.append(
                                     `<option value="" disabled>⚠ Office not found: ${codeToUse}</option>`
-                                    );
+                                );
                             } else {
                                 $select.append(
                                     `<option value="" disabled>-- No templates available --</option>`
-                                    );
+                                );
                             }
                         }
                     },
@@ -3104,11 +3113,11 @@
                         if (response && response.code === 'NOT_CONFIGURED') {
                             $select.append(
                                 `<option value="" disabled>⚠ T&C not configured for office: ${codeToUse}</option>`
-                                );
+                            );
                         } else if (response && response.code === 'OFFICE_NOT_FOUND') {
                             $select.append(
                                 `<option value="" disabled>⚠ Office not found: ${codeToUse}</option>`
-                                );
+                            );
                         } else {
                             $select.append(
                                 `<option value="" disabled>-- Failed to load templates --</option>`);
