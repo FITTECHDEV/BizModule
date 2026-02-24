@@ -3040,9 +3040,6 @@ class QuotationController extends Controller
     /**
      * Get exchange rate for currency
      */
-    /**
-     * Get exchange rate for currency
-     */
     public function getExchangeRate(Request $request)
     {
         try {
@@ -3062,21 +3059,27 @@ class QuotationController extends Controller
             }
 
             // Query FITSCMUAT database (where exchange rate data lives)
-            $result = DB::connection('sqlsrv')
-                ->select("
-                SELECT TOP 1 ER.ExchangeRate as ExRate
-                FROM [FITSCMUAT].dbo.Cust_Office CO WITH (NOLOCK)
-                INNER JOIN [FITSCMUAT].dbo.Cust_ExchangeRate ER WITH (NOLOCK) 
-                    ON ER.OfficeId = CO.Id
-                    AND ER.FromCurrencyCode = ?
-                    AND CAST(GETDATE() AS DATE) BETWEEN ER.FromDate AND ER.ToDate
-                    AND ER.IsActive = 1 
-                    AND ER.IsDeleted = 0
-                WHERE CO.Code = ?
-                    AND CO.IsActive = 1 
-                    AND CO.IsDeleted = 0
-                ORDER BY ER.FromDate DESC
-            ", [$fromCurrency, trim($officeCode)]);
+            $result = DB::select("
+    SELECT TOP 1 ER.ConvertToId as ExRate
+    FROM [FITSCMUAT].dbo.Cust_ExchangeRate ER WITH (NOLOCK)
+    INNER JOIN [FITSCMUAT].dbo.Cust_ExchangeRateOfficeMap OM WITH (NOLOCK)
+        ON OM.ExchangeRateId = ER.Id
+        AND OM.IsActive = 1
+    INNER JOIN [FITSCMUAT].dbo.Cust_Office CO WITH (NOLOCK)
+        ON CO.Id = OM.OfficeId
+        AND CO.Code = ?
+        AND CO.IsActive = 1
+        AND CO.IsDeleted = 0
+    INNER JOIN [FITSCMUAT].dbo.Cust_Currency CUR WITH (NOLOCK)
+        ON CUR.Id = ER.ConvertToId
+        AND CUR.Code = ?
+    WHERE CAST(GETDATE() AS DATE) 
+          BETWEEN CAST(ER.EffectiveFromDate AS DATE) 
+          AND CAST(ER.EffectiveToDate AS DATE)
+        AND ER.IsActive = 1
+        AND ER.IsDeleted = 0
+    ORDER BY ER.EffectiveFromDate DESC
+", [$officeCode, $fromCurrency]);
 
             if (empty($result) || !isset($result[0]->ExRate)) {
                 Log::warning('Exchange rate not found', [

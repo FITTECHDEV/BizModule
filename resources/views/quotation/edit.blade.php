@@ -632,8 +632,8 @@
         <!-- END ROW -->
 
         <!-- ============================================
-                             MODALS
-                             ============================================ -->
+                                                 MODALS
+                                                 ============================================ -->
 
         {{-- REVENUE MODAL --}}
         <div class="modal fade" id="addRevenueModal" tabindex="-1" role="dialog"
@@ -869,23 +869,23 @@
                                     </div>
                                     <div class="row mb-3 cost-markup-row" style="display: none;">
                                         <div class="col-6">
-                                            <label for="cost_increase_by_value" class="form-label">Increase By</label>
+                                            <label for="cost_increase_by" class="form-label">Increase By</label>
                                             <div class="input-group no-divider">
-                                                <input type="number" class="form-control" id="cost_increase_by_value"
-                                                    name="cost_increase_by_value" step="0.01" value="0.00"
+                                                <input type="number" class="form-control" id="cost_increase_by"
+                                                    name="cost_increase_by" step="0.01" value="0.00"
                                                     placeholder="0">
-                                                <select class="form-select form-control" id="cost_increase_by_type"
-                                                    name="cost_increase_by_type" style="max-width: 120px;">
+                                                <select class="form-select form-control" id="cost_increase_type"
+                                                    name="cost_increase_type" style="max-width: 120px;">
                                                     <option value="">Select</option>
-                                                    <option value="percentage">Percentage</option>
-                                                    <option value="amount">Amount</option>
+                                                    <option value="Percentage">Percentage</option>
+                                                    <option value="Fixed">Fixed</option>
                                                 </select>
                                             </div>
                                         </div>
                                         <div class="col-6">
-                                            <label for="cost_markup_amount" class="form-label">Amount</label>
-                                            <input type="number" class="form-control" id="cost_markup_amount"
-                                                name="cost_markup_amount" step="0.01" value="0.00" readonly>
+                                            <label for="cost_revenue_amount" class="form-label">Amount</label>
+                                            <input type="number" class="form-control" id="cost_revenue_amount"
+                                                name="cost_revenue_amount" step="0.01" value="0.00" readonly>
                                         </div>
                                     </div>
                                     <div class="row mb-3">
@@ -1056,8 +1056,8 @@
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.min.css">
     <style>
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                MODAL STYLING — matched to FitExpress UI
-                                                                                                                                                                                                                                                                                                                                                                ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                    MODAL STYLING — matched to FitExpress UI
+                                                                                                                                                                                                                                                                                                                                                                                    ============================================= */
 
         .modal-header {
             background-color: #fff !important;
@@ -1510,13 +1510,13 @@
             // ============================================
             const bookingNo = '{{ $quotation->bookingno ?? '' }}';
             const quotationStatus = '{{ $quotation->status ?? 'Proposal' }}';
-            const teamId = '{{ $quotation->teamid ?? '' }}'; // NEW: For office lookup
+            const teamId = '{{ $quotation->teamid ?? '' }}';
             let revenueCharges = [];
             let costCharges = [];
             let currentEditingCharge = null;
             let currentEditingType = null;
-            let currencyMap = {}; // NEW: Maps currency code → currency ID
-            let officeCode = ''; // NEW: Store office code globally
+            let currencyMap = {};
+            let officeCode = '';
 
             console.log('Booking Number:', bookingNo);
             console.log('Quotation Status:', quotationStatus);
@@ -1540,8 +1540,7 @@
                         if (response.success && response.office_code) {
                             officeCode = response.office_code.trim();
                             console.log('Office Code loaded:', officeCode);
-
-                            loadTermsTemplates()
+                            loadTermsTemplates();
                         }
                     },
                     error: function(xhr) {
@@ -1648,7 +1647,7 @@
                             showNotification('Failed to load charges', 'error');
                         }
                     },
-                    error: function(xhr) {
+                    error: function() {
                         showNotification('Failed to load charges', 'error');
                         $('#revenueChargesTable, #costChargesTable').html(
                             '<tr><td colspan="6" class="text-center text-danger">Failed to load</td></tr>'
@@ -1660,6 +1659,11 @@
             // ============================================
             // MODAL TRIGGERS
             // ============================================
+
+            // NOTE: "Add Charges" opens the Revenue modal with Revenue pre-selected.
+            // The radio buttons inside allow switching to Cost or Cost with Markup.
+            // saveCharge() reads the radio value — not the modal name — to determine
+            // revenueOrCost, so switching the radio correctly saves as Cost.
             $('#openChargesModal').on('click', function(e) {
                 e.preventDefault();
                 currentEditingCharge = null;
@@ -1681,7 +1685,7 @@
                 }
                 setTimeout(function() {
                     initializeChargeCodeAutocomplete('revenue');
-                    initializeBillToPartyAutocomplete('revenue'); // ADD
+                    initializeBillToPartyAutocomplete('revenue');
                 }, 100);
             });
 
@@ -1695,36 +1699,29 @@
                 }
                 setTimeout(function() {
                     initializeChargeCodeAutocomplete('cost');
-                    initializeBillToPartyAutocomplete('cost'); // ADD
+                    initializeBillToPartyAutocomplete('cost');
                 }, 100);
             });
 
             // ============================================
-            // POPULATE CURRENCY DROPDOWN (NEW FEATURE)
+            // POPULATE CURRENCY DROPDOWN
             // ============================================
             function populateCurrencyDropdown(type) {
                 const prefix = type === 'revenue' ? 'revenue' : 'cost';
                 const $currencySelect = $(`select[name="${prefix}_currency"]`);
 
-                // If already populated, skip
-                if ($currencySelect.data('populated')) {
-                    return;
-                }
+                if ($currencySelect.data('populated')) return;
 
-                // Get office code if not loaded yet
                 if (!officeCode && bookingNo) {
-                    // Fetch office code inline if needed
                     $.ajax({
                         url: '/quotation/office-code',
                         type: 'GET',
                         data: {
                             team_id: teamId
                         },
-                        async: false, // Synchronous for this critical step
+                        async: false,
                         success: function(response) {
-                            if (response.success) {
-                                officeCode = response.office_code.trim();
-                            }
+                            if (response.success) officeCode = response.office_code.trim();
                         }
                     });
                 }
@@ -1741,14 +1738,12 @@
                         office_code: officeCode
                     },
                     beforeSend: function() {
-                        $currencySelect.prop('disabled', true);
-                        $currencySelect.empty().append('<option value="">Loading...</option>');
+                        $currencySelect.prop('disabled', true).empty().append(
+                            '<option value="">Loading...</option>');
                     },
                     success: function(response) {
                         if (response.success && response.currencies && response.currencies.length > 0) {
                             $currencySelect.empty().append('<option value="">Select</option>');
-
-                            // Build currency map and populate dropdown
                             currencyMap = {};
                             response.currencies.forEach(function(currency) {
                                 currencyMap[currency.CurrencyCode] = currency.CurrencyID;
@@ -1756,9 +1751,7 @@
                                     `<option value="${currency.CurrencyID}" data-code="${currency.CurrencyCode}">${currency.CurrencyCode}</option>`
                                 );
                             });
-
-                            $currencySelect.data('populated', true);
-                            $currencySelect.prop('disabled', false);
+                            $currencySelect.data('populated', true).prop('disabled', false);
                             console.log('Currencies loaded:', Object.keys(currencyMap));
                         } else {
                             $currencySelect.empty().append(
@@ -1773,11 +1766,11 @@
             }
 
             // ============================================
-            // AUTO-FETCH EXCHANGE RATE ON CURRENCY CHANGE (NEW FEATURE)
+            // AUTO-FETCH EXCHANGE RATE ON CURRENCY CHANGE
             // ============================================
             $(document).on('change', 'select[name="revenue_currency"], select[name="cost_currency"]', function() {
                 const $currencySelect = $(this);
-                const prefix = $currencySelect.attr('name').split('_')[0]; // 'revenue' or 'cost'
+                const prefix = $currencySelect.attr('name').split('_')[0];
                 const currencyCode = $currencySelect.find('option:selected').data('code');
                 const $exchangeRateInput = $(`input[name="${prefix}_exchange_rate"]`);
 
@@ -1786,14 +1779,12 @@
                     return;
                 }
 
-                // If currency is KES (base currency), set exchange rate to 1
                 if (currencyCode === 'KES') {
                     $exchangeRateInput.val('1.000000');
                     calculateAmount(prefix);
                     return;
                 }
 
-                // Fetch exchange rate
                 $.ajax({
                     url: '/quotation/exchange-rate',
                     type: 'GET',
@@ -1850,7 +1841,7 @@
                             $basedOnSelect.empty().append('<option value="">Failed to load</option>');
                         }
                     },
-                    error: function(xhr) {
+                    error: function() {
                         showNotification('Failed to load Based On list', 'error');
                         $basedOnSelect.empty().append('<option value="">Failed to load</option>').prop(
                             'disabled', false);
@@ -1859,11 +1850,11 @@
             }
 
             // ============================================
-            // LOAD UOM WHEN BASED ON CHANGES (ENHANCED)
+            // LOAD UOM WHEN BASED ON CHANGES
             // ============================================
             $(document).on('change', 'select[name="revenue_based_on"], select[name="cost_based_on"]', function() {
                 const $select = $(this);
-                const prefix = $select.attr('name').split('_')[0]; // 'revenue' or 'cost'
+                const prefix = $select.attr('name').split('_')[0];
                 const basedOnCode = $select.val();
                 loadBasedOnUOM(prefix, basedOnCode);
             });
@@ -1891,14 +1882,11 @@
                     success: function(response) {
                         if (response.success) {
                             $uomSelect.empty();
-
-                            // If no UOM required (e.g., AssessableValue, CommercialInvoiceVal)
                             if (!response.uom_list || response.uom_list.length === 0) {
                                 $uomSelect.append('<option value="">No UOM Required</option>');
-                                $uomSelect.prop('disabled', true); // Disable since not needed
+                                $uomSelect.prop('disabled', true);
                                 console.log('No UOM required for:', basedOnCode);
                             } else {
-                                // UOM options available
                                 $uomSelect.append('<option value="">Select UOM</option>');
                                 response.uom_list.forEach(function(uom) {
                                     $uomSelect.append(
@@ -1911,8 +1899,7 @@
                             $uomSelect.empty().append('<option value="">Failed to load</option>');
                         }
                     },
-                    error: function(xhr) {
-                        console.error('Failed to load UOM list:', xhr);
+                    error: function() {
                         showNotification('Failed to load UOM list', 'error');
                         $uomSelect.empty().append('<option value="">Error loading</option>');
                     }
@@ -1920,7 +1907,9 @@
             }
 
             // ============================================
-            // CHARGE CODE AUTOCOMPLETE (ENHANCED)
+            // CHARGE CODE AUTOCOMPLETE
+            // FIX: chargeType is now read dynamically from the selected radio button
+            // so searching in the Revenue modal with "Cost" selected fetches Cost codes.
             // ============================================
             function initializeChargeCodeAutocomplete(type) {
                 const prefix = type === 'revenue' ? 'revenue' : 'cost';
@@ -1937,12 +1926,17 @@
 
                 $chargeCodeInput.autocomplete({
                     source: function(request, response) {
-                        const chargeType = type === 'revenue' ? 'Revenue' : 'Cost';
-
                         if (request.term.length < 3) {
                             response([]);
                             return;
                         }
+
+                        // FIX: Read the currently checked radio to determine charge type dynamically
+                        const $modal = type === 'revenue' ? $('#addRevenueModal') : $('#addCostModal');
+                        const selectedRadio = $modal.find(`input[name="${prefix}ChargeType"]:checked`)
+                            .val();
+                        const chargeType = (selectedRadio === 'cost' || selectedRadio ===
+                            'costmarkup') ? 'Cost' : 'Revenue';
 
                         $.ajax({
                             url: '/quotation/charge-codes',
@@ -1990,19 +1984,14 @@
                             return false;
                         }
 
-                        // Populate fields
                         $chargeCodeInput.val(ui.item.value);
                         $(`input[name="${prefix}_description"]`).val(ui.item.name);
 
-                        // Set currency by mapping code to ID
                         if (ui.item.currency && currencyMap[ui.item.currency]) {
-                            const currencyId = currencyMap[ui.item.currency];
                             const $currencySelect = $(`select[name="${prefix}_currency"]`);
-                            $currencySelect.val(currencyId);
-                            $currencySelect.trigger('change'); // Trigger exchange rate fetch
+                            $currencySelect.val(currencyMap[ui.item.currency]).trigger('change');
                         }
 
-                        // Set VAT
                         if (ui.item.vat && ui.item.vat.includes('@')) {
                             const vatValue = parseFloat(ui.item.vat.split('@')[1]) || 0;
                             $(`select[name="${prefix}_tax_applicable"]`).val(vatValue);
@@ -2018,6 +2007,10 @@
                 };
             }
 
+            // ============================================
+            // BILL TO PARTY AUTOCOMPLETE
+            // FIX: chargeType also read dynamically here for the same reason.
+            // ============================================
             function initializeBillToPartyAutocomplete(type) {
                 const prefix = type === 'revenue' ? 'revenue' : 'cost';
                 const $input = $(`input[name="${prefix}_bill_to_party"]`);
@@ -2031,12 +2024,15 @@
 
                 $input.off('keydown.billToParty keyup.billToParty keypress.billToParty');
 
-                // ✅ Track % presses manually — independent of autocomplete entirely
                 let percentCount = 0;
                 let percentTimer = null;
 
                 function doSearch(term, response) {
-                    const chargeType = type === 'revenue' ? 'Revenue' : 'Cost';
+                    // FIX: Read charge type dynamically from radio button
+                    const $modal = type === 'revenue' ? $('#addRevenueModal') : $('#addCostModal');
+                    const selectedRadio = $modal.find(`input[name="${prefix}ChargeType"]:checked`).val();
+                    const chargeType = (selectedRadio === 'cost' || selectedRadio === 'costmarkup') ? 'Cost' :
+                        'Revenue';
 
                     function execSearch(resolvedOfficeCode) {
                         $.ajax({
@@ -2104,49 +2100,35 @@
                     }
                 }
 
-                // ✅ Use a manual trigger function — completely bypasses autocomplete's key handling
                 function triggerWildcardSearch() {
                     $input.val('');
                     percentCount = 0;
-
-                    // Temporarily drop minLength, search, restore
                     $input.autocomplete('option', 'minLength', 0);
-
-                    // Store pending response so source() can use it
                     $input.autocomplete('search', 'WILDCARD__SEARCH');
                 }
 
                 $input.autocomplete({
                     minLength: 3,
                     delay: 300,
-
                     source: function(request, response) {
                         const term = request.term;
-
-                        // ✅ Wildcard trigger — special sentinel value
                         if (term === 'WILDCARD__SEARCH') {
-                            // Restore minLength right away
                             setTimeout(function() {
                                 $input.autocomplete('option', 'minLength', 3);
                             }, 100);
                             doSearch('', response);
                             return;
                         }
-
-                        // Block % characters from triggering normal search
                         if (term.indexOf('%') !== -1) {
                             response([]);
                             return;
                         }
-
                         if (term.length >= 3) {
                             doSearch(term, response);
                             return;
                         }
-
                         response([]);
                     },
-
                     select: function(event, ui) {
                         if (ui.item.disabled) {
                             event.preventDefault();
@@ -2157,7 +2139,6 @@
                         percentCount = 0;
                         return false;
                     }
-
                 }).autocomplete('instance')._renderItem = function(ul, item) {
                     return $('<li>')
                         .addClass(item.disabled ? 'ui-state-disabled' : '')
@@ -2165,28 +2146,20 @@
                         .appendTo(ul);
                 };
 
-                // ✅ keypress fires AFTER keydown but BEFORE keyup
-                // e.which gives us the char code reliably for printable characters
                 $input.on('keypress.billToParty', function(e) {
-                    if (e.which === 37) { // ASCII 37 = '%'
+                    if (e.which === 37) {
                         percentCount++;
-
-                        // Clear reset timer
                         if (percentTimer) clearTimeout(percentTimer);
-
                         if (percentCount === 1) {
-                            // First % — let it appear naturally, start timer to reset if no second %
                             percentTimer = setTimeout(function() {
                                 percentCount = 0;
-                            }, 1500); // Reset after 1.5s if no second % follows
+                            }, 1500);
                         } else if (percentCount >= 2) {
-                            // Second % — fire wildcard search
-                            e.preventDefault(); // Don't add second % to field
+                            e.preventDefault();
                             clearTimeout(percentTimer);
                             triggerWildcardSearch();
                         }
                     } else {
-                        // Any other key resets the % counter
                         percentCount = 0;
                         if (percentTimer) clearTimeout(percentTimer);
                     }
@@ -2200,53 +2173,40 @@
                 });
             }
 
-
             // ============================================
             // CHARGE TYPE TOGGLES
             // ============================================
-            // REVENUE MODAL - Radio button changes
             $('#addRevenueModal').on('change', 'input[name="revenueChargeType"]', function() {
                 const selectedValue = $(this).val();
                 console.log('Revenue Charge Type Changed:', selectedValue);
-
-                // FIRST: Hide ALL markup rows in this modal
                 $('#addRevenueModal .increase-by-row').removeClass('active').css('display', 'none');
-
-                // THEN: Call toggle function
                 toggleRevenueFormFields(selectedValue);
             });
 
-            // COST MODAL - Radio button changes
             $('#addCostModal').on('change', 'input[name="costChargeType"]', function() {
                 const selectedValue = $(this).val();
                 console.log('Cost Charge Type Changed:', selectedValue);
-
-                // FIRST: Hide ALL markup rows in this modal
                 $('#addCostModal .cost-markup-row').removeClass('active').css('display', 'none');
-
-                // THEN: Call toggle function
                 toggleCostFormFields(selectedValue);
             });
 
             function toggleRevenueFormFields(type) {
                 const $modal = $('#addRevenueModal');
                 let $increaseByRow = $modal.find('.increase-by-row');
-                const $isReimbursedContainer = $('#revenueIsReimbursedContainer');
 
-                // Always start fresh - hide everything
                 $increaseByRow.removeClass('active').css('display', 'none');
-                $isReimbursedContainer.hide();
 
                 if (type === 'costmarkup') {
-                    // Create if doesn't exist
                     if ($increaseByRow.length === 0) {
                         const increaseByHtml = `
                 <div class="row mb-3 increase-by-row" style="display: none;">
                     <div class="col-6">
                         <label for="revenue_increase_by" class="form-label">Increase By</label>
                         <div class="input-group">
-                            <input type="number" class="form-control" id="revenue_increase_by" name="revenue_increase_by" step="0.01" value="0.00">
-                            <select class="form-select form-control" id="revenue_increase_type" name="revenue_increase_type" style="max-width: 120px;">
+                            <input type="number" class="form-control" id="revenue_increase_by"
+                                name="revenue_increase_by" step="0.01" value="0.00">
+                            <select class="form-select form-control" id="revenue_increase_type"
+                                name="revenue_increase_type" style="max-width: 120px;">
                                 <option value="Percentage">Percentage</option>
                                 <option value="Fixed">Fixed</option>
                             </select>
@@ -2254,21 +2214,18 @@
                     </div>
                     <div class="col-6">
                         <label for="revenue_markup_amount" class="form-label">Amount</label>
-                        <input type="number" class="form-control" id="revenue_markup_amount" name="revenue_markup_amount" step="0.01" value="0.00" readonly>
+                        <input type="number" class="form-control" id="revenue_markup_amount"
+                            name="revenue_markup_amount" step="0.01" value="0.00" readonly>
                     </div>
                 </div>
             `;
                         $modal.find('.rate-row').after(increaseByHtml);
                         $increaseByRow = $modal.find('.increase-by-row');
                     }
-
-                    // NOW show it
                     $increaseByRow.addClass('active').css('display', 'flex');
-                } else if (type === 'cost') {
-                    // Show "Is Reimbursed" only for Cost type
-                    $isReimbursedContainer.show();
                 }
-                // For 'revenue' type, everything stays hidden (already done above)
+                // NOTE: 'cost' and 'revenue' types need no extra UI changes in the Revenue modal.
+                // The revenue modal has no Is Reimbursed / Is Accrued checkboxes.
             }
 
             function toggleCostFormFields(type) {
@@ -2277,22 +2234,18 @@
                 const $isReimbursedContainer = $('#costIsReimbursed').closest('.form-check');
 
                 if (type === 'costmarkup') {
-                    // Show the markup row
                     $markupRow.addClass('active').css('display', 'flex');
                     $isReimbursedContainer.hide();
-                    console.log('Showing cost markup row - display set to flex');
+                    console.log('Showing cost markup row');
                 } else if (type === 'revenue') {
-                    // Hide markup row and "Is Reimbursed" for revenue
                     $markupRow.removeClass('active').css('display', 'none');
-                    // Reset markup row values
                     $markupRow.find('input[type="number"]').val('0.00');
                     $markupRow.find('select').prop('selectedIndex', 0);
                     $isReimbursedContainer.hide();
                     console.log('Hiding cost markup row - Revenue selected');
                 } else {
-                    // type === 'cost' - Hide markup row, show "Is Reimbursed"
+                    // type === 'cost'
                     $markupRow.removeClass('active').css('display', 'none');
-                    // Reset markup row values
                     $markupRow.find('input[type="number"]').val('0.00');
                     $markupRow.find('select').prop('selectedIndex', 0);
                     $isReimbursedContainer.show();
@@ -2301,45 +2254,40 @@
             }
 
             // ============================================
-            // AUTO-CALCULATE AMOUNTS (ENHANCED)
+            // AUTO-CALCULATE AMOUNTS
             // ============================================
             $('#addRevenueModal').on('input change',
                 'input[name="revenue_quantity"], input[name="revenue_rate"], input[name="revenue_exchange_rate"], input[name="revenue_increase_by"], select[name="revenue_increase_type"]',
                 function() {
                     calculateAmount('revenue');
-                });
+                }
+            );
 
             $('#addCostModal').on('input change',
                 'input[name="cost_quantity"], input[name="cost_rate"], input[name="cost_exchange_rate"], input[name="cost_increase_by"], select[name="cost_increase_type"]',
                 function() {
                     calculateAmount('cost');
-                });
+                }
+            );
 
             function calculateAmount(prefix) {
                 const $modal = $(`#add${prefix.charAt(0).toUpperCase() + prefix.slice(1)}Modal`);
                 const quantity = parseFloat($modal.find(`input[name="${prefix}_quantity"]`).val()) || 0;
                 const rate = parseFloat($modal.find(`input[name="${prefix}_rate"]`).val()) || 0;
                 const exchangeRate = parseFloat($modal.find(`input[name="${prefix}_exchange_rate"]`).val()) || 1;
-
                 const amount = quantity * rate;
                 const baseAmount = amount * exchangeRate;
 
                 $modal.find(`input[name="${prefix}_amount"]`).val(amount.toFixed(2));
                 $modal.find(`input[name="${prefix}_base_amount"]`).val(baseAmount.toFixed(2));
 
-                // Handle markup calculation if applicable
                 const chargeType = $modal.find(`input[name="${prefix}ChargeType"]:checked`).val();
                 if (chargeType === 'costmarkup') {
                     const increaseBy = parseFloat($modal.find(`input[name="${prefix}_increase_by"]`).val()) || 0;
                     const increaseType = $modal.find(`select[name="${prefix}_increase_type"]`).val();
-
-                    let markupAmount = 0;
-                    if (increaseType === 'Percentage') {
-                        markupAmount = amount + (amount * increaseBy / 100);
-                    } else {
-                        markupAmount = amount + increaseBy;
-                    }
-
+                    const markupAmount = increaseType === 'Percentage' ?
+                        amount + (amount * increaseBy / 100) :
+                        amount + increaseBy;
                     const markupFieldName = prefix === 'revenue' ? 'revenue_markup_amount' : 'cost_revenue_amount';
                     $modal.find(`input[name="${markupFieldName}"]`).val(markupAmount.toFixed(2));
                 }
@@ -2364,16 +2312,34 @@
                 saveCharge('cost', true);
             });
 
+            // ============================================
+            // FIX: revenue_or_cost is now determined by the RADIO BUTTON value,
+            // not the modal type (type param).
+            //
+            // Root cause of the original bug:
+            //   Old code: if (type === 'revenue') revenueOrCost = 'Revenue' — always.
+            //   This meant clicking "Cost" radio in the Revenue modal was silently ignored.
+            //
+            // The radio button is now the single source of truth for revenueOrCost.
+            // ============================================
             function saveCharge(type, addMore) {
                 const $modal = type === 'revenue' ? $('#addRevenueModal') : $('#addCostModal');
-                const chargeType = $modal.find('input[name="' + type + 'ChargeType"]:checked').val();
+                const prefix = type === 'revenue' ? 'revenue' : 'cost';
+                const chargeType = $modal.find(`input[name="${prefix}ChargeType"]:checked`).val();
 
-                // FIX: Modal type determines revenue/cost, not radio buttons
-                let revenueOrCost = type === 'revenue' ? 'Revenue' : 'Cost';
+                // FIX: Derive revenueOrCost from the radio button, not the modal context.
+                const revenueOrCost = (chargeType === 'revenue') ? 'Revenue' : 'Cost';
 
-                // Only "Cost with Markup" changes the type
-                if (chargeType === 'costmarkup') {
-                    revenueOrCost = 'Cost with Markup';
+                console.log('Saving charge — modal:', type, '| radio:', chargeType, '| revenueOrCost:',
+                    revenueOrCost);
+
+                // FIX: to_be_added logic was inverted in the original code.
+                // Revenue modal has no checkboxes, so it is always 0 for revenue.
+                // For cost, check both IsReimbursed and IsAccrued.
+                let toBeAdded = 0;
+                if (type === 'cost') {
+                    toBeAdded = ($modal.find('#costIsReimbursed').is(':checked') ||
+                        $modal.find('#costIsAccrued').is(':checked')) ? 1 : 0;
                 }
 
                 const chargeData = {
@@ -2381,34 +2347,29 @@
                     action: currentEditingCharge ? 'Edit' : 'Add',
                     booking_no: bookingNo,
                     quote_charge_id: currentEditingCharge || '',
-                    party_code: '',
+                    party_code: $modal.find(`input[name="${prefix}_bill_to_party_code"]`).val() || '',
                     revenue_or_cost: revenueOrCost,
-                    charge_code: $modal.find('input[name="' + type + '_charge_code"]').val(),
-                    quantity: parseFloat($modal.find('input[name="' + type + '_quantity"]').val()) || 0,
-                    rate: parseFloat($modal.find('input[name="' + type + '_rate"]').val()) || 0,
-                    amt_in_chg_curr: parseFloat($modal.find('input[name="' + type + '_amount"]').val()) || 0,
-                    amt_in_base_curr: parseFloat($modal.find('input[name="' + type + '_base_amount"]').val()) ||
-                        0,
-                    exchange_rate: parseFloat($modal.find('input[name="' + type + '_exchange_rate"]').val()) ||
-                        1,
-                    chg_curr: $modal.find('select[name="' + type + '_currency"] option:selected').data(
-                        'code') || 'KES',
-                    based_on_code: $modal.find('select[name="' + type + '_based_on"]').val() || '',
-                    based_on_uom: $modal.find('select[name="' + type + '_based_on_uom"]').val() || '',
-                    charge_remark: $modal.find('input[name="' + type + '_remark"]').val() || '',
-                    // FIX: Only add opposite entry if "Is Reimbursed" (for cost) or "Is Accrued" (for revenue) is checked
-                    to_be_added: type === 'cost' ?
-                        ($modal.find('#' + type + 'IsReimbursed').is(':checked') ? 1 : 0) : ($modal.find('#' +
-                            type + 'IsAccrued').is(':checked') ? 1 : 0),
+                    charge_code: $modal.find(`input[name="${prefix}_charge_code"]`).val(),
+                    quantity: parseFloat($modal.find(`input[name="${prefix}_quantity"]`).val()) || 0,
+                    rate: parseFloat($modal.find(`input[name="${prefix}_rate"]`).val()) || 0,
+                    amt_in_chg_curr: parseFloat($modal.find(`input[name="${prefix}_amount"]`).val()) || 0,
+                    amt_in_base_curr: parseFloat($modal.find(`input[name="${prefix}_base_amount"]`).val()) || 0,
+                    exchange_rate: parseFloat($modal.find(`input[name="${prefix}_exchange_rate"]`).val()) || 1,
+                    chg_curr: $modal.find(`select[name="${prefix}_currency"] option:selected`).data('code') ||
+                        'KES',
+                    based_on_code: $modal.find(`select[name="${prefix}_based_on"]`).val() || '',
+                    based_on_uom: $modal.find(`select[name="${prefix}_based_on_uom"]`).val() || '',
+                    charge_remark: $modal.find(`input[name="${prefix}_remark"]`).val() || '',
+                    to_be_added: toBeAdded,
                     increase_by: 0,
                     increase_type: 'Percentage',
                     source_type: 'manual'
                 };
 
                 if (chargeType === 'costmarkup') {
-                    chargeData.increase_by = parseFloat($modal.find('input[name="' + type + '_increase_by"]')
-                            .val()) || 0,
-                        chargeData.increase_type = $modal.find('select[name="' + type + '_increase_type"]').val() ||
+                    chargeData.increase_by = parseFloat($modal.find(`input[name="${prefix}_increase_by"]`).val()) ||
+                        0;
+                    chargeData.increase_type = $modal.find(`select[name="${prefix}_increase_type"]`).val() ||
                         'Percentage';
                 }
 
@@ -2451,6 +2412,7 @@
                     }
                 });
             }
+
             // ============================================
             // DELETE CHARGES
             // ============================================
@@ -2510,12 +2472,10 @@
                 $modal.find(`input[name="${type}_rate"]`).val(charge.rate);
                 $modal.find(`input[name="${type}_exchange_rate"]`).val(charge.exChangeRate);
 
-                // Set currency
                 if (charge.chgCurr && currencyMap[charge.chgCurr]) {
                     $modal.find(`select[name="${type}_currency"]`).val(currencyMap[charge.chgCurr]);
                 }
 
-                // Load dropdowns
                 loadBasedOnList(type);
                 setTimeout(function() {
                     $modal.find(`select[name="${type}_based_on"]`).val(charge.basedOnCode);
@@ -2541,24 +2501,11 @@
                     totalBaseAmount = 0;
 
                 if (revenueCharges.length === 0) {
-                    tbody.append('<tr><td colspan="6" class="text-center text-muted">No charges added</td></tr>');
+                    tbody.append('<tr><td colspan="8" class="text-center text-muted">No charges added</td></tr>');
                 } else {
                     revenueCharges.forEach(function(charge, index) {
                         totalAmount += parseFloat(charge.amtInChgCurr || 0);
                         totalBaseAmount += parseFloat(charge.amtInBaseCurr || 0);
-                        // tbody.append(`
-                    //     <tr>
-                    //         <td>${charge.chargeName || charge.chargeCode || 'N/A'}</td>
-                    //         <td class="text-right">${parseFloat(charge.rate || 0).toFixed(2)}</td>
-                    //         <td>${charge.basedOn || 'N/A'}</td>
-                    //         <td class="text-right">${charge.chgCurr || 'KES'} ${parseFloat(charge.amtInChgCurr || 0).toFixed(2)}</td>
-                    //         <td class="text-right">KES ${parseFloat(charge.amtInBaseCurr || 0).toFixed(2)}</td>
-                    //         <td class="text-center">
-                    //             <button type="button" class="btn btn-warning btn-action edit-revenue-charge" data-index="${index}" data-id="${charge.id}"><i class="fas fa-edit"></i></button>
-                    //             <button type="button" class="btn btn-danger btn-action delete-revenue-charge" data-index="${index}" data-id="${charge.id}"><i class="fas fa-trash"></i></button>
-                    //         </td>
-                    //     </tr>
-                    // `);
                         tbody.append(`
                             <tr>
                                 <td>${charge.chargeName || charge.chargeCode || 'N/A'}</td>
@@ -2566,11 +2513,17 @@
                                 <td class="text-right col-extra">${parseFloat(charge.quantity || 0).toFixed(2)}</td>
                                 <td class="col-extra">${charge.basedOnUOM || 'N/A'}</td>
                                 <td class="col-extra">${charge.chgCurr || 'KES'}</td>
-                                <td class="text-right">${parseFloat(charge.amtInChgCurr || 0).toFixed(2)}</td>
+                                <td class="text-right">${parseFloat(charge.amtInChgCurr  || 0).toFixed(2)}</td>
                                 <td class="text-right">${parseFloat(charge.amtInBaseCurr || 0).toFixed(2)}</td>
                                 <td class="text-center">
-                                    <button type="button" class="btn btn-warning btn-action edit-revenue-charge" data-index="${index}" data-id="${charge.id}"><i class="fas fa-edit"></i></button>
-                                    <button type="button" class="btn btn-danger btn-action delete-revenue-charge" data-index="${index}" data-id="${charge.id}"><i class="fas fa-trash"></i></button>
+                                    <button type="button" class="btn btn-warning btn-action edit-revenue-charge"
+                                        data-index="${index}" data-id="${charge.id}">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-danger btn-action delete-revenue-charge"
+                                        data-index="${index}" data-id="${charge.id}">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
                                 </td>
                             </tr>
                         `);
@@ -2581,6 +2534,8 @@
                 $('#totalRevenueBaseAmount').text('KES ' + totalBaseAmount.toFixed(2));
                 $('#revenueTotalHeaderAmount').text(totalBaseAmount.toFixed(2));
 
+                const revenueExpanded = $('.show-items-link[data-table="revenue"]').data('expanded') || false;
+                if (!revenueExpanded) $('#revenueChargesTable').find('.col-extra').hide();
             }
 
             function renderCostCharges() {
@@ -2590,7 +2545,7 @@
                     totalBaseAmount = 0;
 
                 if (costCharges.length === 0) {
-                    tbody.append('<tr><td colspan="6" class="text-center text-muted">No charges added</td></tr>');
+                    tbody.append('<tr><td colspan="8" class="text-center text-muted">No charges added</td></tr>');
                 } else {
                     costCharges.forEach(function(charge, index) {
                         totalAmount += parseFloat(charge.amtInChgCurr || 0);
@@ -2602,11 +2557,18 @@
                                 <td class="text-right col-extra">${parseFloat(charge.quantity || 0).toFixed(2)}</td>
                                 <td class="col-extra">${charge.basedOnUOM || 'N/A'}</td>
                                 <td class="col-extra">${charge.chgCurr || 'KES'}</td>
-                                <td class="text-right">${parseFloat(charge.amtInChgCurr || 0).toFixed(2)}</td>
+                                <td class="text-right">${parseFloat(charge.amtInChgCurr  || 0).toFixed(2)}</td>
                                 <td class="text-right">${parseFloat(charge.amtInBaseCurr || 0).toFixed(2)}</td>
                                 <td class="text-center">
-                                    <button type="button" class="btn btn-warning btn-action edit-cost-charge" data-index="${index}" data-id="${charge.id}"><i class="fas fa-edit"></i></button>
-                                    <button type="button" class="btn btn-danger btn-action delete-cost-charge" data-index="${index}" data-id="${charge.id}"><i class="fas fa-trash"></i><v /button>                                </td>
+                                    <button type="button" class="btn btn-warning btn-action edit-cost-charge"
+                                        data-index="${index}" data-id="${charge.id}">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-danger btn-action delete-cost-charge"
+                                        data-index="${index}" data-id="${charge.id}">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </td>
                             </tr>
                         `);
                     });
@@ -2616,16 +2578,16 @@
                 $('#totalCostBaseAmount').text('KES ' + totalBaseAmount.toFixed(2));
                 $('#costTotalHeaderAmount').text(totalBaseAmount.toFixed(2));
 
+                const costExpanded = $('.show-items-link[data-table="cost"]').data('expanded') || false;
+                if (!costExpanded) $('#costChargesTable').find('.col-extra').hide();
             }
 
             // ============================================
             // UPDATE SUMMARY
             // ============================================
             function updateSummary() {
-                const totalRevenue = revenueCharges.reduce((sum, charge) => sum + parseFloat(charge.amtInBaseCurr ||
-                    0), 0);
-                const totalCost = costCharges.reduce((sum, charge) => sum + parseFloat(charge.amtInBaseCurr || 0),
-                    0);
+                const totalRevenue = revenueCharges.reduce((sum, c) => sum + parseFloat(c.amtInBaseCurr || 0), 0);
+                const totalCost = costCharges.reduce((sum, c) => sum + parseFloat(c.amtInBaseCurr || 0), 0);
                 const margin = totalRevenue - totalCost;
                 const marginPercentage = totalRevenue > 0 ? (margin / totalRevenue * 100) : 0;
 
@@ -2668,12 +2630,13 @@
                                     <div class="form-group">
                                         <label>* Reason</label>
                                         <select class="form-control" id="reasonCode" required>
-                                            <option value="">Select Reason</option>
+                                            <option value="">Loading reasons...</option>
                                         </select>
                                     </div>
                                     <div class="form-group">
-                                        <label>Remarks</label>
-                                        <textarea class="form-control" id="reasonRemark" rows="3"></textarea>
+                                        <label>* Remarks <span class="text-danger">(required)</span></label>
+                                        <textarea class="form-control" id="reasonRemark" rows="3"
+                                            placeholder="Enter a remark..." required></textarea>
                                     </div>
                                 </div>
                                 <div class="modal-footer">
@@ -2694,13 +2657,23 @@
                         reason_type: status
                     },
                     success: function(response) {
-                        if (response.success && response.reasons) {
+                        const $reasonSelect = $('#reasonCode');
+                        $reasonSelect.empty();
+
+                        if (response.success && response.reasons && response.reasons.length > 0) {
                             response.reasons.forEach(function(reason) {
-                                $('#reasonCode').append(
+                                $reasonSelect.append(
                                     `<option value="${reason.Code}">${reason.Description}</option>`
                                 );
                             });
+                            $reasonSelect.prop('selectedIndex', 0);
+                        } else {
+                            $reasonSelect.append('<option value="">No reasons available</option>');
                         }
+                    },
+                    error: function() {
+                        $('#reasonCode').empty().append(
+                            '<option value="">Failed to load reasons</option>');
                     }
                 });
 
@@ -2708,14 +2681,25 @@
 
                 $('#confirmStatus').on('click', function() {
                     const reasonCode = $('#reasonCode').val();
-                    const reasonRemark = $('#reasonRemark').val();
+                    const reasonRemark = $('#reasonRemark').val().trim();
 
                     if (!reasonCode) {
                         showNotification('Please select a reason', 'error');
                         return;
                     }
 
+                    if (!reasonRemark) {
+                        showNotification('Remark is required', 'error');
+                        $('#reasonRemark').addClass('is-invalid').focus();
+                        return;
+                    }
+
+                    $('#reasonRemark').removeClass('is-invalid');
                     updateStatus(status, reasonCode, reasonRemark);
+                });
+
+                $('#statusModal').on('input', '#reasonRemark', function() {
+                    if ($(this).val().trim()) $(this).removeClass('is-invalid');
                 });
 
                 $('#statusModal').on('hidden.bs.modal', function() {
@@ -2761,54 +2745,30 @@
             });
 
             // ============================================
-            // GENERATE & EMAIL QUOTE BUTTONS
+            // GENERATE QUOTE BUTTON
             // ============================================
             $('#generateQuoteBtn').on('click', function() {
                 showNotification('Generate Quote functionality coming soon', 'info');
             });
 
             // ============================================
-            // EMAIL QUOTE — MODAL OPEN & POPULATE
+            // EMAIL QUOTE — MODAL OPEN
             // ============================================
             $('#emailQuoteBtn').on('click', function() {
-                // Reset form state
                 $('#emailQuoteForm')[0].reset();
                 $('#emailBody').val('');
                 $('#emailTemplateSelect').empty().append('<option value="">-- Select Template --</option>');
-
-                // Re-populate To/From since reset clears them
                 $('#emailTo').val('{{ $quotation->pri_partner_email ?? '' }}');
                 $('#emailFrom').val('{{ $quotation->user_email ?? '' }}');
-
-                // TODO: Load email templates when endpoint is confirmed
-                // $.ajax({ url: '/quotation/email-templates', ... });
-
                 $('#emailQuoteModal').modal('show');
             });
 
-            // ============================================
-            // EMAIL QUOTE — BODY AUTO-POPULATE ON TEMPLATE CHANGE
-            // ============================================
             $(document).on('change', '#emailTemplateSelect', function() {
-                const templateId = $(this).val();
-                if (!templateId) {
-                    $('#emailBody').val('');
-                    return;
-                }
-
-                // TODO: Fetch template body when endpoint is confirmed
-                // $.ajax({
-                //     url: '/quotation/email-template-body',
-                //     data: { template_id: templateId },
-                //     success: function (response) {
-                //         $('#emailBody').val(response.body);
-                //         $('#emailSubject').val(response.subject || $('#emailSubject').val());
-                //     }
-                // });
+                if (!$(this).val()) $('#emailBody').val('');
             });
 
             // ============================================
-            // EMAIL QUOTE — SEND BUTTON
+            // EMAIL QUOTE — SEND
             // ============================================
             $('#sendEmailQuoteBtn').on('click', function() {
                 const templateId = $('#emailTemplateSelect').val();
@@ -2817,7 +2777,6 @@
                 const subject = $('#emailSubject').val().trim();
                 const body = $('#emailBody').val().trim();
 
-                // Validation
                 if (!templateId) {
                     showNotification('Please select a template', 'error');
                     return;
@@ -2839,8 +2798,6 @@
                     return;
                 }
 
-                // TODO: Replace 'quotation.email.send' with confirmed route name
-                // and confirm Std. Email table name before backend is wired
                 $.ajax({
                     url: '{{ route('quotation.email.send') }}',
                     type: 'POST',
@@ -2862,7 +2819,7 @@
                         if (response.success) {
                             showNotification('Email sent successfully', 'success');
                             $('#emailQuoteModal').modal('hide');
-                            loadEmailHistory(); // Refresh communication table
+                            loadEmailHistory();
                         } else {
                             showNotification(response.message || 'Failed to send email',
                                 'error');
@@ -2880,7 +2837,7 @@
             });
 
             // ============================================
-            // EMAIL HISTORY — LOAD INTO COMMUNICATION TABLE
+            // EMAIL HISTORY
             // ============================================
             function loadEmailHistory() {
                 $.ajax({
@@ -2916,17 +2873,14 @@
 
                 emails.forEach(function(email) {
                     tbody.append(`
-            <tr>
-                <td>${email.sent_on ?? 'N/A'}</td>
-                <td>${email.to_email ?? 'N/A'}</td>
-            </tr>
-        `);
+                        <tr>
+                            <td>${email.sent_on  ?? 'N/A'}</td>
+                            <td>${email.to_email ?? 'N/A'}</td>
+                        </tr>
+                    `);
                 });
             }
 
-            // ============================================
-            // EMAIL QUOTE MODAL — CLOSE HANDLERS
-            // ============================================
             $('#emailQuoteModal .close, #emailQuoteModal button[data-dismiss="modal"]').on('click', function(e) {
                 e.preventDefault();
                 e.stopPropagation();
@@ -2938,23 +2892,19 @@
                 $('#emailBody').val('');
             });
 
-            // ============================================
-            // LOAD EMAIL HISTORY ON PAGE LOAD
-            // ============================================
             loadEmailHistory();
 
             // ============================================
-            // QUOTATION DOCUMENT — Collapse only on header/arrow click, not Generate Quote
+            // QUOTATION DOCUMENT CARD HEADER CLICK
             // ============================================
             $('#quotationDocHeader').on('click', function(e) {
-                // Only collapse if clicking the header itself or the arrow button
                 if (!$(e.target).closest('#generateQuoteBtn').length) {
                     $(this).find('[data-card-widget="collapse"]').click();
                 }
             });
 
             // ============================================
-            // CUSTOMER DETAILS — Agent Type Fetch
+            // AGENT TYPE FETCH
             // ============================================
             const SAVED_AGENT_TYPE = '{{ $quotation->AgentType ?? '' }}';
 
@@ -2962,7 +2912,6 @@
                 const $select = $('#agentTypeSelect');
 
                 $.ajax({
-                    // TODO: Replace with confirmed SP endpoint
                     url: '/quotation/agent-types',
                     type: 'GET',
                     headers: {
@@ -2972,7 +2921,6 @@
                         if (response.success && Array.isArray(response.data) && response.data.length >
                             0) {
                             $select.empty().append('<option value="">-- Select Agent Type --</option>');
-
                             response.data.forEach(function(item) {
                                 const id = item.Id ?? item.id;
                                 const name = item.Name ?? item.name;
@@ -3005,7 +2953,6 @@
                 $modal.find('select').prop('selectedIndex', 0);
                 $modal.find('input[type="checkbox"]').prop('checked', false);
 
-                // ADDED: Hide and reset markup rows
                 if (type === 'revenue') {
                     $modal.find('.increase-by-row').removeClass('active').css('display', 'none');
                     $modal.find('.increase-by-row input[type="number"]').val('0.00');
@@ -3014,7 +2961,6 @@
                     $modal.find('.cost-markup-row input[type="number"]').val('0.00');
                 }
 
-                // Reload dropdowns
                 loadBasedOnList(type);
                 populateCurrencyDropdown(type);
             }
@@ -3023,7 +2969,6 @@
                 clearModalForm('revenue');
                 $('#revenueTypeRevenue').prop('checked', true);
                 toggleRevenueFormFields('revenue');
-                // ADDED: Explicitly hide increase-by row
                 $('#addRevenueModal .increase-by-row').removeClass('active').css('display', 'none');
             }
 
@@ -3031,7 +2976,6 @@
                 clearModalForm('cost');
                 $('#costTypeCost').prop('checked', true);
                 toggleCostFormFields('cost');
-                // ADDED: Explicitly hide markup row
                 $('#addCostModal .cost-markup-row').removeClass('active').css('display', 'none');
             }
 
@@ -3040,16 +2984,15 @@
                     type === 'error' ? 'alert-danger' :
                     type === 'warning' ? 'alert-warning' : 'alert-info';
 
-                const notification = `
-                    <div class="alert ${alertClass} alert-dismissible fade show notification-toast" role="alert" style="position: fixed; top: 20px; right: 20px; z-index: 9999; min-width: 300px;">
+                $('body').append(`
+                    <div class="alert ${alertClass} alert-dismissible fade show notification-toast" role="alert"
+                        style="position: fixed; top: 20px; right: 20px; z-index: 9999; min-width: 300px;">
                         <strong>${message}</strong>
                         <button type="button" class="close" data-dismiss="alert">
                             <span>&times;</span>
                         </button>
                     </div>
-                `;
-
-                $('body').append(notification);
+                `);
 
                 setTimeout(function() {
                     $('.notification-toast').fadeOut(function() {
@@ -3065,28 +3008,25 @@
 
             $('.show-items-link').on('click', function(e) {
                 e.preventDefault();
-                const tableId = $(this).data('table'); // 'revenue' or 'cost'
+                const tableId = $(this).data('table');
                 const $table = tableId === 'revenue' ?
                     $('#revenueChargesTable').closest('table') :
                     $('#costChargesTable').closest('table');
-
-                const $extraCols = $table.find('.col-extra');
                 const isExpanded = $(this).data('expanded') || false;
 
                 if (isExpanded) {
-                    $extraCols.hide();
-                    $(this).html('<i class="fas fa-columns mr-1"></i> Show Items');
+                    $table.find('.col-extra').hide();
+                    $(this).html('<i class="fas fa-columns mr-1"></i> Show more');
                     $(this).data('expanded', false);
                 } else {
-                    $extraCols.show();
+                    $table.find('.col-extra').show();
                     $(this).html('<i class="fas fa-columns mr-1"></i> Show Less');
                     $(this).data('expanded', true);
                 }
             });
 
             $('[data-card-widget="collapse"]').on('click', function() {
-                const icon = $(this).find('i');
-                icon.toggleClass('fa-chevron-down fa-chevron-up');
+                $(this).find('i').toggleClass('fa-chevron-down fa-chevron-up');
             });
 
             $('.card-header').on('click', function(e) {
@@ -3096,20 +3036,13 @@
                 }
             });
 
-            // Initialize collapsed cards (except Revenue, Cost, and Summary)
             $('.card').not('.card-success, .card-danger').each(function() {
                 const $card = $(this);
+                if ($card.find('.card-title').text().trim() === 'Summary') return;
 
-                // Skip Summary card
-                if ($card.find('.card-title').text().trim() === 'Summary') {
-                    return;
-                }
-
-                const $cardBody = $card.find('.card-body');
-                const $icon = $card.find('[data-card-widget="collapse"] i');
-
-                $cardBody.hide();
-                $icon.removeClass('fa-chevron-up').addClass('fa-chevron-down');
+                $card.find('.card-body').hide();
+                $card.find('[data-card-widget="collapse"] i').removeClass('fa-chevron-up').addClass(
+                    'fa-chevron-down');
                 $card.addClass('collapsed-card');
             });
 
@@ -3133,42 +3066,33 @@
                         office_code: codeToUse
                     },
                     success: function(response) {
-                        if (response.success && response.templates.length > 0) {
-                            const $select = $('#termsTemplateSelect');
-                            $select.empty().append('<option value="">-- Select Template --</option>');
+                        const $select = $('#termsTemplateSelect');
+                        $select.empty();
 
+                        if (response.success && response.templates.length > 0) {
+                            $select.append('<option value="">-- Select Template --</option>');
                             response.templates.forEach(function(t) {
-                                $select.append(
-                                    `<option value="${t.Name}">${t.Name}</option>`
-                                );
+                                $select.append(`<option value="${t.Name}">${t.Name}</option>`);
                             });
 
-                            // Pre-select if quotation already has terms saved
                             @if ($quotation->terms_condition)
                                 $('#termsDescriptionPreview').val(
                                     '{{ addslashes($quotation->terms_condition) }}');
                                 $('#termsDescriptionWrapper').show();
                             @endif
-
                         } else {
-                            // ✅ Show a clear message in the dropdown based on error code
-                            const $select = $('#termsTemplateSelect');
-                            $select.empty();
-
                             if (response.code === 'NOT_CONFIGURED') {
                                 $select.append(
                                     `<option value="" disabled>⚠ T&C not configured for office: ${codeToUse}</option>`
-                                );
-                                console.warn('T&C not configured for office:', codeToUse);
+                                    );
                             } else if (response.code === 'OFFICE_NOT_FOUND') {
                                 $select.append(
                                     `<option value="" disabled>⚠ Office not found: ${codeToUse}</option>`
-                                );
-                                console.warn('Office not found:', codeToUse);
+                                    );
                             } else {
                                 $select.append(
                                     `<option value="" disabled>-- No templates available --</option>`
-                                );
+                                    );
                             }
                         }
                     },
@@ -3180,15 +3104,14 @@
                         if (response && response.code === 'NOT_CONFIGURED') {
                             $select.append(
                                 `<option value="" disabled>⚠ T&C not configured for office: ${codeToUse}</option>`
-                            );
+                                );
                         } else if (response && response.code === 'OFFICE_NOT_FOUND') {
                             $select.append(
                                 `<option value="" disabled>⚠ Office not found: ${codeToUse}</option>`
-                            );
+                                );
                         } else {
                             $select.append(
-                                `<option value="" disabled>-- Failed to load templates --</option>`
-                            );
+                                `<option value="" disabled>-- Failed to load templates --</option>`);
                         }
 
                         console.warn('loadTermsTemplates error:', response?.message || xhr.status);
@@ -3241,6 +3164,11 @@
                     return;
                 }
 
+                if (!bookingNo) {
+                    showNotification('No booking number — cannot save Terms & Conditions', 'error');
+                    return;
+                }
+
                 $.ajax({
                     url: '{{ route('quotation.communication.save-terms') }}',
                     type: 'POST',
@@ -3275,48 +3203,39 @@
 
             // ============================================
             // COPIED BOOKING — UNLOCK EDITABLE FIELDS
-            // Only activates when ?copied=1 is in the URL
             // ============================================
             if (isCopiedBooking) {
+                const editableCards = ['#customerDetailsCard', '#shipmentDetailsCard', '#cargoDetailsCard'];
 
-                const editableCards = [
-                    '#customerDetailsCard',
-                    '#shipmentDetailsCard',
-                    '#cargoDetailsCard'
-                ];
-
-                // Expand all three cards so user can see the fields
                 editableCards.forEach(function(cardId) {
                     const $card = $(cardId);
 
-                    // Expand if collapsed
                     $card.find('.card-body').show();
                     $card.find('[data-card-widget="collapse"] i')
                         .removeClass('fa-chevron-down').addClass('fa-chevron-up');
                     $card.removeClass('collapsed-card');
 
-                    // Unlock all readonly inputs
                     $card.find('input[readonly]').each(function() {
-                        $(this).removeAttr('readonly')
-                            .css({
-                                'background-color': '#fff',
-                                'border': '1px solid #ced4da',
-                                'border-radius': '4px',
-                                'padding': '0.25rem 0.5rem',
-                                'cursor': 'text'
-                            });
+                        $(this).removeAttr('readonly').css({
+                            'background-color': '#fff',
+                            'border': '1px solid #ced4da',
+                            'border-radius': '4px',
+                            'padding': '0.25rem 0.5rem',
+                            'cursor': 'text'
+                        });
                     });
                 });
 
-                // Info banner under the page heading
                 $('.content-header h1, .content-header .d-flex').first().after(`
                     <div class="alert alert-info alert-dismissible fade show mx-3 mt-2" role="alert">
                         <i class="fas fa-copy mr-1"></i>
-                        <strong>Copied Booking</strong> — Customer, Shipment and Cargo details are now editable. Update them before sending this quotation.
+                        <strong>Copied Booking</strong> — Customer, Shipment and Cargo details are now editable.
+                        Update them before sending this quotation.
                         <button type="button" class="close" data-dismiss="alert"><span>&times;</span></button>
                     </div>
                 `);
             }
-        });
+
+        }); // end document.ready
     </script>
 @stop
