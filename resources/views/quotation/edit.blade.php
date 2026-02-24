@@ -183,13 +183,16 @@
 
                 <!-- Quotation Document (with Generate Quote button in title bar + T&C in body) -->
                 <div class="card card-primary">
-                    <div class="card-header d-flex justify-content-between align-items-center">
+                    <div class="card-header d-flex justify-content-between align-items-center" style="cursor: pointer;"
+                        id="quotationDocHeader">
                         <h3 class="card-title mb-0">Quotation Document</h3>
                         <div class="card-tools d-flex align-items-center">
-                            <button type="button" class="btn btn-email-quote btn-sm mr-2" id="generateQuoteBtn">
+                            <button type="button" class="btn btn-email-quote btn-sm mr-2" id="generateQuoteBtn"
+                                onclick="event.stopPropagation()">
                                 <i class="fas fa-file-alt mr-1"></i> Generate Quote
                             </button>
-                            <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                            <button type="button" class="btn btn-tool" data-card-widget="collapse"
+                                style="margin-left: auto;">
                                 <i class="fas fa-chevron-up"></i>
                             </button>
                         </div>
@@ -229,8 +232,7 @@
                                         <option value="">-- Select Template --</option>
                                     </select>
                                     <div id="termsDescriptionWrapper" style="display:none; margin-top: 6px;">
-                                        <textarea id="termsDescriptionPreview"
-                                            class="form-control form-control-sm" rows="4" readonly
+                                        <textarea id="termsDescriptionPreview" class="form-control form-control-sm" rows="4" readonly
                                             style="background-color: #e9ecef; font-size: 0.8rem; resize: none;"></textarea>
                                         <button type="button" class="btn btn-primary btn-sm btn-block mt-2"
                                             id="applyTermsBtn">
@@ -428,6 +430,43 @@
                                 </div>
                             </div>
                         </div>
+
+                        {{-- Customer Type & Agent Type — new row below the two-column section --}}
+                        <div class="row mt-3 pt-3" style="border-top: 1px solid #dee2e6;">
+                            <div class="col-md-6">
+                                <div class="form-group row mb-0">
+                                    <label class="col-sm-4 col-form-label">
+                                        Customer Type <span class="text-danger">*</span>
+                                    </label>
+                                    <div class="col-sm-8">
+                                        <select class="form-control form-control-sm" id="customerTypeSelect"
+                                            name="customer_type">
+                                            <option value="">-- Select --</option>
+                                            <option value="Customer"
+                                                {{ ($quotation->CustomerType ?? '') === 'Customer' ? 'selected' : '' }}>
+                                                Customer
+                                            </option>
+                                            <option value="Agent"
+                                                {{ ($quotation->CustomerType ?? '') === 'Agent' ? 'selected' : '' }}>
+                                                Agent
+                                            </option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group row mb-0">
+                                    <label class="col-sm-4 col-form-label">Agent Type</label>
+                                    <div class="col-sm-8">
+                                        <select class="form-control form-control-sm" id="agentTypeSelect"
+                                            name="agent_type">
+                                            <option value="">-- Loading... --</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
 
@@ -518,22 +557,22 @@
                                 <div class="form-group row">
                                     <label class="col-sm-5 col-form-label">Expected Revenue</label>
                                     <div class="col-sm-7">
-                                        <input type="text" class="form-control form-control-sm"
-                                            id="expectedRevenue" value="0.00" readonly>
+                                        <input type="text" class="form-control form-control-sm" id="expectedRevenue"
+                                            value="0.00" readonly>
                                     </div>
                                 </div>
                                 <div class="form-group row">
                                     <label class="col-sm-5 col-form-label">Quoted Revenue</label>
                                     <div class="col-sm-7">
-                                        <input type="text" class="form-control form-control-sm"
-                                            id="quotedRevenue" value="0.00" readonly>
+                                        <input type="text" class="form-control form-control-sm" id="quotedRevenue"
+                                            value="0.00" readonly>
                                     </div>
                                 </div>
                                 <div class="form-group row mb-0">
                                     <label class="col-sm-5 col-form-label">Actual Revenue</label>
                                     <div class="col-sm-7">
-                                        <input type="text" class="form-control form-control-sm"
-                                            id="actualRevenue" value="N/A" readonly>
+                                        <input type="text" class="form-control form-control-sm" id="actualRevenue"
+                                            value="N/A" readonly>
                                     </div>
                                 </div>
                             </div>
@@ -541,15 +580,15 @@
                                 <div class="form-group row">
                                     <label class="col-sm-5 col-form-label">Quoted Margin</label>
                                     <div class="col-sm-7">
-                                        <input type="text" class="form-control form-control-sm"
-                                            id="quotedMargin" value="0.00" readonly>
+                                        <input type="text" class="form-control form-control-sm" id="quotedMargin"
+                                            value="0.00" readonly>
                                     </div>
                                 </div>
                                 <div class="form-group row mb-0">
                                     <label class="col-sm-5 col-form-label">Actual Margin</label>
                                     <div class="col-sm-7">
-                                        <input type="text" class="form-control form-control-sm"
-                                            id="actualMargin" value="N/A" readonly>
+                                        <input type="text" class="form-control form-control-sm" id="actualMargin"
+                                            value="N/A" readonly>
                                     </div>
                                 </div>
                             </div>
@@ -593,8 +632,8 @@
         <!-- END ROW -->
 
         <!-- ============================================
-             MODALS
-             ============================================ -->
+                             MODALS
+                             ============================================ -->
 
         {{-- REVENUE MODAL --}}
         <div class="modal fade" id="addRevenueModal" tabindex="-1" role="dialog"
@@ -626,7 +665,8 @@
                                     <div class="form-check form-check-inline">
                                         <input class="form-check-input" type="radio" name="revenueChargeType"
                                             id="revenueTypeCostMarkup" value="costmarkup">
-                                        <label class="form-check-label" for="revenueTypeCostMarkup">Cost with markup</label>
+                                        <label class="form-check-label" for="revenueTypeCostMarkup">Cost with
+                                            markup</label>
                                     </div>
                                 </div>
                                 <div class="text-end">
@@ -724,8 +764,7 @@
                                             style="display:none;">
                                             <label for="revenueSecondaryBillToParty" class="form-label">
                                                 <span class="text-danger">*</span> Secondary Bill To Party</label>
-                                            <input type="text" class="form-control"
-                                                id="revenueSecondaryBillToParty"
+                                            <input type="text" class="form-control" id="revenueSecondaryBillToParty"
                                                 placeholder="Select Secondary Party">
                                             <input type="hidden" id="revenueSecondaryBillToPartyCode">
                                         </div>
@@ -736,7 +775,8 @@
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-success" id="saveRevenueCharge">Save</button>
-                        <button type="button" class="btn btn-primary" id="saveAddMoreRevenueCharge">Save & Add More</button>
+                        <button type="button" class="btn btn-primary" id="saveAddMoreRevenueCharge">Save & Add
+                            More</button>
                         <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
                     </div>
                 </div>
@@ -744,8 +784,8 @@
         </div>
 
         {{-- COST MODAL --}}
-        <div class="modal fade" id="addCostModal" tabindex="-1" role="dialog"
-            aria-labelledby="addCostModalLabel" aria-hidden="true">
+        <div class="modal fade" id="addCostModal" tabindex="-1" role="dialog" aria-labelledby="addCostModalLabel"
+            aria-hidden="true">
             <div class="modal-dialog modal-lg" role="document">
                 <div class="modal-content">
                     <div class="modal-header">
@@ -799,8 +839,8 @@
                                     <div class="mb-3">
                                         <label for="cost_based_on" class="form-label">
                                             <span class="text-danger">*</span> Based On</label>
-                                        <select class="form-select form-control" id="cost_based_on"
-                                            name="cost_based_on" required>
+                                        <select class="form-select form-control" id="cost_based_on" name="cost_based_on"
+                                            required>
                                             <option value="">Select</option>
                                         </select>
                                     </div>
@@ -831,9 +871,9 @@
                                         <div class="col-6">
                                             <label for="cost_increase_by_value" class="form-label">Increase By</label>
                                             <div class="input-group no-divider">
-                                                <input type="number" class="form-control"
-                                                    id="cost_increase_by_value" name="cost_increase_by_value"
-                                                    step="0.01" value="0.00" placeholder="0">
+                                                <input type="number" class="form-control" id="cost_increase_by_value"
+                                                    name="cost_increase_by_value" step="0.01" value="0.00"
+                                                    placeholder="0">
                                                 <select class="form-select form-control" id="cost_increase_by_type"
                                                     name="cost_increase_by_type" style="max-width: 120px;">
                                                     <option value="">Select</option>
@@ -884,8 +924,7 @@
                                     </div>
                                     <div class="mb-3">
                                         <label for="cost_remark" class="form-label">Remark</label>
-                                        <input type="text" class="form-control" id="cost_remark"
-                                            name="cost_remark">
+                                        <input type="text" class="form-control" id="cost_remark" name="cost_remark">
                                     </div>
                                     <div class="mb-3">
                                         <div class="form-check mb-2">
@@ -906,8 +945,7 @@
                                             style="display:none;">
                                             <label for="costSecondaryBillToParty" class="form-label">
                                                 <span class="text-danger">*</span> Secondary Bill To Party</label>
-                                            <input type="text" class="form-control"
-                                                id="costSecondaryBillToParty"
+                                            <input type="text" class="form-control" id="costSecondaryBillToParty"
                                                 placeholder="Select Secondary Party">
                                             <input type="hidden" id="costSecondaryBillToPartyCode">
                                         </div>
@@ -918,7 +956,8 @@
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-success" id="saveCostCharge">Save</button>
-                        <button type="button" class="btn btn-primary" id="saveAddMoreCostCharge">Save & Add More</button>
+                        <button type="button" class="btn btn-primary" id="saveAddMoreCostCharge">Save & Add
+                            More</button>
                         <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
                     </div>
                 </div>
@@ -965,8 +1004,7 @@
                                 <label for="emailTemplateSelect" class="form-label">
                                     <span class="text-danger">*</span> Template
                                 </label>
-                                <select class="form-control" id="emailTemplateSelect"
-                                    name="email_template_id" required>
+                                <select class="form-control" id="emailTemplateSelect" name="email_template_id" required>
                                     <option value="">-- Select Template --</option>
                                     {{-- TODO: Populate via endpoint when template source is confirmed --}}
                                 </select>
@@ -989,16 +1027,15 @@
                                 <label for="emailSubject" class="form-label">
                                     <span class="text-danger">*</span> Subject
                                 </label>
-                                <input type="text" class="form-control" id="emailSubject"
-                                    name="email_subject" placeholder="Enter subject" required>
+                                <input type="text" class="form-control" id="emailSubject" name="email_subject"
+                                    placeholder="Enter subject" required>
                             </div>
                             <div class="mb-3">
                                 <label for="emailBody" class="form-label">
                                     <span class="text-danger">*</span> Body
                                 </label>
                                 <textarea class="form-control" id="emailBody" name="email_body" rows="6"
-                                    placeholder="Email body will auto-populate when a template is selected"
-                                    required></textarea>
+                                    placeholder="Email body will auto-populate when a template is selected" required></textarea>
                             </div>
                         </form>
                     </div>
@@ -1019,8 +1056,8 @@
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.min.css">
     <style>
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                MODAL STYLING — matched to FitExpress UI
-                                                                                                                                                                                                                                                                                                                                                ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                MODAL STYLING — matched to FitExpress UI
+                                                                                                                                                                                                                                                                                                                                                                ============================================= */
 
         .modal-header {
             background-color: #fff !important;
@@ -2846,25 +2883,26 @@
             // EMAIL HISTORY — LOAD INTO COMMUNICATION TABLE
             // ============================================
             function loadEmailHistory() {
-                // TODO: Replace with confirmed endpoint when email table name is provided
-                // $.ajax({
-                //     url: '/quotation/email-history',
-                //     type: 'GET',
-                //     data: { booking_no: bookingNo },
-                //     success: function (response) {
-                //         renderEmailHistory(response.emails || []);
-                //     },
-                //     error: function () {
-                //         $('#emailHistoryTable').html(
-                //             '<tr><td colspan="2" class="text-center text-danger">Failed to load</td></tr>'
-                //         );
-                //     }
-                // });
-
-                // Placeholder until endpoint is confirmed
-                $('#emailHistoryTable').html(
-                    '<tr><td colspan="2" class="text-center text-muted">No emails sent yet</td></tr>'
-                );
+                $.ajax({
+                    url: '{{ route('quotation.email.history') }}',
+                    type: 'GET',
+                    data: {
+                        booking_no: bookingNo
+                    },
+                    beforeSend: function() {
+                        $('#emailHistoryTable').html(
+                            '<tr><td colspan="2" class="text-center text-muted"><i class="fas fa-spinner fa-spin"></i> Loading...</td></tr>'
+                        );
+                    },
+                    success: function(response) {
+                        renderEmailHistory(response.emails || []);
+                    },
+                    error: function() {
+                        $('#emailHistoryTable').html(
+                            '<tr><td colspan="2" class="text-center text-danger">Failed to load</td></tr>'
+                        );
+                    }
+                });
             }
 
             function renderEmailHistory(emails) {
@@ -2904,6 +2942,58 @@
             // LOAD EMAIL HISTORY ON PAGE LOAD
             // ============================================
             loadEmailHistory();
+
+            // ============================================
+            // QUOTATION DOCUMENT — Collapse only on header/arrow click, not Generate Quote
+            // ============================================
+            $('#quotationDocHeader').on('click', function(e) {
+                // Only collapse if clicking the header itself or the arrow button
+                if (!$(e.target).closest('#generateQuoteBtn').length) {
+                    $(this).find('[data-card-widget="collapse"]').click();
+                }
+            });
+
+            // ============================================
+            // CUSTOMER DETAILS — Agent Type Fetch
+            // ============================================
+            const SAVED_AGENT_TYPE = '{{ $quotation->AgentType ?? '' }}';
+
+            function fetchAgentTypes() {
+                const $select = $('#agentTypeSelect');
+
+                $.ajax({
+                    // TODO: Replace with confirmed SP endpoint
+                    url: '/quotation/agent-types',
+                    type: 'GET',
+                    headers: {
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    },
+                    success: function(response) {
+                        if (response.success && Array.isArray(response.data) && response.data.length >
+                            0) {
+                            $select.empty().append('<option value="">-- Select Agent Type --</option>');
+
+                            response.data.forEach(function(item) {
+                                const id = item.Id ?? item.id;
+                                const name = item.Name ?? item.name;
+                                const selected = String(id) === String(SAVED_AGENT_TYPE) ?
+                                    'selected' : '';
+                                $select.append(
+                                    `<option value="${id}" ${selected}>${name}</option>`);
+                            });
+                        } else {
+                            $select.empty().append(
+                                '<option value="">-- No agent types available --</option>');
+                        }
+                    },
+                    error: function() {
+                        $select.empty().append('<option value="">-- Failed to load --</option>');
+                        console.error('Failed to fetch agent types');
+                    }
+                });
+            }
+
+            fetchAgentTypes();
 
             // ============================================
             // HELPER FUNCTIONS

@@ -43,10 +43,16 @@ class QuotationController extends Controller
         // ============================================
         $userPrincipalName = Auth::user()->Email ?? null;
 
+        $normalizedEmail = strtolower(trim($userPrincipalName));
+
         $userOfficeCodes = DB::table('Azure_Users')
-            ->where('userPrincipalName', $userPrincipalName)
+            ->where(function ($q) use ($normalizedEmail) {
+                $q->whereRaw('LOWER(LTRIM(RTRIM(userPrincipalName))) = ?', [$normalizedEmail])
+                    ->orWhereRaw('LOWER(LTRIM(RTRIM(alternateEmailAddress))) = ?', [$normalizedEmail]);
+            })
             ->whereNotNull('BaseOfficeCode')
             ->pluck('BaseOfficeCode')
+            ->flatMap(fn($codes) => explode(',', $codes))
             ->map(fn($code) => trim($code))
             ->filter()
             ->unique()
@@ -2660,13 +2666,12 @@ class QuotationController extends Controller
     public function sendEmailQuote(Request $request)
     {
         try {
-            $bookingNo  = $request->input('booking_no');
-            $quoteId    = $request->input('quote_id');
-            $templateId = $request->input('template_id');
-            $toEmail    = $request->input('to_email');
-            $fromEmail  = $request->input('from_email');
-            $subject    = $request->input('subject');
-            $body       = $request->input('body');
+            $bookingNo   = $request->input('booking_no');
+            $toEmail     = $request->input('to_email');
+            $fromEmail   = $request->input('from_email');
+            $subject     = $request->input('subject');
+            $body        = $request->input('body');
+            $templateId  = $request->input('template_id');
 
             $submittedBy = Auth::check()
                 ? (Auth::user()->username ?? Auth::user()->email ?? Auth::user()->name ?? 'system')
@@ -2677,8 +2682,6 @@ class QuotationController extends Controller
             // ============================================
             $validator = \Validator::make($request->all(), [
                 'booking_no'  => 'required|string',
-                'quote_id'    => 'required|string',
-                'template_id' => 'required|string',
                 'to_email'    => 'required|email',
                 'from_email'  => 'required|email',
                 'subject'     => 'required|string',
@@ -2686,12 +2689,6 @@ class QuotationController extends Controller
             ]);
 
             if ($validator->fails()) {
-                Log::warning('sendEmailQuote - Validation failed', [
-                    'booking_no' => $bookingNo,
-                    'errors'     => $validator->errors()->toArray(),
-                    'user'       => $submittedBy,
-                ]);
-
                 return response()->json([
                     'success' => false,
                     'message' => 'Validation failed: ' . $validator->errors()->first(),
@@ -2700,60 +2697,111 @@ class QuotationController extends Controller
             }
 
             // ============================================
-            // VERIFY QUOTATION EXISTS
+            // FETCH QUOTATION FOR CONTEXT COLUMNS
             // ============================================
             $quotation = DB::table('Quote_QuotationInfo')
                 ->where('bookingno', $bookingNo)
-                ->first(['ID', 'companyname', 'teamid']);
-
-            if (!$quotation) {
-                Log::error('sendEmailQuote - Quotation not found', [
-                    'booking_no' => $bookingNo,
-                    'user'       => $submittedBy,
+                ->first([
+                    'ID',
+                    'clientid',
+                    'companyname',
+                    'teamid',
+                    'teamname',
+                    'ServiceVerticalid',
+                    'ServiceVerticalname',
+                    'processid',
                 ]);
 
+            if (!$quotation) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Quotation not found for booking number: ' . $bookingNo,
                 ], 404);
             }
 
-            Log::info('sendEmailQuote - Request received', [
+            // ============================================
+            // INSERT INTO email_emailscheduler
+            // Nullable GUID columns left null until confirmed
+            // ============================================
+            DB::table('email_emailscheduler')->insert([
+                'Id'            => DB::raw('NEWID()'),
+                'SchedulerType' => 'QuotationEmail',
+                'SubmittedOn'   => now(),
+                'ClientID'      => null,  // GUID — confirm source column before mapping
+                'ClientName'    => $quotation->companyname ?? null,
+                'OfficeID'      => null,  // GUID — confirm source column before mapping
+                'OfficeName'    => $quotation->teamname ?? null,
+                'ServiceID'     => null,  // GUID — confirm source column before mapping
+                'ProcessID'     => null,  // GUID — confirm source column before mapping
+                'ServiceName'   => $quotation->ServiceVerticalname ?? null,
+                'NoofShipment'  => null,
+                'EmailFrom'     => $fromEmail,
+                'EmailTo'       => $toEmail,
+                'Subject'       => $subject,
+                'BodyMessage'   => $body,
+                'EmailIDCC'     => null,
+                'Status'        => 'Pending',
+                'SendRemark'    => null,
+            ]);
+
+            Log::info('sendEmailQuote - Scheduled successfully', [
                 'booking_no'  => $bookingNo,
-                'quote_id'    => $quoteId,
-                'template_id' => $templateId,
                 'to_email'    => $toEmail,
                 'from_email'  => $fromEmail,
                 'subject'     => $subject,
                 'user'        => $submittedBy,
-                'company'     => $quotation->companyname ?? 'N/A',
             ]);
 
-            // ============================================
-            // TODO: Insert into Std. Email table
-            // Pending confirmation of:
-            //   - Table name
-            //   - Column schema (sent_on, to_email, from_email, subject, body,
-            //                    template_id, booking_no, quote_id, created_by)
-            // ============================================
-
             return response()->json([
-                'success' => false,
-                'message' => 'Email sending is not yet configured. Awaiting table configuration.',
-            ], 200);
+                'success' => true,
+                'message' => 'Email scheduled successfully',
+            ]);
         } catch (\Exception $e) {
-            Log::error('sendEmailQuote - General exception', [
-                'booking_no'   => $request->input('booking_no'),
+            Log::error('sendEmailQuote - Failed', [
+                'booking_no'    => $request->input('booking_no'),
                 'error_message' => $e->getMessage(),
-                'error_file'   => $e->getFile(),
-                'error_line'   => $e->getLine(),
-                'trace'        => $e->getTraceAsString(),
+                'error_file'    => $e->getFile(),
+                'error_line'    => $e->getLine(),
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to send email: ' . $e->getMessage(),
+                'message' => 'Failed to schedule email: ' . $e->getMessage(),
             ], 500);
+        }
+    }
+
+    public function getEmailHistory(Request $request)
+    {
+        $bookingNo = $request->input('booking_no');
+
+        if (!$bookingNo) {
+            return response()->json(['success' => false, 'message' => 'Booking number is required'], 400);
+        }
+
+        try {
+            // Fetch quotation to get companyname for matching
+            $quotation = DB::table('Quote_QuotationInfo')
+                ->where('bookingno', $bookingNo)
+                ->first(['companyname']);
+
+            if (!$quotation) {
+                return response()->json(['success' => true, 'emails' => []]);
+            }
+
+            $emails = DB::table('email_emailscheduler')
+                ->where('ClientName', $quotation->companyname)
+                ->where('SchedulerType', 'QuotationEmail')
+                ->orderBy('SubmittedOn', 'desc')
+                ->get(['SubmittedOn as sent_on', 'EmailTo as to_email', 'Status as status']);
+
+            return response()->json(['success' => true, 'emails' => $emails]);
+        } catch (\Exception $e) {
+            Log::error('getEmailHistory - Failed', [
+                'booking_no' => $bookingNo,
+                'error'      => $e->getMessage(),
+            ]);
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }
 

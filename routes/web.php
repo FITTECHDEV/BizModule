@@ -757,6 +757,9 @@ Route::middleware(['auth', 'can:approve-all-entity-request'])->group(function ()
     Route::post('/quotation/email/send', [App\Http\Controllers\QuotationController::class, 'sendEmailQuote'])
         ->name('quotation.email.send');
 
+    Route::get('/quotation/email-history', [App\Http\Controllers\QuotationController::class, 'getEmailHistory'])
+        ->name('quotation.email.history');
+
     // ============================================
     // NEW ROUTES FOR CURRENCY FEATURES
     // ============================================
