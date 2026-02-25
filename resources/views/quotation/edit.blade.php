@@ -2,6 +2,7 @@
 
 @section('title', 'Edit Booking Quotation')
 
+
 @section('content_header')
     <div class="d-flex justify-content-between align-items-center">
         <div>
@@ -18,6 +19,7 @@
         </div>
     </div>
 @stop
+
 
 @section('content')
     <form id="bookingQuotationForm">
@@ -604,14 +606,12 @@
                                 <a href="{{ route('quotation.index') }}" class="btn btn-link">Close</a>
 
                                 <div class="float-right d-flex align-items-center">
-                                    <button type="button" class="btn btn-success mr-2" id="createBookingBtn"
-                                        style="{{ ($quotation->status ?? '') === 'Won' ? '' : 'display:none;' }}">
+                                    <button type="button" class="btn btn-success mr-2" id="createBookingBtn">
                                         <i class="fas fa-plus-circle mr-1"></i> Create Booking
                                     </button>
-                                    <div class="btn-group" id="quoteActionDropdown"
-                                        style="{{ ($quotation->status ?? '') === 'Won' ? 'display:none;' : '' }}">
-                                        <button type="button" class="btn btn-secondary dropdown-toggle"
-                                            data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                    <div class="btn-group" id="quoteActionDropdown"> <button type="button"
+                                            class="btn btn-secondary dropdown-toggle" data-toggle="dropdown"
+                                            aria-haspopup="true" aria-expanded="false">
                                             <i class="fas fa-ellipsis-v mr-1"></i> Action
                                         </button>
                                         <div class="dropdown-menu dropdown-menu-right">
@@ -639,8 +639,8 @@
         <!-- END ROW -->
 
         <!-- ============================================
-                                                                                                 MODALS
-                                                                                                 ============================================ -->
+                                                                                                                 MODALS
+                                                                                                                 ============================================ -->
 
         {{-- REVENUE MODAL --}}
         <div class="modal fade" id="addRevenueModal" tabindex="-1" role="dialog"
@@ -1096,51 +1096,51 @@
                             <span>&times;</span>
                         </button>
                     </div>
-                    <div class="modal-body">
+                    <div class="modal-body" style="padding: 1.75rem 2rem;">
                         <form id="createBookingForm">
 
                             {{-- Service Template --}}
-                            <div class="form-group">
+                            <div class="form-group mb-4">
                                 <label for="cb_service_template">
                                     Service Template <span class="text-danger">*</span>
                                 </label>
                                 <select class="form-control" id="cb_service_template" name="service_template"
                                     required>
-                                    <option value="">-- Select --</option>
+                                    <option value=""></option>
                                 </select>
                             </div>
 
                             {{-- Bill To Party + Forwarder --}}
-                            <div class="row">
+                            <div class="row mb-3">
                                 <div class="col-md-6">
-                                    <div class="form-group">
+                                    <div class="form-group mb-0">
                                         <label for="cb_bill_to_party">
                                             Bill To Party <span class="text-danger">*</span>
                                         </label>
                                         <select class="form-control" id="cb_bill_to_party" name="bill_to_party"
                                             required>
-                                            <option value="">-- Select --</option>
+                                            <option value=""></option>
                                         </select>
                                     </div>
                                 </div>
                                 <div class="col-md-6">
-                                    <div class="form-group">
+                                    <div class="form-group mb-0">
                                         <label for="cb_forwarder">
                                             Forwarder <span class="text-danger">*</span>
                                         </label>
                                         <select class="form-control" id="cb_forwarder" name="forwarder" required>
-                                            <option value="">-- Select --</option>
+                                            <option value=""></option>
                                         </select>
                                     </div>
                                 </div>
                             </div>
 
                             {{-- Include the Country --}}
-                            <div class="form-group">
+                            <div class="form-group mb-4 mt-3">
                                 <div class="form-check">
                                     <input class="form-check-input" type="checkbox" id="cb_include_country"
                                         name="include_country">
-                                    <label class="form-check-label font-weight-bold" for="cb_include_country">
+                                    <label class="form-check-label" for="cb_include_country">
                                         Include the Country
                                     </label>
                                 </div>
@@ -1149,24 +1149,24 @@
                             {{-- Place of Receipt + Place of Delivery --}}
                             <div class="row">
                                 <div class="col-md-6">
-                                    <div class="form-group">
+                                    <div class="form-group mb-0">
                                         <label for="cb_place_of_receipt">
                                             Place of Receipt <span class="text-danger">*</span>
                                         </label>
                                         <select class="form-control" id="cb_place_of_receipt" name="place_of_receipt"
                                             required>
-                                            <option value="">-- Select --</option>
+                                            <option value=""></option>
                                         </select>
                                     </div>
                                 </div>
                                 <div class="col-md-6">
-                                    <div class="form-group">
+                                    <div class="form-group mb-0">
                                         <label for="cb_place_of_delivery">
                                             Place of Delivery <span class="text-danger">*</span>
                                         </label>
                                         <select class="form-control" id="cb_place_of_delivery"
                                             name="place_of_delivery" required>
-                                            <option value="">-- Select --</option>
+                                            <option value=""></option>
                                         </select>
                                     </div>
                                 </div>
@@ -1188,12 +1188,13 @@
     </form>
 @stop
 
+
 @section('css')
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.min.css">
     <style>
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                    MODAL STYLING — matched to FitExpress UI
-                                                                                                                                                                                                                                                                                                                                                                                                                                    ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                    MODAL STYLING — matched to FitExpress UI
+                                                                                                                                                                                                                                                                                                                                                                                                                                                    ============================================= */
 
         .modal-header {
             background-color: #fff !important;
@@ -1636,9 +1637,9 @@
         }
 
         /* =============================================
-           CREATE BOOKING MODAL — Specific overrides
-           to match the "Creation of Booking" design
-           ============================================= */
+                           CREATE BOOKING MODAL — Specific overrides
+                           to match the "Creation of Booking" design
+                           ============================================= */
 
         #createBookingModal .modal-title {
             color: #003580 !important;
@@ -2987,15 +2988,9 @@
                             $('#statusModal').modal('hide');
                             $('#wonModal').modal('hide');
 
-                            if (status === 'Won') {
-                                // Stay on page — reveal the Create Booking button
-                                $('#createBookingBtn').show();
-                                $('#quoteActionDropdown').hide();
-                            } else {
-                                setTimeout(function() {
-                                    window.location.href = '{{ route('quotation.index') }}';
-                                }, 1500);
-                            }
+                            setTimeout(function() {
+                                window.location.href = '{{ route('quotation.index') }}';
+                            }, 1500);
                         } else {
                             showNotification(response.message, 'error');
                         }
