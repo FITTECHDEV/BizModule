@@ -188,13 +188,13 @@
                     <div class="card-header d-flex justify-content-between align-items-center" style="cursor: pointer;"
                         id="quotationDocHeader">
                         <h3 class="card-title mb-0">Quotation Document</h3>
-                        <div class="card-tools d-flex align-items-center">
+                        <div class="d-flex align-items-center ml-auto">
                             <button type="button" class="btn btn-email-quote btn-sm mr-2" id="generateQuoteBtn"
                                 onclick="event.stopPropagation()">
                                 <i class="fas fa-file-alt mr-1"></i> Generate Quote
                             </button>
                             <button type="button" class="btn btn-tool" data-card-widget="collapse"
-                                style="margin-left: auto;">
+                                onclick="event.stopPropagation()">
                                 <i class="fas fa-chevron-up"></i>
                             </button>
                         </div>
@@ -639,8 +639,8 @@
         <!-- END ROW -->
 
         <!-- ============================================
-                                                                                                                 MODALS
-                                                                                                                 ============================================ -->
+                                                                                                                             MODALS
+                                                                                                                             ============================================ -->
 
         {{-- REVENUE MODAL --}}
         <div class="modal fade" id="addRevenueModal" tabindex="-1" role="dialog"
@@ -1193,8 +1193,8 @@
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.min.css">
     <style>
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                    MODAL STYLING — matched to FitExpress UI
-                                                                                                                                                                                                                                                                                                                                                                                                                                                    ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                MODAL STYLING — matched to FitExpress UI
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                ============================================= */
 
         .modal-header {
             background-color: #fff !important;
@@ -1637,9 +1637,9 @@
         }
 
         /* =============================================
-                           CREATE BOOKING MODAL — Specific overrides
-                           to match the "Creation of Booking" design
-                           ============================================= */
+                                       CREATE BOOKING MODAL — Specific overrides
+                                       to match the "Creation of Booking" design
+                                       ============================================= */
 
         #createBookingModal .modal-title {
             color: #003580 !important;
@@ -3164,8 +3164,9 @@
             // ============================================
             // CREATE BOOKING MODAL
             // ============================================
-            $('#cancelCreateBookingBtn').on('click', function(e) {
+            $('#createBookingModal .close').on('click', function(e) {
                 e.preventDefault();
+                e.stopPropagation();
                 $('#createBookingModal').modal('hide');
             });
 
