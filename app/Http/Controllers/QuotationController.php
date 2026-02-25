@@ -2566,10 +2566,10 @@ class QuotationController extends Controller
                 "SELECT Name, Description
              FROM Cust_CommunicationDetails WITH (NOLOCK)
              WHERE Module     = ?
-               AND SubModule  = ?
-               AND TRIM(OfficeCode) = ?
-               AND IsActive   = 1
-             ORDER BY Name",
+            AND SubModule  = ?
+            AND TRIM(OfficeCode) = ?
+            AND IsActive   = 1
+            ORDER BY Name",
                 [$module, $subModule, $officeCode]
             );
 
@@ -2831,7 +2831,7 @@ class QuotationController extends Controller
                 LEFT JOIN [FITSCMUAT].dbo.Cust_Party CP WITH (NOLOCK)
                     ON CP.Id = QC.PartyID
                 WHERE QI.bookingno = ?
-                  AND QC.IsDeleted  = 0
+                    AND QC.IsDeleted  = 0
                 ORDER BY QC.IsRevenue DESC, BC.Name ASC
             ", [$quotation->bookingno]);
 
@@ -3580,28 +3580,42 @@ class QuotationController extends Controller
 
         try {
             $pdo = DB::getPdo();
-
-            // SET NOCOUNT ON suppresses the PRINT rowsets before the actual data
             $pdo->exec('SET NOCOUNT ON');
 
             $stmt = $pdo->prepare("EXEC dbo.sp_Quote_ServiceTemplateList ?, ?");
             $stmt->execute([$quotationId, $filter]);
 
-            $results = $stmt->fetchAll(\PDO::FETCH_OBJ);
+            // ── FIX: loop through all result sets to get past PRINT @SQL ──
+            $results = [];
+            do {
+                $rows = $stmt->fetchAll(\PDO::FETCH_OBJ);
 
-            // SP returns a single string column on business logic failure
-            if (!empty($results)) {
-                $first = array_values((array) $results[0])[0] ?? null;
+                if (empty($rows)) {
+                    continue;
+                }
+
+                // Check if this result set is a failure message
+                $first = array_values((array) $rows[0])[0] ?? null;
                 if (is_string($first) && str_starts_with($first, 'Failed')) {
                     return response()->json(['success' => false, 'message' => $first], 422);
                 }
-            }
+
+                // Check if rows have Id and Name — actual template data
+                if (isset($rows[0]->Id) && isset($rows[0]->Name)) {
+                    $results = $rows;
+                    break;
+                }
+            } while ($stmt->nextRowset());
 
             return response()->json([
                 'success'   => true,
                 'templates' => $results,
             ]);
         } catch (\Exception $e) {
+            Log::error('getServiceTemplates failed', [
+                'quotation_id' => $quotationId,
+                'error'        => $e->getMessage(),
+            ]);
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }

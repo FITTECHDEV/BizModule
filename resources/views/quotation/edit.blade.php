@@ -514,12 +514,15 @@
 
                 <!-- Cost Section -->
                 <div class="card card-danger">
+                    <!-- AFTER -->
                     <div class="card-header d-flex justify-content-between align-items-center">
-                        <h3 class="card-title mb-0">Cost</h3>
-                        <div class="d-flex align-items-center ml-auto">
-                            <span class="text-white mr-3 small" id="costTotalHeader">
+                        <div class="d-flex align-items-center">
+                            <h3 class="card-title mb-0 mr-3">Cost</h3>
+                            <span class="text-white small" id="costTotalHeader">
                                 Total: <strong id="costTotalHeaderAmount">0.00</strong>
                             </span>
+                        </div>
+                        <div class="d-flex align-items-center ml-auto">
                             <a href="#" class="text-white show-items-link" data-table="cost">
                                 <i class="fas fa-columns mr-1"></i> Show More
                             </a>
@@ -639,8 +642,8 @@
         <!-- END ROW -->
 
         <!-- ============================================
-                                                                                                                                     MODALS
-                                                                                                                                     ============================================ -->
+                                                                                                                                                                     MODALS
+                                                                                                                                                                     ============================================ -->
 
         {{-- REVENUE MODAL --}}
         <div class="modal fade" id="addRevenueModal" tabindex="-1" role="dialog"
@@ -1153,10 +1156,10 @@
                                         <label for="cb_place_of_receipt">
                                             Place of Receipt <span class="text-danger">*</span>
                                         </label>
-                                        <select class="form-control" id="cb_place_of_receipt" name="place_of_receipt"
-                                            required>
-                                            <option value=""></option>
-                                        </select>
+                                        <input type="text" class="form-control" id="cb_place_of_receipt"
+                                            placeholder="Type at least 2 characters..." autocomplete="off">
+                                        <input type="hidden" id="cb_place_of_receipt_code">
+                                        <input type="hidden" id="cb_place_of_receipt_id">
                                     </div>
                                 </div>
                                 <div class="col-md-6">
@@ -1164,10 +1167,10 @@
                                         <label for="cb_place_of_delivery">
                                             Place of Delivery <span class="text-danger">*</span>
                                         </label>
-                                        <select class="form-control" id="cb_place_of_delivery"
-                                            name="place_of_delivery" required>
-                                            <option value=""></option>
-                                        </select>
+                                        <input type="text" class="form-control" id="cb_place_of_delivery"
+                                            placeholder="Type at least 2 characters..." autocomplete="off">
+                                        <input type="hidden" id="cb_place_of_delivery_code">
+                                        <input type="hidden" id="cb_place_of_delivery_id">
                                     </div>
                                 </div>
                             </div>
@@ -1193,8 +1196,8 @@
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.min.css">
     <style>
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                        MODAL STYLING — matched to FitExpress UI
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                        ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        MODAL STYLING — matched to FitExpress UI
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        ============================================= */
 
         .modal-header {
             background-color: #fff !important;
@@ -1637,9 +1640,9 @@
         }
 
         /* =============================================
-                                               CREATE BOOKING MODAL — Specific overrides
-                                               to match the "Creation of Booking" design
-                                               ============================================= */
+                                                                               CREATE BOOKING MODAL — Specific overrides
+                                                                               to match the "Creation of Booking" design
+                                                                               ============================================= */
 
         #createBookingModal .modal-title {
             color: #003580 !important;
@@ -3171,9 +3174,16 @@
                 e.stopPropagation();
                 $('#createBookingModal').modal('hide');
             });
-
+            
             $('#createBookingModal').on('hidden.bs.modal', function() {
                 $('#createBookingForm')[0].reset();
+                // Clear location autocomplete state
+                $('#cb_place_of_receipt_code, #cb_place_of_receipt_id').val('');
+                $('#cb_place_of_delivery_code, #cb_place_of_delivery_id').val('');
+                ['cb_place_of_receipt', 'cb_place_of_delivery'].forEach(function(id) {
+                    const $el = $('#' + id);
+                    if ($el.hasClass('ui-autocomplete-input')) $el.autocomplete('destroy');
+                });
             });
 
             // Load all dropdowns when modal opens
@@ -3181,7 +3191,13 @@
                 loadServiceTemplates();
                 loadBillToParties();
                 loadForwarders();
-                loadLocations(false);
+                // Small delay ensures modal DOM is visible before autocomplete binds
+                setTimeout(function() {
+                    initLocationAutocomplete('cb_place_of_receipt', 'cb_place_of_receipt_code',
+                        'cb_place_of_receipt_id');
+                    initLocationAutocomplete('cb_place_of_delivery', 'cb_place_of_delivery_code',
+                        'cb_place_of_delivery_id');
+                }, 150);
             });
 
             // ---- Service Templates ----
@@ -3275,7 +3291,7 @@
                             });
                         } else {
                             $select.append(
-                            '<option value="" disabled>No forwarders available</option>');
+                                '<option value="" disabled>No forwarders available</option>');
                         }
                     },
                     error: function() {
@@ -3288,59 +3304,94 @@
                 });
             }
 
-            // ---- Locations ----
-            function loadLocations(includeCountry) {
-                const $receipt = $('#cb_place_of_receipt');
-                const $delivery = $('#cb_place_of_delivery');
 
-                [$receipt, $delivery].forEach(function($s) {
-                    $s.empty().append('<option value="">Loading...</option>').prop('disabled', true);
+            // ---- Locations autocomplete ----
+            function initLocationAutocomplete(inputId, codeInputId, idInputId) {
+                const $input = $('#' + inputId);
+                const $codeInput = $('#' + codeInputId);
+                const $idInput = $('#' + idInputId);
+
+                // Destroy existing instance to allow re-init on checkbox change
+                if ($input.hasClass('ui-autocomplete-input')) {
+                    $input.autocomplete('destroy');
+                }
+
+                // Clear hidden values when user edits the text field
+                $input.off('input.location').on('input.location', function() {
+                    $codeInput.val('');
+                    $idInput.val('');
                 });
 
-                $.ajax({
-                    url: '{{ route('quotation.booking.locations') }}',
-                    type: 'GET',
-                    data: {
-                        include_country: includeCountry ? 1 : 0,
-                        country_code: ''
+                $input.autocomplete({
+                    minLength: 2,
+                    delay: 350,
+                    source: function(request, response) {
+                        $.ajax({
+                            url: '{{ route('quotation.booking.locations') }}',
+                            type: 'GET',
+                            data: {
+                                filter: request.term,
+                                include_country: $('#cb_include_country').is(':checked') ? 1 :
+                                    0,
+                                country_code: ''
+                            },
+                            success: function(data) {
+                                if (data.success && data.locations.length) {
+                                    response(data.locations.map(function(l) {
+                                        return {
+                                            label: l.LocationCode + ' — ' + l
+                                                .LocationName,
+                                            value: l.LocationName,
+                                            code: l.LocationCode,
+                                            id: l.LocationID
+                                        };
+                                    }));
+                                } else {
+                                    response([{
+                                        label: 'No locations found for "' +
+                                            request.term + '"',
+                                        value: request.term,
+                                        disabled: true
+                                    }]);
+                                }
+                            },
+                            error: function() {
+                                response([{
+                                    label: 'Error loading locations',
+                                    value: '',
+                                    disabled: true
+                                }]);
+                            }
+                        });
                     },
-                    success: function(response) {
-                        const base = '<option value=""></option>';
-
-                        if (response.success && response.locations.length) {
-                            // Build option list once, apply to both dropdowns
-                            let opts = base;
-                            response.locations.forEach(function(l) {
-                                opts += `<option value="${l.LocationCode}"
-                                     data-id="${l.LocationID}">${l.LocationName}</option>`;
-                            });
-                            $receipt.html(opts);
-                            $delivery.html(opts);
-                        } else {
-                            const empty = base +
-                                '<option value="" disabled>No locations available</option>';
-                            $receipt.html(empty);
-                            $delivery.html(empty);
+                    select: function(event, ui) {
+                        if (ui.item.disabled) {
+                            event.preventDefault();
+                            return false;
                         }
-                    },
-                    error: function() {
-                        [$receipt, $delivery].forEach(function($s) {
-                            $s.empty().append(
-                                '<option value="" disabled>Failed to load</option>');
-                        });
-                        showNotification('Failed to load locations', 'error');
-                    },
-                    complete: function() {
-                        [$receipt, $delivery].forEach(function($s) {
-                            $s.prop('disabled', false);
-                        });
+                        $input.val(ui.item.value);
+                        $codeInput.val(ui.item.code);
+                        $idInput.val(ui.item.id);
+                        return false;
                     }
-                });
+                }).autocomplete('instance')._renderItem = function(ul, item) {
+                    return $('<li>')
+                        .addClass(item.disabled ? 'ui-state-disabled' : '')
+                        .append($('<div>').text(item.label))
+                        .appendTo(ul);
+                };
             }
 
-            // Reload locations when "Include the Country" checkbox changes
+            // Re-init on checkbox change — clears selections since country filter changed
             $('#cb_include_country').on('change', function() {
-                loadLocations($(this).is(':checked'));
+                $('#cb_place_of_receipt, #cb_place_of_delivery').val('');
+                $('#cb_place_of_receipt_code, #cb_place_of_delivery_code').val('');
+                $('#cb_place_of_receipt_id, #cb_place_of_delivery_id').val('');
+
+                initLocationAutocomplete('cb_place_of_receipt', 'cb_place_of_receipt_code',
+                    'cb_place_of_receipt_id');
+                initLocationAutocomplete('cb_place_of_delivery', 'cb_place_of_delivery_code',
+                    'cb_place_of_delivery_id');
             });
 
             // ---- Submit ----
@@ -3348,8 +3399,8 @@
                 const serviceTemplate = $('#cb_service_template').val();
                 const billToParty = $('#cb_bill_to_party').val();
                 const forwarder = $('#cb_forwarder').val();
-                const placeOfReceipt = $('#cb_place_of_receipt').val();
-                const placeOfDelivery = $('#cb_place_of_delivery').val();
+                const placeOfReceipt = $('#cb_place_of_receipt_code').val();
+                const placeOfDelivery = $('#cb_place_of_delivery_code').val();
 
                 if (!serviceTemplate) {
                     showNotification('Please select a Service Template', 'error');
@@ -3385,10 +3436,10 @@
                         forwarder: forwarder,
                         forwarder_id: $('#cb_forwarder option:selected').data('id'),
                         include_country: $('#cb_include_country').is(':checked') ? 1 : 0,
-                        place_of_receipt: placeOfReceipt,
-                        place_of_receipt_id: $('#cb_place_of_receipt option:selected').data('id'),
-                        place_of_delivery: placeOfDelivery,
-                        place_of_delivery_id: $('#cb_place_of_delivery option:selected').data('id'),
+                        place_of_receipt: $('#cb_place_of_receipt_code').val(),
+                        place_of_receipt_id: $('#cb_place_of_receipt_id').val(),
+                        place_of_delivery: $('#cb_place_of_delivery_code').val(),
+                        place_of_delivery_id: $('#cb_place_of_delivery_id').val(),
                     },
                     beforeSend: function() {
                         $('#submitCreateBookingBtn').prop('disabled', true)
