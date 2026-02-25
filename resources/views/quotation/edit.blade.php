@@ -603,8 +603,13 @@
                                 </button>
                                 <a href="{{ route('quotation.index') }}" class="btn btn-link">Close</a>
 
-                                <div class="float-right">
-                                    <div class="btn-group" id="quoteActionDropdown">
+                                <div class="float-right d-flex align-items-center">
+                                    <button type="button" class="btn btn-success mr-2" id="createBookingBtn"
+                                        style="{{ ($quotation->status ?? '') === 'Won' ? '' : 'display:none;' }}">
+                                        <i class="fas fa-plus-circle mr-1"></i> Create Booking
+                                    </button>
+                                    <div class="btn-group" id="quoteActionDropdown"
+                                        style="{{ ($quotation->status ?? '') === 'Won' ? 'display:none;' : '' }}">
                                         <button type="button" class="btn btn-secondary dropdown-toggle"
                                             data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                                             <i class="fas fa-ellipsis-v mr-1"></i> Action
@@ -634,8 +639,8 @@
         <!-- END ROW -->
 
         <!-- ============================================
-                                                         MODALS
-                                                         ============================================ -->
+                                                                                                 MODALS
+                                                                                                 ============================================ -->
 
         {{-- REVENUE MODAL --}}
         <div class="modal fade" id="addRevenueModal" tabindex="-1" role="dialog"
@@ -1051,6 +1056,135 @@
             </div>
         </div>
 
+        {{-- WON MODAL --}}
+        <div class="modal fade" id="wonModal" tabindex="-1" role="dialog" aria-hidden="true">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h2 class="modal-title">
+                            <i class="fas fa-check-circle text-success mr-2"></i>Mark as Won
+                        </h2>
+                        <button type="button" class="close" data-dismiss="modal">
+                            <span>&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label for="wonRemarkInput">Remark <span class="text-muted">(optional)</span></label>
+                            <textarea class="form-control" id="wonRemarkInput" rows="4" placeholder="Enter any remarks..."></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-success" id="confirmWonBtn">
+                            <i class="fas fa-check mr-1"></i> Confirm Won
+                        </button>
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {{-- CREATE BOOKING MODAL --}}
+        <div class="modal fade" id="createBookingModal" tabindex="-1" role="dialog" aria-hidden="true">
+            <div class="modal-dialog modal-lg" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h2 class="modal-title" style="color: #003580; font-weight: 700;">
+                            Creation of Booking
+                        </h2>
+                        <button type="button" class="close" data-dismiss="modal">
+                            <span>&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="createBookingForm">
+
+                            {{-- Service Template --}}
+                            <div class="form-group">
+                                <label for="cb_service_template">
+                                    Service Template <span class="text-danger">*</span>
+                                </label>
+                                <select class="form-control" id="cb_service_template" name="service_template"
+                                    required>
+                                    <option value="">-- Select --</option>
+                                </select>
+                            </div>
+
+                            {{-- Bill To Party + Forwarder --}}
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="cb_bill_to_party">
+                                            Bill To Party <span class="text-danger">*</span>
+                                        </label>
+                                        <select class="form-control" id="cb_bill_to_party" name="bill_to_party"
+                                            required>
+                                            <option value="">-- Select --</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="cb_forwarder">
+                                            Forwarder <span class="text-danger">*</span>
+                                        </label>
+                                        <select class="form-control" id="cb_forwarder" name="forwarder" required>
+                                            <option value="">-- Select --</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {{-- Include the Country --}}
+                            <div class="form-group">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="cb_include_country"
+                                        name="include_country">
+                                    <label class="form-check-label font-weight-bold" for="cb_include_country">
+                                        Include the Country
+                                    </label>
+                                </div>
+                            </div>
+
+                            {{-- Place of Receipt + Place of Delivery --}}
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="cb_place_of_receipt">
+                                            Place of Receipt <span class="text-danger">*</span>
+                                        </label>
+                                        <select class="form-control" id="cb_place_of_receipt" name="place_of_receipt"
+                                            required>
+                                            <option value="">-- Select --</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="cb_place_of_delivery">
+                                            Place of Delivery <span class="text-danger">*</span>
+                                        </label>
+                                        <select class="form-control" id="cb_place_of_delivery"
+                                            name="place_of_delivery" required>
+                                            <option value="">-- Select --</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <a href="#" class="text-primary mr-3" id="cancelCreateBookingBtn"
+                            style="font-weight: 500; text-decoration: underline;">Cancel</a>
+                        <button type="button" class="btn btn-primary px-4" id="submitCreateBookingBtn">
+                            Create
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </form>
 @stop
 
@@ -1058,8 +1192,8 @@
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.min.css">
     <style>
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                            MODAL STYLING — matched to FitExpress UI
-                                                                                                                                                                                                                                                                                                                                                                                            ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                    MODAL STYLING — matched to FitExpress UI
+                                                                                                                                                                                                                                                                                                                                                                                                                                    ============================================= */
 
         .modal-header {
             background-color: #fff !important;
@@ -1499,6 +1633,118 @@
             min-height: 120px;
             /* adjust to taste */
             resize: vertical;
+        }
+
+        /* =============================================
+           CREATE BOOKING MODAL — Specific overrides
+           to match the "Creation of Booking" design
+           ============================================= */
+
+        #createBookingModal .modal-title {
+            color: #003580 !important;
+            font-size: 1.4rem !important;
+            font-weight: 700 !important;
+        }
+
+        #createBookingModal .modal-body label {
+            font-weight: 700;
+            font-size: 0.9rem;
+            color: #1a1a1a;
+            margin-bottom: 0.4rem;
+        }
+
+        #createBookingModal .modal-body .form-control,
+        #createBookingModal .modal-body select.form-control {
+            height: 44px;
+            font-size: 0.95rem;
+            border: 1.5px solid #b0b8c4;
+            border-radius: 4px;
+            background-color: #fff;
+            /* Custom dropdown arrow matching the screenshot */
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23495057' d='M6 8L0 0h12z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 14px center;
+            padding-right: 36px;
+            cursor: pointer;
+        }
+
+        #createBookingModal .modal-body select.form-control:focus {
+            border-color: #003580;
+            box-shadow: 0 0 0 0.15rem rgba(0, 53, 128, 0.2);
+        }
+
+        /* Checkbox row — inline with label */
+        #createBookingModal .form-check {
+            display: flex;
+            align-items: center;
+            padding-left: 0;
+            margin: 0.25rem 0 0.5rem 0;
+        }
+
+        #createBookingModal .form-check-input {
+            width: 18px;
+            height: 18px;
+            margin: 0 10px 0 0;
+            border: 1.5px solid #b0b8c4;
+            border-radius: 2px;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        #createBookingModal .form-check-label {
+            font-weight: 700;
+            font-size: 0.9rem;
+            color: #1a1a1a;
+            margin-bottom: 0;
+            cursor: pointer;
+        }
+
+        /* Footer layout — Cancel left, Create right */
+        #createBookingModal .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem 1.5rem;
+        }
+
+        #cancelCreateBookingBtn {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: #003580 !important;
+            text-decoration: underline !important;
+            background: none;
+            border: none;
+            padding: 0;
+            cursor: pointer;
+        }
+
+        #cancelCreateBookingBtn:hover {
+            color: #001f5c !important;
+        }
+
+        #submitCreateBookingBtn {
+            background-color: #2c4a7c;
+            border-color: #2c4a7c;
+            color: #fff;
+            font-size: 1rem;
+            font-weight: 600;
+            padding: 0.45rem 1.75rem;
+            border-radius: 4px;
+            letter-spacing: 0.02em;
+        }
+
+        #submitCreateBookingBtn:hover {
+            background-color: #1e3a6e;
+            border-color: #1e3a6e;
+        }
+
+        #submitCreateBookingBtn:disabled {
+            background-color: #6b85aa;
+            border-color: #6b85aa;
         }
     </style>
 @stop
@@ -2619,9 +2865,21 @@
 
             $('#wonQuoteBtn').on('click', function(e) {
                 e.preventDefault();
-                if (confirm('Mark this quotation as WON?')) {
-                    updateStatus('Won', '', '');
-                }
+                $('#wonRemarkInput').val('');
+                $('#wonModal').modal('show');
+            });
+
+            $('#createBookingBtn').on('click', function() {
+                $('#createBookingModal').modal('show');
+            });
+
+            $('#confirmWonBtn').on('click', function() {
+                const remark = $('#wonRemarkInput').val().trim();
+                updateStatus('Won', '', remark);
+            });
+
+            $('#wonModal').on('hidden.bs.modal', function() {
+                $('#wonRemarkInput').val('');
             });
 
             function showStatusModal(status) {
@@ -2666,18 +2924,14 @@
                         reason_type: status
                     },
                     success: function(response) {
-                        const $reasonSelect = $('#reasonCode');
-                        $reasonSelect.empty();
-
-                        if (response.success && response.reasons && response.reasons.length > 0) {
-                            response.reasons.forEach(function(reason) {
-                                $reasonSelect.append(
-                                    `<option value="${reason.Code}">${reason.Description}</option>`
-                                );
-                            });
-                            $reasonSelect.prop('selectedIndex', 0);
+                        if (response.success) {
+                            showNotification(response.message, 'success');
+                            $('#statusModal').modal('hide');
+                            setTimeout(function() {
+                                window.location.href = '{{ route('quotation.index') }}';
+                            }, 1500);
                         } else {
-                            $reasonSelect.append('<option value="">No reasons available</option>');
+                            showNotification(response.message, 'error');
                         }
                     },
                     error: function() {
@@ -2731,9 +2985,17 @@
                         if (response.success) {
                             showNotification(response.message, 'success');
                             $('#statusModal').modal('hide');
-                            setTimeout(function() {
-                                window.location.href = '{{ route('quotation.index') }}';
-                            }, 1500);
+                            $('#wonModal').modal('hide');
+
+                            if (status === 'Won') {
+                                // Stay on page — reveal the Create Booking button
+                                $('#createBookingBtn').show();
+                                $('#quoteActionDropdown').hide();
+                            } else {
+                                setTimeout(function() {
+                                    window.location.href = '{{ route('quotation.index') }}';
+                                }, 1500);
+                            }
                         } else {
                             showNotification(response.message, 'error');
                         }
@@ -2757,7 +3019,7 @@
             // GENERATE QUOTE BUTTON
             // ============================================
             $('#generateQuoteBtn').on('click', function() {
-                showNotification('Generate Quote functionality coming soon', 'info');
+                window.open('{{ route('quotation.generate-pdf', $quotation->ID) }}', '_blank');
             });
 
             // ============================================
@@ -2902,6 +3164,85 @@
             });
 
             loadEmailHistory();
+
+
+            // ============================================
+            // CREATE BOOKING MODAL
+            // ============================================
+            $('#cancelCreateBookingBtn').on('click', function(e) {
+                e.preventDefault();
+                $('#createBookingModal').modal('hide');
+            });
+
+            $('#createBookingModal').on('hidden.bs.modal', function() {
+                $('#createBookingForm')[0].reset();
+            });
+
+            $('#submitCreateBookingBtn').on('click', function() {
+                const serviceTemplate = $('#cb_service_template').val();
+                const billToParty = $('#cb_bill_to_party').val();
+                const forwarder = $('#cb_forwarder').val();
+                const placeOfReceipt = $('#cb_place_of_receipt').val();
+                const placeOfDelivery = $('#cb_place_of_delivery').val();
+
+                if (!serviceTemplate) {
+                    showNotification('Please select a Service Template', 'error');
+                    return;
+                }
+                if (!billToParty) {
+                    showNotification('Please select a Bill To Party', 'error');
+                    return;
+                }
+                if (!forwarder) {
+                    showNotification('Please select a Forwarder', 'error');
+                    return;
+                }
+                if (!placeOfReceipt) {
+                    showNotification('Please select a Place of Receipt', 'error');
+                    return;
+                }
+                if (!placeOfDelivery) {
+                    showNotification('Please select a Place of Delivery', 'error');
+                    return;
+                }
+
+                $.ajax({
+                    url: '{{ route('quotation.booking.create') }}', // TODO: add this route when ready
+                    type: 'POST',
+                    data: {
+                        _token: '{{ csrf_token() }}',
+                        booking_no: bookingNo,
+                        quote_id: quotationId,
+                        service_template: serviceTemplate,
+                        bill_to_party: billToParty,
+                        forwarder: forwarder,
+                        include_country: $('#cb_include_country').is(':checked') ? 1 : 0,
+                        place_of_receipt: placeOfReceipt,
+                        place_of_delivery: placeOfDelivery
+                    },
+                    beforeSend: function() {
+                        $('#submitCreateBookingBtn').prop('disabled', true)
+                            .html('<i class="fas fa-spinner fa-spin mr-1"></i> Creating...');
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            showNotification('Booking created successfully', 'success');
+                            $('#createBookingModal').modal('hide');
+                            // TODO: redirect to the new booking or reload page as needed
+                        } else {
+                            showNotification(response.message || 'Failed to create booking',
+                                'error');
+                        }
+                    },
+                    error: function(xhr) {
+                        showNotification(xhr.responseJSON?.message ||
+                            'Failed to create booking', 'error');
+                    },
+                    complete: function() {
+                        $('#submitCreateBookingBtn').prop('disabled', false).html('Create');
+                    }
+                });
+            });
 
             // ============================================
             // QUOTATION DOCUMENT CARD HEADER CLICK

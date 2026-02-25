@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Yajra\DataTables\Facades\DataTables;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class QuotationController extends Controller
 {
@@ -2771,6 +2772,115 @@ class QuotationController extends Controller
         }
     }
 
+    /**
+     * Generate and stream a PDF quotation document.
+     * Route: GET /quotation/{id}/generate-pdf
+     */
+    public function generatePdf($id)
+    {
+        try {
+            // ── 1. LOAD QUOTATION ──────────────────────────────────────────
+            $quotation = \App\Models\QuotationInfo::where('ID', $id)->first();
+
+            if (!$quotation) {
+                Log::warning('generatePdf - Quotation not found', ['id' => $id]);
+                abort(404, 'Quotation not found');
+            }
+
+            // ── 2. RESOLVE CURRENCY CODE ───────────────────────────────────
+            // If currency column stores an ID, resolve to display code (e.g. UGX)
+            $currencyCode = $quotation->currency ?? null;
+            if (!empty($quotation->currency)) {
+                $currency = DB::table('[FITSCMUAT].dbo.Cust_Currency')
+                    ->where('Id', $quotation->currency)
+                    ->first(['Code']);
+                if ($currency) {
+                    $currencyCode = $currency->Code;
+                }
+            }
+
+            // ── 3. LOAD CHARGES ────────────────────────────────────────────
+            $charges = DB::select("
+                SELECT
+                    QC.Id                   AS QuoteChargeID,
+                    BC.Code                 AS ChargeCode,
+                    BC.Name                 AS ChargeName,
+                    QC.Quantity,
+                    QC.EstChargeRate        AS Rate,
+                    QC.EstChargeAmount      AS AmtInChgCurr,
+                    QC.EstBaseAmount        AS AmtInBaseCurr,
+                    QC.BaseExchRate         AS ExChangeRate,
+                    CC.Code                 AS ChgCurr,
+                    CB.Code                 AS BasedOnCode,
+                    CB.BasedOn              AS BasedOn,
+                    SU.Code                 AS BasedOnUOM,
+                    QC.Remarks              AS ChargeRemark,
+                    QC.IsRevenue,
+                    CP.Code                 AS PartyCode
+                FROM Quote_Quotation_ChargeSheet QC WITH (NOLOCK)
+                INNER JOIN Quote_QuotationInfo QI WITH (NOLOCK)
+                    ON QI.id = QC.QuotationInfoID
+                LEFT JOIN [FITSCMUAT].dbo.Bill_ChargeCode BC WITH (NOLOCK)
+                    ON BC.Id = QC.ChargeCodeId
+                LEFT JOIN [FITSCMUAT].dbo.Cust_Currency CC WITH (NOLOCK)
+                    ON CC.Id = QC.EstChargeCurrencyId
+                LEFT JOIN Cust_ChargecodeBasedOn CB WITH (NOLOCK)
+                    ON CB.Id = QC.BasedOnId
+                LEFT JOIN [FITSCMUAT].dbo.Sys_UOM SU WITH (NOLOCK)
+                    ON SU.Id = QC.UOMId
+                LEFT JOIN [FITSCMUAT].dbo.Cust_Party CP WITH (NOLOCK)
+                    ON CP.Id = QC.PartyID
+                WHERE QI.bookingno = ?
+                  AND QC.IsDeleted  = 0
+                ORDER BY QC.IsRevenue DESC, BC.Name ASC
+            ", [$quotation->bookingno]);
+
+            // ── 4. SPLIT & TOTAL ───────────────────────────────────────────
+            $revenueCharges = array_values(array_filter($charges, fn($c) =>  $c->IsRevenue));
+            $costCharges    = array_values(array_filter($charges, fn($c) => !$c->IsRevenue));
+
+            $totalRevenue = array_sum(array_map(fn($c) => (float)$c->AmtInBaseCurr, $revenueCharges));
+            $totalCost    = array_sum(array_map(fn($c) => (float)$c->AmtInBaseCurr, $costCharges));
+
+            Log::info('generatePdf - Data loaded', [
+                'booking_no'      => $quotation->bookingno,
+                'revenue_charges' => count($revenueCharges),
+                'cost_charges'    => count($costCharges),
+                'total_revenue'   => $totalRevenue,
+            ]);
+
+            // ── 5. BUILD PDF ───────────────────────────────────────────────
+            $pdf = \Barryvdh\DomPDF\Facade::loadView('quotation.pdf', [
+                'quotation'      => $quotation,
+                'currencyCode'   => $currencyCode,
+                'revenueCharges' => $revenueCharges,
+                'costCharges'    => $costCharges,
+                'totalRevenue'   => $totalRevenue,
+                'totalCost'      => $totalCost,
+                'generatedDate'  => now()->format('d-m-Y'),
+            ]);
+
+            $pdf->setPaper('A4', 'portrait');
+            $pdf->getDomPDF()->set_option('isHtml5ParserEnabled', true);
+            $pdf->getDomPDF()->set_option('isRemoteEnabled', false);
+            $pdf->getDomPDF()->set_option('defaultFont', 'arial');
+
+            // ── 6. STREAM AS DOWNLOAD ──────────────────────────────────────
+            $fileName = 'Quotation_' . $quotation->bookingno . '_' . now()->format('Ymd') . '.pdf';
+
+            return $pdf->download($fileName);
+        } catch (\Exception $e) {
+            Log::error('generatePdf - Failed', [
+                'id'    => $id,
+                'error' => $e->getMessage(),
+                'file'  => $e->getFile(),
+                'line'  => $e->getLine(),
+            ]);
+
+            abort(500, 'PDF generation failed: ' . $e->getMessage());
+        }
+    }
+
     public function getEmailHistory(Request $request)
     {
         $bookingNo = $request->input('booking_no');
@@ -3060,26 +3170,26 @@ class QuotationController extends Controller
 
             // Query FITSCMUAT database (where exchange rate data lives)
             $result = DB::select("
-    SELECT TOP 1 ER.ConvertToId as ExRate
-    FROM [FITSCMUAT].dbo.Cust_ExchangeRate ER WITH (NOLOCK)
-    INNER JOIN [FITSCMUAT].dbo.Cust_ExchangeRateOfficeMap OM WITH (NOLOCK)
-        ON OM.ExchangeRateId = ER.Id
-        AND OM.IsActive = 1
-    INNER JOIN [FITSCMUAT].dbo.Cust_Office CO WITH (NOLOCK)
-        ON CO.Id = OM.OfficeId
-        AND CO.Code = ?
-        AND CO.IsActive = 1
-        AND CO.IsDeleted = 0
-    INNER JOIN [FITSCMUAT].dbo.Cust_Currency CUR WITH (NOLOCK)
-        ON CUR.Id = ER.ConvertToId
-        AND CUR.Code = ?
-    WHERE CAST(GETDATE() AS DATE) 
-          BETWEEN CAST(ER.EffectiveFromDate AS DATE) 
-          AND CAST(ER.EffectiveToDate AS DATE)
-        AND ER.IsActive = 1
-        AND ER.IsDeleted = 0
-    ORDER BY ER.EffectiveFromDate DESC
-", [$officeCode, $fromCurrency]);
+                SELECT TOP 1 ER.ConvertToId as ExRate
+                FROM [FITSCMUAT].dbo.Cust_ExchangeRate ER WITH (NOLOCK)
+                INNER JOIN [FITSCMUAT].dbo.Cust_ExchangeRateOfficeMap OM WITH (NOLOCK)
+                    ON OM.ExchangeRateId = ER.Id
+                    AND OM.IsActive = 1
+                INNER JOIN [FITSCMUAT].dbo.Cust_Office CO WITH (NOLOCK)
+                    ON CO.Id = OM.OfficeId
+                    AND CO.Code = ?
+                    AND CO.IsActive = 1
+                    AND CO.IsDeleted = 0
+                INNER JOIN [FITSCMUAT].dbo.Cust_Currency CUR WITH (NOLOCK)
+                    ON CUR.Id = ER.ConvertToId
+                    AND CUR.Code = ?
+                WHERE CAST(GETDATE() AS DATE) 
+                    BETWEEN CAST(ER.EffectiveFromDate AS DATE) 
+                    AND CAST(ER.EffectiveToDate AS DATE)
+                AND ER.IsActive = 1
+                AND ER.IsDeleted = 0
+                ORDER BY ER.EffectiveFromDate DESC
+            ", [$officeCode, $fromCurrency]);
 
             if (empty($result) || !isset($result[0]->ExRate)) {
                 Log::warning('Exchange rate not found', [
@@ -3424,5 +3534,18 @@ class QuotationController extends Controller
                 'message' => 'Failed to get UOM list: ' . $e->getMessage()
             ], 500);
         }
+    }
+
+    /**
+     * Create a booking from a won quotation.
+     * TODO: Implement full booking creation logic.
+     */
+    public function createBooking(Request $request)
+    {
+        // Stub — wire up real logic when API details are confirmed
+        return response()->json([
+            'success' => false,
+            'message' => 'Booking creation is not yet implemented.',
+        ], 501);
     }
 }

@@ -775,6 +775,9 @@ Route::middleware(['auth', 'can:approve-all-entity-request'])->group(function ()
     Route::get('/quotation/{id}/generate-pdf', [App\Http\Controllers\QuotationController::class, 'generatePdf'])
         ->name('quotation.generate-pdf');
 
+    Route::post('/quotation/booking/create', [App\Http\Controllers\QuotationController::class, 'createBooking'])
+        ->name('quotation.booking.create');
+
     Route::get('/quotation/contract-charges', [App\Http\Controllers\QuotationController::class, 'getContractCharges'])
         ->name('quotation.contract.charges');
     // ============================================
