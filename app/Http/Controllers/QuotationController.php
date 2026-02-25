@@ -3548,4 +3548,162 @@ class QuotationController extends Controller
             'message' => 'Booking creation is not yet implemented.',
         ], 501);
     }
+
+    /**
+     * Resolve Cust_Office.Id (UUID) from Quote_QuotationInfo.teamid (bigint via TeamCode)
+     * Shared helper used by Bill To Party and Forwarder lookups.
+     */
+    private function resolveOfficeId(string $teamId): ?string
+    {
+        $office = DB::selectOne("
+        SELECT Id
+        FROM Cust_Office WITH (NOLOCK)
+        WHERE TeamCode = ?
+    ", [$teamId]);
+
+        return $office ? $office->Id : null;
+    }
+
+    /**
+     * GET /quotation/create-booking/service-templates
+     * Calls sp_Quote_ServiceTemplateList with the QuotationID.
+     * Returns: [{ Id, Name }]
+     */
+    public function getServiceTemplates(Request $request)
+    {
+        $quotationId = $request->query('quotation_id');
+        $filter      = $request->query('filter', '');
+
+        if (!$quotationId) {
+            return response()->json(['success' => false, 'message' => 'quotation_id is required'], 422);
+        }
+
+        try {
+            $pdo = DB::getPdo();
+
+            // SET NOCOUNT ON suppresses the PRINT rowsets before the actual data
+            $pdo->exec('SET NOCOUNT ON');
+
+            $stmt = $pdo->prepare("EXEC dbo.sp_Quote_ServiceTemplateList ?, ?");
+            $stmt->execute([$quotationId, $filter]);
+
+            $results = $stmt->fetchAll(\PDO::FETCH_OBJ);
+
+            // SP returns a single string column on business logic failure
+            if (!empty($results)) {
+                $first = array_values((array) $results[0])[0] ?? null;
+                if (is_string($first) && str_starts_with($first, 'Failed')) {
+                    return response()->json(['success' => false, 'message' => $first], 422);
+                }
+            }
+
+            return response()->json([
+                'success'   => true,
+                'templates' => $results,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * GET /quotation/create-booking/bill-to-parties
+     * Calls sp_PartyList with PartyType = 'Debtor'
+     * Returns: [{ PartyID, PartyCode, PartyName }]
+     */
+    public function getBillToParties(Request $request)
+    {
+        $teamId = $request->query('team_id');
+        $filter = $request->query('filter', '');
+
+        if (!$teamId) {
+            return response()->json(['success' => false, 'message' => 'team_id is required'], 422);
+        }
+
+        $officeId = $this->resolveOfficeId($teamId);
+
+        if (!$officeId) {
+            return response()->json(['success' => false, 'message' => 'Office not found for team_id: ' . $teamId], 404);
+        }
+
+        try {
+            $results = DB::select("EXEC dbo.sp_PartyList ?, 'Debtor', ?", [
+                $officeId,
+                $filter,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'parties' => $results, // each row has PartyID, PartyCode, PartyName
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * GET /quotation/create-booking/forwarders
+     * Calls sp_PartyList with PartyType = 'Agent / Forwarder'
+     * Returns: [{ PartyID, PartyCode, PartyName }]
+     */
+    public function getForwarders(Request $request)
+    {
+        $teamId = $request->query('team_id');
+        $filter = $request->query('filter', '');
+
+        if (!$teamId) {
+            return response()->json(['success' => false, 'message' => 'team_id is required'], 422);
+        }
+
+        $officeId = $this->resolveOfficeId($teamId);
+
+        if (!$officeId) {
+            return response()->json(['success' => false, 'message' => 'Office not found for team_id: ' . $teamId], 404);
+        }
+
+        try {
+            $results = DB::select("EXEC dbo.sp_PartyList ?, 'Agent / Forwarder', ?", [
+                $officeId,
+                $filter,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'parties' => $results, // each row has PartyID, PartyCode, PartyName
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * GET /quotation/create-booking/locations
+     * Calls sp_LocationList with LocationType = 'Road' (always static per spec)
+     * @IncludeCountry is driven by the checkbox value passed from the frontend
+     * Returns: [{ LocationID, LocationCode, LocationName }]
+     */
+    public function getLocations(Request $request)
+    {
+        $filter         = $request->query('filter', '');
+        $includeCountry = $request->query('include_country', 0);
+        $countryCode    = $request->query('country_code', '');
+
+        try {
+            $pdo = DB::getPdo();
+
+            $pdo->exec('SET NOCOUNT ON');
+
+            $stmt = $pdo->prepare("EXEC dbo.sp_LocationList 'Road', ?, ?, ?");
+            $stmt->execute([(int) $includeCountry, $countryCode, $filter]);
+
+            $results = $stmt->fetchAll(\PDO::FETCH_OBJ);
+
+            return response()->json([
+                'success'   => true,
+                'locations' => $results,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
 }

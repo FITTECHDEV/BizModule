@@ -780,7 +780,18 @@ Route::middleware(['auth', 'can:approve-all-entity-request'])->group(function ()
 
     Route::get('/quotation/contract-charges', [App\Http\Controllers\QuotationController::class, 'getContractCharges'])
         ->name('quotation.contract.charges');
-    // ============================================
+
+    Route::get('/quotation/create-booking/service-templates', [App\Http\Controllers\QuotationController::class, 'getServiceTemplates'])
+        ->name('quotation.booking.service-templates');
+
+    Route::get('/quotation/create-booking/bill-to-parties', [App\Http\Controllers\QuotationController::class, 'getBillToParties'])
+        ->name('quotation.booking.bill-to-parties');
+
+    Route::get('/quotation/create-booking/forwarders', [App\Http\Controllers\QuotationController::class, 'getForwarders'])
+        ->name('quotation.booking.forwarders');
+
+    Route::get('/quotation/create-booking/locations', [App\Http\Controllers\QuotationController::class, 'getLocations'])
+        ->name('quotation.booking.locations');
 
     Route::post('/quotation/charge/save', [App\Http\Controllers\QuotationController::class, 'saveCharge'])
         ->name('quotation.charge.save');

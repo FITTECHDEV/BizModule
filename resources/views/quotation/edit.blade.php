@@ -639,8 +639,8 @@
         <!-- END ROW -->
 
         <!-- ============================================
-                                                                                                                             MODALS
-                                                                                                                             ============================================ -->
+                                                                                                                                     MODALS
+                                                                                                                                     ============================================ -->
 
         {{-- REVENUE MODAL --}}
         <div class="modal fade" id="addRevenueModal" tabindex="-1" role="dialog"
@@ -1193,8 +1193,8 @@
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.min.css">
     <style>
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                MODAL STYLING — matched to FitExpress UI
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                        MODAL STYLING — matched to FitExpress UI
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                        ============================================= */
 
         .modal-header {
             background-color: #fff !important;
@@ -1637,9 +1637,9 @@
         }
 
         /* =============================================
-                                       CREATE BOOKING MODAL — Specific overrides
-                                       to match the "Creation of Booking" design
-                                       ============================================= */
+                                               CREATE BOOKING MODAL — Specific overrides
+                                               to match the "Creation of Booking" design
+                                               ============================================= */
 
         #createBookingModal .modal-title {
             color: #003580 !important;
@@ -3164,7 +3164,9 @@
             // ============================================
             // CREATE BOOKING MODAL
             // ============================================
-            $('#createBookingModal .close').on('click', function(e) {
+
+            // Close handlers
+            $('#cancelCreateBookingBtn, #createBookingModal .close').on('click', function(e) {
                 e.preventDefault();
                 e.stopPropagation();
                 $('#createBookingModal').modal('hide');
@@ -3174,6 +3176,174 @@
                 $('#createBookingForm')[0].reset();
             });
 
+            // Load all dropdowns when modal opens
+            $('#createBookingModal').on('show.bs.modal', function() {
+                loadServiceTemplates();
+                loadBillToParties();
+                loadForwarders();
+                loadLocations(false);
+            });
+
+            // ---- Service Templates ----
+            function loadServiceTemplates() {
+                const $select = $('#cb_service_template');
+                $select.empty().append('<option value="">Loading...</option>').prop('disabled', true);
+
+                $.ajax({
+                    url: '{{ route('quotation.booking.service-templates') }}',
+                    type: 'GET',
+                    data: {
+                        quotation_id: quotationId
+                    },
+                    success: function(response) {
+                        $select.empty().append('<option value=""></option>');
+                        if (response.success && response.templates.length) {
+                            response.templates.forEach(function(t) {
+                                $select.append(
+                                    `<option value="${t.Id}">${t.Name}</option>`
+                                );
+                            });
+                        } else {
+                            $select.append(
+                                '<option value="" disabled>No templates available for this quotation</option>'
+                            );
+                        }
+                    },
+                    error: function() {
+                        $select.empty().append('<option value="" disabled>Failed to load</option>');
+                        showNotification('Failed to load service templates', 'error');
+                    },
+                    complete: function() {
+                        $select.prop('disabled', false);
+                    }
+                });
+            }
+
+            // ---- Bill To Parties ----
+            function loadBillToParties() {
+                const $select = $('#cb_bill_to_party');
+                $select.empty().append('<option value="">Loading...</option>').prop('disabled', true);
+
+                $.ajax({
+                    url: '{{ route('quotation.booking.bill-to-parties') }}',
+                    type: 'GET',
+                    data: {
+                        team_id: teamId
+                    },
+                    success: function(response) {
+                        $select.empty().append('<option value=""></option>');
+                        if (response.success && response.parties.length) {
+                            response.parties.forEach(function(p) {
+                                $select.append(
+                                    `<option value="${p.PartyCode}"
+                                 data-id="${p.PartyID}">${p.PartyName}</option>`
+                                );
+                            });
+                        } else {
+                            $select.append('<option value="" disabled>No parties available</option>');
+                        }
+                    },
+                    error: function() {
+                        $select.empty().append('<option value="" disabled>Failed to load</option>');
+                        showNotification('Failed to load bill to parties', 'error');
+                    },
+                    complete: function() {
+                        $select.prop('disabled', false);
+                    }
+                });
+            }
+
+            // ---- Forwarders ----
+            function loadForwarders() {
+                const $select = $('#cb_forwarder');
+                $select.empty().append('<option value="">Loading...</option>').prop('disabled', true);
+
+                $.ajax({
+                    url: '{{ route('quotation.booking.forwarders') }}',
+                    type: 'GET',
+                    data: {
+                        team_id: teamId
+                    },
+                    success: function(response) {
+                        $select.empty().append('<option value=""></option>');
+                        if (response.success && response.parties.length) {
+                            response.parties.forEach(function(p) {
+                                $select.append(
+                                    `<option value="${p.PartyCode}"
+                                 data-id="${p.PartyID}">${p.PartyName}</option>`
+                                );
+                            });
+                        } else {
+                            $select.append(
+                            '<option value="" disabled>No forwarders available</option>');
+                        }
+                    },
+                    error: function() {
+                        $select.empty().append('<option value="" disabled>Failed to load</option>');
+                        showNotification('Failed to load forwarders', 'error');
+                    },
+                    complete: function() {
+                        $select.prop('disabled', false);
+                    }
+                });
+            }
+
+            // ---- Locations ----
+            function loadLocations(includeCountry) {
+                const $receipt = $('#cb_place_of_receipt');
+                const $delivery = $('#cb_place_of_delivery');
+
+                [$receipt, $delivery].forEach(function($s) {
+                    $s.empty().append('<option value="">Loading...</option>').prop('disabled', true);
+                });
+
+                $.ajax({
+                    url: '{{ route('quotation.booking.locations') }}',
+                    type: 'GET',
+                    data: {
+                        include_country: includeCountry ? 1 : 0,
+                        country_code: ''
+                    },
+                    success: function(response) {
+                        const base = '<option value=""></option>';
+
+                        if (response.success && response.locations.length) {
+                            // Build option list once, apply to both dropdowns
+                            let opts = base;
+                            response.locations.forEach(function(l) {
+                                opts += `<option value="${l.LocationCode}"
+                                     data-id="${l.LocationID}">${l.LocationName}</option>`;
+                            });
+                            $receipt.html(opts);
+                            $delivery.html(opts);
+                        } else {
+                            const empty = base +
+                                '<option value="" disabled>No locations available</option>';
+                            $receipt.html(empty);
+                            $delivery.html(empty);
+                        }
+                    },
+                    error: function() {
+                        [$receipt, $delivery].forEach(function($s) {
+                            $s.empty().append(
+                                '<option value="" disabled>Failed to load</option>');
+                        });
+                        showNotification('Failed to load locations', 'error');
+                    },
+                    complete: function() {
+                        [$receipt, $delivery].forEach(function($s) {
+                            $s.prop('disabled', false);
+                        });
+                    }
+                });
+            }
+
+            // Reload locations when "Include the Country" checkbox changes
+            $('#cb_include_country').on('change', function() {
+                loadLocations($(this).is(':checked'));
+            });
+
+            // ---- Submit ----
             $('#submitCreateBookingBtn').on('click', function() {
                 const serviceTemplate = $('#cb_service_template').val();
                 const billToParty = $('#cb_bill_to_party').val();
@@ -3203,7 +3373,7 @@
                 }
 
                 $.ajax({
-                    url: '{{ route('quotation.booking.create') }}', // TODO: add this route when ready
+                    url: '{{ route('quotation.booking.create') }}',
                     type: 'POST',
                     data: {
                         _token: '{{ csrf_token() }}',
@@ -3211,10 +3381,14 @@
                         quote_id: quotationId,
                         service_template: serviceTemplate,
                         bill_to_party: billToParty,
+                        bill_to_party_id: $('#cb_bill_to_party option:selected').data('id'),
                         forwarder: forwarder,
+                        forwarder_id: $('#cb_forwarder option:selected').data('id'),
                         include_country: $('#cb_include_country').is(':checked') ? 1 : 0,
                         place_of_receipt: placeOfReceipt,
-                        place_of_delivery: placeOfDelivery
+                        place_of_receipt_id: $('#cb_place_of_receipt option:selected').data('id'),
+                        place_of_delivery: placeOfDelivery,
+                        place_of_delivery_id: $('#cb_place_of_delivery option:selected').data('id'),
                     },
                     beforeSend: function() {
                         $('#submitCreateBookingBtn').prop('disabled', true)
@@ -3224,15 +3398,15 @@
                         if (response.success) {
                             showNotification('Booking created successfully', 'success');
                             $('#createBookingModal').modal('hide');
-                            // TODO: redirect to the new booking or reload page as needed
                         } else {
                             showNotification(response.message || 'Failed to create booking',
                                 'error');
                         }
                     },
                     error: function(xhr) {
-                        showNotification(xhr.responseJSON?.message ||
-                            'Failed to create booking', 'error');
+                        showNotification(
+                            xhr.responseJSON?.message || 'Failed to create booking', 'error'
+                        );
                     },
                     complete: function() {
                         $('#submitCreateBookingBtn').prop('disabled', false).html('Create');
