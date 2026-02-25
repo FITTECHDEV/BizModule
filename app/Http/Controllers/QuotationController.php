@@ -2585,7 +2585,7 @@ class QuotationController extends Controller
                 return response()->json([
                     'success' => false,
                     'code'    => 'NOT_CONFIGURED',
-                    'message' => "Terms & Conditions templates are not configured for office '{$officeCode}'. Please contact your administrator."
+                    'message' => "No '{$subModule}' templates are configured for office '{$officeCode}'. Please contact your administrator."
                 ], 404);
             }
 

@@ -642,8 +642,8 @@
         <!-- END ROW -->
 
         <!-- ============================================
-                                                                                                                                                                     MODALS
-                                                                                                                                                                     ============================================ -->
+                                                                                                                                                                         MODALS
+                                                                                                                                                                         ============================================ -->
 
         {{-- REVENUE MODAL --}}
         <div class="modal fade" id="addRevenueModal" tabindex="-1" role="dialog"
@@ -1196,8 +1196,8 @@
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.min.css">
     <style>
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        MODAL STYLING — matched to FitExpress UI
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            MODAL STYLING — matched to FitExpress UI
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            ============================================= */
 
         .modal-header {
             background-color: #fff !important;
@@ -1640,9 +1640,9 @@
         }
 
         /* =============================================
-                                                                               CREATE BOOKING MODAL — Specific overrides
-                                                                               to match the "Creation of Booking" design
-                                                                               ============================================= */
+                                                                                   CREATE BOOKING MODAL — Specific overrides
+                                                                                   to match the "Creation of Booking" design
+                                                                                   ============================================= */
 
         #createBookingModal .modal-title {
             color: #003580 !important;
@@ -3021,19 +3021,92 @@
             });
 
             // ============================================
+            // EMAIL QUOTE — TEMPLATE LOADING
+            // Reuses getCommunicationTemplates endpoint (sub_module='Email').
+            // Description is already in the list response — no second fetch needed.
+            // ============================================
+            let emailTemplateMap = {}; // name → description, built once per modal open
+
+            function loadEmailTemplates() {
+                const $select = $('#emailTemplateSelect');
+
+                if (!officeCode) {
+                    setTimeout(loadEmailTemplates, 500);
+                    return;
+                }
+
+                $select.empty()
+                    .append('<option value="">Loading templates...</option>')
+                    .prop('disabled', true);
+                emailTemplateMap = {};
+
+                $.ajax({
+                    url: '{{ route('quotation.communication.templates') }}',
+                    type: 'GET',
+                    data: {
+                        module: 'Quotation',
+                        sub_module: 'Email',
+                        office_code: officeCode
+                    },
+                    success: function(response) {
+                        $select.empty().append('<option value="">-- Select Template --</option>');
+
+                        if (response.success && response.templates.length > 0) {
+                            response.templates.forEach(function(t) {
+                                emailTemplateMap[t.Name] = t.Description || '';
+                                $select.append(`<option value="${t.Name}">${t.Name}</option>`);
+                            });
+                        } else {
+                            const msg = response.code === 'NOT_CONFIGURED' ?
+                                `⚠ Email templates not configured for office: ${officeCode}` :
+                                response.code === 'OFFICE_NOT_FOUND' ?
+                                `⚠ Office not found: ${officeCode}` :
+                                '-- No email templates available --';
+                            $select.append(`<option value="" disabled>${msg}</option>`);
+                        }
+                    },
+                    error: function(xhr) {
+                        const res = xhr.responseJSON;
+                        const msg = res?.code === 'NOT_CONFIGURED' ?
+                            `⚠ Email templates not configured for office: ${officeCode}` :
+                            res?.code === 'OFFICE_NOT_FOUND' ?
+                            `⚠ Office not found: ${officeCode}` :
+                            '-- Failed to load templates --';
+                        $select.empty().append(`<option value="" disabled>${msg}</option>`);
+                        console.warn('loadEmailTemplates error:', res?.message || xhr.status);
+                    },
+                    complete: function() {
+                        $select.prop('disabled', false);
+                    }
+                });
+            }
+
+            // ============================================
             // EMAIL QUOTE — MODAL OPEN
             // ============================================
             $('#emailQuoteBtn').on('click', function() {
                 $('#emailQuoteForm')[0].reset();
                 $('#emailBody').val('');
-                $('#emailTemplateSelect').empty().append('<option value="">-- Select Template --</option>');
+                $('#emailSubject').val('');
                 $('#emailTo').val('{{ $quotation->pri_partner_email ?? '' }}');
                 $('#emailFrom').val('{{ $quotation->user_email ?? '' }}');
+                loadEmailTemplates(); // fetch fresh on every open
                 $('#emailQuoteModal').modal('show');
             });
 
+            // ============================================
+            // EMAIL QUOTE — TEMPLATE SELECTION
+            // Populates body from the in-memory map (no extra fetch).
+            // Subject is left for the user to fill — the template only stores body.
+            // ============================================
             $(document).on('change', '#emailTemplateSelect', function() {
-                if (!$(this).val()) $('#emailBody').val('');
+                const selectedName = $(this).val();
+                if (!selectedName) {
+                    $('#emailBody').val('');
+                    return;
+                }
+                const body = emailTemplateMap[selectedName] || '';
+                $('#emailBody').val(body);
             });
 
             // ============================================
@@ -3174,7 +3247,7 @@
                 e.stopPropagation();
                 $('#createBookingModal').modal('hide');
             });
-            
+
             $('#createBookingModal').on('hidden.bs.modal', function() {
                 $('#createBookingForm')[0].reset();
                 // Clear location autocomplete state
