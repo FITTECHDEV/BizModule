@@ -772,8 +772,12 @@ Route::middleware(['auth', 'can:approve-all-entity-request'])->group(function ()
     Route::get('/quotation/exchange-rate', [App\Http\Controllers\QuotationController::class, 'getExchangeRate'])
         ->name('quotation.exchange-rate');
 
-    Route::get('/quotation/{id}/generate-pdf', [App\Http\Controllers\QuotationController::class, 'generatePdf'])
+    // Remove the old GET generate-pdf route entirely, replace with these two:
+    Route::post('/quotation/{id}/generate-pdf', [App\Http\Controllers\QuotationController::class, 'generatePdf'])
         ->name('quotation.generate-pdf');
+
+    Route::get('/quotation/{id}/versions', [App\Http\Controllers\QuotationController::class, 'getQuotationVersions'])
+        ->name('quotation.versions');
 
     Route::post('/quotation/booking/create', [App\Http\Controllers\QuotationController::class, 'createBooking'])
         ->name('quotation.booking.create');

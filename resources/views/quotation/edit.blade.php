@@ -197,29 +197,12 @@
                         </div>
                     </div>
                     <div class="card-body">
-                        <div class="form-group row">
-                            <label class="col-sm-4 col-form-label">Version 1</label>
-                            <div class="col-sm-8">
-                                <a href="#" class="text-primary">DocumentDownloadLink</a>
-                            </div>
-                        </div>
-                        <div class="form-group row">
-                            <label class="col-sm-4 col-form-label">Version 2</label>
-                            <div class="col-sm-8">
-                                <a href="#" class="text-primary">DocumentDownloadLink</a>
-                            </div>
-                        </div>
-                        <div class="form-group row">
-                            <label class="col-sm-4 col-form-label">Version 3</label>
-                            <div class="col-sm-8">
-                                <a href="#" class="text-primary">DocumentDownloadLink</a>
-                            </div>
-                        </div>
-                        <div class="form-group row">
-                            <label class="col-sm-4 col-form-label">Version 4</label>
-                            <div class="col-sm-8">
-                                <a href="#" class="text-primary">DocumentDownloadLink</a>
-                            </div>
+
+                        {{-- Versions list — populated dynamically by JS --}}
+                        <div id="quotationVersionsList">
+                            <p class="text-muted text-center mb-2" id="versionsLoadingMsg">
+                                <i class="fas fa-spinner fa-spin"></i> Loading versions...
+                            </p>
                         </div>
 
                         <!-- Terms & Conditions -->
@@ -644,8 +627,8 @@
         <!-- END ROW -->
 
         <!-- ============================================
-                                                                                                                                                                                                                                                                 MODALS
-                                                                                                                                                                                                                                                                 ============================================ -->
+                                                                                                                                                                                                                                                                         MODALS
+                                                                                                                                                                                                                                                                         ============================================ -->
 
         {{-- REVENUE MODAL --}}
         <div class="modal fade" id="addRevenueModal" tabindex="-1" role="dialog"
@@ -1093,8 +1076,7 @@
                                 <label for="cb_service_template">
                                     Service Template <span class="text-danger">*</span>
                                 </label>
-                                <select class="form-control" id="cb_service_template" name="service_template"
-                                    required>
+                                <select class="form-control" id="cb_service_template" name="service_template" required>
                                     <option value=""></option>
                                 </select>
                             </div>
@@ -1106,8 +1088,7 @@
                                         <label for="cb_bill_to_party">
                                             Bill To Party <span class="text-danger">*</span>
                                         </label>
-                                        <select class="form-control" id="cb_bill_to_party" name="bill_to_party"
-                                            required>
+                                        <select class="form-control" id="cb_bill_to_party" name="bill_to_party" required>
                                             <option value=""></option>
                                         </select>
                                     </div>
@@ -1182,8 +1163,8 @@
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.min.css">
     <style>
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    MODAL STYLING — matched to FitExpress UI
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            MODAL STYLING — matched to FitExpress UI
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            ============================================= */
 
         .modal-header {
             background-color: #fff !important;
@@ -1626,9 +1607,9 @@
         }
 
         /* =============================================
-                                                                                                                                                                           CREATE BOOKING MODAL — Specific overrides
-                                                                                                                                                                           to match the "Creation of Booking" design
-                                                                                                                                                                           ============================================= */
+                                                                                                                                                                                   CREATE BOOKING MODAL — Specific overrides
+                                                                                                                                                                                   to match the "Creation of Booking" design
+                                                                                                                                                                                   ============================================= */
 
         #createBookingModal .modal-title {
             color: #003580 !important;
@@ -3015,11 +2996,97 @@
             });
 
             // ============================================
+            // QUOTATION VERSIONS — LOAD & RENDER
+            // ============================================
+            const GENERATE_PDF_URL = '{{ route('quotation.generate-pdf', $quotation->ID) }}';
+            const VERSIONS_URL = '{{ route('quotation.versions', $quotation->ID) }}';
+
+            function renderVersions(versions) {
+                const $container = $('#quotationVersionsList');
+
+                if (!versions || versions.length === 0) {
+                    $container.html('<p class="text-muted text-center mb-2">No versions generated yet.</p>');
+                    return;
+                }
+
+                let html = '';
+                versions.forEach(function(v) {
+                    html += `
+            <div class="form-group row">
+                <label class="col-sm-4 col-form-label fw-bold">${v.label}</label>
+                <div class="col-sm-8 d-flex align-items-center">
+                    <a href="${v.url}" target="_blank" class="text-primary">
+                        <i class="fas fa-file-pdf mr-1"></i> Download
+                    </a>
+                </div>
+            </div>
+        `;
+                });
+
+                $container.html(html);
+            }
+
+            function loadVersions() {
+                $.ajax({
+                    url: VERSIONS_URL,
+                    type: 'GET',
+                    success: function(response) {
+                        if (response.success) {
+                            renderVersions(response.versions);
+                        } else {
+                            $('#quotationVersionsList').html(
+                                '<p class="text-danger text-center mb-2">Failed to load versions.</p>'
+                            );
+                        }
+                    },
+                    error: function() {
+                        $('#quotationVersionsList').html(
+                            '<p class="text-danger text-center mb-2">Error loading versions.</p>'
+                        );
+                    }
+                });
+            }
+
+            // ============================================
             // GENERATE QUOTE BUTTON
             // ============================================
             $('#generateQuoteBtn').on('click', function() {
-                window.open('{{ route('quotation.generate-pdf', $quotation->ID) }}', '_blank');
+                const $btn = $(this);
+
+                $btn.prop('disabled', true)
+                    .html('<i class="fas fa-spinner fa-spin mr-1"></i> Generating...');
+
+                $.ajax({
+                    url: GENERATE_PDF_URL,
+                    type: 'POST',
+                    data: {
+                        _token: '{{ csrf_token() }}'
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            showNotification('Quote generated — ' + response.label, 'success');
+                            loadVersions();
+                        } else {
+                            showNotification(response.message || 'Failed to generate quote.',
+                                'error');
+                        }
+                    },
+                    error: function(xhr) {
+                        showNotification(
+                            xhr.responseJSON?.message ||
+                            'An error occurred while generating the quote.',
+                            'error'
+                        );
+                    },
+                    complete: function() {
+                        $btn.prop('disabled', false)
+                            .html('<i class="fas fa-file-alt mr-1"></i> Generate Quote');
+                    }
+                });
             });
+
+            // Load versions on page init
+            loadVersions();
 
             // ============================================
             // EMAIL QUOTE — TEMPLATE LOADING

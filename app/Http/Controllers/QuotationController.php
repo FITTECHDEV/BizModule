@@ -2779,16 +2779,14 @@ class QuotationController extends Controller
     public function generatePdf($id)
     {
         try {
-            // ── 1. LOAD QUOTATION ──────────────────────────────────────────
             $quotation = \App\Models\QuotationInfo::where('ID', $id)->first();
 
             if (!$quotation) {
                 Log::warning('generatePdf - Quotation not found', ['id' => $id]);
-                abort(404, 'Quotation not found');
+                return response()->json(['success' => false, 'message' => 'Quotation not found'], 404);
             }
 
-            // ── 2. RESOLVE CURRENCY CODE ───────────────────────────────────
-            // If currency column stores an ID, resolve to display code (e.g. UGX)
+            // Resolve currency code
             $currencyCode = $quotation->currency ?? null;
             if (!empty($quotation->currency)) {
                 $currency = DB::table('[FITSCMUAT].dbo.Cust_Currency')
@@ -2799,57 +2797,48 @@ class QuotationController extends Controller
                 }
             }
 
-            // ── 3. LOAD CHARGES ────────────────────────────────────────────
+            // Load charges
             $charges = DB::select("
-                SELECT
-                    QC.Id                   AS QuoteChargeID,
-                    BC.Code                 AS ChargeCode,
-                    BC.Name                 AS ChargeName,
-                    QC.Quantity,
-                    QC.EstChargeRate        AS Rate,
-                    QC.EstChargeAmount      AS AmtInChgCurr,
-                    QC.EstBaseAmount        AS AmtInBaseCurr,
-                    QC.BaseExchRate         AS ExChangeRate,
-                    CC.Code                 AS ChgCurr,
-                    CB.Code                 AS BasedOnCode,
-                    CB.BasedOn              AS BasedOn,
-                    SU.Code                 AS BasedOnUOM,
-                    QC.Remarks              AS ChargeRemark,
-                    QC.IsRevenue,
-                    CP.Code                 AS PartyCode
-                FROM Quote_Quotation_ChargeSheet QC WITH (NOLOCK)
-                INNER JOIN Quote_QuotationInfo QI WITH (NOLOCK)
-                    ON QI.id = QC.QuotationInfoID
-                LEFT JOIN [FITSCMUAT].dbo.Bill_ChargeCode BC WITH (NOLOCK)
-                    ON BC.Id = QC.ChargeCodeId
-                LEFT JOIN [FITSCMUAT].dbo.Cust_Currency CC WITH (NOLOCK)
-                    ON CC.Id = QC.EstChargeCurrencyId
-                LEFT JOIN Cust_ChargecodeBasedOn CB WITH (NOLOCK)
-                    ON CB.Id = QC.BasedOnId
-                LEFT JOIN [FITSCMUAT].dbo.Sys_UOM SU WITH (NOLOCK)
-                    ON SU.Id = QC.UOMId
-                LEFT JOIN [FITSCMUAT].dbo.Cust_Party CP WITH (NOLOCK)
-                    ON CP.Id = QC.PartyID
-                WHERE QI.bookingno = ?
-                    AND QC.IsDeleted  = 0
-                ORDER BY QC.IsRevenue DESC, BC.Name ASC
-            ", [$quotation->bookingno]);
+            SELECT
+                QC.Id                   AS QuoteChargeID,
+                BC.Code                 AS ChargeCode,
+                BC.Name                 AS ChargeName,
+                QC.Quantity,
+                QC.EstChargeRate        AS Rate,
+                QC.EstChargeAmount      AS AmtInChgCurr,
+                QC.EstBaseAmount        AS AmtInBaseCurr,
+                QC.BaseExchRate         AS ExChangeRate,
+                CC.Code                 AS ChgCurr,
+                CB.Code                 AS BasedOnCode,
+                CB.BasedOn              AS BasedOn,
+                SU.Code                 AS BasedOnUOM,
+                QC.Remarks              AS ChargeRemark,
+                QC.IsRevenue,
+                CP.Code                 AS PartyCode
+            FROM Quote_Quotation_ChargeSheet QC WITH (NOLOCK)
+            INNER JOIN Quote_QuotationInfo QI WITH (NOLOCK)
+                ON QI.id = QC.QuotationInfoID
+            LEFT JOIN [FITSCMUAT].dbo.Bill_ChargeCode BC WITH (NOLOCK)
+                ON BC.Id = QC.ChargeCodeId
+            LEFT JOIN [FITSCMUAT].dbo.Cust_Currency CC WITH (NOLOCK)
+                ON CC.Id = QC.EstChargeCurrencyId
+            LEFT JOIN Cust_ChargecodeBasedOn CB WITH (NOLOCK)
+                ON CB.Id = QC.BasedOnId
+            LEFT JOIN [FITSCMUAT].dbo.Sys_UOM SU WITH (NOLOCK)
+                ON SU.Id = QC.UOMId
+            LEFT JOIN [FITSCMUAT].dbo.Cust_Party CP WITH (NOLOCK)
+                ON CP.Id = QC.PartyID
+            WHERE QI.bookingno = ?
+                AND QC.IsDeleted = 0
+            ORDER BY QC.IsRevenue DESC, BC.Name ASC
+        ", [$quotation->bookingno]);
 
-            // ── 4. SPLIT & TOTAL ───────────────────────────────────────────
             $revenueCharges = array_values(array_filter($charges, fn($c) =>  $c->IsRevenue));
             $costCharges    = array_values(array_filter($charges, fn($c) => !$c->IsRevenue));
+            $totalRevenue   = array_sum(array_map(fn($c) => (float)$c->AmtInBaseCurr, $revenueCharges));
+            $totalCost      = array_sum(array_map(fn($c) => (float)$c->AmtInBaseCurr, $costCharges));
 
-            $totalRevenue = array_sum(array_map(fn($c) => (float)$c->AmtInBaseCurr, $revenueCharges));
-            $totalCost    = array_sum(array_map(fn($c) => (float)$c->AmtInBaseCurr, $costCharges));
-
-            Log::info('generatePdf - Data loaded', [
-                'booking_no'      => $quotation->bookingno,
-                'revenue_charges' => count($revenueCharges),
-                'cost_charges'    => count($costCharges),
-                'total_revenue'   => $totalRevenue,
-            ]);
-
-            // ── 5. BUILD PDF ───────────────────────────────────────────────
+            // Build PDF
             $pdf = \Barryvdh\DomPDF\Facade::loadView('quotation.pdf', [
                 'quotation'      => $quotation,
                 'currencyCode'   => $currencyCode,
@@ -2865,10 +2854,28 @@ class QuotationController extends Controller
             $pdf->getDomPDF()->set_option('isRemoteEnabled', false);
             $pdf->getDomPDF()->set_option('defaultFont', 'arial');
 
-            // ── 6. STREAM AS DOWNLOAD ──────────────────────────────────────
-            $fileName = 'Quotation_' . $quotation->bookingno . '_' . now()->format('Ymd') . '.pdf';
+            // Determine next version number from existing files
+            $folder        = 'quotations/' . $quotation->bookingno;
+            $existingFiles = \Storage::disk('public')->files($folder);
+            $nextVersion   = count($existingFiles) + 1;
 
-            return $pdf->download($fileName);
+            $fileName    = 'Quotation_' . $quotation->bookingno . '_V' . $nextVersion . '_' . now()->format('Ymd_His') . '.pdf';
+            $storagePath = $folder . '/' . $fileName;
+
+            \Storage::disk('public')->put($storagePath, $pdf->output());
+
+            Log::info('generatePdf - Saved', [
+                'booking_no' => $quotation->bookingno,
+                'version'    => $nextVersion,
+                'path'       => $storagePath,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'version' => $nextVersion,
+                'label'   => 'Version ' . $nextVersion,
+                'url'     => \Storage::disk('public')->url($storagePath),
+            ]);
         } catch (\Exception $e) {
             Log::error('generatePdf - Failed', [
                 'id'    => $id,
@@ -2877,7 +2884,43 @@ class QuotationController extends Controller
                 'line'  => $e->getLine(),
             ]);
 
-            abort(500, 'PDF generation failed: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'PDF generation failed: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function getQuotationVersions($id)
+    {
+        try {
+            $quotation = \App\Models\QuotationInfo::where('ID', $id)->first(['bookingno']);
+
+            if (!$quotation) {
+                return response()->json(['success' => false, 'message' => 'Quotation not found'], 404);
+            }
+
+            $folder = 'quotations/' . $quotation->bookingno;
+            $files  = \Storage::disk('public')->files($folder);
+
+            sort($files); // ascending so Version 1 is first
+
+            $versions = array_values(array_map(function ($filePath, $index) {
+                return [
+                    'version' => $index + 1,
+                    'label'   => 'Version ' . ($index + 1),
+                    'url'     => \Storage::disk('public')->url($filePath),
+                ];
+            }, $files, array_keys($files)));
+
+            return response()->json(['success' => true, 'versions' => $versions]);
+        } catch (\Exception $e) {
+            Log::error('getQuotationVersions - Failed', [
+                'id'    => $id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }
 
