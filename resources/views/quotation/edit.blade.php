@@ -627,8 +627,8 @@
         <!-- END ROW -->
 
         <!-- ============================================
-                                                                                                                                                                                                                                                                                         MODALS
-                                                                                                                                                                                                                                                                                         ============================================ -->
+                                                                                                                                                                                                                                                                                             MODALS
+                                                                                                                                                                                                                                                                                             ============================================ -->
 
         {{-- REVENUE MODAL --}}
         <div class="modal fade" id="addRevenueModal" tabindex="-1" role="dialog"
@@ -1186,8 +1186,8 @@
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.min.css">
     <style>
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            MODAL STYLING — matched to FitExpress UI
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                MODAL STYLING — matched to FitExpress UI
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                ============================================= */
 
         .modal-header {
             background-color: #fff !important;
@@ -1630,9 +1630,9 @@
         }
 
         /* =============================================
-                                                                                                                                                                                                   CREATE BOOKING MODAL — Specific overrides
-                                                                                                                                                                                                   to match the "Creation of Booking" design
-                                                                                                                                                                                                   ============================================= */
+                                                                                                                                                                                                       CREATE BOOKING MODAL — Specific overrides
+                                                                                                                                                                                                       to match the "Creation of Booking" design
+                                                                                                                                                                                                       ============================================= */
 
         #createBookingModal .modal-title {
             color: #003580 !important;
@@ -2890,6 +2890,12 @@
 
             $('#wonModal').on('hidden.bs.modal', function() {
                 $('#wonRemarkInput').val('');
+            });
+
+            $('#wonModal .close, #wonModal button[data-dismiss="modal"]').on('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                $('#wonModal').modal('hide');
             });
 
             function showStatusModal(status) {
