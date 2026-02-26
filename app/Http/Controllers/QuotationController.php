@@ -3599,14 +3599,15 @@ class QuotationController extends Controller
     private function resolveOfficeId(string $teamId): ?string
     {
         $office = DB::selectOne("
-        SELECT Id
+        SELECT SCMOfficeID
         FROM Cust_Office WITH (NOLOCK)
         WHERE TeamCode = ?
+          AND IsActive = 1
+          AND IsDeleted = 0
     ", [$teamId]);
 
-        return $office ? $office->Id : null;
+        return $office ? $office->SCMOfficeID : null;
     }
-
     /**
      * GET /quotation/create-booking/service-templates
      * Calls sp_Quote_ServiceTemplateList with the QuotationID.
