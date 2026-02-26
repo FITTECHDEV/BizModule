@@ -1097,3 +1097,51 @@ Route::prefix('admin/sp-test')
 
 
 Route::post('/webhooks/jimi/notifications', [App\Http\Controllers\JimiWebhookController::class, 'receiveNotification']);
+
+
+
+// TEMPORARY — remove before deploying to production
+Route::get('/quotation/{id}/pdf-preview', function ($id) {
+    $quotation = \App\Models\QuotationInfo::where('ID', $id)->firstOrFail();
+
+    $currencyCode = $quotation->currency ?? null;
+    if (!empty($quotation->currency)) {
+        $currency = \Illuminate\Support\Facades\DB::table('[FITSCMUAT].dbo.Cust_Currency')
+            ->where('Id', $quotation->currency)
+            ->first(['Code']);
+        if ($currency) $currencyCode = $currency->Code;
+    }
+
+    $charges = \Illuminate\Support\Facades\DB::select("
+        SELECT
+            QC.Id AS QuoteChargeID, BC.Code AS ChargeCode, BC.Name AS ChargeName,
+            QC.Quantity, QC.EstChargeRate AS Rate, QC.EstChargeAmount AS AmtInChgCurr,
+            QC.EstBaseAmount AS AmtInBaseCurr, QC.BaseExchRate AS ExChangeRate,
+            CC.Code AS ChgCurr, CB.Code AS BasedOnCode, CB.BasedOn AS BasedOn,
+            SU.Code AS BasedOnUOM, QC.Remarks AS ChargeRemark, QC.IsRevenue, CP.Code AS PartyCode
+        FROM Quote_Quotation_ChargeSheet QC WITH (NOLOCK)
+        INNER JOIN Quote_QuotationInfo QI WITH (NOLOCK) ON QI.id = QC.QuotationInfoID
+        LEFT JOIN [FITSCMUAT].dbo.Bill_ChargeCode BC WITH (NOLOCK) ON BC.Id = QC.ChargeCodeId
+        LEFT JOIN [FITSCMUAT].dbo.Cust_Currency CC WITH (NOLOCK) ON CC.Id = QC.EstChargeCurrencyId
+        LEFT JOIN Cust_ChargecodeBasedOn CB WITH (NOLOCK) ON CB.Id = QC.BasedOnId
+        LEFT JOIN [FITSCMUAT].dbo.Sys_UOM SU WITH (NOLOCK) ON SU.Id = QC.UOMId
+        LEFT JOIN [FITSCMUAT].dbo.Cust_Party CP WITH (NOLOCK) ON CP.Id = QC.PartyID
+        WHERE QI.bookingno = ? AND QC.IsDeleted = 0
+        ORDER BY QC.IsRevenue DESC, BC.Name ASC
+    ", [$quotation->bookingno]);
+
+    $revenueCharges = array_values(array_filter($charges, fn($c) =>  $c->IsRevenue));
+    $costCharges    = array_values(array_filter($charges, fn($c) => !$c->IsRevenue));
+    $totalRevenue   = array_sum(array_map(fn($c) => (float)$c->AmtInBaseCurr, $revenueCharges));
+    $totalCost      = array_sum(array_map(fn($c) => (float)$c->AmtInBaseCurr, $costCharges));
+
+    return view('quotation.pdf', [
+        'quotation'      => $quotation,
+        'currencyCode'   => $currencyCode,
+        'revenueCharges' => $revenueCharges,
+        'costCharges'    => $costCharges,
+        'totalRevenue'   => $totalRevenue,
+        'totalCost'      => $totalCost,
+        'generatedDate'  => now()->format('d-m-Y'),
+    ]);
+})->middleware('auth')->name('quotation.pdf-preview');
