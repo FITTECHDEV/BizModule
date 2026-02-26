@@ -461,7 +461,7 @@
                 <div class="card card-success">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <div class="d-flex align-items-center">
-                            <h3 class="card-title mb-0 mr-3">Revenue</h3>
+                            <h3 class="card-title mb-0 mr-1">Revenue</h3>
                             <span class="text-white small" id="revenueTotalHeader">
                                 Total: <strong id="revenueTotalHeaderAmount">0.00</strong>
                             </span>
@@ -502,7 +502,7 @@
                     <!-- AFTER -->
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <div class="d-flex align-items-center">
-                            <h3 class="card-title mb-0 mr-3">Cost</h3>
+                            <h3 class="card-title mb-0 mr-1">Cost</h3>
                             <span class="text-white small" id="costTotalHeader">
                                 Total: <strong id="costTotalHeaderAmount">0.00</strong>
                             </span>
@@ -627,8 +627,8 @@
         <!-- END ROW -->
 
         <!-- ============================================
-                                                                                                                                                                                                                                                                         MODALS
-                                                                                                                                                                                                                                                                         ============================================ -->
+                                                                                                                                                                                                                                                                                         MODALS
+                                                                                                                                                                                                                                                                                         ============================================ -->
 
         {{-- REVENUE MODAL --}}
         <div class="modal fade" id="addRevenueModal" tabindex="-1" role="dialog"
@@ -995,27 +995,49 @@
                     </div>
                     <div class="modal-body">
                         <form id="emailQuoteForm">
-                            <div class="mb-3">
-                                <label for="emailTemplateSelect" class="form-label">
-                                    <span class="text-danger">*</span> Template
-                                </label>
-                                <select class="form-control" id="emailTemplateSelect" name="email_template_id" required>
-                                    <option value="">-- Select Template --</option>
-                                </select>
-                                <div id="emailTemplatePreview"
-                                    style="display:none; margin-top: 8px; padding: 10px 12px;
-                background-color: #f8f9fa; border: 1px solid #dee2e6;
-                border-radius: 4px; font-size: 0.85rem; color: #495057;
-                white-space: pre-wrap; line-height: 1.5;">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label>Template <span class="text-danger">*</span></label>
+                                        <select class="form-control form-control-sm" id="emailTemplateSelect" required>
+                                            <option value="">-- Select Template --</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label>Quote Version</label>
+                                        <select class="form-control form-control-sm" id="emailQuoteVersionSelect">
+                                            <option value="">-- Select Quote --</option>
+                                        </select>
+                                    </div>
                                 </div>
                             </div>
-                            {{-- Hidden fields — still submitted but not shown --}}
-                            <input type="hidden" id="emailTo" name="email_to"
-                                value="{{ $quotation->pri_partner_email ?? '' }}">
-                            <input type="hidden" id="emailFrom" name="email_from"
-                                value="{{ $quotation->user_email ?? '' }}">
-                            <input type="hidden" id="emailSubject" name="email_subject" value="">
-                            <input type="hidden" id="emailBody" name="email_body" value="">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label>To <span class="text-danger">*</span></label>
+                                        <input type="email" class="form-control form-control-sm" id="emailTo"
+                                            value="{{ $quotation->pri_partner_email ?? '' }}">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label>From</label>
+                                        <input type="email" class="form-control form-control-sm" id="emailFrom"
+                                            value="{{ $quotation->user_email ?? '' }}">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Subject</label>
+                                <input type="text" class="form-control form-control-sm" id="emailSubject">
+                            </div>
+                            <div class="form-group mb-0">
+                                <label>Body</label>
+                                <textarea class="form-control form-control-sm" id="emailBody" rows="8"
+                                    placeholder="Select a template to auto-fill..."></textarea>
+                            </div>
                         </form>
                     </div>
                     <div class="modal-footer">
@@ -1088,7 +1110,8 @@
                                         <label for="cb_bill_to_party">
                                             Bill To Party <span class="text-danger">*</span>
                                         </label>
-                                        <select class="form-control" id="cb_bill_to_party" name="bill_to_party" required>
+                                        <select class="form-control" id="cb_bill_to_party" name="bill_to_party"
+                                            required>
                                             <option value=""></option>
                                         </select>
                                     </div>
@@ -1163,8 +1186,8 @@
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.min.css">
     <style>
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            MODAL STYLING — matched to FitExpress UI
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            MODAL STYLING — matched to FitExpress UI
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            ============================================= */
 
         .modal-header {
             background-color: #fff !important;
@@ -1607,9 +1630,9 @@
         }
 
         /* =============================================
-                                                                                                                                                                                   CREATE BOOKING MODAL — Specific overrides
-                                                                                                                                                                                   to match the "Creation of Booking" design
-                                                                                                                                                                                   ============================================= */
+                                                                                                                                                                                                   CREATE BOOKING MODAL — Specific overrides
+                                                                                                                                                                                                   to match the "Creation of Booking" design
+                                                                                                                                                                                                   ============================================= */
 
         #createBookingModal .modal-title {
             color: #003580 !important;
@@ -1734,6 +1757,7 @@
         }
     </style>
 @stop
+
 
 
 @section('js')
@@ -3183,10 +3207,37 @@
             // ============================================
             $('#emailQuoteBtn').on('click', function() {
                 $('#emailTemplateSelect').val('');
-                $('#emailTemplatePreview').hide().text('');
+                $('#emailSubject').val('');
+                $('#emailBody').val('');
+                $('#emailTo').val('{{ $quotation->pri_partner_email ?? '' }}');
+                $('#emailFrom').val('{{ $quotation->user_email ?? '' }}');
                 loadEmailTemplates();
+                populateQuoteVersionDropdown();
                 $('#emailQuoteModal').modal('show');
             });
+
+
+            function populateQuoteVersionDropdown() {
+                const $select = $('#emailQuoteVersionSelect');
+                $select.empty().append('<option value="">-- Select Quote --</option>');
+                $.ajax({
+                    url: VERSIONS_URL,
+                    type: 'GET',
+                    success: function(response) {
+                        if (response.success && response.versions?.length) {
+                            response.versions.forEach(function(v) {
+                                $select.append(`<option value="${v.url}">${v.label}</option>`);
+                            });
+                        } else {
+                            $select.append(
+                                '<option value="" disabled>No quotes generated yet</option>');
+                        }
+                    },
+                    error: function() {
+                        $select.append('<option value="" disabled>Failed to load</option>');
+                    }
+                });
+            }
 
 
             // ============================================
@@ -3195,22 +3246,14 @@
             // Subject is left for the user to fill — the template only stores body.
             // ============================================
             $(document).on('change', '#emailTemplateSelect', function() {
-                const selectedName = $(this).val();
-                const $preview = $('#emailTemplatePreview');
-
-                if (!selectedName) {
-                    $('#emailBody').val('');
+                const name = $(this).val();
+                if (!name) {
                     $('#emailSubject').val('');
-                    $preview.hide().text('');
+                    $('#emailBody').val('');
                     return;
                 }
-
-                const body = emailTemplateMap[selectedName] || '';
-                $('#emailBody').val(body);
-                $('#emailSubject').val(selectedName); // template name becomes subject
-
-                // Show preview beneath the dropdown
-                $preview.text(body).show();
+                $('#emailBody').val(emailTemplateMap[name] || '');
+                if (!$('#emailSubject').val().trim()) $('#emailSubject').val(name);
             });
 
             // ============================================
@@ -3219,21 +3262,10 @@
             $('#sendEmailQuoteBtn').on('click', function() {
                 const templateId = $('#emailTemplateSelect').val();
 
-                console.log('to_email:', $('#emailTo').val());
-                console.log('from_email:', $('#emailFrom').val());
-                console.log('subject:', $('#emailSubject').val());
-                console.log('body:', $('#emailBody').val());
-                console.log('template_id:', templateId);
-
                 if (!templateId) {
                     showNotification('Please select a template', 'error');
                     return;
                 }
-
-                // Populate hidden fields from the template map before submitting
-                const body = emailTemplateMap[templateId] || '';
-                $('#emailBody').val(body);
-                $('#emailSubject').val(templateId); // uses template name as subject
 
                 $.ajax({
                     url: '{{ route('quotation.email.send') }}',
@@ -3326,9 +3358,8 @@
 
             $('#emailQuoteModal').on('hidden.bs.modal', function() {
                 $('#emailTemplateSelect').val('');
-                $('#emailTemplatePreview').hide().text('');
-                $('#emailBody').val('');
                 $('#emailSubject').val('');
+                $('#emailBody').val('');
             });
             loadEmailHistory();
 
