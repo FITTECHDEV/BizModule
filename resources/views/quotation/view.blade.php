@@ -17,9 +17,9 @@
                 <i class="fas fa-copy"></i> Copy Booking
             </button>
 
-            <a href="{{ route('quotation.edit', $quotation->ID) }}" class="btn btn-warning btn-sm">
-                <i class="fas fa-edit"></i> Edit Booking
-            </a>
+                <a href="{{ route('quotation.edit', $quotation->ID) }}" class="btn btn-warning btn-sm">
+                    <i class="fas fa-edit"></i> Edit Booking
+                </a>
         </div>
     </div>
 @stop
@@ -374,16 +374,14 @@
 
             <!-- Revenue -->
             <div class="card card-success">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h3 class="card-title mb-0">Revenue</h3>
-                    <div class="d-flex align-items-center ml-auto">
-                        <span class="text-white mr-3 small">
-                            Total: <strong id="revenueTotalHeaderAmount">0.00</strong>
-                        </span>
-                        <a href="#" class="text-white show-items-link" data-table="revenue">
-                            <i class="fas fa-columns mr-1"></i> Show More
-                        </a>
-                    </div>
+                <div class="card-header d-flex align-items-center">
+                    <h3 class="card-title mb-0 mr-3">Revenue</h3>
+                    <span class="text-white mr-auto small">
+                        Total: <strong id="revenueTotalHeaderAmount">0.00</strong>
+                    </span>
+                    <a href="#" class="text-white show-items-link" data-table="revenue">
+                        <i class="fas fa-columns mr-1"></i> Show more
+                    </a>
                 </div>
                 <div class="card-body">
                     <table class="table table-bordered table-sm table-hover">
@@ -409,16 +407,14 @@
 
             <!-- Cost -->
             <div class="card card-danger">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h3 class="card-title mb-0">Cost</h3>
-                    <div class="d-flex align-items-center ml-auto">
-                        <span class="text-white mr-3 small">
-                            Total: <strong id="costTotalHeaderAmount">0.00</strong>
-                        </span>
-                        <a href="#" class="text-white show-items-link" data-table="cost">
-                            <i class="fas fa-columns mr-1"></i> Show More
-                        </a>
-                    </div>
+                <div class="card-header d-flex align-items-center">
+                    <h3 class="card-title mb-0 mr-3">Cost</h3>
+                    <span class="text-white mr-auto small">
+                        Total: <strong id="costTotalHeaderAmount">0.00</strong>
+                    </span>
+                    <a href="#" class="text-white show-items-link" data-table="cost">
+                        <i class="fas fa-columns mr-1"></i> Show more
+                    </a>
                 </div>
                 <div class="card-body">
                     <table class="table table-bordered table-sm table-hover">
@@ -561,6 +557,13 @@
 
         .card-header:hover {
             opacity: 0.95;
+        }
+
+        #revenueTotalHeaderAmount,
+        #costTotalHeaderAmount {
+            font-size: 1.2rem;
+            font-weight: 700;
+            letter-spacing: 0.02em;
         }
     </style>
 @stop

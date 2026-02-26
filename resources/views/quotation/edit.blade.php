@@ -642,8 +642,8 @@
         <!-- END ROW -->
 
         <!-- ============================================
-                                                                                                                                                                         MODALS
-                                                                                                                                                                         ============================================ -->
+                                                                                                                                                                                                                                                         MODALS
+                                                                                                                                                                                                                                                         ============================================ -->
 
         {{-- REVENUE MODAL --}}
         <div class="modal fade" id="addRevenueModal" tabindex="-1" role="dialog"
@@ -1016,37 +1016,21 @@
                                 </label>
                                 <select class="form-control" id="emailTemplateSelect" name="email_template_id" required>
                                     <option value="">-- Select Template --</option>
-                                    {{-- TODO: Populate via endpoint when template source is confirmed --}}
                                 </select>
+                                <div id="emailTemplatePreview"
+                                    style="display:none; margin-top: 8px; padding: 10px 12px;
+                background-color: #f8f9fa; border: 1px solid #dee2e6;
+                border-radius: 4px; font-size: 0.85rem; color: #495057;
+                white-space: pre-wrap; line-height: 1.5;">
+                                </div>
                             </div>
-                            <div class="mb-3">
-                                <label for="emailTo" class="form-label">
-                                    <span class="text-danger">*</span> To Email
-                                </label>
-                                <input type="email" class="form-control" id="emailTo" name="email_to"
-                                    value="{{ $quotation->pri_partner_email ?? '' }}" required>
-                            </div>
-                            <div class="mb-3">
-                                <label for="emailFrom" class="form-label">
-                                    <span class="text-danger">*</span> From Email
-                                </label>
-                                <input type="email" class="form-control" id="emailFrom" name="email_from"
-                                    value="{{ $quotation->user_email ?? '' }}" required>
-                            </div>
-                            <div class="mb-3">
-                                <label for="emailSubject" class="form-label">
-                                    <span class="text-danger">*</span> Subject
-                                </label>
-                                <input type="text" class="form-control" id="emailSubject" name="email_subject"
-                                    placeholder="Enter subject" required>
-                            </div>
-                            <div class="mb-3">
-                                <label for="emailBody" class="form-label">
-                                    <span class="text-danger">*</span> Body
-                                </label>
-                                <textarea class="form-control" id="emailBody" name="email_body" rows="6"
-                                    placeholder="Email body will auto-populate when a template is selected" required></textarea>
-                            </div>
+                            {{-- Hidden fields — still submitted but not shown --}}
+                            <input type="hidden" id="emailTo" name="email_to"
+                                value="{{ $quotation->pri_partner_email ?? '' }}">
+                            <input type="hidden" id="emailFrom" name="email_from"
+                                value="{{ $quotation->user_email ?? '' }}">
+                            <input type="hidden" id="emailSubject" name="email_subject" value="">
+                            <input type="hidden" id="emailBody" name="email_body" value="">
                         </form>
                     </div>
                     <div class="modal-footer">
@@ -1139,11 +1123,11 @@
                             </div>
 
                             {{-- Include the Country --}}
-                            <div class="form-group mb-4 mt-3">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="cb_include_country"
+                            <div class="form-group mb-3 mt-3">
+                                <div class="form-check d-flex align-items-center">
+                                    <input class="form-check-input me-2" type="checkbox" id="cb_include_country"
                                         name="include_country">
-                                    <label class="form-check-label" for="cb_include_country">
+                                    <label class="form-check-label mb-0" for="cb_include_country">
                                         Include the Country
                                     </label>
                                 </div>
@@ -1196,8 +1180,8 @@
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.min.css">
     <style>
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            MODAL STYLING — matched to FitExpress UI
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            MODAL STYLING — matched to FitExpress UI
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            ============================================= */
 
         .modal-header {
             background-color: #fff !important;
@@ -1640,9 +1624,9 @@
         }
 
         /* =============================================
-                                                                                   CREATE BOOKING MODAL — Specific overrides
-                                                                                   to match the "Creation of Booking" design
-                                                                                   ============================================= */
+                                                                                                                                                                   CREATE BOOKING MODAL — Specific overrides
+                                                                                                                                                                   to match the "Creation of Booking" design
+                                                                                                                                                                   ============================================= */
 
         #createBookingModal .modal-title {
             color: #003580 !important;
@@ -1657,20 +1641,29 @@
             margin-bottom: 0.4rem;
         }
 
-        #createBookingModal .modal-body .form-control,
-        #createBookingModal .modal-body select.form-control {
+        /* Base styles for ALL form controls in create booking modal */
+        #createBookingModal .modal-body .form-control {
             height: 44px;
             font-size: 0.95rem;
             border: 1.5px solid #b0b8c4;
             border-radius: 4px;
             background-color: #fff;
-            /* Custom dropdown arrow matching the screenshot */
+            background-image: none;
+            /* reset — no arrow on text inputs */
+            padding-right: 0.75rem;
+            /* normal padding for text inputs */
             -webkit-appearance: none;
             -moz-appearance: none;
             appearance: none;
+            cursor: text;
+        }
+
+        /* Arrow ONLY on select elements */
+        #createBookingModal .modal-body select.form-control {
             background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23495057' d='M6 8L0 0h12z'/%3E%3C/svg%3E");
             background-repeat: no-repeat;
             background-position: right 14px center;
+            background-clip: padding-box;
             padding-right: 36px;
             cursor: pointer;
         }
@@ -1685,7 +1678,8 @@
             display: flex;
             align-items: center;
             padding-left: 0;
-            margin: 0.25rem 0 0.5rem 0;
+            margin: 1rem 0 1rem 0;
+            /* more breathing room above and below */
         }
 
         #createBookingModal .form-check-input {
@@ -1749,6 +1743,11 @@
         #submitCreateBookingBtn:disabled {
             background-color: #6b85aa;
             border-color: #6b85aa;
+        }
+
+        #createBookingModal .form-check-input {
+            position: static;
+            margin-right: 12px;
         }
     </style>
 @stop
@@ -3029,70 +3028,97 @@
 
             function loadEmailTemplates() {
                 const $select = $('#emailTemplateSelect');
-
-                if (!officeCode) {
-                    setTimeout(loadEmailTemplates, 500);
-                    return;
-                }
-
                 $select.empty()
                     .append('<option value="">Loading templates...</option>')
                     .prop('disabled', true);
                 emailTemplateMap = {};
 
-                $.ajax({
-                    url: '{{ route('quotation.communication.templates') }}',
-                    type: 'GET',
-                    data: {
-                        module: 'Quotation',
-                        sub_module: 'Email',
-                        office_code: officeCode
-                    },
-                    success: function(response) {
-                        $select.empty().append('<option value="">-- Select Template --</option>');
+                // Resolve office code first if not already available
+                function fetchTemplates(resolvedOfficeCode) {
+                    $.ajax({
+                        url: '{{ route('quotation.communication.templates') }}',
+                        type: 'GET',
+                        data: {
+                            module: 'Quotation',
+                            sub_module: 'Email',
+                            office_code: resolvedOfficeCode
+                        },
+                        success: function(response) {
+                            $select.empty().append('<option value="">-- Select Template --</option>');
 
-                        if (response.success && response.templates.length > 0) {
-                            response.templates.forEach(function(t) {
-                                emailTemplateMap[t.Name] = t.Description || '';
-                                $select.append(`<option value="${t.Name}">${t.Name}</option>`);
-                            });
-                        } else {
-                            const msg = response.code === 'NOT_CONFIGURED' ?
-                                `⚠ Email templates not configured for office: ${officeCode}` :
-                                response.code === 'OFFICE_NOT_FOUND' ?
-                                `⚠ Office not found: ${officeCode}` :
-                                '-- No email templates available --';
-                            $select.append(`<option value="" disabled>${msg}</option>`);
+                            if (response.success && response.templates.length > 0) {
+                                response.templates.forEach(function(t) {
+                                    emailTemplateMap[t.Name] = t.Description || '';
+                                    $select.append(
+                                        `<option value="${t.Name}">${t.Name}</option>`);
+                                });
+                            } else {
+                                const msg = response.code === 'NOT_CONFIGURED' ?
+                                    `⚠ Email templates not configured for office: ${resolvedOfficeCode}` :
+                                    response.code === 'OFFICE_NOT_FOUND' ?
+                                    `⚠ Office not found: ${resolvedOfficeCode}` :
+                                    '-- No email templates available --';
+                                $select.append(`<option value="" disabled>${msg}</option>`);
+                            }
+                        },
+                        error: function(xhr) {
+                            const res = xhr.responseJSON;
+                            const msg = res?.code === 'NOT_CONFIGURED' ?
+                                `⚠ Email templates not configured for office: ${resolvedOfficeCode}` :
+                                res?.code === 'OFFICE_NOT_FOUND' ?
+                                `⚠ Office not found: ${resolvedOfficeCode}` :
+                                '-- Failed to load templates --';
+                            $select.empty().append(`<option value="" disabled>${msg}</option>`);
+                            console.warn('loadEmailTemplates error:', res?.message || xhr.status);
+                        },
+                        complete: function() {
+                            $select.prop('disabled', false);
                         }
-                    },
-                    error: function(xhr) {
-                        const res = xhr.responseJSON;
-                        const msg = res?.code === 'NOT_CONFIGURED' ?
-                            `⚠ Email templates not configured for office: ${officeCode}` :
-                            res?.code === 'OFFICE_NOT_FOUND' ?
-                            `⚠ Office not found: ${officeCode}` :
-                            '-- Failed to load templates --';
-                        $select.empty().append(`<option value="" disabled>${msg}</option>`);
-                        console.warn('loadEmailTemplates error:', res?.message || xhr.status);
-                    },
-                    complete: function() {
-                        $select.prop('disabled', false);
-                    }
-                });
+                    });
+                }
+
+                // If officeCode already resolved from page load, use it directly
+                // Otherwise fetch it fresh — avoids race condition on slow connections
+                if (officeCode) {
+                    fetchTemplates(officeCode);
+                } else {
+                    $.ajax({
+                        url: '/quotation/office-code',
+                        type: 'GET',
+                        data: {
+                            team_id: teamId
+                        },
+                        success: function(response) {
+                            if (response.success && response.office_code) {
+                                officeCode = response.office_code.trim();
+                                fetchTemplates(officeCode);
+                            } else {
+                                $select.empty().append(
+                                    '<option value="" disabled>⚠ Could not resolve office</option>'
+                                );
+                                $select.prop('disabled', false);
+                            }
+                        },
+                        error: function() {
+                            $select.empty().append(
+                                '<option value="" disabled>⚠ Failed to resolve office</option>'
+                            );
+                            $select.prop('disabled', false);
+                        }
+                    });
+                }
             }
 
             // ============================================
             // EMAIL QUOTE — MODAL OPEN
             // ============================================
             $('#emailQuoteBtn').on('click', function() {
-                $('#emailQuoteForm')[0].reset();
-                $('#emailBody').val('');
-                $('#emailSubject').val('');
-                $('#emailTo').val('{{ $quotation->pri_partner_email ?? '' }}');
-                $('#emailFrom').val('{{ $quotation->user_email ?? '' }}');
-                loadEmailTemplates(); // fetch fresh on every open
+                $('#emailTemplateSelect').val('');
+                $('#emailTemplatePreview').hide().text('');
+                loadEmailTemplates();
                 $('#emailQuoteModal').modal('show');
             });
+
 
             // ============================================
             // EMAIL QUOTE — TEMPLATE SELECTION
@@ -3101,12 +3127,21 @@
             // ============================================
             $(document).on('change', '#emailTemplateSelect', function() {
                 const selectedName = $(this).val();
+                const $preview = $('#emailTemplatePreview');
+
                 if (!selectedName) {
                     $('#emailBody').val('');
+                    $('#emailSubject').val('');
+                    $preview.hide().text('');
                     return;
                 }
+
                 const body = emailTemplateMap[selectedName] || '';
                 $('#emailBody').val(body);
+                $('#emailSubject').val(selectedName); // template name becomes subject
+
+                // Show preview beneath the dropdown
+                $preview.text(body).show();
             });
 
             // ============================================
@@ -3114,31 +3149,22 @@
             // ============================================
             $('#sendEmailQuoteBtn').on('click', function() {
                 const templateId = $('#emailTemplateSelect').val();
-                const toEmail = $('#emailTo').val().trim();
-                const fromEmail = $('#emailFrom').val().trim();
-                const subject = $('#emailSubject').val().trim();
-                const body = $('#emailBody').val().trim();
+
+                console.log('to_email:', $('#emailTo').val());
+                console.log('from_email:', $('#emailFrom').val());
+                console.log('subject:', $('#emailSubject').val());
+                console.log('body:', $('#emailBody').val());
+                console.log('template_id:', templateId);
 
                 if (!templateId) {
                     showNotification('Please select a template', 'error');
                     return;
                 }
-                if (!toEmail) {
-                    showNotification('To Email is required', 'error');
-                    return;
-                }
-                if (!fromEmail) {
-                    showNotification('From Email is required', 'error');
-                    return;
-                }
-                if (!subject) {
-                    showNotification('Subject is required', 'error');
-                    return;
-                }
-                if (!body) {
-                    showNotification('Email body is required', 'error');
-                    return;
-                }
+
+                // Populate hidden fields from the template map before submitting
+                const body = emailTemplateMap[templateId] || '';
+                $('#emailBody').val(body);
+                $('#emailSubject').val(templateId); // uses template name as subject
 
                 $.ajax({
                     url: '{{ route('quotation.email.send') }}',
@@ -3148,10 +3174,10 @@
                         booking_no: bookingNo,
                         quote_id: quotationId,
                         template_id: templateId,
-                        to_email: toEmail,
-                        from_email: fromEmail,
-                        subject: subject,
-                        body: body
+                        to_email: $('#emailTo').val(),
+                        from_email: $('#emailFrom').val(),
+                        subject: $('#emailSubject').val(),
+                        body: $('#emailBody').val()
                     },
                     beforeSend: function() {
                         $('#sendEmailQuoteBtn').prop('disabled', true)
@@ -3230,10 +3256,11 @@
             });
 
             $('#emailQuoteModal').on('hidden.bs.modal', function() {
-                $('#emailQuoteForm')[0].reset();
+                $('#emailTemplateSelect').val('');
+                $('#emailTemplatePreview').hide().text('');
                 $('#emailBody').val('');
+                $('#emailSubject').val('');
             });
-
             loadEmailHistory();
 
 
@@ -3556,7 +3583,7 @@
                 const $select = $('#agentTypeSelect');
 
                 $.ajax({
-                    url: '/quotation/agent-types',
+                    url: '{{ route('quotation.agent-types') }}',
                     type: 'GET',
                     headers: {
                         'X-CSRF-TOKEN': '{{ csrf_token() }}'
@@ -3566,12 +3593,20 @@
                             0) {
                             $select.empty().append('<option value="">-- Select Agent Type --</option>');
                             response.data.forEach(function(item) {
+                                // SP returns Id (GUID), Code, Name
                                 const id = item.Id ?? item.id;
+                                const code = item.Code ?? item.code;
                                 const name = item.Name ?? item.name;
-                                const selected = String(id) === String(SAVED_AGENT_TYPE) ?
-                                    'selected' : '';
+
+                                // Match against both Id and Code since we're unsure which is stored
+                                const isSelected = (
+                                    String(id) === String(SAVED_AGENT_TYPE) ||
+                                    String(code) === String(SAVED_AGENT_TYPE)
+                                );
+
                                 $select.append(
-                                    `<option value="${id}" ${selected}>${name}</option>`);
+                                    `<option value="${id}" data-code="${code}" ${isSelected ? 'selected' : ''}>${name}</option>`
+                                );
                             });
                         } else {
                             $select.empty().append(

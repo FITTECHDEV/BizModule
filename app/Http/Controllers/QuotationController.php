@@ -3720,4 +3720,28 @@ class QuotationController extends Controller
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }
+
+    public function getAgentTypes(Request $request)
+    {
+        try {
+            $filter = $request->input('filter', '');
+
+            $agentTypes = DB::connection('sqlsrv')
+                ->select('EXEC dbo.sp_ClientAgentList @Filter = ?', [$filter]);
+
+            return response()->json([
+                'success' => true,
+                'data'    => $agentTypes,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('getAgentTypes - Failed', [
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to load agent types: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
 }
