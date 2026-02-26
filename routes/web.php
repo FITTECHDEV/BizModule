@@ -815,6 +815,12 @@ Route::middleware(['auth', 'can:approve-all-entity-request'])->group(function ()
     Route::post('/quotation/{bookingno}/copy', [App\Http\Controllers\QuotationController::class, 'copy'])
         ->name('quotation.copy');
 
+    Route::get('quotation/customer-types',    [App\Http\Controllers\QuotationController::class, 'getCustomerTypes'])
+        ->name('quotation.customer-types');
+
+    Route::post('quotation/customer/save',    [App\Http\Controllers\QuotationController::class, 'saveCustomerDetails'])
+        ->name('quotation.customer.save');
+
     Route::get('/quotation/{id}', [App\Http\Controllers\QuotationController::class, 'view'])
         ->name('quotation.view');
 

@@ -446,7 +446,7 @@
                                     <label class="col-sm-4 col-form-label">Agent Type</label>
                                     <div class="col-sm-8">
                                         <select class="form-control form-control-sm" id="agentTypeSelect"
-                                            name="agent_type">
+                                            name="agent_type" disabled>
                                             <option value="">-- Loading... --</option>
                                         </select>
                                     </div>
@@ -454,6 +454,15 @@
                             </div>
                         </div>
 
+                    </div>
+
+                    <div class="row mt-2">
+                        <div class="col-md-12 text-right">
+                            <button type="button" class="btn btn-primary btn-sm" id="saveCustomerDetailsBtn"
+                                style="display:none">
+                                <i class="fas fa-save mr-1"></i> Save
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -627,8 +636,8 @@
         <!-- END ROW -->
 
         <!-- ============================================
-                                                                                                                                                                                                                                                                                             MODALS
-                                                                                                                                                                                                                                                                                             ============================================ -->
+                                                                                                                                                                                                                                                                                                                     MODALS
+                                                                                                                                                                                                                                                                                                                     ============================================ -->
 
         {{-- REVENUE MODAL --}}
         <div class="modal fade" id="addRevenueModal" tabindex="-1" role="dialog"
@@ -1098,7 +1107,8 @@
                                 <label for="cb_service_template">
                                     Service Template <span class="text-danger">*</span>
                                 </label>
-                                <select class="form-control" id="cb_service_template" name="service_template" required>
+                                <select class="form-control" id="cb_service_template" name="service_template"
+                                    required>
                                     <option value=""></option>
                                 </select>
                             </div>
@@ -1186,8 +1196,8 @@
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.min.css">
     <style>
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                MODAL STYLING — matched to FitExpress UI
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        MODAL STYLING — matched to FitExpress UI
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        ============================================= */
 
         .modal-header {
             background-color: #fff !important;
@@ -1630,9 +1640,9 @@
         }
 
         /* =============================================
-                                                                                                                                                                                                       CREATE BOOKING MODAL — Specific overrides
-                                                                                                                                                                                                       to match the "Creation of Booking" design
-                                                                                                                                                                                                       ============================================= */
+                                                                                                                                                                                                                               CREATE BOOKING MODAL — Specific overrides
+                                                                                                                                                                                                                               to match the "Creation of Booking" design
+                                                                                                                                                                                                                               ============================================= */
 
         #createBookingModal .modal-title {
             color: #003580 !important;
@@ -2940,14 +2950,22 @@
                         reason_type: status
                     },
                     success: function(response) {
-                        if (response.success) {
-                            showNotification(response.message, 'success');
-                            $('#statusModal').modal('hide');
-                            setTimeout(function() {
-                                window.location.href = '{{ route('quotation.index') }}';
-                            }, 1500);
+                        const $select = $('#reasonCode');
+                        $select.empty().append('<option value="">-- Select Reason --</option>');
+                        if (response.success && response.reasons?.length) {
+                            response.reasons.forEach(function(r) {
+                                // log one item so we can see the actual keys
+                                console.log('Reason item:', r);
+
+                                const code = r.Code ?? r.code ?? r.ReasonCode ?? r.ID ?? r.Id ??
+                                    '';
+                                const name = r.Name ?? r.name ?? r.ReasonName ?? r
+                                    .Description ?? '';
+
+                                $select.append(`<option value="${code}">${name}</option>`);
+                            });
                         } else {
-                            showNotification(response.message, 'error');
+                            $select.append('<option value="" disabled>No reasons available</option>');
                         }
                     },
                     error: function() {
@@ -3681,6 +3699,47 @@
             });
 
             // ============================================
+            // CUSTOMER TYPE FETCH (from SP)
+            // ============================================
+            function fetchCustomerTypes() {
+                const $select = $('#customerTypeSelect');
+                const savedType = '{{ $quotation->CustomerType ?? '' }}';
+
+                $.ajax({
+                    url: '{{ route('quotation.customer-types') }}',
+                    type: 'GET',
+                    success: function(response) {
+                        if (response.success && Array.isArray(response.data) && response.data.length >
+                            0) {
+                            $select.empty().append('<option value="">-- Select --</option>');
+                            response.data.forEach(function(item) {
+                                const val = item.Code ?? item.code ?? item.Value ?? item.value;
+                                const name = item.Name ?? item.name;
+                                $select.append(
+                                    `<option value="${val}" ${val === savedType ? 'selected' : ''}>${name}</option>`
+                                );
+                            });
+                        } else {
+                            // Fallback to hardcoded until SP is ready
+                            $select.empty().append(`
+                    <option value="">-- Select --</option>
+                    <option value="Customer" ${'Customer' === savedType ? 'selected' : ''}>Customer</option>
+                    <option value="Agent"    ${'Agent'    === savedType ? 'selected' : ''}>Agent</option>
+                `);
+                        }
+                    },
+                    error: function() {
+                        // Fallback silently
+                        $select.empty().append(`
+                <option value="">-- Select --</option>
+                <option value="Customer" ${'Customer' === savedType ? 'selected' : ''}>Customer</option>
+                <option value="Agent"    ${'Agent'    === savedType ? 'selected' : ''}>Agent</option>
+            `);
+                    }
+                });
+            }
+
+            // ============================================
             // AGENT TYPE FETCH
             // ============================================
             const SAVED_AGENT_TYPE = '{{ $quotation->AgentType ?? '' }}';
@@ -3726,7 +3785,70 @@
                 });
             }
 
+
+
+            // Agent Type: disabled unless Customer Type = Agent
+            function syncAgentTypeState() {
+                const isAgent = $('#customerTypeSelect').val() === 'Agent';
+                $('#agentTypeSelect').prop('disabled', !isAgent);
+                if (!isAgent) $('#agentTypeSelect').val('');
+            }
+
+            $('#customerTypeSelect').on('change', function() {
+                syncAgentTypeState();
+                $('#saveCustomerDetailsBtn').show();
+            });
+            // Run on page load after types are fetched
+            fetchCustomerTypes();
             fetchAgentTypes();
+            setTimeout(syncAgentTypeState, 600);
+
+            $('#saveCustomerDetailsBtn').on('click', function() {
+                const customerType = $('#customerTypeSelect').val();
+                const agentType = $('#agentTypeSelect').val();
+
+                if (!customerType) {
+                    showNotification('Customer Type is required', 'error');
+                    return;
+                }
+
+                if (customerType === 'Agent' && !agentType) {
+                    showNotification('Agent Type is required for Agent customers', 'error');
+                    return;
+                }
+
+                $.ajax({
+                    url: '{{ route('quotation.customer.save') }}',
+                    type: 'POST',
+                    data: {
+                        _token: '{{ csrf_token() }}',
+                        booking_no: bookingNo,
+                        customer_type: customerType,
+                        agent_type: agentType || ''
+                    },
+                    beforeSend: function() {
+                        $('#saveCustomerDetailsBtn').prop('disabled', true)
+                            .html('<i class="fas fa-spinner fa-spin mr-1"></i> Saving...');
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            showNotification('Customer details saved successfully', 'success');
+                        } else {
+                            showNotification(response.message || 'Failed to save', 'error');
+                        }
+                    },
+                    error: function(xhr) {
+                        showNotification(xhr.responseJSON?.message || 'Failed to save',
+                            'error');
+                    },
+                    complete: function() {
+                        $('#saveCustomerDetailsBtn').prop('disabled', false)
+                            .html('<i class="fas fa-save mr-1"></i> Save');
+                    }
+                });
+
+            });
+
 
             // ============================================
             // HELPER FUNCTIONS

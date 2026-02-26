@@ -3788,4 +3788,20 @@ class QuotationController extends Controller
             ], 500);
         }
     }
+
+    public function getCustomerTypes()
+    {
+        // Wire to SP when available — returns fallback for now
+        return response()->json(['success' => false, 'data' => []]);
+    }
+
+    public function saveCustomerDetails(Request $request)
+    {
+        // Wire sp_Quote_CustomerUpdate here when SP is available
+        // $bookingNo    = $request->booking_no;
+        // $customerType = $request->customer_type;
+        // $agentType    = $request->agent_type;
+
+        return response()->json(['success' => true, 'message' => 'Saved (pending SP)']);
+    }
 }
