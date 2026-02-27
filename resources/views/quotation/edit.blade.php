@@ -634,8 +634,8 @@
         <!-- END ROW -->
 
         <!-- ============================================
-                                                                                                                                                                                                                                                                                                                                                                 MODALS
-                                                                                                                                                                                                                                                                                                                                                                 ============================================ -->
+                                                                                                                                                                                                                                                                                                                                                                             MODALS
+                                                                                                                                                                                                                                                                                                                                                                             ============================================ -->
 
         {{-- REVENUE MODAL --}}
         <div class="modal fade" id="addRevenueModal" tabindex="-1" role="dialog"
@@ -1025,14 +1025,14 @@
                                     <div class="form-group">
                                         <label>To <span class="text-danger">*</span></label>
                                         <input type="email" class="form-control form-control-sm" id="emailTo"
-                                            value="{{ $quotation->pri_partner_email ?? '' }}">
+                                            value="{{ $quotation->user_email ?? '' }}">
                                     </div>
                                 </div>
                                 <div class="col-md-6">
                                     <div class="form-group">
                                         <label>From</label>
                                         <input type="email" class="form-control form-control-sm" id="emailFrom"
-                                            value="{{ $quotation->user_email ?? '' }}">
+                                            value="{{ $quotation->pri_partner_email ?? '' }}">
                                     </div>
                                 </div>
                             </div>
@@ -1193,8 +1193,8 @@
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.min.css">
     <style>
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    MODAL STYLING — matched to FitExpress UI
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                MODAL STYLING — matched to FitExpress UI
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                ============================================= */
 
         .modal-header {
             background-color: #fff !important;
@@ -1637,9 +1637,9 @@
         }
 
         /* =============================================
-                                                                                                                                                                                                                                                                           CREATE BOOKING MODAL — Specific overrides
-                                                                                                                                                                                                                                                                           to match the "Creation of Booking" design
-                                                                                                                                                                                                                                                                           ============================================= */
+                                                                                                                                                                                                                                                                                       CREATE BOOKING MODAL — Specific overrides
+                                                                                                                                                                                                                                                                                       to match the "Creation of Booking" design
+                                                                                                                                                                                                                                                                                       ============================================= */
 
         #createBookingModal .modal-title {
             color: #003580 !important;
@@ -3234,8 +3234,8 @@
                 $('#emailTemplateSelect').val('');
                 $('#emailSubject').val('');
                 $('#emailBody').val('');
-                $('#emailTo').val('{{ $quotation->pri_partner_email ?? '' }}');
-                $('#emailFrom').val('{{ $quotation->user_email ?? '' }}');
+                $('#emailTo').val('{{ $quotation->user_email ?? '' }}');
+                $('#emailFrom').val('{{ $quotation->pri_partner_email ?? '' }}');
                 loadEmailTemplates();
                 populateQuoteVersionDropdown();
                 $('#emailQuoteModal').modal('show');
