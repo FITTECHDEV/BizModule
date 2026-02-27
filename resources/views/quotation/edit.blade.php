@@ -249,6 +249,7 @@
                                     <tr>
                                         <th>Sent On</th>
                                         <th>To Email ID</th>
+                                        <th>Quote Version</th>
                                     </tr>
                                 </thead>
                                 <tbody id="emailHistoryTable">
@@ -636,8 +637,8 @@
         <!-- END ROW -->
 
         <!-- ============================================
-                                                                                                                                                                                                                                                                                                                     MODALS
-                                                                                                                                                                                                                                                                                                                     ============================================ -->
+                                                                                                                                                                                                                                                                                                                                     MODALS
+                                                                                                                                                                                                                                                                                                                                     ============================================ -->
 
         {{-- REVENUE MODAL --}}
         <div class="modal fade" id="addRevenueModal" tabindex="-1" role="dialog"
@@ -1196,8 +1197,8 @@
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.min.css">
     <style>
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        MODAL STYLING — matched to FitExpress UI
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        MODAL STYLING — matched to FitExpress UI
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        ============================================= */
 
         .modal-header {
             background-color: #fff !important;
@@ -1640,9 +1641,9 @@
         }
 
         /* =============================================
-                                                                                                                                                                                                                               CREATE BOOKING MODAL — Specific overrides
-                                                                                                                                                                                                                               to match the "Creation of Booking" design
-                                                                                                                                                                                                                               ============================================= */
+                                                                                                                                                                                                                                               CREATE BOOKING MODAL — Specific overrides
+                                                                                                                                                                                                                                               to match the "Creation of Booking" design
+                                                                                                                                                                                                                                               ============================================= */
 
         #createBookingModal .modal-title {
             color: #003580 !important;
@@ -2275,9 +2276,12 @@
                         return false;
                     }
                 }).autocomplete("instance")._renderItem = function(ul, item) {
+                    const vatLabel = item.vat ?
+                        `<span class="text-muted ml-2" style="font-size:0.75rem;">(VAT: ${item.vat})</span>` :
+                        '';
                     return $("<li>")
                         .addClass(item.disabled ? "ui-state-disabled" : "")
-                        .append($("<div>").text(item.label))
+                        .append($("<div>").html(`${item.label}${vatLabel}`))
                         .appendTo(ul);
                 };
             }
@@ -2954,16 +2958,12 @@
                         $select.empty().append('<option value="">-- Select Reason --</option>');
                         if (response.success && response.reasons?.length) {
                             response.reasons.forEach(function(r) {
-                                // log one item so we can see the actual keys
-                                console.log('Reason item:', r);
-
-                                const code = r.Code ?? r.code ?? r.ReasonCode ?? r.ID ?? r.Id ??
-                                    '';
-                                const name = r.Name ?? r.name ?? r.ReasonName ?? r
-                                    .Description ?? '';
-
+                                const code = r.Code ?? r.code ?? r.ReasonCode ?? '';
+                                const name = r.Name ?? r.name ?? r.ReasonName ?? '';
                                 $select.append(`<option value="${code}">${name}</option>`);
                             });
+                            // Pre-select first reason
+                            $select.find('option:eq(1)').prop('selected', true);
                         } else {
                             $select.append('<option value="" disabled>No reasons available</option>');
                         }
@@ -3112,10 +3112,12 @@
                     },
                     success: function(response) {
                         if (response.success) {
-                            showNotification('Quote generated — ' + response.label, 'success');
+                            showNotification('Quote generated — ' + response.label,
+                                'success');
                             loadVersions();
                         } else {
-                            showNotification(response.message || 'Failed to generate quote.',
+                            showNotification(response.message ||
+                                'Failed to generate quote.',
                                 'error');
                         }
                     },
@@ -3161,7 +3163,8 @@
                             office_code: resolvedOfficeCode
                         },
                         success: function(response) {
-                            $select.empty().append('<option value="">-- Select Template --</option>');
+                            $select.empty().append(
+                                '<option value="">-- Select Template --</option>');
 
                             if (response.success && response.templates.length > 0) {
                                 response.templates.forEach(function(t) {
@@ -3250,7 +3253,8 @@
                     success: function(response) {
                         if (response.success && response.versions?.length) {
                             response.versions.forEach(function(v) {
-                                $select.append(`<option value="${v.url}">${v.label}</option>`);
+                                $select.append(
+                                    `<option value="${v.url}">${v.label}</option>`);
                             });
                         } else {
                             $select.append(
@@ -3319,7 +3323,8 @@
                         }
                     },
                     error: function(xhr) {
-                        showNotification(xhr.responseJSON?.message || 'Failed to send email',
+                        showNotification(xhr.responseJSON?.message ||
+                            'Failed to send email',
                             'error');
                     },
                     complete: function() {
@@ -3341,8 +3346,8 @@
                     },
                     beforeSend: function() {
                         $('#emailHistoryTable').html(
-                            '<tr><td colspan="2" class="text-center text-muted"><i class="fas fa-spinner fa-spin"></i> Loading...</td></tr>'
-                        );
+                            '<tr><td colspan="3" class="text-center text-muted"><i class="fas fa-spinner fa-spin"></i> Loading...</td></tr>'
+                            );
                     },
                     success: function(response) {
                         renderEmailHistory(response.emails || []);
@@ -3360,21 +3365,24 @@
                 tbody.empty();
 
                 if (!emails.length) {
-                    tbody.html('<tr><td colspan="2" class="text-center text-muted">No emails sent yet</td></tr>');
+                    tbody.html(
+                        '<tr><td colspan="3" class="text-center text-muted">No emails sent yet</td></tr>');
                     return;
                 }
 
                 emails.forEach(function(email) {
                     tbody.append(`
-                        <tr>
-                            <td>${email.sent_on  ?? 'N/A'}</td>
-                            <td>${email.to_email ?? 'N/A'}</td>
-                        </tr>
-                    `);
+            <tr>
+                <td>${email.sent_on   ?? 'N/A'}</td>
+                <td>${email.to_email  ?? 'N/A'}</td>
+                <td>${email.quote_version ?? 'N/A'}</td>
+            </tr>
+        `);
                 });
             }
 
-            $('#emailQuoteModal .close, #emailQuoteModal button[data-dismiss="modal"]').on('click', function(e) {
+            $('#emailQuoteModal .close, #emailQuoteModal button[data-dismiss="modal"]').on('click', function(
+                e) {
                 e.preventDefault();
                 e.stopPropagation();
                 $('#emailQuoteModal').modal('hide');
@@ -3419,7 +3427,8 @@
                 setTimeout(function() {
                     initLocationAutocomplete('cb_place_of_receipt', 'cb_place_of_receipt_code',
                         'cb_place_of_receipt_id');
-                    initLocationAutocomplete('cb_place_of_delivery', 'cb_place_of_delivery_code',
+                    initLocationAutocomplete('cb_place_of_delivery',
+                        'cb_place_of_delivery_code',
                         'cb_place_of_delivery_id');
                 }, 150);
             });
@@ -3480,7 +3489,8 @@
                                 );
                             });
                         } else {
-                            $select.append('<option value="" disabled>No parties available</option>');
+                            $select.append(
+                                '<option value="" disabled>No parties available</option>');
                         }
                     },
                     error: function() {
@@ -3555,15 +3565,16 @@
                             type: 'GET',
                             data: {
                                 filter: request.term,
-                                include_country: $('#cb_include_country').is(':checked') ? 1 :
-                                    0,
+                                include_country: $('#cb_include_country').is(':checked') ?
+                                    1 : 0,
                                 country_code: ''
                             },
                             success: function(data) {
                                 if (data.success && data.locations.length) {
                                     response(data.locations.map(function(l) {
                                         return {
-                                            label: l.LocationCode + ' — ' + l
+                                            label: l.LocationCode + ' — ' +
+                                                l
                                                 .LocationName,
                                             value: l.LocationName,
                                             code: l.LocationCode,
@@ -3667,7 +3678,8 @@
                     },
                     beforeSend: function() {
                         $('#submitCreateBookingBtn').prop('disabled', true)
-                            .html('<i class="fas fa-spinner fa-spin mr-1"></i> Creating...');
+                            .html(
+                                '<i class="fas fa-spinner fa-spin mr-1"></i> Creating...');
                     },
                     success: function(response) {
                         if (response.success) {
@@ -3680,7 +3692,8 @@
                     },
                     error: function(xhr) {
                         showNotification(
-                            xhr.responseJSON?.message || 'Failed to create booking', 'error'
+                            xhr.responseJSON?.message || 'Failed to create booking',
+                            'error'
                         );
                     },
                     complete: function() {
@@ -3709,11 +3722,13 @@
                     url: '{{ route('quotation.customer-types') }}',
                     type: 'GET',
                     success: function(response) {
-                        if (response.success && Array.isArray(response.data) && response.data.length >
+                        if (response.success && Array.isArray(response.data) && response.data
+                            .length >
                             0) {
                             $select.empty().append('<option value="">-- Select --</option>');
                             response.data.forEach(function(item) {
-                                const val = item.Code ?? item.code ?? item.Value ?? item.value;
+                                const val = item.Code ?? item.code ?? item.Value ?? item
+                                    .value;
                                 const name = item.Name ?? item.name;
                                 $select.append(
                                     `<option value="${val}" ${val === savedType ? 'selected' : ''}>${name}</option>`
@@ -3754,9 +3769,11 @@
                         'X-CSRF-TOKEN': '{{ csrf_token() }}'
                     },
                     success: function(response) {
-                        if (response.success && Array.isArray(response.data) && response.data.length >
+                        if (response.success && Array.isArray(response.data) && response.data
+                            .length >
                             0) {
-                            $select.empty().append('<option value="">-- Select Agent Type --</option>');
+                            $select.empty().append(
+                                '<option value="">-- Select Agent Type --</option>');
                             response.data.forEach(function(item) {
                                 // SP returns Id (GUID), Code, Name
                                 const id = item.Id ?? item.id;
@@ -3832,7 +3849,8 @@
                     },
                     success: function(response) {
                         if (response.success) {
-                            showNotification('Customer details saved successfully', 'success');
+                            showNotification('Customer details saved successfully',
+                                'success');
                         } else {
                             showNotification(response.message || 'Failed to save', 'error');
                         }
@@ -3979,7 +3997,8 @@
                         if (response.success && response.templates.length > 0) {
                             $select.append('<option value="">-- Select Template --</option>');
                             response.templates.forEach(function(t) {
-                                $select.append(`<option value="${t.Name}">${t.Name}</option>`);
+                                $select.append(
+                                    `<option value="${t.Name}">${t.Name}</option>`);
                             });
 
                             @if ($quotation->terms_condition)
@@ -4018,7 +4037,8 @@
                             );
                         } else {
                             $select.append(
-                                `<option value="" disabled>-- Failed to load templates --</option>`);
+                                `<option value="" disabled>-- Failed to load templates --</option>`
+                            );
                         }
 
                         console.warn('loadTermsTemplates error:', response?.message || xhr.status);
@@ -4052,7 +4072,8 @@
                         if (response.success) {
                             $('#termsDescriptionPreview').val(response.description);
                         } else {
-                            $('#termsDescriptionPreview').val('Failed to load description.');
+                            $('#termsDescriptionPreview').val(
+                                'Failed to load description.');
                             showNotification('Could not load T&C description', 'warning');
                         }
                     },
@@ -4098,7 +4119,8 @@
                         }
                     },
                     error: function(xhr) {
-                        showNotification(xhr.responseJSON?.message || 'Failed to apply Terms',
+                        showNotification(xhr.responseJSON?.message ||
+                            'Failed to apply Terms',
                             'error');
                     },
                     complete: function() {
