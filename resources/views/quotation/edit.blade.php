@@ -604,9 +604,6 @@
                                 <a href="{{ route('quotation.index') }}" class="btn btn-link">Close</a>
 
                                 <div class="float-right d-flex align-items-center">
-                                    <button type="button" class="btn btn-success mr-2" id="createBookingBtn">
-                                        <i class="fas fa-plus-circle mr-1"></i> Create Booking
-                                    </button>
                                     <div class="btn-group" id="quoteActionDropdown"> <button type="button"
                                             class="btn btn-secondary dropdown-toggle" data-toggle="dropdown"
                                             aria-haspopup="true" aria-expanded="false">
@@ -637,8 +634,8 @@
         <!-- END ROW -->
 
         <!-- ============================================
-                                                                                                                                                                                                                                                                                                                                                             MODALS
-                                                                                                                                                                                                                                                                                                                                                             ============================================ -->
+                                                                                                                                                                                                                                                                                                                                                                 MODALS
+                                                                                                                                                                                                                                                                                                                                                                 ============================================ -->
 
         {{-- REVENUE MODAL --}}
         <div class="modal fade" id="addRevenueModal" tabindex="-1" role="dialog"
@@ -1108,8 +1105,7 @@
                                 <label for="cb_service_template">
                                     Service Template <span class="text-danger">*</span>
                                 </label>
-                                <select class="form-control" id="cb_service_template" name="service_template"
-                                    required>
+                                <select class="form-control" id="cb_service_template" name="service_template" required>
                                     <option value=""></option>
                                 </select>
                             </div>
@@ -1197,8 +1193,8 @@
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.min.css">
     <style>
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                MODAL STYLING — matched to FitExpress UI
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    MODAL STYLING — matched to FitExpress UI
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    ============================================= */
 
         .modal-header {
             background-color: #fff !important;
@@ -1641,9 +1637,9 @@
         }
 
         /* =============================================
-                                                                                                                                                                                                                                                                       CREATE BOOKING MODAL — Specific overrides
-                                                                                                                                                                                                                                                                       to match the "Creation of Booking" design
-                                                                                                                                                                                                                                                                       ============================================= */
+                                                                                                                                                                                                                                                                           CREATE BOOKING MODAL — Specific overrides
+                                                                                                                                                                                                                                                                           to match the "Creation of Booking" design
+                                                                                                                                                                                                                                                                           ============================================= */
 
         #createBookingModal .modal-title {
             color: #003580 !important;
@@ -2609,7 +2605,7 @@
                 // FIX: Derive revenueOrCost from the radio button, not the modal context.
                 const revenueOrCost = chargeType === 'revenue' ? 'Revenue' :
                     chargeType === 'costmarkup' ? 'Cost with Markup' : 'Cost';
-                    
+
                 console.log('Saving charge — modal:', type, '| radio:', chargeType, '| revenueOrCost:',
                     revenueOrCost);
 

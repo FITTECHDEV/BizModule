@@ -17,9 +17,22 @@
                 <i class="fas fa-copy"></i> Copy Booking
             </button>
 
+            {{--
+                Edit Booking button is only shown when the quotation is genuinely
+                in-progress (Proposal, Pending, or no status set yet).
+                For Won, Lost, Cancel, or any other terminal status it is hidden.
+                This is based on the record's actual status, not which card was clicked.
+            --}}
+            @php
+                $quoteStatus  = $quotation->QuoteStatus ?? $quotation->status ?? null;
+                $isInProgress = in_array($quoteStatus, ['Proposal', 'Pending']) || is_null($quoteStatus);
+            @endphp
+
+            @if ($isInProgress)
                 <a href="{{ route('quotation.edit', $quotation->ID) }}" class="btn btn-warning btn-sm">
                     <i class="fas fa-edit"></i> Edit Booking
                 </a>
+            @endif
         </div>
     </div>
 @stop
@@ -372,69 +385,88 @@
                 </div>
             </div>
 
-            <!-- Revenue -->
+            {{--
+                REVENUE CARD
+                Show More/Less link sits in the card-header (matching edit page layout).
+                .col-extra columns are hidden by default — JS toggles them per table.
+            --}}
             <div class="card card-success">
-                <div class="card-header d-flex align-items-center">
-                    <h3 class="card-title mb-0 mr-3">Revenue</h3>
-                    <span class="text-white mr-auto small">
-                        Total: <strong id="revenueTotalHeaderAmount">0.00</strong>
-                    </span>
-                    <a href="#" class="text-white show-items-link" data-table="revenue">
-                        <i class="fas fa-columns mr-1"></i> Show more
-                    </a>
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center">
+                        <h3 class="card-title mb-0 mr-1">Revenue</h3>
+                        <span class="text-white small">
+                            Total: <strong id="revenueTotalHeaderAmount">0.00</strong>
+                        </span>
+                    </div>
+                    <div class="d-flex align-items-center ml-auto">
+                        <a href="#" class="text-white show-items-link" data-table="revenue">
+                            <i class="fas fa-columns mr-1"></i> Show more
+                        </a>
+                    </div>
                 </div>
                 <div class="card-body">
-                    <table class="table table-bordered table-sm table-hover">
-                        <thead class="thead-light">
-                            <tr>
-                                <th>Charge Name</th>
-                                <th>Rate</th>
-                                <th class="col-extra">Quantity</th>
-                                <th class="col-extra">Based On UOM</th>
-                                <th class="col-extra">Currency</th>
-                                <th>Amount</th>
-                                <th>Base Amount</th>
-                            </tr>
-                        </thead>
-                        <tbody id="revenueChargesViewTable">
-                            <tr>
-                                <td colspan="7" class="text-center text-muted">Loading charges...</td>
-                            </tr>
-                        </tbody>
-                    </table>
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-sm table-hover">
+                            <thead class="thead-light">
+                                <tr>
+                                    <th>Charge Name</th>
+                                    <th>Rate</th>
+                                    <th class="col-extra">Quantity</th>
+                                    <th class="col-extra">Based On UOM</th>
+                                    <th class="col-extra">Currency</th>
+                                    <th>Amount</th>
+                                    <th>Base Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody id="revenueChargesViewTable">
+                                <tr>
+                                    <td colspan="7" class="text-center text-muted">Loading charges...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
 
-            <!-- Cost -->
+            {{--
+                COST CARD
+                Same structure as Revenue — Show More/Less in header.
+            --}}
             <div class="card card-danger">
-                <div class="card-header d-flex align-items-center">
-                    <h3 class="card-title mb-0 mr-3">Cost</h3>
-                    <span class="text-white mr-auto small">
-                        Total: <strong id="costTotalHeaderAmount">0.00</strong>
-                    </span>
-                    <a href="#" class="text-white show-items-link" data-table="cost">
-                        <i class="fas fa-columns mr-1"></i> Show more
-                    </a>
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center">
+                        <h3 class="card-title mb-0 mr-1">Cost</h3>
+                        <span class="text-white small">
+                            Total: <strong id="costTotalHeaderAmount">0.00</strong>
+                        </span>
+                    </div>
+                    <div class="d-flex align-items-center ml-auto">
+                        <a href="#" class="text-white show-items-link" data-table="cost">
+                            <i class="fas fa-columns mr-1"></i> Show more
+                        </a>
+                    </div>
                 </div>
                 <div class="card-body">
-                    <table class="table table-bordered table-sm table-hover">
-                        <thead class="thead-light">
-                            <tr>
-                                <th>Charge Name</th>
-                                <th>Rate</th>
-                                <th class="col-extra">Quantity</th>
-                                <th class="col-extra">Based On UOM</th>
-                                <th class="col-extra">Currency</th>
-                                <th>Amount</th>
-                                <th>Base Amount</th>
-                            </tr>
-                        </thead>
-                        <tbody id="costChargesViewTable">
-                            <tr>
-                                <td colspan="7" class="text-center text-muted">Loading charges...</td>
-                            </tr>
-                        </tbody>
-                    </table>
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-sm table-hover">
+                            <thead class="thead-light">
+                                <tr>
+                                    <th>Charge Name</th>
+                                    <th>Rate</th>
+                                    <th class="col-extra">Quantity</th>
+                                    <th class="col-extra">Based On UOM</th>
+                                    <th class="col-extra">Currency</th>
+                                    <th>Amount</th>
+                                    <th>Base Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody id="costChargesViewTable">
+                                <tr>
+                                    <td colspan="7" class="text-center text-muted">Loading charges...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
 
@@ -559,11 +591,37 @@
             opacity: 0.95;
         }
 
+        /* Extra columns hidden by default — JS toggles visibility per table */
+        .col-extra {
+            display: none;
+        }
+
+        /* Show more/less link styling — matches edit page */
+        .show-items-link {
+            text-decoration: underline;
+            font-size: 0.875rem;
+        }
+
+        .show-items-link:hover {
+            opacity: 0.8;
+        }
+
         #revenueTotalHeaderAmount,
         #costTotalHeaderAmount {
             font-size: 1.2rem;
             font-weight: 700;
             letter-spacing: 0.02em;
+        }
+
+        .table-responsive {
+            overflow-x: auto;
+        }
+
+        .thead-light th {
+            background-color: #e9ecef;
+            border-color: #dee2e6;
+            font-weight: 600;
+            font-size: 0.85rem;
         }
     </style>
 @stop
@@ -670,6 +728,8 @@
 
             // ============================================
             // RENDER REVENUE CHARGES (VIEW-ONLY)
+            // After rendering, respects current expanded state of the toggle link
+            // so re-loading charges does not collapse extra columns if user expanded them.
             // ============================================
             function renderRevenueChargesView(charges) {
                 const tbody = $('#revenueChargesViewTable');
@@ -678,6 +738,7 @@
                 if (charges.length === 0) {
                     tbody.append(
                         '<tr><td colspan="7" class="text-center text-muted">No revenue charges found</td></tr>');
+                    $('#revenueTotalHeaderAmount').text('0.00');
                     return;
                 }
 
@@ -698,6 +759,12 @@
                 });
 
                 $('#revenueTotalHeaderAmount').text(totalBaseAmount.toFixed(2));
+
+                // Respect current toggle state — if user had expanded, keep expanded after reload
+                const revenueExpanded = $('.show-items-link[data-table="revenue"]').data('expanded') || false;
+                if (!revenueExpanded) {
+                    tbody.find('.col-extra').hide();
+                }
             }
 
             // ============================================
@@ -710,6 +777,7 @@
                 if (charges.length === 0) {
                     tbody.append(
                         '<tr><td colspan="7" class="text-center text-muted">No cost charges found</td></tr>');
+                    $('#costTotalHeaderAmount').text('0.00');
                     return;
                 }
 
@@ -730,6 +798,12 @@
                 });
 
                 $('#costTotalHeaderAmount').text(totalBaseAmount.toFixed(2));
+
+                // Respect current toggle state
+                const costExpanded = $('.show-items-link[data-table="cost"]').data('expanded') || false;
+                if (!costExpanded) {
+                    tbody.find('.col-extra').hide();
+                }
             }
 
             // ============================================
@@ -737,37 +811,40 @@
             // ============================================
             function updateViewSummary(revenueCharges, costCharges) {
                 const totalRevenue = revenueCharges.reduce((sum, c) => sum + parseFloat(c.amtInBaseCurr || 0), 0);
-                const totalCost = costCharges.reduce((sum, c) => sum + parseFloat(c.amtInBaseCurr || 0), 0);
-                const margin = totalRevenue - totalCost;
-                const marginPct = totalRevenue > 0 ? (margin / totalRevenue * 100) : 0;
+                const totalCost    = costCharges.reduce((sum, c) => sum + parseFloat(c.amtInBaseCurr || 0), 0);
+                const margin       = totalRevenue - totalCost;
+                const marginPct    = totalRevenue > 0 ? (margin / totalRevenue * 100) : 0;
 
                 $('#viewQuotedRevenue').val('KES ' + totalRevenue.toFixed(2));
                 $('#viewQuotedMargin').val('KES ' + margin.toFixed(2) + ' (' + marginPct.toFixed(2) + '%)');
             }
 
             // ============================================
-            // SHOW MORE / SHOW LESS TOGGLE
+            // SHOW MORE / SHOW LESS — matches edit page behaviour exactly:
+            //   - link lives in the card header
+            //   - scoped to each table independently via data-table
+            //   - toggles thead .col-extra + tbody .col-extra together
+            //   - tracks state via .data('expanded')
             // ============================================
+            // Hide all extra columns on load (CSS also does this, belt-and-braces)
             $('.col-extra').hide();
 
             $('.show-items-link').on('click', function(e) {
                 e.preventDefault();
-                e.stopPropagation();
+                e.stopPropagation(); // prevent card-header collapse from firing
 
-                const tableId = $(this).data('table');
-                const $table = tableId === 'revenue' ?
-                    $('#revenueChargesViewTable').closest('table') :
-                    $('#costChargesViewTable').closest('table');
-
-                const $extraCols = $table.find('.col-extra');
+                const tableId   = $(this).data('table');
+                const $table    = tableId === 'revenue'
+                    ? $('#revenueChargesViewTable').closest('table')
+                    : $('#costChargesViewTable').closest('table');
                 const isExpanded = $(this).data('expanded') || false;
 
                 if (isExpanded) {
-                    $extraCols.hide();
-                    $(this).html('<i class="fas fa-columns mr-1"></i> Show More');
+                    $table.find('.col-extra').hide();
+                    $(this).html('<i class="fas fa-columns mr-1"></i> Show more');
                     $(this).data('expanded', false);
                 } else {
-                    $extraCols.show();
+                    $table.find('.col-extra').show();
                     $(this).html('<i class="fas fa-columns mr-1"></i> Show Less');
                     $(this).data('expanded', true);
                 }
@@ -775,6 +852,8 @@
 
             // ============================================
             // CARD COLLAPSE
+            // Card header click triggers collapse, but must not fire
+            // when the user clicks the Show More link inside the header.
             // ============================================
             $('[data-card-widget="collapse"]').on('click', function() {
                 $(this).find('i').toggleClass('fa-chevron-down fa-chevron-up');
