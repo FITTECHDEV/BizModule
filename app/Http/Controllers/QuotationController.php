@@ -235,6 +235,7 @@ class QuotationController extends Controller
                 'clientid',
                 'username',
                 'teamname',
+                'teamid',
                 'origincountry',
                 'destinationcountry',
                 'status',
@@ -447,7 +448,20 @@ class QuotationController extends Controller
                 </button>';
                 }
 
-                return $viewBtn . $editBtn . $retriggerBtn;
+                $createBookingBtn = '';
+                $isCleanWon = ($status === 'Won' && (is_null($scmStatus) || $scmStatus === 'Success'));
+
+                if ($cardFilter === 'won' && $isCleanWon) {
+                    $createBookingBtn = ' <button class="btn btn-success btn-sm btn-create-booking"
+        data-id="' . $row->ID . '"
+        data-booking="' . $row->bookingno . '"
+        data-team="' . $row->teamid . '"
+        title="Create Booking">
+        <i class="fas fa-plus-circle"></i>
+    </button>';
+                }
+
+                return $viewBtn . $editBtn . $retriggerBtn . $createBookingBtn;
             })
             ->rawColumns(['action'])
             ->make(true);

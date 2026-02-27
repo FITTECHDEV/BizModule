@@ -192,6 +192,106 @@
                 </div>
             </div>
         </div>
+
+        {{-- CREATE BOOKING MODAL --}}
+        <div class="modal fade" id="createBookingModal" tabindex="-1" role="dialog" aria-hidden="true">
+            <div class="modal-dialog modal-lg" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h2 class="modal-title" style="color: #003580; font-weight: 700;">
+                            Creation of Booking
+                        </h2>
+                        <button type="button" class="close" data-dismiss="modal">
+                            <span>&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body" style="padding: 1.75rem 2rem;">
+                        <form id="createBookingForm">
+
+                            {{-- Service Template --}}
+                            <div class="form-group mb-4">
+                                <label for="cb_service_template">
+                                    Service Template <span class="text-danger">*</span>
+                                </label>
+                                <select class="form-control" id="cb_service_template" name="service_template" required>
+                                    <option value=""></option>
+                                </select>
+                            </div>
+
+                            {{-- Bill To Party + Forwarder --}}
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <div class="form-group mb-0">
+                                        <label for="cb_bill_to_party">
+                                            Bill To Party <span class="text-danger">*</span>
+                                        </label>
+                                        <select class="form-control" id="cb_bill_to_party" name="bill_to_party" required>
+                                            <option value=""></option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group mb-0">
+                                        <label for="cb_forwarder">
+                                            Forwarder <span class="text-danger">*</span>
+                                        </label>
+                                        <select class="form-control" id="cb_forwarder" name="forwarder" required>
+                                            <option value=""></option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {{-- Include the Country --}}
+                            <div class="form-group mb-3 mt-3">
+                                <div class="form-check d-flex align-items-center">
+                                    <input class="form-check-input me-2" type="checkbox" id="cb_include_country"
+                                        name="include_country">
+                                    <label class="form-check-label mb-0" for="cb_include_country">
+                                        Include the Country
+                                    </label>
+                                </div>
+                            </div>
+
+                            {{-- Place of Receipt + Place of Delivery --}}
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group mb-0">
+                                        <label for="cb_place_of_receipt">
+                                            Place of Receipt <span class="text-danger">*</span>
+                                        </label>
+                                        <input type="text" class="form-control" id="cb_place_of_receipt"
+                                            placeholder="Type at least 2 characters..." autocomplete="off">
+                                        <input type="hidden" id="cb_place_of_receipt_code">
+                                        <input type="hidden" id="cb_place_of_receipt_id">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group mb-0">
+                                        <label for="cb_place_of_delivery">
+                                            Place of Delivery <span class="text-danger">*</span>
+                                        </label>
+                                        <input type="text" class="form-control" id="cb_place_of_delivery"
+                                            placeholder="Type at least 2 characters..." autocomplete="off">
+                                        <input type="hidden" id="cb_place_of_delivery_code">
+                                        <input type="hidden" id="cb_place_of_delivery_id">
+                                    </div>
+                                </div>
+                            </div>
+
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <a href="#" class="text-primary mr-3" id="cancelCreateBookingBtn" data-dismiss="modal"
+                            style="font-weight: 500; text-decoration: underline;">Cancel</a>
+
+                        <button type="button" class="btn btn-primary px-4" id="submitCreateBookingBtn">
+                            Create
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 @stop
 
@@ -757,6 +857,309 @@
             });
 
             // ============================================
+            // CREATE BOOKING BUTTON
+            // Stores quotation-id, booking-no, and team-id
+            // on the modal before showing it so the
+            // show.bs.modal handler can use them.
+            // ============================================
+            $('#quotationTable').on('click', '.btn-create-booking', function(e) {
+                e.stopPropagation();
+
+                var $btn = $(this);
+
+                $('#createBookingModal')
+                    .data('quotation-id', $btn.data('id'))
+                    .data('booking-no', $btn.data('booking'))
+                    .data('team-id', $btn.data('team'))
+                    .modal('show');
+            });
+
+            // ============================================
+            // CREATE BOOKING MODAL — POPULATE DROPDOWNS
+            // Fires every time the modal opens so data is
+            // always fresh for the selected quotation.
+            // ============================================
+            $('#createBookingModal').on('show.bs.modal', function() {
+                var modal = $(this);
+                var quotationId = modal.data('quotation-id');
+                var teamId = modal.data('team-id');
+
+                // ── Reset all fields ──
+                resetCreateBookingForm();
+
+                // Show loading state on all three dropdowns
+                setDropdownLoading('#cb_service_template');
+                setDropdownLoading('#cb_bill_to_party');
+                setDropdownLoading('#cb_forwarder');
+
+                // ── 1. Service Templates ──
+                $.get('{{ route('quotation.booking.service-templates') }}', {
+                        quotation_id: quotationId
+                    })
+                    .done(function(res) {
+                        var $select = $('#cb_service_template').empty().append(
+                            '<option value=""></option>');
+                        if (res.success && res.templates && res.templates.length) {
+                            $.each(res.templates, function(i, t) {
+                                $select.append($('<option>', {
+                                    value: t.Id,
+                                    text: t.Name
+                                }));
+                            });
+                        } else {
+                            $select.append('<option value="" disabled>No templates available</option>');
+                        }
+                    })
+                    .fail(function(xhr) {
+                        console.error('Service templates load failed:', xhr);
+                        $('#cb_service_template').empty()
+                            .append('<option value="" disabled>Failed to load — try again</option>');
+                    });
+
+                // ── 2. Bill To Parties ──
+                $.get('{{ route('quotation.booking.bill-to-parties') }}', {
+                        team_id: teamId
+                    })
+                    .done(function(res) {
+                        var $select = $('#cb_bill_to_party').empty().append(
+                            '<option value=""></option>');
+                        if (res.success && res.parties && res.parties.length) {
+                            $.each(res.parties, function(i, p) {
+                                $select.append($('<option>', {
+                                    value: p.PartyID,
+                                    text: p.PartyCode + ' — ' + p.PartyName
+                                }));
+                            });
+                        } else {
+                            $select.append('<option value="" disabled>No parties available</option>');
+                        }
+                    })
+                    .fail(function(xhr) {
+                        console.error('Bill to parties load failed:', xhr);
+                        $('#cb_bill_to_party').empty()
+                            .append('<option value="" disabled>Failed to load — try again</option>');
+                    });
+
+                // ── 3. Forwarders ──
+                $.get('{{ route('quotation.booking.forwarders') }}', {
+                        team_id: teamId
+                    })
+                    .done(function(res) {
+                        var $select = $('#cb_forwarder').empty().append('<option value=""></option>');
+                        if (res.success && res.parties && res.parties.length) {
+                            $.each(res.parties, function(i, p) {
+                                $select.append($('<option>', {
+                                    value: p.PartyID,
+                                    text: p.PartyCode + ' — ' + p.PartyName
+                                }));
+                            });
+                        } else {
+                            $select.append(
+                            '<option value="" disabled>No forwarders available</option>');
+                        }
+                    })
+                    .fail(function(xhr) {
+                        console.error('Forwarders load failed:', xhr);
+                        $('#cb_forwarder').empty()
+                            .append('<option value="" disabled>Failed to load — try again</option>');
+                    });
+            });
+
+            // Clean up location suggestion dropdowns when modal closes
+            $('#createBookingModal').on('hidden.bs.modal', function() {
+                $('.location-suggestions').remove();
+            });
+
+            // ============================================
+            // CANCEL / X BUTTON — explicit close handlers
+            // Fallback in case data-dismiss="modal" is not
+            // being picked up (e.g. BS4/BS5 mismatch).
+            // ============================================
+            $(document).on('click', '#cancelCreateBookingBtn, #createBookingModal .close', function(e) {
+                e.preventDefault();
+                $('#createBookingModal').modal('hide');
+            });
+
+            // ============================================
+            // HELPERS — FORM RESET & LOADING STATE
+            // ============================================
+            function resetCreateBookingForm() {
+                $('#cb_service_template, #cb_bill_to_party, #cb_forwarder')
+                    .empty().append('<option value=""></option>');
+                $('#cb_include_country').prop('checked', false);
+                $('#cb_place_of_receipt, #cb_place_of_delivery').val('');
+                $('#cb_place_of_receipt_code, #cb_place_of_receipt_id').val('');
+                $('#cb_place_of_delivery_code, #cb_place_of_delivery_id').val('');
+                $('.location-suggestions').remove();
+            }
+
+            function setDropdownLoading(selector) {
+                $(selector).empty().append('<option value="" disabled selected>Loading...</option>');
+            }
+
+            // ============================================
+            // PLACE OF RECEIPT / DELIVERY — AUTOCOMPLETE
+            // Shared setup function; keeps both fields DRY.
+            // ============================================
+            function setupLocationAutocomplete(inputId, codeId, idHiddenId) {
+                var debounceTimer = null;
+
+                $('#' + inputId).on('input', function() {
+                    var query = $(this).val().trim();
+                    clearTimeout(debounceTimer);
+                    removeSuggestions(inputId);
+
+                    if (query.length < 2) return;
+
+                    debounceTimer = setTimeout(function() {
+                        $.get('{{ route('quotation.booking.locations') }}', {
+                                filter: query,
+                                include_country: $('#cb_include_country').is(':checked') ? 1 : 0
+                            })
+                            .done(function(res) {
+                                removeSuggestions(inputId);
+                                if (!res.success || !res.locations || !res.locations.length)
+                                    return;
+
+                                var $input = $('#' + inputId);
+                                var $list = $('<ul>', {
+                                    class: 'location-suggestions list-group',
+                                    css: {
+                                        position: 'absolute',
+                                        zIndex: 9999,
+                                        width: $input.outerWidth(),
+                                        maxHeight: '200px',
+                                        overflowY: 'auto',
+                                        border: '1px solid #ced4da',
+                                        borderRadius: '0 0 4px 4px',
+                                        boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
+                                        background: '#fff',
+                                        marginTop: '-1px'
+                                    }
+                                });
+
+                                $.each(res.locations, function(i, loc) {
+                                    $('<li>', {
+                                            class: 'list-group-item list-group-item-action',
+                                            css: {
+                                                cursor: 'pointer',
+                                                padding: '0.4rem 0.75rem',
+                                                fontSize: '0.875rem'
+                                            },
+                                            text: loc.LocationCode + ' — ' + loc
+                                                .LocationName
+                                        })
+                                        .on('mousedown', function(e) {
+                                            // mousedown fires before blur so we can set values safely
+                                            e.preventDefault();
+                                            $('#' + inputId).val(loc.LocationCode +
+                                                ' — ' + loc.LocationName);
+                                            $('#' + codeId).val(loc.LocationCode);
+                                            $('#' + idHiddenId).val(loc.LocationID);
+                                            removeSuggestions(inputId);
+                                        })
+                                        .appendTo($list);
+                                });
+
+                                // Insert the list immediately after the input
+                                $input.closest('.form-group').css('position', 'relative')
+                                    .append($list);
+                            })
+                            .fail(function(xhr) {
+                                console.error('Location search failed:', xhr);
+                            });
+                    }, 300);
+                });
+
+                // Close suggestions when input loses focus
+                $('#' + inputId).on('blur', function() {
+                    setTimeout(function() {
+                        removeSuggestions(inputId);
+                    }, 200);
+                });
+            }
+
+            function removeSuggestions(inputId) {
+                $('#' + inputId).closest('.form-group').find('.location-suggestions').remove();
+            }
+
+            // Wire up both location inputs
+            setupLocationAutocomplete(
+                'cb_place_of_receipt',
+                'cb_place_of_receipt_code',
+                'cb_place_of_receipt_id'
+            );
+            setupLocationAutocomplete(
+                'cb_place_of_delivery',
+                'cb_place_of_delivery_code',
+                'cb_place_of_delivery_id'
+            );
+
+            // ============================================
+            // SUBMIT CREATE BOOKING
+            // ============================================
+            $('#submitCreateBookingBtn').on('click', function() {
+                var $btn = $(this);
+                var bookingNo = $('#createBookingModal').data('booking-no');
+
+                var serviceTemplate = $('#cb_service_template').val();
+                var billToParty = $('#cb_bill_to_party').val();
+                var forwarder = $('#cb_forwarder').val();
+                var placeOfReceipt = $('#cb_place_of_receipt_code').val();
+                var placeOfDelivery = $('#cb_place_of_delivery_code').val();
+
+                // Client-side validation
+                var errors = [];
+                if (!serviceTemplate) errors.push('Service Template');
+                if (!billToParty) errors.push('Bill To Party');
+                if (!forwarder) errors.push('Forwarder');
+                if (!placeOfReceipt) errors.push('Place of Receipt');
+                if (!placeOfDelivery) errors.push('Place of Delivery');
+
+                if (errors.length) {
+                    alert('Please complete the following required fields:\n• ' + errors.join('\n• '));
+                    return;
+                }
+
+                $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Creating...');
+
+                $.ajax({
+                    url: '{{ route('quotation.booking.create') }}',
+                    type: 'POST',
+                    data: {
+                        _token: '{{ csrf_token() }}',
+                        booking_no: bookingNo,
+                        service_template: serviceTemplate,
+                        bill_to_party: billToParty,
+                        forwarder: forwarder,
+                        include_country: $('#cb_include_country').is(':checked') ? 1 : 0,
+                        place_of_receipt: placeOfReceipt,
+                        place_of_delivery: placeOfDelivery
+                    },
+                    success: function(res) {
+                        if (res.success) {
+                            $('#createBookingModal').modal('hide');
+                            alert('Booking created successfully.');
+                            table.ajax.reload(null, false);
+                        } else {
+                            alert('Failed to create booking:\n' + (res.message ||
+                                'Unknown error'));
+                        }
+                    },
+                    error: function(xhr) {
+                        var msg = xhr.responseJSON ?
+                            (xhr.responseJSON.message || JSON.stringify(xhr.responseJSON
+                                .errors)) :
+                            xhr.statusText;
+                        alert('Server error: ' + msg);
+                    },
+                    complete: function() {
+                        $btn.prop('disabled', false).html('Create');
+                    }
+                });
+            });
+
+            // ============================================
             // STATS UPDATE (debounced)
             // Only called when user interacts with filters
             // ============================================
@@ -788,13 +1191,13 @@
                             animateValue('stat-lost', parseInt($('#stat-lost').text()) || 0,
                                 response.lost, 500);
                             animateValue('stat-canceled', parseInt($('#stat-canceled')
-                                .text()) || 0, response.canceled, 500);
+                            .text()) || 0, response.canceled, 500);
                             animateValue('stat-failed-int', parseInt($('#stat-failed-int')
-                                .text()) || 0, response.failed_int, 500);
+                            .text()) || 0, response.failed_int, 500);
                         },
                         error: function(xhr, error, code) {
                             console.error('Failed to update card statistics:', xhr, error,
-                                code);
+                            code);
                             $('.compact-card .inner h3').css('opacity', '1');
                         },
                         complete: function() {
