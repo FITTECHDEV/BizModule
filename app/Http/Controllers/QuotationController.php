@@ -2390,48 +2390,65 @@ class QuotationController extends Controller
 
     public function getReasons(Request $request)
     {
-        $module = $request->input('module', 'Quotation');
+        $module     = $request->input('module', 'Quotation');
         $reasonType = $request->input('reason_type');
-        $filter = $request->input('filter', '');
+        $filter     = $request->input('filter', '');
 
         if (!$reasonType) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Reason type is required'
-            ], 400);
+            return response()->json(['success' => false, 'message' => 'Reason type is required'], 400);
         }
 
         try {
-            // Use raw PDO to handle multiple result sets from SP
-            $pdo = DB::connection()->getPdo();
+            $pdo  = DB::connection()->getPdo();
             $stmt = $pdo->prepare("SET NOCOUNT ON; EXEC sp_ReasonMasterList ?, ?, ?");
             $stmt->execute([$module, $reasonType, $filter]);
 
             $reasons = [];
 
-            // Loop through result sets until we find the data
             do {
                 try {
                     $results = $stmt->fetchAll(\PDO::FETCH_OBJ);
-                    if (!empty($results)) {
-                        $firstRow = $results[0];
-                        // Check if this is the data result set (has ID, Code, Description)
-                        if (isset($firstRow->ID) && isset($firstRow->Code) && isset($firstRow->Description)) {
-                            $reasons = $results;
-                            break;
-                        }
+
+                    if (empty($results)) continue;
+
+                    $firstRow   = $results[0];
+                    $properties = array_keys((array) $firstRow);
+
+                    // Skip SP status/error result sets — they return a single
+                    // column whose value starts with 'Failed' or 'Error'
+                    $firstVal = array_values((array) $firstRow)[0] ?? '';
+                    if (is_string($firstVal) && (
+                        str_starts_with($firstVal, 'Failed') ||
+                        str_starts_with($firstVal, 'Error')
+                    )) {
+                        Log::warning('getReasons - SP returned failure', [
+                            'reason_type' => $reasonType,
+                            'message'     => $firstVal,
+                        ]);
+                        continue;
+                    }
+
+                    // Accept any result set that has at least a Code column
+                    if (in_array('Code', $properties)) {
+                        $reasons = $results;
+                        Log::info('getReasons - Found reasons', [
+                            'reason_type' => $reasonType,
+                            'count'       => count($results),
+                            'columns'     => $properties,
+                        ]);
+                        break;
                     }
                 } catch (\Exception $e) {
-                    continue; // Skip empty result sets
+                    continue;
                 }
             } while ($stmt->nextRowset());
 
-            return response()->json([
-                'success' => true,
-                'reasons' => $reasons
-            ]);
+            return response()->json(['success' => true, 'reasons' => $reasons]);
         } catch (\Exception $e) {
-            Log::error('Get reasons failed: ' . $e->getMessage());
+            Log::error('getReasons failed', [
+                'reason_type' => $reasonType,
+                'error'       => $e->getMessage(),
+            ]);
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to load reasons: ' . $e->getMessage()

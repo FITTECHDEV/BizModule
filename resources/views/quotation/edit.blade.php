@@ -637,8 +637,8 @@
         <!-- END ROW -->
 
         <!-- ============================================
-                                                                                                                                                                                                                                                                                                                                                     MODALS
-                                                                                                                                                                                                                                                                                                                                                     ============================================ -->
+                                                                                                                                                                                                                                                                                                                                                         MODALS
+                                                                                                                                                                                                                                                                                                                                                         ============================================ -->
 
         {{-- REVENUE MODAL --}}
         <div class="modal fade" id="addRevenueModal" tabindex="-1" role="dialog"
@@ -1197,8 +1197,8 @@
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.min.css">
     <style>
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        MODAL STYLING — matched to FitExpress UI
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            MODAL STYLING — matched to FitExpress UI
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            ============================================= */
 
         .modal-header {
             background-color: #fff !important;
@@ -1641,9 +1641,9 @@
         }
 
         /* =============================================
-                                                                                                                                                                                                                                                               CREATE BOOKING MODAL — Specific overrides
-                                                                                                                                                                                                                                                               to match the "Creation of Booking" design
-                                                                                                                                                                                                                                                               ============================================= */
+                                                                                                                                                                                                                                                                   CREATE BOOKING MODAL — Specific overrides
+                                                                                                                                                                                                                                                                   to match the "Creation of Booking" design
+                                                                                                                                                                                                                                                                   ============================================= */
 
         #createBookingModal .modal-title {
             color: #003580 !important;
@@ -2959,7 +2959,8 @@
                         if (response.success && response.reasons?.length) {
                             response.reasons.forEach(function(r) {
                                 const code = r.Code ?? r.code ?? r.ReasonCode ?? '';
-                                const name = r.Name ?? r.name ?? r.ReasonName ?? '';
+                                const name = r.Name ?? r.name ?? r.ReasonName ?? r
+                                    .Description ?? '';
                                 $select.append(`<option value="${code}">${name}</option>`);
                             });
                             // Pre-select first reason
