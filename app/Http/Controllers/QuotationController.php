@@ -2708,26 +2708,87 @@ class QuotationController extends Controller
             'body'        => 'required|string',
         ]);
 
-        try {
-            // Send the email
-            Mail::send([], [], function ($message) use ($request) {
-                $message->to($request->to_email)
-                    ->from($request->from_email)
-                    ->subject($request->subject)
-                    ->html($request->body);
-            });
+        $bookingNo  = $request->booking_no;
+        $toEmail    = $request->to_email;
+        $fromEmail  = $request->from_email;
+        $subject    = $request->subject;
+        $body       = $request->body;
+        $templateId = $request->template_id;
 
-            // Save the email template used against the quotation
+        try {
+            // ============================================
+            // SEND EMAIL
+            // Uses the from_email as the reply-to address.
+            // The actual sending address must be configured
+            // in config/mail.php (MAIL_FROM_ADDRESS in .env).
+            // ============================================
+            \Illuminate\Support\Facades\Mail::send(
+                [],
+                [],
+                function (\Illuminate\Mail\Message $message) use ($toEmail, $fromEmail, $subject, $body) {
+                    $message
+                        ->to($toEmail)
+                        ->replyTo($fromEmail)
+                        ->subject($subject)
+                        ->html($body);
+                }
+            );
+
+            // ============================================
+            // LOG EMAIL SEND IN SCHEDULER TABLE
+            // ============================================
+            DB::table('email_emailscheduler')->insert([
+                'ID'            => DB::raw('NEWID()'),
+                'ClientName'    => DB::table('Quote_QuotationInfo')
+                    ->where('bookingno', $bookingNo)
+                    ->value('companyname') ?? '',
+                'EmailTo'       => $toEmail,
+                'EmailFrom'     => $fromEmail,
+                'EmailSubject'  => $subject,
+                'EmailBody'     => $body,
+                'SchedulerType' => 'QuotationEmail',
+                'Status'        => 'Sent',
+                'SubmittedOn'   => now(),
+                'IsActive'      => 1,
+                'IsDeleted'     => 0,
+            ]);
+
+            // ============================================
+            // SAVE TEMPLATE USED AGAINST QUOTATION
+            // ============================================
             DB::table('Quote_QuotationInfo')
-                ->where('bookingno', $request->booking_no)
-                ->update(['QuotationEmailTemplate' => $request->template_id]);
+                ->where('bookingno', $bookingNo)
+                ->update(['QuotationEmailTemplate' => $templateId]);
+
+            Log::info('sendEmailQuote - Success', [
+                'booking_no' => $bookingNo,
+                'to'         => $toEmail,
+                'from'       => $fromEmail,
+                'subject'    => $subject,
+                'template'   => $templateId,
+            ]);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Email sent successfully'
             ]);
+        } catch (\Symfony\Component\Mailer\Exception\TransportException $e) {
+            // SMTP connection / authentication failure
+            Log::error('sendEmailQuote - Mail transport error', [
+                'booking_no' => $bookingNo,
+                'error'      => $e->getMessage(),
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Mail server error: ' . $e->getMessage()
+            ], 500);
         } catch (\Exception $e) {
-            Log::error('sendEmailQuote error: ' . $e->getMessage());
+            Log::error('sendEmailQuote - Failed', [
+                'booking_no' => $bookingNo,
+                'error'      => $e->getMessage(),
+                'file'       => $e->getFile(),
+                'line'       => $e->getLine(),
+            ]);
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to send email: ' . $e->getMessage()
@@ -3558,11 +3619,10 @@ class QuotationController extends Controller
         ]);
 
         $submittedBy = auth()->user()->username ?? auth()->user()->email ?? 'system';
-        $submittedAt = now()->format('YmdHis');
 
         $input = json_encode([
             'OperationType'     => 'BookingInfoUpdate',
-            'SubmittedDatetime' => $submittedAt,
+            'SubmittedDatetime' => now()->format('YmdHis'),
             'SubmittedBy'       => $submittedBy,
             'Action'            => 'Update',
             'QuotationNo'       => $request->booking_no,
@@ -3582,13 +3642,7 @@ class QuotationController extends Controller
         }
 
         try {
-            $result = DB::selectOne('
-            DECLARE @OutputJson VARCHAR(2000);
-            EXEC dbo.sp_Quote_DetailsUpdate :input, @OutputJson = @OutputJson OUTPUT;
-            SELECT @OutputJson AS output
-        ', ['input' => $input]);
-
-            $output = json_decode($result->output ?? '{}', true);
+            $output = $this->executeDetailsUpdateSP($input);
 
             if (($output['Status'] ?? '') === 'Failed') {
                 $remarks = collect($output['Remarks'] ?? [])->pluck('Remark')->implode(', ');
@@ -3621,9 +3675,9 @@ class QuotationController extends Controller
         SELECT SCMOfficeID
         FROM Cust_Office WITH (NOLOCK)
         WHERE TeamCode = ?
-          AND IsActive = 1
-          AND IsDeleted = 0
-    ", [$teamId]);
+            AND IsActive = 1
+            AND IsDeleted = 0
+        ", [$teamId]);
 
         return $office ? $office->SCMOfficeID : null;
     }
@@ -3826,11 +3880,10 @@ class QuotationController extends Controller
         ]);
 
         $submittedBy = auth()->user()->username ?? auth()->user()->email ?? 'system';
-        $submittedAt = now()->format('YmdHis');
 
         $input = json_encode([
             'OperationType'     => 'CustomerUpdate',
-            'SubmittedDatetime' => $submittedAt,
+            'SubmittedDatetime' => now()->format('YmdHis'),
             'SubmittedBy'       => $submittedBy,
             'Action'            => 'Update',
             'QuotationNo'       => $request->booking_no,
@@ -3859,13 +3912,7 @@ class QuotationController extends Controller
         }
 
         try {
-            $result = DB::selectOne('
-            DECLARE @OutputJson VARCHAR(2000);
-            EXEC dbo.sp_Quote_DetailsUpdate :input, @OutputJson = @OutputJson OUTPUT;
-            SELECT @OutputJson AS output
-        ', ['input' => $input]);
-
-            $output = json_decode($result->output ?? '{}', true);
+            $output = $this->executeDetailsUpdateSP($input);
 
             if (($output['Status'] ?? '') === 'Failed') {
                 $remarks = collect($output['Remarks'] ?? [])->pluck('Remark')->implode(', ');
@@ -3881,10 +3928,47 @@ class QuotationController extends Controller
             ]);
         } catch (\Exception $e) {
             Log::error('saveCustomerDetails error: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage()
-            ], 500);
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
+    }
+    /**
+     * Shared PDO helper for sp_Quote_DetailsUpdate.
+     * Uses nextRowset() to skip intermediate result sets — same pattern
+     * as saveCharge() / deleteCharge() which already work correctly.
+     */
+    /**
+     * Shared PDO helper for sp_Quote_DetailsUpdate.
+     * Uses nextRowset() to skip intermediate result sets produced by
+     * DROP/CREATE TABLE inside the SP — same pattern as saveCharge().
+     */
+    private function executeDetailsUpdateSP(string $inputJson): array
+    {
+        $pdo  = DB::connection()->getPdo();
+        $stmt = $pdo->prepare("
+            SET NOCOUNT ON;
+            DECLARE @OutputJson VARCHAR(2000);
+            EXEC dbo.sp_Quote_DetailsUpdate ?, @OutputJson = @OutputJson OUTPUT;
+            SELECT @OutputJson AS output
+        ");
+
+        $stmt->execute([$inputJson]);
+
+        do {
+            try {
+                $rows = $stmt->fetchAll(\PDO::FETCH_OBJ);
+                if (!empty($rows) && isset($rows[0]->output)) {
+                    $decoded = json_decode($rows[0]->output, true);
+                    return json_last_error() === JSON_ERROR_NONE ? $decoded : [];
+                }
+            } catch (\PDOException $e) {
+                // skip empty/intermediate result sets
+            }
+        } while ($stmt->nextRowset());
+
+        Log::error('executeDetailsUpdateSP - no output returned', ['input' => $inputJson]);
+        return [
+            'Status'  => 'Failed',
+            'Remarks' => [['Remark' => 'No response from stored procedure']]
+        ];
     }
 }

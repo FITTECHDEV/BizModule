@@ -454,14 +454,20 @@
                                 </div>
                             </div>
                         </div>
-
                     </div>
 
                     <div class="row mt-2">
                         <div class="col-md-12 text-right">
+                            <button type="button" class="btn btn-warning btn-sm" id="editCustomerDetailsBtn">
+                                <i class="fas fa-edit mr-1"></i> Edit
+                            </button>
                             <button type="button" class="btn btn-primary btn-sm" id="saveCustomerDetailsBtn"
                                 style="display:none">
                                 <i class="fas fa-save mr-1"></i> Save
+                            </button>
+                            <button type="button" class="btn btn-secondary btn-sm" id="cancelCustomerDetailsBtn"
+                                style="display:none">
+                                <i class="fas fa-times mr-1"></i> Cancel
                             </button>
                         </div>
                     </div>
@@ -634,8 +640,8 @@
         <!-- END ROW -->
 
         <!-- ============================================
-                                                                                                                                                                                                                                                                                                                                                                             MODALS
-                                                                                                                                                                                                                                                                                                                                                                             ============================================ -->
+                                                                                                                                                                                                                                                                                                                                                                                                     MODALS
+                                                                                                                                                                                                                                                                                                                                                                                                     ============================================ -->
 
         {{-- REVENUE MODAL --}}
         <div class="modal fade" id="addRevenueModal" tabindex="-1" role="dialog"
@@ -1020,23 +1026,24 @@
                                     </div>
                                 </div>
                             </div>
-                            <div class="row">
+                            <div class="row mt-3">
                                 <div class="col-md-6">
                                     <div class="form-group">
-                                        <label>To <span class="text-danger">*</span></label>
-                                        <input type="email" class="form-control form-control-sm" id="emailTo"
+                                        <label>From <span class="text-danger">*</span></label>
+                                        <input type="email" class="form-control form-control-sm" id="emailFrom"
                                             value="{{ $quotation->user_email ?? '' }}">
                                     </div>
                                 </div>
                                 <div class="col-md-6">
                                     <div class="form-group">
-                                        <label>From</label>
-                                        <input type="email" class="form-control form-control-sm" id="emailFrom"
+                                        <label>To <span class="text-danger">*</span></label>
+                                        <input type="email" class="form-control form-control-sm" id="emailTo"
                                             value="{{ $quotation->pri_partner_email ?? '' }}">
                                     </div>
                                 </div>
                             </div>
-                            <div class="form-group">
+
+                            <div class="form-group mt-3">
                                 <label>Subject</label>
                                 <input type="text" class="form-control form-control-sm" id="emailSubject">
                             </div>
@@ -1105,7 +1112,8 @@
                                 <label for="cb_service_template">
                                     Service Template <span class="text-danger">*</span>
                                 </label>
-                                <select class="form-control" id="cb_service_template" name="service_template" required>
+                                <select class="form-control" id="cb_service_template" name="service_template"
+                                    required>
                                     <option value=""></option>
                                 </select>
                             </div>
@@ -1193,8 +1201,8 @@
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.min.css">
     <style>
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                MODAL STYLING — matched to FitExpress UI
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        MODAL STYLING — matched to FitExpress UI
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        ============================================= */
 
         .modal-header {
             background-color: #fff !important;
@@ -1637,9 +1645,9 @@
         }
 
         /* =============================================
-                                                                                                                                                                                                                                                                                       CREATE BOOKING MODAL — Specific overrides
-                                                                                                                                                                                                                                                                                       to match the "Creation of Booking" design
-                                                                                                                                                                                                                                                                                       ============================================= */
+                                                                                                                                                                                                                                                                                                               CREATE BOOKING MODAL — Specific overrides
+                                                                                                                                                                                                                                                                                                               to match the "Creation of Booking" design
+                                                                                                                                                                                                                                                                                                               ============================================= */
 
         #createBookingModal .modal-title {
             color: #003580 !important;
@@ -3241,6 +3249,16 @@
                 $('#emailQuoteModal').modal('show');
             });
 
+            // ============================================
+            // EMAIL TO/FROM SWAP BUTTON
+            // Swaps the To and From email addresses
+            // ============================================
+            $('#swapEmailBtn').on('click', function() {
+                const toVal = $('#emailTo').val();
+                const fromVal = $('#emailFrom').val();
+                $('#emailTo').val(fromVal);
+                $('#emailFrom').val(toVal);
+            });
 
             function populateQuoteVersionDropdown() {
                 const $select = $('#emailQuoteVersionSelect');
@@ -3800,18 +3818,60 @@
             }
 
 
-
             // Agent Type: disabled unless Customer Type = Agent
             function syncAgentTypeState() {
                 const isAgent = $('#customerTypeSelect').val().toLowerCase().includes('agent');
-                $('#agentTypeSelect').prop('disabled', !isAgent);
+                // Only enable agentTypeSelect if we are currently in edit mode
+                const inEditMode = $('#editCustomerDetailsBtn').is(':hidden');
+                $('#agentTypeSelect').prop('disabled', !isAgent || !inEditMode);
                 if (!isAgent) $('#agentTypeSelect').val('');
             }
 
+            // ============================================
+            // CUSTOMER DETAILS — EDIT / CANCEL / SAVE
+            // Fields are read-only by default; Edit button unlocks them.
+            // ============================================
+
+            // Lock both dropdowns on page load
+            $('#customerTypeSelect, #agentTypeSelect').prop('disabled', true);
+
+            // Stores values captured when Edit is clicked, used by Cancel to restore
+            let originalCustomerType = '';
+            let originalAgentType = '';
+
+            $('#editCustomerDetailsBtn').on('click', function() {
+                // Snapshot current values before any edits
+                originalCustomerType = $('#customerTypeSelect').val();
+                originalAgentType = $('#agentTypeSelect').val();
+
+                // Unlock the customer type dropdown
+                $('#customerTypeSelect').prop('disabled', false);
+                syncAgentTypeState(); // will enable agentTypeSelect if type is Agent
+
+                // Swap buttons
+                $(this).hide();
+                $('#saveCustomerDetailsBtn, #cancelCustomerDetailsBtn').show();
+            });
+
+            $('#cancelCustomerDetailsBtn').on('click', function() {
+                // Restore original values
+                $('#customerTypeSelect').val(originalCustomerType);
+                $('#agentTypeSelect').val(originalAgentType);
+
+                // Lock dropdowns again
+                $('#customerTypeSelect, #agentTypeSelect').prop('disabled', true);
+
+                // Swap buttons back
+                $(this).hide();
+                $('#saveCustomerDetailsBtn').hide();
+                $('#editCustomerDetailsBtn').show();
+            });
+
+            // customerTypeSelect change only matters while in edit mode
             $('#customerTypeSelect').on('change', function() {
                 syncAgentTypeState();
-                $('#saveCustomerDetailsBtn').show();
             });
+
             // Run on page load after types are fetched
             fetchCustomerTypes();
             fetchAgentTypes();
@@ -3846,8 +3906,16 @@
                     },
                     success: function(response) {
                         if (response.success) {
-                            showNotification('Customer details saved successfully',
-                                'success');
+                            showNotification('Customer details saved successfully', 'success');
+
+                            // Update snapshot so Cancel won't revert the newly saved values
+                            originalCustomerType = customerType;
+                            originalAgentType = agentType;
+
+                            // Lock dropdowns and return to view mode
+                            $('#customerTypeSelect, #agentTypeSelect').prop('disabled', true);
+                            $('#saveCustomerDetailsBtn, #cancelCustomerDetailsBtn').hide();
+                            $('#editCustomerDetailsBtn').show();
                         } else {
                             showNotification(response.message || 'Failed to save', 'error');
                         }
@@ -3861,7 +3929,6 @@
                             .html('<i class="fas fa-save mr-1"></i> Save');
                     }
                 });
-
             });
 
 
