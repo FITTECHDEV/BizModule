@@ -639,8 +639,8 @@
         <!-- END ROW -->
 
         <!-- ============================================
-                                                                                                                                                                                                                                                                                                                                                                                                         MODALS
-                                                                                                                                                                                                                                                                                                                                                                                                         ============================================ -->
+                                                                                                                                                                                                                                                                                                                                                                                                                 MODALS
+                                                                                                                                                                                                                                                                                                                                                                                                                 ============================================ -->
 
         {{-- REVENUE MODAL --}}
         <div class="modal fade" id="addRevenueModal" tabindex="-1" role="dialog"
@@ -1200,8 +1200,8 @@
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.min.css">
     <style>
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            MODAL STYLING — matched to FitExpress UI
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    MODAL STYLING — matched to FitExpress UI
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    ============================================= */
 
         .modal-header {
             background-color: #fff !important;
@@ -1644,9 +1644,9 @@
         }
 
         /* =============================================
-                                                                                                                                                                                                                                                                                                                   CREATE BOOKING MODAL — Specific overrides
-                                                                                                                                                                                                                                                                                                                   to match the "Creation of Booking" design
-                                                                                                                                                                                                                                                                                                                   ============================================= */
+                                                                                                                                                                                                                                                                                                                           CREATE BOOKING MODAL — Specific overrides
+                                                                                                                                                                                                                                                                                                                           to match the "Creation of Booking" design
+                                                                                                                                                                                                                                                                                                                           ============================================= */
 
         #createBookingModal .modal-title {
             color: #003580 !important;
@@ -3728,53 +3728,68 @@
 
             // ============================================
             // CUSTOMER TYPE FETCH (from SP)
+            // FIX: Removed hardcoded fallback values that didn't match SP expectations.
+            // Valid values come exclusively from sp_Quote_GetCustomerType.
+            // If the SP fails, show an error instead of silently using wrong values.
             // ============================================
             function fetchCustomerTypes() {
                 const $select = $('#customerTypeSelect');
                 const savedType = '{{ $quotation->CustomerType ?? '' }}';
 
+                $select.prop('disabled', true)
+                    .empty()
+                    .append('<option value="">Loading...</option>');
+
                 $.ajax({
                     url: '{{ route('quotation.customer-types') }}',
                     type: 'GET',
                     success: function(response) {
-                        if (response.success && Array.isArray(response.data) && response.data
-                            .length >
+                        $select.empty().append('<option value="">-- Select --</option>');
+
+                        if (response.success && Array.isArray(response.data) && response.data.length >
                             0) {
-                            $select.empty().append('<option value="">-- Select --</option>');
                             response.data.forEach(function(item) {
                                 const val = item.CategoryName;
-                                const name = item.CategoryName;
                                 $select.append(
-                                    `<option value="${val}" ${val === savedType ? 'selected' : ''}>${name}</option>`
+                                    `<option value="${val}" ${val === savedType ? 'selected' : ''}>${val}</option>`
                                 );
                             });
                         } else {
-                            // Fallback to hardcoded until SP is ready
-                            $select.empty().append(`
-                    <option value="">-- Select --</option>
-                    <option value="Customer" ${'Customer' === savedType ? 'selected' : ''}>Customer</option>
-                    <option value="Agent"    ${'Agent'    === savedType ? 'selected' : ''}>Agent</option>
-                `);
+                            // SP returned no data — show a clear error, do NOT fall back to
+                            // hardcoded values that would be rejected by sp_Quote_DetailsUpdate
+                            $select.append(
+                                '<option value="" disabled>⚠ No customer types available</option>');
+                            console.warn('fetchCustomerTypes: SP returned empty or failed response',
+                                response);
                         }
                     },
-                    error: function() {
-                        // Fallback silently
-                        $select.empty().append(`
-                <option value="">-- Select --</option>
-                <option value="Customer" ${'Customer' === savedType ? 'selected' : ''}>Customer</option>
-                <option value="Agent"    ${'Agent'    === savedType ? 'selected' : ''}>Agent</option>
-            `);
+                    error: function(xhr) {
+                        $select.empty()
+                            .append('<option value="">-- Select --</option>')
+                            .append(
+                                '<option value="" disabled>⚠ Failed to load customer types</option>');
+                        console.error('fetchCustomerTypes: AJAX error', xhr);
+                    },
+                    complete: function() {
+                        // Keep locked — Edit button controls when this becomes interactive
+                        $select.prop('disabled', true);
                     }
                 });
             }
 
             // ============================================
             // AGENT TYPE FETCH
+            // FIX: Option value now stores Code (e.g. "WCA") instead of Id (GUID).
+            // sp_Quote_DetailsUpdate expects the Code, not the GUID.
             // ============================================
             const SAVED_AGENT_TYPE = '{{ $quotation->AgentType ?? '' }}';
 
             function fetchAgentTypes() {
                 const $select = $('#agentTypeSelect');
+
+                $select.prop('disabled', true)
+                    .empty()
+                    .append('<option value="">Loading...</option>');
 
                 $.ajax({
                     url: '{{ route('quotation.agent-types') }}',
@@ -3783,102 +3798,105 @@
                         'X-CSRF-TOKEN': '{{ csrf_token() }}'
                     },
                     success: function(response) {
-                        if (response.success && Array.isArray(response.data) && response.data
-                            .length >
-                            0) {
-                            $select.empty().append(
-                                '<option value="">-- Select Agent Type --</option>');
-                            response.data.forEach(function(item) {
-                                // SP returns Id (GUID), Code, Name
-                                const id = item.Id ?? item.id;
-                                const code = item.Code ?? item.code;
-                                const name = item.Name ?? item.name;
+                        $select.empty().append('<option value="">-- Select Agent Type --</option>');
 
-                                // Match against both Id and Code since we're unsure which is stored
-                                const isSelected = (
-                                    String(id) === String(SAVED_AGENT_TYPE) ||
-                                    String(code) === String(SAVED_AGENT_TYPE)
-                                );
+                        if (response.success && Array.isArray(response.data) && response.data.length >
+                            0) {
+                            response.data.forEach(function(item) {
+                                const code = item.Code ?? item.code ?? '';
+                                const name = item.Name ?? item.name ?? '';
+
+                                // FIX: value is now Code (e.g. "WCA"), not the GUID Id.
+                                // sp_Quote_DetailsUpdate requires the Code.
+                                const isSelected = String(code) === String(SAVED_AGENT_TYPE);
 
                                 $select.append(
-                                    `<option value="${id}" data-code="${code}" ${isSelected ? 'selected' : ''}>${name}</option>`
+                                    `<option value="${code}" ${isSelected ? 'selected' : ''}>${name}</option>`
                                 );
                             });
                         } else {
-                            $select.empty().append(
-                                '<option value="">-- No agent types available --</option>');
+                            $select.append(
+                                '<option value="" disabled>-- No agent types available --</option>');
+                            console.warn('fetchAgentTypes: SP returned empty or failed response',
+                                response);
                         }
                     },
-                    error: function() {
-                        $select.empty().append('<option value="">-- Failed to load --</option>');
-                        console.error('Failed to fetch agent types');
+                    error: function(xhr) {
+                        $select.empty()
+                            .append('<option value="">-- Select Agent Type --</option>')
+                            .append('<option value="" disabled>-- Failed to load --</option>');
+                        console.error('fetchAgentTypes: AJAX error', xhr);
+                    },
+                    complete: function() {
+                        // Keep locked — syncAgentTypeState() controls when this becomes interactive
+                        $select.prop('disabled', true);
+                        syncAgentTypeState();
                     }
                 });
             }
 
-
-            // Agent Type: disabled unless Customer Type = Agent
+            // ============================================
+            // SYNC AGENT TYPE STATE
+            // Enabled only when: customer type contains "agent" AND edit mode is active.
+            // FIX: Clears agent type selection when switching away from an agent customer type.
+            // ============================================
             function syncAgentTypeState() {
-                const isAgent = $('#customerTypeSelect').val().toLowerCase().includes('agent');
-                // Only enable agentTypeSelect if we are currently in edit mode
+                const customerTypeVal = $('#customerTypeSelect').val() || '';
+                const isAgent = customerTypeVal.toLowerCase().includes('agent');
                 const inEditMode = $('#editCustomerDetailsBtn').is(':hidden');
+
                 $('#agentTypeSelect').prop('disabled', !isAgent || !inEditMode);
-                if (!isAgent) $('#agentTypeSelect').val('');
+
+                if (!isAgent) {
+                    $('#agentTypeSelect').val('');
+                }
             }
 
             // ============================================
             // CUSTOMER DETAILS — EDIT / CANCEL / SAVE
-            // Fields are read-only by default; Edit button unlocks them.
             // ============================================
 
             // Lock both dropdowns on page load
             $('#customerTypeSelect, #agentTypeSelect').prop('disabled', true);
 
-            // Stores values captured when Edit is clicked, used by Cancel to restore
+            // Snapshot values captured when Edit is clicked — restored on Cancel
             let originalCustomerType = '';
             let originalAgentType = '';
 
             $('#editCustomerDetailsBtn').on('click', function() {
-                // Snapshot current values before any edits
                 originalCustomerType = $('#customerTypeSelect').val();
                 originalAgentType = $('#agentTypeSelect').val();
 
-                // Unlock the customer type dropdown
                 $('#customerTypeSelect').prop('disabled', false);
-                syncAgentTypeState(); // will enable agentTypeSelect if type is Agent
+                syncAgentTypeState();
 
-                // Swap buttons
                 $(this).hide();
                 $('#saveCustomerDetailsBtn, #cancelCustomerDetailsBtn').show();
             });
 
             $('#cancelCustomerDetailsBtn').on('click', function() {
-                // Restore original values
                 $('#customerTypeSelect').val(originalCustomerType);
                 $('#agentTypeSelect').val(originalAgentType);
 
-                // Lock dropdowns again
                 $('#customerTypeSelect, #agentTypeSelect').prop('disabled', true);
 
-                // Swap buttons back
                 $(this).hide();
                 $('#saveCustomerDetailsBtn').hide();
                 $('#editCustomerDetailsBtn').show();
             });
 
-            // customerTypeSelect change only matters while in edit mode
             $('#customerTypeSelect').on('change', function() {
                 syncAgentTypeState();
             });
 
-            // Run on page load after types are fetched
-            fetchCustomerTypes();
-            fetchAgentTypes();
-            setTimeout(syncAgentTypeState, 600);
-
+            // ============================================
+            // SAVE CUSTOMER DETAILS
+            // FIX: agentType reads option value directly — which is now the Code (e.g. "WCA"),
+            // not the GUID. This matches what sp_Quote_DetailsUpdate expects.
+            // ============================================
             $('#saveCustomerDetailsBtn').on('click', function() {
                 const customerType = $('#customerTypeSelect').val();
-                const agentType = $('#agentTypeSelect').val();
+                const agentType = $('#agentTypeSelect').val() || '';
 
                 if (!customerType) {
                     showNotification('Customer Type is required', 'error');
@@ -3897,7 +3915,7 @@
                         _token: '{{ csrf_token() }}',
                         booking_no: bookingNo,
                         customer_type: customerType,
-                        agent_type: agentType || ''
+                        agent_type: agentType
                     },
                     beforeSend: function() {
                         $('#saveCustomerDetailsBtn').prop('disabled', true)
@@ -3907,11 +3925,9 @@
                         if (response.success) {
                             showNotification('Customer details saved successfully', 'success');
 
-                            // Update snapshot so Cancel won't revert the newly saved values
                             originalCustomerType = customerType;
                             originalAgentType = agentType;
 
-                            // Lock dropdowns and return to view mode
                             $('#customerTypeSelect, #agentTypeSelect').prop('disabled', true);
                             $('#saveCustomerDetailsBtn, #cancelCustomerDetailsBtn').hide();
                             $('#editCustomerDetailsBtn').show();
@@ -3921,7 +3937,7 @@
                     },
                     error: function(xhr) {
                         showNotification(xhr.responseJSON?.message || 'Failed to save',
-                            'error');
+                        'error');
                     },
                     complete: function() {
                         $('#saveCustomerDetailsBtn').prop('disabled', false)
@@ -3929,6 +3945,10 @@
                     }
                 });
             });
+
+            // Run on page load
+            fetchCustomerTypes();
+            fetchAgentTypes();
 
 
             // ============================================
