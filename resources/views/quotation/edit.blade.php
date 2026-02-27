@@ -454,21 +454,20 @@
                                 </div>
                             </div>
                         </div>
-                    </div>
-
-                    <div class="row mt-2">
-                        <div class="col-md-12 text-right">
-                            <button type="button" class="btn btn-warning btn-sm" id="editCustomerDetailsBtn">
-                                <i class="fas fa-edit mr-1"></i> Edit
-                            </button>
-                            <button type="button" class="btn btn-primary btn-sm" id="saveCustomerDetailsBtn"
-                                style="display:none">
-                                <i class="fas fa-save mr-1"></i> Save
-                            </button>
-                            <button type="button" class="btn btn-secondary btn-sm" id="cancelCustomerDetailsBtn"
-                                style="display:none">
-                                <i class="fas fa-times mr-1"></i> Cancel
-                            </button>
+                        <div class="row mt-3 pt-2" style="border-top: 1px solid #dee2e6;">
+                            <div class="col-md-12 text-right">
+                                <button type="button" class="btn btn-warning btn-sm" id="editCustomerDetailsBtn">
+                                    <i class="fas fa-edit mr-1"></i> Edit
+                                </button>
+                                <button type="button" class="btn btn-primary btn-sm" id="saveCustomerDetailsBtn"
+                                    style="display:none">
+                                    <i class="fas fa-save mr-1"></i> Save
+                                </button>
+                                <button type="button" class="btn btn-secondary btn-sm" id="cancelCustomerDetailsBtn"
+                                    style="display:none">
+                                    <i class="fas fa-times mr-1"></i> Cancel
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -640,8 +639,8 @@
         <!-- END ROW -->
 
         <!-- ============================================
-                                                                                                                                                                                                                                                                                                                                                                                                     MODALS
-                                                                                                                                                                                                                                                                                                                                                                                                     ============================================ -->
+                                                                                                                                                                                                                                                                                                                                                                                                         MODALS
+                                                                                                                                                                                                                                                                                                                                                                                                         ============================================ -->
 
         {{-- REVENUE MODAL --}}
         <div class="modal fade" id="addRevenueModal" tabindex="-1" role="dialog"
@@ -1201,8 +1200,8 @@
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.min.css">
     <style>
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        MODAL STYLING — matched to FitExpress UI
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            MODAL STYLING — matched to FitExpress UI
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            ============================================= */
 
         .modal-header {
             background-color: #fff !important;
@@ -1645,9 +1644,9 @@
         }
 
         /* =============================================
-                                                                                                                                                                                                                                                                                                               CREATE BOOKING MODAL — Specific overrides
-                                                                                                                                                                                                                                                                                                               to match the "Creation of Booking" design
-                                                                                                                                                                                                                                                                                                               ============================================= */
+                                                                                                                                                                                                                                                                                                                   CREATE BOOKING MODAL — Specific overrides
+                                                                                                                                                                                                                                                                                                                   to match the "Creation of Booking" design
+                                                                                                                                                                                                                                                                                                                   ============================================= */
 
         #createBookingModal .modal-title {
             color: #003580 !important;
