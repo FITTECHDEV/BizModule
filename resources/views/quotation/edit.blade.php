@@ -637,8 +637,8 @@
         <!-- END ROW -->
 
         <!-- ============================================
-                                                                                                                                                                                                                                                                                                                                     MODALS
-                                                                                                                                                                                                                                                                                                                                     ============================================ -->
+                                                                                                                                                                                                                                                                                                                                                     MODALS
+                                                                                                                                                                                                                                                                                                                                                     ============================================ -->
 
         {{-- REVENUE MODAL --}}
         <div class="modal fade" id="addRevenueModal" tabindex="-1" role="dialog"
@@ -1197,8 +1197,8 @@
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.min.css">
     <style>
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        MODAL STYLING — matched to FitExpress UI
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        MODAL STYLING — matched to FitExpress UI
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        ============================================= */
 
         .modal-header {
             background-color: #fff !important;
@@ -1641,9 +1641,9 @@
         }
 
         /* =============================================
-                                                                                                                                                                                                                                               CREATE BOOKING MODAL — Specific overrides
-                                                                                                                                                                                                                                               to match the "Creation of Booking" design
-                                                                                                                                                                                                                                               ============================================= */
+                                                                                                                                                                                                                                                               CREATE BOOKING MODAL — Specific overrides
+                                                                                                                                                                                                                                                               to match the "Creation of Booking" design
+                                                                                                                                                                                                                                                               ============================================= */
 
         #createBookingModal .modal-title {
             color: #003580 !important;
@@ -3347,7 +3347,7 @@
                     beforeSend: function() {
                         $('#emailHistoryTable').html(
                             '<tr><td colspan="3" class="text-center text-muted"><i class="fas fa-spinner fa-spin"></i> Loading...</td></tr>'
-                            );
+                        );
                     },
                     success: function(response) {
                         renderEmailHistory(response.emails || []);
@@ -3727,9 +3727,8 @@
                             0) {
                             $select.empty().append('<option value="">-- Select --</option>');
                             response.data.forEach(function(item) {
-                                const val = item.Code ?? item.code ?? item.Value ?? item
-                                    .value;
-                                const name = item.Name ?? item.name;
+                                const val = item.CategoryName;
+                                const name = item.CategoryName;
                                 $select.append(
                                     `<option value="${val}" ${val === savedType ? 'selected' : ''}>${name}</option>`
                                 );
@@ -3806,7 +3805,7 @@
 
             // Agent Type: disabled unless Customer Type = Agent
             function syncAgentTypeState() {
-                const isAgent = $('#customerTypeSelect').val() === 'Agent';
+                const isAgent = $('#customerTypeSelect').val().toLowerCase().includes('agent');
                 $('#agentTypeSelect').prop('disabled', !isAgent);
                 if (!isAgent) $('#agentTypeSelect').val('');
             }
@@ -3829,7 +3828,7 @@
                     return;
                 }
 
-                if (customerType === 'Agent' && !agentType) {
+                if (customerType.toLowerCase().includes('agent') && !agentType) {
                     showNotification('Agent Type is required for Agent customers', 'error');
                     return;
                 }
@@ -4103,7 +4102,8 @@
                     data: {
                         _token: '{{ csrf_token() }}',
                         booking_no: bookingNo,
-                        terms_condition: description
+                        terms_condition: description,
+                        template_name: $('#termsTemplateSelect').val()
                     },
                     beforeSend: function() {
                         $('#applyTermsBtn').prop('disabled', true)

@@ -2458,9 +2458,10 @@ class QuotationController extends Controller
             $updated = DB::table('Quote_QuotationInfo')
                 ->where('bookingno', $bookingNo)
                 ->update([
-                    'terms_condition'  => $termsText,
-                    'LastModifiedBy'   => $submittedBy,
-                    'updatedon'        => now(),
+                    'terms_condition'     => $termsText,
+                    'QuotationTCTemplate' => $request->input('template_name'),
+                    'LastModifiedBy'      => $submittedBy,
+                    'updatedon'           => now(),
                 ]);
 
             if ($updated === 0) {
@@ -2666,108 +2667,39 @@ class QuotationController extends Controller
 
     public function sendEmailQuote(Request $request)
     {
+        $request->validate([
+            'booking_no'  => 'required|string',
+            'quote_id'    => 'required|string',
+            'template_id' => 'required|string',
+            'to_email'    => 'required|email',
+            'from_email'  => 'required|email',
+            'subject'     => 'required|string',
+            'body'        => 'required|string',
+        ]);
+
         try {
-            $bookingNo   = $request->input('booking_no');
-            $toEmail     = $request->input('to_email');
-            $fromEmail   = $request->input('from_email');
-            $subject     = $request->input('subject');
-            $body        = $request->input('body');
-            $templateId  = $request->input('template_id');
+            // Send the email
+            Mail::send([], [], function ($message) use ($request) {
+                $message->to($request->to_email)
+                    ->from($request->from_email)
+                    ->subject($request->subject)
+                    ->html($request->body);
+            });
 
-            $submittedBy = Auth::check()
-                ? (Auth::user()->username ?? Auth::user()->email ?? Auth::user()->name ?? 'system')
-                : 'system';
-
-            // ============================================
-            // VALIDATE REQUIRED FIELDS
-            // ============================================
-            $validator = \Validator::make($request->all(), [
-                'booking_no'  => 'required|string',
-                'to_email'    => 'required|email',
-                'from_email'  => 'required|email',
-                'subject'     => 'required|string',
-                'body'        => 'required|string',
-            ]);
-
-            if ($validator->fails()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Validation failed: ' . $validator->errors()->first(),
-                    'errors'  => $validator->errors()->toArray(),
-                ], 422);
-            }
-
-            // ============================================
-            // FETCH QUOTATION FOR CONTEXT COLUMNS
-            // ============================================
-            $quotation = DB::table('Quote_QuotationInfo')
-                ->where('bookingno', $bookingNo)
-                ->first([
-                    'ID',
-                    'clientid',
-                    'companyname',
-                    'teamid',
-                    'teamname',
-                    'ServiceVerticalid',
-                    'ServiceVerticalname',
-                    'processid',
-                ]);
-
-            if (!$quotation) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Quotation not found for booking number: ' . $bookingNo,
-                ], 404);
-            }
-
-            // ============================================
-            // INSERT INTO email_emailscheduler
-            // Nullable GUID columns left null until confirmed
-            // ============================================
-            DB::table('email_emailscheduler')->insert([
-                'Id'            => DB::raw('NEWID()'),
-                'SchedulerType' => 'QuotationEmail',
-                'SubmittedOn'   => now(),
-                'ClientID'      => null,  // GUID — confirm source column before mapping
-                'ClientName'    => $quotation->companyname ?? null,
-                'OfficeID'      => null,  // GUID — confirm source column before mapping
-                'OfficeName'    => $quotation->teamname ?? null,
-                'ServiceID'     => null,  // GUID — confirm source column before mapping
-                'ProcessID'     => null,  // GUID — confirm source column before mapping
-                'ServiceName'   => $quotation->ServiceVerticalname ?? null,
-                'NoofShipment'  => null,
-                'EmailFrom'     => $fromEmail,
-                'EmailTo'       => $toEmail,
-                'Subject'       => $subject,
-                'BodyMessage'   => $body,
-                'EmailIDCC'     => null,
-                'Status'        => 'Pending',
-                'SendRemark'    => null,
-            ]);
-
-            Log::info('sendEmailQuote - Scheduled successfully', [
-                'booking_no'  => $bookingNo,
-                'to_email'    => $toEmail,
-                'from_email'  => $fromEmail,
-                'subject'     => $subject,
-                'user'        => $submittedBy,
-            ]);
+            // Save the email template used against the quotation
+            DB::table('Quote_QuotationInfo')
+                ->where('bookingno', $request->booking_no)
+                ->update(['QuotationEmailTemplate' => $request->template_id]);
 
             return response()->json([
                 'success' => true,
-                'message' => 'Email scheduled successfully',
+                'message' => 'Email sent successfully'
             ]);
         } catch (\Exception $e) {
-            Log::error('sendEmailQuote - Failed', [
-                'booking_no'    => $request->input('booking_no'),
-                'error_message' => $e->getMessage(),
-                'error_file'    => $e->getFile(),
-                'error_line'    => $e->getLine(),
-            ]);
-
+            Log::error('sendEmailQuote error: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to schedule email: ' . $e->getMessage(),
+                'message' => 'Failed to send email: ' . $e->getMessage()
             ], 500);
         }
     }
@@ -3585,11 +3517,67 @@ class QuotationController extends Controller
      */
     public function createBooking(Request $request)
     {
-        // Stub — wire up real logic when API details are confirmed
-        return response()->json([
-            'success' => false,
-            'message' => 'Booking creation is not yet implemented.',
-        ], 501);
+        $request->validate([
+            'booking_no'        => 'required|string',
+            'service_template'  => 'required|string',
+            'bill_to_party'     => 'required|string',
+            'forwarder'         => 'required|string',
+            'place_of_receipt'  => 'required|string',
+            'place_of_delivery' => 'required|string',
+        ]);
+
+        $submittedBy = auth()->user()->username ?? auth()->user()->email ?? 'system';
+        $submittedAt = now()->format('YmdHis');
+
+        $input = json_encode([
+            'OperationType'     => 'BookingInfoUpdate',
+            'SubmittedDatetime' => $submittedAt,
+            'SubmittedBy'       => $submittedBy,
+            'Action'            => 'Update',
+            'QuotationNo'       => $request->booking_no,
+            'ServiceTemplate'   => $request->service_template,
+            'BillToParty'       => $request->bill_to_party,
+            'Forwarder'         => $request->forwarder,
+            'CountryIncluded'   => $request->include_country ? 1 : 0,
+            'PlaceOfReceipt'    => $request->place_of_receipt,
+            'PlaceOfDelivery'   => $request->place_of_delivery,
+        ]);
+
+        if (strlen($input) > 2000) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Request payload too large for SP. Max 2000 characters.'
+            ], 400);
+        }
+
+        try {
+            $result = DB::selectOne('
+            DECLARE @OutputJson VARCHAR(2000);
+            EXEC dbo.sp_Quote_DetailsUpdate :input, @OutputJson = @OutputJson OUTPUT;
+            SELECT @OutputJson AS output
+        ', ['input' => $input]);
+
+            $output = json_decode($result->output ?? '{}', true);
+
+            if (($output['Status'] ?? '') === 'Failed') {
+                $remarks = collect($output['Remarks'] ?? [])->pluck('Remark')->implode(', ');
+                return response()->json([
+                    'success' => false,
+                    'message' => $remarks ?: 'Booking update failed'
+                ]);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Booking created successfully'
+            ]);
+        } catch (\Exception $e) {
+            Log::error('createBooking error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
     }
 
     /**
@@ -3791,17 +3779,81 @@ class QuotationController extends Controller
 
     public function getCustomerTypes()
     {
-        // Wire to SP when available — returns fallback for now
-        return response()->json(['success' => false, 'data' => []]);
+        try {
+            $results = DB::select('EXEC sp_Quote_GetCustomerType');
+            return response()->json(['success' => true, 'data' => $results]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'data' => [], 'message' => $e->getMessage()]);
+        }
     }
 
     public function saveCustomerDetails(Request $request)
     {
-        // Wire sp_Quote_CustomerUpdate here when SP is available
-        // $bookingNo    = $request->booking_no;
-        // $customerType = $request->customer_type;
-        // $agentType    = $request->agent_type;
+        $request->validate([
+            'booking_no'    => 'required|string',
+            'customer_type' => 'required|string',
+        ]);
 
-        return response()->json(['success' => true, 'message' => 'Saved (pending SP)']);
+        $submittedBy = auth()->user()->username ?? auth()->user()->email ?? 'system';
+        $submittedAt = now()->format('YmdHis');
+
+        $input = json_encode([
+            'OperationType'     => 'CustomerUpdate',
+            'SubmittedDatetime' => $submittedAt,
+            'SubmittedBy'       => $submittedBy,
+            'Action'            => 'Update',
+            'QuotationNo'       => $request->booking_no,
+            'ClientID'          => '',
+            'Company'           => '',
+            'Address1'          => '',
+            'Address2'          => '',
+            'City'              => '',
+            'ZipCode'           => '',
+            'State'             => '',
+            'CountryCode'       => '',
+            'ContactPerson'     => '',
+            'EmailID'           => '',
+            'PhoneNo'           => '',
+            'IndustryCode'      => '',
+            'Industry'          => '',
+            'CustomerType'      => $request->customer_type,
+            'AgentType'         => $request->agent_type ?? '',
+        ]);
+
+        if (strlen($input) > 2000) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Request payload too large for SP. Max 2000 characters.'
+            ], 400);
+        }
+
+        try {
+            $result = DB::selectOne('
+            DECLARE @OutputJson VARCHAR(2000);
+            EXEC dbo.sp_Quote_DetailsUpdate :input, @OutputJson = @OutputJson OUTPUT;
+            SELECT @OutputJson AS output
+        ', ['input' => $input]);
+
+            $output = json_decode($result->output ?? '{}', true);
+
+            if (($output['Status'] ?? '') === 'Failed') {
+                $remarks = collect($output['Remarks'] ?? [])->pluck('Remark')->implode(', ');
+                return response()->json([
+                    'success' => false,
+                    'message' => $remarks ?: 'Customer update failed'
+                ]);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Customer details saved successfully'
+            ]);
+        } catch (\Exception $e) {
+            Log::error('saveCustomerDetails error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
     }
 }
