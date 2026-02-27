@@ -1233,59 +1233,135 @@ class ClientPartyController extends Controller
 
     // Get Office Number
 
+    // public function getOfficeNumberSeries($officeCode = null, $entityType = null)
+    // {
+
+    //     try {
+    //         // Add validation for required parameters
+    //         if (!$officeCode || !$entityType) {
+    //             Log::error('getOfficeNumberSeries: Missing required parameters', [
+    //                 'officeCode' => $officeCode,
+    //                 'entityType' => $entityType
+    //             ]);
+    //             return null;
+    //         }
+
+    //         Log::info('getOfficeNumberSeries called', [
+    //             'officeCode' => $officeCode,
+    //             'entityType' => $entityType
+    //         ]);
+
+    //         $numSeries = DB::table('Cust_OfficeSeriesMapping')
+    //             ->where('EntityType', $entityType)
+    //             ->where('OfficeCode', trim($officeCode))
+    //             ->pluck('SeriesNo');
+
+    //         // Check if the collection is empty before accessing index 0
+    //         if ($numSeries->isEmpty()) {
+    //             Log::warning('getOfficeNumberSeries: No series found', [
+    //                 'officeCode' => $officeCode,
+    //                 'entityType' => $entityType,
+    //                 'query_result' => $numSeries->toArray()
+    //             ]);
+    //             return null;
+    //         }
+
+    //         $seriesNo = $numSeries->first(); // Use first() instead of [0] for better error handling
+
+    //         Log::info('getOfficeNumberSeries result', [
+    //             'officeCode' => $officeCode,
+    //             'entityType' => $entityType,
+    //             'seriesNo' => $seriesNo,
+    //             'found_count' => $numSeries->count()
+    //         ]);
+
+    //         return $seriesNo;
+    //     } catch (Exception $e) {
+    //         Log::error('getOfficeNumberSeries exception', [
+    //             'officeCode' => $officeCode,
+    //             'entityType' => $entityType,
+    //             'error' => $e->getMessage(),
+    //             'trace' => $e->getTraceAsString()
+    //         ]);
+    //         return null;
+    //     }
+    // }
+
     public function getOfficeNumberSeries($officeCode = null, $entityType = null)
-    {
-
-        try {
-            // Add validation for required parameters
-            if (!$officeCode || !$entityType) {
-                Log::error('getOfficeNumberSeries: Missing required parameters', [
-                    'officeCode' => $officeCode,
-                    'entityType' => $entityType
-                ]);
-                return null;
-            }
-
-            Log::info('getOfficeNumberSeries called', [
+{
+    try {
+        // Add validation for required parameters
+        if (!$officeCode || !$entityType) {
+            Log::error('getOfficeNumberSeries: Missing required parameters', [
                 'officeCode' => $officeCode,
                 'entityType' => $entityType
             ]);
-
-            $numSeries = DB::table('Cust_OfficeSeriesMapping')
-                ->where('EntityType', $entityType)
-                ->where('OfficeCode', trim($officeCode))
-                ->pluck('SeriesNo');
-
-            // Check if the collection is empty before accessing index 0
-            if ($numSeries->isEmpty()) {
-                Log::warning('getOfficeNumberSeries: No series found', [
-                    'officeCode' => $officeCode,
-                    'entityType' => $entityType,
-                    'query_result' => $numSeries->toArray()
-                ]);
-                return null;
-            }
-
-            $seriesNo = $numSeries->first(); // Use first() instead of [0] for better error handling
-
-            Log::info('getOfficeNumberSeries result', [
-                'officeCode' => $officeCode,
-                'entityType' => $entityType,
-                'seriesNo' => $seriesNo,
-                'found_count' => $numSeries->count()
-            ]);
-
-            return $seriesNo;
-        } catch (Exception $e) {
-            Log::error('getOfficeNumberSeries exception', [
-                'officeCode' => $officeCode,
-                'entityType' => $entityType,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
             return null;
         }
+
+        Log::info('getOfficeNumberSeries called', [
+            'officeCode' => $officeCode,
+            'entityType' => $entityType
+        ]);
+
+        $numSeries = DB::table('Cust_OfficeSeriesMapping')
+            ->where('EntityType', $entityType)
+            ->where('OfficeCode', trim($officeCode))
+            ->pluck('SeriesNo');
+
+        // Check if the collection is empty before accessing index 0
+        if ($numSeries->isEmpty()) {
+
+            // Diagnostic: what IS in the table for this office code?
+            $allForOffice = DB::table('Cust_OfficeSeriesMapping')
+                ->where('OfficeCode', trim($officeCode))
+                ->get(['OfficeCode', 'EntityType', 'SeriesNo'])
+                ->toArray();
+
+            // Diagnostic: what office codes exist for this entity type?
+            $allForEntityType = DB::table('Cust_OfficeSeriesMapping')
+                ->where('EntityType', $entityType)
+                ->get(['OfficeCode', 'EntityType', 'SeriesNo'])
+                ->toArray();
+
+            // Diagnostic: dump everything in the table to catch any data issues
+            $allRecords = DB::table('Cust_OfficeSeriesMapping')
+                ->get(['OfficeCode', 'EntityType', 'SeriesNo'])
+                ->toArray();
+
+            Log::warning('getOfficeNumberSeries: No series found', [
+                'officeCode'                    => $officeCode,
+                'entityType'                    => $entityType,
+                'query_result'                  => $numSeries->toArray(),
+                'all_series_for_this_office'    => $allForOffice,      // Rows matching office code (any entity type)
+                'all_series_for_this_entity'    => $allForEntityType,  // Rows matching entity type (any office)
+                'all_records_in_table'          => $allRecords,        // Full table dump
+            ]);
+
+            return null;
+        }
+
+        $seriesNo = $numSeries->first();
+
+        Log::info('getOfficeNumberSeries result', [
+            'officeCode'  => $officeCode,
+            'entityType'  => $entityType,
+            'seriesNo'    => $seriesNo,
+            'found_count' => $numSeries->count()
+        ]);
+
+        return $seriesNo;
+
+    } catch (Exception $e) {
+        Log::error('getOfficeNumberSeries exception', [
+            'officeCode' => $officeCode,
+            'entityType' => $entityType,
+            'error'      => $e->getMessage(),
+            'trace'      => $e->getTraceAsString()
+        ]);
+        return null;
     }
+}
 
     public function preview(ClientParty $path)
     {

@@ -26,8 +26,8 @@ class GenerateJsonReportTZ extends Command
 
             if ($backfillStart !== null) {
                 // Backfill mode
-                $startDate = $backfillStart ? Carbon::parse($backfillStart) : Carbon::parse('2025-03-02');
-                $endDate = Carbon::parse('2025-11-12');
+                $startDate = $backfillStart ? Carbon::parse($backfillStart) : Carbon::parse('2026-01-01');
+                $endDate = Carbon::yesterday();
 
                 while ($startDate->lte($endDate)) {
                     $dates[] = $startDate->toDateString();

@@ -1293,6 +1293,8 @@ FROM (
 
             $insertedRolesCount = 0;
             $roleInsertErrors = [];
+            $spMap = config('azure.service_principal_map', []);
+            $processedSpIds = [];
 
             if (!empty($roleAssignments)) {
                 Log::info('→ Step 9: Inserting role assignments...', [
@@ -1307,44 +1309,56 @@ FROM (
                         DB::connection('sqlsrv')
                             ->table('Azure_Application_UserMapping')
                             ->insert([
-                                'Id'          => $mappingId,
-                                'AzureUserID' => $userId,
-                                'user_id'     => $userPrincipalName,
-                                'application_id'   => $roleData['application_id'],
-                                'Username'         => $request->name,
-                                'ApplicationName'  => $roleData['application_name'],
-                                'RoleCode'         => $roleData['role_code'],
-                                'RoleID'           => $roleData['role_id'],
-                                'OfficeCode'       => $roleData['location_code'],
-                                'OfficeID'         => $roleData['location_id'],
-                                'IsActive'         => 1,
-                                'IsDelete'         => 0,
-                                'CreatedBy'        => Auth::user()->name ?? 'system',
-                                'CreatedOn'        => DB::raw('GETDATE()'),
+                                'Id'             => $mappingId,
+                                'AzureUserID'    => $userId,
+                                'user_id'        => $userPrincipalName,
+                                'application_id' => $roleData['application_id'],
+                                'Username'       => $request->name,
+                                'ApplicationName' => $roleData['application_name'],
+                                'RoleCode'       => $roleData['role_code'],
+                                'RoleID'         => $roleData['role_id'],
+                                'OfficeCode'     => $roleData['location_code'],
+                                'OfficeID'       => $roleData['location_id'],
+                                'IsActive'       => 1,
+                                'IsDelete'       => 0,
+                                'CreatedBy'      => Auth::user()->name ?? 'system',
+                                'CreatedOn'      => DB::raw('GETDATE()'),
                             ]);
 
                         $insertedRolesCount++;
-                        $spMap = config('azure.service_principal_map', []);
+
                         $spId = $spMap[$roleData['application_name']] ?? null;
 
-                        if ($spId) {
-                            $azureService->assignUserToApplication($azureId, $spId);
+                        if ($spId && !in_array($spId, $processedSpIds)) {
+                            $result = $azureService->ensureUserAssignedToApplication(
+                                $azureId,
+                                $spId,
+                                $roleData['application_name']
+                            );
+
+                            Log::info('Azure app assignment result', [
+                                'module'  => $roleData['application_name'],
+                                'status'  => $result['status'] ?? 'unknown',
+                                'success' => $result['success'],
+                            ]);
+
+                            $processedSpIds[] = $spId;
                         }
                     } catch (\Exception $e) {
                         $roleInsertErrors[] = [
-                            'data' => $roleData,
+                            'data'  => $roleData,
                             'error' => $e->getMessage(),
                         ];
                         Log::error('Failed to insert role assignment', [
                             'role_data' => $roleData,
-                            'error' => $e->getMessage(),
+                            'error'     => $e->getMessage(),
                         ]);
                     }
                 }
 
                 Log::info('✓ Step 9: Role assignments inserted', [
                     'inserted' => $insertedRolesCount,
-                    'failed' => count($roleInsertErrors),
+                    'failed'   => count($roleInsertErrors),
                 ]);
             }
 
@@ -2451,6 +2465,9 @@ FROM (
                 // STEP 9-10: Insert roles and functions
                 // ====================================================================
                 $insertedRolesCount = 0;
+                $spMap = config('azure.service_principal_map', []);
+                $processedSpIds = [];
+
                 foreach ($validatedRoles as $roleData) {
                     DB::connection('sqlsrv')->table('Azure_Application_UserMapping')->insert([
                         'Id'              => \Illuminate\Support\Str::uuid()->toString(),
@@ -2470,27 +2487,24 @@ FROM (
 
                     $insertedRolesCount++;
 
-                    $spMap = config('azure.service_principal_map', []);
                     $spId = $spMap[$roleData['application_name']] ?? null;
 
-                    if ($spId) {
-                        $azureService->assignUserToApplication($user->AzureId, $spId);
-                    }
-
-                    $spMap = config('azure.service_principal_map', []);
-                    $spId  = $spMap[$roleData['application_name']] ?? null;
-
-                    if ($spId && $roleData['role_id']) {
-                        $azureService->assignAppRole(
+                    if ($spId && !in_array($spId, $processedSpIds)) {
+                        $result = $azureService->ensureUserAssignedToApplication(
                             $user->AzureId,
                             $spId,
-                            $roleData['role_id']
+                            $roleData['application_name']
                         );
+
+                        Log::info('Azure app assignment result', [
+                            'module'  => $roleData['application_name'],
+                            'status'  => $result['status'] ?? 'unknown',
+                            'success' => $result['success'],
+                        ]);
+
+                        $processedSpIds[] = $spId;
                     }
                 }
-
-
-
 
                 // ====================================================================
                 // STEP 10.5: Ensure Windows Sign-In exists (idempotent insert)

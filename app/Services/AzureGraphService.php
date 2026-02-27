@@ -779,7 +779,7 @@ class AzureGraphService
             // firstname.initial@domain.com
             $nameParts = explode(' ', strtolower($name));
             $firstName = $nameParts[0] ?? 'user';
-            $lastNameInitial = substr(end($nameParts), 0, 1);  
+            $lastNameInitial = substr(end($nameParts), 0, 1);
 
             return "{$firstName}.{$lastNameInitial}@{$this->defaultDomain}";
         }
@@ -1469,7 +1469,6 @@ class AzureGraphService
         }
     }
 
-    // Add to AzureGraphService.php
     public function assignUserToApplication(string $azureUserId, string $servicePrincipalId): array
     {
         try {
@@ -1478,40 +1477,215 @@ class AzureGraphService
                 'service_principal_id' => $servicePrincipalId,
             ]);
 
-            $defaultRoleId = '00000000-0000-0000-0000-000000000000';
+            // Resolve the correct appRoleId for this service principal
+            // Fall back to null GUID only if the SP actually exposes it
+            $appRoleId = $this->resolveDefaultAppRoleId($servicePrincipalId);
 
             $response = $this->makeRequestWithRetry(
                 'POST',
                 $this->graphApiBaseUrl . "/servicePrincipals/{$servicePrincipalId}/appRoleAssignments",
                 [
                     'principalId' => $azureUserId,
-                    'resourceId' => $servicePrincipalId,
-                    'appRoleId' => $defaultRoleId
+                    'resourceId'  => $servicePrincipalId,
+                    'appRoleId'   => $appRoleId,
                 ]
             );
 
             if (!$response->successful()) {
-                if ($response->status() === 400 && str_contains($response->body(), 'already exists')) {
-                    Log::channel('azure')->info('User already assigned to app', [
-                        'azure_user_id' => $azureUserId,
-                        'service_principal_id' => $servicePrincipalId,
-                    ]);
-                    return ['success' => true, 'status' => 'already_assigned'];
+                if ($response->status() === 400) {
+                    $body = $response->json();
+                    $message = $body['error']['message'] ?? '';
+
+                    if (str_contains($message, 'already exists')) {
+                        Log::channel('azure')->info('User already assigned to app', [
+                            'azure_user_id'        => $azureUserId,
+                            'service_principal_id' => $servicePrincipalId,
+                        ]);
+                        return ['success' => true, 'status' => 'already_assigned'];
+                    }
+
+                    if (str_contains($message, 'Permission being assigned was not found')) {
+                        Log::channel('azure')->warning('No assignable app role on this SP — skipping direct assignment', [
+                            'azure_user_id'        => $azureUserId,
+                            'service_principal_id' => $servicePrincipalId,
+                            'app_role_id'          => $appRoleId,
+                        ]);
+                        // Not a failure — user may already have access via group
+                        return ['success' => true, 'status' => 'no_assignable_role_skipped'];
+                    }
                 }
+
                 throw new \Exception("Failed: " . $response->body());
             }
 
             Log::channel('azure')->info('User assigned to application successfully', [
-                'azure_user_id' => $azureUserId,
+                'azure_user_id'        => $azureUserId,
                 'service_principal_id' => $servicePrincipalId,
+                'app_role_id'          => $appRoleId,
             ]);
 
             return ['success' => true, 'status' => 'assigned'];
         } catch (\Exception $e) {
             Log::channel('azure')->error('Failed to assign user to app', [
-                'azure_user_id' => $azureUserId,
+                'azure_user_id'        => $azureUserId,
                 'service_principal_id' => $servicePrincipalId,
-                'error' => $e->getMessage()
+                'error'                => $e->getMessage(),
+            ]);
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * Resolve the correct default app role ID for a service principal.
+     * 
+     * Some SPs expose the null GUID as a default role (e.g. D365, BIZ).
+     * Others (like OPS/SCM) use assignment-required groups and have no
+     * directly-assignable app role — in that case, return null GUID as
+     * a probe and handle the 400 gracefully.
+     */
+    private function resolveDefaultAppRoleId(string $servicePrincipalId): string
+    {
+        $nullGuid = '00000000-0000-0000-0000-000000000000';
+        $cacheKey = "azure_sp_role_{$servicePrincipalId}";
+
+        // Cache for 24 hours - SP app roles rarely change
+        return Cache::remember($cacheKey, now()->addHours(24), function () use ($servicePrincipalId, $nullGuid) {
+            try {
+                $response = $this->makeRequestWithRetry(
+                    'GET',
+                    $this->graphApiBaseUrl . "/servicePrincipals/{$servicePrincipalId}?\$select=appRoles"
+                );
+
+                if (!$response->successful()) {
+                    return $nullGuid;
+                }
+
+                $appRoles = $response->json()['appRoles'] ?? [];
+
+                foreach ($appRoles as $role) {
+                    if (($role['id'] ?? '') === $nullGuid && ($role['isEnabled'] ?? false)) {
+                        return $nullGuid;
+                    }
+                }
+
+                foreach ($appRoles as $role) {
+                    if ($role['isEnabled'] ?? false) {
+                        return $role['id'];
+                    }
+                }
+            } catch (\Exception $e) {
+                Log::channel('azure')->warning('Could not fetch app roles for SP — using null GUID', [
+                    'service_principal_id' => $servicePrincipalId,
+                    'error'                => $e->getMessage(),
+                ]);
+            }
+
+            return $nullGuid;
+        });
+    }
+
+    /**
+     * Check if user is already assigned to an application
+     */
+    public function isUserAssignedToApplication(string $azureUserId, string $servicePrincipalId): bool
+    {
+        try {
+            // Check 1: Direct assignment
+            $response = $this->makeRequestWithRetry(
+                'GET',
+                $this->graphApiBaseUrl . "/servicePrincipals/{$servicePrincipalId}/appRoleAssignedTo?\$filter=principalId eq '{$azureUserId}'"
+            );
+
+            if ($response->successful()) {
+                $direct = $response->json()['value'] ?? [];
+                if (count($direct) > 0) {
+                    Log::channel('azure')->info('User has direct assignment to app', [
+                        'azure_user_id'        => $azureUserId,
+                        'service_principal_id' => $servicePrincipalId,
+                    ]);
+                    return true;
+                }
+            }
+
+            // Check 2: Group-based assignment
+            // Get all groups the user belongs to (transitive)
+            $groupsResponse = $this->makeRequestWithRetry(
+                'GET',
+                $this->graphApiBaseUrl . "/users/{$azureUserId}/transitiveMemberOf?\$select=id"
+            );
+
+            if (!$groupsResponse->successful()) {
+                return false;
+            }
+
+            $userGroupIds = collect($groupsResponse->json()['value'] ?? [])->pluck('id')->toArray();
+
+            if (empty($userGroupIds)) {
+                return false;
+            }
+
+            // Get all group assignments on this service principal
+            $spGroupsResponse = $this->makeRequestWithRetry(
+                'GET',
+                $this->graphApiBaseUrl . "/servicePrincipals/{$servicePrincipalId}/appRoleAssignedTo?\$filter=principalType eq 'Group'"
+            );
+
+            if (!$spGroupsResponse->successful()) {
+                return false;
+            }
+
+            $assignedGroupIds = collect($spGroupsResponse->json()['value'] ?? [])->pluck('principalId')->toArray();
+
+            $hasGroupAccess = count(array_intersect($userGroupIds, $assignedGroupIds)) > 0;
+
+            if ($hasGroupAccess) {
+                Log::channel('azure')->info('User has group-based assignment to app - skipping direct assignment', [
+                    'azure_user_id'        => $azureUserId,
+                    'service_principal_id' => $servicePrincipalId,
+                ]);
+            }
+
+            return $hasGroupAccess;
+        } catch (\Exception $e) {
+            Log::channel('azure')->warning('Could not check app assignment status - defaulting to false', [
+                'azure_user_id'        => $azureUserId,
+                'service_principal_id' => $servicePrincipalId,
+                'error'                => $e->getMessage(),
+            ]);
+            return false;
+        }
+    }
+
+    /**
+     * Ensure user is assigned to application - assign if missing
+     */
+    public function ensureUserAssignedToApplication(string $azureUserId, string $servicePrincipalId, string $appName = ''): array
+    {
+        try {
+            $alreadyAssigned = $this->isUserAssignedToApplication($azureUserId, $servicePrincipalId);
+
+            if ($alreadyAssigned) {
+                Log::channel('azure')->info('User already assigned to application - skipping', [
+                    'azure_user_id'       => $azureUserId,
+                    'service_principal_id' => $servicePrincipalId,
+                    'app_name'            => $appName,
+                ]);
+                return ['success' => true, 'status' => 'already_assigned'];
+            }
+
+            Log::channel('azure')->info('User not assigned to application - assigning now', [
+                'azure_user_id'       => $azureUserId,
+                'service_principal_id' => $servicePrincipalId,
+                'app_name'            => $appName,
+            ]);
+
+            return $this->assignUserToApplication($azureUserId, $servicePrincipalId);
+        } catch (\Exception $e) {
+            Log::channel('azure')->error('ensureUserAssignedToApplication failed', [
+                'azure_user_id'       => $azureUserId,
+                'service_principal_id' => $servicePrincipalId,
+                'app_name'            => $appName,
+                'error'               => $e->getMessage(),
             ]);
             return ['success' => false, 'error' => $e->getMessage()];
         }
