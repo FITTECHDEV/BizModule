@@ -223,7 +223,8 @@
                 <table cellpadding="0" cellspacing="0">
                     <tr>
                         <td style="vertical-align:middle; padding-right:8px;">
-                            <img src="{{ public_path('logo.png') }}" style="height:42px;">
+                            <img src="{{ 'file://' . str_replace('\\', '/', public_path('logo.png')) }}"
+                                style="height:42px;">
                         </td>
                         <td class="header-company">
                             <strong>FREIGHT IN TIME (U) LIMITED</strong><br>

@@ -639,8 +639,8 @@
         <!-- END ROW -->
 
         <!-- ============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                 MODALS
-                                                                                                                                                                                                                                                                                                                                                                                                                 ============================================ -->
+                                                                                                                                                                                                                                                                                                                                                                                                                                         MODALS
+                                                                                                                                                                                                                                                                                                                                                                                                                                         ============================================ -->
 
         {{-- REVENUE MODAL --}}
         <div class="modal fade" id="addRevenueModal" tabindex="-1" role="dialog"
@@ -1200,8 +1200,8 @@
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.min.css">
     <style>
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    MODAL STYLING — matched to FitExpress UI
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            MODAL STYLING — matched to FitExpress UI
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            ============================================= */
 
         .modal-header {
             background-color: #fff !important;
@@ -1644,9 +1644,9 @@
         }
 
         /* =============================================
-                                                                                                                                                                                                                                                                                                                           CREATE BOOKING MODAL — Specific overrides
-                                                                                                                                                                                                                                                                                                                           to match the "Creation of Booking" design
-                                                                                                                                                                                                                                                                                                                           ============================================= */
+                                                                                                                                                                                                                                                                                                                                                   CREATE BOOKING MODAL — Specific overrides
+                                                                                                                                                                                                                                                                                                                                                   to match the "Creation of Booking" design
+                                                                                                                                                                                                                                                                                                                                                   ============================================= */
 
         #createBookingModal .modal-title {
             color: #003580 !important;
@@ -3056,6 +3056,9 @@
 
             function renderVersions(versions) {
                 const $container = $('#quotationVersionsList');
+                $container.empty();
+
+                console.log('renderVersions called with:', versions); // Keep this for now
 
                 if (!versions || versions.length === 0) {
                     $container.html('<p class="text-muted text-center mb-2">No versions generated yet.</p>');
@@ -3064,19 +3067,49 @@
 
                 let html = '';
                 versions.forEach(function(v) {
+                    // Normalize field names — handle whatever the backend returns
+                    const versionNo = v.version ?? v.Version ?? v.VersionNo ?? v.version_no ?? null;
+                    const versionLabel = v.label ?? v.Label ?? v.VersionLabel ?? ('Version ' + versionNo);
+                    const versionUrl = v.url ?? v.Url ?? v.download_url ?? null;
+
+                    if (!versionNo) {
+                        console.warn('renderVersions: skipping entry — no recognizable version field', v);
+                        return;
+                    }
+
+                    const downloadUrl = versionUrl ?? `/quotation/${quotationId}/download-pdf/${versionNo}`;
+
                     html += `
-            <div class="form-group row">
-                <label class="col-sm-4 col-form-label fw-bold">${v.label}</label>
+            <div class="form-group row align-items-center mb-2">
+                <label class="col-sm-4 col-form-label fw-bold">${versionLabel}</label>
                 <div class="col-sm-8 d-flex align-items-center">
-                    <a href="${v.url}" target="_blank" class="text-primary">
-                        <i class="fas fa-file-pdf mr-1"></i> Download
-                    </a>
+                    <button type="button"
+                        class="btn btn-sm btn-outline-primary btn-download-pdf"
+                        data-url="${downloadUrl}"
+                        data-version="${versionNo}">
+                        <i class="fas fa-download mr-1"></i> Download
+                    </button>
+                    <span class="ml-2 text-success"
+                        id="download-success-${versionNo}"
+                        style="display:none; font-size:0.8rem;">
+                        <i class="fas fa-check-circle mr-1"></i> Downloaded
+                    </span>
                 </div>
             </div>
         `;
                 });
 
-                $container.html(html);
+                if (html) {
+                    $container.html(html);
+                    // Ensure card body stays visible after async load
+                    $container.closest('.card-body').show();
+                    $container.closest('.card')
+                        .find('[data-card-widget="collapse"] i')
+                        .removeClass('fa-chevron-down')
+                        .addClass('fa-chevron-up');
+                } else {
+                    $container.html('<p class="text-muted text-center mb-2">No versions generated yet.</p>');
+                }
             }
 
             function loadVersions() {
@@ -3084,15 +3117,17 @@
                     url: VERSIONS_URL,
                     type: 'GET',
                     success: function(response) {
+                        console.log('loadVersions raw response:', JSON.stringify(response));
                         if (response.success) {
-                            renderVersions(response.versions);
+                            renderVersions(response.versions ?? response.data ?? []);
                         } else {
                             $('#quotationVersionsList').html(
                                 '<p class="text-danger text-center mb-2">Failed to load versions.</p>'
                             );
                         }
                     },
-                    error: function() {
+                    error: function(xhr) {
+                        console.error('loadVersions error:', xhr.status, xhr.responseText);
                         $('#quotationVersionsList').html(
                             '<p class="text-danger text-center mb-2">Error loading versions.</p>'
                         );
@@ -3347,6 +3382,38 @@
                             .html('<i class="fas fa-paper-plane mr-1"></i> Send');
                     }
                 });
+            });
+
+            // ============================================
+            // PDF DOWNLOAD HANDLER
+            // ============================================
+            $(document).on('click', '.btn-download-pdf', function() {
+                const $btn = $(this);
+                const url = $btn.data('url');
+                const version = $btn.data('version');
+
+                $btn.prop('disabled', true)
+                    .html('<i class="fas fa-spinner fa-spin mr-1"></i> Downloading...');
+
+                const $anchor = $('<a>')
+                    .attr('href', url)
+                    .attr('download', '')
+                    .appendTo('body');
+
+                $anchor[0].click();
+                $anchor.remove();
+
+                setTimeout(function() {
+                    $btn.prop('disabled', false)
+                        .html('<i class="fas fa-download mr-1"></i> Download');
+
+                    $('#download-success-' + version).fadeIn(200);
+                    showNotification('Version ' + version + ' downloaded successfully', 'success');
+
+                    setTimeout(function() {
+                        $('#download-success-' + version).fadeOut(400);
+                    }, 3000);
+                }, 1500);
             });
 
             // ============================================
@@ -3937,7 +4004,7 @@
                     },
                     error: function(xhr) {
                         showNotification(xhr.responseJSON?.message || 'Failed to save',
-                        'error');
+                            'error');
                     },
                     complete: function() {
                         $('#saveCustomerDetailsBtn').prop('disabled', false)
@@ -4046,11 +4113,15 @@
 
             $('.card').not('.card-success, .card-danger').each(function() {
                 const $card = $(this);
-                if ($card.find('.card-title').text().trim() === 'Summary') return;
+                const cardTitle = $card.find('.card-title').text().trim();
+
+                // Never auto-collapse Summary or Quotation Document
+                if (cardTitle === 'Summary' || cardTitle === 'Quotation Document') return;
 
                 $card.find('.card-body').hide();
-                $card.find('[data-card-widget="collapse"] i').removeClass('fa-chevron-up').addClass(
-                    'fa-chevron-down');
+                $card.find('[data-card-widget="collapse"] i')
+                    .removeClass('fa-chevron-up')
+                    .addClass('fa-chevron-down');
                 $card.addClass('collapsed-card');
             });
 

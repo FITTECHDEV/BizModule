@@ -8,7 +8,6 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Yajra\DataTables\Facades\DataTables;
-use Barryvdh\DomPDF\Facade\Pdf;
 
 class QuotationController extends Controller
 {
@@ -2471,60 +2470,112 @@ class QuotationController extends Controller
 
     public function saveTermsCondition(Request $request)
     {
-        $bookingNo  = $request->input('booking_no');
-        $termsText  = $request->input('terms_condition');
-        $submittedBy = Auth::check()
+        $bookingNo    = $request->input('booking_no');
+        $termsText    = $request->input('terms_condition');
+        $templateName = $request->input('template_name');
+        $submittedBy  = Auth::check()
             ? (Auth::user()->username ?? Auth::user()->email ?? Auth::user()->name ?? 'system')
             : 'system';
 
         if (!$bookingNo) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Booking number is required'
-            ], 400);
+            return response()->json(['success' => false, 'message' => 'Booking number is required'], 400);
         }
 
         try {
+            // ── Update quotation header ──
             $updated = DB::table('Quote_QuotationInfo')
                 ->where('bookingno', $bookingNo)
                 ->update([
-                    'terms_condition'     => $termsText,
-                    'QuotationTCTemplate' => $request->input('template_name'),
+                    'QuotationTCTemplate' => $templateName,
                     'LastModifiedBy'      => $submittedBy,
                     'updatedon'           => now(),
                 ]);
 
             if ($updated === 0) {
-                Log::warning('saveTermsCondition - No rows updated', [
-                    'booking_no'  => $bookingNo,
-                    'user'        => $submittedBy,
-                ]);
-                return response()->json([
-                    'success' => false,
-                    'message' => 'No matching quotation found to update'
-                ], 404);
+                return response()->json(['success' => false, 'message' => 'No matching quotation found'], 404);
             }
 
-            Log::info('saveTermsCondition - Success', [
-                'booking_no'  => $bookingNo,
-                'user'        => $submittedBy,
+            // ── Get quotation UUID ──
+            $quotation = DB::table('Quote_QuotationInfo')
+                ->where('bookingno', $bookingNo)
+                ->first(['ID']);
+
+            // ── Save T&C content as a file ──
+            $folder   = 'quotations/' . $bookingNo . '/tc';
+            $fileName = 'TC_' . $bookingNo . '_' . now()->format('Ymd_His') . '.html';
+            $filePath = $folder . '/' . $fileName;
+
+            \Storage::disk('public')->put($filePath, $termsText ?? '');
+            $fullPath = \Storage::disk('public')->path($filePath);
+
+            $docName = $templateName ?? $fileName;
+
+            // ── Upsert into Quote_Quotation_Document (PK is QuotationInfoID + DocumentType + Name) ──
+            DB::statement("
+            MERGE dbo.Quote_Quotation_Document AS target
+            USING (
+                SELECT :quotationId AS QuotationInfoID,
+                       'TermsCondition' AS DocumentType,
+                       :name AS Name
+            ) AS src
+            ON  target.QuotationInfoID = src.QuotationInfoID
+            AND target.DocumentType    = src.DocumentType
+            AND target.Name            = src.Name
+            WHEN MATCHED THEN UPDATE SET
+                FilePath        = :filePath,
+                LastModifiedBy  = :modifiedBy,
+                LastModifiedOn  = :modifiedOn,
+                IsDeleted       = 0
+            WHEN NOT MATCHED THEN INSERT
+                (Id, QuotationInfoID, DocumentType, Name, IsVisible, IsPrinted, FilePath,
+                 CreatedBy, CreatedOn, LastModifiedBy, LastModifiedOn, IsDeleted)
+            VALUES
+                (NEWID(), :quotationId2, 'TermsCondition', :name2, 1, 0, :filePath2,
+                 :createdBy, :createdOn, :modifiedBy2, :modifiedOn2, 0);
+        ", [
+                'quotationId'  => $quotation->ID,
+                'name'         => $docName,
+                'filePath'     => $fullPath,
+                'modifiedBy'   => $submittedBy,
+                'modifiedOn'   => now(),
+                'quotationId2' => $quotation->ID,
+                'name2'        => $docName,
+                'filePath2'    => $fullPath,
+                'createdBy'    => $submittedBy,
+                'createdOn'    => now(),
+                'modifiedBy2'  => $submittedBy,
+                'modifiedOn2'  => now(),
             ]);
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Terms & Conditions saved successfully'
+            // ── Save to Cust_DocumentDeails ──
+            DB::table('Cust_DocumentDeails')->insert([
+                'Id'            => DB::raw('NEWID()'),
+                'DocumentType'  => 'TermsCondition',
+                'ReferenceID'   => $quotation->ID,
+                'ReferenceNo'   => (string) $bookingNo,
+                'SubmittedDate' => now(),
+                'VersionNo'     => 1,
+                'FileName'      => $fileName,
+                'Path'          => $fullPath,
+                'CreatedOn'     => now(),
             ]);
+
+            Log::info('saveTermsCondition - Success', [
+                'booking_no' => $bookingNo,
+                'template'   => $templateName,
+                'file'       => $filePath,
+                'user'       => $submittedBy,
+            ]);
+
+            return response()->json(['success' => true, 'message' => 'Terms & Conditions saved successfully']);
         } catch (\Exception $e) {
             Log::error('saveTermsCondition - Failed', [
-                'booking_no'  => $bookingNo,
-                'error'       => $e->getMessage(),
-                'file'        => $e->getFile(),
-                'line'        => $e->getLine(),
+                'booking_no' => $bookingNo,
+                'error'      => $e->getMessage(),
+                'file'       => $e->getFile(),
+                'line'       => $e->getLine(),
             ]);
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to save Terms & Conditions: ' . $e->getMessage()
-            ], 500);
+            return response()->json(['success' => false, 'message' => 'Failed to save: ' . $e->getMessage()], 500);
         }
     }
 
@@ -2725,11 +2776,11 @@ class QuotationController extends Controller
                     $message
                         ->to([
                             'nashonmwendwa04@gmail.com',
-                            'amay@freight-in-time.com',
+                            // 'amay@freight-in-time.com',
                         ])
                         ->replyTo($fromEmail)
                         ->subject($subject)
-                        ->html($body);
+                        ->setBody($body, 'text/html');
                 }
             );
 
@@ -2814,98 +2865,231 @@ class QuotationController extends Controller
      * Generate and stream a PDF quotation document.
      * Route: GET /quotation/{id}/generate-pdf
      */
+
     public function generatePdf($id)
     {
         try {
+            // Set memory limit for PDF generation
+            ini_set('memory_limit', '512M');
+            ini_set('max_execution_time', '300');
+
+            Log::info('PDF Generation - Starting', ['quotation_id' => $id]);
+
+            // Verify TCPDF is installed
+            if (!class_exists('\TCPDF')) {
+                Log::error('PDF Generation - TCPDF class not found');
+                return response()->json([
+                    'success' => false,
+                    'message' => 'PDF library not installed. Please run: composer require tecnickcom/tcpdf'
+                ], 500);
+            }
+
             $quotation = \App\Models\QuotationInfo::where('ID', $id)->first();
 
             if (!$quotation) {
-                Log::warning('generatePdf - Quotation not found', ['id' => $id]);
-                return response()->json(['success' => false, 'message' => 'Quotation not found'], 404);
+                Log::error('PDF Generation - Quotation not found', ['id' => $id]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Quotation not found'
+                ], 404);
             }
 
-            // Resolve currency code
-            $currencyCode = $quotation->currency ?? null;
-            if (!empty($quotation->currency)) {
-                $currency = DB::table('[FITSCMUAT].dbo.Cust_Currency')
-                    ->where('Id', $quotation->currency)
-                    ->first(['Code']);
-                if ($currency) {
-                    $currencyCode = $currency->Code;
-                }
-            }
+            $submittedBy = auth()->user()->username ?? auth()->user()->email ?? 'system';
 
-            // Load charges
-            $charges = DB::select("
-            SELECT
-                QC.Id                   AS QuoteChargeID,
-                BC.Code                 AS ChargeCode,
-                BC.Name                 AS ChargeName,
-                QC.Quantity,
-                QC.EstChargeRate        AS Rate,
-                QC.EstChargeAmount      AS AmtInChgCurr,
-                QC.EstBaseAmount        AS AmtInBaseCurr,
-                QC.BaseExchRate         AS ExChangeRate,
-                CC.Code                 AS ChgCurr,
-                CB.Code                 AS BasedOnCode,
-                CB.BasedOn              AS BasedOn,
-                SU.Code                 AS BasedOnUOM,
-                QC.Remarks              AS ChargeRemark,
-                QC.IsRevenue,
-                CP.Code                 AS PartyCode
-            FROM Quote_Quotation_ChargeSheet QC WITH (NOLOCK)
-            INNER JOIN Quote_QuotationInfo QI WITH (NOLOCK)
-                ON QI.id = QC.QuotationInfoID
-            LEFT JOIN [FITSCMUAT].dbo.Bill_ChargeCode BC WITH (NOLOCK)
-                ON BC.Id = QC.ChargeCodeId
-            LEFT JOIN [FITSCMUAT].dbo.Cust_Currency CC WITH (NOLOCK)
-                ON CC.Id = QC.EstChargeCurrencyId
-            LEFT JOIN Cust_ChargecodeBasedOn CB WITH (NOLOCK)
-                ON CB.Id = QC.BasedOnId
-            LEFT JOIN [FITSCMUAT].dbo.Sys_UOM SU WITH (NOLOCK)
-                ON SU.Id = QC.UOMId
-            LEFT JOIN [FITSCMUAT].dbo.Cust_Party CP WITH (NOLOCK)
-                ON CP.Id = QC.PartyID
-            WHERE QI.bookingno = ?
-                AND QC.IsDeleted = 0
-            ORDER BY QC.IsRevenue DESC, BC.Name ASC
-        ", [$quotation->bookingno]);
+            Log::info('PDF Generation - Loading charges', [
+                'booking_no' => $quotation->bookingno
+            ]);
+
+            // Load charges with error handling
+            try {
+                $charges = DB::select("
+                SELECT
+                    QC.Id                AS QuoteChargeID,
+                    BC.Code              AS ChargeCode,
+                    BC.Name              AS ChargeName,
+                    QC.Quantity,
+                    QC.EstChargeRate     AS Rate,
+                    QC.EstChargeAmount   AS AmtInChgCurr,
+                    QC.EstBaseAmount     AS AmtInBaseCurr,
+                    QC.BaseExchRate      AS ExChangeRate,
+                    CC.Code              AS ChgCurr,
+                    CB.Code              AS BasedOnCode,
+                    QC.Remarks           AS ChargeRemark,
+                    QC.IsRevenue,
+                    CP.Code              AS PartyCode
+                FROM Quote_Quotation_ChargeSheet QC WITH (NOLOCK)
+                INNER JOIN Quote_QuotationInfo QI WITH (NOLOCK) ON QI.id = QC.QuotationInfoID
+                LEFT JOIN [FITSCMUAT].dbo.Bill_ChargeCode BC WITH (NOLOCK) ON BC.Id = QC.ChargeCodeId
+                LEFT JOIN [FITSCMUAT].dbo.Cust_Currency CC WITH (NOLOCK) ON CC.Id = QC.EstChargeCurrencyId
+                LEFT JOIN Cust_ChargecodeBasedOn CB WITH (NOLOCK) ON CB.Id = QC.BasedOnId
+                LEFT JOIN [FITSCMUAT].dbo.Cust_Party CP WITH (NOLOCK) ON CP.Id = QC.PartyID
+                WHERE QI.bookingno = ? AND QC.IsDeleted = 0
+                ORDER BY QC.IsRevenue DESC, BC.Name ASC
+            ", [$quotation->bookingno]);
+            } catch (\Exception $e) {
+                Log::error('PDF Generation - Failed to load charges', [
+                    'booking_no' => $quotation->bookingno,
+                    'error' => $e->getMessage()
+                ]);
+                $charges = [];
+            }
 
             $revenueCharges = array_values(array_filter($charges, fn($c) =>  $c->IsRevenue));
             $costCharges    = array_values(array_filter($charges, fn($c) => !$c->IsRevenue));
             $totalRevenue   = array_sum(array_map(fn($c) => (float)$c->AmtInBaseCurr, $revenueCharges));
             $totalCost      = array_sum(array_map(fn($c) => (float)$c->AmtInBaseCurr, $costCharges));
 
-            // Build PDF
-            $pdf = \Barryvdh\DomPDF\Facade::loadView('quotation.pdf', [
-                'quotation'      => $quotation,
-                'currencyCode'   => $currencyCode,
-                'revenueCharges' => $revenueCharges,
-                'costCharges'    => $costCharges,
-                'totalRevenue'   => $totalRevenue,
-                'totalCost'      => $totalCost,
-                'generatedDate'  => now()->format('d-m-Y'),
+            Log::info('PDF Generation - Charges loaded', [
+                'revenue_count' => count($revenueCharges),
+                'cost_count' => count($costCharges)
             ]);
 
-            $pdf->setPaper('A4', 'portrait');
-            $pdf->getDomPDF()->set_option('isHtml5ParserEnabled', true);
-            $pdf->getDomPDF()->set_option('isRemoteEnabled', false);
-            $pdf->getDomPDF()->set_option('defaultFont', 'arial');
+            // Build HTML content with error handling
+            try {
+                $html = view('quotation.pdf', [
+                    'quotation'      => $quotation,
+                    'revenueCharges' => $revenueCharges,
+                    'costCharges'    => $costCharges,
+                    'totalRevenue'   => $totalRevenue,
+                    'totalCost'      => $totalCost,
+                    'generatedDate'  => now()->format('d-m-Y'),
+                ])->render();
+            } catch (\Exception $e) {
+                Log::error('PDF Generation - View render failed', [
+                    'error' => $e->getMessage(),
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine()
+                ]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'PDF template rendering failed: ' . $e->getMessage()
+                ], 500);
+            }
 
-            // Determine next version number from existing files
-            $folder        = 'quotations/' . $quotation->bookingno;
+            Log::info('PDF Generation - HTML rendered', [
+                'html_length' => strlen($html)
+            ]);
+
+            // Create PDF with enhanced configuration
+            // Create PDF using DomPDF — matches browser rendering accurately
+            try {
+                $options = new \Dompdf\Options();
+                $options->set('isHtml5ParserEnabled', true);
+                $options->set('isPhpEnabled', false);
+                $options->set('isRemoteEnabled', true); // needed for logo image
+                $options->set('defaultFont', 'Arial');
+                $options->set('chroot', public_path()); // allow access to public/ for logo
+
+                $pdf = new \Dompdf\Dompdf($options);
+                $pdf->loadHtml($html, 'UTF-8');
+                $pdf->setPaper('A4', 'portrait');
+                $pdf->render();
+
+                Log::info('PDF Generation - PDF object created successfully');
+            } catch (\Exception $e) {
+                Log::error('PDF Generation - DomPDF creation failed', [
+                    'error' => $e->getMessage(),
+                    'file'  => $e->getFile(),
+                    'line'  => $e->getLine(),
+                ]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'PDF creation failed: ' . $e->getMessage()
+                ], 500);
+            }
+
+            // Determine version and file path
+            $folder = 'quotations/' . $quotation->bookingno;
+
+            // Ensure directory exists
+            try {
+                \Storage::disk('public')->makeDirectory($folder);
+            } catch (\Exception $e) {
+                Log::error('PDF Generation - Directory creation failed', [
+                    'folder' => $folder,
+                    'error' => $e->getMessage()
+                ]);
+            }
+
             $existingFiles = \Storage::disk('public')->files($folder);
             $nextVersion   = count($existingFiles) + 1;
 
             $fileName    = 'Quotation_' . $quotation->bookingno . '_V' . $nextVersion . '_' . now()->format('Ymd_His') . '.pdf';
             $storagePath = $folder . '/' . $fileName;
+            $fullPath    = \Storage::disk('public')->path($storagePath);
 
-            \Storage::disk('public')->put($storagePath, $pdf->output());
+            Log::info('PDF Generation - File paths determined', [
+                'storage_path' => $storagePath,
+                'full_path' => $fullPath,
+                'version' => $nextVersion
+            ]);
 
-            Log::info('generatePdf - Saved', [
+            // Output PDF to file with error handling
+            try {
+                // Ensure parent directory exists
+                $dir = dirname($fullPath);
+                if (!file_exists($dir)) {
+                    mkdir($dir, 0755, true);
+                    Log::info('PDF Generation - Created directory', ['dir' => $dir]);
+                }
+
+                file_put_contents($fullPath, $pdf->output());
+
+                // Verify file was created
+                if (!file_exists($fullPath)) {
+                    throw new \Exception('PDF file was not created at: ' . $fullPath);
+                }
+
+                $fileSize = filesize($fullPath);
+                Log::info('PDF Generation - File written successfully', [
+                    'path' => $fullPath,
+                    'size' => $fileSize
+                ]);
+            } catch (\Exception $e) {
+                Log::error('PDF Generation - File write failed', [
+                    'path' => $fullPath,
+                    'error' => $e->getMessage(),
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine()
+                ]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to save PDF file: ' . $e->getMessage()
+                ], 500);
+            }
+
+            // Save to database with error handling
+            try {
+                DB::table('Quote_Quotation_Document')->insert([
+                    'Id'              => DB::raw('NEWID()'),
+                    'QuotationInfoID' => $quotation->ID,
+                    'DocumentType'    => 'QuotationPDF',
+                    'Name'            => $fileName,
+                    'IsVisible'       => 1,
+                    'IsPrinted'       => 1,
+                    'PrintedOn'       => now(),
+                    'FilePath' => $storagePath,
+                    'CreatedBy'       => $submittedBy,
+                    'CreatedOn'       => now(),
+                    'LastModifiedBy'  => $submittedBy,
+                    'LastModifiedOn'  => now(),
+                    'IsDeleted'       => 0,
+                ]);
+
+                Log::info('PDF Generation - Database record created successfully');
+            } catch (\Exception $e) {
+                Log::error('PDF Generation - Database insert failed', [
+                    'error' => $e->getMessage(),
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine()
+                ]);
+                // Don't fail the request - PDF was created successfully
+            }
+
+            Log::info('PDF Generation - Completed successfully', [
                 'booking_no' => $quotation->bookingno,
-                'version'    => $nextVersion,
-                'path'       => $storagePath,
+                'version' => $nextVersion,
+                'path' => $storagePath,
             ]);
 
             return response()->json([
@@ -2915,11 +3099,12 @@ class QuotationController extends Controller
                 'url'     => \Storage::disk('public')->url($storagePath),
             ]);
         } catch (\Exception $e) {
-            Log::error('generatePdf - Failed', [
-                'id'    => $id,
+            Log::error('PDF Generation - Unexpected error', [
+                'id' => $id,
                 'error' => $e->getMessage(),
-                'file'  => $e->getFile(),
-                'line'  => $e->getLine(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
             ]);
 
             return response()->json([
@@ -2929,38 +3114,50 @@ class QuotationController extends Controller
         }
     }
 
+
     public function getQuotationVersions($id)
     {
         try {
-            $quotation = \App\Models\QuotationInfo::where('ID', $id)->first(['bookingno']);
-
+            $quotation = \App\Models\QuotationInfo::where('ID', $id)->first();
             if (!$quotation) {
                 return response()->json(['success' => false, 'message' => 'Quotation not found'], 404);
             }
 
-            $folder = 'quotations/' . $quotation->bookingno;
-            $files  = \Storage::disk('public')->files($folder);
+            $documents = DB::table('Quote_Quotation_Document')
+                ->where('QuotationInfoID', $quotation->ID)
+                ->where('DocumentType', 'QuotationPDF') // FIX: was 'Quotation'
+                ->where('IsDeleted', 0)
+                ->orderBy('CreatedOn', 'asc') // asc so index matches version number
+                ->get();
 
-            sort($files); // ascending so Version 1 is first
+            $versions = [];
+            foreach ($documents as $index => $doc) {
+                $versionNo    = $index + 1;
+                $relativePath = $this->normalizeFilePath($doc->FilePath);
 
-            $versions = array_values(array_map(function ($filePath, $index) {
-                return [
-                    'version' => $index + 1,
-                    'label'   => 'Version ' . ($index + 1),
-                    'url'     => \Storage::disk('public')->url($filePath),
+                $versions[] = [
+                    'version'    => $versionNo,
+                    'label'      => 'Version ' . $versionNo,
+                    'url'        => \Storage::disk('public')->url($relativePath),
+                    'created_on' => $doc->CreatedOn,
+                    'file_path'  => $relativePath,
                 ];
-            }, $files, array_keys($files)));
+            }
 
-            return response()->json(['success' => true, 'versions' => $versions]);
+            return response()->json([
+                'success'  => true,
+                'versions' => $versions,
+            ]);
         } catch (\Exception $e) {
-            Log::error('getQuotationVersions - Failed', [
+            \Log::error('Get Quotation Versions Error', [
                 'id'    => $id,
                 'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
-
-            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+            return response()->json(['success' => false, 'message' => 'Failed to load versions'], 500);
         }
     }
+
 
     public function getEmailHistory(Request $request)
     {
@@ -4016,5 +4213,99 @@ class QuotationController extends Controller
             'Status'  => 'Failed',
             'Remarks' => [['Remark' => 'No response from stored procedure']]
         ];
+    }
+
+    public function downloadPdf($id, $version)
+    {
+        try {
+            $quotation = QuotationInfo::where('ID', $id)->first(['ID', 'bookingno']);
+
+            if (!$quotation) {
+                abort(404, 'Quotation not found');
+            }
+
+            $document = DB::table('Quote_Quotation_Document')
+                ->where('QuotationInfoID', $quotation->ID)
+                ->where('DocumentType', 'QuotationPDF') // FIX: was 'Quotation'
+                ->where('IsDeleted', 0)
+                ->where('IsVisible', 1)
+                ->orderBy('CreatedOn', 'asc')
+                ->skip($version - 1)
+                ->take(1)
+                ->first(['Name', 'FilePath']);
+
+            if (!$document) {
+                abort(404, 'Version ' . $version . ' not found');
+            }
+
+            $relativePath = $this->normalizeFilePath($document->FilePath);
+
+            Log::info('downloadPdf - Path diagnostic', [
+                'raw_filepath'      => $document->FilePath,
+                'relative_path'     => $relativePath,
+                'storage_root'      => \Storage::disk('public')->path(''),
+                'full_resolved'     => \Storage::disk('public')->path($relativePath),
+                'exists'            => \Storage::disk('public')->exists($relativePath),
+                'file_exists_raw'   => file_exists($document->FilePath),
+                'file_exists_full'  => file_exists(\Storage::disk('public')->path($relativePath)),
+            ]);
+
+            if (!\Storage::disk('public')->exists($relativePath)) {
+                Log::error('downloadPdf - File not found on disk', [
+                    'id'            => $id,
+                    'version'       => $version,
+                    'raw_filepath'  => $document->FilePath,
+                    'relative_path' => $relativePath,
+                ]);
+                abort(404, 'File not found on disk');
+            }
+
+            Log::info('downloadPdf - Downloaded', [
+                'id'         => $id,
+                'booking_no' => $quotation->bookingno,
+                'version'    => $version,
+                'file'       => $document->Name,
+                'user'       => Auth::user()->username ?? Auth::user()->email ?? 'system',
+            ]);
+
+            return \Storage::disk('public')->download($relativePath, $document->Name);
+        } catch (\Exception $e) {
+            Log::error('downloadPdf - Failed', [
+                'id'      => $id,
+                'version' => $version,
+                'error'   => $e->getMessage(),
+                'file'    => $e->getFile(),
+                'line'    => $e->getLine(),
+            ]);
+            abort(500, 'Download failed: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Normalize a FilePath that may be an absolute Windows path or already relative.
+     * generatePdf saves the full path (e.g. C:\inetpub\...\storage\app/public\quotations/...)
+     * Storage::disk('public') expects just the relative path (e.g. quotations/5238/...)
+     */
+    private function normalizeFilePath(string $filePath): string
+    {
+        // Normalize all slashes to forward
+        $normalized = str_replace('\\', '/', $filePath);
+
+        // Try to extract relative path after 'storage/app/public/'
+        $marker = 'storage/app/public/';
+        $pos    = strpos($normalized, $marker);
+
+        if ($pos !== false) {
+            return substr($normalized, $pos + strlen($marker));
+        }
+
+        // Fallback: try 'public/' in case path was already partially normalized
+        $marker2 = '/public/';
+        $pos2    = strrpos($normalized, $marker2); // strrpos = last occurrence
+        if ($pos2 !== false) {
+            return substr($normalized, $pos2 + strlen($marker2));
+        }
+
+        return ltrim($normalized, '/');
     }
 }
