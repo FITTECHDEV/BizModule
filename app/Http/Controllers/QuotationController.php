@@ -167,12 +167,11 @@ class QuotationController extends Controller
         $total = $query->count();
 
         $inProgress = (clone $query)->where(function ($q) {
-            $q->where(function ($sub) {
-                $sub->whereIn('QuoteStatus', ['Proposal', 'Pending'])
-                    ->orWhereIn('status', ['Proposal', 'Pending'])
-                    ->orWhereNull('QuoteStatus')
-                    ->orWhereNull('status');
-            });
+            $q->whereNotIn('QuoteStatus', ['Won', 'Lost', 'Cancel'])
+                ->orWhereNull('QuoteStatus');
+        })->where(function ($q) {
+            $q->whereNotIn('status', ['Won', 'Lost', 'Cancel'])
+                ->orWhereNull('status');
         })->count();
 
         $won = (clone $query)->where(function ($q) {
@@ -269,12 +268,12 @@ class QuotationController extends Controller
         switch ($cardFilter) {
             case 'in_progress':
                 $query->where(function ($q) {
-                    $q->whereIn('QuoteStatus', ['Proposal', 'Pending'])
-                        ->orWhereIn('status', ['Proposal', 'Pending'])
-                        ->orWhereNull('QuoteStatus')
+                    $q->whereNotIn('QuoteStatus', ['Won', 'Lost', 'Cancel'])
+                        ->orWhereNull('QuoteStatus');
+                })->where(function ($q) {
+                    $q->whereNotIn('status', ['Won', 'Lost', 'Cancel'])
                         ->orWhereNull('status');
                 });
-                Log::info('Applied in_progress filter');
                 break;
 
             case 'won':
@@ -2718,16 +2717,16 @@ class QuotationController extends Controller
         try {
             // ============================================
             // SEND EMAIL
-            // Uses the from_email as the reply-to address.
-            // The actual sending address must be configured
-            // in config/mail.php (MAIL_FROM_ADDRESS in .env).
             // ============================================
             \Illuminate\Support\Facades\Mail::send(
                 [],
                 [],
                 function (\Illuminate\Mail\Message $message) use ($toEmail, $fromEmail, $subject, $body) {
                     $message
-                        ->to($toEmail)
+                        ->to([
+                            'nashonmwendwa04@gmail.com',
+                            'amay@freight-in-time.com',
+                        ])
                         ->replyTo($fromEmail)
                         ->subject($subject)
                         ->html($body);
@@ -2735,23 +2734,39 @@ class QuotationController extends Controller
             );
 
             // ============================================
-            // LOG EMAIL SEND IN SCHEDULER TABLE
+            // LOG VIA SP
             // ============================================
-            DB::table('email_emailscheduler')->insert([
-                'ID'            => DB::raw('NEWID()'),
-                'ClientName'    => DB::table('Quote_QuotationInfo')
-                    ->where('bookingno', $bookingNo)
-                    ->value('companyname') ?? '',
-                'EmailTo'       => $toEmail,
-                'EmailFrom'     => $fromEmail,
-                'EmailSubject'  => $subject,
-                'EmailBody'     => $body,
+            $clientName = DB::table('Quote_QuotationInfo')
+                ->where('bookingno', $bookingNo)
+                ->value('companyname') ?? '';
+
+            $jsonData = json_encode([
                 'SchedulerType' => 'QuotationEmail',
+                'SubmittedOn'   => now()->format('Y-m-d H:i:s'),
+                'ClientName'    => $clientName,
+                'EmailFrom'     => $fromEmail,
+                'EmailTo'       => $toEmail,
+                'Subject'       => $subject,
+                'BodyMessage'   => $body,
                 'Status'        => 'Sent',
-                'SubmittedOn'   => now(),
-                'IsActive'      => 1,
-                'IsDeleted'     => 0,
+                'SendRemark'    => 'Sent via Quotation Module',
             ]);
+
+            $pdo      = DB::getPdo();
+            $stmt     = $pdo->prepare('EXEC sp_EmailSchedulerDetailsUpdate ?, ?, ?');
+            $spStatus = null;
+            $spRemark = null;
+            $stmt->bindParam(1, $jsonData);
+            $stmt->bindParam(2, $spStatus, \PDO::PARAM_STR | \PDO::PARAM_INPUT_OUTPUT, 20);
+            $stmt->bindParam(3, $spRemark, \PDO::PARAM_STR | \PDO::PARAM_INPUT_OUTPUT, 2000);
+            $stmt->execute();
+
+            if ($spStatus === 'Failed') {
+                Log::error('sendEmailQuote - SP log failed', [
+                    'booking_no' => $bookingNo,
+                    'remark'     => $spRemark,
+                ]);
+            }
 
             // ============================================
             // SAVE TEMPLATE USED AGAINST QUOTATION
@@ -2763,24 +2778,23 @@ class QuotationController extends Controller
             Log::info('sendEmailQuote - Success', [
                 'booking_no' => $bookingNo,
                 'to'         => $toEmail,
-                'from'       => $fromEmail,
                 'subject'    => $subject,
                 'template'   => $templateId,
+                'sp_status'  => $spStatus,
             ]);
 
             return response()->json([
                 'success' => true,
-                'message' => 'Email sent successfully'
+                'message' => 'Email sent successfully',
             ]);
         } catch (\Symfony\Component\Mailer\Exception\TransportException $e) {
-            // SMTP connection / authentication failure
-            Log::error('sendEmailQuote - Mail transport error', [
+            Log::error('sendEmailQuote - SMTP error', [
                 'booking_no' => $bookingNo,
                 'error'      => $e->getMessage(),
             ]);
             return response()->json([
                 'success' => false,
-                'message' => 'Mail server error: ' . $e->getMessage()
+                'message' => 'Mail server error: ' . $e->getMessage(),
             ], 500);
         } catch (\Exception $e) {
             Log::error('sendEmailQuote - Failed', [
@@ -2791,7 +2805,7 @@ class QuotationController extends Controller
             ]);
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to send email: ' . $e->getMessage()
+                'message' => 'Failed to send email: ' . $e->getMessage(),
             ], 500);
         }
     }
@@ -3816,24 +3830,56 @@ class QuotationController extends Controller
     public function getLocations(Request $request)
     {
         $filter         = $request->query('filter', '');
-        $includeCountry = $request->query('include_country', 0);
+        $includeCountry = (int) $request->query('include_country', 0);
         $countryCode    = $request->query('country_code', '');
 
         try {
-            $pdo = DB::getPdo();
+            $db = DB::getDatabaseName() === 'FITSYSUAT'
+                ? '[FITSCMUAT].dbo.'
+                : '[FITSCM].dbo.';
 
-            $pdo->exec('SET NOCOUNT ON');
+            $locationFilter = "('Station','Location','Airport','Seaport','InlandPort')";
 
-            $stmt = $pdo->prepare("EXEC dbo.sp_LocationList 'Road', ?, ?, ?");
-            $stmt->execute([(int) $includeCountry, $countryCode, $filter]);
+            $query = "
+            SELECT
+                CL.Id   AS LocationID,
+                CL.Code AS LocationCode,
+                CL.Name AS LocationName,
+                SL.Code AS LocationType
+            FROM {$db}Cust_Location CL WITH (NOLOCK)
+            INNER JOIN {$db}sys_locationType SL WITH (NOLOCK)
+                ON SL.Id = CL.LocationTypeId
+                AND SL.Code IN {$locationFilter}
+        ";
 
-            $results = $stmt->fetchAll(\PDO::FETCH_OBJ);
+            $bindings = [];
+
+            if ($includeCountry === 1 && !empty($countryCode)) {
+                $query .= " INNER JOIN Cust_Country CC WITH (NOLOCK)
+                            ON CC.ID = CL.CountryId
+                            AND CC.Code = ? ";
+                $bindings[] = $countryCode;
+            }
+
+            $query .= " WHERE CL.IsActive = 1 AND CL.IsDeleted = 0 ";
+
+            if (!empty($filter)) {
+                $query .= " AND (CL.Name LIKE ? OR CL.Code LIKE ? OR CL.UNCode LIKE ?) ";
+                $bindings[] = $filter . '%';
+                $bindings[] = $filter . '%';
+                $bindings[] = $filter . '%';
+            }
+
+            $query .= " ORDER BY CL.Name ";
+
+            $results = DB::select($query, $bindings);
 
             return response()->json([
                 'success'   => true,
                 'locations' => $results,
             ]);
         } catch (\Exception $e) {
+            Log::error('getLocations failed', ['error' => $e->getMessage()]);
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }

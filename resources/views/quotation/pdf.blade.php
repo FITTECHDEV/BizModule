@@ -215,8 +215,8 @@
 <body>
 
     {{-- ══════════════════════════════════════
-     HEADER — Logo + Company + Quotation Title
-     ══════════════════════════════════════ --}}
+        HEADER — Logo + Company + Quotation Title
+    ══════════════════════════════════════ --}}
     <table class="header-table" cellpadding="0" cellspacing="0">
         <tr>
             <td style="width:55%; vertical-align:middle;">
@@ -241,8 +241,8 @@
     </table>
 
     {{-- ══════════════════════════════════════
-     CLIENT + DATE + CURRENCY BLOCK
-     ══════════════════════════════════════ --}}
+        CLIENT + DATE + CURRENCY BLOCK
+    ══════════════════════════════════════ --}}
     <table class="info-table" cellpadding="0" cellspacing="0">
         <tr>
             {{-- Left: To + Address --}}

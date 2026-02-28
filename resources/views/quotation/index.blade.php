@@ -955,7 +955,7 @@
                             });
                         } else {
                             $select.append(
-                            '<option value="" disabled>No forwarders available</option>');
+                                '<option value="" disabled>No forwarders available</option>');
                         }
                     })
                     .fail(function(xhr) {
@@ -1047,13 +1047,19 @@
                                                 fontSize: '0.875rem'
                                             },
                                             text: loc.LocationCode + ' — ' + loc
-                                                .LocationName
+                                                .LocationName + (loc.LocationType ?
+                                                    ' (' + loc.LocationType + ')' :
+                                                    '')
+                                            
                                         })
                                         .on('mousedown', function(e) {
                                             // mousedown fires before blur so we can set values safely
                                             e.preventDefault();
                                             $('#' + inputId).val(loc.LocationCode +
-                                                ' — ' + loc.LocationName);
+                                                ' — ' + loc.LocationName + (loc
+                                                    .LocationType ? ' (' + loc
+                                                    .LocationType + ')' : ''));
+
                                             $('#' + codeId).val(loc.LocationCode);
                                             $('#' + idHiddenId).val(loc.LocationID);
                                             removeSuggestions(inputId);
@@ -1191,13 +1197,13 @@
                             animateValue('stat-lost', parseInt($('#stat-lost').text()) || 0,
                                 response.lost, 500);
                             animateValue('stat-canceled', parseInt($('#stat-canceled')
-                            .text()) || 0, response.canceled, 500);
+                                .text()) || 0, response.canceled, 500);
                             animateValue('stat-failed-int', parseInt($('#stat-failed-int')
-                            .text()) || 0, response.failed_int, 500);
+                                .text()) || 0, response.failed_int, 500);
                         },
                         error: function(xhr, error, code) {
                             console.error('Failed to update card statistics:', xhr, error,
-                            code);
+                                code);
                             $('.compact-card .inner h3').css('opacity', '1');
                         },
                         complete: function() {
