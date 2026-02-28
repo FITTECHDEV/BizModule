@@ -327,32 +327,38 @@ class AzureUser extends Authenticatable
 
         return Cache::remember($cacheKey, 600, function () {
             $statsService = app(\App\Services\DashboardStatsService::class);
-            $actualRange = $statsService->getActualDateRange();
+            $actualRange  = $statsService->getActualDateRange();
 
             if (!$actualRange['has_data']) {
                 $totalUsers = self::valid()->count();
                 return [
-                    'total_users' => $totalUsers,
+                    'total_users'       => $totalUsers,
                     'active_this_month' => 0,
                     'active_last_month' => 0,
-                    'inactive_users' => $totalUsers,
+                    'inactive_users'    => $totalUsers,
                 ];
             }
 
             $currentMonthStart = now()->startOfMonth();
-            $currentMonthEnd = now()->endOfMonth();
-            $lastMonthStart = now()->subMonth()->startOfMonth();
-            $lastMonthEnd = now()->subMonth()->endOfMonth();
+            $currentMonthEnd   = now()->endOfMonth();
+            $lastMonthStart    = now()->subMonth()->startOfMonth();
+            $lastMonthEnd      = now()->subMonth()->endOfMonth();
+            $threeMonthsAgo    = now()->subMonths(3)->startOfDay();
 
             $totalUsers = self::valid()->count();
 
             $activeThisMonth = DB::select("
             SELECT COUNT(DISTINCT au.id) as count
             FROM Azure_Users au
-            WHERE au.displayName IS NOT NULL AND au.displayName NOT LIKE 'User-%'
+            WHERE au.displayName IS NOT NULL
+                AND au.displayName != ''
+                AND au.displayName NOT LIKE 'User-%'
+                AND au.userPrincipalName IS NOT NULL
+                AND au.userPrincipalName != ''
+                AND au.userPrincipalName NOT LIKE 'User-%'
                 AND EXISTS (
-                    SELECT 1 FROM Azure_LoginDetails ald 
-                    WHERE ald.username = au.userPrincipalName
+                    SELECT 1 FROM Azure_LoginDetails ald
+                    WHERE LOWER(ald.username) = LOWER(au.userPrincipalName)
                         AND ald.date_utc BETWEEN ? AND ?
                 )
         ", [$currentMonthStart, $currentMonthEnd])[0]->count ?? 0;
@@ -360,30 +366,40 @@ class AzureUser extends Authenticatable
             $activeLastMonth = DB::select("
             SELECT COUNT(DISTINCT au.id) as count
             FROM Azure_Users au
-            WHERE au.displayName IS NOT NULL AND au.displayName NOT LIKE 'User-%'
+            WHERE au.displayName IS NOT NULL
+                AND au.displayName != ''
+                AND au.displayName NOT LIKE 'User-%'
+                AND au.userPrincipalName IS NOT NULL
+                AND au.userPrincipalName != ''
+                AND au.userPrincipalName NOT LIKE 'User-%'
                 AND EXISTS (
-                    SELECT 1 FROM Azure_LoginDetails ald 
-                    WHERE ald.username = au.userPrincipalName
+                    SELECT 1 FROM Azure_LoginDetails ald
+                    WHERE LOWER(ald.username) = LOWER(au.userPrincipalName)
                         AND ald.date_utc BETWEEN ? AND ?
                 )
         ", [$lastMonthStart, $lastMonthEnd])[0]->count ?? 0;
 
-            $threeMonthsAgo = now()->subMonths(3)->startOfDay();
-            $inactiveThreeMonths = DB::select("
+            $inactiveUsers = DB::select("
             SELECT COUNT(*) as count
             FROM Azure_Users au
-            WHERE au.displayName IS NOT NULL AND au.displayName NOT LIKE 'User-%'
+            WHERE au.displayName IS NOT NULL
+                AND au.displayName != ''
+                AND au.displayName NOT LIKE 'User-%'
+                AND au.userPrincipalName IS NOT NULL
+                AND au.userPrincipalName != ''
+                AND au.userPrincipalName NOT LIKE 'User-%'
                 AND NOT EXISTS (
-                    SELECT 1 FROM Azure_LoginDetails ald 
-                    WHERE ald.username = au.userPrincipalName AND ald.date_utc >= ?
+                    SELECT 1 FROM Azure_LoginDetails ald
+                    WHERE LOWER(ald.username) = LOWER(au.userPrincipalName)
+                        AND ald.date_utc >= ?
                 )
         ", [$threeMonthsAgo])[0]->count ?? 0;
 
             return [
-                'total_users' => $totalUsers,
+                'total_users'       => $totalUsers,
                 'active_this_month' => $activeThisMonth,
                 'active_last_month' => $activeLastMonth,
-                'inactive_users' => $inactiveThreeMonths,
+                'inactive_users'    => $inactiveUsers,
             ];
         });
     }

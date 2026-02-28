@@ -139,7 +139,7 @@ class HomeController extends Controller
                 compact(
                     'ticketStatistics',
                     'entityStatistics',
-                    'tims_stats',  
+                    'tims_stats',
                     'efris_stats',
                     'traStatsTZ',
                     'traStatsADL',
@@ -166,45 +166,46 @@ class HomeController extends Controller
      * 
      * @return object
      */
-    private function getTrackerStats()
-    {
-        try {
-            $baseQuery = function () {
-                return DB::table('Trip_TripInfomation')
-                    ->where('IsActive', true)
-                    ->where('IsDeleted', false)
-                    ->where('OfficeCode', 'KE');
-            };
+  private function getTrackerStats()
+{
+    try {
+        $baseQuery = function () {
+            return DB::table('Trip_TripInfomation')
+                ->where('IsActive', true)
+                ->where('IsDeleted', false)
+                ->where('OfficeCode', 'KE');
+        };
 
-            $stats = (object) [
-                'created' => $baseQuery()->whereNull('StartDate')->count(),
-                'transit' => $baseQuery()->whereNotNull('StartDate')->whereNull('EndDate')->count(),
-                'complete' => $baseQuery()->whereNotNull('EndDate')->count(),
-                'total' => $baseQuery()->count(),
-            ];
+        $stats = (object) [
+            'created'  => $baseQuery()->whereNull('StartDate')->count(),
+            'transit'  => $baseQuery()->whereNotNull('StartDate')->whereNull('EndDate')->count(),
+            'complete' => $baseQuery()->whereNotNull('EndDate')->count(),
+            'total'    => $baseQuery()->count(),
+        ];
 
-            \Log::info('Tracker Stats Retrieved', [
-                'created' => $stats->created,
-                'transit' => $stats->transit,
-                'complete' => $stats->complete,
-                'total' => $stats->total,
-            ]);
+        \Log::info('Tracker Stats Retrieved', [
+            'created'  => $stats->created,
+            'transit'  => $stats->transit,
+            'complete' => $stats->complete,
+            'total'    => $stats->total,
+        ]);
 
-            return $stats;
-        } catch (\Exception $e) {
-            \Log::error('Failed to get tracker stats in HomeController', [
-                'error' => $e->getMessage(),
-                'line' => $e->getLine(),
-            ]);
+        return $stats;
 
-            return (object)[
-                'created' => 0,
-                'transit' => 0,
-                'complete' => 0,
-                'total' => 0,
-            ];
-        }
+    } catch (\Exception $e) {
+        \Log::error('Failed to get tracker stats in HomeController', [
+            'error' => $e->getMessage(),
+            'line'  => $e->getLine(),
+        ]);
+
+        return (object) [
+            'created'  => 0,
+            'transit'  => 0,
+            'complete' => 0,
+            'total'    => 0,
+        ];
     }
+}
 
     /**
      * Get Login Tracker statistics from stored procedure
@@ -214,108 +215,95 @@ class HomeController extends Controller
     private function getLoginTrackerStats()
     {
         try {
-            // Get actual data range from the stats service
             $actualRange = app(\App\Services\DashboardStatsService::class)->getActualDateRange();
 
             if (!$actualRange['has_data']) {
                 $totalUsers = \App\Models\Logintracker\AzureUser::valid()->count();
                 return [
-                    'total_users' => $totalUsers,
+                    'total_users'       => $totalUsers,
                     'active_this_month' => 0,
                     'active_last_month' => 0,
-                    'inactive_users' => $totalUsers,
+                    'inactive_users'    => $totalUsers,
                 ];
             }
 
-            $dataMin = $actualRange['min'];
-            $dataMax = $actualRange['max'];
-
-            // Current month
             $currentMonthStart = now()->startOfMonth();
-            $currentMonthEnd = now()->endOfMonth();
+            $currentMonthEnd   = now()->endOfMonth();
+            $lastMonthStart    = now()->subMonth()->startOfMonth();
+            $lastMonthEnd      = now()->subMonth()->endOfMonth();
+            $threeMonthsAgo    = now()->subMonths(3)->startOfDay();
 
-            // Active this month (current calendar month)
+            $validUserWhere = "
+            au.displayName IS NOT NULL
+            AND au.displayName != ''
+            AND au.displayName NOT LIKE 'User-%'
+            AND au.userPrincipalName IS NOT NULL
+            AND au.userPrincipalName != ''
+            AND au.userPrincipalName NOT LIKE 'User-%'
+        ";
+
             $active_this_month = DB::select("
             SELECT COUNT(DISTINCT au.id) as count
             FROM Azure_Users au
-            WHERE au.displayName IS NOT NULL 
-                AND au.displayName != ''
-                AND au.displayName NOT LIKE 'User-%'
-                AND au.userPrincipalName IS NOT NULL
-                AND au.userPrincipalName != ''
-                AND au.userPrincipalName NOT LIKE 'User-%'
+            WHERE {$validUserWhere}
                 AND EXISTS (
-                    SELECT 1 
-                    FROM Azure_LoginDetails ald 
+                    SELECT 1 FROM Azure_LoginDetails ald
                     WHERE LOWER(ald.username) = LOWER(au.userPrincipalName)
                         AND ald.date_utc BETWEEN ? AND ?
                 )
         ", [$currentMonthStart, $currentMonthEnd])[0]->count ?? 0;
 
-            // Active last month (entire imported period)
             $active_last_month = DB::select("
             SELECT COUNT(DISTINCT au.id) as count
             FROM Azure_Users au
-            WHERE au.displayName IS NOT NULL 
-                AND au.displayName != ''
-                AND au.displayName NOT LIKE 'User-%'
-                AND au.userPrincipalName IS NOT NULL
-                AND au.userPrincipalName != ''
-                AND au.userPrincipalName NOT LIKE 'User-%'
+            WHERE {$validUserWhere}
                 AND EXISTS (
-                    SELECT 1 
-                    FROM Azure_LoginDetails ald 
+                    SELECT 1 FROM Azure_LoginDetails ald
                     WHERE LOWER(ald.username) = LOWER(au.userPrincipalName)
                         AND ald.date_utc BETWEEN ? AND ?
                 )
-        ", [$dataMin, $dataMax])[0]->count ?? 0;
+        ", [$lastMonthStart, $lastMonthEnd])[0]->count ?? 0;
 
-            // Inactive users (never logged in)
             $inactive_users = DB::select("
             SELECT COUNT(*) as count
             FROM Azure_Users au
-            WHERE au.displayName IS NOT NULL 
-                AND au.displayName != ''
-                AND au.displayName NOT LIKE 'User-%'
-                AND au.userPrincipalName IS NOT NULL
-                AND au.userPrincipalName != ''
-                AND au.userPrincipalName NOT LIKE 'User-%'
+            WHERE {$validUserWhere}
                 AND NOT EXISTS (
-                    SELECT 1 
-                    FROM Azure_LoginDetails ald 
+                    SELECT 1 FROM Azure_LoginDetails ald
                     WHERE LOWER(ald.username) = LOWER(au.userPrincipalName)
+                        AND ald.date_utc >= ?
                 )
-        ")[0]->count ?? 0;
+        ", [$threeMonthsAgo])[0]->count ?? 0;
 
-            // Total users
             $total_users = \App\Models\Logintracker\AzureUser::valid()->count();
 
             \Log::info('Login Tracker Stats Retrieved', [
-                'total_users' => $total_users,
+                'total_users'       => $total_users,
                 'active_this_month' => $active_this_month,
                 'active_last_month' => $active_last_month,
-                'inactive_users' => $inactive_users,
+                'inactive_users'    => $inactive_users,
+                'last_month_range'  => "{$lastMonthStart} → {$lastMonthEnd}",
+                'inactive_since'    => $threeMonthsAgo->toDateTimeString(),
             ]);
 
             return [
-                'total_users' => $total_users,
+                'total_users'       => $total_users,
                 'active_this_month' => $active_this_month,
                 'active_last_month' => $active_last_month,
-                'inactive_users' => $inactive_users,
+                'inactive_users'    => $inactive_users,
             ];
         } catch (\Exception $e) {
             \Log::error('Failed to get login tracker stats in HomeController', [
                 'error' => $e->getMessage(),
-                'line' => $e->getLine(),
+                'line'  => $e->getLine(),
                 'trace' => $e->getTraceAsString(),
             ]);
 
-            // Return zero values on error
             return [
-                'total_users' => 0,
+                'total_users'       => 0,
                 'active_this_month' => 0,
                 'active_last_month' => 0,
-                'inactive_users' => 0,
+                'inactive_users'    => 0,
             ];
         }
     }
