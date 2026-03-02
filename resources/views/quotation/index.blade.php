@@ -280,6 +280,17 @@
                             </div>
 
                         </form>
+
+                        {{-- PROGRESS PANEL — hidden until submit --}}
+                        <div id="cbProgressPanel" class="d-none mt-3">
+                            <p class="text-muted small mb-2">Processing — please do not close this window.</p>
+                            <div class="list-group" id="cbStepList"></div>
+                            <div id="cbProgressError" class="alert alert-danger mt-3 d-none"></div>
+                            <div id="cbProgressSuccess" class="alert alert-success mt-3 d-none">
+                                <i class="fas fa-check-circle mr-2"></i>
+                                All steps completed. Booking has been created in SCM.
+                            </div>
+                        </div>
                     </div>
                     <div class="modal-footer">
                         <a href="#" class="text-primary mr-3" id="cancelCreateBookingBtn" data-dismiss="modal"
@@ -288,6 +299,11 @@
                         <button type="button" class="btn btn-primary px-4" id="submitCreateBookingBtn">
                             Create
                         </button>
+                        <button type="button" class="btn btn-secondary px-4 d-none" id="cbCloseBtn"
+                            data-dismiss="modal">
+                            Close
+                        </button>
+
                     </div>
                 </div>
             </div>
@@ -902,7 +918,7 @@
                         if (res.success && res.templates && res.templates.length) {
                             $.each(res.templates, function(i, t) {
                                 $select.append($('<option>', {
-                                    value: t.Id,
+                                    value: t.Name,
                                     text: t.Name
                                 }));
                             });
@@ -926,7 +942,7 @@
                         if (res.success && res.parties && res.parties.length) {
                             $.each(res.parties, function(i, p) {
                                 $select.append($('<option>', {
-                                    value: p.PartyID,
+                                    value: p.PartyCode,
                                     text: p.PartyCode + ' — ' + p.PartyName
                                 }));
                             });
@@ -949,7 +965,7 @@
                         if (res.success && res.parties && res.parties.length) {
                             $.each(res.parties, function(i, p) {
                                 $select.append($('<option>', {
-                                    value: p.PartyID,
+                                    value: p.PartyCode,
                                     text: p.PartyCode + ' — ' + p.PartyName
                                 }));
                             });
@@ -968,6 +984,14 @@
             // Clean up location suggestion dropdowns when modal closes
             $('#createBookingModal').on('hidden.bs.modal', function() {
                 $('.location-suggestions').remove();
+
+                // Reset progress panel back to form view for next open
+                $('#createBookingForm').removeClass('d-none');
+                $('#cbProgressPanel').addClass('d-none');
+                $('#submitCreateBookingBtn, #cancelCreateBookingBtn').removeClass('d-none');
+                $('#cbCloseBtn').addClass('d-none');
+                $('#cbStepList').empty();
+                $('#cbProgressError, #cbProgressSuccess').addClass('d-none');
             });
 
             // ============================================
@@ -1046,18 +1070,16 @@
                                                 padding: '0.4rem 0.75rem',
                                                 fontSize: '0.875rem'
                                             },
-                                            text: loc.LocationCode + ' — ' + loc
-                                                .LocationName + (loc.LocationType ?
-                                                    ' (' + loc.LocationType + ')' :
-                                                    '')
-                                            
+                                            text: loc.LocationName + (loc
+                                                .LocationType ? ' (' + loc
+                                                .LocationType + ')' : '')
+
                                         })
                                         .on('mousedown', function(e) {
                                             // mousedown fires before blur so we can set values safely
                                             e.preventDefault();
-                                            $('#' + inputId).val(loc.LocationCode +
-                                                ' — ' + loc.LocationName + (loc
-                                                    .LocationType ? ' (' + loc
+                                            $('#' + inputId).val(loc.LocationName +
+                                                (loc.LocationType ? ' (' + loc
                                                     .LocationType + ')' : ''));
 
                                             $('#' + codeId).val(loc.LocationCode);
@@ -1102,10 +1124,77 @@
             );
 
             // ============================================
-            // SUBMIT CREATE BOOKING
+            // STEP LABELS FOR PROGRESS VIEW
+            // ============================================
+            var BOOKING_STEPS = [{
+                    step: 0,
+                    label: 'Save Booking Info'
+                },
+                {
+                    step: 1,
+                    label: 'Client Creation'
+                },
+                {
+                    step: 2,
+                    label: 'Booking XML'
+                },
+                {
+                    step: 3,
+                    label: 'Charge Transfer'
+                },
+                {
+                    step: 4,
+                    label: 'Document Transfer'
+                },
+            ];
+
+            function renderBookingSteps(completedSteps) {
+                var $list = $('#cbStepList').empty();
+                BOOKING_STEPS.forEach(function(def) {
+                    var completed = completedSteps.find(function(s) {
+                        return s.step === def.step;
+                    });
+                    var iconClass, badgeClass, statusText, remarkHtml = '';
+
+                    if (!completed) {
+                        iconClass = 'fas fa-circle text-secondary';
+                        badgeClass = 'badge-secondary';
+                        statusText = 'Pending';
+                    } else if (completed.status === 'Success') {
+                        iconClass = 'fas fa-check-circle text-success';
+                        badgeClass = 'badge-success';
+                        statusText = 'Success';
+                        if (completed.remark) remarkHtml = '<small class="text-muted d-block mt-1">' +
+                            completed.remark + '</small>';
+                    } else if (completed.status === 'Skipped') {
+                        iconClass = 'fas fa-minus-circle text-secondary';
+                        badgeClass = 'badge-secondary';
+                        statusText = 'Skipped';
+                    } else {
+                        iconClass = 'fas fa-times-circle text-danger';
+                        badgeClass = 'badge-danger';
+                        statusText = 'Failed';
+                        if (completed.remark) remarkHtml = '<small class="text-danger d-block mt-1">' +
+                            completed.remark + '</small>';
+                    }
+
+                    $list.append(
+                        '<div class="list-group-item py-2">' +
+                        '<div class="d-flex align-items-center justify-content-between">' +
+                        '<div><i class="' + iconClass + ' mr-2"></i><strong>Step ' + def.step +
+                        ':</strong> ' + def.label + remarkHtml + '</div>' +
+                        '<span class="badge ' + badgeClass + '">' + statusText + '</span>' +
+                        '</div>' +
+                        '</div>'
+                    );
+                });
+            }
+
+            // ============================================
+            // SUBMIT CREATE BOOKING → FULL PIPELINE
             // ============================================
             $('#submitCreateBookingBtn').on('click', function() {
-                var $btn = $(this);
+                var quotationId = $('#createBookingModal').data('quotation-id');
                 var bookingNo = $('#createBookingModal').data('booking-no');
 
                 var serviceTemplate = $('#cb_service_template').val();
@@ -1114,7 +1203,6 @@
                 var placeOfReceipt = $('#cb_place_of_receipt_code').val();
                 var placeOfDelivery = $('#cb_place_of_delivery_code').val();
 
-                // Client-side validation
                 var errors = [];
                 if (!serviceTemplate) errors.push('Service Template');
                 if (!billToParty) errors.push('Bill To Party');
@@ -1127,40 +1215,50 @@
                     return;
                 }
 
-                $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Creating...');
+                // Switch to progress view
+                $('#createBookingForm, #cbProgressPanel').toggleClass('d-none');
+                $('#submitCreateBookingBtn, #cancelCreateBookingBtn').addClass('d-none');
+                $('#cbProgressError, #cbProgressSuccess').addClass('d-none');
+                renderBookingSteps([]);
 
                 $.ajax({
-                    url: '{{ route('quotation.booking.create') }}',
+                    url: '{{ route('quotation.process-booking') }}',
                     type: 'POST',
                     data: {
                         _token: '{{ csrf_token() }}',
+                        id: quotationId,
                         booking_no: bookingNo,
                         service_template: serviceTemplate,
                         bill_to_party: billToParty,
                         forwarder: forwarder,
                         include_country: $('#cb_include_country').is(':checked') ? 1 : 0,
                         place_of_receipt: placeOfReceipt,
-                        place_of_delivery: placeOfDelivery
+                        place_of_delivery: placeOfDelivery,
                     },
                     success: function(res) {
+                        renderBookingSteps(res.steps || []);
+
                         if (res.success) {
-                            $('#createBookingModal').modal('hide');
-                            alert('Booking created successfully.');
+                            $('#cbProgressSuccess').removeClass('d-none');
                             table.ajax.reload(null, false);
                         } else {
-                            alert('Failed to create booking:\n' + (res.message ||
-                                'Unknown error'));
+                            var failedStep = (res.steps || []).find(function(s) {
+                                return s.status === 'Failed';
+                            });
+                            $('#cbProgressError')
+                                .html('<strong>' + (res.failed_label || 'Step') +
+                                    ' failed:</strong> ' + (failedStep ? failedStep.remark :
+                                        'Unknown error'))
+                                .removeClass('d-none');
                         }
                     },
                     error: function(xhr) {
-                        var msg = xhr.responseJSON ?
-                            (xhr.responseJSON.message || JSON.stringify(xhr.responseJSON
-                                .errors)) :
-                            xhr.statusText;
-                        alert('Server error: ' + msg);
+                        var msg = xhr.responseJSON?.message || 'An unexpected error occurred.';
+                        $('#cbProgressError').text(msg).removeClass('d-none');
+                        if (xhr.responseJSON?.steps) renderBookingSteps(xhr.responseJSON.steps);
                     },
                     complete: function() {
-                        $btn.prop('disabled', false).html('Create');
+                        $('#cbCloseBtn').removeClass('d-none');
                     }
                 });
             });

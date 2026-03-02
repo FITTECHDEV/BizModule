@@ -742,6 +742,9 @@ Route::middleware(['auth', 'can:approve-all-entity-request'])->group(function ()
     Route::post('/quotation/communication/save-terms', [App\Http\Controllers\QuotationController::class, 'saveTermsCondition'])
         ->name('quotation.communication.save-terms');
 
+    Route::post('/quotation/process-booking', [App\Http\Controllers\QuotationController::class, 'processBooking'])
+        ->name('quotation.process-booking');
+
     Route::get('/quotation/charge-codes', [App\Http\Controllers\QuotationController::class, 'getChargeCodes'])
         ->name('quotation.charge-codes');
 
