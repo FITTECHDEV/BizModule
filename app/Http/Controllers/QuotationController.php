@@ -2934,7 +2934,6 @@ class QuotationController extends Controller
 
     public function sendEmailQuote(Request $request)
     {
-
         $request->validate([
             'booking_no'  => 'required|string',
             'quote_id'    => 'required|string',
@@ -2952,6 +2951,18 @@ class QuotationController extends Controller
         $body       = $request->body;
         $templateId = $request->template_id;
 
+        // Fetch quotation so $quotation->ID is available
+        $quotation = DB::table('Quote_QuotationInfo')
+            ->where('ID', $request->quote_id)
+            ->first(['ID', 'bookingno']);
+
+        if (!$quotation) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Quotation not found',
+            ], 404);
+        }
+
         try {
             // ============================================
             // SEND EMAIL
@@ -2959,24 +2970,35 @@ class QuotationController extends Controller
             \Illuminate\Support\Facades\Mail::send(
                 [],
                 [],
-
-                function (\Illuminate\Mail\Message $message) use ($toEmail, $fromEmail, $subject, $body) {
+                function (\Illuminate\Mail\Message $message) use ($toEmail, $fromEmail, $subject, $body, $quotation) {
                     $message
-                        ->to([
-                            'amay@freight-in-time.com',
-                            $toEmail,                          // the form's To field
-                        ])
-                        ->cc('nashonmwendwa04@gmail.com')      // you always on CC
+                        ->to([$toEmail, 'amay@freight-in-time.com'])
+                        ->cc('nashonmwendwa04@gmail.com')
                         ->replyTo($fromEmail)
                         ->subject($subject)
                         ->setBody($body, 'text/html');
+
+                    // Attach latest PDF
+                    $latest = DB::table('Quote_Quotation_Document')
+                        ->where('QuotationInfoID', $quotation->ID)
+                        ->where('DocumentType', 'QuotationPDF')
+                        ->where('IsDeleted', 0)
+                        ->orderByDesc('CreatedOn')
+                        ->first(['Name', 'FilePath']);
+
+                    if ($latest && $latest->FilePath) {
+                        $path = storage_path('app/public/' . ltrim($latest->FilePath, '/'));
+                        if (file_exists($path)) {
+                            $name = $latest->Name ?: "Quotation_{$quotation->bookingno}.pdf";
+                            $message->attach($path, ['as' => $name, 'mime' => 'application/pdf']);
+                        }
+                    }
                 }
             );
 
             // ============================================
             // LOG VIA SP
             // ============================================
-
             $clientName = DB::table('Quote_QuotationInfo')
                 ->where('bookingno', $bookingNo)
                 ->value('companyname') ?? '';
@@ -2990,14 +3012,13 @@ class QuotationController extends Controller
                 'Subject'       => $subject,
                 'BodyMessage'   => $body,
                 'Status'        => 'Sent',
-                'SendRemark' => 'Sent via Quotation Module' . ($request->input('quote_version') ? ' | ' . $request->input('quote_version') : ''),
+                'SendRemark'    => 'Sent via Quotation Module' . ($request->input('quote_version') ? ' | ' . $request->input('quote_version') : ''),
             ]);
 
             $pdo      = DB::getPdo();
             $stmt     = $pdo->prepare('EXEC sp_EmailSchedulerDetailsUpdate ?, ?, ?');
             $spStatus = null;
             $spRemark = null;
-
             $stmt->bindParam(1, $jsonData);
             $stmt->bindParam(2, $spStatus, \PDO::PARAM_STR | \PDO::PARAM_INPUT_OUTPUT, 20);
             $stmt->bindParam(3, $spRemark, \PDO::PARAM_STR | \PDO::PARAM_INPUT_OUTPUT, 2000);
@@ -3013,7 +3034,6 @@ class QuotationController extends Controller
             // ============================================
             // SAVE TEMPLATE USED AGAINST QUOTATION
             // ============================================
-
             DB::table('Quote_QuotationInfo')
                 ->where('bookingno', $bookingNo)
                 ->update(['QuotationEmailTemplate' => $templateId]);
@@ -3031,30 +3051,24 @@ class QuotationController extends Controller
                 'message' => 'Email sent successfully',
             ]);
         } catch (\Symfony\Component\Mailer\Exception\TransportException $e) {
-
             Log::error('sendEmailQuote - SMTP error', [
                 'booking_no' => $bookingNo,
                 'error'      => $e->getMessage(),
             ]);
-
             return response()->json([
                 'success' => false,
                 'message' => 'Mail server error: ' . $e->getMessage(),
-
             ], 500);
         } catch (\Exception $e) {
-
             Log::error('sendEmailQuote - Failed', [
                 'booking_no' => $bookingNo,
                 'error'      => $e->getMessage(),
                 'file'       => $e->getFile(),
                 'line'       => $e->getLine(),
             ]);
-
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to send email: ' . $e->getMessage(),
-
             ], 500);
         }
     }

@@ -24,7 +24,7 @@
                 This is based on the record's actual status, not which card was clicked.
             --}}
             @php
-                $quoteStatus  = $quotation->QuoteStatus ?? $quotation->status ?? null;
+                $quoteStatus = $quotation->QuoteStatus ?? ($quotation->status ?? null);
                 $isInProgress = in_array($quoteStatus, ['Proposal', 'Pending']) || is_null($quoteStatus);
             @endphp
 
@@ -208,30 +208,43 @@
                     </div>
                 </div>
                 <div class="card-body">
-                    <div class="form-group row">
-                        <label class="col-sm-4 col-form-label">Version 1</label>
-                        <div class="col-sm-8">
-                            <a href="#" class="text-primary">DocumentDownloadLink</a>
-                        </div>
-                    </div>
-                    <div class="form-group row">
-                        <label class="col-sm-4 col-form-label">Version 2</label>
-                        <div class="col-sm-8">
-                            <a href="#" class="text-primary">DocumentDownloadLink</a>
-                        </div>
-                    </div>
-                    <div class="form-group row">
-                        <label class="col-sm-4 col-form-label">Version 3</label>
-                        <div class="col-sm-8">
-                            <a href="#" class="text-primary">DocumentDownloadLink</a>
-                        </div>
-                    </div>
-                    <div class="form-group row mb-0">
-                        <label class="col-sm-4 col-form-label">Version 4</label>
-                        <div class="col-sm-8">
-                            <a href="#" class="text-primary">DocumentDownloadLink</a>
-                        </div>
-                    </div>
+                    @php
+                        $documents = DB::table('Quote_Quotation_Document')
+                            ->where('QuotationInfoID', $quotation->ID)
+                            ->where('DocumentType', 'QuotationPDF')
+                            ->where('IsDeleted', 0)
+                            ->orderByDesc('CreatedOn')
+                            ->get(['Name', 'FilePath', 'CreatedOn']);
+                    @endphp
+
+                    @if ($documents->isNotEmpty())
+                        @foreach ($documents as $index => $doc)
+                            @php
+                                // Extract version from filename if possible (fallback to index+1)
+                                preg_match('/_V(\d+)_/i', $doc->Name, $matches);
+                                $version = $matches[1] ?? $index + 1;
+                                $displayName = $doc->Name ?? "Quotation_{$quotation->bookingno}_V{$version}.pdf";
+                                $downloadUrl = \Storage::disk('public')->exists($doc->FilePath)
+                                    ? \Storage::disk('public')->url($doc->FilePath)
+                                    : '#';
+                            @endphp
+                            <div class="form-group row mb-1">
+                                <label class="col-sm-4 col-form-label">Version {{ $version }}</label>
+                                <div class="col-sm-8">
+                                    <a href="{{ $downloadUrl }}" class="text-primary" target="_blank" download>
+                                        {{ $displayName }}
+                                    </a>
+                                    <small class="text-muted d-block">
+                                        {{ \Carbon\Carbon::parse($doc->CreatedOn)->format('d M Y H:i') }}
+                                    </small>
+                                </div>
+                            </div>
+                        @endforeach
+                    @else
+                        <p class="text-muted text-center mb-0">
+                            No PDF versions generated yet
+                        </p>
+                    @endif
                 </div>
             </div>
 
@@ -811,9 +824,9 @@
             // ============================================
             function updateViewSummary(revenueCharges, costCharges) {
                 const totalRevenue = revenueCharges.reduce((sum, c) => sum + parseFloat(c.amtInBaseCurr || 0), 0);
-                const totalCost    = costCharges.reduce((sum, c) => sum + parseFloat(c.amtInBaseCurr || 0), 0);
-                const margin       = totalRevenue - totalCost;
-                const marginPct    = totalRevenue > 0 ? (margin / totalRevenue * 100) : 0;
+                const totalCost = costCharges.reduce((sum, c) => sum + parseFloat(c.amtInBaseCurr || 0), 0);
+                const margin = totalRevenue - totalCost;
+                const marginPct = totalRevenue > 0 ? (margin / totalRevenue * 100) : 0;
 
                 $('#viewQuotedRevenue').val('KES ' + totalRevenue.toFixed(2));
                 $('#viewQuotedMargin').val('KES ' + margin.toFixed(2) + ' (' + marginPct.toFixed(2) + '%)');
@@ -833,10 +846,10 @@
                 e.preventDefault();
                 e.stopPropagation(); // prevent card-header collapse from firing
 
-                const tableId   = $(this).data('table');
-                const $table    = tableId === 'revenue'
-                    ? $('#revenueChargesViewTable').closest('table')
-                    : $('#costChargesViewTable').closest('table');
+                const tableId = $(this).data('table');
+                const $table = tableId === 'revenue' ?
+                    $('#revenueChargesViewTable').closest('table') :
+                    $('#costChargesViewTable').closest('table');
                 const isExpanded = $(this).data('expanded') || false;
 
                 if (isExpanded) {
