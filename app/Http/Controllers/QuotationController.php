@@ -1680,48 +1680,30 @@ class QuotationController extends Controller
             $executeSuccess = $stmt->execute([$inputJson]);
 
             if (!$executeSuccess) {
-
                 $errorInfo = $stmt->errorInfo();
 
                 Log::error('Delete Charge - Stored procedure execution failed', [
-
                     'booking_no' => $bookingNo,
-
                     'charge_id' => $chargeId,
-
                     'error_code' => $errorInfo[0] ?? 'Unknown',
-
                     'sql_state' => $errorInfo[1] ?? 'Unknown',
-
                     'error_message' => $errorInfo[2] ?? 'Unknown',
-
                     'input_json' => $inputJson,
-
                     'context' => [
-
                         'office_code' => $officeCode,
-
                         'charge_code' => $charge->ChargeCode,
-
                     ]
-
                 ]);
 
                 return response()->json([
-
                     'success' => false,
-
                     'message' => 'Failed to execute delete stored procedure',
-
                     'error_details' => config('app.debug') ? $errorInfo[2] : null
-
                 ], 500);
             }
 
             // ============================================
-
             // ENHANCED RESULT SET PROCESSING
-
             // ============================================
 
             $result = null;
@@ -1729,117 +1711,74 @@ class QuotationController extends Controller
             $resultSetCount = 0;
 
             do {
-
                 $resultSetCount++;
-
                 try {
-
                     $rows = $stmt->fetchAll(\PDO::FETCH_OBJ);
 
                     Log::debug("Delete Charge - Result set #$resultSetCount", [
-
                         'booking_no' => $bookingNo,
-
                         'charge_id' => $chargeId,
-
                         'count' => count($rows),
-
                         'first_row' => !empty($rows) ? (array)$rows[0] : null
-
                     ]);
 
                     // ============================================
-
                     // ENHANCED ERROR DETECTION IN RESULT SET
-
                     // ============================================
 
                     if (!empty($rows) && is_object($rows[0])) {
-
                         $properties = get_object_vars($rows[0]);
-
                         $hasError = false;
 
                         foreach ($properties as $key => $value) {
-
                             if (
-
                                 empty($key) ||
-
                                 $key === '' ||
-
                                 (is_string($value) && (
-
                                     strpos($value, 'Error Message') !== false ||
-
                                     strpos($value, 'Failed -') !== false
-
                                 ))
 
                             ) {
 
                                 Log::error('Delete Charge - SP returned error object in result set:', [
-
                                     'booking_no' => $bookingNo,
-
                                     'charge_id' => $chargeId,
-
                                     'result_set' => $resultSetCount,
-
                                     'error_property_name' => $key,
-
                                     'error_message' => $value,
-
                                     'all_properties' => $properties,
-
                                     'context' => [
-
                                         'office_code' => $officeCode,
-
                                         'charge_code' => $charge->ChargeCode,
-
                                         'is_revenue' => $charge->IsRevenue,
-
                                     ]
-
                                 ]);
-
                                 $hasError = true;
-
                                 break;
                             }
                         }
 
                         if ($hasError) {
-
                             continue;
                         }
 
                         if (isset($rows[0]->OutputJson)) {
-
                             $result = $rows;
 
                             Log::info('Delete Charge - ✓ Found OutputJson in result set #' . $resultSetCount, [
-
                                 'booking_no' => $bookingNo,
-
                                 'charge_id' => $chargeId
-
                             ]);
-
                             break;
                         }
                     }
                 } catch (\PDOException $e) {
 
                     Log::debug("Delete Charge - Result set #$resultSetCount error (skipping)", [
-
                         'booking_no' => $bookingNo,
-
                         'charge_id' => $chargeId,
-
                         'error' => $e->getMessage()
-
                     ]);
 
                     continue;
@@ -1849,265 +1788,158 @@ class QuotationController extends Controller
             if (!$result) {
 
                 Log::error('Delete Charge - SP did not return OutputJson', [
-
                     'booking_no' => $bookingNo,
-
                     'charge_id' => $chargeId,
-
                     'total_result_sets' => $resultSetCount,
-
                     'office_code' => $officeCode,
-
                     'charge_code' => $charge->ChargeCode,
-
                     'probable_cause' => 'Stored procedure may have failed silently or returned unexpected format'
-
                 ]);
 
                 return response()->json([
-
                     'success' => false,
-
                     'message' => 'Stored procedure did not return expected output'
-
                 ], 500);
             }
 
             // ============================================
-
             // PARSE OUTPUT WITH ENHANCED ERROR HANDLING
-
             // ============================================
 
             $outputJson = $result[0]->OutputJson ?? '{}';
-
             $output = json_decode($outputJson, true);
 
             if (json_last_error() !== JSON_ERROR_NONE) {
-
                 Log::error('Delete Charge - Failed to decode SP output', [
-
                     'booking_no' => $bookingNo,
-
                     'charge_id' => $chargeId,
-
                     'json_error' => json_last_error_msg(),
-
                     'json_error_code' => json_last_error(),
-
                     'raw_output' => $outputJson,
-
                     'context' => [
-
                         'office_code' => $officeCode,
-
                         'charge_code' => $charge->ChargeCode,
-
                     ]
-
                 ]);
 
                 return response()->json([
-
                     'success' => false,
-
                     'message' => 'Failed to parse stored procedure response: ' . json_last_error_msg(),
-
                     'error_details' => config('app.debug') ? $outputJson : null
-
                 ], 500);
             }
 
             // ============================================
-
             // HANDLE SUCCESS
-
             // ============================================
 
             if (($output['Status'] ?? '') === 'Success') {
-
                 Log::info('Delete Charge - Charge deleted successfully', [
-
                     'booking_no' => $bookingNo,
-
                     'charge_id' => $chargeId,
-
                     'charge_code' => $charge->ChargeCode,
-
                     'charge_name' => $charge->ChargeName,
-
                     'was_revenue' => (bool)$charge->IsRevenue,
-
                     'base_amount' => $charge->AmtInBaseCurr,
-
                     'user' => $submittedBy,
-
                     'office_code' => $officeCode
-
                 ]);
 
                 return response()->json([
-
                     'success' => true,
-
                     'message' => 'Charge deleted successfully'
-
                 ]);
             }
 
             // ============================================
-
             // HANDLE FAILURE
-
             // ============================================
 
             $errorMessage = $output['Remarks'][0]['Remark'] ?? 'Failed to delete charge';
 
             Log::warning('Delete Charge - SP returned failure', [
-
                 'booking_no' => $bookingNo,
-
                 'charge_id' => $chargeId,
-
                 'charge_code' => $charge->ChargeCode,
-
                 'status' => $output['Status'] ?? 'Unknown',
-
                 'message' => $errorMessage,
-
                 'full_output' => $output,
-
                 'context' => [
-
                     'office_code' => $officeCode,
-
                     'is_revenue' => $charge->IsRevenue,
-
                     'user' => $submittedBy
-
                 ]
-
             ]);
 
             return response()->json([
-
                 'success' => false,
-
                 'message' => $errorMessage,
-
                 'details' => $output['Remarks'] ?? []
-
             ], 422);
         } catch (\PDOException $e) {
 
             Log::error('Delete Charge - PDO exception', [
-
                 'booking_no' => $request->input('booking_no'),
-
                 'charge_id' => $request->input('quote_charge_id'),
-
                 'error_message' => $e->getMessage(),
-
                 'error_code' => $e->getCode(),
-
                 'error_file' => $e->getFile(),
-
                 'error_line' => $e->getLine(),
-
                 'sql_state' => $e->errorInfo[0] ?? 'Unknown',
-
                 'driver_error_code' => $e->errorInfo[1] ?? 'Unknown',
-
                 'driver_error_message' => $e->errorInfo[2] ?? 'Unknown',
-
                 'trace' => $e->getTraceAsString()
-
             ]);
 
             return response()->json([
-
                 'success' => false,
-
                 'message' => 'Database connection error while deleting charge',
-
                 'error_code' => 'PDO_ERROR',
-
                 'details' => config('app.debug') ? [
-
                     'message' => $e->getMessage(),
-
                     'sql_state' => $e->errorInfo[0] ?? null,
-
                 ] : null
 
             ], 500);
         } catch (\Illuminate\Database\QueryException $e) {
 
             Log::error('Delete Charge - Query exception', [
-
                 'booking_no' => $request->input('booking_no'),
-
                 'charge_id' => $request->input('quote_charge_id'),
-
                 'error_message' => $e->getMessage(),
-
                 'error_code' => $e->getCode(),
-
                 'error_file' => $e->getFile(),
-
                 'error_line' => $e->getLine(),
-
                 'sql' => $e->getSql() ?? 'N/A',
-
                 'bindings' => $e->getBindings() ?? [],
-
                 'trace' => $e->getTraceAsString()
-
             ]);
 
             return response()->json([
-
                 'success' => false,
-
                 'message' => 'Database query error while deleting charge',
-
                 'error_code' => 'QUERY_ERROR',
-
                 'details' => config('app.debug') ? [
-
                     'message' => $e->getMessage(),
-
                     'file' => $e->getFile(),
-
                     'line' => $e->getLine(),
-
                 ] : null
 
             ], 500);
         } catch (\Exception $e) {
 
             Log::error('Delete Charge - General exception', [
-
                 'booking_no' => $request->input('booking_no'),
-
                 'charge_id' => $request->input('quote_charge_id'),
-
                 'error_message' => $e->getMessage(),
-
                 'error_file' => $e->getFile(),
-
                 'error_line' => $e->getLine(),
-
                 'trace' => $e->getTraceAsString()
-
             ]);
 
             return response()->json([
-
                 'success' => false,
-
                 'message' => 'Failed to delete charge: ' . $e->getMessage()
-
             ], 500);
         }
     }
@@ -2133,1085 +1965,659 @@ class QuotationController extends Controller
                 ]);
 
                 return response()->json([
-
                     'success' => false,
-
                     'message' => !$bookingNo ? 'Booking number is required' : 'Status is required'
-
                 ], 400);
             }
 
             // Validate status value
-
             if (!in_array($targetStatus, ['Won', 'Lost', 'Cancel'])) {
-
                 Log::warning('Update Status - Invalid status value', [
-
                     'booking_no' => $bookingNo,
-
                     'target_status' => $targetStatus,
-
                     'valid_statuses' => ['Won', 'Lost', 'Cancel'],
-
                     'user' => Auth::user()->displayName ?? Auth::user()->Email ?? 'system'
-
                 ]);
 
                 return response()->json([
-
                     'success' => false,
-
                     'message' => 'Invalid status. Must be Won, Lost, or Cancel'
-
                 ], 400);
             }
 
             $submittedBy = Auth::check()
-
                 ? (Auth::user()->displayName ?? Auth::user()->Email ?? 'system')
-
                 : 'system';
 
             // ============================================
-
             // GET QUOTATION WITH FULL CONTEXT
-
             // ============================================
 
             $quotation = DB::table('Quote_QuotationInfo')
-
                 ->where('bookingno', $bookingNo)
-
                 ->first([
-
                     'ID',
-
                     'teamid',
-
                     'QuoteStatus',
-
                     'status',
-
                     'ServiceVerticalname',
-
                     'origincountry',
-
                     'destinationcountry',
-
                     'companyname'
-
                 ]);
 
             if (!$quotation) {
-
                 Log::error('Update Status - Quotation not found', [
-
                     'booking_no' => $bookingNo,
-
                     'target_status' => $targetStatus,
-
                     'user' => $submittedBy
 
                 ]);
 
                 return response()->json([
-
                     'success' => false,
-
                     'message' => 'Quotation not found'
-
                 ], 404);
             }
 
             // Get office code for context
-
             $officeCode = 'Unknown';
-
             $office = DB::table('Cust_Office')
-
                 ->where('TeamCode', $quotation->teamid)
-
                 ->where('IsActive', 1)
-
                 ->where('IsDeleted', 0)
-
                 ->first(['Code']);
 
             if ($office) {
-
                 $officeCode = trim($office->Code);
             }
 
             $currentStatus = $quotation->QuoteStatus ?? $quotation->status ?? 'Proposal';
 
             Log::info('Update Status - Starting', [
-
                 'booking_no' => $bookingNo,
-
                 'current_status' => $currentStatus,
-
                 'target_status' => $targetStatus,
-
                 'user' => $submittedBy,
-
                 'context' => [
-
                     'quotation_id' => $quotation->ID,
-
                     'office_code' => $officeCode,
-
                     'service_type' => $quotation->ServiceVerticalname ?? 'N/A',
-
                     'company' => $quotation->companyname ?? 'N/A',
-
                     'origin' => $quotation->origincountry ?? 'N/A',
-
                     'destination' => $quotation->destinationcountry ?? 'N/A',
-
                     'reason_code' => $reasonCode ?: 'N/A',
-
                     'reason_remark' => $reasonRemark ?: 'N/A',
 
                 ]
-
             ]);
 
             // ============================================
-
             // HANDLE "WON" STATUS SEPARATELY (NOT IN SP)
-
             // ============================================
 
             if ($targetStatus === 'Won') {
-
                 Log::info('Update Status - Handling Won status directly', [
-
                     'booking_no' => $bookingNo,
-
                     'current_status' => $currentStatus,
-
                     'user' => $submittedBy,
-
                     'office_code' => $officeCode
-
                 ]);
 
                 DB::beginTransaction();
 
                 try {
-
                     // Update quotation status
-
                     $updatedRows = DB::table('Quote_QuotationInfo')
-
                         ->where('bookingno', $bookingNo)
-
                         ->update([
-
                             'QuoteStatus' => 'Won',
-
                             'status' => 'Won',
-
                             'LastModifiedBy' => $submittedBy,
-
                             'updatedon' => now()
-
                         ]);
 
                     if ($updatedRows === 0) {
-
                         DB::rollBack();
-
                         Log::error('Update Status - Won update affected no rows', [
-
                             'booking_no' => $bookingNo,
-
                             'quotation_id' => $quotation->ID,
-
                             'user' => $submittedBy
-
                         ]);
 
                         return response()->json([
-
                             'success' => false,
-
                             'message' => 'Failed to update status: No records were updated'
-
                         ], 500);
                     }
 
                     // Insert history record
 
                     DB::table('Cust_EntityHistory')->insert([
-
                         'ID' => DB::raw('NEWID()'),
-
                         'CustEntityID' => $quotation->ID,
-
                         'RequestNo' => (string)$bookingNo,
-
                         'Comment' => $reasonRemark ?: 'Status updated to Won',
-
                         'Type' => 'Quotation Status Update',
-
                         'PreviousValue' => $currentStatus,
-
                         'NewValue' => 'Won',
-
                         'CreatedBy' => $submittedBy,
-
                         'CreatedOn' => now(),
-
                         'LastModifiedBy' => $submittedBy,
-
                         'LastModifiedOn' => now(),
-
                         'IsActive' => 1,
-
                         'IsDeleted' => 0
-
                     ]);
 
                     DB::commit();
 
                     Log::info('Update Status - Won status set successfully', [
-
                         'booking_no' => $bookingNo,
-
                         'quotation_id' => $quotation->ID,
-
                         'previous_status' => $currentStatus,
-
                         'new_status' => 'Won',
-
                         'rows_updated' => $updatedRows,
-
                         'user' => $submittedBy,
-
                         'office_code' => $officeCode,
-
                         'company' => $quotation->companyname ?? 'N/A'
-
                     ]);
 
                     return response()->json([
-
                         'success' => true,
-
                         'message' => 'Quotation marked as WON successfully'
-
                     ]);
                 } catch (\Illuminate\Database\QueryException $e) {
 
                     DB::rollBack();
 
                     Log::error('Update Status - Won query exception', [
-
                         'booking_no' => $bookingNo,
-
                         'quotation_id' => $quotation->ID,
-
                         'error_message' => $e->getMessage(),
-
                         'error_code' => $e->getCode(),
-
                         'sql' => $e->getSql() ?? 'N/A',
-
                         'bindings' => $e->getBindings() ?? [],
-
                         'file' => $e->getFile(),
-
                         'line' => $e->getLine(),
-
                         'office_code' => $officeCode
-
                     ]);
 
                     return response()->json([
-
                         'success' => false,
-
                         'message' => 'Database error while updating status to Won',
-
                         'error_details' => config('app.debug') ? $e->getMessage() : null
-
                     ], 500);
                 } catch (\Exception $e) {
 
                     DB::rollBack();
 
                     Log::error('Update Status - Won general exception', [
-
                         'booking_no' => $bookingNo,
-
                         'quotation_id' => $quotation->ID,
-
                         'error_message' => $e->getMessage(),
-
                         'file' => $e->getFile(),
-
                         'line' => $e->getLine(),
-
                         'office_code' => $officeCode
-
                     ]);
 
                     return response()->json([
-
                         'success' => false,
-
                         'message' => 'Failed to update status to Won: ' . $e->getMessage()
-
                     ], 500);
                 }
             }
 
             // ============================================
-
             // HANDLE "LOST" AND "CANCEL" VIA STORED PROCEDURE
-
             // ============================================
 
             // Validate reason code is provided for Lost/Cancel
-
             if (empty($reasonCode)) {
-
                 Log::warning('Update Status - Reason code missing for Lost/Cancel', [
-
                     'booking_no' => $bookingNo,
-
                     'target_status' => $targetStatus,
-
                     'user' => $submittedBy
-
                 ]);
 
                 return response()->json([
-
                     'success' => false,
-
                     'message' => 'Reason code is required for ' . $targetStatus . ' status'
-
                 ], 400);
             }
 
             // Handle status transition requirements
-
             $needsPendingFirst = false;
 
             if ($targetStatus === 'Lost' && $currentStatus !== 'Pending') {
-
                 $needsPendingFirst = true;
-
                 Log::info('Update Status - Lost requires Pending first', [
-
                     'booking_no' => $bookingNo,
-
                     'current_status' => $currentStatus,
-
                     'office_code' => $officeCode
-
                 ]);
             } elseif ($targetStatus === 'Cancel' && !in_array($currentStatus, ['Pending', 'Won'])) {
 
                 $needsPendingFirst = true;
 
                 Log::info('Update Status - Cancel requires Pending/Won first', [
-
                     'booking_no' => $bookingNo,
-
                     'current_status' => $currentStatus,
-
                     'office_code' => $officeCode
-
                 ]);
             }
 
             // Update to Pending first if needed
 
             if ($needsPendingFirst) {
-
                 try {
-
                     $pendingRows = DB::table('Quote_QuotationInfo')
-
                         ->where('bookingno', $bookingNo)
-
                         ->update([
-
                             'QuoteStatus' => 'Pending',
-
                             'status' => 'Pending',
-
                             'LastModifiedBy' => $submittedBy,
-
                             'updatedon' => now()
-
                         ]);
 
                     Log::info('Update Status - Intermediate Pending update', [
-
                         'booking_no' => $bookingNo,
-
                         'previous_status' => $currentStatus,
-
                         'rows_updated' => $pendingRows,
-
                         'target_status' => $targetStatus,
-
                         'office_code' => $officeCode
 
                     ]);
                 } catch (\Exception $e) {
 
                     Log::error('Update Status - Failed to set intermediate Pending status', [
-
                         'booking_no' => $bookingNo,
-
                         'error_message' => $e->getMessage(),
-
                         'file' => $e->getFile(),
-
                         'line' => $e->getLine(),
-
                         'office_code' => $officeCode
-
                     ]);
 
                     return response()->json([
-
                         'success' => false,
-
                         'message' => 'Failed to prepare status transition: ' . $e->getMessage()
-
                     ], 500);
                 }
             }
 
             // ============================================
-
             // EXECUTE STATUS UPDATE STORED PROCEDURE
-
             // ============================================
 
             $inputJson = json_encode([
-
                 'OperationType' => 'QuotationStatusUpdate',
-
                 'SubmittedDatetime' => now()->format('YmdHis'),
-
                 'SubmittedBy' => $submittedBy,
-
                 'Action' => 'Edit',
-
                 'BookingNo' => $bookingNo,
-
                 'Status' => $targetStatus,
-
                 'ReasonCode' => $reasonCode,
-
                 'ReasonRemark' => $reasonRemark
-
             ]);
 
             Log::info('Update Status - Executing SP', [
-
                 'booking_no' => $bookingNo,
-
                 'target_status' => $targetStatus,
-
                 'office_code' => $officeCode,
-
                 'json' => $inputJson
-
             ]);
 
             $pdo = DB::connection()->getPdo();
-
             $stmt = $pdo->prepare("
-
             SET NOCOUNT ON;
-
             DECLARE @OutputJson VARCHAR(2000);
-
             EXEC sp_Quote_Quotaiton_StatusUpdate ?, @OutputJson OUTPUT;
-
-            SELECT @OutputJson AS OutputJson
-
-        ");
+                SELECT @OutputJson AS OutputJson
+            ");
 
             $executeSuccess = $stmt->execute([$inputJson]);
-
             if (!$executeSuccess) {
-
                 $errorInfo = $stmt->errorInfo();
 
                 // Rollback pending status if we changed it
-
                 if ($needsPendingFirst) {
-
                     DB::table('Quote_QuotationInfo')
-
                         ->where('bookingno', $bookingNo)
-
                         ->update([
 
                             'QuoteStatus' => $currentStatus,
-
                             'status' => $currentStatus,
-
                             'LastModifiedBy' => $submittedBy,
-
                             'updatedon' => now()
-
                         ]);
 
                     Log::info('Update Status - Rolled back intermediate Pending status', [
-
                         'booking_no' => $bookingNo,
-
                         'restored_status' => $currentStatus
-
                     ]);
                 }
 
                 Log::error('Update Status - SP execution failed', [
-
                     'booking_no' => $bookingNo,
-
                     'target_status' => $targetStatus,
-
                     'error_code' => $errorInfo[0] ?? 'Unknown',
-
                     'sql_state' => $errorInfo[1] ?? 'Unknown',
-
                     'error_message' => $errorInfo[2] ?? 'Unknown',
-
                     'office_code' => $officeCode
-
                 ]);
 
                 return response()->json([
-
                     'success' => false,
-
                     'message' => 'Failed to execute status update procedure',
-
                     'error_details' => config('app.debug') ? $errorInfo[2] : null
-
                 ], 500);
             }
 
             // ============================================
-
             // ENHANCED RESULT SET PROCESSING
-
             // ============================================
 
             $result = null;
-
             $resultSetCount = 0;
 
             do {
-
                 $resultSetCount++;
-
                 try {
-
                     $rows = $stmt->fetchAll(\PDO::FETCH_OBJ);
 
                     Log::debug("Update Status - Result set #$resultSetCount", [
-
                         'booking_no' => $bookingNo,
-
                         'count' => count($rows),
-
                         'first_row' => !empty($rows) ? (array)$rows[0] : null
-
                     ]);
 
                     // ============================================
-
                     // ENHANCED ERROR DETECTION IN RESULT SET
-
                     // ============================================
 
                     if (!empty($rows) && is_object($rows[0])) {
-
                         $properties = get_object_vars($rows[0]);
-
                         $hasError = false;
 
                         foreach ($properties as $key => $value) {
-
                             if (
-
                                 empty($key) ||
-
                                 $key === '' ||
-
                                 (is_string($value) && (
-
                                     strpos($value, 'Error Message') !== false ||
-
                                     strpos($value, 'Failed -') !== false
-
                                 ))
-
                             ) {
 
                                 Log::error('Update Status - SP returned error object in result set:', [
-
                                     'booking_no' => $bookingNo,
-
                                     'target_status' => $targetStatus,
-
                                     'result_set' => $resultSetCount,
-
                                     'error_property_name' => $key,
-
                                     'error_message' => $value,
-
                                     'all_properties' => $properties,
-
                                     'context' => [
-
                                         'office_code' => $officeCode,
-
                                         'current_status' => $currentStatus,
-
                                         'reason_code' => $reasonCode,
-
                                     ]
-
                                 ]);
-
                                 $hasError = true;
-
                                 break;
                             }
                         }
 
                         if ($hasError) {
-
                             continue;
                         }
 
                         if (isset($rows[0]->OutputJson)) {
-
                             $result = $rows;
-
                             Log::info('Update Status - ✓ Found OutputJson in result set #' . $resultSetCount, [
-
                                 'booking_no' => $bookingNo
-
                             ]);
-
                             break;
                         }
                     }
                 } catch (\PDOException $e) {
 
                     Log::debug("Update Status - Result set #$resultSetCount error (skipping)", [
-
                         'booking_no' => $bookingNo,
-
                         'error' => $e->getMessage()
-
                     ]);
-
                     continue;
                 }
             } while ($stmt->nextRowset());
 
             if (!$result) {
-
                 Log::error('Update Status - SP did not return OutputJson', [
-
                     'booking_no' => $bookingNo,
-
                     'target_status' => $targetStatus,
-
                     'total_result_sets' => $resultSetCount,
-
                     'office_code' => $officeCode,
-
                     'probable_cause' => 'Stored procedure may have failed silently or returned unexpected format'
-
                 ]);
 
                 return response()->json([
-
                     'success' => false,
-
                     'message' => 'Stored procedure did not return expected output'
-
                 ], 500);
             }
 
             // ============================================
-
             // PARSE OUTPUT WITH ENHANCED ERROR HANDLING
-
             // ============================================
 
             $outputJson = $result[0]->OutputJson ?? '{}';
-
             $output = json_decode($outputJson, true);
 
             if (json_last_error() !== JSON_ERROR_NONE) {
-
                 Log::error('Update Status - Failed to decode SP output', [
-
                     'booking_no' => $bookingNo,
-
                     'target_status' => $targetStatus,
-
                     'json_error' => json_last_error_msg(),
-
                     'json_error_code' => json_last_error(),
-
                     'raw_output' => $outputJson,
-
                     'context' => [
-
                         'office_code' => $officeCode,
-
                         'current_status' => $currentStatus,
-
                     ]
-
                 ]);
 
                 return response()->json([
-
                     'success' => false,
-
                     'message' => 'Failed to parse stored procedure response: ' . json_last_error_msg(),
-
                     'error_details' => config('app.debug') ? $outputJson : null
-
                 ], 500);
             }
 
             // ============================================
-
             // HANDLE SUCCESS
-
             // ============================================
 
             if (($output['Status'] ?? '') === 'Success') {
-
                 Log::info('Update Status - Status updated successfully', [
-
                     'booking_no' => $bookingNo,
-
                     'quotation_id' => $quotation->ID,
-
                     'previous_status' => $currentStatus,
-
                     'new_status' => $targetStatus,
-
                     'reason_code' => $reasonCode,
-
                     'user' => $submittedBy,
-
                     'office_code' => $officeCode,
-
                     'company' => $quotation->companyname ?? 'N/A'
-
                 ]);
 
                 return response()->json([
-
                     'success' => true,
-
                     'message' => $output['Remarks'][0]['Remark'] ?? 'Status updated successfully'
-
                 ]);
             }
 
             // ============================================
-
             // HANDLE FAILURE - ROLLBACK PENDING IF NEEDED
-
             // ============================================
 
             $errorMessage = $output['Remarks'][0]['Remark'] ?? 'Failed to update status';
 
             // If SP failed and we had changed to Pending, restore original status
-
             if ($needsPendingFirst) {
-
                 try {
-
                     DB::table('Quote_QuotationInfo')
-
                         ->where('bookingno', $bookingNo)
-
                         ->update([
-
                             'QuoteStatus' => $currentStatus,
-
                             'status' => $currentStatus,
-
                             'LastModifiedBy' => $submittedBy,
-
                             'updatedon' => now()
-
                         ]);
 
                     Log::info('Update Status - Rolled back intermediate Pending after SP failure', [
-
                         'booking_no' => $bookingNo,
-
                         'restored_status' => $currentStatus,
-
                         'sp_error' => $errorMessage
-
                     ]);
                 } catch (\Exception $e) {
-
                     Log::error('Update Status - Failed to rollback intermediate Pending status', [
-
                         'booking_no' => $bookingNo,
-
                         'error' => $e->getMessage(),
-
                         'original_status' => $currentStatus
-
                     ]);
                 }
             }
 
             Log::warning('Update Status - SP returned failure', [
-
                 'booking_no' => $bookingNo,
-
                 'target_status' => $targetStatus,
-
                 'current_status' => $currentStatus,
-
                 'status' => $output['Status'] ?? 'Unknown',
-
                 'message' => $errorMessage,
-
                 'full_output' => $output,
-
                 'context' => [
-
                     'office_code' => $officeCode,
-
                     'reason_code' => $reasonCode,
-
                     'user' => $submittedBy,
-
                     'company' => $quotation->companyname ?? 'N/A'
-
                 ]
-
             ]);
 
             return response()->json([
-
                 'success' => false,
-
                 'message' => $errorMessage,
-
                 'details' => $output['Remarks'] ?? []
-
             ], 422);
         } catch (\PDOException $e) {
 
             Log::error('Update Status - PDO exception', [
-
                 'booking_no' => $request->input('booking_no'),
-
                 'target_status' => $request->input('status'),
-
                 'error_message' => $e->getMessage(),
-
                 'error_code' => $e->getCode(),
-
                 'error_file' => $e->getFile(),
-
                 'error_line' => $e->getLine(),
-
                 'sql_state' => $e->errorInfo[0] ?? 'Unknown',
-
                 'driver_error_code' => $e->errorInfo[1] ?? 'Unknown',
-
                 'driver_error_message' => $e->errorInfo[2] ?? 'Unknown',
-
                 'trace' => $e->getTraceAsString()
-
             ]);
 
             return response()->json([
-
                 'success' => false,
-
                 'message' => 'Database connection error while updating status',
-
                 'error_code' => 'PDO_ERROR',
-
                 'details' => config('app.debug') ? [
-
                     'message' => $e->getMessage(),
-
                     'sql_state' => $e->errorInfo[0] ?? null,
-
                 ] : null
 
             ], 500);
         } catch (\Illuminate\Database\QueryException $e) {
 
             Log::error('Update Status - Query exception', [
-
                 'booking_no' => $request->input('booking_no'),
-
                 'target_status' => $request->input('status'),
-
                 'error_message' => $e->getMessage(),
-
                 'error_code' => $e->getCode(),
-
                 'error_file' => $e->getFile(),
-
                 'error_line' => $e->getLine(),
-
                 'sql' => $e->getSql() ?? 'N/A',
-
                 'bindings' => $e->getBindings() ?? [],
-
                 'trace' => $e->getTraceAsString()
-
             ]);
 
             return response()->json([
-
                 'success' => false,
-
                 'message' => 'Database query error while updating status',
-
                 'error_code' => 'QUERY_ERROR',
-
                 'details' => config('app.debug') ? [
-
                     'message' => $e->getMessage(),
-
                     'file' => $e->getFile(),
-
                     'line' => $e->getLine(),
-
                 ] : null
 
             ], 500);
         } catch (\Exception $e) {
 
             Log::error('Update Status - General exception', [
-
                 'booking_no' => $request->input('booking_no'),
-
                 'target_status' => $request->input('status'),
-
                 'error_message' => $e->getMessage(),
-
                 'error_file' => $e->getFile(),
-
                 'error_line' => $e->getLine(),
-
                 'trace' => $e->getTraceAsString()
-
             ]);
 
             return response()->json([
-
                 'success' => false,
-
                 'message' => 'Failed to update status: ' . $e->getMessage()
-
             ], 500);
         }
     }
 
     public function getReasons(Request $request)
-
     {
-
         $module     = $request->input('module', 'Quotation');
-
         $reasonType = $request->input('reason_type');
-
         $filter     = $request->input('filter', '');
 
         if (!$reasonType) {
-
             return response()->json(['success' => false, 'message' => 'Reason type is required'], 400);
         }
 
         try {
-
             $pdo  = DB::connection()->getPdo();
-
             $stmt = $pdo->prepare("SET NOCOUNT ON; EXEC sp_ReasonMasterList ?, ?, ?");
-
             $stmt->execute([$module, $reasonType, $filter]);
 
             $reasons = [];
-
             do {
-
                 try {
-
                     $results = $stmt->fetchAll(\PDO::FETCH_OBJ);
-
                     if (empty($results)) continue;
-
                     $firstRow   = $results[0];
-
                     $properties = array_keys((array) $firstRow);
 
                     // Skip SP status/error result sets — they return a single
-
                     // column whose value starts with 'Failed' or 'Error'
 
                     $firstVal = array_values((array) $firstRow)[0] ?? '';
-
                     if (is_string($firstVal) && (
-
                         str_starts_with($firstVal, 'Failed') ||
-
                         str_starts_with($firstVal, 'Error')
-
                     )) {
 
                         Log::warning('getReasons - SP returned failure', [
-
                             'reason_type' => $reasonType,
-
                             'message'     => $firstVal,
-
                         ]);
-
                         continue;
                     }
 
                     // Accept any result set that has at least a Code column
-
                     if (in_array('Code', $properties)) {
-
                         $reasons = $results;
-
                         Log::info('getReasons - Found reasons', [
-
                             'reason_type' => $reasonType,
-
                             'count'       => count($results),
-
                             'columns'     => $properties,
-
                         ]);
 
                         break;
@@ -3244,551 +2650,330 @@ class QuotationController extends Controller
     }
 
     public function saveTermsCondition(Request $request)
-
     {
-
         $bookingNo    = $request->input('booking_no');
-
         $termsText    = $request->input('terms_condition');
-
         $templateName = $request->input('template_name');
-
         $submittedBy = Auth::check()
-
             ? (Auth::user()->displayName ?? Auth::user()->Email ?? 'system')
-
             : 'system';
 
         if (!$bookingNo) {
-
             return response()->json(['success' => false, 'message' => 'Booking number is required'], 400);
         }
 
         try {
-
             // ── Update quotation header ──
-
             $updated = DB::table('Quote_QuotationInfo')
-
                 ->where('bookingno', $bookingNo)
-
                 ->update([
-
                     'QuotationTCTemplate' => $templateName,
-
                     'LastModifiedBy'      => $submittedBy,
-
                     'updatedon'           => now(),
-
                 ]);
 
             if ($updated === 0) {
-
                 return response()->json(['success' => false, 'message' => 'No matching quotation found'], 404);
             }
 
             // ── Get quotation UUID ──
-
             $quotation = DB::table('Quote_QuotationInfo')
-
                 ->where('bookingno', $bookingNo)
-
                 ->first(['ID']);
 
             // ── Save T&C content as a file ──
-
             $folder   = 'quotations/' . $bookingNo . '/tc';
-
             $fileName = 'TC_' . $bookingNo . '_' . now()->format('Ymd_His') . '.html';
-
             $filePath = $folder . '/' . $fileName;
-
             \Storage::disk('public')->put($filePath, $termsText ?? '');
 
             // $fullPath = \Storage::disk('public')->path($filePath);
-
             $docName = $templateName ?? $fileName;
-
             // ── Upsert into Quote_Quotation_Document (PK is QuotationInfoID + DocumentType + Name) ──
 
             DB::statement("
-
             MERGE dbo.Quote_Quotation_Document AS target
-
             USING (
-
                 SELECT :quotationId AS QuotationInfoID,
-
-                       'TermsCondition' AS DocumentType,
-
-                       :name AS Name
-
+                    'TermsCondition' AS DocumentType,
+                    :name AS Name
             ) AS src
-
             ON  target.QuotationInfoID = src.QuotationInfoID
-
             AND target.DocumentType    = src.DocumentType
-
             AND target.Name            = src.Name
-
             WHEN MATCHED THEN UPDATE SET
-
                 FilePath        = :filePath,
-
                 LastModifiedBy  = :modifiedBy,
-
                 LastModifiedOn  = :modifiedOn,
-
                 IsDeleted       = 0
-
             WHEN NOT MATCHED THEN INSERT
-
                 (Id, QuotationInfoID, DocumentType, Name, IsVisible, IsPrinted, FilePath,
-
-                 CreatedBy, CreatedOn, LastModifiedBy, LastModifiedOn, IsDeleted)
-
+                CreatedBy, CreatedOn, LastModifiedBy, LastModifiedOn, IsDeleted)
             VALUES
-
                 (NEWID(), :quotationId2, 'TermsCondition', :name2, 1, 0, :filePath2,
-
-                 :createdBy, :createdOn, :modifiedBy2, :modifiedOn2, 0);
-
-        ", [
-
+                :createdBy, :createdOn, :modifiedBy2, :modifiedOn2, 0);
+            ", [
                 'quotationId'  => $quotation->ID,
-
                 'name'         => $docName,
-
                 'filePath'     => $filePath,
-
                 'modifiedBy'   => $submittedBy,
-
                 'modifiedOn'   => now(),
-
                 'quotationId2' => $quotation->ID,
-
                 'name2'        => $docName,
-
                 'filePath2'    => $filePath,
-
                 'createdBy'    => $submittedBy,
-
                 'createdOn'    => now(),
-
                 'modifiedBy2'  => $submittedBy,
-
                 'modifiedOn2'  => now(),
-
             ]);
 
             $nextVersion = DB::table('Cust_DocumentDeails')
-
                 ->where('ReferenceID', $quotation->ID)
-
                 ->where('DocumentType', 'TermsCondition')
-
                 ->max('VersionNo') ?? 0;
 
             DB::table('Cust_DocumentDeails')->insert([
-
                 'Id'            => DB::raw('NEWID()'),
-
                 'DocumentType'  => 'TermsCondition',
-
                 'ReferenceID'   => $quotation->ID,
-
                 'ReferenceNo'   => (string) $bookingNo,
-
                 'SubmittedDate' => now(),
-
                 'VersionNo'     => $nextVersion + 1,
-
                 'FileName'      => $fileName,
-
                 'Path'          => $filePath,   // relative path, not $fullPath
-
                 'CreatedOn'     => now(),
-
             ]);
 
             Log::info('saveTermsCondition - Success', [
-
                 'booking_no' => $bookingNo,
-
                 'template'   => $templateName,
-
                 'file'       => $filePath,
-
                 'user'       => $submittedBy,
-
             ]);
 
             return response()->json(['success' => true, 'message' => 'Terms & Conditions saved successfully']);
         } catch (\Exception $e) {
 
             Log::error('saveTermsCondition - Failed', [
-
                 'booking_no' => $bookingNo,
-
                 'error'      => $e->getMessage(),
-
                 'file'       => $e->getFile(),
-
                 'line'       => $e->getLine(),
-
             ]);
-
             return response()->json(['success' => false, 'message' => 'Failed to save: ' . $e->getMessage()], 500);
         }
     }
 
     public function retrigger(Request $request)
-
     {
-
         $bookingNo = $request->input('booking_no');
-
         if (!$bookingNo) {
-
             return response()->json([
-
                 'success' => false,
-
                 'message' => 'Booking number is required'
-
             ], 400);
         }
 
         try {
-
             // TODO: Implement retrigger logic using stored procedure
-
             Log::info('Retrigger requested for booking: ' . $bookingNo);
 
             return response()->json([
-
                 'success' => true,
-
                 'message' => 'Retrigger initiated for booking: ' . $bookingNo
-
             ]);
         } catch (\Exception $e) {
 
             Log::error('Retrigger failed: ' . $e->getMessage());
-
             return response()->json([
-
                 'success' => false,
-
                 'message' => 'Retrigger failed: ' . $e->getMessage()
-
             ], 500);
         }
     }
 
     public function getCommunicationTemplates(Request $request)
-
     {
-
         $module     = $request->input('module', 'Quotation');
-
         $subModule  = $request->input('sub_module');
-
         $officeCode = trim($request->input('office_code', ''));
 
         if (!$subModule || !$officeCode) {
-
             return response()->json([
-
                 'success' => false,
-
                 'message' => 'Sub module and office code are required'
-
             ], 400);
         }
 
         try {
-
             // ✅ First verify the office itself exists
-
             $officeExists = DB::table('Cust_Office')
-
                 ->whereRaw("TRIM(Code) = ?", [$officeCode])
-
                 ->where('IsActive', 1)
-
                 ->where('IsDeleted', 0)
-
                 ->exists();
 
             if (!$officeExists) {
-
                 Log::warning('getCommunicationTemplates - Office not found', [
-
                     'office_code' => $officeCode,
-
                     'module'      => $module,
-
                     'sub_module'  => $subModule,
-
                 ]);
 
                 return response()->json([
-
                     'success' => false,
-
                     'code'    => 'OFFICE_NOT_FOUND',
-
                     'message' => "Office '{$officeCode}' is not configured in the system."
-
                 ], 404);
             }
 
             // ✅ TRIM on both sides to avoid trailing space mismatch
-
             $templates = DB::select(
-
                 "SELECT Name, Description
-
-             FROM Cust_CommunicationDetails WITH (NOLOCK)
-
-             WHERE Module     = ?
-
+            FROM Cust_CommunicationDetails WITH (NOLOCK)
+            WHERE Module     = ?
             AND SubModule  = ?
-
             AND TRIM(OfficeCode) = ?
-
             AND IsActive   = 1
-
             ORDER BY Name",
-
                 [$module, $subModule, $officeCode]
-
             );
 
             Log::info('getCommunicationTemplates', [
-
                 'office_code'     => $officeCode,
-
                 'module'          => $module,
-
                 'sub_module'      => $subModule,
-
                 'template_count'  => count($templates),
-
             ]);
 
             // ✅ Office exists but no templates configured for this module/submodule
-
             if (empty($templates)) {
-
                 return response()->json([
-
                     'success' => false,
-
                     'code'    => 'NOT_CONFIGURED',
-
                     'message' => "No '{$subModule}' templates are configured for office '{$officeCode}'. Please contact your administrator."
-
                 ], 404);
             }
 
             return response()->json([
-
                 'success'   => true,
-
                 'templates' => $templates
-
             ]);
         } catch (\Exception $e) {
 
             Log::error('getCommunicationTemplates failed', [
-
                 'office_code' => $officeCode,
-
                 'error'       => $e->getMessage(),
-
             ]);
 
             return response()->json([
-
                 'success' => false,
-
                 'message' => 'Failed to load templates: ' . $e->getMessage()
-
             ], 500);
         }
     }
 
     public function getCommunicationDescription(Request $request)
-
     {
-
         $module     = $request->input('module', 'Quotation');
-
         $subModule  = $request->input('sub_module');
-
-        $officeCode = trim($request->input('office_code', ''));  // ✅ trim here too
-
+        $officeCode = trim($request->input('office_code', ''));  
         $name       = $request->input('name');
 
         if (!$subModule || !$officeCode || !$name) {
-
             return response()->json([
-
                 'success' => false,
-
                 'message' => 'All parameters are required'
-
             ], 400);
         }
 
         try {
-
             $result = DB::select('
-
             DECLARE @Status      VARCHAR(15);
-
             DECLARE @Remark      VARCHAR(1000);
-
             DECLARE @Description NVARCHAR(MAX);
-
             EXEC sp_CommunicationDetails_GetDescription ?, ?, ?, ?,
-
                 @Status      = @Status      OUTPUT,
-
                 @Remark      = @Remark      OUTPUT,
-
                 @Description = @Description OUTPUT;
-
             SELECT @Status AS Status, @Remark AS Remark, @Description AS Description
 
         ', [$module, $subModule, $officeCode, $name]);
-
             if (empty($result)) {
-
                 return response()->json([
-
                     'success' => false,
-
                     'message' => 'No response from stored procedure'
-
                 ], 500);
             }
 
             if ($result[0]->Status === 'Success') {
-
                 return response()->json([
-
                     'success'     => true,
-
                     'description' => $result[0]->Description
-
                 ]);
             }
 
             return response()->json([
-
                 'success' => false,
-
                 'message' => $result[0]->Remark ?? 'Failed to load description'
-
             ], 422);
         } catch (\Exception $e) {
 
             Log::error('getCommunicationDescription failed', [
-
                 'office_code' => $officeCode,
-
                 'name'        => $name,
-
                 'error'       => $e->getMessage(),
-
             ]);
 
             return response()->json([
-
                 'success' => false,
-
                 'message' => 'Failed to load description: ' . $e->getMessage()
-
             ], 500);
         }
     }
 
     public function sendEmailQuote(Request $request)
-
     {
 
         $request->validate([
-
             'booking_no'  => 'required|string',
-
             'quote_id'    => 'required|string',
-
             'template_id' => 'required|string',
-
             'to_email'    => 'required|email',
-
             'from_email'  => 'required|email',
-
             'subject'     => 'required|string',
-
             'body'        => 'required|string',
-
         ]);
 
         $bookingNo  = $request->booking_no;
-
         $toEmail    = $request->to_email;
-
         $fromEmail  = $request->from_email;
-
         $subject    = $request->subject;
-
         $body       = $request->body;
-
         $templateId = $request->template_id;
 
         try {
-
             // ============================================
-
             // SEND EMAIL
-
             // ============================================
-
             \Illuminate\Support\Facades\Mail::send(
-
                 [],
-
                 [],
 
                 function (\Illuminate\Mail\Message $message) use ($toEmail, $fromEmail, $subject, $body) {
-
                     $message
-
                         ->to([
-
                             'nashonmwendwa04@gmail.com',
-
                             // 'amay@freight-in-time.com',
-
                         ])
-
                         ->replyTo($fromEmail)
-
                         ->subject($subject)
-
                         ->setBody($body, 'text/html');
                 }
-
             );
 
             // ============================================
-
             // LOG VIA SP
-
             // ============================================
 
             $clientName = DB::table('Quote_QuotationInfo')
@@ -3813,92 +2998,60 @@ class QuotationController extends Controller
             $spRemark = null;
 
             $stmt->bindParam(1, $jsonData);
-
             $stmt->bindParam(2, $spStatus, \PDO::PARAM_STR | \PDO::PARAM_INPUT_OUTPUT, 20);
-
             $stmt->bindParam(3, $spRemark, \PDO::PARAM_STR | \PDO::PARAM_INPUT_OUTPUT, 2000);
-
             $stmt->execute();
 
             if ($spStatus === 'Failed') {
-
                 Log::error('sendEmailQuote - SP log failed', [
-
                     'booking_no' => $bookingNo,
-
                     'remark'     => $spRemark,
-
                 ]);
             }
 
             // ============================================
-
             // SAVE TEMPLATE USED AGAINST QUOTATION
-
             // ============================================
 
             DB::table('Quote_QuotationInfo')
-
                 ->where('bookingno', $bookingNo)
-
                 ->update(['QuotationEmailTemplate' => $templateId]);
 
             Log::info('sendEmailQuote - Success', [
-
                 'booking_no' => $bookingNo,
-
                 'to'         => $toEmail,
-
                 'subject'    => $subject,
-
                 'template'   => $templateId,
-
                 'sp_status'  => $spStatus,
-
             ]);
 
             return response()->json([
-
                 'success' => true,
-
                 'message' => 'Email sent successfully',
-
             ]);
         } catch (\Symfony\Component\Mailer\Exception\TransportException $e) {
 
             Log::error('sendEmailQuote - SMTP error', [
-
                 'booking_no' => $bookingNo,
-
                 'error'      => $e->getMessage(),
-
             ]);
 
             return response()->json([
-
                 'success' => false,
-
                 'message' => 'Mail server error: ' . $e->getMessage(),
 
             ], 500);
         } catch (\Exception $e) {
 
             Log::error('sendEmailQuote - Failed', [
-
                 'booking_no' => $bookingNo,
-
                 'error'      => $e->getMessage(),
-
                 'file'       => $e->getFile(),
-
                 'line'       => $e->getLine(),
-
             ]);
 
             return response()->json([
-
                 'success' => false,
-
                 'message' => 'Failed to send email: ' . $e->getMessage(),
 
             ], 500);
@@ -3906,298 +3059,186 @@ class QuotationController extends Controller
     }
 
     /**
-
      * Generate and stream a PDF quotation document.
-
      * Route: GET /quotation/{id}/generate-pdf
-
      */
 
     public function generatePdf($id)
-
     {
-
         try {
-
             // Set memory limit for PDF generation
-
             ini_set('memory_limit', '512M');
-
             ini_set('max_execution_time', '300');
 
             Log::info('PDF Generation - Starting', ['quotation_id' => $id]);
 
             // Verify TCPDF is installed
-
             if (!class_exists('\TCPDF')) {
-
                 Log::error('PDF Generation - TCPDF class not found');
-
                 return response()->json([
-
                     'success' => false,
-
                     'message' => 'PDF library not installed. Please run: composer require tecnickcom/tcpdf'
-
                 ], 500);
             }
 
             $quotation = \App\Models\QuotationInfo::where('ID', $id)->first();
 
             if (!$quotation) {
-
                 Log::error('PDF Generation - Quotation not found', ['id' => $id]);
-
                 return response()->json([
-
                     'success' => false,
-
                     'message' => 'Quotation not found'
-
                 ], 404);
             }
 
             $submittedBy = auth()->user()->displayName ?? auth()->user()->Email ?? 'system';
 
             Log::info('PDF Generation - Loading charges', [
-
                 'booking_no' => $quotation->bookingno
-
             ]);
 
             // Load charges with error handling
-
             try {
-
                 $charges = DB::select("
-
                 SELECT
-
                     QC.Id                AS QuoteChargeID,
-
                     BC.Code              AS ChargeCode,
-
                     BC.Name              AS ChargeName,
-
                     QC.Quantity,
-
                     QC.EstChargeRate     AS Rate,
-
                     QC.EstChargeAmount   AS AmtInChgCurr,
-
                     QC.EstBaseAmount     AS AmtInBaseCurr,
-
                     QC.BaseExchRate      AS ExChangeRate,
-
                     CC.Code              AS ChgCurr,
-
                     CB.Code              AS BasedOnCode,
-
                     QC.Remarks           AS ChargeRemark,
-
                     QC.IsRevenue,
-
                     CP.Code              AS PartyCode
-
                 FROM Quote_Quotation_ChargeSheet QC WITH (NOLOCK)
-
                 INNER JOIN Quote_QuotationInfo QI WITH (NOLOCK) ON QI.id = QC.QuotationInfoID
-
                 LEFT JOIN [FITSCMUAT].dbo.Bill_ChargeCode BC WITH (NOLOCK) ON BC.Id = QC.ChargeCodeId
-
                 LEFT JOIN [FITSCMUAT].dbo.Cust_Currency CC WITH (NOLOCK) ON CC.Id = QC.EstChargeCurrencyId
-
                 LEFT JOIN Cust_ChargecodeBasedOn CB WITH (NOLOCK) ON CB.Id = QC.BasedOnId
-
                 LEFT JOIN [FITSCMUAT].dbo.Cust_Party CP WITH (NOLOCK) ON CP.Id = QC.PartyID
-
                 WHERE QI.bookingno = ? AND QC.IsDeleted = 0
-
                 ORDER BY QC.IsRevenue DESC, BC.Name ASC
 
             ", [$quotation->bookingno]);
             } catch (\Exception $e) {
-
                 Log::error('PDF Generation - Failed to load charges', [
-
                     'booking_no' => $quotation->bookingno,
-
                     'error' => $e->getMessage()
-
                 ]);
-
                 $charges = [];
             }
 
             $revenueCharges = array_values(array_filter($charges, fn($c) =>  $c->IsRevenue));
-
             $costCharges    = array_values(array_filter($charges, fn($c) => !$c->IsRevenue));
-
             $totalRevenue   = array_sum(array_map(fn($c) => (float)$c->AmtInBaseCurr, $revenueCharges));
-
             $totalCost      = array_sum(array_map(fn($c) => (float)$c->AmtInBaseCurr, $costCharges));
 
             Log::info('PDF Generation - Charges loaded', [
-
                 'revenue_count' => count($revenueCharges),
-
                 'cost_count' => count($costCharges)
-
             ]);
 
             // Build HTML content with error handling
-
             try {
-
                 $html = view('quotation.pdf', [
-
                     'quotation'      => $quotation,
-
                     'revenueCharges' => $revenueCharges,
-
                     'costCharges'    => $costCharges,
-
                     'totalRevenue'   => $totalRevenue,
-
                     'totalCost'      => $totalCost,
-
                     'generatedDate'  => now()->format('d-m-Y'),
-
                 ])->render();
             } catch (\Exception $e) {
 
                 Log::error('PDF Generation - View render failed', [
-
                     'error' => $e->getMessage(),
-
                     'file' => $e->getFile(),
-
                     'line' => $e->getLine()
-
                 ]);
 
                 return response()->json([
-
                     'success' => false,
-
                     'message' => 'PDF template rendering failed: ' . $e->getMessage()
-
                 ], 500);
             }
 
             Log::info('PDF Generation - HTML rendered', [
-
                 'html_length' => strlen($html)
-
             ]);
 
             // Create PDF with enhanced configuration
-
             // Create PDF using DomPDF — matches browser rendering accurately
 
             try {
-
                 $options = new \Dompdf\Options();
-
                 $options->set('isHtml5ParserEnabled', true);
-
                 $options->set('isPhpEnabled', false);
-
                 $options->set('isRemoteEnabled', true); // needed for logo image
-
                 $options->set('defaultFont', 'Arial');
-
                 $options->set('chroot', public_path()); // allow access to public/ for logo
-
                 $pdf = new \Dompdf\Dompdf($options);
-
                 $pdf->loadHtml($html, 'UTF-8');
-
                 $pdf->setPaper('A4', 'portrait');
-
                 $pdf->render();
 
                 Log::info('PDF Generation - PDF object created successfully');
             } catch (\Exception $e) {
 
                 Log::error('PDF Generation - DomPDF creation failed', [
-
                     'error' => $e->getMessage(),
-
                     'file'  => $e->getFile(),
-
                     'line'  => $e->getLine(),
-
                 ]);
 
                 return response()->json([
-
                     'success' => false,
-
                     'message' => 'PDF creation failed: ' . $e->getMessage()
-
                 ], 500);
             }
 
             // Determine version and file path
-
             $folder = 'quotations/' . $quotation->bookingno;
 
             // Ensure directory exists
-
             try {
-
                 \Storage::disk('public')->makeDirectory($folder);
             } catch (\Exception $e) {
 
                 Log::error('PDF Generation - Directory creation failed', [
-
                     'folder' => $folder,
-
                     'error' => $e->getMessage()
-
                 ]);
             }
 
             $existingFiles = \Storage::disk('public')->files($folder);
-
             $nextVersion   = count($existingFiles) + 1;
-
             $fileName    = 'Quotation_' . $quotation->bookingno . '_V' . $nextVersion . '_' . now()->format('Ymd_His') . '.pdf';
-
             $storagePath = $folder . '/' . $fileName;
-
             $fullPath    = \Storage::disk('public')->path($storagePath);
-
+            
             Log::info('PDF Generation - File paths determined', [
-
                 'storage_path' => $storagePath,
-
                 'full_path' => $fullPath,
-
                 'version' => $nextVersion
-
             ]);
 
             // Output PDF to file with error handling
-
             try {
-
                 // Ensure parent directory exists
-
                 $dir = dirname($fullPath);
 
                 if (!file_exists($dir)) {
-
                     mkdir($dir, 0755, true);
-
                     Log::info('PDF Generation - Created directory', ['dir' => $dir]);
                 }
 
                 file_put_contents($fullPath, $pdf->output());
 
                 // Verify file was created
-
                 if (!file_exists($fullPath)) {
 
                     throw new \Exception('PDF file was not created at: ' . $fullPath);
@@ -4206,129 +3247,78 @@ class QuotationController extends Controller
                 $fileSize = filesize($fullPath);
 
                 Log::info('PDF Generation - File written successfully', [
-
                     'path' => $fullPath,
-
                     'size' => $fileSize
-
                 ]);
             } catch (\Exception $e) {
 
                 Log::error('PDF Generation - File write failed', [
-
                     'path' => $fullPath,
-
                     'error' => $e->getMessage(),
-
                     'file' => $e->getFile(),
-
                     'line' => $e->getLine()
-
                 ]);
 
                 return response()->json([
-
                     'success' => false,
-
                     'message' => 'Failed to save PDF file: ' . $e->getMessage()
-
                 ], 500);
             }
 
             // Save to database with error handling
-
             try {
-
                 DB::table('Quote_Quotation_Document')->insert([
-
                     'Id'              => DB::raw('NEWID()'),
-
                     'QuotationInfoID' => $quotation->ID,
-
                     'DocumentType'    => 'QuotationPDF',
-
                     'Name'            => $fileName,
-
                     'IsVisible'       => 1,
-
                     'IsPrinted'       => 1,
-
                     'PrintedOn'       => now(),
-
                     'FilePath' => $storagePath,
-
                     'CreatedBy'       => $submittedBy,
-
                     'CreatedOn'       => now(),
-
                     'LastModifiedBy'  => $submittedBy,
-
                     'LastModifiedOn'  => now(),
-
                     'IsDeleted'       => 0,
-
                 ]);
 
                 Log::info('PDF Generation - Database record created successfully');
             } catch (\Exception $e) {
 
                 Log::error('PDF Generation - Database insert failed', [
-
                     'error' => $e->getMessage(),
-
                     'file' => $e->getFile(),
-
                     'line' => $e->getLine()
-
                 ]);
-
                 // Don't fail the request - PDF was created successfully
-
             }
 
             Log::info('PDF Generation - Completed successfully', [
-
                 'booking_no' => $quotation->bookingno,
-
                 'version' => $nextVersion,
-
                 'path' => $storagePath,
-
             ]);
 
             return response()->json([
-
                 'success' => true,
-
                 'version' => $nextVersion,
-
                 'label'   => 'Version ' . $nextVersion,
-
                 'url'     => \Storage::disk('public')->url($storagePath),
-
             ]);
         } catch (\Exception $e) {
 
             Log::error('PDF Generation - Unexpected error', [
-
                 'id' => $id,
-
                 'error' => $e->getMessage(),
-
                 'file' => $e->getFile(),
-
                 'line' => $e->getLine(),
-
                 'trace' => $e->getTraceAsString()
-
             ]);
 
             return response()->json([
-
                 'success' => false,
-
                 'message' => 'PDF generation failed: ' . $e->getMessage(),
-
             ], 500);
         }
     }
@@ -4390,48 +3380,32 @@ class QuotationController extends Controller
 
     public function getEmailHistory(Request $request)
     {
-
         $bookingNo = $request->input('booking_no');
 
         if (!$bookingNo) {
-
             return response()->json(['success' => false, 'message' => 'Booking number is required'], 400);
         }
 
         try {
-
             // Fetch quotation to get companyname for matching
-
             $quotation = DB::table('Quote_QuotationInfo')
-
                 ->where('bookingno', $bookingNo)
-
                 ->first(['companyname']);
-
             if (!$quotation) {
-
                 return response()->json(['success' => true, 'emails' => []]);
             }
 
             $emails = DB::table('email_emailscheduler')
-
                 ->where('ClientName', $quotation->companyname)
-
                 ->where('SchedulerType', 'QuotationEmail')
-
                 ->orderBy('SubmittedOn', 'desc')
-
                 ->get(['SubmittedOn as sent_on', 'EmailTo as to_email', 'Status as status']);
-
             return response()->json(['success' => true, 'emails' => $emails]);
         } catch (\Exception $e) {
 
             Log::error('getEmailHistory - Failed', [
-
                 'booking_no' => $bookingNo,
-
                 'error'      => $e->getMessage(),
-
             ]);
 
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
@@ -4458,645 +3432,402 @@ class QuotationController extends Controller
         try {
             $quotation = DB::table('Quote_QuotationInfo')
                 ->where('bookingno', $bookingNo)
-
                 ->first(['teamid']);
 
             if (!$quotation) {
-
                 Log::warning('Quotation not found', ['booking_no' => $bookingNo]);
-
                 return response()->json(['success' => false, 'message' => 'Quotation not found'], 404);
             }
 
             Log::info('Quotation found', ['team_id' => $quotation->teamid]);
 
             $office = DB::table('Cust_Office')
-
                 ->where('TeamCode', $quotation->teamid)
-
                 ->where('IsActive', 1)
-
                 ->where('IsDeleted', 0)
-
                 ->first(['Code']);
 
             if (!$office) {
-
                 Log::warning('Office not found', ['team_id' => $quotation->teamid]);
-
                 return response()->json(['success' => false, 'message' => 'Office not found'], 404);
             }
 
             // FIX: Trim the office code to remove trailing spaces
-
             $officeCode = trim($office->Code);
 
             Log::info('=== EXECUTING SP_CHARGECODE ===', [
-
                 'office_code' => $officeCode,
-
                 'office_code_raw' => $office->Code, // Log both to compare
-
                 'charge_type' => $chargeType,
-
                 'filter' => $filter
-
             ]);
 
             $pdo = DB::connection()->getPdo();
-
             $stmt = $pdo->prepare("SET NOCOUNT ON; EXEC sp_ChargeCode ?, ?, ?");
-
             $stmt->execute([$officeCode, $chargeType, $filter]); // Use trimmed code
-
             $chargeCodes = [];
 
             $resultSetCount = 0;
 
             do {
-
                 $resultSetCount++;
-
                 try {
-
                     $results = $stmt->fetchAll(\PDO::FETCH_OBJ);
-
                     Log::info("Result set #$resultSetCount", [
-
                         'count' => count($results),
-
                         'first_row' => !empty($results) ? (array)$results[0] : null
-
                     ]);
 
                     if (!empty($results)) {
-
                         $firstRow = $results[0];
 
                         // Check if this is the data result set
-
                         if (isset($firstRow->Id) && isset($firstRow->Code)) {
-
                             $chargeCodes = $results;
-
                             Log::info('✓ Found charge codes result set', ['count' => count($chargeCodes)]);
-
                             break;
                         }
                     }
                 } catch (\Exception $e) {
 
                     Log::debug("Result set #$resultSetCount error", ['error' => $e->getMessage()]);
-
                     continue;
                 }
             } while ($stmt->nextRowset());
 
             Log::info('=== FINAL RESULT ===', [
-
                 'charge_codes_found' => count($chargeCodes),
-
                 'total_result_sets' => $resultSetCount
-
             ]);
 
             return response()->json([
-
                 'success' => true,
-
                 'charge_codes' => $chargeCodes
-
             ]);
         } catch (\Exception $e) {
 
             Log::error('Charge codes error: ' . $e->getMessage(), [
-
                 'trace' => $e->getTraceAsString()
-
             ]);
 
             return response()->json([
-
                 'success' => false,
-
                 'message' => 'Failed to load charge codes: ' . $e->getMessage()
-
             ], 500);
         }
     }
 
     public function getOfficeCode(Request $request)
-
     {
-
         try {
-
             $teamId = $request->team_id;
 
             Log::info('getOfficeCode called', ['team_id' => $teamId]);
-
+            
             if (!$teamId) {
-
                 return response()->json([
-
                     'success' => false,
-
                     'message' => 'Team ID is required'
-
                 ], 400);
             }
 
             // ✅ FIX: Use TeamCode (int column), not TeamId
-
             $office = DB::connection('sqlsrv')
-
                 ->table('Cust_Office')
-
                 ->where('TeamCode', $teamId)           // ✅ Changed from TeamId
-
                 ->where('IsActive', 1)                 // ✅ Added active filter
-
                 ->where('IsDeleted', 0)                // ✅ Added deleted filter
-
                 ->select('Code', 'TeamCode')           // ✅ Changed from TeamId
-
                 ->first();
 
             Log::info('Office lookup result', [
-
                 'team_id' => $teamId,
-
                 'office_found' => $office ? 'yes' : 'no',
-
                 'office_code' => $office ? $office->Code : null
-
             ]);
 
             if (!$office) {
 
                 // Fallback: Try to get from quotation
-
                 $quotation = DB::connection('sqlsrv')
-
                     ->table('Quote_QuotationInfo')
-
                     ->where('teamid', $teamId)
-
                     ->select('teamid')
-
                     ->first();
 
                 if ($quotation) {
-
                     $office = DB::connection('sqlsrv')
-
                         ->table('Cust_Office')
-
                         ->where('TeamCode', $quotation->teamid)  // ✅ Changed from TeamId
-
                         ->where('IsActive', 1)
-
                         ->where('IsDeleted', 0)
-
                         ->select('Code')
-
                         ->first();
                 }
             }
 
             if (!$office) {
-
                 return response()->json([
-
                     'success' => false,
-
                     'message' => 'Office not found for team ID: ' . $teamId
-
                 ], 404);
             }
 
             return response()->json([
-
                 'success' => true,
-
                 'office_code' => trim($office->Code)
-
             ]);
         } catch (\Exception $e) {
 
             Log::error('Failed to get office code', [
-
                 'team_id' => $request->team_id,
-
                 'error' => $e->getMessage(),
-
                 'trace' => $e->getTraceAsString()
-
             ]);
 
             return response()->json([
-
                 'success' => false,
-
                 'message' => 'Failed to retrieve office code: ' . $e->getMessage()
-
             ], 500);
         }
     }
 
     /**
-
      * Get currencies for office
-
      */
 
     public function getCurrencies(Request $request)
-
     {
-
         try {
-
             $officeCode = $request->office_code;
 
             Log::info('getCurrencies called', ['office_code' => $officeCode]);
 
             if (!$officeCode) {
-
                 return response()->json([
-
                     'success' => false,
-
                     'message' => 'Office code is required'
-
                 ], 400);
             }
 
             // Query FITSCMUAT database (where currency data lives)
-
             $currencies = DB::connection('sqlsrv')
-
                 ->select("
-
                 SELECT DISTINCT CC.Id as CurrencyID, CC.Code as CurrencyCode, CC.Name as CurrencyName
-
                 FROM [FITSCMUAT].dbo.Cust_Office CO WITH (NOLOCK)
-
                 INNER JOIN [FITSCMUAT].dbo.Bill_ChargeCodeOfficeMap BCO WITH (NOLOCK) 
-
                     ON BCO.OfficeId = CO.Id AND BCO.IsActive = 1
-
                 INNER JOIN [FITSCMUAT].dbo.Cust_Currency CC WITH (NOLOCK) 
-
                     ON CC.Id = BCO.DefaultCurrencyId
-
                 WHERE CO.Code = ?
-
                     AND CO.IsActive = 1 
-
                     AND CO.IsDeleted = 0
-
                     AND CC.IsActive = 1 
-
                     AND CC.IsDeleted = 0
-
                 ORDER BY CC.Code
 
             ", [trim($officeCode)]);
 
             Log::info('Currencies fetched', [
-
                 'office_code' => $officeCode,
-
                 'count' => count($currencies)
-
             ]);
 
             return response()->json([
-
                 'success' => true,
-
                 'currencies' => $currencies
-
             ]);
         } catch (\Exception $e) {
 
             Log::error('Failed to get currencies', [
-
                 'office_code' => $request->office_code,
-
                 'error' => $e->getMessage(),
-
                 'trace' => $e->getTraceAsString()
-
             ]);
 
             return response()->json([
-
                 'success' => false,
-
                 'message' => 'Failed to retrieve currencies: ' . $e->getMessage()
-
             ], 500);
         }
     }
 
     /**
-
      * Get exchange rate for currency
-
      */
 
     public function getExchangeRate(Request $request)
-
     {
-
         try {
-
             $officeCode = $request->office_code;
-
             $fromCurrency = $request->from_currency;
 
             Log::info('getExchangeRate called', [
-
                 'office_code' => $officeCode,
-
                 'from_currency' => $fromCurrency
-
             ]);
 
             if (!$officeCode || !$fromCurrency) {
-
                 return response()->json([
-
                     'success' => false,
-
                     'message' => 'Office code and currency are required'
-
                 ], 400);
             }
 
             // Query FITSCMUAT database (where exchange rate data lives)
-
             $result = DB::select("
-
                 SELECT TOP 1 ER.ConvertToId as ExRate
-
                 FROM [FITSCMUAT].dbo.Cust_ExchangeRate ER WITH (NOLOCK)
-
                 INNER JOIN [FITSCMUAT].dbo.Cust_ExchangeRateOfficeMap OM WITH (NOLOCK)
-
                     ON OM.ExchangeRateId = ER.Id
-
                     AND OM.IsActive = 1
-
                 INNER JOIN [FITSCMUAT].dbo.Cust_Office CO WITH (NOLOCK)
-
                     ON CO.Id = OM.OfficeId
-
                     AND CO.Code = ?
-
                     AND CO.IsActive = 1
-
                     AND CO.IsDeleted = 0
-
                 INNER JOIN [FITSCMUAT].dbo.Cust_Currency CUR WITH (NOLOCK)
-
                     ON CUR.Id = ER.ConvertToId
-
                     AND CUR.Code = ?
-
                 WHERE CAST(GETDATE() AS DATE) 
-
                     BETWEEN CAST(ER.EffectiveFromDate AS DATE) 
-
                     AND CAST(ER.EffectiveToDate AS DATE)
-
                 AND ER.IsActive = 1
-
                 AND ER.IsDeleted = 0
-
                 ORDER BY ER.EffectiveFromDate DESC
-
             ", [$officeCode, $fromCurrency]);
 
             if (empty($result) || !isset($result[0]->ExRate)) {
-
                 Log::warning('Exchange rate not found', [
-
                     'office_code' => $officeCode,
-
                     'from_currency' => $fromCurrency
-
                 ]);
 
                 return response()->json([
-
                     'success' => true,
-
                     'message' => 'Exchange rate not found, using default',
-
                     'exchange_rate' => 1.000000
-
                 ]);
             }
 
             Log::info('Exchange rate fetched', [
-
                 'office_code' => $officeCode,
-
                 'from_currency' => $fromCurrency,
-
                 'rate' => $result[0]->ExRate
-
             ]);
 
             return response()->json([
-
                 'success' => true,
-
                 'exchange_rate' => floatval($result[0]->ExRate)
-
             ]);
         } catch (\Exception $e) {
 
             Log::error('Failed to get exchange rate', [
-
                 'office_code' => $request->office_code,
-
                 'from_currency' => $request->from_currency,
-
                 'error' => $e->getMessage(),
-
                 'trace' => $e->getTraceAsString()
-
             ]);
 
             return response()->json([
-
                 'success' => true,
-
                 'message' => 'Failed to retrieve exchange rate, using default',
-
                 'exchange_rate' => 1.000000
-
             ]);
         }
     }
 
     public function getContractCharges(Request $request)
-
     {
-
         $bookingNo = $request->input('booking_no');
 
         if (!$bookingNo) {
-
             return response()->json(['success' => false, 'message' => 'Booking number is required'], 400);
         }
 
         try {
-
             $quotation = DB::table('Quote_QuotationInfo')
-
                 ->where('bookingno', $bookingNo)
-
                 ->first([
-
                     'clientid',
-
                     'ServiceVerticalname',
-
                     'process',
-
                     'origincountry',
-
                     'destinationcountry',
-
                     'incoterm',
-
                     'shipmentmode',
-
                     'TransportMode',
-
                     'ServiceClass',
-
                     'commodity',
-
                     'containerlist',
-
                     'scopevolume',
-
                     'cargovolume',
-
                 ]);
 
             if (!$quotation) {
-
                 return response()->json(['success' => false, 'message' => 'Quotation not found'], 404);
             }
 
             // Parse containerlist — try JSON first, otherwise pass empty array
-
             $equipment = [];
 
             if (!empty($quotation->containerlist)) {
-
                 $decoded = json_decode($quotation->containerlist, true);
-
                 if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-
                     $equipment = $decoded;
                 }
             }
 
             $inputJson = json_encode([
-
                 'Service'   => $quotation->ServiceVerticalname ?? '',
-
                 'Process'   => $quotation->process ?? '',
-
                 'Client'    => $quotation->clientid ?? '',
-
                 'Weight'    => (float)($quotation->scopevolume ?? 0),
-
                 'Volume'    => (float)($quotation->cargovolume ?? 0),
-
                 'Filter'    => [
-
                     ['Code' => 'Inco Terms',             'Value' => $quotation->incoterm ?? ''],
-
                     ['Code' => 'Country Of Origin',      'Value' => $quotation->origincountry ?? ''],
-
                     ['Code' => 'Country Of Destination', 'Value' => $quotation->destinationcountry ?? ''],
-
                     ['Code' => 'Place Of Reciept',       'Value' => ''],
-
                     ['Code' => 'Place Of Delivery',      'Value' => ''],
-
                     ['Code' => 'Port Of Loading',        'Value' => ''],
-
                     ['Code' => 'Port Of Discharge',      'Value' => ''],
-
                     ['Code' => 'Service Class',          'Value' => $quotation->ServiceClass ?? ''],
-
                     ['Code' => 'Commodity',              'Value' => $quotation->commodity ?? ''],
-
                     ['Code' => 'Shipment Mode',          'Value' => $quotation->shipmentmode ?? ''],
-
                     ['Code' => 'Shipment Type',          'Value' => ''],
-
                     ['Code' => 'Movement Type',          'Value' => $quotation->TransportMode ?? ''],
-
                     ['Code' => 'Forwarder',              'Value' => ''],
-
                     ['Code' => 'Shipping Line',          'Value' => ''],
-
                     ['Code' => 'Air Line',               'Value' => ''],
-
                     ['Code' => 'Trucker',                'Value' => ''],
-
                 ],
 
                 'Equipment' => $equipment,
-
             ]);
 
             Log::info('getContractCharges - Input JSON', [
-
                 'booking_no' => $bookingNo,
-
                 'input_json' => $inputJson,
-
             ]);
 
             $pdo  = DB::connection()->getPdo();
-
             $stmt = $pdo->prepare("
 
             DECLARE @Output VARCHAR(MAX);
-
             EXEC dbo.sp_Quote_QuotationCharges ?, @Output = @Output OUTPUT;
-
             SELECT @Output AS OutputJson
-
         ");
 
             $stmt->execute([$inputJson]);
 
             // Walk result sets to find the OutputJson row
-
             $outputJson = null;
-
             do {
-
                 try {
-
                     $rows = $stmt->fetchAll(\PDO::FETCH_OBJ);
-
                     if (!empty($rows) && isset($rows[0]->OutputJson)) {
-
                         $outputJson = $rows[0]->OutputJson;
-
                         break;
                     }
                 } catch (\PDOException $e) {
@@ -5106,22 +3837,16 @@ class QuotationController extends Controller
             } while ($stmt->nextRowset());
 
             if ($outputJson === null) {
-
                 Log::warning('getContractCharges - SP returned no output', ['booking_no' => $bookingNo]);
-
                 return response()->json(['success' => true, 'charges' => []]);
             }
 
             $output = json_decode($outputJson, true);
 
             if (json_last_error() !== JSON_ERROR_NONE) {
-
                 Log::error('getContractCharges - Failed to decode SP output', [
-
                     'booking_no' => $bookingNo,
-
                     'raw'        => $outputJson,
-
                 ]);
 
                 return response()->json(['success' => false, 'message' => 'Failed to parse contract charges'], 500);
@@ -5132,26 +3857,18 @@ class QuotationController extends Controller
             $charges = $output['Charges'] ?? (isset($output[0]) ? $output : []);
 
             Log::info('getContractCharges - Success', [
-
                 'booking_no'   => $bookingNo,
-
                 'charge_count' => count($charges),
-
             ]);
 
             return response()->json(['success' => true, 'charges' => $charges]);
         } catch (\Exception $e) {
 
             Log::error('getContractCharges - Failed', [
-
                 'booking_no' => $bookingNo,
-
                 'error'      => $e->getMessage(),
-
                 'file'       => $e->getFile(),
-
                 'line'       => $e->getLine(),
-
             ]);
 
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
@@ -5159,74 +3876,49 @@ class QuotationController extends Controller
     }
 
     public function getLegalEntities(Request $request)
-
     {
-
         $officeCode = trim($request->input('office_code', ''));
-
         $chargeType = $request->input('charge_type', 'Cost');
-
         $filter     = $request->input('filter', '');
 
         if (!$officeCode) {
-
             return response()->json(['success' => false, 'message' => 'Office code is required'], 400);
         }
 
         if (!in_array($chargeType, ['Revenue', 'Cost'])) {
-
             $chargeType = 'Cost';
         }
 
         try {
-
             $pdo  = DB::connection()->getPdo();
-
             $stmt = $pdo->prepare("SET NOCOUNT ON; EXEC sp_LegalEntityList ?, ?, ?");
-
             $stmt->execute([$officeCode, $chargeType, $filter]);
 
             $parties = [];
-
             do {
-
                 try {
-
                     $results = $stmt->fetchAll(\PDO::FETCH_OBJ);
-
                     if (empty($results)) continue;
-
                     $firstRow = (array) $results[0];
-
                     $firstVal = array_values($firstRow)[0] ?? '';
 
                     // Skip SP error/status result sets
-
                     if (is_string($firstVal) && str_starts_with((string)$firstVal, 'Failed')) {
-
                         Log::warning('sp_LegalEntityList returned failure', [
-
                             'office_code' => $officeCode,
-
                             'charge_type' => $chargeType,
-
                             'message'     => $firstVal,
-
                         ]);
-
                         continue;
                     }
 
                     // Valid data result set — must have Id and Code
 
                     if (isset($results[0]->Id) && isset($results[0]->Code)) {
-
                         $parties = $results;
-
                         break;
                     }
                 } catch (\Exception $e) {
-
                     continue;
                 }
             } while ($stmt->nextRowset());
@@ -5235,11 +3927,8 @@ class QuotationController extends Controller
         } catch (\Exception $e) {
 
             Log::error('getLegalEntities failed', [
-
                 'office_code' => $officeCode,
-
                 'error'       => $e->getMessage(),
-
             ]);
 
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
@@ -5247,131 +3936,86 @@ class QuotationController extends Controller
     }
 
     public function getBasedOnList(Request $request)
-
     {
-
         try {
-
             $basedOnList = DB::select(
-
                 "SELECT Id, Code, Name, BasedOn 
-
                     FROM Cust_ChargecodeBasedOn WITH (NOLOCK)
-
                     WHERE IsActive = 1
-
                 ORDER BY Name"
-
             );
 
             return response()->json([
-
                 'success' => true,
-
                 'based_on_list' => $basedOnList
-
             ]);
         } catch (\Exception $e) {
 
             Log::error('Get based on list failed: ' . $e->getMessage());
 
             return response()->json([
-
                 'success' => false,
-
                 'message' => 'Failed to load based on list: ' . $e->getMessage()
-
             ], 500);
         }
     }
 
     /**
-
      * Get UOM list based on Based On code
-
      */
 
     public function getBasedOnUOM(Request $request)
-
     {
-
         try {
-
             $basedOnCode = $request->based_on_code;
 
             Log::info('Get based on UOM called', ['based_on_code' => $basedOnCode]);
 
             if (!$basedOnCode) {
-
                 return response()->json([
-
                     'success' => false,
-
                     'message' => 'Based On code is required'
-
                 ], 400);
             }
 
             // Execute stored procedure
-
             $pdo = DB::connection('sqlsrv')->getPdo();
-
             $stmt = $pdo->prepare("EXEC sp_ChargeBasedOnUOM ?");
-
             $stmt->execute([$basedOnCode]);
 
             $uomList = [];
-
             $hasResults = false;
 
             // Handle multiple result sets
-
             do {
-
                 try {
-
                     $results = $stmt->fetchAll(\PDO::FETCH_OBJ);
 
                     if (!empty($results)) {
-
                         // Check if it's an error message from the SP
-
                         $firstRow = $results[0];
-
                         $firstColumn = current((array)$firstRow);
 
                         // If the SP returns "Failed - ..." message
 
                         if (is_string($firstColumn) && strpos($firstColumn, 'Failed') === 0) {
-
                             Log::warning('SP returned failure message', [
-
                                 'based_on_code' => $basedOnCode,
-
                                 'message' => $firstColumn
-
                             ]);
-
                             continue; // Skip this result set
-
                         }
 
                         // Valid UOM data
-
                         $uomList = array_merge($uomList, $results);
-
                         $hasResults = true;
-
                         Log::info('UOM result set fetched', ['count' => count($results)]);
                     }
                 } catch (\PDOException $e) {
 
                     // Skip empty result sets (this is normal for this SP)
-
                     if (strpos($e->getMessage(), 'no fields') === false) {
-
                         throw $e; // Re-throw if it's a real error
-
                     }
 
                     Log::debug('Empty result set skipped', ['error' => $e->getMessage()]);
@@ -5379,327 +4023,208 @@ class QuotationController extends Controller
             } while ($stmt->nextRowset());
 
             // If no UOM found, it means this Based On doesn't have UOM requirements
-
             // This is valid for things like AssessableValue, CommercialInvoiceVal, etc.
-
             if (empty($uomList)) {
 
                 Log::info('No UOM required for this Based On', ['based_on_code' => $basedOnCode]);
-
                 return response()->json([
-
                     'success' => true,
-
                     'uom_list' => [],
-
                     'message' => 'No UOM selection required for this Based On type'
-
                 ]);
             }
 
             Log::info('UOM list fetched successfully', [
-
                 'based_on_code' => $basedOnCode,
-
                 'count' => count($uomList)
-
             ]);
 
             return response()->json([
-
                 'success' => true,
-
                 'uom_list' => $uomList
-
             ]);
         } catch (\Exception $e) {
 
             Log::error('Get based on UOM failed', [
-
                 'based_on_code' => $request->based_on_code,
-
                 'error' => $e->getMessage(),
-
                 'trace' => $e->getTraceAsString()
-
             ]);
 
             return response()->json([
-
                 'success' => false,
-
                 'message' => 'Failed to get UOM list: ' . $e->getMessage()
-
             ], 500);
         }
     }
 
     /**
-
      * Create a booking from a won quotation.
-
      * TODO: Implement full booking creation logic.
-
      */
-
     public function createBooking(Request $request)
-
     {
-
         $request->validate([
-
             'booking_no'        => 'required|string',
-
             'service_template'  => 'required|string',
-
             'bill_to_party'     => 'required|string',
-
             'forwarder'         => 'required|string',
-
             'place_of_receipt'  => 'required|string',
-
             'place_of_delivery' => 'required|string',
-
         ]);
 
         $submittedBy = auth()->user()->displayName ?? auth()->user()->Email ?? 'system';
-
         $input = json_encode([
-
             'OperationType'     => 'BookingInfoUpdate',
-
             'SubmittedDatetime' => now()->format('YmdHis'),
-
             'SubmittedBy'       => $submittedBy,
-
             'Action'            => 'Update',
-
             'QuotationNo'       => $request->booking_no,
-
             'ServiceTemplate'   => $request->service_template,
-
             'BillToParty'       => $request->bill_to_party,
-
             'Forwarder'         => $request->forwarder,
-
             'CountryIncluded'   => $request->include_country ? 1 : 0,
-
             'PlaceOfReceipt'    => $request->place_of_receipt,
-
             'PlaceOfDelivery'   => $request->place_of_delivery,
-
         ]);
 
         if (strlen($input) > 2000) {
-
             return response()->json([
-
                 'success' => false,
-
                 'message' => 'Request payload too large for SP. Max 2000 characters.'
-
             ], 400);
         }
 
         try {
-
             $output = $this->executeDetailsUpdateSP($input);
-
             if (($output['Status'] ?? '') === 'Failed') {
-
                 $remarks = collect($output['Remarks'] ?? [])->pluck('Remark')->implode(', ');
-
                 return response()->json([
-
                     'success' => false,
-
                     'message' => $remarks ?: 'Booking update failed'
-
                 ]);
             }
 
             return response()->json([
-
                 'success' => true,
-
                 'message' => 'Booking created successfully'
-
             ]);
         } catch (\Exception $e) {
 
             Log::error('createBooking error: ' . $e->getMessage());
 
             return response()->json([
-
                 'success' => false,
-
                 'message' => $e->getMessage()
-
             ], 500);
         }
     }
 
     /**
-
      * Resolve Cust_Office.Id (UUID) from Quote_QuotationInfo.teamid (bigint via TeamCode)
-
      * Shared helper used by Bill To Party and Forwarder lookups.
-
      */
-
     private function resolveOfficeId(string $teamId): ?string
-
     {
-
         $office = DB::selectOne("
-
         SELECT SCMOfficeID
-
         FROM Cust_Office WITH (NOLOCK)
-
         WHERE TeamCode = ?
-
             AND IsActive = 1
-
             AND IsDeleted = 0
-
         ", [$teamId]);
 
         return $office ? $office->SCMOfficeID : null;
     }
 
     /**
-
      * GET /quotation/create-booking/service-templates
-
      * Calls sp_Quote_ServiceTemplateList with the QuotationID.
-
      * Returns: [{ Id, Name }]
-
      */
 
     public function getServiceTemplates(Request $request)
-
     {
-
         $quotationId = $request->query('quotation_id');
-
         $filter      = $request->query('filter', '');
 
         if (!$quotationId) {
-
             return response()->json(['success' => false, 'message' => 'quotation_id is required'], 422);
         }
 
         try {
-
             $pdo = DB::getPdo();
-
             $pdo->exec('SET NOCOUNT ON');
-
             $stmt = $pdo->prepare("EXEC dbo.sp_Quote_ServiceTemplateList ?, ?");
-
             $stmt->execute([$quotationId, $filter]);
 
             // ── FIX: loop through all result sets to get past PRINT @SQL ──
-
             $results = [];
-
             do {
-
                 $rows = $stmt->fetchAll(\PDO::FETCH_OBJ);
 
                 if (empty($rows)) {
-
                     continue;
                 }
 
                 // Check if this result set is a failure message
-
                 $first = array_values((array) $rows[0])[0] ?? null;
 
                 if (is_string($first) && str_starts_with($first, 'Failed')) {
-
                     return response()->json(['success' => false, 'message' => $first], 422);
                 }
 
                 // Check if rows have Id and Name — actual template data
-
                 if (isset($rows[0]->Id) && isset($rows[0]->Name)) {
-
                     $results = $rows;
-
                     break;
                 }
             } while ($stmt->nextRowset());
 
             return response()->json([
-
                 'success'   => true,
-
                 'templates' => $results,
-
             ]);
         } catch (\Exception $e) {
 
             Log::error('getServiceTemplates failed', [
-
                 'quotation_id' => $quotationId,
-
                 'error'        => $e->getMessage(),
-
             ]);
-
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }
 
     /**
-
      * GET /quotation/create-booking/bill-to-parties
-
      * Calls sp_PartyList with PartyType = 'Debtor'
-
      * Returns: [{ PartyID, PartyCode, PartyName }]
-
      */
 
     public function getBillToParties(Request $request)
-
     {
-
         $teamId = $request->query('team_id');
-
         $filter = $request->query('filter', '');
 
         if (!$teamId) {
-
             return response()->json(['success' => false, 'message' => 'team_id is required'], 422);
         }
 
         $officeId = $this->resolveOfficeId($teamId);
 
         if (!$officeId) {
-
             return response()->json(['success' => false, 'message' => 'Office not found for team_id: ' . $teamId], 404);
         }
 
         try {
-
             $results = DB::select("EXEC dbo.sp_PartyList ?, 'Debtor', ?", [
-
                 $officeId,
-
                 $filter,
-
             ]);
 
             return response()->json([
-
                 'success' => true,
-
                 'parties' => $results, // each row has PartyID, PartyCode, PartyName
-
             ]);
         } catch (\Exception $e) {
 
@@ -5708,51 +4233,35 @@ class QuotationController extends Controller
     }
 
     /**
-
      * GET /quotation/create-booking/forwarders
-
      * Calls sp_PartyList with PartyType = 'Agent / Forwarder'
-
      * Returns: [{ PartyID, PartyCode, PartyName }]
-
      */
 
     public function getForwarders(Request $request)
-
     {
-
         $teamId = $request->query('team_id');
-
         $filter = $request->query('filter', '');
 
         if (!$teamId) {
-
             return response()->json(['success' => false, 'message' => 'team_id is required'], 422);
         }
 
         $officeId = $this->resolveOfficeId($teamId);
 
         if (!$officeId) {
-
             return response()->json(['success' => false, 'message' => 'Office not found for team_id: ' . $teamId], 404);
         }
 
         try {
-
             $results = DB::select("EXEC dbo.sp_PartyList ?, 'Agent / Forwarder', ?", [
-
                 $officeId,
-
                 $filter,
-
             ]);
 
             return response()->json([
-
                 'success' => true,
-
                 'parties' => $results, // each row has PartyID, PartyCode, PartyName
-
             ]);
         } catch (\Exception $e) {
 
@@ -5761,95 +4270,57 @@ class QuotationController extends Controller
     }
 
     /**
-
      * GET /quotation/create-booking/locations
-
      * Calls sp_LocationList with LocationType = 'Road' (always static per spec)
-
      * @IncludeCountry is driven by the checkbox value passed from the frontend
-
      * Returns: [{ LocationID, LocationCode, LocationName }]
-
      */
-
     public function getLocations(Request $request)
-
     {
-
         $filter         = $request->query('filter', '');
-
         $includeCountry = (int) $request->query('include_country', 0);
-
         $countryCode    = $request->query('country_code', '');
 
         try {
-
             $db = DB::getDatabaseName() === 'FITSYSUAT'
-
                 ? '[FITSCMUAT].dbo.'
-
                 : '[FITSCM].dbo.';
 
             $locationFilter = "('Station','Location','Airport','Seaport','InlandPort')";
-
             $query = "
-
             SELECT
-
                 CL.Id   AS LocationID,
-
                 CL.Code AS LocationCode,
-
                 CL.Name AS LocationName,
-
                 SL.Code AS LocationType
-
             FROM {$db}Cust_Location CL WITH (NOLOCK)
-
             INNER JOIN {$db}sys_locationType SL WITH (NOLOCK)
-
                 ON SL.Id = CL.LocationTypeId
-
                 AND SL.Code IN {$locationFilter}
-
         ";
 
             $bindings = [];
-
             if ($includeCountry === 1 && !empty($countryCode)) {
-
                 $query .= " INNER JOIN Cust_Country CC WITH (NOLOCK)
-
                             ON CC.ID = CL.CountryId
-
                             AND CC.Code = ? ";
-
                 $bindings[] = $countryCode;
             }
 
             $query .= " WHERE CL.IsActive = 1 AND CL.IsDeleted = 0 ";
-
             if (!empty($filter)) {
-
                 $query .= " AND (CL.Name LIKE ? OR CL.Code LIKE ? OR CL.UNCode LIKE ?) ";
-
                 $bindings[] = $filter . '%';
-
                 $bindings[] = $filter . '%';
-
                 $bindings[] = $filter . '%';
             }
 
             $query .= " ORDER BY CL.Name ";
-
             $results = DB::select($query, $bindings);
 
             return response()->json([
-
                 'success'   => true,
-
                 'locations' => $results,
-
             ]);
         } catch (\Exception $e) {
 
@@ -5860,149 +4331,92 @@ class QuotationController extends Controller
     }
 
     public function getAgentTypes(Request $request)
-
     {
-
         try {
-
             $filter = $request->input('filter', '');
-
             $agentTypes = DB::connection('sqlsrv')
-
                 ->select('EXEC dbo.sp_ClientAgentList @Filter = ?', [$filter]);
 
             return response()->json([
-
                 'success' => true,
-
                 'data'    => $agentTypes,
 
             ]);
         } catch (\Exception $e) {
-
             Log::error('getAgentTypes - Failed', [
-
                 'error' => $e->getMessage(),
-
             ]);
 
             return response()->json([
-
                 'success' => false,
-
                 'message' => 'Failed to load agent types: ' . $e->getMessage(),
-
             ], 500);
         }
     }
 
     public function getCustomerTypes()
-
     {
-
         try {
-
             $results = DB::select('EXEC sp_Quote_GetCustomerType');
-
             return response()->json(['success' => true, 'data' => $results]);
         } catch (\Exception $e) {
-
             return response()->json(['success' => false, 'data' => [], 'message' => $e->getMessage()]);
         }
     }
 
     public function saveCustomerDetails(Request $request)
-
     {
-
         $request->validate([
-
             'booking_no'    => 'required|string',
-
             'customer_type' => 'required|string',
-
         ]);
 
         $submittedBy = auth()->user()->displayName ?? auth()->user()->Email ?? 'system';
-
         $input = json_encode([
-
             'OperationType'     => 'CustomerUpdate',
-
             'SubmittedDatetime' => now()->format('YmdHis'),
-
             'SubmittedBy'       => $submittedBy,
-
             'Action'            => 'Update',
-
             'QuotationNo'       => $request->booking_no,
-
             'ClientID'          => '',
-
             'Company'           => '',
-
             'Address1'          => '',
-
             'Address2'          => '',
-
             'City'              => '',
-
             'ZipCode'           => '',
-
             'State'             => '',
-
             'CountryCode'       => '',
-
             'ContactPerson'     => '',
-
             'EmailID'           => '',
-
             'PhoneNo'           => '',
-
             'IndustryCode'      => '',
-
             'Industry'          => '',
-
             'CustomerType'      => $request->customer_type,
-
             'AgentType'         => $request->agent_type ?? '',
-
         ]);
 
         if (strlen($input) > 2000) {
-
             return response()->json([
-
                 'success' => false,
-
                 'message' => 'Request payload too large for SP. Max 2000 characters.'
-
             ], 400);
         }
 
         try {
-
             $output = $this->executeDetailsUpdateSP($input);
 
             if (($output['Status'] ?? '') === 'Failed') {
-
                 $remarks = collect($output['Remarks'] ?? [])->pluck('Remark')->implode(', ');
 
                 return response()->json([
-
                     'success' => false,
-
                     'message' => $remarks ?: 'Customer update failed'
-
                 ]);
             }
 
             return response()->json([
-
                 'success' => true,
-
                 'message' => 'Customer details saved successfully'
-
             ]);
         } catch (\Exception $e) {
 
@@ -6012,82 +4426,47 @@ class QuotationController extends Controller
         }
     }
 
-    /**
-
-     * Shared PDO helper for sp_Quote_DetailsUpdate.
-
-     * Uses nextRowset() to skip intermediate result sets — same pattern
-
-     * as saveCharge() / deleteCharge() which already work correctly.
-
-     */
 
     /**
-
      * Shared PDO helper for sp_Quote_DetailsUpdate.
-
      * Uses nextRowset() to skip intermediate result sets produced by
-
      * DROP/CREATE TABLE inside the SP — same pattern as saveCharge().
-
      */
 
     private function executeDetailsUpdateSP(string $inputJson): array
-
     {
-
         $pdo  = DB::connection()->getPdo();
-
         $stmt = $pdo->prepare("
-
             SET NOCOUNT ON;
-
             DECLARE @OutputJson VARCHAR(2000);
-
             EXEC dbo.sp_Quote_DetailsUpdate ?, @OutputJson = @OutputJson OUTPUT;
-
             SELECT @OutputJson AS output
-
         ");
 
         $stmt->execute([$inputJson]);
-
         do {
-
             try {
-
                 $rows = $stmt->fetchAll(\PDO::FETCH_OBJ);
-
                 if (!empty($rows) && isset($rows[0]->output)) {
-
                     $decoded = json_decode($rows[0]->output, true);
-
                     return json_last_error() === JSON_ERROR_NONE ? $decoded : [];
                 }
             } catch (\PDOException $e) {
 
                 // skip empty/intermediate result sets
-
             }
         } while ($stmt->nextRowset());
 
         Log::error('executeDetailsUpdateSP - no output returned', ['input' => $inputJson]);
-
         return [
-
             'Status'  => 'Failed',
-
             'Remarks' => [['Remark' => 'No response from stored procedure']]
-
         ];
     }
 
     public function downloadPdf($id, $version)
-
     {
-
         try {
-
             $quotation = QuotationInfo::where('ID', $id)->first(['ID', 'bookingno']);
 
             if (!$quotation) {
@@ -6141,19 +4520,12 @@ class QuotationController extends Controller
 
             return \Storage::disk('public')->download($relativePath, $document->Name);
         } catch (\Exception $e) {
-
             Log::error('downloadPdf - Failed', [
-
                 'id'      => $id,
-
                 'version' => $version,
-
                 'error'   => $e->getMessage(),
-
                 'file'    => $e->getFile(),
-
                 'line'    => $e->getLine(),
-
             ]);
 
             abort(500, 'Download failed: ' . $e->getMessage());
@@ -6161,38 +4533,26 @@ class QuotationController extends Controller
     }
 
     /**
-
      * Normalize a FilePath that may be an absolute Windows path or already relative.
-
      * generatePdf saves the full path (e.g. C:\inetpub\...\storage\app/public\quotations/...)
-
      * Storage::disk('public') expects just the relative path (e.g. quotations/5238/...)
-
      */
 
     private function normalizeFilePath(string $filePath): string
-
     {
-
         // Normalize all slashes to forward
-
         $normalized = str_replace('\\', '/', $filePath);
 
         // Try to extract relative path after 'storage/app/public/'
-
         $marker = 'storage/app/public/';
-
         $pos    = strpos($normalized, $marker);
 
         if ($pos !== false) {
-
             return substr($normalized, $pos + strlen($marker));
         }
 
         // Fallback: try 'public/' in case path was already partially normalized
-
         $marker2 = '/public/';
-
         $pos2    = strrpos($normalized, $marker2); // strrpos = last occurrence
 
         if ($pos2 !== false) {
