@@ -7,6 +7,8 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 class AzureUser extends Authenticatable
 {
@@ -121,7 +123,7 @@ class AzureUser extends Authenticatable
     // Relationships
     public function signIns()
     {
-        return $this->hasMany(SigninLog::class, 'user_id', 'id');
+        return $this->hasMany(SigninLog::class, 'username', 'userPrincipalName');
     }
 
     public function systems(): BelongsToMany
@@ -138,7 +140,7 @@ class AzureUser extends Authenticatable
             ->exists();
     }
 
-public static function findByIdentifier(string $identifier): ?self
+    public static function findByIdentifier(string $identifier): ?self
     {
         if (empty($identifier) || strlen($identifier) > 255) {
             Log::error('Invalid identifier length for Azure_Users', ['identifier' => $identifier]);
@@ -180,60 +182,60 @@ public static function findByIdentifier(string $identifier): ?self
 
 
     /**
- * Fix duplicate display names by using email username
- * 
- * @param string|null $duplicateName The display name to fix (default: 'Marilign Anawte')
- * @return int Number of users updated
- */
-public static function fixDuplicateDisplayNames(?string $duplicateName = 'Marilign Anawte'): int
-{
-    // Find all users with the duplicate display name
-    $affectedUsers = \DB::table('Azure_Users')
-        ->where('displayName', $duplicateName)
-        ->whereNotNull('userPrincipalName')
-        ->get();
-    
-    if ($affectedUsers->isEmpty()) {
-        Log::info('No users found with duplicate display name', ['name' => $duplicateName]);
-        return 0;
-    }
-    
-    $updated = 0;
-    
-    foreach ($affectedUsers as $user) {
-        // Extract username from email (part before @)
-        if (strpos($user->userPrincipalName, '@') !== false) {
-            $emailParts = explode('@', $user->userPrincipalName);
-            $username = $emailParts[0];
-            
-            // Capitalize first letter: a.ali -> A.ali
-            $newDisplayName = ucfirst($username);
-            
-            // Truncate to 23 chars (DB column limit)
-            $newDisplayName = substr($newDisplayName, 0, 23);
-            
-            \DB::table('Azure_Users')
-                ->where('id', $user->id)
-                ->update(['displayName' => $newDisplayName]);
-            
-            $updated++;
-            
-            Log::info('Updated display name', [
-                'id' => $user->id,
-                'old' => $duplicateName,
-                'new' => $newDisplayName,
-                'email' => $user->userPrincipalName
-            ]);
+     * Fix duplicate display names by using email username
+     * 
+     * @param string|null $duplicateName The display name to fix (default: 'Marilign Anawte')
+     * @return int Number of users updated
+     */
+    public static function fixDuplicateDisplayNames(?string $duplicateName = 'Marilign Anawte'): int
+    {
+        // Find all users with the duplicate display name
+        $affectedUsers = \DB::table('Azure_Users')
+            ->where('displayName', $duplicateName)
+            ->whereNotNull('userPrincipalName')
+            ->get();
+
+        if ($affectedUsers->isEmpty()) {
+            Log::info('No users found with duplicate display name', ['name' => $duplicateName]);
+            return 0;
         }
+
+        $updated = 0;
+
+        foreach ($affectedUsers as $user) {
+            // Extract username from email (part before @)
+            if (strpos($user->userPrincipalName, '@') !== false) {
+                $emailParts = explode('@', $user->userPrincipalName);
+                $username = $emailParts[0];
+
+                // Capitalize first letter: a.ali -> A.ali
+                $newDisplayName = ucfirst($username);
+
+                // Truncate to 23 chars (DB column limit)
+                $newDisplayName = substr($newDisplayName, 0, 23);
+
+                \DB::table('Azure_Users')
+                    ->where('id', $user->id)
+                    ->update(['displayName' => $newDisplayName]);
+
+                $updated++;
+
+                Log::info('Updated display name', [
+                    'id' => $user->id,
+                    'old' => $duplicateName,
+                    'new' => $newDisplayName,
+                    'email' => $user->userPrincipalName
+                ]);
+            }
+        }
+
+        Log::info('Fixed duplicate display names', [
+            'duplicate_name' => $duplicateName,
+            'updated' => $updated
+        ]);
+
+        return $updated;
     }
-    
-    Log::info('Fixed duplicate display names', [
-        'duplicate_name' => $duplicateName,
-        'updated' => $updated
-    ]);
-    
-    return $updated;
-}
 
     public static function findOrCreateUser(string $userPrincipalName, ?string $displayName = null, ?string $userIdFromCsv = null): ?self
     {
@@ -281,7 +283,6 @@ public static function fixDuplicateDisplayNames(?string $duplicateName = 'Marili
                 ['userPrincipalName' => $userPrincipalName],
                 $userData
             );
-
         } catch (\Exception $e) {
             Log::error('Failed to find or create user', [
                 'userPrincipalName' => $userPrincipalName,
@@ -295,24 +296,111 @@ public static function fixDuplicateDisplayNames(?string $duplicateName = 'Marili
 
 
     public function testFindByIdentifierResolvesViaFallback()
-{
-    $user = AzureUser::factory()->create([
-        'mail' => 'fallback@example.com',
-    ]);
+    {
+        $user = AzureUser::factory()->create([
+            'mail' => 'fallback@example.com',
+        ]);
 
-    $resolved = AzureUser::findByIdentifier('fallback@example.com');
-    $this->assertEquals($user->id, $resolved->id);
-}
+        $resolved = AzureUser::findByIdentifier('fallback@example.com');
+        $this->assertEquals($user->id, $resolved->id);
+    }
 
 
-public function scopeValid($query)
-{
-    return $query->whereNotNull('displayName')
-        ->where('displayName', '!=', '')
-        ->whereRaw("displayName NOT LIKE 'User-%'")
-        ->whereNotNull('userPrincipalName')
-        ->where('userPrincipalName', '!=', '')
-        ->whereRaw("userPrincipalName NOT LIKE 'User-%'");
-}
+    public function scopeValid($query)
+    {
+        return $query->whereNotNull('displayName')
+            ->where('displayName', '!=', '')
+            ->whereRaw("displayName NOT LIKE 'User-%'")
+            ->whereNotNull('userPrincipalName')
+            ->where('userPrincipalName', '!=', '')
+            ->whereRaw("userPrincipalName NOT LIKE 'User-%'");
+    }
 
+    /**
+     * Get comprehensive user activity summary with calendar month calculations
+     * 
+     * @return array
+     */
+    public static function getUserSummary(): array
+    {
+        $cacheKey = 'user_summary_v2';
+
+        return Cache::remember($cacheKey, 600, function () {
+            $statsService = app(\App\Services\DashboardStatsService::class);
+            $actualRange  = $statsService->getActualDateRange();
+
+            if (!$actualRange['has_data']) {
+                $totalUsers = self::valid()->count();
+                return [
+                    'total_users'       => $totalUsers,
+                    'active_this_month' => 0,
+                    'active_last_month' => 0,
+                    'inactive_users'    => $totalUsers,
+                ];
+            }
+
+            $currentMonthStart = now()->startOfMonth();
+            $currentMonthEnd   = now()->endOfMonth();
+            $lastMonthStart    = now()->subMonth()->startOfMonth();
+            $lastMonthEnd      = now()->subMonth()->endOfMonth();
+            $threeMonthsAgo    = now()->subMonths(3)->startOfDay();
+
+            $totalUsers = self::valid()->count();
+
+            $activeThisMonth = DB::select("
+            SELECT COUNT(DISTINCT au.id) as count
+            FROM Azure_Users au
+            WHERE au.displayName IS NOT NULL
+                AND au.displayName != ''
+                AND au.displayName NOT LIKE 'User-%'
+                AND au.userPrincipalName IS NOT NULL
+                AND au.userPrincipalName != ''
+                AND au.userPrincipalName NOT LIKE 'User-%'
+                AND EXISTS (
+                    SELECT 1 FROM Azure_LoginDetails ald
+                    WHERE LOWER(ald.username) = LOWER(au.userPrincipalName)
+                        AND ald.date_utc BETWEEN ? AND ?
+                )
+        ", [$currentMonthStart, $currentMonthEnd])[0]->count ?? 0;
+
+            $activeLastMonth = DB::select("
+            SELECT COUNT(DISTINCT au.id) as count
+            FROM Azure_Users au
+            WHERE au.displayName IS NOT NULL
+                AND au.displayName != ''
+                AND au.displayName NOT LIKE 'User-%'
+                AND au.userPrincipalName IS NOT NULL
+                AND au.userPrincipalName != ''
+                AND au.userPrincipalName NOT LIKE 'User-%'
+                AND EXISTS (
+                    SELECT 1 FROM Azure_LoginDetails ald
+                    WHERE LOWER(ald.username) = LOWER(au.userPrincipalName)
+                        AND ald.date_utc BETWEEN ? AND ?
+                )
+        ", [$lastMonthStart, $lastMonthEnd])[0]->count ?? 0;
+
+            $inactiveUsers = DB::select("
+            SELECT COUNT(*) as count
+            FROM Azure_Users au
+            WHERE au.displayName IS NOT NULL
+                AND au.displayName != ''
+                AND au.displayName NOT LIKE 'User-%'
+                AND au.userPrincipalName IS NOT NULL
+                AND au.userPrincipalName != ''
+                AND au.userPrincipalName NOT LIKE 'User-%'
+                AND NOT EXISTS (
+                    SELECT 1 FROM Azure_LoginDetails ald
+                    WHERE LOWER(ald.username) = LOWER(au.userPrincipalName)
+                        AND ald.date_utc >= ?
+                )
+        ", [$threeMonthsAgo])[0]->count ?? 0;
+
+            return [
+                'total_users'       => $totalUsers,
+                'active_this_month' => $activeThisMonth,
+                'active_last_month' => $activeLastMonth,
+                'inactive_users'    => $inactiveUsers,
+            ];
+        });
+    }
 }

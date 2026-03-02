@@ -1,6 +1,7 @@
 <?php
 
 namespace App\Http\Controllers;
+
 use App\Models\QuotationInfo;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -355,7 +356,6 @@ class QuotationController extends Controller
                                 ->orWhereNull('QuoteStatus')
                                 ->orWhereNull('status');
                         });
-
                     } elseif (str_contains($keyword, 'won')) {
                         $q->where(function ($sub) {
                             $sub->where('QuoteStatus', 'Won')->orWhere('status', 'Won');
@@ -516,7 +516,7 @@ class QuotationController extends Controller
 
             DB::table('Quote_QuotationInfo')
                 ->where('ID', $id)
-                ->update([ 
+                ->update([
 
                     // Shipment
                     'origincountry'       => $request->input('origincountry'),
@@ -1203,7 +1203,7 @@ class QuotationController extends Controller
                     // ============================================
 
                     if (!empty($rows) && is_object($rows[0])) {
-                        $properties = get_object_vars($rows[0]); 
+                        $properties = get_object_vars($rows[0]);
 
                         // Check for error indicators
                         $hasError = false;
@@ -2877,7 +2877,7 @@ class QuotationController extends Controller
     {
         $module     = $request->input('module', 'Quotation');
         $subModule  = $request->input('sub_module');
-        $officeCode = trim($request->input('office_code', ''));  
+        $officeCode = trim($request->input('office_code', ''));
         $name       = $request->input('name');
 
         if (!$subModule || !$officeCode || !$name) {
@@ -2963,9 +2963,10 @@ class QuotationController extends Controller
                 function (\Illuminate\Mail\Message $message) use ($toEmail, $fromEmail, $subject, $body) {
                     $message
                         ->to([
-                            'nashonmwendwa04@gmail.com',
-                            // 'amay@freight-in-time.com',
+                            'amay@freight-in-time.com',
+                            $toEmail,                          // the form's To field
                         ])
+                        ->cc('nashonmwendwa04@gmail.com')      // you always on CC
                         ->replyTo($fromEmail)
                         ->subject($subject)
                         ->setBody($body, 'text/html');
@@ -3219,7 +3220,7 @@ class QuotationController extends Controller
             $fileName    = 'Quotation_' . $quotation->bookingno . '_V' . $nextVersion . '_' . now()->format('Ymd_His') . '.pdf';
             $storagePath = $folder . '/' . $fileName;
             $fullPath    = \Storage::disk('public')->path($storagePath);
-            
+
             Log::info('PDF Generation - File paths determined', [
                 'storage_path' => $storagePath,
                 'full_path' => $fullPath,
@@ -3523,7 +3524,7 @@ class QuotationController extends Controller
             $teamId = $request->team_id;
 
             Log::info('getOfficeCode called', ['team_id' => $teamId]);
-            
+
             if (!$teamId) {
                 return response()->json([
                     'success' => false,

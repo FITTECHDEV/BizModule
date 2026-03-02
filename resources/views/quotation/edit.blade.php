@@ -639,8 +639,8 @@
         <!-- END ROW -->
 
         <!-- ============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                         MODALS
-                                                                                                                                                                                                                                                                                                                                                                                                                                                         ============================================ -->
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                             MODALS
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                             ============================================ -->
 
         {{-- REVENUE MODAL --}}
         <div class="modal fade" id="addRevenueModal" tabindex="-1" role="dialog"
@@ -1200,8 +1200,8 @@
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.min.css">
     <style>
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            MODAL STYLING — matched to FitExpress UI
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                MODAL STYLING — matched to FitExpress UI
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                ============================================= */
 
         .modal-header {
             background-color: #fff !important;
@@ -1644,9 +1644,9 @@
         }
 
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                   CREATE BOOKING MODAL — Specific overrides
-                                                                                                                                                                                                                                                                                                                                                                   to match the "Creation of Booking" design
-                                                                                                                                                                                                                                                                                                                                                                   ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                       CREATE BOOKING MODAL — Specific overrides
+                                                                                                                                                                                                                                                                                                                                                                                       to match the "Creation of Booking" design
+                                                                                                                                                                                                                                                                                                                                                                                       ============================================= */
 
         #createBookingModal .modal-title {
             color: #003580 !important;
@@ -2181,6 +2181,86 @@
                     error: function() {
                         showNotification('Failed to load UOM list', 'error');
                         $uomSelect.empty().append('<option value="">Error loading</option>');
+                    }
+                });
+            }
+
+            // Callback-aware version used by populateModal to ensure sequential loading
+            function loadBasedOnListWithCallback(type, callback) {
+                const prefix = type === 'revenue' ? 'revenue' : 'cost';
+                const $basedOnSelect = $(`select[name="${prefix}_based_on"]`);
+
+                $.ajax({
+                    url: '{{ route('quotation.based-on-list') }}',
+                    type: 'GET',
+                    beforeSend: function() {
+                        $basedOnSelect.prop('disabled', true)
+                            .empty()
+                            .append('<option value="">Loading...</option>');
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            $basedOnSelect.empty().append('<option value="">Select Based On</option>');
+                            response.based_on_list.forEach(function(item) {
+                                $basedOnSelect.append(
+                                    `<option value="${item.Code}" data-id="${item.Id}">${item.Name}</option>`
+                                );
+                            });
+                            $basedOnSelect.prop('disabled', false);
+                            if (typeof callback === 'function') callback();
+                        }
+                    },
+                    error: function() {
+                        $basedOnSelect.empty()
+                            .append('<option value="">Failed to load</option>')
+                            .prop('disabled', false);
+                    }
+                });
+            }
+
+            function loadBasedOnUOMWithCallback(type, basedOnCode, callback) {
+                const prefix = type === 'revenue' ? 'revenue' : 'cost';
+                const $uomSelect = $(`select[name="${prefix}_based_on_uom"]`);
+
+                if (!basedOnCode) {
+                    $uomSelect.empty()
+                        .append('<option value="">Select Based On first</option>')
+                        .prop('disabled', true);
+                    return;
+                }
+
+                $.ajax({
+                    url: '{{ route('quotation.based-on-uom') }}',
+                    type: 'GET',
+                    data: {
+                        based_on_code: basedOnCode
+                    },
+                    beforeSend: function() {
+                        $uomSelect.prop('disabled', true)
+                            .empty()
+                            .append('<option value="">Loading...</option>');
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            $uomSelect.empty();
+                            if (!response.uom_list || response.uom_list.length === 0) {
+                                $uomSelect.append('<option value="">No UOM Required</option>');
+                                $uomSelect.prop('disabled', true);
+                            } else {
+                                $uomSelect.append('<option value="">Select UOM</option>');
+                                response.uom_list.forEach(function(uom) {
+                                    $uomSelect.append(
+                                        `<option value="${uom.Code}">${uom.Name}</option>`);
+                                });
+                                $uomSelect.prop('disabled', false);
+                            }
+                            if (typeof callback === 'function') callback();
+                        }
+                    },
+                    error: function() {
+                        $uomSelect.empty()
+                            .append('<option value="">Error loading</option>')
+                            .prop('disabled', false);
                     }
                 });
             }
@@ -2750,32 +2830,59 @@
                 $('#addCostModal').modal('show');
             });
 
+            // ============================================
+            // POPULATE MODAL FOR EDITING A CHARGE
+            // ============================================
             function populateModal(type, charge) {
                 const $modal = type === 'revenue' ? $('#addRevenueModal') : $('#addCostModal');
+                const prefix = type;
 
-                $modal.find(`input[name="${type}_charge_code"]`).val(charge.chargeCode);
-                $modal.find(`input[name="${type}_remark"]`).val(charge.chargeRemark);
-                $modal.find(`input[name="${type}_quantity"]`).val(charge.quantity);
-                $modal.find(`input[name="${type}_rate"]`).val(charge.rate);
-                $modal.find(`input[name="${type}_exchange_rate"]`).val(charge.exChangeRate);
+                // ── Scalar fields — no async dependency ──
+                $modal.find(`input[name="${prefix}_charge_code"]`).val(charge.chargeCode);
+                $modal.find(`input[name="${prefix}_description"]`).val(charge.chargeName);
+                $modal.find(`input[name="${prefix}_remark"]`).val(charge.chargeRemark);
+                $modal.find(`input[name="${prefix}_quantity"]`).val(charge.quantity);
+                $modal.find(`input[name="${prefix}_rate"]`).val(charge.rate);
+                $modal.find(`input[name="${prefix}_exchange_rate"]`).val(charge.exChangeRate);
+                $modal.find(`input[name="${prefix}_amount"]`).val(
+                    parseFloat(charge.amtInChgCurr || 0).toFixed(2)
+                );
+                $modal.find(`input[name="${prefix}_base_amount"]`).val(
+                    parseFloat(charge.amtInBaseCurr || 0).toFixed(2)
+                );
 
-                if (charge.chgCurr && currencyMap[charge.chgCurr]) {
-                    $modal.find(`select[name="${type}_currency"]`).val(currencyMap[charge.chgCurr]);
+                // ── Currency — wait for currencyMap to be populated ──
+                function setCurrency() {
+                    if (charge.chgCurr && currencyMap[charge.chgCurr]) {
+                        $modal.find(`select[name="${prefix}_currency"]`).val(currencyMap[charge.chgCurr]);
+                    }
                 }
 
-                loadBasedOnList(type);
-                setTimeout(function() {
-                    $modal.find(`select[name="${type}_based_on"]`).val(charge.basedOnCode);
-                    if (charge.basedOnCode) {
-                        loadBasedOnUOM(type, charge.basedOnCode);
-                        setTimeout(function() {
-                            $modal.find(`select[name="${type}_based_on_uom"]`).val(charge
-                                .basedOnUOM);
-                        }, 500);
-                    }
-                }, 500);
+                const $currencySelect = $modal.find(`select[name="${prefix}_currency"]`);
+                if ($currencySelect.data('populated')) {
+                    setCurrency();
+                } else {
+                    const currencyPoll = setInterval(function() {
+                        if ($currencySelect.data('populated')) {
+                            clearInterval(currencyPoll);
+                            setCurrency();
+                        }
+                    }, 100);
+                }
 
-                calculateAmount(type);
+                // ── Based On → UOM — sequential async chain ──
+                loadBasedOnListWithCallback(type, function() {
+                    if (charge.basedOnCode) {
+                        $modal.find(`select[name="${prefix}_based_on"]`).val(charge.basedOnCode);
+
+                        loadBasedOnUOMWithCallback(type, charge.basedOnCode, function() {
+                            if (charge.basedOnUOM) {
+                                $modal.find(`select[name="${prefix}_based_on_uom"]`).val(charge
+                                    .basedOnUOM);
+                            }
+                        });
+                    }
+                });
             }
 
             // ============================================
@@ -2788,7 +2895,8 @@
                     totalBaseAmount = 0;
 
                 if (revenueCharges.length === 0) {
-                    tbody.append('<tr><td colspan="8" class="text-center text-muted">No charges added</td></tr>');
+                    tbody.append(
+                        '<tr><td colspan="8" class="text-center text-muted">No charges added</td></tr>');
                 } else {
                     revenueCharges.forEach(function(charge, index) {
                         totalAmount += parseFloat(charge.amtInChgCurr || 0);
@@ -2801,8 +2909,7 @@
                                 <td class="col-extra">${charge.basedOnUOM || 'N/A'}</td>
                                 <td class="col-extra">${charge.chgCurr || 'KES'}</td>
                                 <td class="text-right">${parseFloat(charge.amtInChgCurr  || 0).toFixed(2)}</td>
-                              <td class="text-right">${parseFloat(charge.amtInBaseCurr || 0).toFixed(2)}</td>
-<td class="text-right">${parseVatRate(charge.vatRate)}</td>
+  <td class="text-right">${parseFloat(charge.amtInBaseCurr || 0).toFixed(2)}</td>
 <td class="text-center">
     <button type="button" class="btn btn-warning btn-action edit-revenue-charge"
                                         data-index="${index}" data-id="${charge.id}">
@@ -2833,7 +2940,8 @@
                     totalBaseAmount = 0;
 
                 if (costCharges.length === 0) {
-                    tbody.append('<tr><td colspan="8" class="text-center text-muted">No charges added</td></tr>');
+                    tbody.append(
+                        '<tr><td colspan="8" class="text-center text-muted">No charges added</td></tr>');
                 } else {
                     costCharges.forEach(function(charge, index) {
                         totalAmount += parseFloat(charge.amtInChgCurr || 0);
@@ -2874,7 +2982,8 @@
             // UPDATE SUMMARY
             // ============================================
             function updateSummary() {
-                const totalRevenue = revenueCharges.reduce((sum, c) => sum + parseFloat(c.amtInBaseCurr || 0), 0);
+                const totalRevenue = revenueCharges.reduce((sum, c) => sum + parseFloat(c.amtInBaseCurr || 0),
+                    0);
                 const totalCost = costCharges.reduce((sum, c) => sum + parseFloat(c.amtInBaseCurr || 0), 0);
                 const margin = totalRevenue - totalCost;
                 const marginPercentage = totalRevenue > 0 ? (margin / totalRevenue * 100) : 0;
@@ -2975,7 +3084,8 @@
                             // Pre-select first reason
                             $select.find('option:eq(1)').prop('selected', true);
                         } else {
-                            $select.append('<option value="" disabled>No reasons available</option>');
+                            $select.append(
+                                '<option value="" disabled>No reasons available</option>');
                         }
                     },
                     error: function() {
@@ -3074,15 +3184,18 @@
                 versions.forEach(function(v) {
                     // Normalize field names — handle whatever the backend returns
                     const versionNo = v.version ?? v.Version ?? v.VersionNo ?? v.version_no ?? null;
-                    const versionLabel = v.label ?? v.Label ?? v.VersionLabel ?? ('Version ' + versionNo);
+                    const versionLabel = v.label ?? v.Label ?? v.VersionLabel ?? ('Version ' +
+                        versionNo);
                     const versionUrl = v.url ?? v.Url ?? v.download_url ?? null;
 
                     if (!versionNo) {
-                        console.warn('renderVersions: skipping entry — no recognizable version field', v);
+                        console.warn('renderVersions: skipping entry — no recognizable version field',
+                            v);
                         return;
                     }
 
-                    const downloadUrl = versionUrl ?? `/quotation/${quotationId}/download-pdf/${versionNo}`;
+                    const downloadUrl = versionUrl ??
+                        `/quotation/${quotationId}/download-pdf/${versionNo}`;
 
                     html += `
             <div class="form-group row align-items-center mb-2">
@@ -3413,7 +3526,8 @@
                         .html('<i class="fas fa-download mr-1"></i> Download');
 
                     $('#download-success-' + version).fadeIn(200);
-                    showNotification('Version ' + version + ' downloaded successfully', 'success');
+                    showNotification('Version ' + version + ' downloaded successfully',
+                        'success');
 
                     setTimeout(function() {
                         $('#download-success-' + version).fadeOut(400);
@@ -3818,7 +3932,8 @@
                     success: function(response) {
                         $select.empty().append('<option value="">-- Select --</option>');
 
-                        if (response.success && Array.isArray(response.data) && response.data.length >
+                        if (response.success && Array.isArray(response.data) && response.data
+                            .length >
                             0) {
                             response.data.forEach(function(item) {
                                 const val = item.CategoryName;
@@ -3830,7 +3945,8 @@
                             // SP returned no data — show a clear error, do NOT fall back to
                             // hardcoded values that would be rejected by sp_Quote_DetailsUpdate
                             $select.append(
-                                '<option value="" disabled>⚠ No customer types available</option>');
+                                '<option value="" disabled>⚠ No customer types available</option>'
+                            );
                             console.warn('fetchCustomerTypes: SP returned empty or failed response',
                                 response);
                         }
@@ -3839,7 +3955,8 @@
                         $select.empty()
                             .append('<option value="">-- Select --</option>')
                             .append(
-                                '<option value="" disabled>⚠ Failed to load customer types</option>');
+                                '<option value="" disabled>⚠ Failed to load customer types</option>'
+                            );
                         console.error('fetchCustomerTypes: AJAX error', xhr);
                     },
                     complete: function() {
@@ -3872,7 +3989,8 @@
                     success: function(response) {
                         $select.empty().append('<option value="">-- Select Agent Type --</option>');
 
-                        if (response.success && Array.isArray(response.data) && response.data.length >
+                        if (response.success && Array.isArray(response.data) && response.data
+                            .length >
                             0) {
                             response.data.forEach(function(item) {
                                 const code = item.Code ?? item.code ?? '';
@@ -3880,7 +3998,8 @@
 
                                 // FIX: value is now Code (e.g. "WCA"), not the GUID Id.
                                 // sp_Quote_DetailsUpdate requires the Code.
-                                const isSelected = String(code) === String(SAVED_AGENT_TYPE);
+                                const isSelected = String(code) === String(
+                                    SAVED_AGENT_TYPE);
 
                                 $select.append(
                                     `<option value="${code}" ${isSelected ? 'selected' : ''}>${name}</option>`
@@ -3888,7 +4007,8 @@
                             });
                         } else {
                             $select.append(
-                                '<option value="" disabled>-- No agent types available --</option>');
+                                '<option value="" disabled>-- No agent types available --</option>'
+                            );
                             console.warn('fetchAgentTypes: SP returned empty or failed response',
                                 response);
                         }
@@ -3995,12 +4115,14 @@
                     },
                     success: function(response) {
                         if (response.success) {
-                            showNotification('Customer details saved successfully', 'success');
+                            showNotification('Customer details saved successfully',
+                                'success');
 
                             originalCustomerType = customerType;
                             originalAgentType = agentType;
 
-                            $('#customerTypeSelect, #agentTypeSelect').prop('disabled', true);
+                            $('#customerTypeSelect, #agentTypeSelect').prop('disabled',
+                                true);
                             $('#saveCustomerDetailsBtn, #cancelCustomerDetailsBtn').hide();
                             $('#editCustomerDetailsBtn').show();
                         } else {
