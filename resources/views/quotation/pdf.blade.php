@@ -14,7 +14,7 @@
 
         body {
             font-family: Arial, Helvetica, sans-serif;
-            font-size: 11.5px;
+            font-size: 10.5px;
             color: #000;
             padding: 18px 24px;
         }
@@ -65,6 +65,15 @@
             margin-bottom: 6px;
         }
 
+        .info-table {
+            font-size: 10.5px;
+            line-height: 1.4;
+        }
+
+        .info-table strong {
+            font-weight: 700;
+        }
+
         .info-table td {
             padding: 3px 6px 3px 0;
             font-size: 11.5px;
@@ -96,24 +105,28 @@
             background: #000;
             color: #fff;
             font-weight: 700;
-            font-size: 12.5px;
-            padding: 4px 7px;
-            margin: 8px 0 5px 0;
+            font-size: **11.5px**;
+            /* ← was 12.5px — looks closer in many quotes */
+            padding: 3px 7px;
+            margin: 10px 0 4px 0;
         }
 
         /* DETAILS TABLE */
         .section-details {
             margin-bottom: 8px;
+            font-size: **10px**;
+            /* ← was 11.5px */
         }
 
         .section-details td {
-            font-size: 11.5px;
-            padding: 3px 5px;
+            font-size: **10px**;
+            padding: 2px 5px;
         }
 
         .section-details .lbl {
-            color: #555;
-            width: 22%;
+            color: #444;
+            width: 23%;
+            font-weight: 700;
             white-space: nowrap;
         }
 
@@ -209,6 +222,24 @@
             border-bottom: 1px solid #000;
             padding-bottom: 2px;
         }
+
+        /* GENERAL INFO */
+        .general-info {
+            margin: 6px 0 8px 0;
+            font-size: **10px**;
+            /* ← your requested size */
+        }
+
+        .general-info td {
+            padding: 3px 8px 3px 0;
+            font-size: 10px;
+        }
+
+        .general-info .field-label {
+            font-weight: 700;
+            width: 110px;
+            white-space: nowrap;
+        }
     </style>
 </head>
 
@@ -244,55 +275,17 @@
     {{-- ══════════════════════════════════════
         CLIENT + DATE + CURRENCY BLOCK
     ══════════════════════════════════════ --}}
-    <table class="info-table" cellpadding="0" cellspacing="0">
+    <table class="info-table" cellpadding="0" cellspacing="0"
+        style="width:100%; margin:6px 0 10px 0; font-size:10.5px;">
         <tr>
-            {{-- Left: To + Address --}}
-            <td class="to-block">
-                <table cellpadding="0" cellspacing="0">
-                    <tr>
-                        <td class="to-label">To</td>
-                        <td class="to-address">
-                            {{ $quotation->companyname ?? '' }}<br>
-                            @if ($quotation->pri_partner_street ?? null)
-                                {{ $quotation->pri_partner_street }}<br>
-                            @endif
-                            @if ($quotation->pri_partner_street2 ?? null)
-                                {{ $quotation->pri_partner_street2 }}<br>
-                            @endif
-                            @if ($quotation->pri_partner_city ?? null)
-                                {{ $quotation->pri_partner_city }}
-                            @endif
-                        </td>
-                    </tr>
-                </table>
+            <td style="vertical-align:top; width:45%;">
+                <strong>To</strong> {{ $quotation->companyname ?? 'WEEECO EPZ- A008865673E' }}
             </td>
-
-            {{-- Right: Date / Client Name / Curr --}}
-            <td class="date-block">
-                <table cellpadding="0" cellspacing="0" style="width:100%;">
-                    <tr>
-                        <td style="width:30%; padding:2px 6px;">
-                            <span class="field-label">Date</span>
-                        </td>
-                        <td style="padding:2px 6px;">
-                            {{ $generatedDate ?? now()->format('d-m-Y') }}
-                        </td>
-                        <td style="padding:2px 6px;">
-                            <span class="field-label">Curr.</span>
-                        </td>
-                        <td style="padding:2px 6px; font-weight:700;">
-                            {{ $currencyCode ?? 'N/A' }}
-                        </td>
-                    </tr>
-                    <tr>
-                        <td style="padding:2px 6px;">
-                            <span class="field-label">Client Name</span>
-                        </td>
-                        <td colspan="3" style="padding:2px 6px;">
-                            {{ $quotation->companyname ?? 'N/A' }}
-                        </td>
-                    </tr>
-                </table>
+            <td style="vertical-align:top; width:25%; text-align:center;">
+                <strong>Date</strong> {{ $generatedDate ?? '02-03-2026' }}
+            </td>
+            <td style="vertical-align:top; width:30%; text-align:right;">
+                <strong>Curr.</strong> {{ $currencyCode ?? 'N/A' }}
             </td>
         </tr>
     </table>
@@ -300,45 +293,32 @@
     {{-- ══════════════════════════════════════
      PLACE OF RECEIPT / DELIVERY / WEIGHTS
      ══════════════════════════════════════ --}}
-    <table style="width:100%; margin:4px 0;" cellpadding="0" cellspacing="0">
+    <div class="section-header">GENERAL INFORMATION</div>
+
+    <table class="general-info" cellpadding="0" cellspacing="0">
         <tr>
-            <td style="width:50%; font-size:9px; padding:2px 4px;">
-                <span class="field-label">Place of Receipt</span>&nbsp;&nbsp;
-                {{ $quotation->placeofreceipt ?? ($quotation->origincountry ?? 'N/A') }}
-            </td>
-            <td style="width:50%; font-size:9px; padding:2px 4px;">
-                <span class="field-label">Movement Type</span>&nbsp;&nbsp;
-                {{ $quotation->TransportMode ?? '' }}
-                &nbsp;&nbsp;&nbsp;&nbsp;
-                <span class="field-label">Shipment Type</span>&nbsp;&nbsp;
-                {{ $quotation->shipmentmode ?? 'DIRECT' }}
-            </td>
+            <td class="field-label">Place of Receipt</td>
+            <td>{{ $quotation->placeofreceipt ?? ($quotation->origincountry ?? 'N/A') }}</td>
+            <td class="field-label">Place of Delivery</td>
+            <td>{{ $quotation->placeofdelivery ?? ($quotation->destinationcountry ?? 'N/A') }}</td>
+            <td class="field-label">Movement Type</td>
+            <td>{{ $quotation->TransportMode ?? 'Sea' }}</td>
         </tr>
         <tr>
-            <td style="font-size:9px; padding:2px 4px;">
-                <span class="field-label">Place of Delivery</span>&nbsp;&nbsp;
-                {{ $quotation->placeofdelivery ?? ($quotation->destinationcountry ?? 'N/A') }}
-            </td>
-            <td style="font-size:9px; padding:2px 4px;">
-                <span class="field-label">Inco Term</span>&nbsp;&nbsp;
-                {{ $quotation->incoterms ?? '' }}
-                &nbsp;&nbsp;&nbsp;&nbsp;
-                <span class="field-label">Payment Terms</span>&nbsp;&nbsp;
-                {{ $quotation->paymentterms ?? '' }}
-            </td>
+            <td class="field-label">Shipment Type</td>
+            <td>{{ $quotation->shipmentmode ?? 'DIRECT' }}</td>
+            <td class="field-label">Inco Term</td>
+            <td>{{ $quotation->incoterms ?? '' }}</td>
+            <td class="field-label">Payment Terms</td>
+            <td>{{ $quotation->paymentterms ?? '' }}</td>
         </tr>
         <tr>
-            <td colspan="2"
-                style="font-size:9px; padding:2px 4px; border-top:0.5px solid #999; border-bottom:0.5px solid #999;">
-                <span class="field-label">Gross Wt.</span>&nbsp;
-                {{ number_format($quotation->grossweight ?? 0, 2) }}
-                &nbsp;&nbsp;&nbsp;
-                <span class="field-label">Chargeable Wt.</span>&nbsp;
-                {{ number_format($quotation->chargeableweight ?? 0, 2) }}
-                &nbsp;&nbsp;&nbsp;
-                <span class="field-label">Volume</span>&nbsp;
-                {{ number_format($quotation->volume ?? 0, 3) }}
-            </td>
+            <td class="field-label">Gross Wt.</td>
+            <td>{{ number_format($quotation->grossweight ?? 0, 2) }}</td>
+            <td class="field-label">Chargeable Wt.</td>
+            <td>{{ number_format($quotation->chargeableweight ?? 0, 2) }}</td>
+            <td class="field-label">Volume</td>
+            <td>{{ number_format($quotation->volume ?? 0, 3) }} m³</td>
         </tr>
     </table>
 
