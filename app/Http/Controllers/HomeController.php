@@ -166,46 +166,45 @@ class HomeController extends Controller
      * 
      * @return object
      */
-  private function getTrackerStats()
-{
-    try {
-        $baseQuery = function () {
-            return DB::table('Trip_TripInfomation')
-                ->where('IsActive', true)
-                ->where('IsDeleted', false)
-                ->where('OfficeCode', 'KE');
-        };
+    private function getTrackerStats()
+    {
+        try {
+            $baseQuery = function () {
+                return DB::table('Trip_TripInfomation')
+                    ->where('IsActive', true)
+                    ->where('IsDeleted', false)
+                    ->where('OfficeCode', 'KE');
+            };
 
-        $stats = (object) [
-            'created'  => $baseQuery()->whereNull('StartDate')->count(),
-            'transit'  => $baseQuery()->whereNotNull('StartDate')->whereNull('EndDate')->count(),
-            'complete' => $baseQuery()->whereNotNull('EndDate')->count(),
-            'total'    => $baseQuery()->count(),
-        ];
+            $stats = (object) [
+                'created'  => $baseQuery()->whereNull('StartDate')->count(),
+                'transit'  => $baseQuery()->whereNotNull('StartDate')->whereNull('EndDate')->count(),
+                'complete' => $baseQuery()->whereNotNull('EndDate')->count(),
+                'total'    => $baseQuery()->count(),
+            ];
 
-        \Log::info('Tracker Stats Retrieved', [
-            'created'  => $stats->created,
-            'transit'  => $stats->transit,
-            'complete' => $stats->complete,
-            'total'    => $stats->total,
-        ]);
+            \Log::info('Tracker Stats Retrieved', [
+                'created'  => $stats->created,
+                'transit'  => $stats->transit,
+                'complete' => $stats->complete,
+                'total'    => $stats->total,
+            ]);
 
-        return $stats;
+            return $stats;
+        } catch (\Exception $e) {
+            \Log::error('Failed to get tracker stats in HomeController', [
+                'error' => $e->getMessage(),
+                'line'  => $e->getLine(),
+            ]);
 
-    } catch (\Exception $e) {
-        \Log::error('Failed to get tracker stats in HomeController', [
-            'error' => $e->getMessage(),
-            'line'  => $e->getLine(),
-        ]);
-
-        return (object) [
-            'created'  => 0,
-            'transit'  => 0,
-            'complete' => 0,
-            'total'    => 0,
-        ];
+            return (object) [
+                'created'  => 0,
+                'transit'  => 0,
+                'complete' => 0,
+                'total'    => 0,
+            ];
+        }
     }
-}
 
     /**
      * Get Login Tracker statistics from stored procedure
