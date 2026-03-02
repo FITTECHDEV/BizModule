@@ -639,8 +639,8 @@
         <!-- END ROW -->
 
         <!-- ============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                         MODALS
-                                                                                                                                                                                                                                                                                                                                                                                                                                         ============================================ -->
+                                                                                                                                                                                                                                                                                                                                                                                                                                                         MODALS
+                                                                                                                                                                                                                                                                                                                                                                                                                                                         ============================================ -->
 
         {{-- REVENUE MODAL --}}
         <div class="modal fade" id="addRevenueModal" tabindex="-1" role="dialog"
@@ -1030,7 +1030,7 @@
                                     <div class="form-group">
                                         <label>From <span class="text-danger">*</span></label>
                                         <input type="email" class="form-control form-control-sm" id="emailFrom"
-                                            value="{{ $quotation->user_email ?? '' }}">
+                                            placeholder="Enter sender email...">
                                     </div>
                                 </div>
                                 <div class="col-md-6">
@@ -1200,8 +1200,8 @@
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.min.css">
     <style>
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            MODAL STYLING — matched to FitExpress UI
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            MODAL STYLING — matched to FitExpress UI
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            ============================================= */
 
         .modal-header {
             background-color: #fff !important;
@@ -1644,9 +1644,9 @@
         }
 
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                   CREATE BOOKING MODAL — Specific overrides
-                                                                                                                                                                                                                                                                                                                                                   to match the "Creation of Booking" design
-                                                                                                                                                                                                                                                                                                                                                   ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                   CREATE BOOKING MODAL — Specific overrides
+                                                                                                                                                                                                                                                                                                                                                                   to match the "Creation of Booking" design
+                                                                                                                                                                                                                                                                                                                                                                   ============================================= */
 
         #createBookingModal .modal-title {
             color: #003580 !important;
@@ -2271,9 +2271,13 @@
                             $currencySelect.val(currencyMap[ui.item.currency]).trigger('change');
                         }
 
+                        // VAT format from SP: "VAT @ 18.00" or "" (empty = no VAT)
+                        const $vatField = $(`input[name="${prefix}_tax_applicable"]`);
                         if (ui.item.vat && ui.item.vat.includes('@')) {
-                            const vatValue = parseFloat(ui.item.vat.split('@')[1]) || 0;
-                            $(`select[name="${prefix}_tax_applicable"]`).val(vatValue);
+                            const vatValue = parseFloat(ui.item.vat.split('@')[1].trim());
+                            $vatField.val(isNaN(vatValue) ? '' : vatValue);
+                        } else {
+                            $vatField.val('');
                         }
 
                         return false;
@@ -2797,9 +2801,10 @@
                                 <td class="col-extra">${charge.basedOnUOM || 'N/A'}</td>
                                 <td class="col-extra">${charge.chgCurr || 'KES'}</td>
                                 <td class="text-right">${parseFloat(charge.amtInChgCurr  || 0).toFixed(2)}</td>
-                                <td class="text-right">${parseFloat(charge.amtInBaseCurr || 0).toFixed(2)}</td>
-                                <td class="text-center">
-                                    <button type="button" class="btn btn-warning btn-action edit-revenue-charge"
+                              <td class="text-right">${parseFloat(charge.amtInBaseCurr || 0).toFixed(2)}</td>
+<td class="text-right">${parseVatRate(charge.vatRate)}</td>
+<td class="text-center">
+    <button type="button" class="btn btn-warning btn-action edit-revenue-charge"
                                         data-index="${index}" data-id="${charge.id}">
                                         <i class="fas fa-edit"></i>
                                     </button>
@@ -3276,8 +3281,8 @@
                 $('#emailTemplateSelect').val('');
                 $('#emailSubject').val('');
                 $('#emailBody').val('');
-                $('#emailTo').val('{{ $quotation->user_email ?? '' }}');
-                $('#emailFrom').val('{{ $quotation->pri_partner_email ?? '' }}');
+                $('#emailFrom').val('');
+                $('#emailTo').val('{{ $quotation->pri_partner_email ?? '' }}');
                 loadEmailTemplates();
                 populateQuoteVersionDropdown();
                 $('#emailQuoteModal').modal('show');
