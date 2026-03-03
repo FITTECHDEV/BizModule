@@ -166,6 +166,14 @@
                     <div class="col-12 col-md-auto order-7 ms-md-auto">
                         <div id="searchContainer"></div>
                     </div>
+
+                    {{-- CRM Sync Button --}}
+                    <div class="col-12 col-sm-6 col-md-auto order-6">
+                        <button type="button" class="btn btn-outline-primary btn-sm w-100 w-md-auto" id="btnOpenCrmSync"
+                            title="Sync records from CRM">
+                            <i class="fas fa-sync-alt me-1"></i> CRM Sync
+                        </button>
+                    </div>
                 </div>
 
                 {{-- DataTable --}}
@@ -304,6 +312,70 @@
                             Close
                         </button>
 
+                    </div>
+
+
+                </div>
+            </div>
+        </div>
+
+
+        {{-- CRM SYNC MODAL --}}
+        <div class="modal fade" id="crmSyncModal" tabindex="-1" role="dialog" aria-hidden="true">
+            <div class="modal-dialog modal-lg" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">
+                            <i class="fas fa-sync-alt mr-2"></i> CRM → Quotation Sync
+                        </h5>
+                        <button type="button" class="close" data-dismiss="modal">
+                            <span>&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+
+                        {{-- Options --}}
+                        <div class="row g-2 mb-3">
+                            <div class="col-md-4">
+                                <label class="font-weight-bold">Mode</label>
+                                <div class="form-check mt-1">
+                                    <input class="form-check-input" type="checkbox" id="crmDryRun">
+
+                                    <label class="form-check-label" for="crmDryRun">
+                                        Dry Run <small class="text-muted">(preview, no writes)</small>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="font-weight-bold">Limit <small class="text-muted">(optional)</small></label>
+                                <input type="number" id="crmLimit" class="form-control form-control-sm"
+                                    placeholder="blank = all records">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="font-weight-bold">Booking No <small
+                                        class="text-muted">(optional)</small></label>
+                                <input type="text" id="crmBooking" class="form-control form-control-sm"
+                                    placeholder="e.g. 7037 — blank = all">
+                            </div>
+                        </div>
+
+                        {{-- Progress --}}
+                        <div id="crmSyncProgress" class="d-none mb-3">
+                            <div class="d-flex align-items-center text-muted">
+                                <div class="spinner-border spinner-border-sm mr-2" role="status"></div>
+                                <span>Connecting to CRM and running sp_QuoteDetails()...</span>
+                            </div>
+                        </div>
+
+                        {{-- Result --}}
+                        <div id="crmSyncResult"></div>
+
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                        <button type="button" class="btn btn-primary" id="btnRunCrmSync">
+                            <i class="fas fa-play mr-1"></i> Run Sync
+                        </button>
                     </div>
                 </div>
             </div>
@@ -1473,6 +1545,137 @@
                 updateCardStats();
                 table.ajax.reload();
                 updateClearButtonVisibility();
+            });
+
+            // ============================================
+            // CRM SYNC MODAL
+            // ============================================
+            $('#btnOpenCrmSync').on('click', function() {
+                $('#crmSyncResult').html('');
+                $('#crmSyncProgress').addClass('d-none');
+                $('#crmDryRun').prop('checked', false);
+                $('#crmLimit, #crmBooking').val('');
+                $('#crmSyncModal').modal('show');
+            });
+
+            $(document).on('click', '#crmSyncModal .close, #crmSyncModal .btn-secondary', function(e) {
+                e.preventDefault();
+                $('#crmSyncModal').modal('hide');
+            });
+
+            $('#btnRunCrmSync').on('click', function() {
+                var btn = $(this);
+                var dryRun = $('#crmDryRun').is(':checked') ? 1 : 0;
+                var limit = $('#crmLimit').val().trim();
+                var booking = $('#crmBooking').val().trim();
+
+                btn.prop('disabled', true);
+                $('#crmSyncProgress').removeClass('d-none');
+                $('#crmSyncResult').html('');
+
+                $.ajax({
+                    url: '{{ route('crm.sync.run') }}',
+                    type: 'POST',
+                    data: {
+                        _token: '{{ csrf_token() }}',
+                        dry_run: dryRun,
+                        limit: limit || null,
+                        booking: booking || null,
+                    },
+                    success: function(res) {
+                        var s = res.summary;
+                        var dryTag = res.dry_run ?
+                            '<span class="badge badge-warning ml-2">DRY RUN</span>' : '';
+                        var alertClass = res.success ? 'alert-success' : 'alert-danger';
+                        var icon = res.success ? 'check-circle' : 'times-circle';
+
+                        var html = `
+                <div class="alert ${alertClass} mb-3">
+                    <i class="fas fa-${icon} mr-2"></i>
+                    <strong>Sync ${res.success ? 'completed' : 'completed with failures'}</strong>${dryTag}
+                </div>
+                <table class="table table-sm table-bordered w-auto">
+                    <tbody>
+                        <tr><th>Total CRM records</th><td>${s.total}</td></tr>
+                        <tr class="table-success"><th>Inserted</th><td>${s.inserted}</td></tr>
+                        <tr class="table-info"><th>Updated</th><td>${s.updated}</td></tr>
+                        <tr><th>Skipped</th><td>${s.skipped}</td></tr>
+                        <tr class="${s.failed > 0 ? 'table-danger' : ''}">
+                            <th>Failed</th><td>${s.failed}</td>
+                        </tr>
+                    </tbody>
+                </table>`;
+
+                        // Errors
+                        if (res.errors && res.errors.length) {
+                            html +=
+                                '<h6 class="text-danger mt-3">Errors</h6><ul class="list-group">';
+                            res.errors.forEach(function(e) {
+                                html += `<li class="list-group-item list-group-item-danger">
+                        <strong>Booking #${e.bookingno ?? 'N/A'}</strong>: ${e.error}
+                    </li>`;
+                            });
+                            html += '</ul>';
+                        }
+
+                        // Verification — full sync
+                        if (res.verification && res.verification.total !== undefined) {
+                            var v = res.verification;
+                            html += `<h6 class="mt-3">Verification (SQL Server)</h6>
+                    <p class="mb-1">Rows tagged <code>crm_sync</code>: <strong>${v.total}</strong></p>`;
+
+                            if (v.recent && v.recent.length) {
+                                html += `<table class="table table-sm table-bordered mt-2">
+                        <thead><tr><th>BookingNo</th><th>Company</th><th>Team</th><th>Status</th><th>UpdatedOn</th></tr></thead>
+                        <tbody>`;
+                                v.recent.forEach(function(r) {
+                                    html += `<tr>
+                            <td>${r.bookingno}</td>
+                            <td>${r.companyname ?? '-'}</td>
+                            <td>${r.teamname ?? '-'}</td>
+                            <td>${r.QuoteStatus ?? '-'}</td>
+                            <td>${r.updatedon ?? '-'}</td>
+                        </tr>`;
+                                });
+                                html += '</tbody></table>';
+                            }
+                        }
+
+                        // Verification — single booking
+                        if (res.verification && res.verification.record !== undefined) {
+                            var rec = res.verification.record;
+                            if (rec) {
+                                html += `<h6 class="mt-3">Verified — Booking #${rec.bookingno}</h6>
+                        <table class="table table-sm table-bordered w-auto"><tbody>`;
+                                Object.entries(rec).forEach(function([k, v]) {
+                                    html +=
+                                        `<tr><th>${k}</th><td>${v ?? '-'}</td></tr>`;
+                                });
+                                html += '</tbody></table>';
+                            } else {
+                                html +=
+                                    '<div class="alert alert-danger mt-3">Record not found in SQL Server after sync.</div>';
+                            }
+                        }
+
+                        // Reload table if live sync had inserts/updates
+                        if (!res.dry_run && (s.inserted > 0 || s.updated > 0)) {
+                            table.ajax.reload(null, false);
+                        }
+
+                        $('#crmSyncResult').html(html);
+                    },
+                    error: function(xhr) {
+                        $('#crmSyncResult').html(
+                            '<div class="alert alert-danger">Request failed: ' +
+                            (xhr.responseJSON?.message || xhr.statusText) + '</div>'
+                        );
+                    },
+                    complete: function() {
+                        btn.prop('disabled', false);
+                        $('#crmSyncProgress').addClass('d-none');
+                    }
+                });
             });
         });
     </script>

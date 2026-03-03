@@ -4184,43 +4184,84 @@ class QuotationController extends Controller
         }
 
         try {
-            $pdo = DB::getPdo();
-            $pdo->exec('SET NOCOUNT ON');
-            $stmt = $pdo->prepare("EXEC dbo.sp_Quote_ServiceTemplateList ?, ?");
+            $pdo  = DB::getPdo();
+            $stmt = $pdo->prepare("SET NOCOUNT ON; EXEC dbo.sp_Quote_ServiceTemplateList ?, ?");
             $stmt->execute([$quotationId, $filter]);
 
-            // ── FIX: loop through all result sets to get past PRINT @SQL ──
-            $results = [];
-            do {
-                $rows = $stmt->fetchAll(\PDO::FETCH_OBJ);
+            $results        = [];
+            $resultSetIndex = 0;
 
-                if (empty($rows)) {
+            do {
+                $resultSetIndex++;
+                try {
+                    $rows = $stmt->fetchAll(\PDO::FETCH_OBJ);
+
+                    Log::debug('getServiceTemplates - Result set #' . $resultSetIndex, [
+                        'quotation_id' => $quotationId,
+                        'row_count'    => count($rows),
+                        'first_row'    => !empty($rows) ? (array) $rows[0] : null,
+                    ]);
+
+                    // Skip empty result sets
+                    if (empty($rows)) {
+                        continue;
+                    }
+
+                    $firstVal = array_values((array) $rows[0])[0] ?? null;
+
+                    // Skip the diagnostic Select @QuotationID result set (returns a UUID)
+                    // It has one row with one column that is a GUID string
+                    if (count($rows) === 1 && count((array) $rows[0]) === 1 && is_string($firstVal)) {
+                        // If it looks like a GUID or a single diagnostic value, skip it
+                        if (preg_match('/^[0-9a-f\-]{36}$/i', trim($firstVal))) {
+                            Log::debug('getServiceTemplates - Skipping diagnostic UUID result set');
+                            continue;
+                        }
+                    }
+
+                    // SP failure message
+                    if (is_string($firstVal) && str_starts_with($firstVal, 'Failed')) {
+                        Log::warning('getServiceTemplates - SP returned failure', [
+                            'quotation_id' => $quotationId,
+                            'message'      => $firstVal,
+                        ]);
+                        return response()->json(['success' => false, 'message' => $firstVal], 422);
+                    }
+
+                    // Actual template data — has Id and Name columns
+                    if (isset($rows[0]->Id) && isset($rows[0]->Name)) {
+                        $results = $rows;
+                        Log::info('getServiceTemplates - Found templates in result set #' . $resultSetIndex, [
+                            'quotation_id'   => $quotationId,
+                            'template_count' => count($results),
+                        ]);
+                        break;
+                    }
+                } catch (\PDOException $e) {
+                    // Skip result sets that cannot be fetched (e.g. from PRINT statements)
+                    Log::debug('getServiceTemplates - Skipping unfetchable result set #' . $resultSetIndex, [
+                        'error' => $e->getMessage(),
+                    ]);
                     continue;
                 }
-
-                // Check if this result set is a failure message
-                $first = array_values((array) $rows[0])[0] ?? null;
-
-                if (is_string($first) && str_starts_with($first, 'Failed')) {
-                    return response()->json(['success' => false, 'message' => $first], 422);
-                }
-
-                // Check if rows have Id and Name — actual template data
-                if (isset($rows[0]->Id) && isset($rows[0]->Name)) {
-                    $results = $rows;
-                    break;
-                }
             } while ($stmt->nextRowset());
+
+            Log::info('getServiceTemplates - Completed', [
+                'quotation_id'    => $quotationId,
+                'template_count'  => count($results),
+                'result_sets_seen' => $resultSetIndex,
+            ]);
 
             return response()->json([
                 'success'   => true,
                 'templates' => $results,
             ]);
         } catch (\Exception $e) {
-
             Log::error('getServiceTemplates failed', [
                 'quotation_id' => $quotationId,
                 'error'        => $e->getMessage(),
+                'file'         => $e->getFile(),
+                'line'         => $e->getLine(),
             ]);
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
@@ -4690,6 +4731,7 @@ class QuotationController extends Controller
                 'failed_step'  => 0,
                 'failed_label' => 'Save Booking Info',
                 'steps'        => $steps,
+                'diagnostic'   => $step0Result['diagnostic'] ?? null,
             ]);
         }
 
@@ -4801,9 +4843,9 @@ class QuotationController extends Controller
             $pdo  = DB::connection()->getPdo();
             $stmt = $pdo->prepare("
                 SET NOCOUNT ON;
-                DECLARE @OutputRemarkJson VARCHAR(2000);
-                EXEC dbo.sp_Quote_BookingInfoUpdate ?, @OutputRemarkJson = @OutputRemarkJson OUTPUT;
-                SELECT @OutputRemarkJson AS OutputJson
+                DECLARE @OutputJson VARCHAR(2000);
+                EXEC dbo.sp_Quote_DetailsUpdate ?, @OutputJson = @OutputJson OUTPUT;
+                SELECT @OutputJson AS OutputJson
             ");
             $stmt->execute([$inputJson]);
 
@@ -4836,14 +4878,38 @@ class QuotationController extends Controller
                 return ['status' => 'Failed', 'remark' => 'Failed to parse booking info SP response'];
             }
 
+            // Fetch the raw OfficeCode for diagnostic purposes
+            $rawOfficeCode = DB::selectOne(
+                "SELECT OfficeCode, LEN(OfficeCode) as OfficeCodeLen, QuoteNo 
+     FROM Quote_QuotationInfo WHERE QuoteNo = ?",
+                [$quoteNo]
+            );
+
             Log::info('runBookingInfoUpdate - Output', [
-                'quote_no' => $quoteNo,
-                'output'   => $output,
+                'quote_no'          => $quoteNo,
+                'output'            => $output,
+                'sp_called'         => 'sp_Quote_DetailsUpdate',
+                'input_json'        => $inputJson,
+                'diagnostic' => [
+                    'raw_office_code'     => $rawOfficeCode->OfficeCode ?? 'N/A',
+                    'office_code_length'  => $rawOfficeCode->OfficeCodeLen ?? 'N/A',
+                    'trimmed_office_code' => trim($rawOfficeCode->OfficeCode ?? ''),
+                    'has_trailing_space'  => isset($rawOfficeCode->OfficeCode)
+                        && $rawOfficeCode->OfficeCode !== trim($rawOfficeCode->OfficeCode),
+                ]
             ]);
 
             return [
                 'status' => $output['Status'] ?? 'Failed',
                 'remark' => $output['Remark'] ?? '',
+                'diagnostic' => [
+                    'sp_called'           => 'sp_Quote_DetailsUpdate',
+                    'quote_no'            => $quoteNo,
+                    'raw_office_code'     => $rawOfficeCode->OfficeCode ?? 'N/A',
+                    'office_code_length'  => $rawOfficeCode->OfficeCodeLen ?? 'N/A',
+                    'has_trailing_space'  => isset($rawOfficeCode->OfficeCode)
+                        && $rawOfficeCode->OfficeCode !== trim($rawOfficeCode->OfficeCode),
+                ]
             ];
         } catch (\Exception $e) {
             Log::error('runBookingInfoUpdate - Exception', [

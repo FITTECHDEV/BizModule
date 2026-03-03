@@ -835,6 +835,9 @@ Route::middleware(['auth', 'can:approve-all-entity-request'])->group(function ()
 
     Route::post('/quotation/{id}/update', [App\Http\Controllers\QuotationController::class, 'update'])
         ->name('quotation.update');
+
+    Route::post('/crm/sync/run', [App\Http\Controllers\CrmSyncController::class, 'run'])
+        ->name('crm.sync.run');
 });
 
 // ============================================================================
