@@ -612,10 +612,10 @@
      applied via the "Apply Terms" button.
      Only rendered when a template was saved.
      ══════════════════════════════════════ --}}
-    @if (!empty($quotation->terms_condition))
+    @if (!empty($termsCondition))
         <div class="terms-section" style="margin-top:14px;">
             <div class="additional-terms-title">Additional Terms &amp; Condition</div>
-            <div class="terms-content">{{ $quotation->terms_condition }}</div>
+            <div class="terms-content">{!! $termsCondition !!}</div>
         </div>
     @else
         <div class="additional-terms-title" style="margin-top:14px;">Additional Terms &amp; Condition</div>

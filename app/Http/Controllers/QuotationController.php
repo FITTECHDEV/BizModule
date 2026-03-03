@@ -3137,12 +3137,11 @@ class QuotationController extends Controller
                 LEFT JOIN [FITSCMUAT].dbo.Cust_Party CP WITH (NOLOCK) ON CP.Id = QC.PartyID
                 WHERE QI.bookingno = ? AND QC.IsDeleted = 0
                 ORDER BY QC.IsRevenue DESC, BC.Name ASC
-
             ", [$quotation->bookingno]);
             } catch (\Exception $e) {
                 Log::error('PDF Generation - Failed to load charges', [
                     'booking_no' => $quotation->bookingno,
-                    'error' => $e->getMessage()
+                    'error'      => $e->getMessage()
                 ]);
                 $charges = [];
             }
@@ -3154,8 +3153,37 @@ class QuotationController extends Controller
 
             Log::info('PDF Generation - Charges loaded', [
                 'revenue_count' => count($revenueCharges),
-                'cost_count' => count($costCharges)
+                'cost_count'    => count($costCharges)
             ]);
+
+            // ── Fetch saved T&C content from document store ──
+            $termsCondition = '';
+            try {
+                $tcDocument = DB::table('Quote_Quotation_Document')
+                    ->where('QuotationInfoID', $quotation->ID)
+                    ->where('DocumentType', 'TermsCondition')
+                    ->where('IsDeleted', 0)
+                    ->orderByDesc('CreatedOn')
+                    ->first(['FilePath', 'Name']);
+
+                if ($tcDocument && $tcDocument->FilePath) {
+                    $relativePath = $this->normalizeFilePath($tcDocument->FilePath);
+                    if (\Storage::disk('public')->exists($relativePath)) {
+                        $termsCondition = \Storage::disk('public')->get($relativePath);
+                    }
+                }
+
+                Log::info('PDF Generation - T&C loaded', [
+                    'booking_no'  => $quotation->bookingno,
+                    'tc_found'    => !empty($termsCondition),
+                    'tc_doc_name' => $tcDocument->Name ?? 'none',
+                ]);
+            } catch (\Exception $e) {
+                Log::warning('PDF Generation - T&C fetch failed (non-fatal)', [
+                    'booking_no' => $quotation->bookingno,
+                    'error'      => $e->getMessage(),
+                ]);
+            }
 
             // Build HTML content with error handling
             try {
@@ -3166,13 +3194,13 @@ class QuotationController extends Controller
                     'totalRevenue'   => $totalRevenue,
                     'totalCost'      => $totalCost,
                     'generatedDate'  => now()->format('d-m-Y'),
+                    'termsCondition' => $termsCondition,
                 ])->render();
             } catch (\Exception $e) {
-
                 Log::error('PDF Generation - View render failed', [
                     'error' => $e->getMessage(),
-                    'file' => $e->getFile(),
-                    'line' => $e->getLine()
+                    'file'  => $e->getFile(),
+                    'line'  => $e->getLine()
                 ]);
 
                 return response()->json([
@@ -3185,16 +3213,14 @@ class QuotationController extends Controller
                 'html_length' => strlen($html)
             ]);
 
-            // Create PDF with enhanced configuration
-            // Create PDF using DomPDF — matches browser rendering accurately
-
+            // Create PDF using DomPDF
             try {
                 $options = new \Dompdf\Options();
                 $options->set('isHtml5ParserEnabled', true);
                 $options->set('isPhpEnabled', false);
-                $options->set('isRemoteEnabled', true); // needed for logo image
+                $options->set('isRemoteEnabled', true);
                 $options->set('defaultFont', 'Arial');
-                $options->set('chroot', public_path()); // allow access to public/ for logo
+                $options->set('chroot', public_path());
                 $pdf = new \Dompdf\Dompdf($options);
                 $pdf->loadHtml($html, 'UTF-8');
                 $pdf->setPaper('A4', 'portrait');
@@ -3202,7 +3228,6 @@ class QuotationController extends Controller
 
                 Log::info('PDF Generation - PDF object created successfully');
             } catch (\Exception $e) {
-
                 Log::error('PDF Generation - DomPDF creation failed', [
                     'error' => $e->getMessage(),
                     'file'  => $e->getFile(),
@@ -3218,32 +3243,29 @@ class QuotationController extends Controller
             // Determine version and file path
             $folder = 'quotations/' . $quotation->bookingno;
 
-            // Ensure directory exists
             try {
                 \Storage::disk('public')->makeDirectory($folder);
             } catch (\Exception $e) {
-
                 Log::error('PDF Generation - Directory creation failed', [
                     'folder' => $folder,
-                    'error' => $e->getMessage()
+                    'error'  => $e->getMessage()
                 ]);
             }
 
             $existingFiles = \Storage::disk('public')->files($folder);
             $nextVersion   = count($existingFiles) + 1;
-            $fileName    = 'Quotation_' . $quotation->bookingno . '_V' . $nextVersion . '_' . now()->format('Ymd_His') . '.pdf';
-            $storagePath = $folder . '/' . $fileName;
-            $fullPath    = \Storage::disk('public')->path($storagePath);
+            $fileName      = 'Quotation_' . $quotation->bookingno . '_V' . $nextVersion . '_' . now()->format('Ymd_His') . '.pdf';
+            $storagePath   = $folder . '/' . $fileName;
+            $fullPath      = \Storage::disk('public')->path($storagePath);
 
             Log::info('PDF Generation - File paths determined', [
                 'storage_path' => $storagePath,
-                'full_path' => $fullPath,
-                'version' => $nextVersion
+                'full_path'    => $fullPath,
+                'version'      => $nextVersion
             ]);
 
-            // Output PDF to file with error handling
+            // Write PDF to disk
             try {
-                // Ensure parent directory exists
                 $dir = dirname($fullPath);
 
                 if (!file_exists($dir)) {
@@ -3253,25 +3275,20 @@ class QuotationController extends Controller
 
                 file_put_contents($fullPath, $pdf->output());
 
-                // Verify file was created
                 if (!file_exists($fullPath)) {
-
                     throw new \Exception('PDF file was not created at: ' . $fullPath);
                 }
 
-                $fileSize = filesize($fullPath);
-
                 Log::info('PDF Generation - File written successfully', [
                     'path' => $fullPath,
-                    'size' => $fileSize
+                    'size' => filesize($fullPath)
                 ]);
             } catch (\Exception $e) {
-
                 Log::error('PDF Generation - File write failed', [
-                    'path' => $fullPath,
+                    'path'  => $fullPath,
                     'error' => $e->getMessage(),
-                    'file' => $e->getFile(),
-                    'line' => $e->getLine()
+                    'file'  => $e->getFile(),
+                    'line'  => $e->getLine()
                 ]);
 
                 return response()->json([
@@ -3280,7 +3297,7 @@ class QuotationController extends Controller
                 ], 500);
             }
 
-            // Save to database with error handling
+            // Save document record to database
             try {
                 DB::table('Quote_Quotation_Document')->insert([
                     'Id'              => DB::raw('NEWID()'),
@@ -3290,7 +3307,7 @@ class QuotationController extends Controller
                     'IsVisible'       => 1,
                     'IsPrinted'       => 1,
                     'PrintedOn'       => now(),
-                    'FilePath' => $storagePath,
+                    'FilePath'        => $storagePath,
                     'CreatedBy'       => $submittedBy,
                     'CreatedOn'       => now(),
                     'LastModifiedBy'  => $submittedBy,
@@ -3300,19 +3317,19 @@ class QuotationController extends Controller
 
                 Log::info('PDF Generation - Database record created successfully');
             } catch (\Exception $e) {
-
                 Log::error('PDF Generation - Database insert failed', [
                     'error' => $e->getMessage(),
-                    'file' => $e->getFile(),
-                    'line' => $e->getLine()
+                    'file'  => $e->getFile(),
+                    'line'  => $e->getLine()
                 ]);
-                // Don't fail the request - PDF was created successfully
+                // Non-fatal — PDF was written successfully, proceed
             }
 
             Log::info('PDF Generation - Completed successfully', [
                 'booking_no' => $quotation->bookingno,
-                'version' => $nextVersion,
-                'path' => $storagePath,
+                'version'    => $nextVersion,
+                'path'       => $storagePath,
+                'tc_applied' => !empty($termsCondition),
             ]);
 
             return response()->json([
@@ -3322,12 +3339,11 @@ class QuotationController extends Controller
                 'url'     => \Storage::disk('public')->url($storagePath),
             ]);
         } catch (\Exception $e) {
-
             Log::error('PDF Generation - Unexpected error', [
-                'id' => $id,
+                'id'    => $id,
                 'error' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
+                'file'  => $e->getFile(),
+                'line'  => $e->getLine(),
                 'trace' => $e->getTraceAsString()
             ]);
 

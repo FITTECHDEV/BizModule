@@ -2584,7 +2584,7 @@
                             name="revenue_markup_amount" step="0.01" value="0.00" readonly>
                     </div>
                 </div>
-            `;
+                `;
                         $modal.find('.rate-row').after(increaseByHtml);
                         $increaseByRow = $modal.find('.increase-by-row');
                     }
@@ -2909,9 +2909,9 @@
                                 <td class="col-extra">${charge.basedOnUOM || 'N/A'}</td>
                                 <td class="col-extra">${charge.chgCurr || 'KES'}</td>
                                 <td class="text-right">${parseFloat(charge.amtInChgCurr  || 0).toFixed(2)}</td>
-  <td class="text-right">${parseFloat(charge.amtInBaseCurr || 0).toFixed(2)}</td>
-<td class="text-center">
-    <button type="button" class="btn btn-warning btn-action edit-revenue-charge"
+                                <td class="text-right">${parseFloat(charge.amtInBaseCurr || 0).toFixed(2)}</td>
+                                <td class="text-center">
+                                    <button type="button" class="btn btn-warning btn-action edit-revenue-charge"
                                         data-index="${index}" data-id="${charge.id}">
                                         <i class="fas fa-edit"></i>
                                     </button>
