@@ -608,10 +608,10 @@
     </div>
 
     {{-- ══════════════════════════════════════
-     ADDITIONAL TERMS — from the T&C template
-     applied via the "Apply Terms" button.
-     Only rendered when a template was saved.
-     ══════════════════════════════════════ --}}
+    ADDITIONAL TERMS — from the T&C template
+    applied via the "Apply Terms" button.
+    Only rendered when a template was saved.
+    ══════════════════════════════════════ --}}
     @if (!empty($termsCondition))
         <div class="terms-section" style="margin-top:14px;">
             <div class="additional-terms-title">Additional Terms &amp; Condition</div>

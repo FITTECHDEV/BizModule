@@ -959,6 +959,7 @@
                     .data('quotation-id', $btn.data('id'))
                     .data('booking-no', $btn.data('booking'))
                     .data('team-id', $btn.data('team'))
+                    .data('quote-no', $btn.data('quoteno'))
                     .modal('show');
             });
 
@@ -969,7 +970,7 @@
             // ============================================
             $('#createBookingModal').on('show.bs.modal', function() {
                 var modal = $(this);
-                var quotationId = modal.data('quotation-id');
+                var quoteNo = modal.data('quote-no');
                 var teamId = modal.data('team-id');
 
                 // ── Reset all fields ──
@@ -982,7 +983,7 @@
 
                 // ── 1. Service Templates ──
                 $.get('{{ route('quotation.booking.service-templates') }}', {
-                        quotation_id: quotationId
+                        quotation_id: quoteNo
                     })
                     .done(function(res) {
                         var $select = $('#cb_service_template').empty().append(

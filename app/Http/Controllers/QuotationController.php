@@ -217,6 +217,7 @@ class QuotationController extends Controller
         $query = DB::table('Quote_QuotationInfo')
             ->select([
                 'ID',
+                'QuoteNo',
                 'bookingno',
                 'companyname',
                 'clientid',
@@ -476,12 +477,13 @@ class QuotationController extends Controller
 
                 if ($cardFilter === 'won' && $isCleanWon) {
                     $createBookingBtn = ' <button class="btn btn-success btn-sm btn-create-booking"
-                        data-id="' . $row->ID . '"
-                        data-booking="' . $row->bookingno . '"
-                        data-team="' . $row->teamid . '"
-                        title="Create Booking">
-                            <i class="fas fa-plus-circle"></i>
-                    </button>';
+    data-id="' . $row->ID . '"
+    data-booking="' . $row->bookingno . '"
+    data-team="' . $row->teamid . '"
+    data-quoteno="' . $row->QuoteNo . '"  
+    title="Create Booking">
+        <i class="fas fa-plus-circle"></i>
+</button>';
                 }
                 return $viewBtn . $editBtn . $retriggerBtn . $createBookingBtn;
             })
@@ -4179,6 +4181,11 @@ class QuotationController extends Controller
         $quotationId = $request->query('quotation_id');
         $filter      = $request->query('filter', '');
 
+        Log::info('getServiceTemplates - params', [
+            'quotation_id' => $quotationId,
+            'filter'       => $filter,
+        ]);
+
         if (!$quotationId) {
             return response()->json(['success' => false, 'message' => 'quotation_id is required'], 422);
         }
@@ -4202,17 +4209,14 @@ class QuotationController extends Controller
                         'first_row'    => !empty($rows) ? (array) $rows[0] : null,
                     ]);
 
-                    // Skip empty result sets
                     if (empty($rows)) {
                         continue;
                     }
 
                     $firstVal = array_values((array) $rows[0])[0] ?? null;
 
-                    // Skip the diagnostic Select @QuotationID result set (returns a UUID)
-                    // It has one row with one column that is a GUID string
+                    // Skip diagnostic UUID result sets
                     if (count($rows) === 1 && count((array) $rows[0]) === 1 && is_string($firstVal)) {
-                        // If it looks like a GUID or a single diagnostic value, skip it
                         if (preg_match('/^[0-9a-f\-]{36}$/i', trim($firstVal))) {
                             Log::debug('getServiceTemplates - Skipping diagnostic UUID result set');
                             continue;
@@ -4228,8 +4232,8 @@ class QuotationController extends Controller
                         return response()->json(['success' => false, 'message' => $firstVal], 422);
                     }
 
-                    // Actual template data — has Id and Name columns
-                    if (isset($rows[0]->Id) && isset($rows[0]->Name)) {
+                    // Actual template data — SP returns lowercase 'id' and 'Name'
+                    if (isset($rows[0]->id) && isset($rows[0]->Name)) {
                         $results = $rows;
                         Log::info('getServiceTemplates - Found templates in result set #' . $resultSetIndex, [
                             'quotation_id'   => $quotationId,
@@ -4238,7 +4242,6 @@ class QuotationController extends Controller
                         break;
                     }
                 } catch (\PDOException $e) {
-                    // Skip result sets that cannot be fetched (e.g. from PRINT statements)
                     Log::debug('getServiceTemplates - Skipping unfetchable result set #' . $resultSetIndex, [
                         'error' => $e->getMessage(),
                     ]);
@@ -4247,8 +4250,8 @@ class QuotationController extends Controller
             } while ($stmt->nextRowset());
 
             Log::info('getServiceTemplates - Completed', [
-                'quotation_id'    => $quotationId,
-                'template_count'  => count($results),
+                'quotation_id'     => $quotationId,
+                'template_count'   => count($results),
                 'result_sets_seen' => $resultSetIndex,
             ]);
 
@@ -4821,6 +4824,9 @@ class QuotationController extends Controller
         string $submittedBy
     ): array {
         try {
+            // Truncate to 25 chars to match SP varchar(25) declaration
+            $submittedBy = substr($submittedBy, 0, 25);
+
             $inputJson = json_encode([
                 'OperationType'     => 'BookingInfoUpdate',
                 'SubmittedDatetime' => now()->format('YmdHis'),
