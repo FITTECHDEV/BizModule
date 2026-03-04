@@ -105,8 +105,7 @@
             background: #000;
             color: #fff;
             font-weight: 700;
-            font-size: **11.5px**;
-            /* ← was 12.5px — looks closer in many quotes */
+            font-size: 11.5px;
             padding: 3px 7px;
             margin: 10px 0 4px 0;
         }
@@ -114,12 +113,11 @@
         /* DETAILS TABLE */
         .section-details {
             margin-bottom: 8px;
-            font-size: **10px**;
-            /* ← was 11.5px */
+            font-size: 10px;
         }
 
         .section-details td {
-            font-size: **10px**;
+            font-size: 10px;
             padding: 2px 5px;
         }
 
@@ -211,7 +209,35 @@
         }
 
         .terms-content {
-            white-space: pre-wrap;
+            font-size: 10.5px;
+            line-height: 1.6;
+        }
+
+        .terms-content p {
+            margin: 0 0 6px 0;
+        }
+
+        .terms-content ol,
+        .terms-content ul {
+            margin: 4px 0 6px 0;
+            padding-left: 20px;
+        }
+
+        .terms-content li {
+            margin-bottom: 4px;
+        }
+
+        .terms-content strong,
+        .terms-content b {
+            font-weight: 700;
+        }
+
+        .terms-content h1,
+        .terms-content h2,
+        .terms-content h3 {
+            font-size: 11px;
+            font-weight: 700;
+            margin: 6px 0 4px 0;
         }
 
         .additional-terms-title {
@@ -226,8 +252,7 @@
         /* GENERAL INFO */
         .general-info {
             margin: 6px 0 8px 0;
-            font-size: **10px**;
-            /* ← your requested size */
+            font-size: 10px;
         }
 
         .general-info td {
@@ -254,7 +279,7 @@
                 <table cellpadding="0" cellspacing="0">
                     <tr>
                         <td style="vertical-align:middle; padding-right:8px;">
-                            <img src="{{ 'file://' . str_replace('\\', '/', public_path('logo.png')) }}"
+                            <img src="{{ 'file://' . str_replace('\\', '/', public_path('img/logo.png')) }}"
                                 style="height:42px;">
                         </td>
                         <td class="header-company">
@@ -267,7 +292,7 @@
             </td>
             <td class="quotation-title">
                 <div class="title-label">Quotation For</div>
-                <div class="booking-no">{{ $quotation->bookingno ?? 'N/A' }}</div>
+                <div class="booking-no">{{ $quotation->bookingno ?? '' }}</div>
             </td>
         </tr>
     </table>
@@ -279,13 +304,13 @@
         style="width:100%; margin:6px 0 10px 0; font-size:10.5px;">
         <tr>
             <td style="vertical-align:top; width:45%;">
-                <strong>To</strong> {{ $quotation->companyname ?? 'WEEECO EPZ- A008865673E' }}
+                <strong>To</strong> {{ $quotation->companyname ?? '' }}
             </td>
             <td style="vertical-align:top; width:25%; text-align:center;">
-                <strong>Date</strong> {{ $generatedDate ?? '02-03-2026' }}
+                <strong>Date</strong> {{ $generatedDate ?? '' }}
             </td>
             <td style="vertical-align:top; width:30%; text-align:right;">
-                <strong>Curr.</strong> {{ $currencyCode ?? 'N/A' }}
+                <strong>Curr.</strong> {{ $currencyCode ?? '' }}
             </td>
         </tr>
     </table>
@@ -298,15 +323,15 @@
     <table class="general-info" cellpadding="0" cellspacing="0">
         <tr>
             <td class="field-label">Place of Receipt</td>
-            <td>{{ $quotation->placeofreceipt ?? ($quotation->origincountry ?? 'N/A') }}</td>
+            <td>{{ $quotation->placeofreceipt ?? $quotation->origincountry ?? '' }}</td>
             <td class="field-label">Place of Delivery</td>
-            <td>{{ $quotation->placeofdelivery ?? ($quotation->destinationcountry ?? 'N/A') }}</td>
+            <td>{{ $quotation->placeofdelivery ?? $quotation->destinationcountry ?? '' }}</td>
             <td class="field-label">Movement Type</td>
-            <td>{{ $quotation->TransportMode ?? 'Sea' }}</td>
+            <td>{{ $quotation->TransportMode ?? '' }}</td>
         </tr>
         <tr>
             <td class="field-label">Shipment Type</td>
-            <td>{{ $quotation->shipmentmode ?? 'DIRECT' }}</td>
+            <td>{{ $quotation->shipmentmode ?? '' }}</td>
             <td class="field-label">Inco Term</td>
             <td>{{ $quotation->incoterms ?? '' }}</td>
             <td class="field-label">Payment Terms</td>
@@ -326,16 +351,16 @@
      SEA-IMPORT / SERVICE SECTION HEADER
      ══════════════════════════════════════ --}}
     <div class="section-header">
-        {{ strtoupper($quotation->ServiceVerticalname ?? 'SEA - IMPORT') }}
+        {{ strtoupper($quotation->ServiceVerticalname ?? '') }}
     </div>
 
     {{-- Section detail rows --}}
     <table class="section-details" cellpadding="0" cellspacing="0">
         <tr>
             <td class="lbl">Owner Office</td>
-            <td class="val">{{ $quotation->teamname ?? 'N/A' }}</td>
+            <td class="val">{{ $quotation->teamname ?? '' }}</td>
             <td class="lbl">Executing Office</td>
-            <td class="val">{{ $quotation->executingoffice ?? ($quotation->teamname ?? 'N/A') }}</td>
+            <td class="val">{{ $quotation->executingoffice ?? $quotation->teamname ?? '' }}</td>
         </tr>
         <tr>
             <td class="lbl">Place of Loading</td>
@@ -345,7 +370,7 @@
         </tr>
         <tr>
             <td class="lbl">Place of Discharge</td>
-            <td class="val">{{ $quotation->portofdischarge ?? ($quotation->origincountry ?? '') }}</td>
+            <td class="val">{{ $quotation->portofdischarge ?? $quotation->origincountry ?? '' }}</td>
             <td class="lbl">Vehicle</td>
             <td class="val">{{ $quotation->vehicle ?? '' }}</td>
         </tr>
@@ -391,9 +416,9 @@
         <tbody>
             @forelse($revenueCharges as $charge)
                 <tr>
-                    <td class="col-charge">{{ $charge->ChargeName ?? ($charge->ChargeCode ?? 'N/A') }}</td>
+                    <td class="col-charge">{{ $charge->ChargeName ?? $charge->ChargeCode ?? '' }}</td>
                     <td class="col-based">
-                        {{ $charge->BasedOn ?? ($charge->BasedOnCode ?? '') }}<br>
+                        {{ $charge->BasedOn ?? $charge->BasedOnCode ?? '' }}<br>
                         {{ $charge->BasedOnUOM ?? '' }}
                     </td>
                     <td class="col-rate">
@@ -435,190 +460,17 @@
         </tfoot>
     </table>
 
-    {{-- ══════════════════════════════════════
-     TERMS & CONDITIONS
-     Static boilerplate (a–t) with the storage
-     rate table (g) driven by $storageRates.
-
-     To override storage rates from the controller:
-         $storageRates = [
-             ['days' => 'Day 1-9',   '20ft' => null,  '40ft' => null],
-             ['days' => 'Day 10-21', '20ft' => 20.00, '40ft' => 40.00],
-             ['days' => 'From 22',   '20ft' => 40.00, '40ft' => 80.00],
-         ];
-     ══════════════════════════════════════ --}}
-    <div class="terms-section">
-        <div class="terms-title">Terms &amp; Condition</div>
-
-        @php
-            // Default storage rates — override by passing $storageRates from the controller
-            $storageRates = $storageRates ?? [
-                ['days' => 'Day 1-9', '20ft' => null, '40ft' => null],
-                ['days' => 'Day 10-21', '20ft' => 20.0, '40ft' => 40.0],
-                ['days' => 'From 22', '20ft' => 40.0, '40ft' => 80.0],
-            ];
-        @endphp
-
-        <table cellpadding="0" cellspacing="0" style="width:100%; font-size:10.5px; line-height:1.6;">
-            <tr>
-                <td style="padding:1px 0; vertical-align:top; width:18px;">a)</td>
-                <td style="padding:1px 0;">Service charges in Kenya marked with * are subject to 16% VAT</td>
-            </tr>
-            <tr>
-                <td style="padding:1px 0; vertical-align:top;">b)</td>
-                <td style="padding:1px 0;">Kindly be informed that some shipping lines e.g. MAERSK / Safmarine are
-                    charging an additional equipment management fees of up to USD 50 for 20ft and USD 100 for 40ft ctrs.
-                    in transit.</td>
-            </tr>
-            <tr>
-                <td style="padding:1px 0; vertical-align:top;">c)</td>
-                <td style="padding:1px 0;">Kindly note that this quotation is only valid if a container does not
-                    contain more than 4 different items / HS codes and can be verified at the border (Express
-                    Clearance). If a container contains 5 or more items / HS codes it will be transferred to the ICD in
-                    Mombasa and additional charges will incur.</td>
-            </tr>
-            <tr>
-                <td style="padding:1px 0; vertical-align:top;">d)</td>
-                <td style="padding:1px 0;">This quotation does not include port/terminal storage, container demurrage
-                    and possible damage repair charges or truck detention fees if any.</td>
-            </tr>
-            <tr>
-                <td style="padding:1px 0; vertical-align:top;">e)</td>
-                <td style="padding:1px 0;">Kindly note that should any of these charges or payments of government
-                    duties &amp; taxes, custom scanning fee, storage at customs warehouse etc. be incurred, these costs
-                    will be at cost to consignee's account and are due in advance.</td>
-            </tr>
-            <tr>
-                <td style="padding:1px 0; vertical-align:top;">f)</td>
-                <td style="padding:1px 0;">Port Storage Charges at the Mombasa for containerized transit imports (no
-                    free time allowed for Hazardous and Flat Rack ctrs.)</td>
-            </tr>
-            <tr>
-                <td style="padding:4px 0 2px 0; vertical-align:top;">g)</td>
-                <td style="padding:4px 0 2px 0;">
-                    Storage Amount in USD
-                    <table cellpadding="0" cellspacing="0"
-                        style="margin-top:4px; border-collapse:collapse; font-size:10.5px;">
-                        <thead>
-                            <tr>
-                                <th
-                                    style="border:1px solid #666; padding:3px 14px 3px 6px; text-align:left; background:#f0f0f0;">
-                                    Days</th>
-                                <th
-                                    style="border:1px solid #666; padding:3px 20px 3px 6px; text-align:right; background:#f0f0f0;">
-                                    20ft</th>
-                                <th
-                                    style="border:1px solid #666; padding:3px 20px 3px 6px; text-align:right; background:#f0f0f0;">
-                                    40ft</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach ($storageRates as $row)
-                                <tr>
-                                    <td style="border:1px solid #777; padding:2px 14px 2px 6px;">{{ $row['days'] }}
-                                    </td>
-                                    <td style="border:1px solid #777; padding:2px 20px 2px 6px; text-align:right;">
-                                        {{ isset($row['20ft']) && $row['20ft'] !== null ? number_format($row['20ft'], 2) : '-' }}
-                                    </td>
-                                    <td style="border:1px solid #777; padding:2px 20px 2px 6px; text-align:right;">
-                                        {{ isset($row['40ft']) && $row['40ft'] !== null ? number_format($row['40ft'], 2) : '-' }}
-                                    </td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </td>
-            </tr>
-            <tr>
-                <td style="padding:1px 0; vertical-align:top;">h)</td>
-                <td style="padding:1px 0;">Kindly note that after the allowed free storage additional remarshalling
-                    charges of USD 110 and USD 165 will be incurred for 20' and 40' Ctrs. respectively</td>
-            </tr>
-            <tr>
-                <td style="padding:1px 0; vertical-align:top;">i)</td>
-                <td style="padding:1px 0;">Demurrage free time from the Shipping Lines for transit import to Uganda are
-                    approx. 30 days. The demurrage charges thereafter also depend on the carrier and daily charges are
-                    getting higher over time.</td>
-            </tr>
-            <tr>
-                <td style="padding:1px 0; vertical-align:top;">j)</td>
-                <td style="padding:1px 0;">Truck detention free time for transit imports are 2 days at the border and 2
-                    days for offloading at final destination. Thereafter detention charge of USD 200/ truck / day will
-                    be incurred.</td>
-            </tr>
-            <tr>
-                <td style="padding:1px 0; vertical-align:top;">k)</td>
-                <td style="padding:1px 0;">Port Handling charges are 10% higher for hazardous goods.</td>
-            </tr>
-            <tr>
-                <td style="padding:1px 0; vertical-align:top;">l)</td>
-                <td style="padding:1px 0;">Consignee shall arrange, at its cost, insurance coverage during
-                    transportation of the cargo from the Port of Mombasa to the final destination. Insurance can be
-                    arranged upon request</td>
-            </tr>
-            <tr>
-                <td style="padding:1px 0; vertical-align:top;">m)</td>
-                <td style="padding:1px 0;">Kindly note: As per regulation of the Kenyan Road Authority truck payload is
-                    limited to 27tons Gr. Wt. (incl container tare weight). If a 20' ctr. not be combined with a second
-                    20' ctr. (due to availability of single 20' or weight limitations - note that there is also weight
-                    limitations per axle) additional transportation charges will be incurred that may amount up to the
-                    charge for a full truck / 40' ctr.</td>
-            </tr>
-            <tr>
-                <td style="padding:1px 0; vertical-align:top;">n)</td>
-                <td style="padding:1px 0;">Client / consignee is responsible for arranging the mandatory Pre-Shipment
-                    Inspection (PSI) and has to provide all documents that are required for clearance at destination
-                    well in advance, best 5 days prior to shipment arrival - including in particular Certificate of
-                    Conformity (COC) and all other necessary permits (depending on the nature of the goods).</td>
-            </tr>
-            <tr>
-                <td style="padding:1px 0; vertical-align:top;">o)</td>
-                <td style="padding:1px 0;">Shipment related documents shall be provided to FiT before production /
-                    confirmation of original set of documents for approval.</td>
-            </tr>
-            <tr>
-                <td style="padding:1px 0; vertical-align:top;">p)</td>
-                <td style="padding:1px 0;">Kindly note that the bond fee will only be applicable for goods for which
-                    single customs territory is not in full effect yet and these charges will be obsolete there after.
-                </td>
-            </tr>
-            <tr>
-                <td style="padding:1px 0; vertical-align:top;">q)</td>
-                <td style="padding:1px 0;">This quotation does not include unloading charges. We assume that unloading
-                    will be arranged by the consignee.</td>
-            </tr>
-            <tr>
-                <td style="padding:1px 0; vertical-align:top;">r)</td>
-                <td style="padding:1px 0;">Payment of third-party costs are due in advance, the outstanding balance at
-                    arrival at final destination.</td>
-            </tr>
-            <tr>
-                <td style="padding:1px 0; vertical-align:top;">s)</td>
-                <td style="padding:1px 0;">For all additional third-party costs upfronted by FIT a disbursement charge
-                    of 5% is applicable.</td>
-            </tr>
-            <tr>
-                <td style="padding:1px 0; vertical-align:top;">t)</td>
-                <td style="padding:1px 0;">Please take note that for DG cargo storage starts immediately on arrival at
-                    port. DGR Fees per container per day $44-20ft &amp; USD66-40ft from 1-9days. Containers is expected
-                    to move within 9 days if taxes are paid on time. So it's important when quoting to allow for storage
-                    of 7-9 days at the port or advise your client.</td>
-            </tr>
-        </table>
-    </div>
 
     {{-- ══════════════════════════════════════
-    ADDITIONAL TERMS — from the T&C template
-    applied via the "Apply Terms" button.
-    Only rendered when a template was saved.
+     TERMS & CONDITIONS — from chosen template only
+     Static boilerplate removed. A T&C template must
+     be selected before generating the PDF, so
+     $termsCondition is guaranteed to be present here.
     ══════════════════════════════════════ --}}
     @if (!empty($termsCondition))
         <div class="terms-section" style="margin-top:14px;">
-            <div class="additional-terms-title">Additional Terms &amp; Condition</div>
             <div class="terms-content">{!! $termsCondition !!}</div>
         </div>
-    @else
-        <div class="additional-terms-title" style="margin-top:14px;">Additional Terms &amp; Condition</div>
     @endif
 
 </body>
