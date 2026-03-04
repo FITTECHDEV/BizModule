@@ -352,7 +352,7 @@ class QuotationController extends Controller
                 $query->where(function ($q) use ($keyword) {
                     if (str_contains($keyword, 'progress') || str_contains($keyword, 'pending') || str_contains($keyword, 'proposal')) {
                         $q->where(function ($sub) {
-                            $sub->whereIn('QuoteStatus', ['Proposal', 'Pending'])
+                            $sub->whereIn('QuoteStatus', ['Proposal', 'Pending', 'In Progress'])
                                 ->orWhereIn('status', ['Proposal', 'Pending'])
                                 ->orWhereNull('QuoteStatus')
                                 ->orWhereNull('status');
@@ -430,7 +430,7 @@ class QuotationController extends Controller
                     return 'Failed Int.';
                 }
 
-                if (in_array($status, ['Proposal', 'Pending']) || is_null($status)) {
+                if (in_array($status, ['Proposal', 'Pending', 'In Progress']) || is_null($status)) {
                     return 'In Progress';
                 }
 

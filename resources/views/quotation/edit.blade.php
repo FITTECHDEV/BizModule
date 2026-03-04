@@ -188,7 +188,8 @@
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h3 class="card-title mb-0">Quotation Document</h3>
                         <div class="d-flex align-items-center ml-auto">
-                            <button type="button" class="btn btn-email-quote btn-sm mr-2" id="generateQuoteBtn">
+                            <button type="button" class="btn btn-email-quote btn-sm mr-2" id="generateQuoteBtn" disabled
+                                title="Please apply Terms & Conditions first">
                                 <i class="fas fa-file-alt mr-1"></i> Generate Quote
                             </button>
                             <button type="button" class="btn btn-tool" data-card-widget="collapse">
@@ -639,8 +640,8 @@
         <!-- END ROW -->
 
         <!-- ============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                             MODALS
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                             ============================================ -->
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             MODALS
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             ============================================ -->
 
         {{-- REVENUE MODAL --}}
         <div class="modal fade" id="addRevenueModal" tabindex="-1" role="dialog"
@@ -1200,8 +1201,8 @@
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.min.css">
     <style>
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                MODAL STYLING — matched to FitExpress UI
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                MODAL STYLING — matched to FitExpress UI
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                ============================================= */
 
         .modal-header {
             background-color: #fff !important;
@@ -1644,9 +1645,9 @@
         }
 
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                       CREATE BOOKING MODAL — Specific overrides
-                                                                                                                                                                                                                                                                                                                                                                                       to match the "Creation of Booking" design
-                                                                                                                                                                                                                                                                                                                                                                                       ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                       CREATE BOOKING MODAL — Specific overrides
+                                                                                                                                                                                                                                                                                                                                                                                                       to match the "Creation of Booking" design
+                                                                                                                                                                                                                                                                                                                                                                                                       ============================================= */
 
         #createBookingModal .modal-title {
             color: #003580 !important;
@@ -1769,6 +1770,13 @@
             position: static;
             margin-right: 12px;
         }
+
+        #generateQuoteBtn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            pointer-events: auto;
+            /* keeps the title tooltip visible on hover */
+        }
     </style>
 @stop
 
@@ -1780,6 +1788,9 @@
     <script>
         const isCopiedBooking = {{ request()->query('copied', 0) ? 'true' : 'false' }};
         const quotationId = '{{ $quotation->ID }}';
+
+        const tcAlreadyApplied = {{ $quotation->QuotationTCTemplate ? 'true' : 'false' }};
+
 
         $(document).ready(function() {
             console.log('Booking Quotation Edit - Page Loaded');
@@ -1796,6 +1807,14 @@
             let currentEditingType = null;
             let currencyMap = {};
             let officeCode = '';
+
+            // ── T&C Gate ─────────────────────────────────────────────
+            // Unblock Generate Quote immediately if T&C was previously applied
+            if (tcAlreadyApplied) {
+                $('#generateQuoteBtn')
+                    .prop('disabled', false)
+                    .removeAttr('title');
+            }
 
             console.log('Booking Number:', bookingNo);
             console.log('Quotation Status:', quotationStatus);
@@ -4395,6 +4414,11 @@
                         if (response.success) {
                             showNotification('Terms & Conditions applied successfully',
                                 'success');
+
+                            // ── Unblock Generate Quote now that T&C is applied ──
+                            $('#generateQuoteBtn')
+                                .prop('disabled', false)
+                                .removeAttr('title');
                         } else {
                             showNotification(response.message || 'Failed to apply Terms',
                                 'error');

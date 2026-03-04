@@ -48,8 +48,7 @@ class CrmSyncController extends Controller
 
         $result = $sync->run($dryRun, $limit, $bookingNo);
 
-        $success = $result['failed'] === 0 && $result['total'] > 0;
-
+        $success = $result['failed'] === 0;
         return response()->json([
             'success' => $success,
             'dry_run' => $dryRun,

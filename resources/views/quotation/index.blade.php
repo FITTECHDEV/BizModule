@@ -1662,6 +1662,7 @@
                         // Reload table if live sync had inserts/updates
                         if (!res.dry_run && (s.inserted > 0 || s.updated > 0)) {
                             table.ajax.reload(null, false);
+                            updateCardStats();
                         }
 
                         $('#crmSyncResult').html(html);
