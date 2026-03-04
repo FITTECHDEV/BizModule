@@ -359,10 +359,10 @@ return [
         ],
 
         [
-            'text' => 'SCM PROFIT INTEGRATION',
-            'url'  => 'scm-profit-integration',
-            'icon' => 'fas fa-fw fa-plug',  // or 'fas fa-fw fa-sync-alt' or 'fas fa-fw fa-exchange-alt'
-            'active' => ['scm-profit-integration/*'],
+            'text' => 'Quotation',
+            'url'  => 'quotation',
+            'icon' => 'fas fa-fw fa-file-invoice',
+            'active' => ['quotation', 'quotation/*'],
             'can'  => 'approve-all-entity-request'
         ],
 

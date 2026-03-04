@@ -979,25 +979,6 @@ Route::middleware(['auth', 'can:approve-all-entity-request'])->group(function ()
         ->name('shipment-reports.stats');
 });
 
-
-// ============================================================================
-// SCM PROFIT INTEGRATION ROUTES
-// ============================================================================
-Route::middleware(['auth', 'can:approve-all-entity-request'])->group(function () {
-    Route::get('/scm-profit-integration', [App\Http\Controllers\ScmProfitIntegrationController::class, 'index'])
-        ->name('scm-profit-integration.index');
-
-    Route::get('/scm-profit-integration/data', [App\Http\Controllers\ScmProfitIntegrationController::class, 'getData'])
-        ->name('scm-profit-integration.data');
-
-    Route::get('/scm-profit-integration/stats', [App\Http\Controllers\ScmProfitIntegrationController::class, 'getStatsData'])
-        ->name('scm-profit-integration.stats');
-
-    Route::post('/scm-profit-integration/retrigger', [App\Http\Controllers\ScmProfitIntegrationController::class, 'retrigger'])
-        ->name('scm-profit-integration.retrigger');
-});
-
-
 // ============================================================================
 // QUOTATION INTEGRATION ROUTES
 // ============================================================================
