@@ -40,103 +40,6 @@ class DashboardController extends Controller
     ];
 
 
-// private function getSystemMapping()
-// {
-//     return [
-//         // Microsoft Applications
-//         'windows sign in' => 'SCM',
-//         'microsoft azure cli' => 'OPS',
-//         'microsoft exchange rest api based powershell' => 'Odoo',
-//         'azure active directory powershell' => 'Fit Express',
-//         'microsoft azure powershell' => 'OPS',
-//         'azure portal' => 'OPS',
-//         'microsoft office 365 portal' => 'Office 365',
-//         'microsoft teams' => 'Microsoft Teams',
-//         'microsoft outlook' => 'Microsoft Outlook',
-//         'microsoft sharepoint' => 'Microsoft SharePoint',
-//         'microsoft onedrive' => 'Microsoft OneDrive',
-//         // FIT Systems
-//         'fit erp' => 'FIT ERP',
-//         'fit express' => 'Fit Express',
-//         ' fit express' => 'Fit Express',
-//         'fit express uat' => 'Fit Express UAT',
-//         'fiterpuat' => 'FIT ERP UAT',
-//         'fit portal' => 'FIT PORTAL',
-//         'fit dashboard' => 'FIT DASHBOARD',
-//         // Operations Systems
-//         'ops' => 'OPS',
-//         'ops uat' => 'OPS UAT',
-//         'operations portal' => 'OPS',
-//         // Other Systems
-//         'odoo' => 'Odoo',
-//         'scm' => 'SCM',
-//         'd365 live' => 'SCM',
-//         'd365' => 'SCM',
-//         'd368 live' => 'D368 LIVE',
-//         'd368' => 'D368 LIVE',
-//         // Common variations
-//         'microsoft d365' => 'SCM',
-//         'dynamics 365' => 'SCM',
-//         'microsoft dynamics' => 'SCM',
-//     ];
-// }
-
-
-// Add this method to get raw system names for a mapped system
-// private function getRawSystemNames($mappedSystem)
-// {
-//     $mapping = $this->getSystemMapping();
-//     $rawSystems = [];
-
-//     foreach ($mapping as $rawName => $mappedName) {
-//         if ($mappedName === $mappedSystem) {
-//             $rawSystems[] = $rawName;
-//         }
-//     }
-
-//     return $rawSystems;
-// }
-
-
-    /**
-     * IMPROVED: Get available systems from database, excluding unwanted ones
-     */
-    // private function getAvailableSystems()
-    // {
-    //     return Cache::remember('available_systems_clean_v2', 3600, function () {
-    //         // Get all unique systems from the database
-    //         $rawSystems = DB::table('Azure_LoginDetails')
-    //             ->selectRaw('TRIM(system) as clean_system, COUNT(*) as count')
-    //             ->whereNotNull('system')
-    //             ->where('system', '!=', '')
-    //             ->groupBy(DB::raw('TRIM(system)'))
-    //             ->orderByRaw('COUNT(*) DESC')
-    //             ->get();
-
-    //         // Apply systemmap normalization and exclude unwanted systems
-    //         $systems = $rawSystems
-    //             ->map(function($item) {
-    //                 $normalized = $this->normalizeSystemName($item->clean_system);
-    //                 return $normalized;
-    //             })
-    //             ->unique()
-    //             ->filter(function($system) {
-    //                 return !in_array($system, $this->excludedSystems);
-    //             })
-    //             ->values()
-    //             ->toArray();
-
-    //         Log::info('Clean available systems loaded with enhanced filtering', [
-    //             'count' => count($systems),
-    //             'systems' => $systems,
-    //             'excluded' => $this->excludedSystems
-    //         ]);
-
-    //         return $systems;
-    //     });
-    // }
-
-
     private function getAvailableSystems()
     {
         return Cache::remember('available_systems_clean_v3', 3600, function () {
@@ -195,46 +98,6 @@ class DashboardController extends Controller
             }
         });
     }
-
-
-// private function getAvailableSystems()
-// {
-//     try {
-//         return Cache::remember('available_systems_clean_v2', 3600, function () {
-//             $rawSystems = DB::table('Azure_LoginDetails')
-//                 ->selectRaw('TRIM(system) as clean_system, COUNT(*) as count')
-//                 ->whereNotNull('system')
-//                 ->where('system', '!=', '')
-//                 ->groupBy(DB::raw('TRIM(system)'))
-//                 ->orderByRaw('COUNT(*) DESC')
-//                 ->get();
-
-//             $systems = $rawSystems
-//                 ->map(function($item) {
-//                     return $this->normalizeSystemName($item->clean_system);
-//                 })
-//                 ->unique()
-//                 ->filter(function($system) {
-//                     return !in_array($system, $this->excludedSystems);
-//                 })
-//                 ->values()
-//                 ->toArray();
-
-//             Log::info('Clean available systems loaded with enhanced filtering', [
-//                 'count' => count($systems),
-//                 'systems' => $systems,
-//                 'excluded' => $this->excludedSystems
-//             ]);
-
-//             return $systems;
-//         });
-//     } catch (QueryException $e) {
-//         Log::error('Failed to fetch available systems', [
-//             'error' => $e->getMessage()
-//         ]);
-//         return [];
-//     }
-// }
 
 
     /**
@@ -430,7 +293,7 @@ class DashboardController extends Controller
             } elseif ($filter === 'active_last_month') {
                 $sql = "
                 SELECT au.id, au.displayName as name, au.userPrincipalName as login_id,
-                       login_data.logins_last_month, login_data.last_login
+                    login_data.logins_last_month, login_data.last_login
                 FROM Azure_Users au
                 INNER JOIN (
                     SELECT username, COUNT(*) as logins_last_month, MAX(date_utc) as last_login
@@ -444,8 +307,8 @@ class DashboardController extends Controller
             } else {
                 $sql = "
                 SELECT au.id, au.displayName as name, au.userPrincipalName as login_id,
-                       ISNULL(login_data.logins_last_month, 0) as logins_last_month,
-                       login_data.last_login
+                    ISNULL(login_data.logins_last_month, 0) as logins_last_month,
+                    login_data.last_login
                 FROM Azure_Users au
                 LEFT JOIN (
                     SELECT username, COUNT(*) as logins_last_month, MAX(date_utc) as last_login

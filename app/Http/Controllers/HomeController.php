@@ -134,6 +134,28 @@ class HomeController extends Controller
                 'failed' => $scm_profit_stats_obj->failed ?? 0,
             ];
 
+            try {
+                $quotation_stats_obj = DB::connection('sqlsrv')
+                    ->table('Quote_QuotationInfo')
+                    ->selectRaw("
+            COUNT(*) as total,
+            SUM(CASE WHEN QuoteStatus = 'In Progress' THEN 1 ELSE 0 END) as pending,
+            SUM(CASE WHEN QuoteStatus = 'Won' THEN 1 ELSE 0 END) as success,
+            SUM(CASE WHEN QuoteStatus = 'Failed Progress' THEN 1 ELSE 0 END) as failed
+        ")
+                    ->first();
+
+                $quotation_stats = [
+                    'total'   => $quotation_stats_obj->total ?? 0,
+                    'pending' => $quotation_stats_obj->pending ?? 0,
+                    'success' => $quotation_stats_obj->success ?? 0,
+                    'failed'  => $quotation_stats_obj->failed ?? 0,
+                ];
+            } catch (\Exception $e) {
+                \Log::error('Quotation Stats Error: ' . $e->getMessage());
+                $quotation_stats = ['total' => 0, 'pending' => 0, 'success' => 0, 'failed' => 0];
+            }
+
             return view(
                 'dashboard.ticket',
                 compact(
@@ -152,7 +174,8 @@ class HomeController extends Controller
                     'tracker_stats',
                     'azureStats',
                     'shipment_reports_stats',
-                    'scm_profit_stats'
+                    'scm_profit_stats',
+                    'quotation_stats'
                 )
             );
         } catch (\Exception $e) {

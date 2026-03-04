@@ -997,6 +997,133 @@ Route::middleware(['auth', 'can:approve-all-entity-request'])->group(function ()
         ->name('scm-profit-integration.retrigger');
 });
 
+
+// ============================================================================
+// QUOTATION INTEGRATION ROUTES
+// ============================================================================
+Route::middleware(['auth', 'can:approve-all-entity-request'])->group(function () {
+    Route::get('/quotation', [App\Http\Controllers\QuotationController::class, 'index'])
+        ->name('quotation.index');
+
+    Route::get('/quotation/data', [App\Http\Controllers\QuotationController::class, 'data'])
+        ->name('quotation.data');
+
+    Route::get('/quotation/stats', [App\Http\Controllers\QuotationController::class, 'stats'])
+        ->name('quotation.stats');
+
+    Route::get('/quotation/charges', [App\Http\Controllers\QuotationController::class, 'getCharges'])
+        ->name('quotation.charges');
+
+    Route::get('/quotation/reasons', [App\Http\Controllers\QuotationController::class, 'getReasons'])
+        ->name('quotation.reasons');
+
+    Route::get('/quotation/communication/templates', [App\Http\Controllers\QuotationController::class, 'getCommunicationTemplates'])
+        ->name('quotation.communication.templates');
+
+    Route::get('/quotation/communication/description', [App\Http\Controllers\QuotationController::class, 'getCommunicationDescription'])
+        ->name('quotation.communication.description');
+
+    Route::post('/quotation/communication/save-terms', [App\Http\Controllers\QuotationController::class, 'saveTermsCondition'])
+        ->name('quotation.communication.save-terms');
+
+    Route::post('/quotation/process-booking', [App\Http\Controllers\QuotationController::class, 'processBooking'])
+        ->name('quotation.process-booking');
+
+    Route::get('/quotation/charge-codes', [App\Http\Controllers\QuotationController::class, 'getChargeCodes'])
+        ->name('quotation.charge-codes');
+
+    Route::get('/quotation/legal-entities', [App\Http\Controllers\QuotationController::class, 'getLegalEntities'])
+        ->name('quotation.legal-entities');
+
+    Route::get('/quotation/based-on-list', [App\Http\Controllers\QuotationController::class, 'getBasedOnList'])
+        ->name('quotation.based-on-list');
+
+    Route::get('/quotation/based-on-uom', [App\Http\Controllers\QuotationController::class, 'getBasedOnUOM'])
+        ->name('quotation.based-on-uom');
+
+    Route::post('/quotation/email/send', [App\Http\Controllers\QuotationController::class, 'sendEmailQuote'])
+        ->name('quotation.email.send');
+
+    Route::get('/quotation/email-history', [App\Http\Controllers\QuotationController::class, 'getEmailHistory'])
+        ->name('quotation.email.history');
+
+    // ============================================
+    // NEW ROUTES FOR CURRENCY FEATURES
+    // ============================================
+    Route::get('/quotation/office-code', [App\Http\Controllers\QuotationController::class, 'getOfficeCode'])
+        ->name('quotation.office-code');
+
+    Route::get('/quotation/currencies', [App\Http\Controllers\QuotationController::class, 'getCurrencies'])
+        ->name('quotation.currencies');
+
+    Route::get('/quotation/exchange-rate', [App\Http\Controllers\QuotationController::class, 'getExchangeRate'])
+        ->name('quotation.exchange-rate');
+
+    // Remove the old GET generate-pdf route entirely, replace with these two:
+    Route::post('/quotation/{id}/generate-pdf', [App\Http\Controllers\QuotationController::class, 'generatePdf'])
+        ->name('quotation.generate-pdf');
+
+    Route::get('/quotation/{id}/versions', [App\Http\Controllers\QuotationController::class, 'getQuotationVersions'])
+        ->name('quotation.versions');
+
+    Route::get('/quotation/{id}/download-pdf/{version}', [App\Http\Controllers\QuotationController::class, 'downloadPdf'])
+        ->name('quotation.download-pdf');
+
+    Route::post('/quotation/booking/create', [App\Http\Controllers\QuotationController::class, 'createBooking'])
+        ->name('quotation.booking.create');
+
+    Route::get('/quotation/contract-charges', [App\Http\Controllers\QuotationController::class, 'getContractCharges'])
+        ->name('quotation.contract.charges');
+
+    Route::get('/quotation/agent-types', [App\Http\Controllers\QuotationController::class, 'getAgentTypes'])
+        ->name('quotation.agent-types');
+
+    Route::get('/quotation/create-booking/service-templates', [App\Http\Controllers\QuotationController::class, 'getServiceTemplates'])
+        ->name('quotation.booking.service-templates');
+
+    Route::get('/quotation/create-booking/bill-to-parties', [App\Http\Controllers\QuotationController::class, 'getBillToParties'])
+        ->name('quotation.booking.bill-to-parties');
+
+    Route::get('/quotation/create-booking/forwarders', [App\Http\Controllers\QuotationController::class, 'getForwarders'])
+        ->name('quotation.booking.forwarders');
+
+    Route::get('/quotation/create-booking/locations', [App\Http\Controllers\QuotationController::class, 'getLocations'])
+        ->name('quotation.booking.locations');
+
+    Route::post('/quotation/charge/save', [App\Http\Controllers\QuotationController::class, 'saveCharge'])
+        ->name('quotation.charge.save');
+
+    Route::post('/quotation/charge/delete', [App\Http\Controllers\QuotationController::class, 'deleteCharge'])
+        ->name('quotation.charge.delete');
+
+    Route::post('/quotation/status/update', [App\Http\Controllers\QuotationController::class, 'updateStatus'])
+        ->name('quotation.status.update');
+
+    Route::post('/quotation/retrigger', [App\Http\Controllers\QuotationController::class, 'retrigger'])
+        ->name('quotation.retrigger');
+
+    Route::post('/quotation/{bookingno}/copy', [App\Http\Controllers\QuotationController::class, 'copy'])
+        ->name('quotation.copy');
+
+    Route::get('quotation/customer-types',    [App\Http\Controllers\QuotationController::class, 'getCustomerTypes'])
+        ->name('quotation.customer-types');
+
+    Route::post('quotation/customer/save',    [App\Http\Controllers\QuotationController::class, 'saveCustomerDetails'])
+        ->name('quotation.customer.save');
+
+    Route::get('/quotation/{id}', [App\Http\Controllers\QuotationController::class, 'view'])
+        ->name('quotation.view');
+
+    Route::get('/quotation/{id}/edit', [App\Http\Controllers\QuotationController::class, 'edit'])
+        ->name('quotation.edit');
+
+    Route::post('/quotation/{id}/update', [App\Http\Controllers\QuotationController::class, 'update'])
+        ->name('quotation.update');
+
+    Route::post('/crm/sync/run', [App\Http\Controllers\CrmSyncController::class, 'run'])
+        ->name('crm.sync.run');
+});
+
 // ============================================================================
 // LOGIN TRACKER SYSTEM ROUTES (User Activity Monitoring)
 // ============================================================================
