@@ -788,11 +788,11 @@ class QuotationController extends Controller
                 QC.ChargeType as SourceType
             FROM Quote_Quotation_ChargeSheet QC WITH (NOLOCK)
             INNER JOIN Quote_QuotationInfo QI WITH (NOLOCK) ON QI.id = QC.QuotationInfoID
-            LEFT JOIN [FITSCM].dbo.Bill_ChargeCode BC WITH (NOLOCK) ON BC.Id = QC.ChargeCodeId
-            LEFT JOIN [FITSCM].dbo.Cust_Currency CC WITH (NOLOCK) ON CC.Id = QC.EstChargeCurrencyId
+            LEFT JOIN [FITSCMUAT].dbo.Bill_ChargeCode BC WITH (NOLOCK) ON BC.Id = QC.ChargeCodeId
+            LEFT JOIN [FITSCMUAT].dbo.Cust_Currency CC WITH (NOLOCK) ON CC.Id = QC.EstChargeCurrencyId
             LEFT JOIN Cust_ChargecodeBasedOn CB WITH (NOLOCK) ON CB.Id = QC.BasedOnId
-            LEFT JOIN [FITSCM].dbo.Sys_UOM SU WITH (NOLOCK) ON SU.Id = QC.UOMId
-            LEFT JOIN [FITSCM].dbo.Cust_Party CP WITH (NOLOCK) ON CP.Id = QC.PartyID
+            LEFT JOIN [FITSCMUAT].dbo.Sys_UOM SU WITH (NOLOCK) ON SU.Id = QC.UOMId
+            LEFT JOIN [FITSCMUAT].dbo.Cust_Party CP WITH (NOLOCK) ON CP.Id = QC.PartyID
             WHERE QI.bookingno = ?
                 AND QC.IsDeleted = 0
             ", [$bookingNo]);
@@ -1531,11 +1531,11 @@ class QuotationController extends Controller
                 ISNULL(QC.ChargeType, 'manual') as SourceType
             FROM Quote_Quotation_ChargeSheet QC WITH (NOLOCK)
             INNER JOIN Quote_QuotationInfo QI WITH (NOLOCK) ON QI.id = QC.QuotationInfoID
-            LEFT JOIN [FITSCM].dbo.Bill_ChargeCode BC WITH (NOLOCK) ON BC.Id = QC.ChargeCodeId
-            LEFT JOIN [FITSCM].dbo.Cust_Currency CC WITH (NOLOCK) ON CC.Id = QC.EstChargeCurrencyId
+            LEFT JOIN [FITSCMUAT].dbo.Bill_ChargeCode BC WITH (NOLOCK) ON BC.Id = QC.ChargeCodeId
+            LEFT JOIN [FITSCMUAT].dbo.Cust_Currency CC WITH (NOLOCK) ON CC.Id = QC.EstChargeCurrencyId
             LEFT JOIN Cust_ChargecodeBasedOn CB WITH (NOLOCK) ON CB.Id = QC.BasedOnId
-            LEFT JOIN [FITSCM].dbo.Sys_UOM SU WITH (NOLOCK) ON SU.Id = QC.UOMId
-            LEFT JOIN [FITSCM].dbo.Cust_Party CP WITH (NOLOCK) ON CP.Id = QC.PartyID
+            LEFT JOIN [FITSCMUAT].dbo.Sys_UOM SU WITH (NOLOCK) ON SU.Id = QC.UOMId
+            LEFT JOIN [FITSCMUAT].dbo.Cust_Party CP WITH (NOLOCK) ON CP.Id = QC.PartyID
             WHERE QC.Id = ?
                 AND QC.IsDeleted = 0
             ", [$chargeId]);
@@ -2783,8 +2783,25 @@ class QuotationController extends Controller
         $module     = $request->input('module', 'Quotation');
         $subModule  = $request->input('sub_module');
         $officeCode = trim($request->input('office_code', ''));
+        $bookingNo  = $request->input('booking_no');
 
-        if (!$subModule || !$officeCode) {
+        if (!$subModule) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Sub module is required'
+            ], 400);
+        }
+
+        // ── T&C: route through sp_Quote_CommunicationDetail_List ─────────────
+        // The SP resolves Service, Process, and OfficeCode internally from QuoteNo,
+        // ensuring templates are filtered for this specific quotation type (e.g.
+        // AirExport vs AirImport). Email still uses the direct query below.
+        if ($subModule === 'T&C' && $bookingNo) {
+            return $this->getCommunicationTemplatesViaSP($module, $subModule, $bookingNo);
+        }
+
+        // ── Email (and any other sub_module): original direct query ───────────
+        if (!$officeCode) {
             return response()->json([
                 'success' => false,
                 'message' => 'Sub module and office code are required'
@@ -2792,7 +2809,6 @@ class QuotationController extends Controller
         }
 
         try {
-            // ✅ First verify the office itself exists
             $officeExists = DB::table('Cust_Office')
                 ->whereRaw("TRIM(Code) = ?", [$officeCode])
                 ->where('IsActive', 1)
@@ -2805,7 +2821,6 @@ class QuotationController extends Controller
                     'module'      => $module,
                     'sub_module'  => $subModule,
                 ]);
-
                 return response()->json([
                     'success' => false,
                     'code'    => 'OFFICE_NOT_FOUND',
@@ -2813,26 +2828,24 @@ class QuotationController extends Controller
                 ], 404);
             }
 
-            // ✅ TRIM on both sides to avoid trailing space mismatch
             $templates = DB::select(
                 "SELECT Name, Description
-            FROM Cust_CommunicationDetails WITH (NOLOCK)
-            WHERE Module     = ?
-            AND SubModule  = ?
-            AND TRIM(OfficeCode) = ?
-            AND IsActive   = 1
-            ORDER BY Name",
+             FROM Cust_CommunicationDetails WITH (NOLOCK)
+             WHERE Module        = ?
+               AND SubModule     = ?
+               AND TRIM(OfficeCode) = ?
+               AND IsActive      = 1
+             ORDER BY Name",
                 [$module, $subModule, $officeCode]
             );
 
             Log::info('getCommunicationTemplates', [
-                'office_code'     => $officeCode,
-                'module'          => $module,
-                'sub_module'      => $subModule,
-                'template_count'  => count($templates),
+                'office_code'    => $officeCode,
+                'module'         => $module,
+                'sub_module'     => $subModule,
+                'template_count' => count($templates),
             ]);
 
-            // ✅ Office exists but no templates configured for this module/submodule
             if (empty($templates)) {
                 return response()->json([
                     'success' => false,
@@ -2841,20 +2854,115 @@ class QuotationController extends Controller
                 ], 404);
             }
 
-            return response()->json([
-                'success'   => true,
-                'templates' => $templates
-            ]);
+            return response()->json(['success' => true, 'templates' => $templates]);
         } catch (\Exception $e) {
-
             Log::error('getCommunicationTemplates failed', [
                 'office_code' => $officeCode,
                 'error'       => $e->getMessage(),
             ]);
-
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to load templates: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Load T&C templates via sp_Quote_CommunicationDetail_List.
+     *
+     * The SP filters by Service + Process + OfficeCode resolved internally
+     * from QuoteNo, returning only templates valid for this quotation type
+     * (e.g. AirExport, AirImport, SeaImport, etc.).
+     *
+     * Note: QuoteNo === bookingno (both numeric) — confirmed, no lookup needed.
+     */
+    private function getCommunicationTemplatesViaSP(string $module, string $subModule, string $bookingNo): \Illuminate\Http\JsonResponse
+    {
+        try {
+            $pdo  = DB::connection()->getPdo();
+            $stmt = $pdo->prepare("SET NOCOUNT ON; EXEC dbo.sp_Quote_CommunicationDetail_List ?, ?, ?");
+            $stmt->execute([$bookingNo, $module, $subModule]);
+
+            $templates      = [];
+            $resultSetIndex = 0;
+
+            do {
+                $resultSetIndex++;
+                try {
+                    $rows = $stmt->fetchAll(\PDO::FETCH_OBJ);
+
+                    if (empty($rows)) {
+                        continue;
+                    }
+
+                    $firstVal = array_values((array) $rows[0])[0] ?? '';
+
+                    // SP returns 'Failed - ...' on guard failures
+                    if (is_string($firstVal) && str_starts_with($firstVal, 'Failed')) {
+                        Log::warning('getCommunicationTemplatesViaSP - SP guard failed', [
+                            'booking_no' => $bookingNo,
+                            'sub_module' => $subModule,
+                            'message'    => $firstVal,
+                        ]);
+
+                        $code = str_contains($firstVal, 'Office') ? 'OFFICE_NOT_FOUND' : 'NOT_CONFIGURED';
+
+                        return response()->json([
+                            'success' => false,
+                            'code'    => $code,
+                            'message' => $firstVal,
+                        ], 404);
+                    }
+
+                    // Valid result set — SP returns TemplateID (UUID) and TemplateName
+                    if (isset($rows[0]->TemplateID) && isset($rows[0]->TemplateName)) {
+                        // Normalize to Name/Description shape the frontend expects.
+                        // Description body is fetched separately via getCommunicationDescription().
+                        $templates = array_map(fn($row) => (object)[
+                            'Name'        => $row->TemplateName,
+                            'Description' => '',
+                        ], $rows);
+
+                        Log::info('getCommunicationTemplatesViaSP - Templates found', [
+                            'booking_no'     => $bookingNo,
+                            'sub_module'     => $subModule,
+                            'template_count' => count($templates),
+                            'templates'      => array_column($templates, 'Name'),
+                        ]);
+                        break;
+                    }
+                } catch (\PDOException $e) {
+                    Log::debug('getCommunicationTemplatesViaSP - Skipping result set #' . $resultSetIndex, [
+                        'error' => $e->getMessage(),
+                    ]);
+                    continue;
+                }
+            } while ($stmt->nextRowset());
+
+            if (empty($templates)) {
+                Log::warning('getCommunicationTemplatesViaSP - No templates returned', [
+                    'booking_no' => $bookingNo,
+                    'sub_module' => $subModule,
+                ]);
+                return response()->json([
+                    'success' => false,
+                    'code'    => 'NOT_CONFIGURED',
+                    'message' => "No T&C templates are configured for this quotation's office and service type. Please contact your administrator.",
+                ], 404);
+            }
+
+            return response()->json(['success' => true, 'templates' => $templates]);
+        } catch (\Exception $e) {
+            Log::error('getCommunicationTemplatesViaSP failed', [
+                'booking_no' => $bookingNo,
+                'sub_module' => $subModule,
+                'error'      => $e->getMessage(),
+                'file'       => $e->getFile(),
+                'line'       => $e->getLine(),
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to load T&C templates: ' . $e->getMessage(),
             ], 500);
         }
     }
@@ -3108,10 +3216,10 @@ class QuotationController extends Controller
                         CP.Code              AS PartyCode
                     FROM Quote_Quotation_ChargeSheet QC WITH (NOLOCK)
                     INNER JOIN Quote_QuotationInfo QI WITH (NOLOCK) ON QI.ID = QC.QuotationInfoID
-                    LEFT JOIN [FITSCM].dbo.Bill_ChargeCode BC WITH (NOLOCK) ON BC.Id = QC.ChargeCodeId
-                    LEFT JOIN [FITSCM].dbo.Cust_Currency CC WITH (NOLOCK) ON CC.Id = QC.EstChargeCurrencyId
+                    LEFT JOIN [FITSCMUAT].dbo.Bill_ChargeCode BC WITH (NOLOCK) ON BC.Id = QC.ChargeCodeId
+                    LEFT JOIN [FITSCMUAT].dbo.Cust_Currency CC WITH (NOLOCK) ON CC.Id = QC.EstChargeCurrencyId
                     LEFT JOIN Cust_ChargecodeBasedOn CB WITH (NOLOCK) ON CB.Id = QC.BasedOnId
-                    LEFT JOIN [FITSCM].dbo.Cust_Party CP WITH (NOLOCK) ON CP.Id = QC.PartyID
+                    LEFT JOIN [FITSCMUAT].dbo.Cust_Party CP WITH (NOLOCK) ON CP.Id = QC.PartyID
                     WHERE QI.bookingno = ? AND QC.IsDeleted = 0
                     ORDER BY QC.IsRevenue DESC, BC.Name ASC
                 ", [$quotation->bookingno]);
@@ -3667,14 +3775,14 @@ class QuotationController extends Controller
                 ], 400);
             }
 
-            // Query FITSCM database (where currency data lives)
+            // Query FITSCMUAT database (where currency data lives)
             $currencies = DB::connection('sqlsrv')
                 ->select("
                 SELECT DISTINCT CC.Id as CurrencyID, CC.Code as CurrencyCode, CC.Name as CurrencyName
-                FROM [FITSCM].dbo.Cust_Office CO WITH (NOLOCK)
-                INNER JOIN [FITSCM].dbo.Bill_ChargeCodeOfficeMap BCO WITH (NOLOCK) 
+                FROM [FITSCMUAT].dbo.Cust_Office CO WITH (NOLOCK)
+                INNER JOIN [FITSCMUAT].dbo.Bill_ChargeCodeOfficeMap BCO WITH (NOLOCK) 
                     ON BCO.OfficeId = CO.Id AND BCO.IsActive = 1
-                INNER JOIN [FITSCM].dbo.Cust_Currency CC WITH (NOLOCK) 
+                INNER JOIN [FITSCMUAT].dbo.Cust_Currency CC WITH (NOLOCK) 
                     ON CC.Id = BCO.DefaultCurrencyId
                 WHERE CO.Code = ?
                     AND CO.IsActive = 1 
@@ -3731,19 +3839,19 @@ class QuotationController extends Controller
                 ], 400);
             }
 
-            // Query FITSCM database (where exchange rate data lives)
+            // Query FITSCMUAT database (where exchange rate data lives)
             $result = DB::select("
                 SELECT TOP 1 ER.ConvertToId as ExRate
-                FROM [FITSCM].dbo.Cust_ExchangeRate ER WITH (NOLOCK)
-                INNER JOIN [FITSCM].dbo.Cust_ExchangeRateOfficeMap OM WITH (NOLOCK)
+                FROM [FITSCMUAT].dbo.Cust_ExchangeRate ER WITH (NOLOCK)
+                INNER JOIN [FITSCMUAT].dbo.Cust_ExchangeRateOfficeMap OM WITH (NOLOCK)
                     ON OM.ExchangeRateId = ER.Id
                     AND OM.IsActive = 1
-                INNER JOIN [FITSCM].dbo.Cust_Office CO WITH (NOLOCK)
+                INNER JOIN [FITSCMUAT].dbo.Cust_Office CO WITH (NOLOCK)
                     ON CO.Id = OM.OfficeId
                     AND CO.Code = ?
                     AND CO.IsActive = 1
                     AND CO.IsDeleted = 0
-                INNER JOIN [FITSCM].dbo.Cust_Currency CUR WITH (NOLOCK)
+                INNER JOIN [FITSCMUAT].dbo.Cust_Currency CUR WITH (NOLOCK)
                     ON CUR.Id = ER.ConvertToId
                     AND CUR.Code = ?
                 WHERE CAST(GETDATE() AS DATE) 

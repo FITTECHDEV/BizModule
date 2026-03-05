@@ -4372,7 +4372,8 @@
                     data: {
                         module: 'Quotation',
                         sub_module: 'T&C',
-                        office_code: codeToUse
+                        office_code: codeToUse,
+                        booking_no: bookingNo 
                     },
                     success: function(response) {
                         const $select = $('#termsTemplateSelect');
