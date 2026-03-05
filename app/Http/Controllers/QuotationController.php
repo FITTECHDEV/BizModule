@@ -198,298 +198,282 @@ class QuotationController extends Controller
 
     public function data(Request $request)
     {
-        $days       = $request->input('days', 0);
-        $startDate  = $request->input('start_date');
-        $endDate    = $request->input('end_date');
-        $cardFilter = $request->input('card_filter', 'in_progress'); // ← default changed from 'all'
+        try {
+            $days       = $request->input('days', '0');
+            $startDate  = $request->input('start_date');
+            $endDate    = $request->input('end_date');
+            $cardFilter = $request->input('card_filter', 'in_progress');
 
-        // Default to logged-in user's office if no office param sent
-        $office = $request->input('office') ?: (Auth::user()->OfficeCode ?? null);
-        Log::info('Quotation data request', [
-            'days'         => $days,
-            'start_date'   => $startDate,
-            'end_date'     => $endDate,
-            'office'       => $office,
-            'card_filter'  => $cardFilter,
-            'default_from' => $request->input('office') ? 'request' : 'user_profile',
-        ]);
+            // Default to logged-in user's office if no office param sent
+            $office = $request->input('office') ?: (Auth::user()->OfficeCode ?? null);
 
-        $query = DB::table('Quote_QuotationInfo')
-            ->select([
-                'ID',
-                'QuoteNo',
-                'bookingno',
-                'companyname',
-                'clientid',
-                'username',
-                'teamname',
-                'teamid',
-                'origincountry',
-                'destinationcountry',
-                'status',
-                'QuoteStatus',
-                'SCMINTStatus',
-                'createdon',
-                'updatedon'
+            Log::info('Quotation data request', [
+                'days'         => $days,
+                'start_date'   => $startDate,
+                'end_date'     => $endDate,
+                'office'       => $office,
+                'card_filter'  => $cardFilter,
+                'default_from' => $request->input('office') ? 'request' : 'user_profile',
             ]);
 
-        // Date filtering
-        if ($days == 'custom' && $startDate && $endDate) {
+            $query = DB::table('Quote_QuotationInfo')
+                ->select([
+                    'ID',
+                    'QuoteNo',
+                    'bookingno',
+                    'companyname',
+                    'clientid',
+                    'username',
+                    'teamname',
+                    'teamid',
+                    'origincountry',
+                    'destinationcountry',
+                    'status',
+                    'QuoteStatus',
+                    'SCMINTStatus',
+                    'CreatedOn',
+                    'Updatedon',
+                ]);
 
-            $query->whereBetween('createdon', [$startDate . ' 00:00:00', $endDate . ' 23:59:59']);
-        } elseif ($days == 1) {
+            // ── Date filtering (strict string comparison to avoid 'all' == 0 coercion) ──
+            if ($days === 'custom' && $startDate && $endDate) {
+                $query->whereBetween('createdon', [
+                    $startDate . ' 00:00:00',
+                    $endDate   . ' 23:59:59',
+                ]);
+            } elseif ($days === '1') {
+                $query->whereDate('createdon', now()->subDay());
+            } elseif ($days === '15') {
+                $query->where('createdon', '>=', now()->subDays(15));
+            } elseif ($days === '30') {
+                $query->where('createdon', '>=', now()->subDays(30));
+            } elseif ($days === '0') {
+                $query->whereDate('createdon', today());
+            }
+            // 'all' → no date filter applied
 
-            $query->whereDate('createdon', now()->subDay());
-        } elseif ($days == 15) {
+            // ── Office filtering ──────────────────────────────────────────────────────
+            if ($office) {
+                $query->where('teamname', $office);
+            }
 
-            $query->where('createdon', '>=', now()->subDays(15));
-        } elseif ($days == 30) {
+            // ── Card filter ───────────────────────────────────────────────────────────
+            Log::info('Applying card filter', ['card_filter' => $cardFilter]);
 
-            $query->where('createdon', '>=', now()->subDays(30));
-        } elseif ($days == 0) {
+            switch ($cardFilter) {
 
-            $query->whereDate('createdon', today());
-        }
+                case 'in_progress':
+                    $query->where(function ($q) {
+                        $q->whereNotIn('QuoteStatus', ['Won', 'Lost', 'Cancel'])
+                            ->orWhereNull('QuoteStatus');
+                    })->where(function ($q) {
+                        $q->whereNotIn('status', ['Won', 'Lost', 'Cancel'])
+                            ->orWhereNull('status');
+                    });
+                    break;
 
-        // Office filtering — user's default office if nothing explicitly passed
-        if ($office) {
-            $query->where('teamname', $office);
-        }
+                case 'won':
+                    $query->where(function ($q) {
+                        $q->where('QuoteStatus', 'Won')
+                            ->orWhere('status', 'Won');
+                    })->where(function ($q) {
+                        $q->whereNull('SCMINTStatus')
+                            ->orWhere('SCMINTStatus', 'Success');
+                    });
+                    Log::info('Applied won filter');
+                    break;
 
-        // Card filter — defaults to in_progress
-        Log::info('Applying card filter', ['card_filter' => $cardFilter]);
-        switch ($cardFilter) {
+                case 'lost':
+                    $query->where(function ($q) {
+                        $q->where('QuoteStatus', 'Lost')
+                            ->orWhere('status', 'Lost');
+                    });
+                    Log::info('Applied lost filter');
+                    break;
 
-            case 'in_progress':
-                $query->where(function ($q) {
-                    $q->whereNotIn('QuoteStatus', ['Won', 'Lost', 'Cancel'])
-                        ->orWhereNull('QuoteStatus');
-                })->where(function ($q) {
-                    $q->whereNotIn('status', ['Won', 'Lost', 'Cancel'])
-                        ->orWhereNull('status');
-                });
-                break;
+                case 'canceled':
+                    $query->where(function ($q) {
+                        $q->where('QuoteStatus', 'Cancel')
+                            ->orWhere('status', 'Cancel');
+                    });
+                    Log::info('Applied canceled filter');
+                    break;
 
-            case 'won':
-                $query->where(function ($q) {
-                    $q->where('QuoteStatus', 'Won')
-                        ->orWhere('status', 'Won');
-                })->where(function ($q) {
-                    $q->whereNull('SCMINTStatus')
-                        ->orWhere('SCMINTStatus', 'Success');
-                });
+                case 'failed_int':
+                    $query->where(function ($q) {
+                        $q->where('QuoteStatus', 'Won')
+                            ->orWhere('status', 'Won');
+                    })->whereNotNull('SCMINTStatus')
+                        ->where('SCMINTStatus', '!=', 'Success');
+                    Log::info('Applied failed_int filter');
+                    break;
 
-                Log::info('Applied won filter');
+                case 'all':
+                default:
+                    Log::info('No card filter applied - showing all records');
+                    break;
+            }
 
-                break;
+            return DataTables::of($query)
 
-            case 'lost':
-                $query->where(function ($q) {
-                    $q->where('QuoteStatus', 'Lost')
-                        ->orWhere('status', 'Lost');
-                });
+                ->filterColumn('OfficeName', function ($query, $keyword) {
+                    $query->where('teamname', 'like', "%{$keyword}%");
+                })
+                ->filterColumn('ClientName', function ($query, $keyword) {
+                    $query->where('companyname', 'like', "%{$keyword}%");
+                })
+                ->filterColumn('ClientID', function ($query, $keyword) {
+                    $query->where('clientid', 'like', "%{$keyword}%");
+                })
+                ->filterColumn('SalesPerson', function ($query, $keyword) {
+                    $query->where('username', 'like', "%{$keyword}%");
+                })
+                ->filterColumn('OriginCountry', function ($query, $keyword) {
+                    $query->where('origincountry', 'like', "%{$keyword}%");
+                })
+                ->filterColumn('DestinationCountry', function ($query, $keyword) {
+                    $query->where('destinationcountry', 'like', "%{$keyword}%");
+                })
+                ->filterColumn('QuotationStatus', function ($query, $keyword) {
+                    $keyword = strtolower(trim($keyword));
+                    $query->where(function ($q) use ($keyword) {
+                        if (str_contains($keyword, 'progress') || str_contains($keyword, 'pending') || str_contains($keyword, 'proposal')) {
+                            $q->where(function ($sub) {
+                                $sub->whereIn('QuoteStatus', ['Proposal', 'Pending', 'In Progress'])
+                                    ->orWhereIn('status', ['Proposal', 'Pending'])
+                                    ->orWhereNull('QuoteStatus')
+                                    ->orWhereNull('status');
+                            });
+                        } elseif (str_contains($keyword, 'won')) {
+                            $q->where(function ($sub) {
+                                $sub->where('QuoteStatus', 'Won')->orWhere('status', 'Won');
+                            })->where(function ($sub) {
+                                $sub->whereNull('SCMINTStatus')->orWhere('SCMINTStatus', 'Success');
+                            });
+                        } elseif (str_contains($keyword, 'lost')) {
+                            $q->where(function ($sub) {
+                                $sub->where('QuoteStatus', 'Lost')->orWhere('status', 'Lost');
+                            });
+                        } elseif (str_contains($keyword, 'cancel')) {
+                            $q->where(function ($sub) {
+                                $sub->where('QuoteStatus', 'Cancel')->orWhere('status', 'Cancel');
+                            });
+                        } elseif (str_contains($keyword, 'failed') || str_contains($keyword, 'int')) {
+                            $q->where(function ($sub) {
+                                $sub->where('QuoteStatus', 'Won')->orWhere('status', 'Won');
+                            })->whereNotNull('SCMINTStatus')->where('SCMINTStatus', '!=', 'Success');
+                        } else {
+                            $q->where('QuoteStatus', 'like', "%{$keyword}%")
+                                ->orWhere('status', 'like', "%{$keyword}%");
+                        }
+                    });
+                })
+                ->filterColumn('StatusRemark', function ($query, $keyword) {
+                    $query->where('SCMINTStatus', 'like', "%{$keyword}%");
+                })
+                ->filterColumn('BookingNo', function ($query, $keyword) {
+                    $query->where('bookingno', 'like', "%{$keyword}%");
+                })
 
-                Log::info('Applied lost filter');
+                ->addColumn('report_date', function ($row) {
+                    return $row->CreatedOn ? date('Y-m-d H:i', strtotime($row->CreatedOn)) : '-';
+                })
+                ->addColumn('OfficeName', function ($row) {
+                    return $row->teamname ?? '-';
+                })
+                ->addColumn('ClientName', function ($row) {
+                    return $row->companyname ?? '-';
+                })
+                ->addColumn('ClientID', function ($row) {
+                    return $row->clientid ?? '-';
+                })
+                ->addColumn('SalesPerson', function ($row) {
+                    return $row->username ?? '-';
+                })
+                ->addColumn('OriginCountry', function ($row) {
+                    return $row->origincountry ?? '-';
+                })
+                ->addColumn('DestinationCountry', function ($row) {
+                    return $row->destinationcountry ?? '-';
+                })
+                ->addColumn('QuotationStatus', function ($row) {
+                    $status = $row->QuoteStatus ?? $row->status ?? 'Proposal';
 
-                break;
-
-            case 'canceled':
-                $query->where(function ($q) {
-                    $q->where('QuoteStatus', 'Cancel')
-                        ->orWhere('status', 'Cancel');
-                });
-
-                Log::info('Applied canceled filter');
-
-                break;
-
-            case 'failed_int':
-                $query->where(function ($q) {
-                    $q->where('QuoteStatus', 'Won')
-                        ->orWhere('status', 'Won');
-                })->whereNotNull('SCMINTStatus')
-                    ->where('SCMINTStatus', '!=', 'Success');
-
-                Log::info('Applied failed_int filter');
-
-                break;
-
-            case 'all':
-
-            default:
-                Log::info('No card filter applied - showing all records');
-                break;
-        }
-
-        return DataTables::of($query)
-            ->filterColumn('OfficeName', function ($query, $keyword) {
-                $query->where('teamname', 'like', "%{$keyword}%");
-            })
-
-            ->filterColumn('ClientName', function ($query, $keyword) {
-                $query->where('companyname', 'like', "%{$keyword}%");
-            })
-
-            ->filterColumn('ClientID', function ($query, $keyword) {
-                $query->where('clientid', 'like', "%{$keyword}%");
-            })
-
-            ->filterColumn('SalesPerson', function ($query, $keyword) {
-                $query->where('username', 'like', "%{$keyword}%");
-            })
-
-            ->filterColumn('OriginCountry', function ($query, $keyword) {
-                $query->where('origincountry', 'like', "%{$keyword}%");
-            })
-
-            ->filterColumn('DestinationCountry', function ($query, $keyword) {
-                $query->where('destinationcountry', 'like', "%{$keyword}%");
-            })
-
-            ->filterColumn('QuotationStatus', function ($query, $keyword) {
-                $keyword = strtolower(trim($keyword));
-
-                $query->where(function ($q) use ($keyword) {
-                    if (str_contains($keyword, 'progress') || str_contains($keyword, 'pending') || str_contains($keyword, 'proposal')) {
-                        $q->where(function ($sub) {
-                            $sub->whereIn('QuoteStatus', ['Proposal', 'Pending', 'In Progress'])
-                                ->orWhereIn('status', ['Proposal', 'Pending'])
-                                ->orWhereNull('QuoteStatus')
-                                ->orWhereNull('status');
-                        });
-                    } elseif (str_contains($keyword, 'won')) {
-                        $q->where(function ($sub) {
-                            $sub->where('QuoteStatus', 'Won')->orWhere('status', 'Won');
-                        })->where(function ($sub) {
-
-                            $sub->whereNull('SCMINTStatus')->orWhere('SCMINTStatus', 'Success');
-                        });
-                    } elseif (str_contains($keyword, 'lost')) {
-
-                        $q->where(function ($sub) {
-                            $sub->where('QuoteStatus', 'Lost')->orWhere('status', 'Lost');
-                        });
-                    } elseif (str_contains($keyword, 'cancel')) {
-
-                        $q->where(function ($sub) {
-                            $sub->where('QuoteStatus', 'Cancel')->orWhere('status', 'Cancel');
-                        });
-                    } elseif (str_contains($keyword, 'failed') || str_contains($keyword, 'int')) {
-
-                        $q->where(function ($sub) {
-                            $sub->where('QuoteStatus', 'Won')->orWhere('status', 'Won');
-                        })->whereNotNull('SCMINTStatus')->where('SCMINTStatus', '!=', 'Success');
-                    } else {
-
-                        $q->where('QuoteStatus', 'like', "%{$keyword}%")
-                            ->orWhere('status', 'like', "%{$keyword}%");
+                    if ($status === 'Won' && $row->SCMINTStatus && $row->SCMINTStatus !== 'Success') {
+                        return 'Failed Int.';
                     }
-                });
-            })
+                    if (in_array($status, ['Proposal', 'Pending', 'In Progress']) || is_null($status)) {
+                        return 'In Progress';
+                    }
+                    if ($status === 'Cancel') {
+                        return 'Canceled';
+                    }
+                    return $status;
+                })
+                ->addColumn('StatusRemark', function ($row) {
+                    return $row->SCMINTStatus ?? '-';
+                })
+                ->addColumn('BookingNo', function ($row) {
+                    return $row->bookingno ?? '-';
+                })
+                ->addColumn('action', function ($row) use ($cardFilter) {
+                    $status    = $row->QuoteStatus ?? $row->status ?? 'Proposal';
+                    $scmStatus = $row->SCMINTStatus;
 
-            ->filterColumn('StatusRemark', function ($query, $keyword) {
-                $query->where('SCMINTStatus', 'like', "%{$keyword}%");
-            })
+                    $isInProgress = in_array($status, ['Pending', 'Proposal', 'In Progress', 'Failed Progress'])
+                        || is_null($status);
+                    $isFailedInt  = ($status === 'Won' && $scmStatus && $scmStatus !== 'Success');
+                    $isCleanWon   = ($status === 'Won' && (is_null($scmStatus) || $scmStatus === 'Success'));
 
-            ->filterColumn('BookingNo', function ($query, $keyword) {
-                $query->where('bookingno', 'like', "%{$keyword}%");
-            })
-
-            ->addColumn('report_date', function ($row) {
-                return $row->createdon ? date('Y-m-d H:i', strtotime($row->createdon)) : '-';
-            })
-
-            ->addColumn('OfficeName', function ($row) {
-                return $row->teamname ?? '-';
-            })
-
-            ->addColumn('ClientName', function ($row) {
-                return $row->companyname ?? '-';
-            })
-
-            ->addColumn('ClientID', function ($row) {
-                return $row->clientid ?? '-';
-            })
-
-            ->addColumn('SalesPerson', function ($row) {
-                return $row->username ?? '-';
-            })
-
-            ->addColumn('OriginCountry', function ($row) {
-                return $row->origincountry ?? '-';
-            })
-
-            ->addColumn('DestinationCountry', function ($row) {
-                return $row->destinationcountry ?? '-';
-            })
-
-            ->addColumn('QuotationStatus', function ($row) {
-                $status = $row->QuoteStatus ?? $row->status ?? 'Proposal';
-
-                if ($status == 'Won' && $row->SCMINTStatus && $row->SCMINTStatus != 'Success') {
-                    return 'Failed Int.';
-                }
-
-                if (in_array($status, ['Proposal', 'Pending', 'In Progress']) || is_null($status)) {
-                    return 'In Progress';
-                }
-
-                if ($status == 'Cancel') {
-                    return 'Canceled';
-                }
-                return $status;
-            })
-
-            ->addColumn('StatusRemark', function ($row) {
-                return $row->SCMINTStatus ?? '-';
-            })
-
-            ->addColumn('BookingNo', function ($row) {
-                return $row->bookingno ?? '-';
-            })
-
-            ->addColumn('action', function ($row) use ($cardFilter) {
-                $status    = $row->QuoteStatus ?? $row->status ?? 'Proposal';
-                $scmStatus = $row->SCMINTStatus;
-                $isInProgress = in_array($status, ['Pending', 'Proposal']) || is_null($status);
-                $isFailedInt  = ($status == 'Won' && $scmStatus && $scmStatus != 'Success');
-                $viewBtn = '<a href="' . route('quotation.view', $row->ID) . '" class="btn btn-info btn-sm" title="View">    
-                    <i class="fas fa-eye"></i>
-                </a>';
-
-                $editBtn      = '';
-                $retriggerBtn = '';
-
-                if ($cardFilter === 'in_progress' && $isInProgress) {
-                    $editBtn = ' <a href="' . route('quotation.edit', $row->ID) . '" class="btn btn-warning btn-sm" title="Edit">
-                        <i class="fas fa-edit"></i>
+                    $viewBtn = '<a href="' . route('quotation.view', $row->ID) . '" class="btn btn-info btn-sm" title="View">
+                        <i class="fas fa-eye"></i>
                     </a>';
-                }
 
-                if ($cardFilter === 'failed_int' && $isFailedInt) {
-                    $retriggerBtn = ' <button class="btn btn-danger btn-sm btn-retrigger" data-booking="' . $row->bookingno . '" title="Retrigger">
-                        <i class="fas fa-sync-alt"></i>
-                    </button>';
-                }
+                    $editBtn = '';
+                    if ($cardFilter === 'in_progress' && $isInProgress) {
+                        $editBtn = ' <a href="' . route('quotation.edit', $row->ID) . '" class="btn btn-warning btn-sm" title="Edit">
+                            <i class="fas fa-edit"></i>
+                        </a>';
+                    }
 
-                $createBookingBtn = '';
-                $isCleanWon = ($status === 'Won' && (is_null($scmStatus) || $scmStatus === 'Success'));
+                    $retriggerBtn = '';
+                    if ($cardFilter === 'failed_int' && $isFailedInt) {
+                        $retriggerBtn = ' <button class="btn btn-danger btn-sm btn-retrigger" data-booking="' . $row->bookingno . '" title="Retrigger">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>';
+                    }
 
-                if ($cardFilter === 'won' && $isCleanWon) {
-                    $createBookingBtn = ' <button class="btn btn-success btn-sm btn-create-booking"
-    data-id="' . $row->ID . '"
-    data-booking="' . $row->bookingno . '"
-    data-team="' . $row->teamid . '"
-    data-quoteno="' . $row->QuoteNo . '"  
-    title="Create Booking">
-        <i class="fas fa-plus-circle"></i>
-</button>';
-                }
-                return $viewBtn . $editBtn . $retriggerBtn . $createBookingBtn;
-            })
+                    $createBookingBtn = '';
+                    if ($cardFilter === 'won' && $isCleanWon) {
+                        $createBookingBtn = ' <button class="btn btn-success btn-sm btn-create-booking"
+                            data-id="'      . $row->ID       . '"
+                            data-booking="' . $row->bookingno . '"
+                            data-team="'    . $row->teamid    . '"
+                            data-quoteno="' . $row->QuoteNo   . '"
+                            title="Create Booking">
+                            <i class="fas fa-plus-circle"></i>
+                        </button>';
+                    }
 
-            ->rawColumns(['action'])
-            ->make(true);
+                    return $viewBtn . $editBtn . $retriggerBtn . $createBookingBtn;
+                })
+
+                ->rawColumns(['action'])
+                ->make(true);
+        } catch (\Throwable $e) {
+            Log::error('QuotationData 500', [
+                'message' => $e->getMessage(),
+                'file'    => $e->getFile(),
+                'line'    => $e->getLine(),
+                'trace'   => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'error'   => $e->getMessage(),
+                'file'    => $e->getFile(),
+                'line'    => $e->getLine(),
+            ], 500);
+        }
     }
 
     public function update(Request $request, $id)
@@ -804,11 +788,11 @@ class QuotationController extends Controller
                 QC.ChargeType as SourceType
             FROM Quote_Quotation_ChargeSheet QC WITH (NOLOCK)
             INNER JOIN Quote_QuotationInfo QI WITH (NOLOCK) ON QI.id = QC.QuotationInfoID
-            LEFT JOIN [FITSCMUAT].dbo.Bill_ChargeCode BC WITH (NOLOCK) ON BC.Id = QC.ChargeCodeId
-            LEFT JOIN [FITSCMUAT].dbo.Cust_Currency CC WITH (NOLOCK) ON CC.Id = QC.EstChargeCurrencyId
+            LEFT JOIN [FITSCM].dbo.Bill_ChargeCode BC WITH (NOLOCK) ON BC.Id = QC.ChargeCodeId
+            LEFT JOIN [FITSCM].dbo.Cust_Currency CC WITH (NOLOCK) ON CC.Id = QC.EstChargeCurrencyId
             LEFT JOIN Cust_ChargecodeBasedOn CB WITH (NOLOCK) ON CB.Id = QC.BasedOnId
-            LEFT JOIN [FITSCMUAT].dbo.Sys_UOM SU WITH (NOLOCK) ON SU.Id = QC.UOMId
-            LEFT JOIN [FITSCMUAT].dbo.Cust_Party CP WITH (NOLOCK) ON CP.Id = QC.PartyID
+            LEFT JOIN [FITSCM].dbo.Sys_UOM SU WITH (NOLOCK) ON SU.Id = QC.UOMId
+            LEFT JOIN [FITSCM].dbo.Cust_Party CP WITH (NOLOCK) ON CP.Id = QC.PartyID
             WHERE QI.bookingno = ?
                 AND QC.IsDeleted = 0
             ", [$bookingNo]);
@@ -1547,11 +1531,11 @@ class QuotationController extends Controller
                 ISNULL(QC.ChargeType, 'manual') as SourceType
             FROM Quote_Quotation_ChargeSheet QC WITH (NOLOCK)
             INNER JOIN Quote_QuotationInfo QI WITH (NOLOCK) ON QI.id = QC.QuotationInfoID
-            LEFT JOIN [FITSCMUAT].dbo.Bill_ChargeCode BC WITH (NOLOCK) ON BC.Id = QC.ChargeCodeId
-            LEFT JOIN [FITSCMUAT].dbo.Cust_Currency CC WITH (NOLOCK) ON CC.Id = QC.EstChargeCurrencyId
+            LEFT JOIN [FITSCM].dbo.Bill_ChargeCode BC WITH (NOLOCK) ON BC.Id = QC.ChargeCodeId
+            LEFT JOIN [FITSCM].dbo.Cust_Currency CC WITH (NOLOCK) ON CC.Id = QC.EstChargeCurrencyId
             LEFT JOIN Cust_ChargecodeBasedOn CB WITH (NOLOCK) ON CB.Id = QC.BasedOnId
-            LEFT JOIN [FITSCMUAT].dbo.Sys_UOM SU WITH (NOLOCK) ON SU.Id = QC.UOMId
-            LEFT JOIN [FITSCMUAT].dbo.Cust_Party CP WITH (NOLOCK) ON CP.Id = QC.PartyID
+            LEFT JOIN [FITSCM].dbo.Sys_UOM SU WITH (NOLOCK) ON SU.Id = QC.UOMId
+            LEFT JOIN [FITSCM].dbo.Cust_Party CP WITH (NOLOCK) ON CP.Id = QC.PartyID
             WHERE QC.Id = ?
                 AND QC.IsDeleted = 0
             ", [$chargeId]);
@@ -3080,321 +3064,287 @@ class QuotationController extends Controller
      * Route: GET /quotation/{id}/generate-pdf
      */
 
- 
-public function generatePdf($id)
-{
-    try {
-        // Set memory limit for PDF generation
-        ini_set('memory_limit', '512M');
-        ini_set('max_execution_time', '300');
 
-        Log::info('PDF Generation - Starting', ['quotation_id' => $id]);
-
-        // Verify TCPDF is installed
-        if (!class_exists('\TCPDF')) {
-            Log::error('PDF Generation - TCPDF class not found');
-            return response()->json([
-                'success' => false,
-                'message' => 'PDF library not installed. Please run: composer require tecnickcom/tcpdf'
-            ], 500);
-        }
-
-        $quotation = \App\Models\QuotationInfo::where('ID', $id)->first();
-
-        if (!$quotation) {
-            Log::error('PDF Generation - Quotation not found', ['id' => $id]);
-            return response()->json([
-                'success' => false,
-                'message' => 'Quotation not found'
-            ], 404);
-        }
-
-        $submittedBy = auth()->user()->displayName ?? auth()->user()->Email ?? 'system';
-
-        Log::info('PDF Generation - Loading charges', [
-            'booking_no' => $quotation->bookingno
-        ]);
-
-        // Resolve correct database path based on environment
-        $dbPath = app()->environment('production') ? '[FITSCM].dbo.' : '[FITSCMUAT].dbo.';
-
-        // Load charges with VAT/Tax — mirrors sp_ChargeCode join logic
+    public function generatePdf($id)
+    {
         try {
-            $charges = DB::select("
-                SELECT
-                    QC.Id                AS QuoteChargeID,
-                    BC.Code              AS ChargeCode,
-                    BC.Name              AS ChargeName,
-                    QC.Quantity,
-                    QC.EstChargeRate     AS Rate,
-                    QC.EstChargeAmount   AS AmtInChgCurr,
-                    QC.EstBaseAmount     AS AmtInBaseCurr,
-                    QC.BaseExchRate      AS ExChangeRate,
-                    CC.Code              AS ChgCurr,
-                    CB.Code              AS BasedOnCode,
-                    QC.Remarks           AS ChargeRemark,
-                    QC.IsRevenue,
-                    CP.Code              AS PartyCode,
+            ini_set('memory_limit', '512M');
+            ini_set('max_execution_time', '300');
 
-                    -- VAT/Tax: matches sp_ChargeCode logic exactly
-                    -- Returns e.g. 'VAT @ 16.00' or '' if no tax applies
-                    IIF(
-                        ISNULL(TAXR.Rate, 0) <= 0 OR BCT.Code IS NULL,
-                        '',
-                        BCT.Code + ' @ ' + FORMAT(TAXR.Rate, '#.00')
-                    )                    AS Tax
+            Log::info('PDF Generation - Starting', ['quotation_id' => $id]);
 
-                FROM Quote_Quotation_ChargeSheet QC WITH (NOLOCK)
-                INNER JOIN Quote_QuotationInfo QI WITH (NOLOCK)
-                    ON QI.id = QC.QuotationInfoID
-                LEFT JOIN {$dbPath}Bill_ChargeCode BC WITH (NOLOCK)
-                    ON BC.Id = QC.ChargeCodeId
-                LEFT JOIN {$dbPath}Cust_Currency CC WITH (NOLOCK)
-                    ON CC.Id = QC.EstChargeCurrencyId
-                LEFT JOIN Cust_ChargecodeBasedOn CB WITH (NOLOCK)
-                    ON CB.Id = QC.BasedOnId
-                LEFT JOIN {$dbPath}Cust_Party CP WITH (NOLOCK)
-                    ON CP.Id = QC.PartyID
+            $quotation = \App\Models\QuotationInfo::where('ID', $id)->first();
 
-                -- VAT joins: same chain as sp_ChargeCode
-                LEFT JOIN {$dbPath}Bill_ChargeCodeOfficeMap BCO WITH (NOLOCK)
-                    ON BCO.ChargeCodeId = BC.Id AND BCO.IsActive = 1
-                LEFT JOIN {$dbPath}Bill_ChargeCodeOfficeTaxMap BCOT WITH (NOLOCK)
-                    ON BCOT.ChargeCodeOfficeId = BCO.Id
-                    AND BCOT.IsActive = 1
-                    AND BCOT.ApplicableFor = IIF(QC.IsRevenue = 1, 'Revenue', 'Cost')
-                LEFT JOIN {$dbPath}Bill_TaxCodeGroup BTAX WITH (NOLOCK)
-                    ON BTAX.Id = BCOT.TaxGroupId
-                    AND BTAX.IsActive = 1
-                    AND BTAX.IsDeleted = 0
-                LEFT JOIN {$dbPath}Bill_TaxCodeRate TAXR WITH (NOLOCK)
-                    ON TAXR.TaxCodeGroupId = BTAX.Id
-                    AND CAST(GETDATE() AS DATE) BETWEEN TAXR.FromDate AND TAXR.ToDate
-                    AND TAXR.IsActive = 1
-                    AND TAXR.IsDeleted = 0
-                LEFT JOIN {$dbPath}Bill_TaxCode BCT WITH (NOLOCK)
-                    ON BCT.Id = TAXR.TaxCodeId
-                    AND BCT.IsActive = 1
-                    AND BCT.IsDeleted = 0
-
-                WHERE QI.bookingno = ? AND QC.IsDeleted = 0
-                ORDER BY QC.IsRevenue DESC, BC.Name ASC
-            ", [$quotation->bookingno]);
-        } catch (\Exception $e) {
-            Log::error('PDF Generation - Failed to load charges', [
-                'booking_no' => $quotation->bookingno,
-                'error'      => $e->getMessage()
-            ]);
-            $charges = [];
-        }
-
-        $revenueCharges = array_values(array_filter($charges, fn($c) =>  $c->IsRevenue));
-        $costCharges    = array_values(array_filter($charges, fn($c) => !$c->IsRevenue));
-        $totalRevenue   = array_sum(array_map(fn($c) => (float)$c->AmtInBaseCurr, $revenueCharges));
-        $totalCost      = array_sum(array_map(fn($c) => (float)$c->AmtInBaseCurr, $costCharges));
-
-        Log::info('PDF Generation - Charges loaded', [
-            'revenue_count' => count($revenueCharges),
-            'cost_count'    => count($costCharges)
-        ]);
-
-        // ── Fetch saved T&C content from document store ──
-        $termsCondition = '';
-        try {
-            $tcDocument = DB::table('Quote_Quotation_Document')
-                ->where('QuotationInfoID', $quotation->ID)
-                ->where('DocumentType', 'TermsCondition')
-                ->where('IsDeleted', 0)
-                ->orderByDesc('CreatedOn')
-                ->first(['FilePath', 'Name']);
-
-            if ($tcDocument && $tcDocument->FilePath) {
-                $relativePath = $this->normalizeFilePath($tcDocument->FilePath);
-                if (\Storage::disk('public')->exists($relativePath)) {
-                    $termsCondition = \Storage::disk('public')->get($relativePath);
-                }
+            if (!$quotation) {
+                Log::error('PDF Generation - Quotation not found', ['id' => $id]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Quotation not found'
+                ], 404);
             }
 
-            Log::info('PDF Generation - T&C loaded', [
-                'booking_no'  => $quotation->bookingno,
-                'tc_found'    => !empty($termsCondition),
-                'tc_doc_name' => $tcDocument->Name ?? 'none',
-            ]);
-        } catch (\Exception $e) {
-            Log::warning('PDF Generation - T&C fetch failed (non-fatal)', [
-                'booking_no' => $quotation->bookingno,
-                'error'      => $e->getMessage(),
-            ]);
-        }
+            $submittedBy = auth()->user()->displayName ?? auth()->user()->Email ?? 'system';
 
-        // Build HTML content with error handling
-        try {
-            $html = view('quotation.pdf', [
-                'quotation'      => $quotation,
-                'revenueCharges' => $revenueCharges,
-                'costCharges'    => $costCharges,
-                'totalRevenue'   => $totalRevenue,
-                'totalCost'      => $totalCost,
-                'generatedDate'  => now()->format('d-m-Y'),
-                'termsCondition' => $termsCondition,
-            ])->render();
-        } catch (\Exception $e) {
-            Log::error('PDF Generation - View render failed', [
-                'error' => $e->getMessage(),
-                'file'  => $e->getFile(),
-                'line'  => $e->getLine()
+            Log::info('PDF Generation - Loading charges', [
+                'booking_no' => $quotation->bookingno
+            ]);
+
+            // Load charges
+            try {
+                $charges = DB::select("
+                    SELECT
+                        QC.Id                AS QuoteChargeID,
+                        BC.Code              AS ChargeCode,
+                        BC.Name              AS ChargeName,
+                        QC.Quantity,
+                        QC.EstChargeRate     AS Rate,
+                        QC.EstChargeAmount   AS AmtInChgCurr,
+                        QC.EstBaseAmount     AS AmtInBaseCurr,
+                        QC.BaseExchRate      AS ExChangeRate,
+                        CC.Code              AS ChgCurr,
+                        CB.Code              AS BasedOnCode,
+                        QC.Remarks           AS ChargeRemark,
+                        QC.IsRevenue,
+                        CP.Code              AS PartyCode
+                    FROM Quote_Quotation_ChargeSheet QC WITH (NOLOCK)
+                    INNER JOIN Quote_QuotationInfo QI WITH (NOLOCK) ON QI.ID = QC.QuotationInfoID
+                    LEFT JOIN [FITSCM].dbo.Bill_ChargeCode BC WITH (NOLOCK) ON BC.Id = QC.ChargeCodeId
+                    LEFT JOIN [FITSCM].dbo.Cust_Currency CC WITH (NOLOCK) ON CC.Id = QC.EstChargeCurrencyId
+                    LEFT JOIN Cust_ChargecodeBasedOn CB WITH (NOLOCK) ON CB.Id = QC.BasedOnId
+                    LEFT JOIN [FITSCM].dbo.Cust_Party CP WITH (NOLOCK) ON CP.Id = QC.PartyID
+                    WHERE QI.bookingno = ? AND QC.IsDeleted = 0
+                    ORDER BY QC.IsRevenue DESC, BC.Name ASC
+                ", [$quotation->bookingno]);
+            } catch (\Exception $e) {
+                Log::error('PDF Generation - Failed to load charges', [
+                    'booking_no' => $quotation->bookingno,
+                    'error'      => $e->getMessage()
+                ]);
+                $charges = [];
+            }
+
+            // ── DIAGNOSTIC: log raw charge count before any filtering ──
+            Log::info('PDF Generation - Charges raw result', [
+                'booking_no'   => $quotation->bookingno,
+                'raw_count'    => count($charges),
+                'raw_charges'  => json_encode($charges),
+            ]);
+
+            // SQL Server bit columns may come back as 1/0 (int), "1"/"0" (string), or true/false.
+            // Cast explicitly to int to handle all driver variations safely.
+            $revenueCharges = array_values(array_filter($charges, fn($c) => (int)$c->IsRevenue === 1));
+            $costCharges    = array_values(array_filter($charges, fn($c) => (int)$c->IsRevenue === 0));
+            $totalRevenue   = array_sum(array_map(fn($c) => (float)$c->AmtInBaseCurr, $revenueCharges));
+            $totalCost      = array_sum(array_map(fn($c) => (float)$c->AmtInBaseCurr, $costCharges));
+
+            Log::info('PDF Generation - Charges loaded', [
+                'booking_no'    => $quotation->bookingno,
+                'raw_count'     => count($charges),
+                'revenue_count' => count($revenueCharges),
+                'cost_count'    => count($costCharges),
+            ]);
+
+            // ── Fetch saved T&C content ──
+            $termsCondition = '';
+            try {
+                $tcDocument = DB::table('Quote_Quotation_Document')
+                    ->where('QuotationInfoID', $quotation->ID)
+                    ->where('DocumentType', 'TermsCondition')
+                    ->where('IsDeleted', 0)
+                    ->orderByDesc('CreatedOn')
+                    ->first(['FilePath', 'Name']);
+
+                if ($tcDocument && $tcDocument->FilePath) {
+                    $relativePath = $this->normalizeFilePath($tcDocument->FilePath);
+                    if (\Storage::disk('public')->exists($relativePath)) {
+                        $termsCondition = \Storage::disk('public')->get($relativePath);
+                    }
+                }
+
+                Log::info('PDF Generation - T&C loaded', [
+                    'booking_no'  => $quotation->bookingno,
+                    'tc_found'    => !empty($termsCondition),
+                    'tc_doc_name' => $tcDocument->Name ?? 'none',
+                ]);
+            } catch (\Exception $e) {
+                Log::warning('PDF Generation - T&C fetch failed (non-fatal)', [
+                    'booking_no' => $quotation->bookingno,
+                    'error'      => $e->getMessage(),
+                ]);
+            }
+
+            // ── Render HTML ──
+            try {
+                $html = view('quotation.pdf', [
+                    'quotation'      => $quotation,
+                    'revenueCharges' => $revenueCharges,
+                    'costCharges'    => $costCharges,
+                    'totalRevenue'   => $totalRevenue,
+                    'totalCost'      => $totalCost,
+                    'generatedDate'  => now()->format('d-m-Y'),
+                    'termsCondition' => $termsCondition,
+                ])->render();
+            } catch (\Exception $e) {
+                Log::error('PDF Generation - View render failed', [
+                    'error' => $e->getMessage(),
+                    'file'  => $e->getFile(),
+                    'line'  => $e->getLine()
+                ]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'PDF template rendering failed: ' . $e->getMessage()
+                ], 500);
+            }
+
+            Log::info('PDF Generation - HTML rendered', [
+                'html_length' => strlen($html)
+            ]);
+
+            // ── Create PDF with DomPDF ──
+            try {
+                $options = new \Dompdf\Options();
+                $options->set('isHtml5ParserEnabled', true);
+                $options->set('isPhpEnabled', false);
+                $options->set('isRemoteEnabled', true);
+                $options->set('defaultFont', 'Arial');
+                $options->set('chroot', public_path());
+                $pdf = new \Dompdf\Dompdf($options);
+                $pdf->loadHtml($html, 'UTF-8');
+                $pdf->setPaper('A4', 'portrait');
+                $pdf->render();
+
+                Log::info('PDF Generation - PDF object created successfully');
+            } catch (\Exception $e) {
+                Log::error('PDF Generation - DomPDF creation failed', [
+                    'error' => $e->getMessage(),
+                    'file'  => $e->getFile(),
+                    'line'  => $e->getLine(),
+                ]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'PDF creation failed: ' . $e->getMessage()
+                ], 500);
+            }
+
+            // ── Determine version — count only PDF files, not TC subfolder ──
+            $folder = 'quotations/' . $quotation->bookingno;
+
+            try {
+                \Storage::disk('public')->makeDirectory($folder);
+            } catch (\Exception $e) {
+                Log::error('PDF Generation - Directory creation failed', [
+                    'folder' => $folder,
+                    'error'  => $e->getMessage()
+                ]);
+            }
+
+            // Count only existing QuotationPDF documents for this quotation
+            // (avoids TC files inflating the version number)
+            $existingVersions = DB::table('Quote_Quotation_Document')
+                ->where('QuotationInfoID', $quotation->ID)
+                ->where('DocumentType', 'QuotationPDF')
+                ->where('IsDeleted', 0)
+                ->count();
+
+            $nextVersion = $existingVersions + 1;
+            $fileName    = 'Quotation_' . $quotation->bookingno . '_V' . $nextVersion . '_' . now()->format('Ymd_His') . '.pdf';
+            $storagePath = $folder . '/' . $fileName;
+            $fullPath    = \Storage::disk('public')->path($storagePath);
+
+            Log::info('PDF Generation - File paths determined', [
+                'storage_path'      => $storagePath,
+                'full_path'         => $fullPath,
+                'version'           => $nextVersion,
+                'existing_versions' => $existingVersions,
+            ]);
+
+            // ── Write PDF to disk ──
+            try {
+                $dir = dirname($fullPath);
+                if (!file_exists($dir)) {
+                    mkdir($dir, 0755, true);
+                    Log::info('PDF Generation - Created directory', ['dir' => $dir]);
+                }
+
+                file_put_contents($fullPath, $pdf->output());
+
+                if (!file_exists($fullPath)) {
+                    throw new \Exception('PDF file was not created at: ' . $fullPath);
+                }
+
+                Log::info('PDF Generation - File written successfully', [
+                    'path' => $fullPath,
+                    'size' => filesize($fullPath)
+                ]);
+            } catch (\Exception $e) {
+                Log::error('PDF Generation - File write failed', [
+                    'path'  => $fullPath,
+                    'error' => $e->getMessage(),
+                    'file'  => $e->getFile(),
+                    'line'  => $e->getLine()
+                ]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to save PDF file: ' . $e->getMessage()
+                ], 500);
+            }
+
+            // ── Save document record ──
+            try {
+                DB::table('Quote_Quotation_Document')->insert([
+                    'Id'              => DB::raw('NEWID()'),
+                    'QuotationInfoID' => $quotation->ID,
+                    'DocumentType'    => 'QuotationPDF',
+                    'Name'            => $fileName,
+                    'IsVisible'       => 1,
+                    'IsPrinted'       => 1,
+                    'PrintedOn'       => now(),
+                    'FilePath'        => $storagePath,
+                    'CreatedBy'       => $submittedBy,
+                    'CreatedOn'       => now(),
+                    'LastModifiedBy'  => $submittedBy,
+                    'LastModifiedOn'  => now(),
+                    'IsDeleted'       => 0,
+                ]);
+
+                Log::info('PDF Generation - Database record created successfully');
+            } catch (\Exception $e) {
+                Log::error('PDF Generation - Database insert failed', [
+                    'error' => $e->getMessage(),
+                    'file'  => $e->getFile(),
+                    'line'  => $e->getLine()
+                ]);
+                // Non-fatal — PDF was written, continue
+            }
+
+            Log::info('PDF Generation - Completed successfully', [
+                'booking_no' => $quotation->bookingno,
+                'version'    => $nextVersion,
+                'path'       => $storagePath,
+                'tc_applied' => !empty($termsCondition),
             ]);
 
             return response()->json([
-                'success' => false,
-                'message' => 'PDF template rendering failed: ' . $e->getMessage()
-            ], 500);
-        }
-
-        Log::info('PDF Generation - HTML rendered', [
-            'html_length' => strlen($html)
-        ]);
-
-        // Create PDF using DomPDF
-        try {
-            $options = new \Dompdf\Options();
-            $options->set('isHtml5ParserEnabled', true);
-            $options->set('isPhpEnabled', false);
-            $options->set('isRemoteEnabled', true);
-            $options->set('defaultFont', 'Arial');
-            $options->set('chroot', public_path());
-            $pdf = new \Dompdf\Dompdf($options);
-            $pdf->loadHtml($html, 'UTF-8');
-            $pdf->setPaper('A4', 'portrait');
-            $pdf->render();
-
-            Log::info('PDF Generation - PDF object created successfully');
+                'success' => true,
+                'version' => $nextVersion,
+                'label'   => 'Version ' . $nextVersion,
+                'url'     => \Storage::disk('public')->url($storagePath),
+            ]);
         } catch (\Exception $e) {
-            Log::error('PDF Generation - DomPDF creation failed', [
+            Log::error('PDF Generation - Unexpected error', [
+                'id'    => $id,
                 'error' => $e->getMessage(),
                 'file'  => $e->getFile(),
                 'line'  => $e->getLine(),
+                'trace' => $e->getTraceAsString()
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'PDF creation failed: ' . $e->getMessage()
+                'message' => 'PDF generation failed: ' . $e->getMessage(),
             ], 500);
         }
-
-        // Determine version and file path
-        $folder = 'quotations/' . $quotation->bookingno;
-
-        try {
-            \Storage::disk('public')->makeDirectory($folder);
-        } catch (\Exception $e) {
-            Log::error('PDF Generation - Directory creation failed', [
-                'folder' => $folder,
-                'error'  => $e->getMessage()
-            ]);
-        }
-
-        $existingFiles = \Storage::disk('public')->files($folder);
-        $nextVersion   = count($existingFiles) + 1;
-        $fileName      = 'Quotation_' . $quotation->bookingno . '_V' . $nextVersion . '_' . now()->format('Ymd_His') . '.pdf';
-        $storagePath   = $folder . '/' . $fileName;
-        $fullPath      = \Storage::disk('public')->path($storagePath);
-
-        Log::info('PDF Generation - File paths determined', [
-            'storage_path' => $storagePath,
-            'full_path'    => $fullPath,
-            'version'      => $nextVersion
-        ]);
-
-        // Write PDF to disk
-        try {
-            $dir = dirname($fullPath);
-
-            if (!file_exists($dir)) {
-                mkdir($dir, 0755, true);
-                Log::info('PDF Generation - Created directory', ['dir' => $dir]);
-            }
-
-            file_put_contents($fullPath, $pdf->output());
-
-            if (!file_exists($fullPath)) {
-                throw new \Exception('PDF file was not created at: ' . $fullPath);
-            }
-
-            Log::info('PDF Generation - File written successfully', [
-                'path' => $fullPath,
-                'size' => filesize($fullPath)
-            ]);
-        } catch (\Exception $e) {
-            Log::error('PDF Generation - File write failed', [
-                'path'  => $fullPath,
-                'error' => $e->getMessage(),
-                'file'  => $e->getFile(),
-                'line'  => $e->getLine()
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to save PDF file: ' . $e->getMessage()
-            ], 500);
-        }
-
-        // Save document record to database
-        try {
-            DB::table('Quote_Quotation_Document')->insert([
-                'Id'              => DB::raw('NEWID()'),
-                'QuotationInfoID' => $quotation->ID,
-                'DocumentType'    => 'QuotationPDF',
-                'Name'            => $fileName,
-                'IsVisible'       => 1,
-                'IsPrinted'       => 1,
-                'PrintedOn'       => now(),
-                'FilePath'        => $storagePath,
-                'CreatedBy'       => $submittedBy,
-                'CreatedOn'       => now(),
-                'LastModifiedBy'  => $submittedBy,
-                'LastModifiedOn'  => now(),
-                'IsDeleted'       => 0,
-            ]);
-
-            Log::info('PDF Generation - Database record created successfully');
-        } catch (\Exception $e) {
-            Log::error('PDF Generation - Database insert failed', [
-                'error' => $e->getMessage(),
-                'file'  => $e->getFile(),
-                'line'  => $e->getLine()
-            ]);
-            // Non-fatal — PDF was written successfully, proceed
-        }
-
-        Log::info('PDF Generation - Completed successfully', [
-            'booking_no' => $quotation->bookingno,
-            'version'    => $nextVersion,
-            'path'       => $storagePath,
-            'tc_applied' => !empty($termsCondition),
-        ]);
-
-        return response()->json([
-            'success' => true,
-            'version' => $nextVersion,
-            'label'   => 'Version ' . $nextVersion,
-            'url'     => \Storage::disk('public')->url($storagePath),
-        ]);
-    } catch (\Exception $e) {
-        Log::error('PDF Generation - Unexpected error', [
-            'id'    => $id,
-            'error' => $e->getMessage(),
-            'file'  => $e->getFile(),
-            'line'  => $e->getLine(),
-            'trace' => $e->getTraceAsString()
-        ]);
-
-        return response()->json([
-            'success' => false,
-            'message' => 'PDF generation failed: ' . $e->getMessage(),
-        ], 500);
     }
-}
 
     public function getQuotationVersions($id)
     {
@@ -3410,38 +3360,60 @@ public function generatePdf($id)
                 ->where('DocumentType', 'QuotationPDF')
                 ->where('IsDeleted', 0)
                 ->orderBy('CreatedOn', 'asc')
-                ->get();
+                ->get(['Id', 'Name', 'FilePath', 'CreatedOn']);
 
-            // Extract version number from filename (e.g. Quotation_5238_V12_... → 12)
-            // Fall back to index+1 if the filename pattern doesn't match
             $versions = [];
 
             foreach ($documents as $index => $doc) {
+                // Version number = position in DB (1-based), not parsed from filename.
+                // This is the authoritative source used for email attachment selection.
                 $versionNo = $index + 1;
 
-                // Try to parse the actual version number from the filename
-                // Pattern: Quotation_{bookingno}_V{n}_...
-                if (preg_match('/_V(\d+)_/i', $doc->Name ?? '', $matches)) {
-                    $versionNo = (int) $matches[1];
-                }
-
                 $relativePath = $this->normalizeFilePath($doc->FilePath);
+                $fileExists   = \Storage::disk('public')->exists($relativePath);
+
+                Log::info('getQuotationVersions - Version entry', [
+                    'quotation_id' => $id,
+                    'version_no'   => $versionNo,
+                    'file_name'    => $doc->Name,
+                    'file_path'    => $relativePath,
+                    'file_exists'  => $fileExists,
+                ]);
+
+                // Skip versions whose file no longer exists on disk
+                if (!$fileExists) {
+                    Log::warning('getQuotationVersions - File missing on disk, skipping', [
+                        'quotation_id' => $id,
+                        'version_no'   => $versionNo,
+                        'file_name'    => $doc->Name,
+                        'raw_path'     => $doc->FilePath,
+                        'relative'     => $relativePath,
+                    ]);
+                    continue;
+                }
 
                 $versions[] = [
                     'version'    => $versionNo,
                     'label'      => 'Version ' . $versionNo,
                     'url'        => \Storage::disk('public')->url($relativePath),
                     'created_on' => $doc->CreatedOn,
-                    'file_path'  => $relativePath,
+                    'file_name'  => $doc->Name,
+                    'doc_id'     => $doc->Id,
                 ];
             }
+
+            Log::info('getQuotationVersions - Completed', [
+                'quotation_id'   => $id,
+                'total_db_docs'  => $documents->count(),
+                'versions_found' => count($versions),
+            ]);
 
             return response()->json([
                 'success'  => true,
                 'versions' => $versions,
             ]);
         } catch (\Exception $e) {
-            \Log::error('Get Quotation Versions Error', [
+            Log::error('getQuotationVersions - Failed', [
                 'id'    => $id,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -3472,7 +3444,19 @@ public function generatePdf($id)
                 ->where('ClientName', $quotation->companyname)
                 ->where('SchedulerType', 'QuotationEmail')
                 ->orderBy('SubmittedOn', 'desc')
-                ->get(['SubmittedOn as sent_on', 'EmailTo as to_email', 'Status as status']);
+                ->get(['SubmittedOn as sent_on', 'EmailTo as to_email', 'Status as status', 'SendRemark as send_remark']);
+
+            // Extract version from SendRemark — stored as "Sent via Quotation Module | Version N"
+            $emails = $emails->map(function ($email) {
+                $version = null;
+                if (!empty($email->send_remark) && str_contains($email->send_remark, '|')) {
+                    $version = trim(explode('|', $email->send_remark, 2)[1]);
+                }
+                $email->quote_version = $version ?: 'N/A';
+                unset($email->send_remark);
+                return $email;
+            });
+
             return response()->json(['success' => true, 'emails' => $emails]);
         } catch (\Exception $e) {
 
@@ -3683,14 +3667,14 @@ public function generatePdf($id)
                 ], 400);
             }
 
-            // Query FITSCMUAT database (where currency data lives)
+            // Query FITSCM database (where currency data lives)
             $currencies = DB::connection('sqlsrv')
                 ->select("
                 SELECT DISTINCT CC.Id as CurrencyID, CC.Code as CurrencyCode, CC.Name as CurrencyName
-                FROM [FITSCMUAT].dbo.Cust_Office CO WITH (NOLOCK)
-                INNER JOIN [FITSCMUAT].dbo.Bill_ChargeCodeOfficeMap BCO WITH (NOLOCK) 
+                FROM [FITSCM].dbo.Cust_Office CO WITH (NOLOCK)
+                INNER JOIN [FITSCM].dbo.Bill_ChargeCodeOfficeMap BCO WITH (NOLOCK) 
                     ON BCO.OfficeId = CO.Id AND BCO.IsActive = 1
-                INNER JOIN [FITSCMUAT].dbo.Cust_Currency CC WITH (NOLOCK) 
+                INNER JOIN [FITSCM].dbo.Cust_Currency CC WITH (NOLOCK) 
                     ON CC.Id = BCO.DefaultCurrencyId
                 WHERE CO.Code = ?
                     AND CO.IsActive = 1 
@@ -3747,19 +3731,19 @@ public function generatePdf($id)
                 ], 400);
             }
 
-            // Query FITSCMUAT database (where exchange rate data lives)
+            // Query FITSCM database (where exchange rate data lives)
             $result = DB::select("
                 SELECT TOP 1 ER.ConvertToId as ExRate
-                FROM [FITSCMUAT].dbo.Cust_ExchangeRate ER WITH (NOLOCK)
-                INNER JOIN [FITSCMUAT].dbo.Cust_ExchangeRateOfficeMap OM WITH (NOLOCK)
+                FROM [FITSCM].dbo.Cust_ExchangeRate ER WITH (NOLOCK)
+                INNER JOIN [FITSCM].dbo.Cust_ExchangeRateOfficeMap OM WITH (NOLOCK)
                     ON OM.ExchangeRateId = ER.Id
                     AND OM.IsActive = 1
-                INNER JOIN [FITSCMUAT].dbo.Cust_Office CO WITH (NOLOCK)
+                INNER JOIN [FITSCM].dbo.Cust_Office CO WITH (NOLOCK)
                     ON CO.Id = OM.OfficeId
                     AND CO.Code = ?
                     AND CO.IsActive = 1
                     AND CO.IsDeleted = 0
-                INNER JOIN [FITSCMUAT].dbo.Cust_Currency CUR WITH (NOLOCK)
+                INNER JOIN [FITSCM].dbo.Cust_Currency CUR WITH (NOLOCK)
                     ON CUR.Id = ER.ConvertToId
                     AND CUR.Code = ?
                 WHERE CAST(GETDATE() AS DATE) 

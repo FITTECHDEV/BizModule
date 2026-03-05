@@ -211,9 +211,32 @@
                             <div class="form-group row mb-0">
                                 <label class="col-sm-4 col-form-label">Terms & Conditions</label>
                                 <div class="col-sm-8">
-                                    <select class="form-control form-control-sm" id="termsTemplateSelect">
-                                        <option value="">-- Select Template --</option>
-                                    </select>
+
+                                    {{-- Multi-template: show dropdown --}}
+                                    <div id="termsDropdownWrapper">
+                                        <select class="form-control form-control-sm" id="termsTemplateSelect">
+                                            <option value="">-- Select Template --</option>
+                                        </select>
+                                    </div>
+
+                                    {{-- Single-template: read-only label --}}
+                                    <div id="termsAutoAppliedBadge" style="display:none;">
+                                        <span class="badge badge-success px-2 py-1" style="font-size:0.8rem;">
+                                            <i class="fas fa-check-circle mr-1"></i>
+                                            <span id="termsAutoAppliedName"></span>
+                                        </span>
+                                        <small class="text-muted ml-1">Auto-applied</small>
+                                    </div>
+
+                                    {{-- Instruction shown after PDF generation (multi-template only) --}}
+                                    <div id="termsReSelectMsg" style="display:none; margin-top:5px;">
+                                        <small class="text-warning">
+                                            <i class="fas fa-exclamation-circle mr-1"></i>
+                                            Please re-select a T&C template to generate a new version.
+                                        </small>
+                                    </div>
+
+                                    {{-- Preview + Apply button --}}
                                     <div id="termsDescriptionWrapper" style="display:none; margin-top: 6px;">
                                         <textarea id="termsDescriptionPreview" class="form-control form-control-sm" rows="4" readonly
                                             style="background-color: #e9ecef; font-size: 0.8rem; resize: none;"></textarea>
@@ -222,6 +245,7 @@
                                             <i class="fas fa-save mr-1"></i> Apply Terms
                                         </button>
                                     </div>
+
                                 </div>
                             </div>
                         </div>
@@ -640,8 +664,8 @@
         <!-- END ROW -->
 
         <!-- ============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             MODALS
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             ============================================ -->
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 MODALS
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 ============================================ -->
 
         {{-- REVENUE MODAL --}}
         <div class="modal fade" id="addRevenueModal" tabindex="-1" role="dialog"
@@ -1038,7 +1062,7 @@
                                     <div class="form-group">
                                         <label>To <span class="text-danger">*</span></label>
                                         <input type="email" class="form-control form-control-sm" id="emailTo"
-                                            value="{{ $quotation->pri_partner_email ?? '' }}">
+                                            placeholder="Enter recipient email address...">
                                     </div>
                                 </div>
                             </div>
@@ -1201,8 +1225,8 @@
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.min.css">
     <style>
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                MODAL STYLING — matched to FitExpress UI
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    MODAL STYLING — matched to FitExpress UI
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    ============================================= */
 
         .modal-header {
             background-color: #fff !important;
@@ -1645,9 +1669,9 @@
         }
 
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                       CREATE BOOKING MODAL — Specific overrides
-                                                                                                                                                                                                                                                                                                                                                                                                       to match the "Creation of Booking" design
-                                                                                                                                                                                                                                                                                                                                                                                                       ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           CREATE BOOKING MODAL — Specific overrides
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           to match the "Creation of Booking" design
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           ============================================= */
 
         #createBookingModal .modal-title {
             color: #003580 !important;
@@ -1788,6 +1812,7 @@
     <script>
         const isCopiedBooking = {{ request()->query('copied', 0) ? 'true' : 'false' }};
         const quotationId = '{{ $quotation->ID }}';
+        const loggedInUserEmail = '{{ Auth::user()->Email ?? (Auth::user()->email ?? '') }}';
 
         const tcAlreadyApplied = {{ $quotation->QuotationTCTemplate ? 'true' : 'false' }};
 
@@ -1976,14 +2001,40 @@
             $('#addRevenueModal').on('show.bs.modal', function() {
                 $(this).find('.increase-by-row').removeClass('active').css('display', 'none');
                 if (!currentEditingCharge) {
+                    // Add mode — initialize dropdowns fresh
                     $('#revenueTypeRevenue').prop('checked', true);
                     toggleRevenueFormFields('revenue');
                     loadBasedOnList('revenue');
+                    populateCurrencyDropdown('revenue');
+                } else {
+                    // Edit mode — populateModal already owns the loading sequence via
+                    // loadBasedOnListWithCallback → loadBasedOnUOMWithCallback.
+                    // Only ensure currency is populated (it has its own populated guard).
                     populateCurrencyDropdown('revenue');
                 }
                 setTimeout(function() {
                     initializeChargeCodeAutocomplete('revenue');
                     initializeBillToPartyAutocomplete('revenue');
+                }, 100);
+            });
+
+            $('#addCostModal').on('show.bs.modal', function() {
+                $(this).find('.cost-markup-row').removeClass('active').css('display', 'none');
+                if (!currentEditingCharge) {
+                    // Add mode — initialize dropdowns fresh
+                    $('#costTypeCost').prop('checked', true);
+                    toggleCostFormFields('cost');
+                    loadBasedOnList('cost');
+                    populateCurrencyDropdown('cost');
+                } else {
+                    // Edit mode — populateModal already owns the loading sequence via
+                    // loadBasedOnListWithCallback → loadBasedOnUOMWithCallback.
+                    // Only ensure currency is populated (it has its own populated guard).
+                    populateCurrencyDropdown('cost');
+                }
+                setTimeout(function() {
+                    initializeChargeCodeAutocomplete('cost');
+                    initializeBillToPartyAutocomplete('cost');
                 }, 100);
             });
 
@@ -3277,6 +3328,7 @@
             // ============================================
             $('#generateQuoteBtn').on('click', function() {
                 const $btn = $(this);
+                let generationSucceeded = false;
 
                 $btn.prop('disabled', true)
                     .html('<i class="fas fa-spinner fa-spin mr-1"></i> Generating...');
@@ -3289,12 +3341,25 @@
                     },
                     success: function(response) {
                         if (response.success) {
-                            showNotification('Quote generated — ' + response.label,
-                                'success');
+                            generationSucceeded = true;
+                            showNotification('Quote generated — ' + response.label, 'success');
                             loadVersions();
+
+                            if ($('#termsDropdownWrapper').is(':visible')) {
+                                // Multi-template: reset dropdown and lock Generate until
+                                // user selects a new template (auto-apply fires on change)
+                                $('#termsTemplateSelect').val('');
+                                $('#termsDescriptionPreview').val('');
+                                $('#termsDescriptionWrapper').hide();
+                                $('#applyTermsBtn').prop('disabled', true);
+                                $('#termsReSelectMsg').show();
+                            } else {
+                                // Single-template: silently re-apply so Generate
+                                // re-enables automatically via loadTermsTemplates()
+                                loadTermsTemplates();
+                            }
                         } else {
-                            showNotification(response.message ||
-                                'Failed to generate quote.',
+                            showNotification(response.message || 'Failed to generate quote.',
                                 'error');
                         }
                     },
@@ -3306,8 +3371,20 @@
                         );
                     },
                     complete: function() {
-                        $btn.prop('disabled', false)
-                            .html('<i class="fas fa-file-alt mr-1"></i> Generate Quote');
+                        // Restore button label always.
+                        // Only re-enable if generation FAILED — success path keeps it locked
+                        // until T&C is re-selected.
+                        $btn.html('<i class="fas fa-file-alt mr-1"></i> Generate Quote');
+                        if (!generationSucceeded) {
+                            // Failed or errored — let user retry
+                            $btn.prop('disabled', false).removeAttr('title');
+                        } else {
+                            // Succeeded — keep disabled, set tooltip explaining why
+                            $btn.prop('disabled', true)
+                                .attr('title',
+                                    'Select a Terms & Conditions template to generate a new version'
+                                );
+                        }
                     }
                 });
             });
@@ -3413,8 +3490,8 @@
                 $('#emailTemplateSelect').val('');
                 $('#emailSubject').val('');
                 $('#emailBody').val('');
-                $('#emailFrom').val('');
-                $('#emailTo').val('{{ $quotation->pri_partner_email ?? '' }}');
+                $('#emailFrom').val('{{ $quotation->pri_partner_email ?? '' }}'); // customer email in From
+                $('#emailTo').val(''); // user fills manually
                 loadEmailTemplates();
                 populateQuoteVersionDropdown();
                 $('#emailQuoteModal').modal('show');
@@ -3481,6 +3558,12 @@
                     showNotification('Please select a template', 'error');
                     return;
                 }
+                // Capture the selected version label (e.g. "Version 1").
+                // The option value is the download URL; the text is the human-readable label.
+                const $versionSelect = $('#emailQuoteVersionSelect');
+                const selectedVersionLabel = $versionSelect.val() ?
+                    $versionSelect.find('option:selected').text().trim() :
+                    '';
 
                 $.ajax({
                     url: '{{ route('quotation.email.send') }}',
@@ -3490,6 +3573,7 @@
                         booking_no: bookingNo,
                         quote_id: quotationId,
                         template_id: templateId,
+                        quote_version: selectedVersionLabel,
                         to_email: $('#emailTo').val(),
                         from_email: $('#emailFrom').val(),
                         subject: $('#emailSubject').val(),
@@ -4295,18 +4379,107 @@
                         $select.empty();
 
                         if (response.success && response.templates.length > 0) {
+
+                            // ── SINGLE TEMPLATE: auto-apply, no dropdown needed ──────────
+                            if (response.templates.length === 1) {
+                                const t = response.templates[0];
+
+                                // Hide dropdown, show badge
+                                $('#termsDropdownWrapper').hide();
+                                $('#termsAutoAppliedName').text(t.Name);
+                                $('#termsAutoAppliedBadge').show();
+
+                                // Fetch description then silently save
+                                $.ajax({
+                                    url: '{{ route('quotation.communication.description') }}',
+                                    type: 'GET',
+                                    data: {
+                                        module: 'Quotation',
+                                        sub_module: 'T&C',
+                                        office_code: codeToUse,
+                                        name: t.Name
+                                    },
+                                    success: function(descResponse) {
+                                        if (!descResponse.success) return;
+
+                                        const description = descResponse.description;
+                                        $('#termsDescriptionPreview').val(description);
+                                        // Show preview read-only (no Apply button needed)
+                                        $('#termsDescriptionWrapper').show();
+                                        $('#applyTermsBtn').hide();
+
+                                        // Only auto-save if T&C hasn't been applied yet
+                                        if (tcAlreadyApplied) {
+                                            // Already applied — just unlock Generate Quote
+                                            $('#generateQuoteBtn')
+                                                .prop('disabled', false)
+                                                .removeAttr('title');
+                                            return;
+                                        }
+
+                                        // Silently save the single T&C
+                                        $.ajax({
+                                            url: '{{ route('quotation.communication.save-terms') }}',
+                                            type: 'POST',
+                                            data: {
+                                                _token: '{{ csrf_token() }}',
+                                                booking_no: bookingNo,
+                                                terms_condition: description,
+                                                template_name: t.Name
+                                            },
+                                            success: function(saveResponse) {
+                                                if (saveResponse.success) {
+                                                    // Unlock Generate Quote
+                                                    $('#generateQuoteBtn')
+                                                        .prop('disabled', false)
+                                                        .removeAttr('title');
+                                                } else {
+                                                    showNotification(
+                                                        'Auto-apply T&C failed: ' +
+                                                        (saveResponse
+                                                            .message ||
+                                                            'Unknown error'
+                                                        ),
+                                                        'warning'
+                                                    );
+                                                }
+                                            },
+                                            error: function() {
+                                                showNotification(
+                                                    'Failed to auto-apply Terms & Conditions',
+                                                    'warning');
+                                            }
+                                        });
+                                    },
+                                    error: function() {
+                                        showNotification('Failed to load T&C description',
+                                            'warning');
+                                    }
+                                });
+
+                                return; // ← skip the multi-template path below
+                            }
+
+                            // ── MULTIPLE TEMPLATES: show dropdown as before ──────────────
                             $select.append('<option value="">-- Select Template --</option>');
                             response.templates.forEach(function(t) {
-                                $select.append(
-                                    `<option value="${t.Name}">${t.Name}</option>`);
+                                $select.append(`<option value="${t.Name}">${t.Name}</option>`);
                             });
 
-                            @if ($quotation->terms_condition)
+                            $('#termsDropdownWrapper').show();
+                            $('#termsAutoAppliedBadge').hide();
+
+                            @if ($quotation->QuotationTCTemplate)
+                                // Pre-populate preview if T&C was previously applied
                                 $('#termsDescriptionPreview').val(
-                                    '{{ addslashes($quotation->terms_condition) }}');
-                                $('#termsDescriptionWrapper').show();
+                                    '{{ addslashes($quotation->terms_condition ?? '') }}');
+                                if ($('#termsDescriptionPreview').val()) {
+                                    $('#termsDescriptionWrapper').show();
+                                }
                             @endif
+
                         } else {
+                            // Error states — unchanged
                             if (response.code === 'NOT_CONFIGURED') {
                                 $select.append(
                                     `<option value="" disabled>⚠ T&C not configured for office: ${codeToUse}</option>`
@@ -4349,12 +4522,21 @@
             $('#termsTemplateSelect').on('change', function() {
                 const selectedName = $(this).val();
 
+                // Hide re-select instruction and disable Generate until auto-apply succeeds
+                $('#termsReSelectMsg').hide();
+                $('#generateQuoteBtn').prop('disabled', true).attr('title',
+                    'Please wait — applying Terms & Conditions...');
+                $('#applyTermsBtn').prop('disabled', true);
+
                 if (!selectedName) {
                     $('#termsDescriptionWrapper').hide();
                     $('#termsDescriptionPreview').val('');
+                    $('#generateQuoteBtn').prop('disabled', true).attr('title',
+                        'Please select a Terms & Conditions template first');
                     return;
                 }
 
+                // Step 1: Fetch the T&C description
                 $.ajax({
                     url: '{{ route('quotation.communication.description') }}',
                     type: 'GET',
@@ -4369,17 +4551,57 @@
                         $('#termsDescriptionWrapper').show();
                     },
                     success: function(response) {
-                        if (response.success) {
-                            $('#termsDescriptionPreview').val(response.description);
-                        } else {
-                            $('#termsDescriptionPreview').val(
-                                'Failed to load description.');
+                        if (!response.success) {
+                            $('#termsDescriptionPreview').val('Failed to load description.');
                             showNotification('Could not load T&C description', 'warning');
+                            $('#generateQuoteBtn').prop('disabled', true).attr('title',
+                                'T&C description failed to load');
+                            return;
                         }
+
+                        const description = response.description;
+                        $('#termsDescriptionPreview').val(description);
+                        $('#applyTermsBtn').prop('disabled', false);
+
+                        // Step 2: Auto-apply the selected T&C silently
+                        $.ajax({
+                            url: '{{ route('quotation.communication.save-terms') }}',
+                            type: 'POST',
+                            data: {
+                                _token: '{{ csrf_token() }}',
+                                booking_no: bookingNo,
+                                terms_condition: description,
+                                template_name: selectedName
+                            },
+                            success: function(saveResponse) {
+                                if (saveResponse.success) {
+                                    // T&C saved — unlock Generate Quote
+                                    $('#generateQuoteBtn')
+                                        .prop('disabled', false)
+                                        .removeAttr('title');
+                                } else {
+                                    showNotification(saveResponse.message ||
+                                        'Failed to apply Terms & Conditions',
+                                        'error');
+                                    $('#generateQuoteBtn').prop('disabled', true)
+                                        .attr('title',
+                                            'T&C apply failed — please retry');
+                                }
+                            },
+                            error: function() {
+                                showNotification(
+                                    'Failed to apply Terms & Conditions',
+                                    'error');
+                                $('#generateQuoteBtn').prop('disabled', true).attr(
+                                    'title', 'T&C apply failed — please retry');
+                            }
+                        });
                     },
                     error: function() {
                         $('#termsDescriptionPreview').val('Error loading description.');
                         showNotification('Error loading T&C description', 'error');
+                        $('#generateQuoteBtn').prop('disabled', true).attr('title',
+                            'T&C description failed to load');
                     }
                 });
             });

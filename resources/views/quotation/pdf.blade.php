@@ -323,9 +323,9 @@
     <table class="general-info" cellpadding="0" cellspacing="0">
         <tr>
             <td class="field-label">Place of Receipt</td>
-            <td>{{ $quotation->placeofreceipt ?? $quotation->origincountry ?? '' }}</td>
+            <td>{{ $quotation->placeofreceipt ?? ($quotation->origincountry ?? '') }}</td>
             <td class="field-label">Place of Delivery</td>
-            <td>{{ $quotation->placeofdelivery ?? $quotation->destinationcountry ?? '' }}</td>
+            <td>{{ $quotation->placeofdelivery ?? ($quotation->destinationcountry ?? '') }}</td>
             <td class="field-label">Movement Type</td>
             <td>{{ $quotation->TransportMode ?? '' }}</td>
         </tr>
@@ -360,7 +360,7 @@
             <td class="lbl">Owner Office</td>
             <td class="val">{{ $quotation->teamname ?? '' }}</td>
             <td class="lbl">Executing Office</td>
-            <td class="val">{{ $quotation->executingoffice ?? $quotation->teamname ?? '' }}</td>
+            <td class="val">{{ $quotation->executingoffice ?? ($quotation->teamname ?? '') }}</td>
         </tr>
         <tr>
             <td class="lbl">Place of Loading</td>
@@ -370,7 +370,7 @@
         </tr>
         <tr>
             <td class="lbl">Place of Discharge</td>
-            <td class="val">{{ $quotation->portofdischarge ?? $quotation->origincountry ?? '' }}</td>
+            <td class="val">{{ $quotation->portofdischarge ?? ($quotation->origincountry ?? '') }}</td>
             <td class="lbl">Vehicle</td>
             <td class="val">{{ $quotation->vehicle ?? '' }}</td>
         </tr>
@@ -414,11 +414,15 @@
             </tr>
         </thead>
         <tbody>
-            @forelse($revenueCharges as $charge)
+            @php
+                $allCharges = array_merge($revenueCharges, $costCharges);
+            @endphp
+
+            @forelse($allCharges as $charge)
                 <tr>
-                    <td class="col-charge">{{ $charge->ChargeName ?? $charge->ChargeCode ?? '' }}</td>
+                    <td class="col-charge">{{ $charge->ChargeName ?? ($charge->ChargeCode ?? '') }}</td>
                     <td class="col-based">
-                        {{ $charge->BasedOn ?? $charge->BasedOnCode ?? '' }}<br>
+                        {{ $charge->BasedOn ?? ($charge->BasedOnCode ?? '') }}<br>
                         {{ $charge->BasedOnUOM ?? '' }}
                     </td>
                     <td class="col-rate">
@@ -453,7 +457,7 @@
                     <strong>Total</strong>
                 </td>
                 <td class="col-quoteamt" style="border:1px solid #555;">
-                    <strong>{{ number_format($totalRevenue ?? 0, 2) }}</strong>
+                    <strong>{{ number_format($totalRevenue + $totalCost ?? 0, 2) }}</strong>
                 </td>
                 <td class="col-tax" style="border:1px solid #555;"></td>
             </tr>
