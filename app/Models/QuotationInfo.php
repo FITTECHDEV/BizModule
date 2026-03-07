@@ -21,17 +21,22 @@ class QuotationInfo extends Model
 
     protected $fillable = [
         'bookingno',
+        'QuoteNo',
         'companyname',
         'clientid',
+        'source',
+        'status',
+        'userid',
         'username',
+        'useremail',         // keep if column exists for backwards compat
+        'SalesPersonEmail',  // ← ADD
+        'SalesPersonCode',   // ← ADD
+        'teamid',
         'teamname',
         'origincountry',
         'destinationcountry',
-        'status',
-        'SCMINTStatus',
-        'ServiceVerticalname',
         'process',
-        'incoterms',
+        'incoterm',          // ← was 'incoterms' (wrong)
         'shipmentmode',
         'TransportMode',
         'ServiceClass',
@@ -39,18 +44,26 @@ class QuotationInfo extends Model
         'scopevolume',
         'cargovolume',
         'containerlist',
-        'pri_partner_street',
-        'pri_partner_street2',
+        'CustomerType',      // ← ADD
+        'AgentType',         // ← ADD
+        'AgentTypeId',       // ← ADD
+        'OfficeCode',        // ← ADD
+        'QuotationTCTemplate',
+        'QuotationEmailTemplate',
+        'pri_partner_steet',   // ← was pri_partner_street (DB has typo)
+        'pri_partner_steet2',  // ← was pri_partner_street2 (DB has typo)
         'pri_partner_city',
-        'pri_partner_state',
+        'pri_partner_state',   // note: DB has partner_statename not pri_partner_state
         'pri_partner_zip',
         'pri_partner_countryname',
-        'pri_partnername',
+        'pri_partnername',     // note: DB has pri_partnermaster_name — verify this
         'pri_partner_phone',
         'pri_partner_email',
+        'industryname',
         'Industryname',
         'ClientIntegration',
         'SCMBookingNo',
+        'SCMINTStatus',
         'SCMBookingXML',
     ];
 }

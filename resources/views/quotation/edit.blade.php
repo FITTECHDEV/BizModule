@@ -58,7 +58,14 @@
                             <label class="col-sm-5 col-form-label">Sales person</label>
                             <div class="col-sm-7">
                                 <input type="text" class="form-control form-control-sm"
-                                    value="{{ $quotation->username ?? 'N/A' }}" readonly>
+                                    value="{{ $quotation->username ?? '' }}" readonly>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label class="col-sm-5 col-form-label">Sales Person Email</label>
+                            <div class="col-sm-7">
+                                <input type="text" class="form-control form-control-sm" id="salesPersonEmail"
+                                    value="{{ $quotation->SalesPersonEmail ?? '' }}" readonly>
                             </div>
                         </div>
                         <div class="form-group row mb-0">
@@ -86,56 +93,56 @@
                             <label class="col-sm-5 col-form-label">Service</label>
                             <div class="col-sm-7">
                                 <input type="text" class="form-control form-control-sm"
-                                    value="{{ $quotation->ServiceVerticalname ?? 'N/A' }}" readonly>
+                                    value="{{ $quotation->ServiceVerticalname ?? '' }}" readonly>
                             </div>
                         </div>
                         <div class="form-group row">
                             <label class="col-sm-5 col-form-label">Process</label>
                             <div class="col-sm-7">
                                 <input type="text" class="form-control form-control-sm"
-                                    value="{{ $quotation->process ?? 'N/A' }}" readonly>
+                                    value="{{ $quotation->process ?? '' }}" readonly>
                             </div>
                         </div>
                         <div class="form-group row">
                             <label class="col-sm-5 col-form-label">Origin Country</label>
                             <div class="col-sm-7">
                                 <input type="text" class="form-control form-control-sm"
-                                    value="{{ $quotation->origincountry ?? 'N/A' }}" readonly>
+                                    value="{{ $quotation->origincountry ?? '' }}" readonly>
                             </div>
                         </div>
                         <div class="form-group row">
                             <label class="col-sm-5 col-form-label">Destination Country</label>
                             <div class="col-sm-7">
                                 <input type="text" class="form-control form-control-sm"
-                                    value="{{ $quotation->destinationcountry ?? 'N/A' }}" readonly>
+                                    value="{{ $quotation->destinationcountry ?? '' }}" readonly>
                             </div>
                         </div>
                         <div class="form-group row">
                             <label class="col-sm-5 col-form-label">InCO Terms</label>
                             <div class="col-sm-7">
                                 <input type="text" class="form-control form-control-sm"
-                                    value="{{ $quotation->incoterms ?? 'N/A' }}" readonly>
+                                    value="{{ $quotation->incoterm ?? '' }}" readonly>
                             </div>
                         </div>
                         <div class="form-group row">
                             <label class="col-sm-5 col-form-label">Shipment Mode</label>
                             <div class="col-sm-7">
                                 <input type="text" class="form-control form-control-sm"
-                                    value="{{ $quotation->shipmentmode ?? 'N/A' }}" readonly>
+                                    value="{{ $quotation->shipmentmode ?? '' }}" readonly>
                             </div>
                         </div>
                         <div class="form-group row">
                             <label class="col-sm-5 col-form-label">Transport Mode</label>
                             <div class="col-sm-7">
                                 <input type="text" class="form-control form-control-sm"
-                                    value="{{ $quotation->TransportMode ?? 'N/A' }}" readonly>
+                                    value="{{ $quotation->TransportMode ?? '' }}" readonly>
                             </div>
                         </div>
                         <div class="form-group row mb-0">
                             <label class="col-sm-5 col-form-label">Service Class</label>
                             <div class="col-sm-7">
                                 <input type="text" class="form-control form-control-sm"
-                                    value="{{ $quotation->ServiceClass ?? 'N/A' }}" readonly>
+                                    value="{{ $quotation->ServiceClass ?? '' }}" readonly>
                             </div>
                         </div>
                     </div>
@@ -211,9 +218,32 @@
                             <div class="form-group row mb-0">
                                 <label class="col-sm-4 col-form-label">Terms & Conditions</label>
                                 <div class="col-sm-8">
-                                    <select class="form-control form-control-sm" id="termsTemplateSelect">
-                                        <option value="">-- Select Template --</option>
-                                    </select>
+
+                                    {{-- Multi-template: show dropdown --}}
+                                    <div id="termsDropdownWrapper">
+                                        <select class="form-control form-control-sm" id="termsTemplateSelect">
+                                            <option value="">-- Select Template --</option>
+                                        </select>
+                                    </div>
+
+                                    {{-- Single-template: read-only label --}}
+                                    <div id="termsAutoAppliedBadge" style="display:none;">
+                                        <span class="badge badge-success px-2 py-1" style="font-size:0.8rem;">
+                                            <i class="fas fa-check-circle mr-1"></i>
+                                            <span id="termsAutoAppliedName"></span>
+                                        </span>
+                                        <small class="text-muted ml-1">Auto-applied</small>
+                                    </div>
+
+                                    {{-- Instruction shown after PDF generation (multi-template only) --}}
+                                    <div id="termsReSelectMsg" style="display:none; margin-top:5px;">
+                                        <small class="text-warning">
+                                            <i class="fas fa-exclamation-circle mr-1"></i>
+                                            Please re-select a T&C template to generate a new version.
+                                        </small>
+                                    </div>
+
+                                    {{-- Preview + Apply button --}}
                                     <div id="termsDescriptionWrapper" style="display:none; margin-top: 6px;">
                                         <textarea id="termsDescriptionPreview" class="form-control form-control-sm" rows="4" readonly
                                             style="background-color: #e9ecef; font-size: 0.8rem; resize: none;"></textarea>
@@ -222,6 +252,7 @@
                                             <i class="fas fa-save mr-1"></i> Apply Terms
                                         </button>
                                     </div>
+
                                 </div>
                             </div>
                         </div>
@@ -342,7 +373,7 @@
                                     <label class="col-sm-4 col-form-label">Address 1</label>
                                     <div class="col-sm-8">
                                         <input type="text" class="form-control form-control-sm"
-                                            value="{{ $quotation->pri_partner_street ?? 'N/A' }}" readonly>
+                                            value="{{ $quotation->pri_partner_steet ?? 'N/A' }}" readonly>
                                     </div>
                                 </div>
                                 <div class="form-group row">
@@ -386,7 +417,7 @@
                                     <label class="col-sm-4 col-form-label">Address 2</label>
                                     <div class="col-sm-8">
                                         <input type="text" class="form-control form-control-sm"
-                                            value="{{ $quotation->pri_partner_street2 ?? 'N/A' }}" readonly>
+                                            value="{{ $quotation->pri_partner_steet2 ?? 'N/A' }}" readonly>
                                     </div>
                                 </div>
                                 <div class="form-group row">
@@ -640,8 +671,8 @@
         <!-- END ROW -->
 
         <!-- ============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             MODALS
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             ============================================ -->
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     MODALS
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     ============================================ -->
 
         {{-- REVENUE MODAL --}}
         <div class="modal fade" id="addRevenueModal" tabindex="-1" role="dialog"
@@ -678,7 +709,8 @@
                                     </div>
                                 </div>
                                 <div class="text-end">
-                                    <p class="text-muted mb-0">Base Currency: <strong>KES</strong></p>
+                                    <p class="text-muted mb-0">Base Currency: <strong
+                                            class="office-base-currency">—</strong></p>
                                 </div>
                             </div>
 
@@ -825,7 +857,8 @@
                                     </div>
                                 </div>
                                 <div class="text-end">
-                                    <p class="text-muted mb-0">Base Currency: <strong>KES</strong></p>
+                                    <p class="text-muted mb-0">Base Currency: <strong
+                                            class="office-base-currency">—</strong></p>
                                 </div>
                             </div>
 
@@ -1201,8 +1234,8 @@
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.min.css">
     <style>
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                MODAL STYLING — matched to FitExpress UI
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        MODAL STYLING — matched to FitExpress UI
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        ============================================= */
 
         .modal-header {
             background-color: #fff !important;
@@ -1645,9 +1678,9 @@
         }
 
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                       CREATE BOOKING MODAL — Specific overrides
-                                                                                                                                                                                                                                                                                                                                                                                                       to match the "Creation of Booking" design
-                                                                                                                                                                                                                                                                                                                                                                                                       ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               CREATE BOOKING MODAL — Specific overrides
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               to match the "Creation of Booking" design
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               ============================================= */
 
         #createBookingModal .modal-title {
             color: #003580 !important;
@@ -1776,6 +1809,16 @@
             cursor: not-allowed;
             pointer-events: auto;
             /* keeps the title tooltip visible on hover */
+        }
+
+        /* Disabled UOM select — visually greyed out, not editable */
+        .modal-body select.form-control:disabled,
+        .modal-body .form-select:disabled {
+            background-color: #e9ecef;
+            cursor: not-allowed;
+            color: #6c757d;
+            opacity: 1;
+            /* override browser default which can make it too faint */
         }
     </style>
 @stop
@@ -1976,9 +2019,15 @@
             $('#addRevenueModal').on('show.bs.modal', function() {
                 $(this).find('.increase-by-row').removeClass('active').css('display', 'none');
                 if (!currentEditingCharge) {
+                    // Add mode — initialize dropdowns fresh
                     $('#revenueTypeRevenue').prop('checked', true);
                     toggleRevenueFormFields('revenue');
                     loadBasedOnList('revenue');
+                    populateCurrencyDropdown('revenue');
+                } else {
+                    // Edit mode — populateModal already owns the loading sequence via
+                    // loadBasedOnListWithCallback → loadBasedOnUOMWithCallback.
+                    // Only ensure currency is populated (it has its own populated guard).
                     populateCurrencyDropdown('revenue');
                 }
                 setTimeout(function() {
@@ -1990,9 +2039,15 @@
             $('#addCostModal').on('show.bs.modal', function() {
                 $(this).find('.cost-markup-row').removeClass('active').css('display', 'none');
                 if (!currentEditingCharge) {
+                    // Add mode — initialize dropdowns fresh
                     $('#costTypeCost').prop('checked', true);
                     toggleCostFormFields('cost');
                     loadBasedOnList('cost');
+                    populateCurrencyDropdown('cost');
+                } else {
+                    // Edit mode — populateModal already owns the loading sequence via
+                    // loadBasedOnListWithCallback → loadBasedOnUOMWithCallback.
+                    // Only ensure currency is populated (it has its own populated guard).
                     populateCurrencyDropdown('cost');
                 }
                 setTimeout(function() {
@@ -2066,6 +2121,17 @@
             // ============================================
             // AUTO-FETCH EXCHANGE RATE ON CURRENCY CHANGE
             // ============================================
+            // Format date as '05/Mar/2026' to match fn_GetCurrentExRateUsingCodeandPeriod signature
+            function formatDateForExRate(date) {
+                const d = date || new Date();
+                const day = String(d.getDate()).padStart(2, '0');
+                const month = d.toLocaleString('en-GB', {
+                    month: 'short'
+                }); // 'Mar'
+                const year = d.getFullYear();
+                return `${day}/${month}/${year}`; // '05/Mar/2026'
+            }
+
             $(document).on('change', 'select[name="revenue_currency"], select[name="cost_currency"]', function() {
                 const $currencySelect = $(this);
                 const prefix = $currencySelect.attr('name').split('_')[0];
@@ -2077,7 +2143,9 @@
                     return;
                 }
 
-                if (currencyCode === 'KES') {
+                const baseCurrency = OFFICE_BASE_CURRENCY[officeCode] ?? 'KES';
+
+                if (currencyCode === baseCurrency) {
                     $exchangeRateInput.val('1.000000');
                     calculateAmount(prefix);
                     return;
@@ -2088,10 +2156,12 @@
                     type: 'GET',
                     data: {
                         office_code: officeCode,
-                        from_currency: currencyCode
+                        from_currency: currencyCode,
+                        to_currency: baseCurrency,
+                        date_for: formatDateForExRate(new Date()) // → '05/Mar/2026'
                     },
                     beforeSend: function() {
-                        $exchangeRateInput.val('Loading...');
+                        $exchangeRateInput.val('').prop('readonly', true);
                     },
                     success: function(response) {
                         if (response.success && response.exchange_rate) {
@@ -2099,14 +2169,20 @@
                                 6));
                             calculateAmount(prefix);
                         } else {
-                            showNotification('Failed to fetch exchange rate', 'warning');
-                            $exchangeRateInput.val('1.000000');
+                            showNotification(
+                                response.message ||
+                                `No exchange rate found for ${currencyCode} → ${baseCurrency}`,
+                                'warning'
+                            );
+                            $exchangeRateInput.val('');
                         }
                     },
                     error: function(xhr) {
-                        console.error('Exchange rate fetch error:', xhr);
                         showNotification('Failed to fetch exchange rate', 'error');
-                        $exchangeRateInput.val('1.000000');
+                        $exchangeRateInput.val('');
+                    },
+                    complete: function() {
+                        $exchangeRateInput.prop('readonly', true);
                     }
                 });
             });
@@ -2162,8 +2238,9 @@
                 const $uomSelect = $(`select[name="${prefix}_based_on_uom"]`);
 
                 if (!basedOnCode) {
-                    $uomSelect.empty().append('<option value="">Select Based On first</option>').prop('disabled',
-                        true);
+                    $uomSelect.empty()
+                        .append('<option value="">Select Based On first</option>')
+                        .prop('disabled', true);
                     return;
                 }
 
@@ -2180,17 +2257,18 @@
                     success: function(response) {
                         if (response.success) {
                             $uomSelect.empty();
+
                             if (!response.uom_list || response.uom_list.length === 0) {
                                 $uomSelect.append('<option value="">No UOM Required</option>');
-                                $uomSelect.prop('disabled', true);
-                                console.log('No UOM required for:', basedOnCode);
+                                $uomSelect.prop('disabled', true)
+                                    .attr('title', 'No UOM required for this Based On selection');
                             } else {
                                 $uomSelect.append('<option value="">Select UOM</option>');
                                 response.uom_list.forEach(function(uom) {
                                     $uomSelect.append(
                                         `<option value="${uom.Code}">${uom.Name}</option>`);
                                 });
-                                $uomSelect.prop('disabled', false);
+                                $uomSelect.prop('disabled', false).removeAttr('title');
                             }
                         } else {
                             showNotification('Failed to load UOM list', 'error');
@@ -2255,35 +2333,35 @@
                         based_on_code: basedOnCode
                     },
                     beforeSend: function() {
-                        $uomSelect.prop('disabled', true)
-                            .empty()
-                            .append('<option value="">Loading...</option>');
+                        $uomSelect.prop('disabled', true).empty().append(
+                            '<option value="">Loading...</option>');
                     },
                     success: function(response) {
                         if (response.success) {
                             $uomSelect.empty();
+
                             if (!response.uom_list || response.uom_list.length === 0) {
                                 $uomSelect.append('<option value="">No UOM Required</option>');
-                                $uomSelect.prop('disabled', true);
+                                $uomSelect.prop('disabled', true).attr('title',
+                                    'No UOM required for this Based On selection');
                             } else {
                                 $uomSelect.append('<option value="">Select UOM</option>');
                                 response.uom_list.forEach(function(uom) {
                                     $uomSelect.append(
                                         `<option value="${uom.Code}">${uom.Name}</option>`);
                                 });
-                                $uomSelect.prop('disabled', false);
+                                $uomSelect.prop('disabled', false).removeAttr('title');
                             }
+
                             if (typeof callback === 'function') callback();
                         }
                     },
                     error: function() {
-                        $uomSelect.empty()
-                            .append('<option value="">Error loading</option>')
-                            .prop('disabled', false);
+                        $uomSelect.empty().append('<option value="">Error loading</option>').prop(
+                            'disabled', false);
                     }
                 });
             }
-
             // ============================================
             // CHARGE CODE AUTOCOMPLETE
             // FIX: chargeType is now read dynamically from the selected radio button
@@ -3277,6 +3355,7 @@
             // ============================================
             $('#generateQuoteBtn').on('click', function() {
                 const $btn = $(this);
+                let generationSucceeded = false;
 
                 $btn.prop('disabled', true)
                     .html('<i class="fas fa-spinner fa-spin mr-1"></i> Generating...');
@@ -3289,12 +3368,25 @@
                     },
                     success: function(response) {
                         if (response.success) {
-                            showNotification('Quote generated — ' + response.label,
-                                'success');
+                            generationSucceeded = true;
+                            showNotification('Quote generated — ' + response.label, 'success');
                             loadVersions();
+
+                            if ($('#termsDropdownWrapper').is(':visible')) {
+                                // Multi-template: reset dropdown and lock Generate until
+                                // user selects a new template (auto-apply fires on change)
+                                $('#termsTemplateSelect').val('');
+                                $('#termsDescriptionPreview').val('');
+                                $('#termsDescriptionWrapper').hide();
+                                $('#applyTermsBtn').prop('disabled', true);
+                                $('#termsReSelectMsg').show();
+                            } else {
+                                // Single-template: silently re-apply so Generate
+                                // re-enables automatically via loadTermsTemplates()
+                                loadTermsTemplates();
+                            }
                         } else {
-                            showNotification(response.message ||
-                                'Failed to generate quote.',
+                            showNotification(response.message || 'Failed to generate quote.',
                                 'error');
                         }
                     },
@@ -3306,8 +3398,20 @@
                         );
                     },
                     complete: function() {
-                        $btn.prop('disabled', false)
-                            .html('<i class="fas fa-file-alt mr-1"></i> Generate Quote');
+                        // Restore button label always.
+                        // Only re-enable if generation FAILED — success path keeps it locked
+                        // until T&C is re-selected.
+                        $btn.html('<i class="fas fa-file-alt mr-1"></i> Generate Quote');
+                        if (!generationSucceeded) {
+                            // Failed or errored — let user retry
+                            $btn.prop('disabled', false).removeAttr('title');
+                        } else {
+                            // Succeeded — keep disabled, set tooltip explaining why
+                            $btn.prop('disabled', true)
+                                .attr('title',
+                                    'Select a Terms & Conditions template to generate a new version'
+                                );
+                        }
                     }
                 });
             });
@@ -3481,6 +3585,12 @@
                     showNotification('Please select a template', 'error');
                     return;
                 }
+                // Capture the selected version label (e.g. "Version 1").
+                // The option value is the download URL; the text is the human-readable label.
+                const $versionSelect = $('#emailQuoteVersionSelect');
+                const selectedVersionLabel = $versionSelect.val() ?
+                    $versionSelect.find('option:selected').text().trim() :
+                    '';
 
                 $.ajax({
                     url: '{{ route('quotation.email.send') }}',
@@ -3490,6 +3600,7 @@
                         booking_no: bookingNo,
                         quote_id: quotationId,
                         template_id: templateId,
+                        quote_version: selectedVersionLabel,
                         to_email: $('#emailTo').val(),
                         from_email: $('#emailFrom').val(),
                         subject: $('#emailSubject').val(),
@@ -4174,6 +4285,7 @@
                 $modal.find('select').prop('selectedIndex', 0);
                 $modal.find('input[type="checkbox"]').prop('checked', false);
 
+
                 if (type === 'revenue') {
                     $modal.find('.increase-by-row').removeClass('active').css('display', 'none');
                     $modal.find('.increase-by-row input[type="number"]').val('0.00');
@@ -4182,8 +4294,13 @@
                     $modal.find('.cost-markup-row input[type="number"]').val('0.00');
                 }
 
-                loadBasedOnList(type);
-                populateCurrencyDropdown(type);
+                // ── FIX: Only reload BasedOn list in add mode.
+                // In edit mode, populateModal owns the loading sequence via loadBasedOnListWithCallback.
+                // Calling loadBasedOnList here would race and reset the dropdown, wiping basedOnUOM.
+                if (!currentEditingCharge) {
+                    loadBasedOnList(type);
+                    populateCurrencyDropdown(type);
+                }
             }
 
             function clearRevenueModalForm() {
@@ -4288,25 +4405,115 @@
                     data: {
                         module: 'Quotation',
                         sub_module: 'T&C',
-                        office_code: codeToUse
+                        office_code: codeToUse, // ← kept for backwards compat (ignored by SP path)
+                        booking_no: bookingNo // ← NEW: triggers SP path in controller
                     },
                     success: function(response) {
                         const $select = $('#termsTemplateSelect');
                         $select.empty();
 
                         if (response.success && response.templates.length > 0) {
+
+                            // ── SINGLE TEMPLATE: auto-apply, no dropdown needed ──────────
+                            if (response.templates.length === 1) {
+                                const t = response.templates[0];
+
+                                // Hide dropdown, show badge
+                                $('#termsDropdownWrapper').hide();
+                                $('#termsAutoAppliedName').text(t.Name);
+                                $('#termsAutoAppliedBadge').show();
+
+                                // Fetch description then silently save
+                                $.ajax({
+                                    url: '{{ route('quotation.communication.description') }}',
+                                    type: 'GET',
+                                    data: {
+                                        module: 'Quotation',
+                                        sub_module: 'T&C',
+                                        office_code: codeToUse,
+                                        name: t.Name
+                                    },
+                                    success: function(descResponse) {
+                                        if (!descResponse.success) return;
+
+                                        const description = descResponse.description;
+                                        $('#termsDescriptionPreview').val(description);
+                                        // Show preview read-only (no Apply button needed)
+                                        $('#termsDescriptionWrapper').show();
+                                        $('#applyTermsBtn').hide();
+
+                                        // Only auto-save if T&C hasn't been applied yet
+                                        if (tcAlreadyApplied) {
+                                            // Already applied — just unlock Generate Quote
+                                            $('#generateQuoteBtn')
+                                                .prop('disabled', false)
+                                                .removeAttr('title');
+                                            return;
+                                        }
+
+                                        // Silently save the single T&C
+                                        $.ajax({
+                                            url: '{{ route('quotation.communication.save-terms') }}',
+                                            type: 'POST',
+                                            data: {
+                                                _token: '{{ csrf_token() }}',
+                                                booking_no: bookingNo,
+                                                terms_condition: description,
+                                                template_name: t.Name
+                                            },
+                                            success: function(saveResponse) {
+                                                if (saveResponse.success) {
+                                                    // Unlock Generate Quote
+                                                    $('#generateQuoteBtn')
+                                                        .prop('disabled', false)
+                                                        .removeAttr('title');
+                                                } else {
+                                                    showNotification(
+                                                        'Auto-apply T&C failed: ' +
+                                                        (saveResponse
+                                                            .message ||
+                                                            'Unknown error'
+                                                        ),
+                                                        'warning'
+                                                    );
+                                                }
+                                            },
+                                            error: function() {
+                                                showNotification(
+                                                    'Failed to auto-apply Terms & Conditions',
+                                                    'warning');
+                                            }
+                                        });
+                                    },
+                                    error: function() {
+                                        showNotification('Failed to load T&C description',
+                                            'warning');
+                                    }
+                                });
+
+                                return; // ← skip the multi-template path below
+                            }
+
+                            // ── MULTIPLE TEMPLATES: show dropdown as before ──────────────
                             $select.append('<option value="">-- Select Template --</option>');
                             response.templates.forEach(function(t) {
-                                $select.append(
-                                    `<option value="${t.Name}">${t.Name}</option>`);
+                                $select.append(`<option value="${t.Name}">${t.Name}</option>`);
                             });
 
-                            @if ($quotation->terms_condition)
+                            $('#termsDropdownWrapper').show();
+                            $('#termsAutoAppliedBadge').hide();
+
+                            @if ($quotation->QuotationTCTemplate)
+                                // Pre-populate preview if T&C was previously applied
                                 $('#termsDescriptionPreview').val(
-                                    '{{ addslashes($quotation->terms_condition) }}');
-                                $('#termsDescriptionWrapper').show();
+                                    '{{ addslashes($quotation->terms_condition ?? '') }}');
+                                if ($('#termsDescriptionPreview').val()) {
+                                    $('#termsDescriptionWrapper').show();
+                                }
                             @endif
+
                         } else {
+                            // Error states — unchanged
                             if (response.code === 'NOT_CONFIGURED') {
                                 $select.append(
                                     `<option value="" disabled>⚠ T&C not configured for office: ${codeToUse}</option>`
@@ -4349,12 +4556,21 @@
             $('#termsTemplateSelect').on('change', function() {
                 const selectedName = $(this).val();
 
+                // Hide re-select instruction and disable Generate until auto-apply succeeds
+                $('#termsReSelectMsg').hide();
+                $('#generateQuoteBtn').prop('disabled', true).attr('title',
+                    'Please wait — applying Terms & Conditions...');
+                $('#applyTermsBtn').prop('disabled', true);
+
                 if (!selectedName) {
                     $('#termsDescriptionWrapper').hide();
                     $('#termsDescriptionPreview').val('');
+                    $('#generateQuoteBtn').prop('disabled', true).attr('title',
+                        'Please select a Terms & Conditions template first');
                     return;
                 }
 
+                // Step 1: Fetch the T&C description
                 $.ajax({
                     url: '{{ route('quotation.communication.description') }}',
                     type: 'GET',
@@ -4369,17 +4585,57 @@
                         $('#termsDescriptionWrapper').show();
                     },
                     success: function(response) {
-                        if (response.success) {
-                            $('#termsDescriptionPreview').val(response.description);
-                        } else {
-                            $('#termsDescriptionPreview').val(
-                                'Failed to load description.');
+                        if (!response.success) {
+                            $('#termsDescriptionPreview').val('Failed to load description.');
                             showNotification('Could not load T&C description', 'warning');
+                            $('#generateQuoteBtn').prop('disabled', true).attr('title',
+                                'T&C description failed to load');
+                            return;
                         }
+
+                        const description = response.description;
+                        $('#termsDescriptionPreview').val(description);
+                        $('#applyTermsBtn').prop('disabled', false);
+
+                        // Step 2: Auto-apply the selected T&C silently
+                        $.ajax({
+                            url: '{{ route('quotation.communication.save-terms') }}',
+                            type: 'POST',
+                            data: {
+                                _token: '{{ csrf_token() }}',
+                                booking_no: bookingNo,
+                                terms_condition: description,
+                                template_name: selectedName
+                            },
+                            success: function(saveResponse) {
+                                if (saveResponse.success) {
+                                    // T&C saved — unlock Generate Quote
+                                    $('#generateQuoteBtn')
+                                        .prop('disabled', false)
+                                        .removeAttr('title');
+                                } else {
+                                    showNotification(saveResponse.message ||
+                                        'Failed to apply Terms & Conditions',
+                                        'error');
+                                    $('#generateQuoteBtn').prop('disabled', true)
+                                        .attr('title',
+                                            'T&C apply failed — please retry');
+                                }
+                            },
+                            error: function() {
+                                showNotification(
+                                    'Failed to apply Terms & Conditions',
+                                    'error');
+                                $('#generateQuoteBtn').prop('disabled', true).attr(
+                                    'title', 'T&C apply failed — please retry');
+                            }
+                        });
                     },
                     error: function() {
                         $('#termsDescriptionPreview').val('Error loading description.');
                         showNotification('Error loading T&C description', 'error');
+                        $('#generateQuoteBtn').prop('disabled', true).attr('title',
+                            'T&C description failed to load');
                     }
                 });
             });

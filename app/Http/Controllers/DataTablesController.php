@@ -11,9 +11,9 @@ use App\Models\TicketView;
 use App\Models\Office;
 use App\Models\User;
 use Carbon\Carbon;
-// use Illuminate\Http\Request;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Request;
+//use Illuminate\Support\Facades\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\URL;
 use JeroenNoten\LaravelAdminLte\Components\Tool\Datatable;
@@ -1032,306 +1032,244 @@ class DataTablesController extends Controller
     }
 
     /**
-     * Get the date filter for last 3 months
-     */
-    private function getLastThreeMonthsFilter()
-    {
-        return Carbon::now()->subMonths(3)->startOfDay();
-    }
-
-    /**!ENTITY REQUESTS DATATABLES*/
-    /**!All Entity */
-    public function allEntityRequests(Request $request)
-    {
-        $threeMonthsAgo = $this->getLastThreeMonthsFilter();
-        $user = Auth::user();
-        $user_office = $user->OfficeCode;
-
-        // Define common columns
-        $commonColumns = [
-            'Id',
-            'Code',
-            'Name',
-            'CreatedBy',
-            'CreatedOn',
-            'Office',
-            'OperatioEntityType',
-            'LegalEntityType',
-            'Status',
-            'OfficeCode',
-        ];
-
-        // Initial query with common columns and 3-month filter
-        $query = ClientParty::select($commonColumns)
-            ->where('CreatedOn', '>=', $threeMonthsAgo);
-
-        // Restrict to user's office unless they have approve-all-entity-request permission
-        if (!$user->can('approve-all-entity-request')) {
-            $query->where('OfficeCode', $user_office);
-        }
-
-        return DataTables::of($query)
-            ->editColumn('Code', function ($row) {
-                return '<a href="' . URL::signedRoute('client-party.show', $row->Id) . '">' . e($row->Code) . '</a>';
-            })
-            ->editColumn('Status', function ($row) {
-                switch ($row->Status) {
-                    case 'Not Submitted':
-                        return '<span class="badge badge-xs badge-secondary">Not Submitted</span>';
-                    case 'Submitted':
-                        return '<span class="badge badge-xs badge-warning">Submitted</span>';
-                    case 'PendingCountryLevelApproval':
-                        return '<span class="badge badge-xs badge-primary">Pending Country Approval</span>';
-                    case 'PendingGroupLevelApproval':
-                        return '<span class="badge badge-xs badge-info">Pending Group Approval</span>';
-                    case 'Created':
-                        return '<span class="badge badge-xs badge-success">Created</span>';
-                    case 'Rejected':
-                        return '<span class="badge badge-xs badge-danger">Rejected</span>';
-                    case 'Review':
-                        return '<span class="badge badge-xs badge-warning">Review</span>';
-                    default:
-                        return '<span class="badge badge-xs badge-secondary">' . e($row->Status) . '</span>';
-                }
-            })
-            ->editColumn('CreatedOn', function ($row) {
-                return $row->CreatedOn ? (new Carbon($row->CreatedOn))->format('Y-m-d H:i:s') : '';
-            })
-            ->addColumn('Action', function ($row) use ($user) {
-                $html = '<div class="btn-group">';
-                $html .= '<a href="' . URL::signedRoute('client-party.show', $row->Id) . '" class="btn btn-sm btn-flat btn-info" title="View"><i class="fas fa-eye"></i></a>';
-
-                // Add reject button for statuses that can be rejected (if user has permission)
-                if ($user->can('reject-entity-request') && in_array($row->Status, ['Not Submitted', 'Submitted', 'PendingCountryLevelApproval', 'PendingGroupLevelApproval'])) {
-                    $html .= '<a href="#" id="deny" code="' . e($row->Id) . '" class="btn btn-sm btn-flat btn-danger reject" title="Reject"><i class="fas fa-times"></i></a>';
-                }
-
-                // Add approve button for statuses that can be approved (if user has permission)
-                if ($user->can('approve-entity-request') && in_array($row->Status, ['PendingCountryLevelApproval', 'PendingGroupLevelApproval', 'Submitted'])) {
-                    $html .= '<a href="' . URL::signedRoute('client-party.show', $row->Id) . '" class="btn btn-sm btn-flat btn-success" title="Approve"><i class="fas fa-check"></i></a>';
-                }
-
-                $html .= '</div>';
-                return $html;
-            })
-            ->rawColumns(['Code', 'Status', 'Action'])
-            ->make(true);
-    }
-
-    /**
-     * DataTable for entities pending approval (used in client-party.approve.blade.php)
-     */
-    // public function approvalEntityRequests(Request $request)
-    // {
-    //     $threeMonthsAgo = $this->getLastThreeMonthsFilter();
-    //     $user = Auth::user();
-    //     $user_office = $user->OfficeCode;
-
-    //     // Define common columns
-    //     $commonColumns = [
-    //         'Id',
-    //         'Code',
-    //         'Name',
-    //         'CreatedBy',
-    //         'CreatedOn',
-    //         'Office',
-    //         'OperatioEntityType',
-    //         'LegalEntityType',
-    //         'Status',
-    //         'OfficeCode',
-    //     ];
-
-    //     // Initial query with common columns and 3-month filter
-    //     $query = ClientParty::select($commonColumns)
-    //         ->whereIn('Status', ['PendingCountryLevelApproval', 'PendingGroupLevelApproval', 'Submitted'])
-    //         ->where('CreatedOn', '>=', $threeMonthsAgo);
-
-    //     // Restrict to user's office unless they have approve-all-entity-request permission
-    //     if (!$user->can('approve-all-entity-request')) {
-    //         $query->where('OfficeCode', $user_office);
-    //     }
-
-    //     return DataTables::of($query)
-    //         ->editColumn('Code', function ($row) {
-    //             return '<a href="' . URL::signedRoute('client-party.show', $row->Id) . '">' . e($row->Code) . '</a>';
-    //         })
-    //         ->editColumn('Status', function ($row) {
-    //             switch ($row->Status) {
-    //                 case 'Submitted':
-    //                     return '<span class="badge badge-xs badge-warning">Submitted</span>';
-    //                 case 'PendingCountryLevelApproval':
-    //                     return '<span class="badge badge-xs badge-primary">Pending Country Approval</span>';
-    //                 case 'PendingGroupLevelApproval':
-    //                     return '<span class="badge badge-xs badge-info">Pending Group Approval</span>';
-    //                 default:
-    //                     return '<span class="badge badge-xs badge-secondary">' . e($row->Status) . '</span>';
-    //             }
-    //         })
-    //         ->editColumn('CreatedOn', function ($row) {
-    //             return $row->CreatedOn ? (new Carbon($row->CreatedOn))->format('Y-m-d H:i:s') : '';
-    //         })
-    //         ->addColumn('Action', function ($row) use ($user) {
-    //             $html = '<div class="btn-group">';
-    //             $html .= '<a href="' . URL::signedRoute('client-party.show', $row->Id) . '" class="btn btn-sm btn-flat btn-info" title="View"><i class="fas fa-eye"></i></a>';
-
-    //             // Add reject button for statuses that can be rejected (if user has permission)
-    //             if ($user->can('reject-entity-request') && in_array($row->Status, ['Submitted', 'PendingCountryLevelApproval', 'PendingGroupLevelApproval'])) {
-    //                 $html .= '<a href="#" id="deny" code="' . e($row->Id) . '" class="btn btn-sm btn-flat btn-danger reject" title="Reject"><i class="fas fa-times"></i></a>';
-    //             }
-
-    //             // Add approve button for statuses that can be approved (if user has permission)
-    //             if ($user->can('approve-entity-request')) {
-    //                 $html .= '<a href="' . URL::signedRoute('client-party.show', $row->Id) . '" class="btn btn-sm btn-flat btn-success" title="Approve"><i class="fas fa-check"></i></a>';
-    //             }
-
-    //             $html .= '</div>';
-    //             return $html;
-    //         })
-    //         ->rawColumns(['Code', 'Status', 'Action'])
-    //         ->make(true);
-    // }
-    public function approvalEntityRequests(Request $request)
-    {
-        $threeMonthsAgo = $this->getLastThreeMonthsFilter();
-        $user = Auth::user();
-        $user_office = $user->OfficeCode;
-
-        // Define common columns
-        $commonColumns = [
-            'Id',
-            'Code',
-            'Name',
-            'CreatedBy',
-            'CreatedOn',
-            'Office',
-            'OperatioEntityType',
-            'LegalEntityType',
-            'Status',
-            'OfficeCode',
-        ];
-
-        // Initial query with common columns and 3-month filter
-        // REMOVED the whereIn filter - let DataTables filtering handle it
-        $query = ClientParty::select($commonColumns)
-            ->where('CreatedOn', '>=', $threeMonthsAgo)
-            ->whereIn('Status', [
-                'Not Submitted',
-                'Submitted',
-                'PendingCountryLevelApproval',
-                'PendingGroupLevelApproval'
-            ]);
-
-        // Restrict to user's office unless they have approve-all-entity-request permission
-        if (!$user->can('approve-all-entity-request')) {
-            $query->where('OfficeCode', $user_office);
-        }
-
-        return DataTables::of($query)
-            ->filterColumn('Status', function ($query, $keyword) {
-                // Handle pipe-separated multiple status search
-                if (str_contains($keyword, '|')) {
-                    $statuses = explode('|', $keyword);
-                    $query->whereIn('Status', $statuses);
-                } else {
-                    // Exact match for single status
-                    $query->where('Status', $keyword);
-                }
-            })
-            ->editColumn('Code', function ($row) {
-                return '<a href="' . URL::signedRoute('client-party.show', $row->Id) . '">' . e($row->Code) . '</a>';
-            })
-            ->editColumn('Status', function ($row) {
-                switch ($row->Status) {
-                    case 'Not Submitted':
-                        return '<span class="badge badge-xs badge-secondary">Not Submitted</span>';
-                    case 'Submitted':
-                        return '<span class="badge badge-xs badge-warning">Submitted</span>';
-                    case 'PendingCountryLevelApproval':
-                        return '<span class="badge badge-xs badge-primary">Pending Country Approval</span>';
-                    case 'PendingGroupLevelApproval':
-                        return '<span class="badge badge-xs badge-info">Pending Group Approval</span>';
-                    default:
-                        return '<span class="badge badge-xs badge-secondary">' . e($row->Status) . '</span>';
-                }
-            })
-            ->editColumn('CreatedOn', function ($row) {
-                return $row->CreatedOn ? (new Carbon($row->CreatedOn))->format('Y-m-d H:i:s') : '';
-            })
-            ->addColumn('Action', function ($row) use ($user) {
-                $html = '<div class="btn-group">';
-                $html .= '<a href="' . URL::signedRoute('client-party.show', $row->Id) . '" class="btn btn-sm btn-flat btn-info" title="View"><i class="fas fa-eye"></i></a>';
-
-                // Add reject button for statuses that can be rejected (if user has permission)
-                if ($user->can('reject-entity-request') && in_array($row->Status, ['Submitted', 'PendingCountryLevelApproval', 'PendingGroupLevelApproval'])) {
-                    $html .= '<a href="#" id="deny" code="' . e($row->Id) . '" class="btn btn-sm btn-flat btn-danger reject" title="Reject"><i class="fas fa-times"></i></a>';
-                }
-
-                // Add approve button for statuses that can be approved (if user has permission)
-                if ($user->can('approve-entity-request')) {
-                    $html .= '<a href="' . URL::signedRoute('client-party.show', $row->Id) . '" class="btn btn-sm btn-flat btn-success" title="Approve"><i class="fas fa-check"></i></a>';
-                }
-
-                $html .= '</div>';
-                return $html;
-            })
-            ->rawColumns(['Code', 'Status', 'Action'])
-            ->make(true);
-    }
-
-  public function users()
+ * Get the date filter for last 3 months
+ */
+private function getLastThreeMonthsFilter()
 {
-    $statusFilter = request()->input('status', 'all');
+    return Carbon::now()->subMonths(3)->startOfDay();
+}
 
-    $users = User::with('roles')
-        ->where('IsDeleted', 0);
+/**!ENTITY REQUESTS DATATABLES*/
 
-    // Apply status filter
-    if ($statusFilter === 'active') {
-        $users->where('IsActive', 1);
-    } elseif ($statusFilter === 'inactive') {
-        $users->where('IsActive', 0);
+/**
+ * All Entity Requests (dashboard)
+ */
+/**
+ * All Entity Requests (dashboard)
+ */
+public function allEntityRequests(Request $request)
+{
+    $threeMonthsAgo = $this->getLastThreeMonthsFilter();
+    $user = Auth::user();
+    $user_office = $user->OfficeCode;
+
+    // Get entity_type from request (null = show both)
+    $entityType = $request->input('entity_type');
+
+    $commonColumns = [
+        'Id',
+        'Code',
+        'Name',
+        'CreatedBy',
+        'CreatedOn',
+        'Office',
+        'OperationalEntityType',
+        'LegalEntityType',
+        'Status',
+        'OfficeCode',
+        // Optional: include these if you want to debug them in the table
+        // 'RequestforDebtor',
+        // 'RequestforVendor',
+        // 'DebtorCode',
+        // 'VendorCode',
+    ];
+
+    $query = ClientParty::select($commonColumns)
+        ->where('CreatedOn', '>=', $threeMonthsAgo);
+
+    if ($entityType === 'operational') {
+        // Pure operational: has OET, NO LET, NO debtor/vendor indicators
+        $query->whereNotNull('OperationalEntityType')
+              ->whereNull('LegalEntityType')
+              ->where('RequestforDebtor', 0)       // or false if bit is stored as 0/1
+              ->where('RequestforVendor', 0)
+              ->whereNull('DebtorCode')
+              ->whereNull('VendorCode')
+              ->whereNull('DebtorID')
+              ->whereNull('VendorID')
+              ->whereNull('DebtorFileUpload')
+              ->whereNull('VendorFileUpload');
+    }
+    elseif ($entityType === 'legal') {
+        // Legal: has LET OR any debtor/vendor indicator
+        $query->where(function ($q) {
+            $q->whereNotNull('LegalEntityType')
+              ->orWhere('RequestforDebtor', 1)
+              ->orWhere('RequestforVendor', 1)
+              ->orWhereNotNull('DebtorCode')
+              ->orWhereNotNull('VendorCode')
+              ->orWhereNotNull('DebtorID')
+              ->orWhereNotNull('VendorID')
+              ->orWhereNotNull('DebtorFileUpload')
+              ->orWhereNotNull('VendorFileUpload');
+        });
+    }
+    // If no entity_type → no filter (shows both) – safe fallback
+
+    if (!$user->can('approve-all-entity-request')) {
+        $query->where('OfficeCode', $user_office);
     }
 
-    return Datatables::of($users)
-        ->addColumn('FullName', function ($row) {
-            return $row->FirstName . " " . $row->LastName;
+    return DataTables::of($query)
+        ->editColumn('Code', function ($row) {
+            return '<a href="' . URL::signedRoute('client-party.show', $row->Id) . '">' . e($row->Code) . '</a>';
         })
-        ->addColumn('Office', function ($row) {
-            return $row->office->Name ?? '';
-        })
-        ->addColumn('Roles', function ($row) {
-            $html = '';
-            if (!empty($row->getRoleNames())) {
-                foreach ($row->getRoleNames() as $v) {
-                    $html .= '<label class="badge badge-success">' . $v . '</label> ';
-                }
+        ->editColumn('Status', function ($row) {
+            switch ($row->Status) {
+                case 'Not Submitted':
+                    return '<span class="badge badge-xs badge-secondary">Not Submitted</span>';
+                case 'Submitted':
+                    return '<span class="badge badge-xs badge-warning">Submitted</span>';
+                case 'PendingCountryLevelApproval':
+                    return '<span class="badge badge-xs badge-primary">Pending Country Approval</span>';
+                case 'PendingGroupLevelApproval':
+                    return '<span class="badge badge-xs badge-info">Pending Group Approval</span>';
+                case 'Created':
+                    return '<span class="badge badge-xs badge-success">Created</span>';
+                case 'Rejected':
+                    return '<span class="badge badge-xs badge-danger">Rejected</span>';
+                case 'Review':
+                    return '<span class="badge badge-xs badge-warning">Review</span>';
+                default:
+                    return '<span class="badge badge-xs badge-secondary">' . e($row->Status) . '</span>';
             }
+        })
+        ->editColumn('CreatedOn', function ($row) {
+            return $row->CreatedOn ? (new Carbon($row->CreatedOn))->format('Y-m-d H:i:s') : '';
+        })
+        ->addColumn('Action', function ($row) use ($user) {
+            $html = '<div class="btn-group">';
+            $html .= '<a href="' . URL::signedRoute('client-party.show', $row->Id) . '" class="btn btn-sm btn-flat btn-info" title="View"><i class="fas fa-eye"></i></a>';
+
+            if ($user->can('reject-entity-request') && in_array($row->Status, ['Not Submitted', 'Submitted', 'PendingCountryLevelApproval', 'PendingGroupLevelApproval'])) {
+                $html .= '<a href="#" id="deny" code="' . e($row->Id) . '" class="btn btn-sm btn-flat btn-danger reject" title="Reject"><i class="fas fa-times"></i></a>';
+            }
+
+            if ($user->can('approve-entity-request') && in_array($row->Status, ['PendingCountryLevelApproval', 'PendingGroupLevelApproval', 'Submitted'])) {
+                $html .= '<a href="' . URL::signedRoute('client-party.show', $row->Id) . '" class="btn btn-sm btn-flat btn-success" title="Approve"><i class="fas fa-check"></i></a>';
+            }
+
+            $html .= '</div>';
             return $html;
         })
-        ->addColumn('Action', function ($row) {
-            $actions = '';
-
-            if (Auth::user()->can('users-show')) {
-                $actions .= '<a href="' . route('users.show', $row->ID) . '"
-                           class="btn btn-info btn-sm"
-                           title="View User">
-                           <i class="fas fa-eye"></i> Show
-                        </a> ';
-            }
-
-            if (Auth::user()->can('users-edit')) {
-                $actions .= '<a href="' . route('users.edit', $row->ID) . '"
-                           class="btn btn-primary btn-sm"
-                           title="Edit User">
-                           <i class="fas fa-edit"></i> Edit
-                        </a> ';
-            }
-
-            return $actions ?: '<span class="text-muted">No actions available</span>';
-        })
-        ->rawColumns(['FullName', 'Roles', 'Office', 'Action'])
+        ->rawColumns(['Code', 'Status', 'Action'])
         ->make(true);
 }
+
+/**
+ * DataTable for entities pending approval (used in client-party.approve.blade.php)
+ */
+
+public function approvalEntityRequests(Request $request)
+{
+    $threeMonthsAgo = $this->getLastThreeMonthsFilter();
+    $user = Auth::user();
+    $user_office = $user->OfficeCode;
+
+    // Get entity_type from request (default to 'operational')
+    $entityType = $request->input('entity_type', 'operational');
+
+    // Define common columns
+    $commonColumns = [
+        'Id',
+        'Code',
+        'Name',
+        'CreatedBy',
+        'CreatedOn',
+        'Office',
+        'OperationalEntityType',
+        'LegalEntityType',
+        'Status',
+        'OfficeCode',
+    ];
+
+    // Initial query with common columns and 3-month filter
+    $query = ClientParty::select($commonColumns)
+        ->whereIn('Status', ['PendingCountryLevelApproval', 'PendingGroupLevelApproval', 'Submitted'])
+        ->where('CreatedOn', '>=', $threeMonthsAgo);
+
+    // NEW: Filter by entity type
+    if ($entityType === 'operational') {
+        $query->whereNotNull('OperationalEntityType');
+    } elseif ($entityType === 'legal') {
+        $query->whereNotNull('LegalEntityType');
+    }
+
+    // Restrict to user's office unless they have approve-all-entity-request permission
+    if (!$user->can('approve-all-entity-request')) {
+        $query->where('OfficeCode', $user_office);
+    }
+
+    return DataTables::of($query)
+        ->editColumn('Code', function ($row) {
+            return '<a href="' . URL::signedRoute('client-party.show', $row->Id) . '">' . e($row->Code) . '</a>';
+        })
+        ->editColumn('Status', function ($row) {
+            switch ($row->Status) {
+                case 'Submitted':
+                    return '<span class="badge badge-xs badge-warning">Submitted</span>';
+                case 'PendingCountryLevelApproval':
+                    return '<span class="badge badge-xs badge-primary">Pending Country Approval</span>';
+                case 'PendingGroupLevelApproval':
+                    return '<span class="badge badge-xs badge-info">Pending Group Approval</span>';
+                default:
+                    return '<span class="badge badge-xs badge-secondary">' . e($row->Status) . '</span>';
+            }
+        })
+        ->editColumn('CreatedOn', function ($row) {
+            return $row->CreatedOn ? (new Carbon($row->CreatedOn))->format('Y-m-d H:i:s') : '';
+        })
+        ->addColumn('Action', function ($row) use ($user) {
+            $html = '<div class="btn-group">';
+            $html .= '<a href="' . URL::signedRoute('client-party.show', $row->Id) . '" class="btn btn-sm btn-flat btn-info" title="View"><i class="fas fa-eye"></i></a>';
+
+            // Add reject button for statuses that can be rejected (if user has permission)
+            if ($user->can('reject-entity-request') && in_array($row->Status, ['Submitted', 'PendingCountryLevelApproval', 'PendingGroupLevelApproval'])) {
+                $html .= '<a href="#" id="deny" code="' . e($row->Id) . '" class="btn btn-sm btn-flat btn-danger reject" title="Reject"><i class="fas fa-times"></i></a>';
+            }
+
+            // Add approve button for statuses that can be approved (if user has permission)
+            if ($user->can('approve-entity-request')) {
+                $html .= '<a href="' . URL::signedRoute('client-party.show', $row->Id) . '" class="btn btn-sm btn-flat btn-success" title="Approve"><i class="fas fa-check"></i></a>';
+            }
+
+            $html .= '</div>';
+            return $html;
+        })
+        ->rawColumns(['Code', 'Status', 'Action'])
+        ->make(true);
+}
+
+
+
+    public function users()
+    {
+        $users = User::with('roles');
+
+        return Datatables::of($users)
+            ->addColumn('FullName', function ($row) {
+                return $row->FirstName . " " . $row->LastName;
+            })
+            ->addColumn('Office', function ($row) {
+                return $row->office->Name;
+            })
+            ->addColumn('Roles', function ($row) {
+                $html = '';
+                if (!empty($row->getRoleNames())) {
+                    foreach ($row->getRoleNames() as $v) {
+                        $html .= '<label class="badge badge-success">' . $v . '</label> ';
+                    }
+                }
+                return $html;
+            })
+            ->addColumn('Action', function ($row) {
+                $rawHtml = ' <a class="btn btn-xs btn-info" href=' . route("users.show", $row->ID) . '>Show</a>
+                            <a class="btn btn-xs btn-primary" href=' . route("users.edit", $row->ID) . '>Edit</a> ';
+                return $rawHtml;
+            })
+            ->rawColumns(['FullName', 'Roles', 'Office', 'Action'])
+            ->make();
+    }
 
     public function tims()
     {
@@ -1378,113 +1316,45 @@ class DataTablesController extends Controller
             ->make();
     }
 
-    // public function efris()
-    // {
+    public function efris()
+    {
 
-    //     $invoice_creds = DB::select('EXEC EFRIS_InvoiceRegister');
+        $invoice_creds = DB::select('EXEC EFRIS_InvoiceRegister');
 
-    //     return Datatables::of($invoice_creds)
-    //         ->editColumn('Status', function ($row) {
-    //             $status = "";
-    //             if ($row->DocStatus == 'Submitted') {
-    //                 $status = '<a href="' . $row->KRAQRCode . '" target="__blank">' . $row->DocStatus . '</a>';
-    //             } else {
-    //                 $status = $row->DocStatus;
-    //             }
-    //             return $status;
-    //         })
-    //         ->editColumn('Date', function ($row) {
-    //             return $row->DocDate;
-    //         })
-    //         ->editColumn('Type', function ($row) {
-    //             return $row->DocType;
-    //         })
-    //         ->addColumn('Action', function ($row) {
-    //             $rawHtml = "";
-    //             if ($row->DocStatus == "FAILED") {
-    //                 $rawHtml = '<a class="btn btn-xs btn-info mr-1 re-trigger" onclick="editInvoice(`' . $row->ID . '`,`re-trigger`,`' . $row->DocNo . '`)" title="Re-Trigger" id=' . $row->DocNo . '><i class="fa fa-refresh" aria-hidden="true"></i></a>';
-    //                 // $rawHtml .= '<a class="btn btn-xs btn-warning mr-1 edit-invoice" onclick="editInvoice(`'.$row->ID.'`,`edit`)" title="Edit" id=' . $row->ID . '><i class="fa fa-edit" aria-hidden="true"></i></a>';
-    //             }
+        return Datatables::of($invoice_creds)
+            ->editColumn('Status', function ($row) {
+                $status = "";
+                if ($row->DocStatus == 'Submitted') {
+                    $status = '<a href="' . $row->KRAQRCode . '" target="__blank">' . $row->DocStatus . '</a>';
+                } else {
+                    $status = $row->DocStatus;
+                }
+                return $status;
+            })
+            ->editColumn('Date', function ($row) {
+                return $row->DocDate;
+            })
+            ->editColumn('Type', function ($row) {
+                return $row->DocType;
+            })
+            ->addColumn('Action', function ($row) {
+                $rawHtml = "";
+                if ($row->DocStatus == "FAILED") {
+                    $rawHtml = '<a class="btn btn-xs btn-info mr-1 re-trigger" onclick="editInvoice(`' . $row->ID . '`,`re-trigger`,`' . $row->DocNo . '`)" title="Re-Trigger" id=' . $row->DocNo . '><i class="fa fa-refresh" aria-hidden="true"></i></a>';
+                    // $rawHtml .= '<a class="btn btn-xs btn-warning mr-1 edit-invoice" onclick="editInvoice(`'.$row->ID.'`,`edit`)" title="Edit" id=' . $row->ID . '><i class="fa fa-edit" aria-hidden="true"></i></a>';
+                }
 
-    //             // $rawHtml .= '<a class="btn btn-xs btn-primary mr-1" target="__blank" title="Invoice Data" href=' . route("tims.json", $row->ID) . '><i class="fa fa-download" aria-hidden="true"></i></a> ';
+                // $rawHtml .= '<a class="btn btn-xs btn-primary mr-1" target="__blank" title="Invoice Data" href=' . route("tims.json", $row->ID) . '><i class="fa fa-download" aria-hidden="true"></i></a> ';
 
-    //             // if (($row->DocStatus == "Submitted") && ($row->InvoiceType == 'Export')) {
-    //             //     $rawHtml .= '<a class="btn btn-xs btn-primary" target="__blank" title="Invoice File" href=' . URL::signedRoute("tims.invoiceDownload", $row->ID) . '><i class="fas fa-file-invoice-dollar" aria-hidden="true"></i></a> ';
-    //             // }
-    //             return $rawHtml;
-    //         })
-    //         ->rawColumns(['Action', 'Status', 'Date', 'Type'])
-    //         ->make();
-    // }
-public function efris()
-{
-    $invoice_creds = DB::select('EXEC EFRIS_InvoiceRegister');
+                // if (($row->DocStatus == "Submitted") && ($row->InvoiceType == 'Export')) {
+                //     $rawHtml .= '<a class="btn btn-xs btn-primary" target="__blank" title="Invoice File" href=' . URL::signedRoute("tims.invoiceDownload", $row->ID) . '><i class="fas fa-file-invoice-dollar" aria-hidden="true"></i></a> ';
+                // }
+                return $rawHtml;
+            })
+            ->rawColumns(['Action', 'Status', 'Date', 'Type'])
+            ->make();
+    }
 
-    return Datatables::of($invoice_creds)
-        ->editColumn('Status', function ($row) {
-            $status = "";
-            if ($row->DocStatus == 'Submitted') {
-                $status = '<a href="' . $row->KRAQRCode . '" target="__blank">' . $row->DocStatus . '</a>';
-            } else {
-                $status = $row->DocStatus;
-            }
-            return $status;
-        })
-        ->editColumn('Date', function ($row) {
-            return $row->DocDate;
-        })
-        ->editColumn('Type', function ($row) {
-            return $row->DocType;
-        })
-        ->addColumn('Action', function ($row) {
-            $html = '';
-
-            // Normalize status (trim + uppercase) to avoid case-sensitivity issues
-            $status = strtoupper(trim($row->DocStatus ?? ''));
-
-            if ($status === 'FAILED') {
-                // Re-trigger button
-                $html .= '<a class="btn btn-xs btn-info mr-1 re-trigger" '
-                      . 'onclick="editInvoice(`' . $row->ID . '`, `re-trigger`, `' . addslashes($row->DocNo) . '`)" '
-                      . 'title="Re-Trigger Submission" '
-                      . 'data-id="' . $row->ID . '" '
-                      . 'data-docno="' . htmlspecialchars($row->DocNo) . '">'
-                      . '<i class="fa fa-refresh"></i> Re-trigger'
-                      . '</a>';
-
-                // Edit TIN button (now enabled)
-                $html .= '<a class="btn btn-xs btn-warning mr-1 edit-invoice" '
-                      . 'onclick="editInvoice(`' . $row->ID . '`, `edit`)" '
-                      . 'title="Edit Customer TIN" '
-                      . 'data-id="' . $row->ID . '">'
-                      . '<i class="fa fa-edit"></i> Edit TIN'
-                      . '</a>';
-            }
-
-            // Optional: always-available buttons (uncomment if you want them visible for all rows)
-            /*
-            $html .= '<a class="btn btn-xs btn-secondary mr-1" '
-                  . 'target="_blank" '
-                  . 'href="' . route("tims.json", $row->ID) . '" '
-                  . 'title="View Invoice JSON Data">'
-                  . '<i class="fa fa-eye"></i>'
-                  . '</a>';
-
-            if ($row->DocStatus == 'Submitted' && ($row->InvoiceType ?? '') === 'Export') {
-                $html .= '<a class="btn btn-xs btn-primary" '
-                      . 'target="_blank" '
-                      . 'href="' . URL::signedRoute("tims.invoiceDownload", $row->ID) . '" '
-                      . 'title="Download Invoice">'
-                      . '<i class="fas fa-file-invoice-dollar"></i>'
-                      . '</a>';
-            }
-            */
-
-            return $html;
-        })
-        ->rawColumns(['Action', 'Status', 'Date', 'Type'])
-        ->make(true);
-}
     public function tra()
     {
         // $invoice_creds = TRABillingHeader::select(

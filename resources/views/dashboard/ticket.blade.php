@@ -483,7 +483,7 @@
             @endif
 
             <!-- Quote Integration -->
-            @if (Auth::user()->can('approve-all-entity-request'))
+            @if (Auth::user()->can('create-client-party'))
                 <div class="col-12 col-sm-6 col-lg-4 col-xl-3 mb-3">
                     <a href="{{ route('quotation.index') }}" style="text-decoration: none; color: inherit;">
                         <div class="d-flex h-100 flex-column card card-widget widget-user shadow service-card scm-profit-card"

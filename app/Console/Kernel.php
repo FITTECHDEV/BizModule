@@ -35,7 +35,15 @@ class Kernel extends ConsoleKernel
      * @return void
      */
     protected function schedule(Schedule $schedule)
+
     {
+        $schedule->call(function () {
+    \Log::info('SCHEDULER TEST PING - task is alive!');
+})->dailyAt('13:57')
+->timezone('Africa/Nairobi');
+//         $schedule->call(function () {
+//     \Log::info('SCHEDULER TEST PING - task is alive!');
+// })->everyMinute();
         // // Ensure logs directory exists
         // $this->ensureLogDirectoryExists();
 
@@ -86,27 +94,7 @@ class Kernel extends ConsoleKernel
 
         // // ->emailOutputOnFailure('admin@yourcompany.com'); // Optional: add your email
 
-        // $schedule->command('z_report_json_tz')
-        //  ->dailyAt('11:00')
-        //  ->withoutOverlapping()
-        //  ->runInBackground()
-        //
-
-        $schedule->command('jimi:process-pending')->everyFiveMinutes();
-        
-        $schedule->command('z_report_json_tz')
-            ->dailyAt('11:00')
-            ->timezone('Africa/Nairobi')
-            ->withoutOverlapping()
-            ->onSuccess(function () {
-                Log::info('TZ ZReport scheduled task completed successfully at ' . now());
-            })
-            ->onFailure(function () {
-                Log::error('TZ ZReport scheduled task failed at ' . now());
-            });;
-
-
-        $schedule->command('z_report_json_ar')
+       $schedule->command('z_report_json_ar')
             ->dailyAt('11:00')
             ->timezone('Africa/Nairobi')
             ->withoutOverlapping()
@@ -116,6 +104,22 @@ class Kernel extends ConsoleKernel
             ->onFailure(function () {
                 Log::error('AR ZReport scheduled task failed at ' . now());
             });
+
+        $schedule->command('jimi:process-pending')->everyFiveMinutes();
+
+        $schedule->command('z_report_json_tz')
+            ->dailyAt('11:00')
+            ->timezone('Africa/Nairobi')
+            ->withoutOverlapping()
+            ->onSuccess(function () {
+                Log::info('TZ ZReport scheduled task completed successfully at ' . now());
+            })
+            ->onFailure(function () {
+                Log::error('TZ ZReport scheduled task failed at ' . now());
+            });
+
+
+
 
         // Send shipment status reports to clients daily at 17:00 EAT
         $schedule->command('shipments:send-reports')
