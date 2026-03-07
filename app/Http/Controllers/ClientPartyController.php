@@ -1434,7 +1434,7 @@ class ClientPartyController extends Controller
         }
     }
 
-  
+
 
 
 
@@ -1737,6 +1737,9 @@ class ClientPartyController extends Controller
             return redirect()->back();
         }
     }
+
+
+    
 
 //    public function update(UpdateClientPartyRequest $request, $id)
 // {

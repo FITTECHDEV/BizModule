@@ -58,7 +58,14 @@
                             <label class="col-sm-5 col-form-label">Sales person</label>
                             <div class="col-sm-7">
                                 <input type="text" class="form-control form-control-sm"
-                                    value="{{ $quotation->username ?? 'N/A' }}" readonly>
+                                    value="{{ $quotation->username ?? '' }}" readonly>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label class="col-sm-5 col-form-label">Sales Person Email</label>
+                            <div class="col-sm-7">
+                                <input type="text" class="form-control form-control-sm" id="salesPersonEmail"
+                                    value="{{ $quotation->SalesPersonEmail ?? '' }}" readonly>
                             </div>
                         </div>
                         <div class="form-group row mb-0">
@@ -86,56 +93,56 @@
                             <label class="col-sm-5 col-form-label">Service</label>
                             <div class="col-sm-7">
                                 <input type="text" class="form-control form-control-sm"
-                                    value="{{ $quotation->ServiceVerticalname ?? 'N/A' }}" readonly>
+                                    value="{{ $quotation->ServiceVerticalname ?? '' }}" readonly>
                             </div>
                         </div>
                         <div class="form-group row">
                             <label class="col-sm-5 col-form-label">Process</label>
                             <div class="col-sm-7">
                                 <input type="text" class="form-control form-control-sm"
-                                    value="{{ $quotation->process ?? 'N/A' }}" readonly>
+                                    value="{{ $quotation->process ?? '' }}" readonly>
                             </div>
                         </div>
                         <div class="form-group row">
                             <label class="col-sm-5 col-form-label">Origin Country</label>
                             <div class="col-sm-7">
                                 <input type="text" class="form-control form-control-sm"
-                                    value="{{ $quotation->origincountry ?? 'N/A' }}" readonly>
+                                    value="{{ $quotation->origincountry ?? '' }}" readonly>
                             </div>
                         </div>
                         <div class="form-group row">
                             <label class="col-sm-5 col-form-label">Destination Country</label>
                             <div class="col-sm-7">
                                 <input type="text" class="form-control form-control-sm"
-                                    value="{{ $quotation->destinationcountry ?? 'N/A' }}" readonly>
+                                    value="{{ $quotation->destinationcountry ?? '' }}" readonly>
                             </div>
                         </div>
                         <div class="form-group row">
                             <label class="col-sm-5 col-form-label">InCO Terms</label>
                             <div class="col-sm-7">
                                 <input type="text" class="form-control form-control-sm"
-                                    value="{{ $quotation->incoterms ?? 'N/A' }}" readonly>
+                                    value="{{ $quotation->incoterm ?? '' }}" readonly>
                             </div>
                         </div>
                         <div class="form-group row">
                             <label class="col-sm-5 col-form-label">Shipment Mode</label>
                             <div class="col-sm-7">
                                 <input type="text" class="form-control form-control-sm"
-                                    value="{{ $quotation->shipmentmode ?? 'N/A' }}" readonly>
+                                    value="{{ $quotation->shipmentmode ?? '' }}" readonly>
                             </div>
                         </div>
                         <div class="form-group row">
                             <label class="col-sm-5 col-form-label">Transport Mode</label>
                             <div class="col-sm-7">
                                 <input type="text" class="form-control form-control-sm"
-                                    value="{{ $quotation->TransportMode ?? 'N/A' }}" readonly>
+                                    value="{{ $quotation->TransportMode ?? '' }}" readonly>
                             </div>
                         </div>
                         <div class="form-group row mb-0">
                             <label class="col-sm-5 col-form-label">Service Class</label>
                             <div class="col-sm-7">
                                 <input type="text" class="form-control form-control-sm"
-                                    value="{{ $quotation->ServiceClass ?? 'N/A' }}" readonly>
+                                    value="{{ $quotation->ServiceClass ?? '' }}" readonly>
                             </div>
                         </div>
                     </div>
@@ -366,7 +373,7 @@
                                     <label class="col-sm-4 col-form-label">Address 1</label>
                                     <div class="col-sm-8">
                                         <input type="text" class="form-control form-control-sm"
-                                            value="{{ $quotation->pri_partner_street ?? 'N/A' }}" readonly>
+                                            value="{{ $quotation->pri_partner_steet ?? 'N/A' }}" readonly>
                                     </div>
                                 </div>
                                 <div class="form-group row">
@@ -410,7 +417,7 @@
                                     <label class="col-sm-4 col-form-label">Address 2</label>
                                     <div class="col-sm-8">
                                         <input type="text" class="form-control form-control-sm"
-                                            value="{{ $quotation->pri_partner_street2 ?? 'N/A' }}" readonly>
+                                            value="{{ $quotation->pri_partner_steet2 ?? 'N/A' }}" readonly>
                                     </div>
                                 </div>
                                 <div class="form-group row">
@@ -664,8 +671,8 @@
         <!-- END ROW -->
 
         <!-- ============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 MODALS
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 ============================================ -->
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     MODALS
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     ============================================ -->
 
         {{-- REVENUE MODAL --}}
         <div class="modal fade" id="addRevenueModal" tabindex="-1" role="dialog"
@@ -702,7 +709,8 @@
                                     </div>
                                 </div>
                                 <div class="text-end">
-                                    <p class="text-muted mb-0">Base Currency: <strong>KES</strong></p>
+                                    <p class="text-muted mb-0">Base Currency: <strong
+                                            class="office-base-currency">—</strong></p>
                                 </div>
                             </div>
 
@@ -849,7 +857,8 @@
                                     </div>
                                 </div>
                                 <div class="text-end">
-                                    <p class="text-muted mb-0">Base Currency: <strong>KES</strong></p>
+                                    <p class="text-muted mb-0">Base Currency: <strong
+                                            class="office-base-currency">—</strong></p>
                                 </div>
                             </div>
 
@@ -1062,7 +1071,7 @@
                                     <div class="form-group">
                                         <label>To <span class="text-danger">*</span></label>
                                         <input type="email" class="form-control form-control-sm" id="emailTo"
-                                            placeholder="Enter recipient email address...">
+                                            value="{{ $quotation->pri_partner_email ?? '' }}">
                                     </div>
                                 </div>
                             </div>
@@ -1225,8 +1234,8 @@
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.min.css">
     <style>
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    MODAL STYLING — matched to FitExpress UI
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        MODAL STYLING — matched to FitExpress UI
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        ============================================= */
 
         .modal-header {
             background-color: #fff !important;
@@ -1669,9 +1678,9 @@
         }
 
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           CREATE BOOKING MODAL — Specific overrides
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           to match the "Creation of Booking" design
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               CREATE BOOKING MODAL — Specific overrides
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               to match the "Creation of Booking" design
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               ============================================= */
 
         #createBookingModal .modal-title {
             color: #003580 !important;
@@ -1801,6 +1810,16 @@
             pointer-events: auto;
             /* keeps the title tooltip visible on hover */
         }
+
+        /* Disabled UOM select — visually greyed out, not editable */
+        .modal-body select.form-control:disabled,
+        .modal-body .form-select:disabled {
+            background-color: #e9ecef;
+            cursor: not-allowed;
+            color: #6c757d;
+            opacity: 1;
+            /* override browser default which can make it too faint */
+        }
     </style>
 @stop
 
@@ -1812,7 +1831,6 @@
     <script>
         const isCopiedBooking = {{ request()->query('copied', 0) ? 'true' : 'false' }};
         const quotationId = '{{ $quotation->ID }}';
-        const loggedInUserEmail = '{{ Auth::user()->Email ?? (Auth::user()->email ?? '') }}';
 
         const tcAlreadyApplied = {{ $quotation->QuotationTCTemplate ? 'true' : 'false' }};
 
@@ -2038,20 +2056,6 @@
                 }, 100);
             });
 
-            $('#addCostModal').on('show.bs.modal', function() {
-                $(this).find('.cost-markup-row').removeClass('active').css('display', 'none');
-                if (!currentEditingCharge) {
-                    $('#costTypeCost').prop('checked', true);
-                    toggleCostFormFields('cost');
-                    loadBasedOnList('cost');
-                    populateCurrencyDropdown('cost');
-                }
-                setTimeout(function() {
-                    initializeChargeCodeAutocomplete('cost');
-                    initializeBillToPartyAutocomplete('cost');
-                }, 100);
-            });
-
             // ============================================
             // POPULATE CURRENCY DROPDOWN
             // ============================================
@@ -2117,6 +2121,17 @@
             // ============================================
             // AUTO-FETCH EXCHANGE RATE ON CURRENCY CHANGE
             // ============================================
+            // Format date as '05/Mar/2026' to match fn_GetCurrentExRateUsingCodeandPeriod signature
+            function formatDateForExRate(date) {
+                const d = date || new Date();
+                const day = String(d.getDate()).padStart(2, '0');
+                const month = d.toLocaleString('en-GB', {
+                    month: 'short'
+                }); // 'Mar'
+                const year = d.getFullYear();
+                return `${day}/${month}/${year}`; // '05/Mar/2026'
+            }
+
             $(document).on('change', 'select[name="revenue_currency"], select[name="cost_currency"]', function() {
                 const $currencySelect = $(this);
                 const prefix = $currencySelect.attr('name').split('_')[0];
@@ -2128,7 +2143,9 @@
                     return;
                 }
 
-                if (currencyCode === 'KES') {
+                const baseCurrency = OFFICE_BASE_CURRENCY[officeCode] ?? 'KES';
+
+                if (currencyCode === baseCurrency) {
                     $exchangeRateInput.val('1.000000');
                     calculateAmount(prefix);
                     return;
@@ -2139,10 +2156,12 @@
                     type: 'GET',
                     data: {
                         office_code: officeCode,
-                        from_currency: currencyCode
+                        from_currency: currencyCode,
+                        to_currency: baseCurrency,
+                        date_for: formatDateForExRate(new Date()) // → '05/Mar/2026'
                     },
                     beforeSend: function() {
-                        $exchangeRateInput.val('Loading...');
+                        $exchangeRateInput.val('').prop('readonly', true);
                     },
                     success: function(response) {
                         if (response.success && response.exchange_rate) {
@@ -2150,14 +2169,20 @@
                                 6));
                             calculateAmount(prefix);
                         } else {
-                            showNotification('Failed to fetch exchange rate', 'warning');
-                            $exchangeRateInput.val('1.000000');
+                            showNotification(
+                                response.message ||
+                                `No exchange rate found for ${currencyCode} → ${baseCurrency}`,
+                                'warning'
+                            );
+                            $exchangeRateInput.val('');
                         }
                     },
                     error: function(xhr) {
-                        console.error('Exchange rate fetch error:', xhr);
                         showNotification('Failed to fetch exchange rate', 'error');
-                        $exchangeRateInput.val('1.000000');
+                        $exchangeRateInput.val('');
+                    },
+                    complete: function() {
+                        $exchangeRateInput.prop('readonly', true);
                     }
                 });
             });
@@ -2213,8 +2238,9 @@
                 const $uomSelect = $(`select[name="${prefix}_based_on_uom"]`);
 
                 if (!basedOnCode) {
-                    $uomSelect.empty().append('<option value="">Select Based On first</option>').prop('disabled',
-                        true);
+                    $uomSelect.empty()
+                        .append('<option value="">Select Based On first</option>')
+                        .prop('disabled', true);
                     return;
                 }
 
@@ -2231,17 +2257,18 @@
                     success: function(response) {
                         if (response.success) {
                             $uomSelect.empty();
+
                             if (!response.uom_list || response.uom_list.length === 0) {
                                 $uomSelect.append('<option value="">No UOM Required</option>');
-                                $uomSelect.prop('disabled', true);
-                                console.log('No UOM required for:', basedOnCode);
+                                $uomSelect.prop('disabled', true)
+                                    .attr('title', 'No UOM required for this Based On selection');
                             } else {
                                 $uomSelect.append('<option value="">Select UOM</option>');
                                 response.uom_list.forEach(function(uom) {
                                     $uomSelect.append(
                                         `<option value="${uom.Code}">${uom.Name}</option>`);
                                 });
-                                $uomSelect.prop('disabled', false);
+                                $uomSelect.prop('disabled', false).removeAttr('title');
                             }
                         } else {
                             showNotification('Failed to load UOM list', 'error');
@@ -2306,35 +2333,35 @@
                         based_on_code: basedOnCode
                     },
                     beforeSend: function() {
-                        $uomSelect.prop('disabled', true)
-                            .empty()
-                            .append('<option value="">Loading...</option>');
+                        $uomSelect.prop('disabled', true).empty().append(
+                            '<option value="">Loading...</option>');
                     },
                     success: function(response) {
                         if (response.success) {
                             $uomSelect.empty();
+
                             if (!response.uom_list || response.uom_list.length === 0) {
                                 $uomSelect.append('<option value="">No UOM Required</option>');
-                                $uomSelect.prop('disabled', true);
+                                $uomSelect.prop('disabled', true).attr('title',
+                                    'No UOM required for this Based On selection');
                             } else {
                                 $uomSelect.append('<option value="">Select UOM</option>');
                                 response.uom_list.forEach(function(uom) {
                                     $uomSelect.append(
                                         `<option value="${uom.Code}">${uom.Name}</option>`);
                                 });
-                                $uomSelect.prop('disabled', false);
+                                $uomSelect.prop('disabled', false).removeAttr('title');
                             }
+
                             if (typeof callback === 'function') callback();
                         }
                     },
                     error: function() {
-                        $uomSelect.empty()
-                            .append('<option value="">Error loading</option>')
-                            .prop('disabled', false);
+                        $uomSelect.empty().append('<option value="">Error loading</option>').prop(
+                            'disabled', false);
                     }
                 });
             }
-
             // ============================================
             // CHARGE CODE AUTOCOMPLETE
             // FIX: chargeType is now read dynamically from the selected radio button
@@ -3490,8 +3517,8 @@
                 $('#emailTemplateSelect').val('');
                 $('#emailSubject').val('');
                 $('#emailBody').val('');
-                $('#emailFrom').val('{{ $quotation->pri_partner_email ?? '' }}'); // customer email in From
-                $('#emailTo').val(''); // user fills manually
+                $('#emailFrom').val('');
+                $('#emailTo').val('{{ $quotation->pri_partner_email ?? '' }}');
                 loadEmailTemplates();
                 populateQuoteVersionDropdown();
                 $('#emailQuoteModal').modal('show');
@@ -4258,6 +4285,7 @@
                 $modal.find('select').prop('selectedIndex', 0);
                 $modal.find('input[type="checkbox"]').prop('checked', false);
 
+
                 if (type === 'revenue') {
                     $modal.find('.increase-by-row').removeClass('active').css('display', 'none');
                     $modal.find('.increase-by-row input[type="number"]').val('0.00');
@@ -4266,8 +4294,13 @@
                     $modal.find('.cost-markup-row input[type="number"]').val('0.00');
                 }
 
-                loadBasedOnList(type);
-                populateCurrencyDropdown(type);
+                // ── FIX: Only reload BasedOn list in add mode.
+                // In edit mode, populateModal owns the loading sequence via loadBasedOnListWithCallback.
+                // Calling loadBasedOnList here would race and reset the dropdown, wiping basedOnUOM.
+                if (!currentEditingCharge) {
+                    loadBasedOnList(type);
+                    populateCurrencyDropdown(type);
+                }
             }
 
             function clearRevenueModalForm() {
@@ -4372,8 +4405,8 @@
                     data: {
                         module: 'Quotation',
                         sub_module: 'T&C',
-                        office_code: codeToUse,
-                        booking_no: bookingNo 
+                        office_code: codeToUse, // ← kept for backwards compat (ignored by SP path)
+                        booking_no: bookingNo // ← NEW: triggers SP path in controller
                     },
                     success: function(response) {
                         const $select = $('#termsTemplateSelect');

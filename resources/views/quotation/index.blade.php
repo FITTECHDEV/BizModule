@@ -12,7 +12,7 @@
         {{-- Statistics Cards --}}
         <div class="row mb-3">
             {{-- 1. In Progress --}}
-            <div class="col-6 col-md-6 col-lg-2 mb-2">
+            <div class="col-6 col-md-4 col-lg mb-2">
                 <div class="small-box bg-info card-filter-trigger compact-card" data-filter="in_progress"
                     title="Click to view in progress records">
                     <div class="inner">
@@ -26,7 +26,7 @@
             </div>
 
             {{-- 2. Won --}}
-            <div class="col-6 col-md-6 col-lg-2 mb-2">
+            <div class="col-6 col-md-4 col-lg mb-2">
                 <div class="small-box bg-success card-filter-trigger compact-card" data-filter="won"
                     title="Click to view won records">
                     <div class="inner">
@@ -40,7 +40,7 @@
             </div>
 
             {{-- 3. Lost --}}
-            <div class="col-6 col-md-6 col-lg-2 mb-2">
+            <div class="col-6 col-md-4 col-lg mb-2">
                 <div class="small-box bg-danger card-filter-trigger compact-card" data-filter="lost"
                     title="Click to view lost records">
                     <div class="inner">
@@ -54,7 +54,7 @@
             </div>
 
             {{-- 4. Canceled --}}
-            <div class="col-6 col-md-6 col-lg-2 mb-2">
+            <div class="col-6 col-md-4 col-lg mb-2">
                 <div class="small-box bg-warning card-filter-trigger compact-card" data-filter="canceled"
                     title="Click to view canceled records">
                     <div class="inner">
@@ -67,8 +67,22 @@
                 </div>
             </div>
 
-            {{-- 5. Failed Int. --}}
-            <div class="col-6 col-md-6 col-lg-2 mb-2">
+            {{-- 5. Failed Progress --}}
+            <div class="col-6 col-md-4 col-lg mb-2">
+                <div class="small-box bg-secondary card-filter-trigger compact-card" data-filter="Failed Progress"
+                    title="Click to view failed progress records">
+                    <div class="inner">
+                        <h3 id="stat-failed-progress">{{ $stats['failed_progress'] }}</h3>
+                        <p>Failed Progress</p>
+                    </div>
+                    <div class="icon">
+                        <i class="fas fa-exclamation-circle"></i>
+                    </div>
+                </div>
+            </div>
+
+            {{-- 6. Failed Int. --}}
+            <div class="col-6 col-md-4 col-lg mb-2">
                 <div class="small-box bg-danger card-filter-trigger compact-card" data-filter="failed_int"
                     title="Click to view failed integration records">
                     <div class="inner">
@@ -81,8 +95,8 @@
                 </div>
             </div>
 
-            {{-- 6. Total --}}
-            <div class="col-6 col-md-6 col-lg-2 mb-2">
+            {{-- 7. Total --}}
+            <div class="col-6 col-md-4 col-lg mb-2">
                 <div class="small-box bg-primary compact-card" title="Total records">
                     <div class="inner">
                         <h3 id="stat-total">{{ $stats['total'] }}</h3>
@@ -156,8 +170,8 @@
 
                     {{-- Clear Filters Button --}}
                     <div class="col-12 col-sm-6 col-md-auto order-6" id="clearFiltersContainer" style="display: none;">
-                        <button type="button" id="clearAllFilters" class="btn btn-outline-secondary btn-sm w-100 w-md-auto"
-                            title="Clear all filters">
+                        <button type="button" id="clearAllFilters"
+                            class="btn btn-outline-secondary btn-sm w-100 w-md-auto" title="Clear all filters">
                             <i class="fas fa-redo"></i> Clear Filters
                         </button>
                     </div>
@@ -189,8 +203,8 @@
                                 <th data-priority="10">Origin</th>
                                 <th data-priority="11">Destination</th>
                                 <th data-priority="4">Status</th>
-                                <th data-priority="12">Remark</th>
                                 <th data-priority="13">Booking No</th>
+                                <th>Remarks</th>
                                 <th data-priority="5">Action</th>
                             </tr>
                         </thead>
@@ -370,6 +384,22 @@
                         {{-- Result --}}
                         <div id="crmSyncResult"></div>
 
+                        {{-- Sync History --}}
+                        <div class="mt-4">
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <h6 class="mb-0 font-weight-bold">
+                                    <i class="fas fa-history mr-1 text-muted"></i> Recent Sync History
+                                </h6>
+                                <small class="text-muted" id="crmHistoryMeta"></small>
+                            </div>
+                            <div id="crmHistoryContainer">
+                                <div class="text-muted small text-center py-2">
+                                    <i class="fas fa-spinner fa-spin mr-1"></i> Loading history...
+                                </div>
+                            </div>
+                        </div>
+
+
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
@@ -388,7 +418,7 @@
     <style>
         /* COMPACT CARD STYLING */
         .compact-card {
-            min-height: 90px !important;
+            min-height: 75px !important;
             margin-bottom: 0.5rem;
             cursor: pointer;
             border-radius: 0.25rem;
@@ -396,23 +426,49 @@
         }
 
         .compact-card .inner {
-            padding: 10px !important;
+            padding: 7px 10px !important;
         }
 
         .compact-card .inner h3 {
-            font-size: 2rem;
-            margin-bottom: 5px;
+            font-size: 1.5rem;
+            margin-bottom: 2px;
         }
 
         .compact-card .inner p {
-            font-size: 0.875rem;
+            font-size: 0.75rem;
             margin-bottom: 0;
+            white-space: nowrap;
         }
 
         .compact-card .icon {
-            font-size: 50px !important;
-            top: 10px;
-            right: 10px;
+            font-size: 38px !important;
+            top: 8px;
+            right: 8px;
+        }
+
+        /* Total card should not appear clickable */
+        .compact-card:not(.card-filter-trigger) {
+            cursor: default;
+        }
+
+        .compact-card.card-filter-trigger:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        /* Mobile adjustments */
+        @media (max-width: 767.98px) {
+            .compact-card .icon {
+                font-size: 28px !important;
+            }
+
+            .compact-card .inner h3 {
+                font-size: 1.2rem;
+            }
+
+            .compact-card .inner p {
+                font-size: 0.7rem;
+            }
         }
 
         @media (hover: hover) and (pointer: fine) {
@@ -777,6 +833,7 @@
                                 else if (data === 'Lost') badgeClass = 'badge-danger';
                                 else if (data === 'Canceled') badgeClass = 'badge-warning';
                                 else if (data === 'Failed Int.') badgeClass = 'badge-danger';
+                                else if (data === 'Failed Progress') badgeClass = 'badge-secondary';
                                 else if (data === 'In Progress') badgeClass = 'badge-info';
 
                                 return '<span class="badge ' + badgeClass + '">' + data + '</span>';
@@ -784,15 +841,37 @@
                             return data;
                         }
                     },
-                    {
-                        data: 'StatusRemark',
-                        name: 'StatusRemark',
-                        responsivePriority: 12
-                    },
+
                     {
                         data: 'BookingNo',
                         name: 'BookingNo',
                         responsivePriority: 13
+                    },
+                    // ── NEW: Remarks / Error column ──────────────────────────────
+                    // Parses failure_reason JSON from the DB and renders validation
+                    // errors in red for Failed Int. / Failed Progress rows,
+                    // or muted grey for informational remarks on other statuses.
+                    {
+                        data: 'remarks_error',
+                        name: 'remarks_error',
+                        orderable: false,
+                        searchable: false,
+                        responsivePriority: 6,
+                        render: function(data, type, row) {
+                            if (type !== 'display') return data || '';
+                            if (!data || data === '-') return '<span class="text-muted">—</span>';
+
+                            var isError = row.QuotationStatus === 'Failed Int.' ||
+                                row.QuotationStatus === 'Failed Progress';
+
+                            if (isError) {
+                                return '<span class="text-danger" title="' + data + '">' +
+                                    '<i class="fas fa-exclamation-circle mr-1"></i>' +
+                                    (data.length > 80 ? data.substr(0, 80) + '...' : data) +
+                                    '</span>';
+                            }
+                            return '<span class="text-muted">' + data + '</span>';
+                        }
                     },
                     {
                         data: 'action',
@@ -863,13 +942,7 @@
                     $('.dataTables_length').appendTo('#entriesContainer');
                     $('.dataTables_filter').appendTo('#searchContainer');
                     adjustSearchPlaceholder();
-
-                    // Highlight In Progress card as active on load
                     $('.card-filter-trigger[data-filter="in_progress"]').addClass('active');
-
-                    // Stats are already server-rendered correctly — do not call
-                    // updateCardStats() or table.ajax.reload() here, as that
-                    // would race and wipe the cards with stale data.
                 }
             });
 
@@ -946,9 +1019,6 @@
 
             // ============================================
             // CREATE BOOKING BUTTON
-            // Stores quotation-id, booking-no, and team-id
-            // on the modal before showing it so the
-            // show.bs.modal handler can use them.
             // ============================================
             $('#quotationTable').on('click', '.btn-create-booking', function(e) {
                 e.stopPropagation();
@@ -965,18 +1035,14 @@
 
             // ============================================
             // CREATE BOOKING MODAL — POPULATE DROPDOWNS
-            // Fires every time the modal opens so data is
-            // always fresh for the selected quotation.
             // ============================================
             $('#createBookingModal').on('show.bs.modal', function() {
                 var modal = $(this);
                 var quoteNo = modal.data('quote-no');
                 var teamId = modal.data('team-id');
 
-                // ── Reset all fields ──
                 resetCreateBookingForm();
 
-                // Show loading state on all three dropdowns
                 setDropdownLoading('#cb_service_template');
                 setDropdownLoading('#cb_bill_to_party');
                 setDropdownLoading('#cb_forwarder');
@@ -1054,11 +1120,10 @@
                     });
             });
 
-            // Clean up location suggestion dropdowns when modal closes
+            // Clean up when modal closes
             $('#createBookingModal').on('hidden.bs.modal', function() {
                 $('.location-suggestions').remove();
 
-                // Reset progress panel back to form view for next open
                 $('#createBookingForm').removeClass('d-none');
                 $('#cbProgressPanel').addClass('d-none');
                 $('#submitCreateBookingBtn, #cancelCreateBookingBtn').removeClass('d-none');
@@ -1068,9 +1133,7 @@
             });
 
             // ============================================
-            // CANCEL / X BUTTON — explicit close handlers
-            // Fallback in case data-dismiss="modal" is not
-            // being picked up (e.g. BS4/BS5 mismatch).
+            // CANCEL / X BUTTON
             // ============================================
             $(document).on('click', '#cancelCreateBookingBtn, #createBookingModal .close', function(e) {
                 e.preventDefault();
@@ -1096,7 +1159,6 @@
 
             // ============================================
             // PLACE OF RECEIPT / DELIVERY — AUTOCOMPLETE
-            // Shared setup function; keeps both fields DRY.
             // ============================================
             function setupLocationAutocomplete(inputId, codeId, idHiddenId) {
                 var debounceTimer = null;
@@ -1146,15 +1208,12 @@
                                             text: loc.LocationName + (loc
                                                 .LocationType ? ' (' + loc
                                                 .LocationType + ')' : '')
-
                                         })
                                         .on('mousedown', function(e) {
-                                            // mousedown fires before blur so we can set values safely
                                             e.preventDefault();
                                             $('#' + inputId).val(loc.LocationName +
                                                 (loc.LocationType ? ' (' + loc
                                                     .LocationType + ')' : ''));
-
                                             $('#' + codeId).val(loc.LocationCode);
                                             $('#' + idHiddenId).val(loc.LocationID);
                                             removeSuggestions(inputId);
@@ -1162,7 +1221,6 @@
                                         .appendTo($list);
                                 });
 
-                                // Insert the list immediately after the input
                                 $input.closest('.form-group').css('position', 'relative')
                                     .append($list);
                             })
@@ -1172,7 +1230,6 @@
                     }, 300);
                 });
 
-                // Close suggestions when input loses focus
                 $('#' + inputId).on('blur', function() {
                     setTimeout(function() {
                         removeSuggestions(inputId);
@@ -1184,17 +1241,9 @@
                 $('#' + inputId).closest('.form-group').find('.location-suggestions').remove();
             }
 
-            // Wire up both location inputs
-            setupLocationAutocomplete(
-                'cb_place_of_receipt',
-                'cb_place_of_receipt_code',
-                'cb_place_of_receipt_id'
-            );
-            setupLocationAutocomplete(
-                'cb_place_of_delivery',
-                'cb_place_of_delivery_code',
-                'cb_place_of_delivery_id'
-            );
+            setupLocationAutocomplete('cb_place_of_receipt', 'cb_place_of_receipt_code', 'cb_place_of_receipt_id');
+            setupLocationAutocomplete('cb_place_of_delivery', 'cb_place_of_delivery_code',
+                'cb_place_of_delivery_id');
 
             // ============================================
             // STEP LABELS FOR PROGRESS VIEW
@@ -1288,7 +1337,6 @@
                     return;
                 }
 
-                // Switch to progress view
                 $('#createBookingForm, #cbProgressPanel').toggleClass('d-none');
                 $('#submitCreateBookingBtn, #cancelCreateBookingBtn').addClass('d-none');
                 $('#cbProgressError, #cbProgressSuccess').addClass('d-none');
@@ -1338,7 +1386,6 @@
 
             // ============================================
             // STATS UPDATE (debounced)
-            // Only called when user interacts with filters
             // ============================================
             function updateCardStats() {
                 if (statsUpdateTimer) {
@@ -1369,8 +1416,9 @@
                                 response.lost, 500);
                             animateValue('stat-canceled', parseInt($('#stat-canceled')
                                 .text()) || 0, response.canceled, 500);
-                            animateValue('stat-failed-int', parseInt($('#stat-failed-int')
-                                .text()) || 0, response.failed_int, 500);
+                            animateValue('stat-failed-progress', parseInt($(
+                                    '#stat-failed-progress').text()) || 0, response
+                                .failed_progress, 500);
                         },
                         error: function(xhr, error, code) {
                             console.error('Failed to update card statistics:', xhr, error,
@@ -1382,6 +1430,81 @@
                         }
                     });
                 }, 300);
+            }
+
+            // ============================================
+            // CRM SYNC HISTORY
+            // ============================================
+            function loadCrmHistory() {
+                $('#crmHistoryContainer').html(
+                    '<div class="text-muted small text-center py-2">' +
+                    '<i class="fas fa-spinner fa-spin mr-1"></i> Loading history...</div>'
+                );
+                $('#crmHistoryMeta').text('');
+
+                $.ajax({
+                    url: '{{ route('crm.sync.history') }}',
+                    type: 'GET',
+                    success: function(res) {
+                        var history = res.history || [];
+
+                        if (!history.length) {
+                            $('#crmHistoryContainer').html(
+                                '<p class="text-muted small mb-0">No sync runs recorded yet.</p>');
+                            return;
+                        }
+
+                        $('#crmHistoryMeta').text('Last ' + history.length + ' run(s)');
+
+                        var rows = history.map(function(h) {
+                            var failBadge = h.failed > 0 ?
+                                '<span class="badge badge-danger ml-1">' + h.failed +
+                                ' failed</span>' : '';
+                            var scopeTag = h.booking_no ?
+                                '<span class="badge badge-secondary ml-1">Booking #' + h
+                                .booking_no + '</span>' :
+                                (h.limit ? '<span class="badge badge-secondary ml-1">Limit ' + h
+                                    .limit + '</span>' : '');
+
+                            return '<tr>' +
+                                '<td class="text-nowrap">' + h.run_at + '</td>' +
+                                '<td>' + escapeHtml(h.triggered_by) + '</td>' +
+                                '<td class="text-center">' + h.total + scopeTag + '</td>' +
+                                '<td class="text-center text-success font-weight-bold">' + h
+                                .inserted + '</td>' +
+                                '<td class="text-center text-info font-weight-bold">' + h
+                                .updated + '</td>' +
+                                '<td class="text-center">' + h.skipped + '</td>' +
+                                '<td class="text-center">' + h.failed + failBadge + '</td>' +
+                                '</tr>';
+                        }).join('');
+
+                        $('#crmHistoryContainer').html(
+                            '<div style="max-height: 220px; overflow-y: auto;">' +
+                            '<table class="table table-sm table-bordered table-striped mb-0" style="font-size:0.8rem;">' +
+                            '<thead class="thead-light"><tr>' +
+                            '<th>Run At</th><th>Triggered By</th><th class="text-center">Total</th>' +
+                            '<th class="text-center">Ins.</th><th class="text-center">Upd.</th>' +
+                            '<th class="text-center">Skip</th><th class="text-center">Fail</th>' +
+                            '</tr></thead>' +
+                            '<tbody>' + rows + '</tbody>' +
+                            '</table></div>'
+                        );
+                    },
+                    error: function() {
+                        $('#crmHistoryContainer').html(
+                            '<p class="text-danger small mb-0">Failed to load history.</p>');
+                    }
+                });
+            }
+
+            function escapeHtml(str) {
+                if (!str) return '-';
+                return String(str)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;');
             }
 
             function animateValue(id, start, end, duration) {
@@ -1423,7 +1546,6 @@
             $('.card-filter-trigger').on('touchstart', function() {
                 touchMoved = false;
             });
-
             $('.card-filter-trigger').on('touchmove', function() {
                 touchMoved = true;
             });
@@ -1534,11 +1656,8 @@
                 $('#endDate').val('');
                 $('#customDateRange').hide();
                 $('#customDateRangeTo').hide();
-
-                // Reset to user's default office
                 $('#officeFilter').val('{{ $defaultOffice ?? '' }}');
 
-                // Reset card filter to In Progress
                 $('.card-filter-trigger').removeClass('active');
                 $('.card-filter-trigger[data-filter="in_progress"]').addClass('active');
                 currentCardFilter = 'in_progress';
@@ -1557,6 +1676,7 @@
                 $('#crmDryRun').prop('checked', false);
                 $('#crmLimit, #crmBooking').val('');
                 $('#crmSyncModal').modal('show');
+                loadCrmHistory();
             });
 
             $(document).on('click', '#crmSyncModal .close, #crmSyncModal .btn-secondary', function(e) {
@@ -1607,7 +1727,6 @@
                     </tbody>
                 </table>`;
 
-                        // Errors
                         if (res.errors && res.errors.length) {
                             html +=
                                 '<h6 class="text-danger mt-3">Errors</h6><ul class="list-group">';
@@ -1619,7 +1738,6 @@
                             html += '</ul>';
                         }
 
-                        // Verification — full sync
                         if (res.verification && res.verification.total !== undefined) {
                             var v = res.verification;
                             html += `<h6 class="mt-3">Verification (SQL Server)</h6>
@@ -1642,7 +1760,6 @@
                             }
                         }
 
-                        // Verification — single booking
                         if (res.verification && res.verification.record !== undefined) {
                             var rec = res.verification.record;
                             if (rec) {
@@ -1659,13 +1776,16 @@
                             }
                         }
 
-                        // Reload table if live sync had inserts/updates
                         if (!res.dry_run && (s.inserted > 0 || s.updated > 0)) {
                             table.ajax.reload(null, false);
                             updateCardStats();
                         }
 
                         $('#crmSyncResult').html(html);
+
+                        if (!res.dry_run) {
+                            loadCrmHistory();
+                        }
                     },
                     error: function(xhr) {
                         $('#crmSyncResult').html(

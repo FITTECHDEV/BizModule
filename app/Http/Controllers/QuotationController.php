@@ -16,20 +16,22 @@ class QuotationController extends Controller
         $this->middleware(['auth']);
     }
 
-    private function officeCodeMap(): array
-    {
-        return [
-            'DJ' => 'Djibouti',
-            'ET' => 'Ethiopia',
-            'KE' => 'Kenya',
-            'RW' => 'Rwanda',
-            'SA' => 'Sales',
-            'SS' => 'South Sudan',
-            'TZ' => 'Tanzania',
-            'UG' => 'Uganda',
-            'ZM' => 'Zambia',
-        ];
-    }
+    // ============================================
+    // OFFICE BASE CURRENCY MAP
+    // Source: Cust_Office + Bill_ChargeCodeOfficeMap (dominant currency per office)
+    // SA has no operational currency — defaults to KES
+    // ============================================
+    const OFFICE_BASE_CURRENCY = [
+        'DJ' => 'DJF',
+        'ET' => 'ETB',
+        'KE' => 'KES',
+        'RW' => 'RWF',
+        'SA' => 'KES', // Sales office — no dedicated currency, falls back to KES
+        'SS' => 'SSP',
+        'TZ' => 'TZS',
+        'UG' => 'UGX',
+        'ZM' => 'ZMW',
+    ];
 
     public function index()
     {
@@ -40,7 +42,8 @@ class QuotationController extends Controller
         // ============================================
 
         $userPrincipalName = Auth::user()->Email ?? null;
-        $normalizedEmail = strtolower(trim($userPrincipalName));
+        $normalizedEmail   = strtolower(trim($userPrincipalName));
+
         $userOfficeCodes = DB::table('Azure_Users')
             ->where(function ($q) use ($normalizedEmail) {
                 $q->whereRaw('LOWER(LTRIM(RTRIM(userPrincipalName))) = ?', [$normalizedEmail])
@@ -67,27 +70,52 @@ class QuotationController extends Controller
             ]);
         }
 
-        $map = $this->officeCodeMap();
-        $offices = $userOfficeCodes
-            ->map(fn($code) => $map[$code] ?? null)
-            ->filter()
-            ->sort()
+        // ============================================
+        // RESOLVE OFFICE CODES → TEAMNAMES
+        // Look up the actual teamname values used in Quote_QuotationInfo
+        // by joining through Cust_Office on TeamCode.
+        // Falls back to treating the BaseOfficeCode itself as a teamname
+        // for any code that has no matching Cust_Office row.
+        // ============================================
+
+        $resolvedOffices = DB::table('Cust_Office')
+            ->whereIn('Code', $userOfficeCodes->toArray())
+            ->where('IsActive', 1)
+            ->where('IsDeleted', 0)
+            ->pluck('Code', 'Code') // we need the Code to match against teamname
             ->values();
 
-        $unmappedCodes = $userOfficeCodes->reject(fn($code) => isset($map[$code]));
-        if ($unmappedCodes->isNotEmpty()) {
-            Log::warning('Quotation index - Unmapped BaseOfficeCode(s) found', [
+        // For codes that matched Cust_Office, get the distinct teamnames
+        // actually present in quotation data
+        $offices = DB::table('Quote_QuotationInfo')
+            ->whereNotNull('teamname')
+            ->whereIn('teamname', $userOfficeCodes->toArray())
+            ->distinct()
+            ->orderBy('teamname')
+            ->pluck('teamname');
+
+        // Also check if any BaseOfficeCode maps through Cust_Office.Code → teamname
+        // (handles cases where teamname stores the office Code directly)
+        if ($offices->isEmpty()) {
+            Log::warning('Quotation index - No teamname match on BaseOfficeCode directly, trying via Cust_Office', [
                 'userPrincipalName' => $userPrincipalName,
-                'unmapped_codes'    => $unmappedCodes->toArray(),
+                'base_office_codes' => $userOfficeCodes->toArray(),
             ]);
 
-            $fallbackOffices = DB::table('Quote_QuotationInfo')
-                ->whereNotNull('teamname')
-                ->whereIn('teamname', $unmappedCodes->toArray())
-                ->distinct()
-                ->pluck('teamname');
+            $teamCodes = DB::table('Cust_Office')
+                ->whereIn('Code', $userOfficeCodes->toArray())
+                ->where('IsActive', 1)
+                ->where('IsDeleted', 0)
+                ->pluck('TeamCode');
 
-            $offices = $offices->merge($fallbackOffices)->unique()->sort()->values();
+            if ($teamCodes->isNotEmpty()) {
+                $offices = DB::table('Quote_QuotationInfo')
+                    ->whereNotNull('teamname')
+                    ->whereIn('teamid', $teamCodes->toArray())
+                    ->distinct()
+                    ->orderBy('teamname')
+                    ->pluck('teamname');
+            }
         }
 
         if ($offices->isEmpty()) {
@@ -105,7 +133,7 @@ class QuotationController extends Controller
         }
 
         $defaultOffice = $offices->first();
-        $stats = $this->getStats('all', null, null, $defaultOffice);
+        $stats         = $this->getStats('all', null, null, $defaultOffice);
 
         Log::info('Quotation index - Resolved user offices', [
             'userPrincipalName' => $userPrincipalName,
@@ -132,7 +160,7 @@ class QuotationController extends Controller
     {
         $query = DB::table('Quote_QuotationInfo');
 
-        // Date filtering    
+        // Date filtering
         if ($days == 'custom' && $startDate && $endDate) {
             $query->whereBetween('createdon', [$startDate . ' 00:00:00', $endDate . ' 23:59:59']);
         } elseif ($days == 1) {
@@ -145,19 +173,18 @@ class QuotationController extends Controller
             $query->whereDate('createdon', today());
         }
 
-        // else: No date filter - show all records
         // Office filtering
-
         if ($office) {
             $query->where('teamname', $office);
         }
+
         $total = $query->count();
 
         $inProgress = (clone $query)->where(function ($q) {
-            $q->whereNotIn('QuoteStatus', ['Won', 'Lost', 'Cancel'])
+            $q->whereNotIn('QuoteStatus', ['Won', 'Lost', 'Cancel', 'Failed Progress'])
                 ->orWhereNull('QuoteStatus');
         })->where(function ($q) {
-            $q->whereNotIn('status', ['Won', 'Lost', 'Cancel'])
+            $q->whereNotIn('status', ['Won', 'Lost', 'Cancel', 'Failed Progress'])
                 ->orWhereNull('status');
         })->count();
 
@@ -186,13 +213,19 @@ class QuotationController extends Controller
             ->where('SCMINTStatus', '!=', 'Success')
             ->count();
 
+        $failedProgress = (clone $query)->where(function ($q) {
+            $q->where('QuoteStatus', 'Failed Progress')
+                ->orWhere('status', 'Failed Progress');
+        })->count();
+
         return [
-            'total' => $total,
-            'in_progress' => $inProgress,
-            'won' => $won,
-            'lost' => $lost,
-            'canceled' => $canceled,
-            'failed_int' => $failedInt
+            'total'           => $total,
+            'in_progress'     => $inProgress,
+            'won'             => $won,
+            'lost'            => $lost,
+            'canceled'        => $canceled,
+            'failed_int'      => $failedInt,
+            'failed_progress' => $failedProgress,
         ];
     }
 
@@ -231,11 +264,12 @@ class QuotationController extends Controller
                     'status',
                     'QuoteStatus',
                     'SCMINTStatus',
+                    'QuoteStatusDescription',  // ← correct column name
                     'CreatedOn',
                     'Updatedon',
                 ]);
 
-            // ── Date filtering (strict string comparison to avoid 'all' == 0 coercion) ──
+            // ── Date filtering ──
             if ($days === 'custom' && $startDate && $endDate) {
                 $query->whereBetween('createdon', [
                     $startDate . ' 00:00:00',
@@ -252,22 +286,22 @@ class QuotationController extends Controller
             }
             // 'all' → no date filter applied
 
-            // ── Office filtering ──────────────────────────────────────────────────────
+            // ── Office filtering ──
             if ($office) {
                 $query->where('teamname', $office);
             }
 
-            // ── Card filter ───────────────────────────────────────────────────────────
+            // ── Card filter ──
             Log::info('Applying card filter', ['card_filter' => $cardFilter]);
 
             switch ($cardFilter) {
 
                 case 'in_progress':
                     $query->where(function ($q) {
-                        $q->whereNotIn('QuoteStatus', ['Won', 'Lost', 'Cancel'])
+                        $q->whereNotIn('QuoteStatus', ['Won', 'Lost', 'Cancel', 'Failed Progress'])
                             ->orWhereNull('QuoteStatus');
                     })->where(function ($q) {
-                        $q->whereNotIn('status', ['Won', 'Lost', 'Cancel'])
+                        $q->whereNotIn('status', ['Won', 'Lost', 'Cancel', 'Failed Progress'])
                             ->orWhereNull('status');
                     });
                     break;
@@ -306,6 +340,14 @@ class QuotationController extends Controller
                     })->whereNotNull('SCMINTStatus')
                         ->where('SCMINTStatus', '!=', 'Success');
                     Log::info('Applied failed_int filter');
+                    break;
+
+                case 'Failed Progress':
+                    $query->where(function ($q) {
+                        $q->where('QuoteStatus', 'Failed Progress')
+                            ->orWhere('status', 'Failed Progress');
+                    });
+                    Log::info('Applied Failed Progress filter');
                     break;
 
                 case 'all':
@@ -358,6 +400,11 @@ class QuotationController extends Controller
                             $q->where(function ($sub) {
                                 $sub->where('QuoteStatus', 'Cancel')->orWhere('status', 'Cancel');
                             });
+                        } elseif (str_contains($keyword, 'failed') && str_contains($keyword, 'progress')) {
+                            $q->where(function ($sub) {
+                                $sub->where('QuoteStatus', 'Failed Progress')
+                                    ->orWhere('status', 'Failed Progress');
+                            });
                         } elseif (str_contains($keyword, 'failed') || str_contains($keyword, 'int')) {
                             $q->where(function ($sub) {
                                 $sub->where('QuoteStatus', 'Won')->orWhere('status', 'Won');
@@ -402,6 +449,9 @@ class QuotationController extends Controller
                     if ($status === 'Won' && $row->SCMINTStatus && $row->SCMINTStatus !== 'Success') {
                         return 'Failed Int.';
                     }
+                    if ($status === 'Failed Progress') {
+                        return 'Failed Progress';
+                    }
                     if (in_array($status, ['Proposal', 'Pending', 'In Progress']) || is_null($status)) {
                         return 'In Progress';
                     }
@@ -416,6 +466,22 @@ class QuotationController extends Controller
                 ->addColumn('BookingNo', function ($row) {
                     return $row->bookingno ?? '-';
                 })
+
+                ->addColumn('remarks_error', function ($row) {
+                    $raw = $row->QuoteStatusDescription ?? null;
+                    if (!$raw) return '-';
+
+                    // Value is stored as concatenated JSON objects:
+                    // {"Remark":"msg1"},{"Remark":"msg2"}
+                    $decoded = json_decode('[' . $raw . ']', true);
+
+                    if (json_last_error() !== JSON_ERROR_NONE || !is_array($decoded)) {
+                        return $raw; // fallback: return raw string if not valid JSON
+                    }
+
+                    return implode(' | ', array_column($decoded, 'Remark'));
+                })
+
                 ->addColumn('action', function ($row) use ($cardFilter) {
                     $status    = $row->QuoteStatus ?? $row->status ?? 'Proposal';
                     $scmStatus = $row->SCMINTStatus;
@@ -426,39 +492,39 @@ class QuotationController extends Controller
                     $isCleanWon   = ($status === 'Won' && (is_null($scmStatus) || $scmStatus === 'Success'));
 
                     $viewBtn = '<a href="' . route('quotation.view', $row->ID) . '" class="btn btn-info btn-sm" title="View">
-                        <i class="fas fa-eye"></i>
-                    </a>';
+                    <i class="fas fa-eye"></i>
+                </a>';
 
                     $editBtn = '';
                     if ($cardFilter === 'in_progress' && $isInProgress) {
                         $editBtn = ' <a href="' . route('quotation.edit', $row->ID) . '" class="btn btn-warning btn-sm" title="Edit">
-                            <i class="fas fa-edit"></i>
-                        </a>';
+                        <i class="fas fa-edit"></i>
+                    </a>';
                     }
 
                     $retriggerBtn = '';
                     if ($cardFilter === 'failed_int' && $isFailedInt) {
                         $retriggerBtn = ' <button class="btn btn-danger btn-sm btn-retrigger" data-booking="' . $row->bookingno . '" title="Retrigger">
-                            <i class="fas fa-sync-alt"></i>
-                        </button>';
+                        <i class="fas fa-sync-alt"></i>
+                    </button>';
                     }
 
                     $createBookingBtn = '';
                     if ($cardFilter === 'won' && $isCleanWon) {
                         $createBookingBtn = ' <button class="btn btn-success btn-sm btn-create-booking"
-                            data-id="'      . $row->ID       . '"
-                            data-booking="' . $row->bookingno . '"
-                            data-team="'    . $row->teamid    . '"
-                            data-quoteno="' . $row->QuoteNo   . '"
-                            title="Create Booking">
-                            <i class="fas fa-plus-circle"></i>
-                        </button>';
+                        data-id="'      . $row->ID       . '"
+                        data-booking="' . $row->bookingno . '"
+                        data-team="'    . $row->teamid    . '"
+                        data-quoteno="' . $row->QuoteNo   . '"
+                        title="Create Booking">
+                        <i class="fas fa-plus-circle"></i>
+                    </button>';
                     }
 
                     return $viewBtn . $editBtn . $retriggerBtn . $createBookingBtn;
                 })
 
-                ->rawColumns(['action'])
+                ->rawColumns(['action', 'remarks_error'])
                 ->make(true);
         } catch (\Throwable $e) {
             Log::error('QuotationData 500', [
@@ -2788,19 +2854,19 @@ class QuotationController extends Controller
         if (!$subModule) {
             return response()->json([
                 'success' => false,
-                'message' => 'Sub module is required'
+                'message' => 'Sub module and office code are required'
             ], 400);
         }
 
-        // ── T&C: route through sp_Quote_CommunicationDetail_List ─────────────
+        // ── T&C: route through sp_Quote_CommunicationDetail_List ─────────────────
         // The SP resolves Service, Process, and OfficeCode internally from QuoteNo,
-        // ensuring templates are filtered for this specific quotation type (e.g.
-        // AirExport vs AirImport). Email still uses the direct query below.
+        // so it returns templates correctly filtered for this specific quotation.
+        // Email still uses the direct query below (office_code path).
         if ($subModule === 'T&C' && $bookingNo) {
             return $this->getCommunicationTemplatesViaSP($module, $subModule, $bookingNo);
         }
 
-        // ── Email (and any other sub_module): original direct query ───────────
+        // ── Email (and any other sub_module): original direct query ──────────────
         if (!$officeCode) {
             return response()->json([
                 'success' => false,
@@ -2821,6 +2887,7 @@ class QuotationController extends Controller
                     'module'      => $module,
                     'sub_module'  => $subModule,
                 ]);
+
                 return response()->json([
                     'success' => false,
                     'code'    => 'OFFICE_NOT_FOUND',
@@ -2831,10 +2898,10 @@ class QuotationController extends Controller
             $templates = DB::select(
                 "SELECT Name, Description
              FROM Cust_CommunicationDetails WITH (NOLOCK)
-             WHERE Module        = ?
-               AND SubModule     = ?
+             WHERE Module     = ?
+               AND SubModule  = ?
                AND TRIM(OfficeCode) = ?
-               AND IsActive      = 1
+               AND IsActive   = 1
              ORDER BY Name",
                 [$module, $subModule, $officeCode]
             );
@@ -2854,12 +2921,16 @@ class QuotationController extends Controller
                 ], 404);
             }
 
-            return response()->json(['success' => true, 'templates' => $templates]);
+            return response()->json([
+                'success'   => true,
+                'templates' => $templates
+            ]);
         } catch (\Exception $e) {
             Log::error('getCommunicationTemplates failed', [
                 'office_code' => $officeCode,
                 'error'       => $e->getMessage(),
             ]);
+
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to load templates: ' . $e->getMessage()
@@ -2869,12 +2940,8 @@ class QuotationController extends Controller
 
     /**
      * Load T&C templates via sp_Quote_CommunicationDetail_List.
-     *
-     * The SP filters by Service + Process + OfficeCode resolved internally
-     * from QuoteNo, returning only templates valid for this quotation type
-     * (e.g. AirExport, AirImport, SeaImport, etc.).
-     *
-     * Note: QuoteNo === bookingno (both numeric) — confirmed, no lookup needed.
+     * The SP filters by Service+Process+OfficeCode resolved from the QuoteNo internally,
+     * so it returns templates appropriate for this specific quotation type and office.
      */
     private function getCommunicationTemplatesViaSP(string $module, string $subModule, string $bookingNo): \Illuminate\Http\JsonResponse
     {
@@ -2914,10 +2981,9 @@ class QuotationController extends Controller
                         ], 404);
                     }
 
-                    // Valid result set — SP returns TemplateID (UUID) and TemplateName
+                    // Valid result set — SP returns TemplateID and TemplateName
                     if (isset($rows[0]->TemplateID) && isset($rows[0]->TemplateName)) {
-                        // Normalize to Name/Description shape the frontend expects.
-                        // Description body is fetched separately via getCommunicationDescription().
+                        // Normalize to Name/Description shape the frontend expects
                         $templates = array_map(fn($row) => (object)[
                             'Name'        => $row->TemplateName,
                             'Description' => '',
@@ -2927,14 +2993,10 @@ class QuotationController extends Controller
                             'booking_no'     => $bookingNo,
                             'sub_module'     => $subModule,
                             'template_count' => count($templates),
-                            'templates'      => array_column($templates, 'Name'),
                         ]);
                         break;
                     }
                 } catch (\PDOException $e) {
-                    Log::debug('getCommunicationTemplatesViaSP - Skipping result set #' . $resultSetIndex, [
-                        'error' => $e->getMessage(),
-                    ]);
                     continue;
                 }
             } while ($stmt->nextRowset());
@@ -2944,14 +3006,18 @@ class QuotationController extends Controller
                     'booking_no' => $bookingNo,
                     'sub_module' => $subModule,
                 ]);
+
                 return response()->json([
                     'success' => false,
                     'code'    => 'NOT_CONFIGURED',
-                    'message' => "No T&C templates are configured for this quotation's office and service type. Please contact your administrator.",
+                    'message' => "No T&C templates configured for this quotation's office and service type. Please contact your administrator.",
                 ], 404);
             }
 
-            return response()->json(['success' => true, 'templates' => $templates]);
+            return response()->json([
+                'success'   => true,
+                'templates' => $templates,
+            ]);
         } catch (\Exception $e) {
             Log::error('getCommunicationTemplatesViaSP failed', [
                 'booking_no' => $bookingNo,
@@ -2960,6 +3026,7 @@ class QuotationController extends Controller
                 'file'       => $e->getFile(),
                 'line'       => $e->getLine(),
             ]);
+
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to load T&C templates: ' . $e->getMessage(),
@@ -3072,7 +3139,13 @@ class QuotationController extends Controller
                         ->subject($subject)
                         ->setBody($body, 'text/html');
 
-                    // Attach latest PDF
+                    // ============================================
+                    // ATTACH PDF — prefer saved file, fall back to
+                    // in-memory generation from SP if none exists.
+                    // ============================================
+                    $attached = false;
+
+                    // Path 1: latest saved PDF on disk (existing behaviour)
                     $latest = DB::table('Quote_Quotation_Document')
                         ->where('QuotationInfoID', $quotation->ID)
                         ->where('DocumentType', 'QuotationPDF')
@@ -3081,10 +3154,63 @@ class QuotationController extends Controller
                         ->first(['Name', 'FilePath']);
 
                     if ($latest && $latest->FilePath) {
-                        $path = storage_path('app/public/' . ltrim($latest->FilePath, '/'));
-                        if (file_exists($path)) {
-                            $name = $latest->Name ?: "Quotation_{$quotation->bookingno}.pdf";
-                            $message->attach($path, ['as' => $name, 'mime' => 'application/pdf']);
+                        $relativePath = $this->normalizeFilePath($latest->FilePath);
+                        $fullPath     = \Storage::disk('public')->path($relativePath);
+
+                        if (file_exists($fullPath)) {
+                            $attachName = $latest->Name ?: "Quotation_{$quotation->bookingno}.pdf";
+                            $message->attach($fullPath, ['as' => $attachName, 'mime' => 'application/pdf']);
+                            $attached = true;
+
+                            Log::info('sendEmailQuote - Attached saved PDF', [
+                                'booking_no' => $quotation->bookingno,
+                                'file'       => $attachName,
+                            ]);
+                        }
+                    }
+
+                    // Path 2: no saved PDF found — generate in-memory from SP and attach directly.
+                    // This avoids writing a new version to disk just to send an email.
+                    if (!$attached) {
+                        Log::warning('sendEmailQuote - No saved PDF found, generating in-memory from SP', [
+                            'booking_no' => $quotation->bookingno,
+                            'quote_no'   => $quotation->QuoteNo,
+                        ]);
+
+                        $html = $this->getQuotationHtml($quotation->QuoteNo ?? '');
+
+                        if (!empty($html)) {
+                            try {
+                                $options = new \Dompdf\Options();
+                                $options->set('isHtml5ParserEnabled', true);
+                                $options->set('isPhpEnabled', false);
+                                $options->set('isRemoteEnabled', true);
+                                $options->set('defaultFont', 'Arial');
+
+                                $pdf = new \Dompdf\Dompdf($options);
+                                $pdf->loadHtml($html, 'UTF-8');
+                                $pdf->setPaper('A4', 'portrait');
+                                $pdf->render();
+
+                                // Attach from memory — no temp file needed
+                                $attachName = "Quotation_{$quotation->bookingno}.pdf";
+                                $message->attachData($pdf->output(), $attachName, ['mime' => 'application/pdf']);
+
+                                Log::info('sendEmailQuote - Attached in-memory PDF from SP', [
+                                    'booking_no' => $quotation->bookingno,
+                                ]);
+                            } catch (\Exception $e) {
+                                Log::error('sendEmailQuote - In-memory PDF generation failed', [
+                                    'booking_no' => $quotation->bookingno,
+                                    'error'      => $e->getMessage(),
+                                ]);
+                                // Email still sends — just without attachment
+                            }
+                        } else {
+                            Log::error('sendEmailQuote - SP returned no HTML, email sent without PDF', [
+                                'booking_no' => $quotation->bookingno,
+                                'quote_no'   => $quotation->QuoteNo ?? 'N/A',
+                            ]);
                         }
                     }
                 }
@@ -3171,8 +3297,6 @@ class QuotationController extends Controller
      * Generate and stream a PDF quotation document.
      * Route: GET /quotation/{id}/generate-pdf
      */
-
-
     public function generatePdf($id)
     {
         try {
@@ -3181,134 +3305,145 @@ class QuotationController extends Controller
 
             Log::info('PDF Generation - Starting', ['quotation_id' => $id]);
 
+            // ============================================
+            // LOAD QUOTATION
+            // ============================================
             $quotation = \App\Models\QuotationInfo::where('ID', $id)->first();
 
             if (!$quotation) {
                 Log::error('PDF Generation - Quotation not found', ['id' => $id]);
                 return response()->json([
                     'success' => false,
-                    'message' => 'Quotation not found'
+                    'message' => 'Quotation not found',
                 ], 404);
             }
 
             $submittedBy = auth()->user()->displayName ?? auth()->user()->Email ?? 'system';
 
-            Log::info('PDF Generation - Loading charges', [
-                'booking_no' => $quotation->bookingno
-            ]);
+            // ============================================
+            // GUARD: QuoteNo must be set
+            // sp_Quote_QuotationFormat uses an INNER JOIN on QuotationTCTemplate,
+            // so it will silently return empty HTML if T&C has not been applied.
+            // The UI already enforces this — this guard is a backend safety net.
+            // ============================================
+            $quoteNo = trim((string) ($quotation->QuoteNo ?? ''));
 
-            // Load charges
-            try {
-                $charges = DB::select("
-                    SELECT
-                        QC.Id                AS QuoteChargeID,
-                        BC.Code              AS ChargeCode,
-                        BC.Name              AS ChargeName,
-                        QC.Quantity,
-                        QC.EstChargeRate     AS Rate,
-                        QC.EstChargeAmount   AS AmtInChgCurr,
-                        QC.EstBaseAmount     AS AmtInBaseCurr,
-                        QC.BaseExchRate      AS ExChangeRate,
-                        CC.Code              AS ChgCurr,
-                        CB.Code              AS BasedOnCode,
-                        QC.Remarks           AS ChargeRemark,
-                        QC.IsRevenue,
-                        CP.Code              AS PartyCode
-                    FROM Quote_Quotation_ChargeSheet QC WITH (NOLOCK)
-                    INNER JOIN Quote_QuotationInfo QI WITH (NOLOCK) ON QI.ID = QC.QuotationInfoID
-                    LEFT JOIN [FITSCMUAT].dbo.Bill_ChargeCode BC WITH (NOLOCK) ON BC.Id = QC.ChargeCodeId
-                    LEFT JOIN [FITSCMUAT].dbo.Cust_Currency CC WITH (NOLOCK) ON CC.Id = QC.EstChargeCurrencyId
-                    LEFT JOIN Cust_ChargecodeBasedOn CB WITH (NOLOCK) ON CB.Id = QC.BasedOnId
-                    LEFT JOIN [FITSCMUAT].dbo.Cust_Party CP WITH (NOLOCK) ON CP.Id = QC.PartyID
-                    WHERE QI.bookingno = ? AND QC.IsDeleted = 0
-                    ORDER BY QC.IsRevenue DESC, BC.Name ASC
-                ", [$quotation->bookingno]);
-            } catch (\Exception $e) {
-                Log::error('PDF Generation - Failed to load charges', [
-                    'booking_no' => $quotation->bookingno,
-                    'error'      => $e->getMessage()
-                ]);
-                $charges = [];
+            if (empty($quoteNo)) {
+                Log::error('PDF Generation - QuoteNo is empty', ['id' => $id]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'QuoteNo is not set on this quotation. Cannot generate PDF.',
+                ], 422);
             }
 
-            // ── DIAGNOSTIC: log raw charge count before any filtering ──
-            Log::info('PDF Generation - Charges raw result', [
-                'booking_no'   => $quotation->bookingno,
-                'raw_count'    => count($charges),
-                'raw_charges'  => json_encode($charges),
-            ]);
+            // ============================================
+            // CALL sp_Quote_QuotationFormat
+            //
+            // SP signature:
+            //   @QuotationNo VARCHAR(25) INPUT
+            //   @QuoteFormat VARCHAR(MAX) OUTPUT
+            //
+            // On internal SQL error the SP CATCH block sets:
+            //   @QuoteFormat = 'Failed (Reason) - <message>'
+            // instead of raising — we detect and surface this explicitly.
+            //
+            // DECLARE uses VARCHAR(MAX) to match the SP OUTPUT param type.
+            // Using VARCHAR(N) would silently truncate large HTML documents.
+            // ============================================
+            $html    = null;
+            $spError = null;
 
-            // SQL Server bit columns may come back as 1/0 (int), "1"/"0" (string), or true/false.
-            // Cast explicitly to int to handle all driver variations safely.
-            $revenueCharges = array_values(array_filter($charges, fn($c) => (int)$c->IsRevenue === 1));
-            $costCharges    = array_values(array_filter($charges, fn($c) => (int)$c->IsRevenue === 0));
-            $totalRevenue   = array_sum(array_map(fn($c) => (float)$c->AmtInBaseCurr, $revenueCharges));
-            $totalCost      = array_sum(array_map(fn($c) => (float)$c->AmtInBaseCurr, $costCharges));
-
-            Log::info('PDF Generation - Charges loaded', [
-                'booking_no'    => $quotation->bookingno,
-                'raw_count'     => count($charges),
-                'revenue_count' => count($revenueCharges),
-                'cost_count'    => count($costCharges),
-            ]);
-
-            // ── Fetch saved T&C content ──
-            $termsCondition = '';
             try {
-                $tcDocument = DB::table('Quote_Quotation_Document')
-                    ->where('QuotationInfoID', $quotation->ID)
-                    ->where('DocumentType', 'TermsCondition')
-                    ->where('IsDeleted', 0)
-                    ->orderByDesc('CreatedOn')
-                    ->first(['FilePath', 'Name']);
+                $pdo  = DB::getPdo();
+                $stmt = $pdo->prepare("
+                DECLARE @QuoteFormat VARCHAR(MAX);
+                EXEC dbo.sp_Quote_QuotationFormat ?,
+                    @QuoteFormat = @QuoteFormat OUTPUT;
+                SELECT @QuoteFormat AS QuoteFormat;
+            ");
 
-                if ($tcDocument && $tcDocument->FilePath) {
-                    $relativePath = $this->normalizeFilePath($tcDocument->FilePath);
-                    if (\Storage::disk('public')->exists($relativePath)) {
-                        $termsCondition = \Storage::disk('public')->get($relativePath);
+                $stmt->execute([$quoteNo]);
+
+                // Walk all result sets — the SP creates/drops #VATDetails
+                // which can produce empty intermediate result sets before the SELECT.
+                $setIndex = 0;
+                do {
+                    $setIndex++;
+                    try {
+                        $rows = $stmt->fetchAll(\PDO::FETCH_OBJ);
+
+                        if (empty($rows)) {
+                            continue;
+                        }
+
+                        if (isset($rows[0]->QuoteFormat)) {
+                            $raw = (string) $rows[0]->QuoteFormat;
+
+                            // SP CATCH block returns error as a string — detect it
+                            if (str_starts_with(trim($raw), 'Failed (Reason)')) {
+                                $spError = $raw;
+                            } else {
+                                $html = $raw;
+                            }
+                            break;
+                        }
+                    } catch (\PDOException $e) {
+                        // Normal for SPs that use temp tables — skip and continue
+                        Log::debug('PDF Generation - Skipping intermediate result set #' . $setIndex, [
+                            'quote_no' => $quoteNo,
+                            'error'    => $e->getMessage(),
+                        ]);
+                        continue;
                     }
-                }
-
-                Log::info('PDF Generation - T&C loaded', [
-                    'booking_no'  => $quotation->bookingno,
-                    'tc_found'    => !empty($termsCondition),
-                    'tc_doc_name' => $tcDocument->Name ?? 'none',
-                ]);
+                } while ($stmt->nextRowset());
             } catch (\Exception $e) {
-                Log::warning('PDF Generation - T&C fetch failed (non-fatal)', [
-                    'booking_no' => $quotation->bookingno,
-                    'error'      => $e->getMessage(),
-                ]);
-            }
-
-            // ── Render HTML ──
-            try {
-                $html = view('quotation.pdf', [
-                    'quotation'      => $quotation,
-                    'revenueCharges' => $revenueCharges,
-                    'costCharges'    => $costCharges,
-                    'totalRevenue'   => $totalRevenue,
-                    'totalCost'      => $totalCost,
-                    'generatedDate'  => now()->format('d-m-Y'),
-                    'termsCondition' => $termsCondition,
-                ])->render();
-            } catch (\Exception $e) {
-                Log::error('PDF Generation - View render failed', [
-                    'error' => $e->getMessage(),
-                    'file'  => $e->getFile(),
-                    'line'  => $e->getLine()
+                Log::error('PDF Generation - SP execution threw exception', [
+                    'quote_no' => $quoteNo,
+                    'error'    => $e->getMessage(),
+                    'file'     => $e->getFile(),
+                    'line'     => $e->getLine(),
                 ]);
                 return response()->json([
                     'success' => false,
-                    'message' => 'PDF template rendering failed: ' . $e->getMessage()
+                    'message' => 'Failed to execute quotation format SP: ' . $e->getMessage(),
                 ], 500);
             }
 
-            Log::info('PDF Generation - HTML rendered', [
-                'html_length' => strlen($html)
+            // Surface the SP's own diagnostic message — far more useful than a generic error
+            if (!empty($spError)) {
+                Log::error('PDF Generation - SP returned failure string', [
+                    'quote_no' => $quoteNo,
+                    'sp_error' => $spError,
+                ]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Quotation format SP failed: ' . $spError,
+                ], 500);
+            }
+
+            // Empty HTML most commonly means T&C template is not applied (INNER JOIN returns no rows)
+            if (empty($html) || trim($html) === '') {
+                Log::error('PDF Generation - SP returned empty HTML', [
+                    'quote_no'               => $quoteNo,
+                    'tc_template_set'        => !empty($quotation->QuotationTCTemplate),
+                    'tc_template_value'      => $quotation->QuotationTCTemplate ?? 'NULL',
+                ]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No quotation HTML returned from SP. '
+                        . 'Ensure a Terms & Conditions template is applied before generating.',
+                ], 422);
+            }
+
+            Log::info('PDF Generation - HTML retrieved from SP', [
+                'quote_no'    => $quoteNo,
+                'html_length' => strlen($html),
+                'tc_template' => $quotation->QuotationTCTemplate ?? 'N/A',
             ]);
 
-            // ── Create PDF with DomPDF ──
+            // ============================================
+            // RENDER PDF WITH DOMPDF
+            // ============================================
             try {
                 $options = new \Dompdf\Options();
                 $options->set('isHtml5ParserEnabled', true);
@@ -3316,38 +3451,44 @@ class QuotationController extends Controller
                 $options->set('isRemoteEnabled', true);
                 $options->set('defaultFont', 'Arial');
                 $options->set('chroot', public_path());
+
                 $pdf = new \Dompdf\Dompdf($options);
                 $pdf->loadHtml($html, 'UTF-8');
                 $pdf->setPaper('A4', 'portrait');
                 $pdf->render();
 
-                Log::info('PDF Generation - PDF object created successfully');
+                Log::info('PDF Generation - DomPDF rendered successfully', [
+                    'quote_no' => $quoteNo,
+                ]);
             } catch (\Exception $e) {
-                Log::error('PDF Generation - DomPDF creation failed', [
-                    'error' => $e->getMessage(),
-                    'file'  => $e->getFile(),
-                    'line'  => $e->getLine(),
+                Log::error('PDF Generation - DomPDF render failed', [
+                    'quote_no' => $quoteNo,
+                    'error'    => $e->getMessage(),
+                    'file'     => $e->getFile(),
+                    'line'     => $e->getLine(),
                 ]);
                 return response()->json([
                     'success' => false,
-                    'message' => 'PDF creation failed: ' . $e->getMessage()
+                    'message' => 'PDF render failed: ' . $e->getMessage(),
                 ], 500);
             }
 
-            // ── Determine version — count only PDF files, not TC subfolder ──
+            // ============================================
+            // DETERMINE VERSION NUMBER
+            // Count only QuotationPDF documents — avoids T&C
+            // subfolder files inflating the version number.
+            // ============================================
             $folder = 'quotations/' . $quotation->bookingno;
 
             try {
                 \Storage::disk('public')->makeDirectory($folder);
             } catch (\Exception $e) {
-                Log::error('PDF Generation - Directory creation failed', [
+                Log::warning('PDF Generation - Could not ensure directory exists', [
                     'folder' => $folder,
-                    'error'  => $e->getMessage()
+                    'error'  => $e->getMessage(),
                 ]);
             }
 
-            // Count only existing QuotationPDF documents for this quotation
-            // (avoids TC files inflating the version number)
             $existingVersions = DB::table('Quote_Quotation_Document')
                 ->where('QuotationInfoID', $quotation->ID)
                 ->where('DocumentType', 'QuotationPDF')
@@ -3355,18 +3496,22 @@ class QuotationController extends Controller
                 ->count();
 
             $nextVersion = $existingVersions + 1;
-            $fileName    = 'Quotation_' . $quotation->bookingno . '_V' . $nextVersion . '_' . now()->format('Ymd_His') . '.pdf';
+            $fileName    = 'Quotation_' . $quotation->bookingno
+                . '_V' . $nextVersion
+                . '_' . now()->format('Ymd_His')
+                . '.pdf';
             $storagePath = $folder . '/' . $fileName;
             $fullPath    = \Storage::disk('public')->path($storagePath);
 
-            Log::info('PDF Generation - File paths determined', [
+            Log::info('PDF Generation - Paths resolved', [
                 'storage_path'      => $storagePath,
-                'full_path'         => $fullPath,
                 'version'           => $nextVersion,
                 'existing_versions' => $existingVersions,
             ]);
 
-            // ── Write PDF to disk ──
+            // ============================================
+            // WRITE PDF TO DISK
+            // ============================================
             try {
                 $dir = dirname($fullPath);
                 if (!file_exists($dir)) {
@@ -3377,27 +3522,31 @@ class QuotationController extends Controller
                 file_put_contents($fullPath, $pdf->output());
 
                 if (!file_exists($fullPath)) {
-                    throw new \Exception('PDF file was not created at: ' . $fullPath);
+                    throw new \Exception('File was not found on disk after write: ' . $fullPath);
                 }
 
-                Log::info('PDF Generation - File written successfully', [
+                Log::info('PDF Generation - File written to disk', [
                     'path' => $fullPath,
-                    'size' => filesize($fullPath)
+                    'size' => filesize($fullPath),
                 ]);
             } catch (\Exception $e) {
                 Log::error('PDF Generation - File write failed', [
                     'path'  => $fullPath,
                     'error' => $e->getMessage(),
                     'file'  => $e->getFile(),
-                    'line'  => $e->getLine()
+                    'line'  => $e->getLine(),
                 ]);
                 return response()->json([
                     'success' => false,
-                    'message' => 'Failed to save PDF file: ' . $e->getMessage()
+                    'message' => 'Failed to save PDF to disk: ' . $e->getMessage(),
                 ], 500);
             }
 
-            // ── Save document record ──
+            // ============================================
+            // RECORD IN DATABASE
+            // Non-fatal — PDF is already on disk; a failed
+            // insert should not block the user response.
+            // ============================================
             try {
                 DB::table('Quote_Quotation_Document')->insert([
                     'Id'              => DB::raw('NEWID()'),
@@ -3415,42 +3564,147 @@ class QuotationController extends Controller
                     'IsDeleted'       => 0,
                 ]);
 
-                Log::info('PDF Generation - Database record created successfully');
-            } catch (\Exception $e) {
-                Log::error('PDF Generation - Database insert failed', [
-                    'error' => $e->getMessage(),
-                    'file'  => $e->getFile(),
-                    'line'  => $e->getLine()
+                Log::info('PDF Generation - Document record inserted', [
+                    'quote_no' => $quoteNo,
+                    'version'  => $nextVersion,
+                    'file'     => $fileName,
                 ]);
-                // Non-fatal — PDF was written, continue
+            } catch (\Exception $e) {
+                // Non-fatal: log but do not return an error response.
+                // The file is on disk and can be served; the DB record can be recreated.
+                Log::error('PDF Generation - DB insert failed (non-fatal, PDF is on disk)', [
+                    'quote_no' => $quoteNo,
+                    'error'    => $e->getMessage(),
+                    'file'     => $e->getFile(),
+                    'line'     => $e->getLine(),
+                ]);
             }
 
             Log::info('PDF Generation - Completed successfully', [
-                'booking_no' => $quotation->bookingno,
-                'version'    => $nextVersion,
-                'path'       => $storagePath,
-                'tc_applied' => !empty($termsCondition),
+                'booking_no'  => $quotation->bookingno,
+                'quote_no'    => $quoteNo,
+                'version'     => $nextVersion,
+                'path'        => $storagePath,
+                'tc_template' => $quotation->QuotationTCTemplate ?? 'N/A',
             ]);
 
             return response()->json([
                 'success' => true,
                 'version' => $nextVersion,
                 'label'   => 'Version ' . $nextVersion,
-                'url'     => \Storage::disk('public')->url($storagePath),
+                'url'     => route('quotation.download-pdf', [$id, $nextVersion]),
             ]);
         } catch (\Exception $e) {
-            Log::error('PDF Generation - Unexpected error', [
+            Log::error('PDF Generation - Unexpected top-level exception', [
                 'id'    => $id,
                 'error' => $e->getMessage(),
                 'file'  => $e->getFile(),
                 'line'  => $e->getLine(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'PDF generation failed: ' . $e->getMessage(),
+                'message' => 'PDF generation failed unexpectedly: ' . $e->getMessage(),
             ], 500);
+        }
+    }
+
+
+    /**
+     * Execute sp_Quote_QuotationFormat and return the HTML string.
+     *
+     * The SP signature:
+     *   @QuotationNo VARCHAR(25) INPUT
+     *   @QuoteFormat VARCHAR(MAX) OUTPUT
+     *
+     * On internal error the SP sets @QuoteFormat = 'Failed (Reason) - <message>'
+     * instead of raising an exception, so we must detect that string explicitly.
+     *
+     * @param  string $quoteNo  The QuoteNo value (e.g. '8270'), NOT the UUID
+     * @return string|null      Complete HTML string, or null on failure
+     */
+    private function getQuotationHtml(string $quoteNo): ?string
+    {
+        if (empty(trim($quoteNo))) {
+            Log::error('getQuotationHtml - quoteNo is empty');
+            return null;
+        }
+
+        try {
+            $pdo = DB::getPdo();
+
+            // IMPORTANT: DECLARE uses VARCHAR(MAX) to match the SP OUTPUT param type.
+            // Using VARCHAR(N) here would silently truncate large HTML documents.
+            $sql = "
+            DECLARE @QuoteFormat VARCHAR(MAX);
+            EXEC dbo.sp_Quote_QuotationFormat ?,
+                @QuoteFormat = @QuoteFormat OUTPUT;
+            SELECT @QuoteFormat AS QuoteFormat;
+        ";
+
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute([trim($quoteNo)]);
+
+            // Walk result sets — the SP creates/drops a temp table (#VATDetails)
+            // which can produce intermediate empty result sets before the SELECT.
+            $html        = null;
+            $setIndex    = 0;
+
+            do {
+                $setIndex++;
+                try {
+                    $rows = $stmt->fetchAll(\PDO::FETCH_OBJ);
+
+                    if (empty($rows)) {
+                        continue;
+                    }
+
+                    if (isset($rows[0]->QuoteFormat)) {
+                        $html = $rows[0]->QuoteFormat;
+                        Log::info('getQuotationHtml - Found QuoteFormat in result set #' . $setIndex, [
+                            'quote_no' => $quoteNo,
+                            'length'   => strlen($html ?? ''),
+                        ]);
+                        break;
+                    }
+                } catch (\PDOException $e) {
+                    // Skip unfetchable intermediate result sets (normal for temp table SPs)
+                    Log::debug('getQuotationHtml - Skipping result set #' . $setIndex, [
+                        'quote_no' => $quoteNo,
+                        'error'    => $e->getMessage(),
+                    ]);
+                    continue;
+                }
+            } while ($stmt->nextRowset());
+
+            // SP CATCH block sets @QuoteFormat = 'Failed (Reason) - <message>'
+            // instead of raising — detect this and treat as a failure.
+            if (!empty($html) && str_starts_with(trim($html), 'Failed (Reason)')) {
+                Log::error('getQuotationHtml - SP returned failure message', [
+                    'quote_no' => $quoteNo,
+                    'message'  => $html,
+                ]);
+                return null;
+            }
+
+            if (empty($html) || trim($html) === '') {
+                Log::warning('getQuotationHtml - SP returned empty HTML', [
+                    'quote_no'         => $quoteNo,
+                    'result_sets_seen' => $setIndex,
+                ]);
+                return null;
+            }
+
+            return $html;
+        } catch (\Exception $e) {
+            Log::error('getQuotationHtml - Exception', [
+                'quote_no' => $quoteNo,
+                'error'    => $e->getMessage(),
+                'file'     => $e->getFile(),
+                'line'     => $e->getLine(),
+            ]);
+            return null;
         }
     }
 
@@ -3503,7 +3757,7 @@ class QuotationController extends Controller
                 $versions[] = [
                     'version'    => $versionNo,
                     'label'      => 'Version ' . $versionNo,
-                    'url'        => \Storage::disk('public')->url($relativePath),
+                    'url'        => route('quotation.download-pdf', [$id, $versionNo]),
                     'created_on' => $doc->CreatedOn,
                     'file_name'  => $doc->Name,
                     'doc_id'     => $doc->Id,
@@ -3823,82 +4077,75 @@ class QuotationController extends Controller
 
     public function getExchangeRate(Request $request)
     {
-        try {
-            $officeCode = $request->office_code;
-            $fromCurrency = $request->from_currency;
+        $officeCode   = trim($request->office_code);
+        $fromCurrency = trim($request->from_currency);
+        $toCurrency   = trim($request->to_currency ?? 'KES');
 
-            Log::info('getExchangeRate called', [
-                'office_code' => $officeCode,
-                'from_currency' => $fromCurrency
-            ]);
+        // Accept any date format from frontend, normalize to '05/Mar/2026'
+        $dateFor = $request->date_for
+            ? \Carbon\Carbon::parse($request->date_for)->format('d/M/Y')
+            : now()->format('d/M/Y');
 
-            if (!$officeCode || !$fromCurrency) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Office code and currency are required'
-                ], 400);
-            }
-
-            // Query FITSCMUAT database (where exchange rate data lives)
-            $result = DB::select("
-                SELECT TOP 1 ER.ConvertToId as ExRate
-                FROM [FITSCMUAT].dbo.Cust_ExchangeRate ER WITH (NOLOCK)
-                INNER JOIN [FITSCMUAT].dbo.Cust_ExchangeRateOfficeMap OM WITH (NOLOCK)
-                    ON OM.ExchangeRateId = ER.Id
-                    AND OM.IsActive = 1
-                INNER JOIN [FITSCMUAT].dbo.Cust_Office CO WITH (NOLOCK)
-                    ON CO.Id = OM.OfficeId
-                    AND CO.Code = ?
-                    AND CO.IsActive = 1
-                    AND CO.IsDeleted = 0
-                INNER JOIN [FITSCMUAT].dbo.Cust_Currency CUR WITH (NOLOCK)
-                    ON CUR.Id = ER.ConvertToId
-                    AND CUR.Code = ?
-                WHERE CAST(GETDATE() AS DATE) 
-                    BETWEEN CAST(ER.EffectiveFromDate AS DATE) 
-                    AND CAST(ER.EffectiveToDate AS DATE)
-                AND ER.IsActive = 1
-                AND ER.IsDeleted = 0
-                ORDER BY ER.EffectiveFromDate DESC
-            ", [$officeCode, $fromCurrency]);
-
-            if (empty($result) || !isset($result[0]->ExRate)) {
-                Log::warning('Exchange rate not found', [
-                    'office_code' => $officeCode,
-                    'from_currency' => $fromCurrency
-                ]);
-
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Exchange rate not found, using default',
-                    'exchange_rate' => 1.000000
-                ]);
-            }
-
-            Log::info('Exchange rate fetched', [
-                'office_code' => $officeCode,
-                'from_currency' => $fromCurrency,
-                'rate' => $result[0]->ExRate
-            ]);
-
+        if (!$officeCode || !$fromCurrency) {
             return response()->json([
-                'success' => true,
-                'exchange_rate' => floatval($result[0]->ExRate)
-            ]);
-        } catch (\Exception $e) {
+                'success' => false,
+                'message' => 'Office code and from currency are required'
+            ], 400);
+        }
 
-            Log::error('Failed to get exchange rate', [
-                'office_code' => $request->office_code,
-                'from_currency' => $request->from_currency,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-
+        if ($fromCurrency === $toCurrency) {
             return response()->json([
-                'success' => true,
-                'message' => 'Failed to retrieve exchange rate, using default',
+                'success'       => true,
                 'exchange_rate' => 1.000000
             ]);
+        }
+
+        try {
+            $result = DB::selectOne("
+            SELECT dbo.fn_GetCurrentExRateUsingCodeandPeriod(?, ?, ?, ?) AS ExchangeRate
+        ", [$officeCode, $fromCurrency, $toCurrency, $dateFor]);
+
+            $rate = $result ? (float) $result->ExchangeRate : null;
+
+            Log::info('getExchangeRate - Result', [
+                'office_code'   => $officeCode,
+                'from_currency' => $fromCurrency,
+                'to_currency'   => $toCurrency,
+                'date_for'      => $dateFor,
+                'rate'          => $rate,
+            ]);
+
+            if (!$rate || $rate <= 0) {
+                Log::warning('getExchangeRate - No rate found', [
+                    'office_code'   => $officeCode,
+                    'from_currency' => $fromCurrency,
+                    'to_currency'   => $toCurrency,
+                    'date_for'      => $dateFor,
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => "No exchange rate found for {$fromCurrency} → {$toCurrency} in office {$officeCode} on {$dateFor}",
+                ], 404);
+            }
+
+            return response()->json([
+                'success'       => true,
+                'exchange_rate' => $rate,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('getExchangeRate - Failed', [
+                'office_code'   => $officeCode,
+                'from_currency' => $fromCurrency,
+                'to_currency'   => $toCurrency,
+                'date_for'      => $dateFor,
+                'error'         => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve exchange rate: ' . $e->getMessage()
+            ], 500);
         }
     }
 

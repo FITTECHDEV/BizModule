@@ -284,8 +284,8 @@
                         </td>
                         <td class="header-company">
                             <strong>FREIGHT IN TIME (U) LIMITED</strong><br>
-                            P.O. BOX 70942, OLD PORT BELL ROAD,<br>
-                            PLOT 20, KAMPALA, UGANDA
+                            P.O BOX 9234, CARGO VILLAGE, JKIA,,<br>
+                            NAIROBI, 00100, KENYA
                         </td>
                     </tr>
                 </table>

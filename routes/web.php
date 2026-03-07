@@ -838,6 +838,9 @@ Route::middleware(['auth', 'can:approve-all-entity-request'])->group(function ()
 
     Route::post('/crm/sync/run', [App\Http\Controllers\CrmSyncController::class, 'run'])
         ->name('crm.sync.run');
+
+            Route::get('/crm/sync/history', [App\Http\Controllers\CrmSyncController::class, 'history'])  // ← ADD THIS
+        ->name('crm.sync.history');
 });
 
 // ============================================================================

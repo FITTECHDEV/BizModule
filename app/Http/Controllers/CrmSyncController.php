@@ -27,9 +27,9 @@ class CrmSyncController extends Controller
      * Trigger the sync via the web. Returns JSON.
      *
      * Body params (all optional):
-     *   dry_run   : 1|0    — preview only, no writes (default: 0)
-     *   limit     : int    — max records to process
-     *   booking   : string — sync a single booking number
+     *   dry_run : 1|0    — preview only, no writes (default: 0)
+     *   limit   : int    — max records to process
+     *   booking : string — sync a single booking number
      */
     public function run(Request $request, CrmSyncService $sync)
     {
@@ -37,18 +37,19 @@ class CrmSyncController extends Controller
         $limit     = $request->input('limit') ? (int) $request->input('limit') : null;
         $bookingNo = $request->input('booking') ?: null;
 
-        $user = Auth::user()->displayName ?? Auth::user()->Email ?? 'system';
+        $triggeredBy = Auth::user()->displayName ?? Auth::user()->Email ?? 'system';
 
         \Illuminate\Support\Facades\Log::info('CRM Sync - Triggered via web', [
-            'user'      => $user,
+            'user'      => $triggeredBy,
             'dry_run'   => $dryRun,
             'limit'     => $limit,
             'booking'   => $bookingNo,
         ]);
 
-        $result = $sync->run($dryRun, $limit, $bookingNo);
+        $result = $sync->run($dryRun, $limit, $bookingNo, $triggeredBy);
 
         $success = $result['failed'] === 0;
+
         return response()->json([
             'success' => $success,
             'dry_run' => $dryRun,
@@ -62,5 +63,17 @@ class CrmSyncController extends Controller
             'errors'       => $result['errors'],
             'verification' => $result['verification'],
         ]);
+    }
+
+    /**
+     * GET /crm/sync/history
+     * Returns the last N sync run summaries from the history file.
+     */
+    public function history(Request $request, CrmSyncService $sync)
+    {
+        $limit   = min((int) $request->input('limit', 20), 50);
+        $history = $sync->getHistory($limit);
+
+        return response()->json(['history' => $history]);
     }
 }
