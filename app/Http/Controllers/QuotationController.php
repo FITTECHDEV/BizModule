@@ -5376,4 +5376,122 @@ class QuotationController extends Controller
             return ['status' => 'Failed', 'remark' => $e->getMessage()];
         }
     }
+
+    // ============================================
+    // SHIPMENT MODE DROPDOWN
+    // sp_ShipmentMode returns: Id, Code
+    // ============================================
+    public function getShipmentModes(Request $request)
+    {
+        $filter = $request->input('filter', '');
+        try {
+            $pdo  = DB::connection()->getPdo();
+            $stmt = $pdo->prepare("SET NOCOUNT ON; EXEC dbo.sp_ShipmentMode ?");
+            $stmt->execute([$filter]);
+
+            $results = [];
+            do {
+                try {
+                    $rows = $stmt->fetchAll(\PDO::FETCH_OBJ);
+                    if (empty($rows)) continue;
+                    $firstVal = array_values((array) $rows[0])[0] ?? '';
+                    if (is_string($firstVal) && str_starts_with($firstVal, 'Failed')) continue;
+                    if (isset($rows[0]->Id) && isset($rows[0]->Code)) {
+                        $results = $rows;
+                        break;
+                    }
+                } catch (\PDOException $e) {
+                    continue;
+                }
+            } while ($stmt->nextRowset());
+
+            return response()->json(['success' => true, 'data' => $results]);
+        } catch (\Exception $e) {
+            Log::error('getShipmentModes - Failed', ['error' => $e->getMessage()]);
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    // ============================================
+    // TRANSPORT MODE DROPDOWN
+    // sp_TransportMode returns: Id, Code, Name
+    // ============================================
+    public function getTransportModes(Request $request)
+    {
+        $filter = $request->input('filter', '');
+        try {
+            $pdo  = DB::connection()->getPdo();
+            $stmt = $pdo->prepare("SET NOCOUNT ON; EXEC dbo.sp_TransportMode ?");
+            $stmt->execute([$filter]);
+
+            $results = [];
+            do {
+                try {
+                    $rows = $stmt->fetchAll(\PDO::FETCH_OBJ);
+                    if (empty($rows)) continue;
+                    $firstVal = array_values((array) $rows[0])[0] ?? '';
+                    if (is_string($firstVal) && str_starts_with($firstVal, 'Failed')) continue;
+                    if (isset($rows[0]->Id) && isset($rows[0]->Code)) {
+                        $results = $rows;
+                        break;
+                    }
+                } catch (\PDOException $e) {
+                    continue;
+                }
+            } while ($stmt->nextRowset());
+
+            return response()->json(['success' => true, 'data' => $results]);
+        } catch (\Exception $e) {
+            Log::error('getTransportModes - Failed', ['error' => $e->getMessage()]);
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    public function saveShipmentDetails(Request $request)
+    {
+        $request->validate([
+            'booking_no'     => 'required|string',
+            'shipment_mode'  => 'required|string',
+            'transport_mode' => 'required|string',
+        ]);
+
+        $submittedBy = auth()->user()->displayName ?? auth()->user()->Email ?? 'system';
+
+        $input = json_encode([
+            'OperationType'     => 'ShipmentUpdate',
+            'SubmittedDatetime' => now()->format('YmdHis'),
+            'SubmittedBy'       => $submittedBy,
+            'Action'            => 'Update',
+            'QuotationNo'       => $request->booking_no,
+            'ShipmentMode'      => $request->shipment_mode,
+            'TransportMode'     => $request->transport_mode,
+        ]);
+
+        if (strlen($input) > 2000) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Request payload too large for SP. Max 2000 characters.'
+            ], 400);
+        }
+
+        try {
+            $output = $this->executeDetailsUpdateSP($input);
+
+            if (($output['Status'] ?? '') === 'Failed') {
+                $remarks = collect($output['Remarks'] ?? [])->pluck('Remark')->implode(', ');
+                return response()->json([
+                    'success' => false,
+                    'message' => $remarks ?: 'Shipment update failed'
+                ]);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Shipment details saved successfully'
+            ]);
+        } catch (\Exception $e) {
+            Log::error('saveShipmentDetails error: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
 }

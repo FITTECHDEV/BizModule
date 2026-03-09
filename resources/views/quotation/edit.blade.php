@@ -127,15 +127,19 @@
                         <div class="form-group row">
                             <label class="col-sm-5 col-form-label">Shipment Mode</label>
                             <div class="col-sm-7">
-                                <input type="text" class="form-control form-control-sm"
-                                    value="{{ $quotation->shipmentmode ?? '' }}" readonly>
+                                <select class="form-control form-control-sm" id="shipmentModeSelect" name="shipment_mode"
+                                    disabled>
+                                    <option value="">-- Loading... --</option>
+                                </select>
                             </div>
                         </div>
                         <div class="form-group row">
                             <label class="col-sm-5 col-form-label">Transport Mode</label>
                             <div class="col-sm-7">
-                                <input type="text" class="form-control form-control-sm"
-                                    value="{{ $quotation->TransportMode ?? '' }}" readonly>
+                                <select class="form-control form-control-sm" id="transportModeSelect"
+                                    name="transport_mode" disabled>
+                                    <option value="">-- Loading... --</option>
+                                </select>
                             </div>
                         </div>
                         <div class="form-group row mb-0">
@@ -143,6 +147,22 @@
                             <div class="col-sm-7">
                                 <input type="text" class="form-control form-control-sm"
                                     value="{{ $quotation->ServiceClass ?? '' }}" readonly>
+                            </div>
+                        </div>
+
+                        <div class="row mt-3 pt-2" style="border-top: 1px solid #dee2e6;">
+                            <div class="col-md-12 text-right">
+                                <button type="button" class="btn btn-warning btn-sm" id="editShipmentDetailsBtn">
+                                    <i class="fas fa-edit mr-1"></i> Edit
+                                </button>
+                                <button type="button" class="btn btn-primary btn-sm" id="saveShipmentDetailsBtn"
+                                    style="display:none">
+                                    <i class="fas fa-save mr-1"></i> Save
+                                </button>
+                                <button type="button" class="btn btn-secondary btn-sm" id="cancelShipmentDetailsBtn"
+                                    style="display:none">
+                                    <i class="fas fa-times mr-1"></i> Cancel
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -671,8 +691,8 @@
         <!-- END ROW -->
 
         <!-- ============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     MODALS
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     ============================================ -->
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         MODALS
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         ============================================ -->
 
         {{-- REVENUE MODAL --}}
         <div class="modal fade" id="addRevenueModal" tabindex="-1" role="dialog"
@@ -1234,8 +1254,8 @@
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.min.css">
     <style>
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        MODAL STYLING — matched to FitExpress UI
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            MODAL STYLING — matched to FitExpress UI
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            ============================================= */
 
         .modal-header {
             background-color: #fff !important;
@@ -1678,9 +1698,9 @@
         }
 
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               CREATE BOOKING MODAL — Specific overrides
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               to match the "Creation of Booking" design
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   CREATE BOOKING MODAL — Specific overrides
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   to match the "Creation of Booking" design
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   ============================================= */
 
         #createBookingModal .modal-title {
             color: #003580 !important;
@@ -1850,6 +1870,172 @@
             let currentEditingType = null;
             let currencyMap = {};
             let officeCode = '';
+
+            // ============================================
+            // SAVED VALUES — read once from PHP, used for pre-selection
+            // ============================================
+            const savedShipmentMode = '{{ $quotation->shipmentmode ?? '' }}';
+            const savedTransportMode = '{{ $quotation->TransportMode ?? '' }}';
+
+            // ============================================
+            // SHIPMENT MODE DROPDOWN
+            // sp_ShipmentMode returns: Id, Code
+            // Stored value is Code — match on Code for pre-selection
+            // ============================================
+            function loadShipmentModes() {
+                $.ajax({
+                    url: '{{ route('quotation.shipment-modes') }}',
+                    type: 'GET',
+                    success: function(response) {
+                        const $select = $('#shipmentModeSelect');
+                        $select.empty().append('<option value="">-- Select --</option>');
+
+                        if (response.success && response.data.length > 0) {
+                            response.data.forEach(function(item) {
+                                const selected = item.Code === savedShipmentMode ? 'selected' :
+                                    '';
+                                $select.append(
+                                    `<option value="${item.Code}" ${selected}>${item.Code}</option>`
+                                );
+                            });
+                        } else {
+                            $select.append('<option value="" disabled>No options available</option>');
+                        }
+                    },
+                    error: function(xhr) {
+                        console.error('loadShipmentModes failed:', xhr);
+                        $('#shipmentModeSelect')
+                            .empty()
+                            .append('<option value="" disabled>Failed to load</option>');
+                    }
+                });
+            }
+
+            // ============================================
+            // TRANSPORT MODE DROPDOWN
+            // sp_TransportMode returns: Id, Code, Name
+            // Stored value is Code — display Name, match on Code for pre-selection
+            // ============================================
+            function loadTransportModes() {
+                $.ajax({
+                    url: '{{ route('quotation.transport-modes') }}',
+                    type: 'GET',
+                    success: function(response) {
+                        const $select = $('#transportModeSelect');
+                        $select.empty().append('<option value="">-- Select --</option>');
+
+                        if (response.success && response.data.length > 0) {
+                            response.data.forEach(function(item) {
+                                const selected = item.Code === savedTransportMode ? 'selected' :
+                                    '';
+                                $select.append(
+                                    `<option value="${item.Code}" ${selected}>${item.Name}</option>`
+                                );
+                            });
+                        } else {
+                            $select.append('<option value="" disabled>No options available</option>');
+                        }
+                    },
+                    error: function(xhr) {
+                        console.error('loadTransportModes failed:', xhr);
+                        $('#transportModeSelect')
+                            .empty()
+                            .append('<option value="" disabled>Failed to load</option>');
+                    }
+                });
+            }
+
+            // Load both dropdowns on page init
+            loadShipmentModes();
+            loadTransportModes();
+
+            // ============================================
+            // SHIPMENT DETAILS — EDIT / CANCEL / SAVE
+            // Mirrors the Customer Details Edit/Save/Cancel pattern.
+            // Both selects stay disabled until Edit is clicked.
+            // ============================================
+            let originalShipmentMode = '';
+            let originalTransportMode = '';
+
+            $('#editShipmentDetailsBtn').on('click', function() {
+                // Snapshot current values so Cancel can restore them
+                originalShipmentMode = $('#shipmentModeSelect').val();
+                originalTransportMode = $('#transportModeSelect').val();
+
+                // Unlock both selects
+                $('#shipmentModeSelect, #transportModeSelect').prop('disabled', false);
+
+                $(this).hide();
+                $('#saveShipmentDetailsBtn, #cancelShipmentDetailsBtn').show();
+            });
+
+            $('#cancelShipmentDetailsBtn').on('click', function() {
+                // Restore snapshots
+                $('#shipmentModeSelect').val(originalShipmentMode);
+                $('#transportModeSelect').val(originalTransportMode);
+
+                // Re-lock
+                $('#shipmentModeSelect, #transportModeSelect').prop('disabled', true);
+
+                $(this).hide();
+                $('#saveShipmentDetailsBtn').hide();
+                $('#editShipmentDetailsBtn').show();
+            });
+
+            $('#saveShipmentDetailsBtn').on('click', function() {
+                const shipmentMode = $('#shipmentModeSelect').val();
+                const transportMode = $('#transportModeSelect').val();
+
+                if (!shipmentMode) {
+                    showNotification('Please select a Shipment Mode', 'error');
+                    return;
+                }
+
+                if (!transportMode) {
+                    showNotification('Please select a Transport Mode', 'error');
+                    return;
+                }
+
+                $.ajax({
+                    url: '{{ route('quotation.shipment.save') }}',
+                    type: 'POST',
+                    data: {
+                        _token: '{{ csrf_token() }}',
+                        booking_no: bookingNo,
+                        shipment_mode: shipmentMode,
+                        transport_mode: transportMode
+                    },
+                    beforeSend: function() {
+                        $('#saveShipmentDetailsBtn').prop('disabled', true)
+                            .html('<i class="fas fa-spinner fa-spin mr-1"></i> Saving...');
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            showNotification('Shipment details saved successfully', 'success');
+
+                            // Update snapshots so Cancel now reflects the saved values
+                            originalShipmentMode = shipmentMode;
+                            originalTransportMode = transportMode;
+
+                            // Re-lock selects
+                            $('#shipmentModeSelect, #transportModeSelect').prop('disabled',
+                                true);
+                            $('#saveShipmentDetailsBtn, #cancelShipmentDetailsBtn').hide();
+                            $('#editShipmentDetailsBtn').show();
+                        } else {
+                            showNotification(response.message || 'Failed to save', 'error');
+                        }
+                    },
+                    error: function(xhr) {
+                        showNotification(xhr.responseJSON?.message || 'Failed to save',
+                        'error');
+                    },
+                    complete: function() {
+                        $('#saveShipmentDetailsBtn').prop('disabled', false)
+                            .html('<i class="fas fa-save mr-1"></i> Save');
+                    }
+                });
+            });
 
             // ── T&C Gate ─────────────────────────────────────────────
             // Unblock Generate Quote immediately if T&C was previously applied

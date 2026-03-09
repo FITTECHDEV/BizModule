@@ -718,6 +718,10 @@ Route::middleware(['auth', 'can:approve-all-entity-request'])->group(function ()
 // QUOTATION INTEGRATION ROUTES
 // ============================================================================
 Route::middleware(['auth', 'can:approve-all-entity-request'])->group(function () {
+
+    // ============================================
+    // QUOTATION — INDEX & DATA
+    // ============================================
     Route::get('/quotation', [App\Http\Controllers\QuotationController::class, 'index'])
         ->name('quotation.index');
 
@@ -727,23 +731,18 @@ Route::middleware(['auth', 'can:approve-all-entity-request'])->group(function ()
     Route::get('/quotation/stats', [App\Http\Controllers\QuotationController::class, 'stats'])
         ->name('quotation.stats');
 
+    // ============================================
+    // QUOTATION — STATIC LOOKUP ROUTES
+    // NOTE: All static /quotation/* routes MUST be declared before the
+    // wildcard routes (/quotation/{id}) at the bottom of this group.
+    // Laravel matches routes top-to-bottom; the wildcard will swallow
+    // anything that comes after it.
+    // ============================================
     Route::get('/quotation/charges', [App\Http\Controllers\QuotationController::class, 'getCharges'])
         ->name('quotation.charges');
 
     Route::get('/quotation/reasons', [App\Http\Controllers\QuotationController::class, 'getReasons'])
         ->name('quotation.reasons');
-
-    Route::get('/quotation/communication/templates', [App\Http\Controllers\QuotationController::class, 'getCommunicationTemplates'])
-        ->name('quotation.communication.templates');
-
-    Route::get('/quotation/communication/description', [App\Http\Controllers\QuotationController::class, 'getCommunicationDescription'])
-        ->name('quotation.communication.description');
-
-    Route::post('/quotation/communication/save-terms', [App\Http\Controllers\QuotationController::class, 'saveTermsCondition'])
-        ->name('quotation.communication.save-terms');
-
-    Route::post('/quotation/process-booking', [App\Http\Controllers\QuotationController::class, 'processBooking'])
-        ->name('quotation.process-booking');
 
     Route::get('/quotation/charge-codes', [App\Http\Controllers\QuotationController::class, 'getChargeCodes'])
         ->name('quotation.charge-codes');
@@ -757,14 +756,27 @@ Route::middleware(['auth', 'can:approve-all-entity-request'])->group(function ()
     Route::get('/quotation/based-on-uom', [App\Http\Controllers\QuotationController::class, 'getBasedOnUOM'])
         ->name('quotation.based-on-uom');
 
-    Route::post('/quotation/email/send', [App\Http\Controllers\QuotationController::class, 'sendEmailQuote'])
-        ->name('quotation.email.send');
+    Route::get('/quotation/contract-charges', [App\Http\Controllers\QuotationController::class, 'getContractCharges'])
+        ->name('quotation.contract.charges');
+
+    Route::get('/quotation/agent-types', [App\Http\Controllers\QuotationController::class, 'getAgentTypes'])
+        ->name('quotation.agent-types');
+
+    Route::get('/quotation/customer-types', [App\Http\Controllers\QuotationController::class, 'getCustomerTypes'])
+        ->name('quotation.customer-types');
 
     Route::get('/quotation/email-history', [App\Http\Controllers\QuotationController::class, 'getEmailHistory'])
         ->name('quotation.email.history');
 
+    Route::get('/quotation/shipment-modes',  [App\Http\Controllers\QuotationController::class, 'getShipmentModes'])
+        ->name('quotation.shipment-modes');
+
+    Route::get('/quotation/transport-modes', [App\Http\Controllers\QuotationController::class, 'getTransportModes'])
+        ->name('quotation.transport-modes');
+
+
     // ============================================
-    // NEW ROUTES FOR CURRENCY FEATURES
+    // QUOTATION — OFFICE / CURRENCY
     // ============================================
     Route::get('/quotation/office-code', [App\Http\Controllers\QuotationController::class, 'getOfficeCode'])
         ->name('quotation.office-code');
@@ -775,25 +787,24 @@ Route::middleware(['auth', 'can:approve-all-entity-request'])->group(function ()
     Route::get('/quotation/exchange-rate', [App\Http\Controllers\QuotationController::class, 'getExchangeRate'])
         ->name('quotation.exchange-rate');
 
-    // Remove the old GET generate-pdf route entirely, replace with these two:
-    Route::post('/quotation/{id}/generate-pdf', [App\Http\Controllers\QuotationController::class, 'generatePdf'])
-        ->name('quotation.generate-pdf');
+    // ============================================
+    // QUOTATION — COMMUNICATION (T&C + EMAIL)
+    // ============================================
+    Route::get('/quotation/communication/templates', [App\Http\Controllers\QuotationController::class, 'getCommunicationTemplates'])
+        ->name('quotation.communication.templates');
 
-    Route::get('/quotation/{id}/versions', [App\Http\Controllers\QuotationController::class, 'getQuotationVersions'])
-        ->name('quotation.versions');
+    Route::get('/quotation/communication/description', [App\Http\Controllers\QuotationController::class, 'getCommunicationDescription'])
+        ->name('quotation.communication.description');
 
-    Route::get('/quotation/{id}/download-pdf/{version}', [App\Http\Controllers\QuotationController::class, 'downloadPdf'])
-        ->name('quotation.download-pdf');
+    Route::post('/quotation/communication/save-terms', [App\Http\Controllers\QuotationController::class, 'saveTermsCondition'])
+        ->name('quotation.communication.save-terms');
 
-    Route::post('/quotation/booking/create', [App\Http\Controllers\QuotationController::class, 'createBooking'])
-        ->name('quotation.booking.create');
+    Route::post('/quotation/email/send', [App\Http\Controllers\QuotationController::class, 'sendEmailQuote'])
+        ->name('quotation.email.send');
 
-    Route::get('/quotation/contract-charges', [App\Http\Controllers\QuotationController::class, 'getContractCharges'])
-        ->name('quotation.contract.charges');
-
-    Route::get('/quotation/agent-types', [App\Http\Controllers\QuotationController::class, 'getAgentTypes'])
-        ->name('quotation.agent-types');
-
+    // ============================================
+    // QUOTATION — CREATE BOOKING LOOKUPS
+    // ============================================
     Route::get('/quotation/create-booking/service-templates', [App\Http\Controllers\QuotationController::class, 'getServiceTemplates'])
         ->name('quotation.booking.service-templates');
 
@@ -805,6 +816,15 @@ Route::middleware(['auth', 'can:approve-all-entity-request'])->group(function ()
 
     Route::get('/quotation/create-booking/locations', [App\Http\Controllers\QuotationController::class, 'getLocations'])
         ->name('quotation.booking.locations');
+
+    // ============================================
+    // QUOTATION — WRITE ACTIONS (POST)
+    // ============================================
+    Route::post('/quotation/process-booking', [App\Http\Controllers\QuotationController::class, 'processBooking'])
+        ->name('quotation.process-booking');
+
+    Route::post('/quotation/booking/create', [App\Http\Controllers\QuotationController::class, 'createBooking'])
+        ->name('quotation.booking.create');
 
     Route::post('/quotation/charge/save', [App\Http\Controllers\QuotationController::class, 'saveCharge'])
         ->name('quotation.charge.save');
@@ -818,17 +838,25 @@ Route::middleware(['auth', 'can:approve-all-entity-request'])->group(function ()
     Route::post('/quotation/retrigger', [App\Http\Controllers\QuotationController::class, 'retrigger'])
         ->name('quotation.retrigger');
 
-    Route::post('/quotation/{bookingno}/copy', [App\Http\Controllers\QuotationController::class, 'copy'])
-        ->name('quotation.copy');
-
-    Route::get('quotation/customer-types',    [App\Http\Controllers\QuotationController::class, 'getCustomerTypes'])
-        ->name('quotation.customer-types');
-
-    Route::post('quotation/customer/save',    [App\Http\Controllers\QuotationController::class, 'saveCustomerDetails'])
+    Route::post('/quotation/customer/save', [App\Http\Controllers\QuotationController::class, 'saveCustomerDetails'])
         ->name('quotation.customer.save');
 
-    Route::get('/quotation/{id}', [App\Http\Controllers\QuotationController::class, 'view'])
-        ->name('quotation.view');
+    // ============================================
+    // QUOTATION — WILDCARD ROUTES (must be last)
+    // These use {id} and will match ANY segment — keep them after all
+    // static /quotation/* routes to prevent swallowing legitimate URLs.
+    // ============================================
+    Route::post('/quotation/{id}/generate-pdf', [App\Http\Controllers\QuotationController::class, 'generatePdf'])
+        ->name('quotation.generate-pdf');
+
+    Route::get('/quotation/{id}/versions', [App\Http\Controllers\QuotationController::class, 'getQuotationVersions'])
+        ->name('quotation.versions');
+
+    Route::get('/quotation/{id}/download-pdf/{version}', [App\Http\Controllers\QuotationController::class, 'downloadPdf'])
+        ->name('quotation.download-pdf');
+
+    Route::post('/quotation/{bookingno}/copy', [App\Http\Controllers\QuotationController::class, 'copy'])
+        ->name('quotation.copy');
 
     Route::get('/quotation/{id}/edit', [App\Http\Controllers\QuotationController::class, 'edit'])
         ->name('quotation.edit');
@@ -836,11 +864,21 @@ Route::middleware(['auth', 'can:approve-all-entity-request'])->group(function ()
     Route::post('/quotation/{id}/update', [App\Http\Controllers\QuotationController::class, 'update'])
         ->name('quotation.update');
 
+    // NOTE: /quotation/{id} must be the very last GET wildcard — it matches everything.
+    Route::get('/quotation/{id}', [App\Http\Controllers\QuotationController::class, 'view'])
+        ->name('quotation.view');
+
+    Route::post('/quotation/shipment/save', [App\Http\Controllers\QuotationController::class, 'saveShipmentDetails'])
+        ->name('quotation.shipment.save');
+
+    // ============================================
+    // CRM SYNC
+    // ============================================
+    Route::get('/crm/sync/history', [App\Http\Controllers\CrmSyncController::class, 'history'])
+        ->name('crm.sync.history');
+
     Route::post('/crm/sync/run', [App\Http\Controllers\CrmSyncController::class, 'run'])
         ->name('crm.sync.run');
-
-            Route::get('/crm/sync/history', [App\Http\Controllers\CrmSyncController::class, 'history'])  // ← ADD THIS
-        ->name('crm.sync.history');
 });
 
 // ============================================================================
