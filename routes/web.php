@@ -759,6 +759,12 @@ Route::middleware(['auth', 'can:approve-all-entity-request'])->group(function ()
     Route::get('/quotation/contract-charges', [App\Http\Controllers\QuotationController::class, 'getContractCharges'])
         ->name('quotation.contract.charges');
 
+    Route::get('/quotation/equipment-types', [App\Http\Controllers\QuotationController::class, 'getEquipmentTypes'])
+        ->name('quotation.equipment-types');
+
+    Route::get('/quotation/charge-based-on-defaults', [App\Http\Controllers\QuotationController::class, 'getChargeBasedOnDefaults'])
+        ->name('quotation.charge-based-on-defaults');
+
     Route::get('/quotation/agent-types', [App\Http\Controllers\QuotationController::class, 'getAgentTypes'])
         ->name('quotation.agent-types');
 

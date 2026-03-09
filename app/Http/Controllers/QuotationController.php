@@ -4082,9 +4082,18 @@ class QuotationController extends Controller
         $toCurrency   = trim($request->to_currency ?? 'KES');
 
         // Accept any date format from frontend, normalize to '05/Mar/2026'
-        $dateFor = $request->date_for
-            ? \Carbon\Carbon::parse($request->date_for)->format('d/M/Y')
-            : now()->format('d/M/Y');
+        // AFTER
+        try {
+            $dateFor = $request->date_for
+                ? \Carbon\Carbon::parse($request->date_for)->format('d/M/Y')
+                : now()->format('d/M/Y');
+        } catch (\Exception $e) {
+            Log::warning('getExchangeRate - Invalid date_for value, falling back to today', [
+                'date_for_raw' => $request->date_for,
+                'error'        => $e->getMessage(),
+            ]);
+            $dateFor = now()->format('d/M/Y');
+        }
 
         if (!$officeCode || !$fromCurrency) {
             return response()->json([
@@ -5457,12 +5466,24 @@ class QuotationController extends Controller
 
         $submittedBy = auth()->user()->displayName ?? auth()->user()->Email ?? 'system';
 
+        // SP expects QuoteNo (e.g. 'QT-5298'), not the numeric bookingno
+        $quotation = DB::table('Quote_QuotationInfo')
+            ->where('bookingno', $request->booking_no)
+            ->value('QuoteNo');
+
+        if (!$quotation) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Quotation not found for booking number: ' . $request->booking_no
+            ], 404);
+        }
+
         $input = json_encode([
-            'OperationType'     => 'ShipmentUpdate',
+            'OperationType'     => 'ShipmentDetails',       // was 'ShipmentUpdate'
             'SubmittedDatetime' => now()->format('YmdHis'),
             'SubmittedBy'       => $submittedBy,
             'Action'            => 'Update',
-            'QuotationNo'       => $request->booking_no,
+            'QuotationNo'       => $quotation,              // was $request->booking_no
             'ShipmentMode'      => $request->shipment_mode,
             'TransportMode'     => $request->transport_mode,
         ]);
@@ -5491,6 +5512,148 @@ class QuotationController extends Controller
             ]);
         } catch (\Exception $e) {
             Log::error('saveShipmentDetails error: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    public function getEquipmentTypes(Request $request)
+    {
+        $filter = $request->input('filter', '');
+        try {
+            $pdo  = DB::connection()->getPdo();
+            $stmt = $pdo->prepare("SET NOCOUNT ON; EXEC dbo.sp_EquipmentType ?");
+            $stmt->execute([$filter]);
+
+            $results = [];
+            do {
+                try {
+                    $rows = $stmt->fetchAll(\PDO::FETCH_OBJ);
+                    if (empty($rows)) continue;
+                    $firstVal = array_values((array) $rows[0])[0] ?? '';
+                    if (is_string($firstVal) && str_starts_with($firstVal, 'Failed')) continue;
+                    if (isset($rows[0]->Id) && isset($rows[0]->Code)) {
+                        $results = $rows;
+                        break;
+                    }
+                } catch (\PDOException $e) {
+                    continue;
+                }
+            } while ($stmt->nextRowset());
+
+            return response()->json(['success' => true, 'data' => $results]);
+        } catch (\Exception $e) {
+            Log::error('getEquipmentTypes - Failed', ['error' => $e->getMessage()]);
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    public function getChargeBasedOnDefaults(Request $request)
+    {
+        $bookingNo  = $request->input('booking_no');
+        $basedOn    = $request->input('based_on');
+        $equipment  = $request->input('equipment', '');
+
+        if (!$bookingNo || !$basedOn) {
+            return response()->json(['success' => false, 'message' => 'booking_no and based_on are required'], 400);
+        }
+
+        // ── Resolve QuoteNo from bookingno ──────────────────────────────────────
+        // sp_ChargeBasedOnDefaultDetails uses WHERE QI.QuoteNo = @QuotationNo
+        // QuoteNo is the formatted reference (e.g. 'QT-5298'), NOT the numeric bookingno.
+        $quotation = DB::table('Quote_QuotationInfo')
+            ->where('bookingno', $bookingNo)
+            ->first(['QuoteNo']);
+
+        if (!$quotation || empty($quotation->QuoteNo)) {
+            Log::warning('getChargeBasedOnDefaults - QuoteNo not found', ['booking_no' => $bookingNo]);
+            return response()->json(['success' => false, 'message' => 'QuoteNo not found for this booking'], 404);
+        }
+
+        $quoteNo = trim($quotation->QuoteNo);
+
+        Log::info('getChargeBasedOnDefaults - Calling SP', [
+            'booking_no' => $bookingNo,
+            'quote_no'   => $quoteNo,
+            'based_on'   => $basedOn,
+            'equipment'  => $equipment ?: 'N/A',
+        ]);
+
+        try {
+            $pdo  = DB::getPdo();
+            $stmt = $pdo->prepare("
+            DECLARE @BasedOnUOMCode VARCHAR(50),
+                    @BasedOnUOM     VARCHAR(100),
+                    @Quantity       DECIMAL(18,3);
+
+            EXEC dbo.sp_ChargeBasedOnDefaultDetails ?, ?, ?,
+                @BasedOnUOMCode = @BasedOnUOMCode OUTPUT,
+                @BasedOnUOM     = @BasedOnUOM     OUTPUT,
+                @Quantity       = @Quantity       OUTPUT;
+
+            SELECT @BasedOnUOMCode AS BasedOnUOMCode,
+                   @BasedOnUOM     AS BasedOnUOM,
+                   @Quantity       AS Quantity;
+        ");
+
+            $stmt->execute([$quoteNo, $basedOn, $equipment]);
+
+            $result = null;
+            do {
+                try {
+                    $rows = $stmt->fetchAll(\PDO::FETCH_OBJ);
+                    if (empty($rows)) continue;
+
+                    $firstVal = array_values((array) $rows[0])[0] ?? '';
+
+                    // SP CATCH block returns 'Failed - ...' as a result row
+                    if (is_string($firstVal) && str_starts_with(trim($firstVal), 'Failed')) {
+                        Log::error('getChargeBasedOnDefaults - SP returned failure', [
+                            'booking_no' => $bookingNo,
+                            'quote_no'   => $quoteNo,
+                            'message'    => $firstVal,
+                        ]);
+                        return response()->json(['success' => false, 'message' => $firstVal], 422);
+                    }
+
+                    if (isset($rows[0]->BasedOnUOMCode)) {
+                        $result = $rows[0];
+                        break;
+                    }
+                } catch (\PDOException $e) {
+                    continue;
+                }
+            } while ($stmt->nextRowset());
+
+            if (!$result) {
+                Log::warning('getChargeBasedOnDefaults - SP returned no output', [
+                    'booking_no' => $bookingNo,
+                    'quote_no'   => $quoteNo,
+                    'based_on'   => $basedOn,
+                ]);
+                return response()->json(['success' => false, 'message' => 'No defaults returned from SP'], 500);
+            }
+
+            Log::info('getChargeBasedOnDefaults - Success', [
+                'booking_no'      => $bookingNo,
+                'quote_no'        => $quoteNo,
+                'based_on'        => $basedOn,
+                'based_on_uom'    => $result->BasedOnUOM,
+                'quantity'        => $result->Quantity,
+            ]);
+
+            return response()->json([
+                'success'          => true,
+                'based_on_uom_code' => trim($result->BasedOnUOMCode ?? ''),
+                'based_on_uom'     => trim($result->BasedOnUOM     ?? ''),
+                'quantity'         => (float) ($result->Quantity   ?? 0),
+            ]);
+        } catch (\Exception $e) {
+            Log::error('getChargeBasedOnDefaults - Exception', [
+                'booking_no' => $bookingNo,
+                'error'      => $e->getMessage(),
+                'file'       => $e->getFile(),
+                'line'       => $e->getLine(),
+            ]);
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }

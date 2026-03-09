@@ -691,8 +691,8 @@
         <!-- END ROW -->
 
         <!-- ============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         MODALS
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         ============================================ -->
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     MODALS
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     ============================================ -->
 
         {{-- REVENUE MODAL --}}
         <div class="modal fade" id="addRevenueModal" tabindex="-1" role="dialog"
@@ -1254,8 +1254,8 @@
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.min.css">
     <style>
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            MODAL STYLING — matched to FitExpress UI
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        MODAL STYLING — matched to FitExpress UI
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        ============================================= */
 
         .modal-header {
             background-color: #fff !important;
@@ -1698,9 +1698,9 @@
         }
 
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   CREATE BOOKING MODAL — Specific overrides
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   to match the "Creation of Booking" design
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               CREATE BOOKING MODAL — Specific overrides
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               to match the "Creation of Booking" design
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               ============================================= */
 
         #createBookingModal .modal-title {
             color: #003580 !important;
@@ -1854,6 +1854,9 @@
 
         const tcAlreadyApplied = {{ $quotation->QuotationTCTemplate ? 'true' : 'false' }};
 
+        // Mirrors QuotationController::OFFICE_BASE_CURRENCY — single source of truth via PHP
+        const OFFICE_BASE_CURRENCY = @json(\App\Http\Controllers\QuotationController::OFFICE_BASE_CURRENCY);
+
 
         $(document).ready(function() {
             console.log('Booking Quotation Edit - Page Loaded');
@@ -1962,8 +1965,9 @@
                 originalShipmentMode = $('#shipmentModeSelect').val();
                 originalTransportMode = $('#transportModeSelect').val();
 
-                // Unlock both selects
-                $('#shipmentModeSelect, #transportModeSelect').prop('disabled', false);
+                // Unlock all three selects
+                $('#equipmentTypeSelect, #shipmentModeSelect, #transportModeSelect').prop('disabled',
+                    false);
 
                 $(this).hide();
                 $('#saveShipmentDetailsBtn, #cancelShipmentDetailsBtn').show();
@@ -1975,7 +1979,7 @@
                 $('#transportModeSelect').val(originalTransportMode);
 
                 // Re-lock
-                $('#shipmentModeSelect, #transportModeSelect').prop('disabled', true);
+                $('#equipmentTypeSelect, #shipmentModeSelect, #transportModeSelect').prop('disabled', true);
 
                 $(this).hide();
                 $('#saveShipmentDetailsBtn').hide();
@@ -2018,8 +2022,8 @@
                             originalTransportMode = transportMode;
 
                             // Re-lock selects
-                            $('#shipmentModeSelect, #transportModeSelect').prop('disabled',
-                                true);
+                            $('#equipmentTypeSelect, #shipmentModeSelect, #transportModeSelect')
+                                .prop('disabled', true);
                             $('#saveShipmentDetailsBtn, #cancelShipmentDetailsBtn').hide();
                             $('#editShipmentDetailsBtn').show();
                         } else {
@@ -2028,7 +2032,7 @@
                     },
                     error: function(xhr) {
                         showNotification(xhr.responseJSON?.message || 'Failed to save',
-                        'error');
+                            'error');
                     },
                     complete: function() {
                         $('#saveShipmentDetailsBtn').prop('disabled', false)
@@ -2310,12 +2314,7 @@
             // Format date as '05/Mar/2026' to match fn_GetCurrentExRateUsingCodeandPeriod signature
             function formatDateForExRate(date) {
                 const d = date || new Date();
-                const day = String(d.getDate()).padStart(2, '0');
-                const month = d.toLocaleString('en-GB', {
-                    month: 'short'
-                }); // 'Mar'
-                const year = d.getFullYear();
-                return `${day}/${month}/${year}`; // '05/Mar/2026'
+                return d.toISOString().split('T')[0]; // '2026-03-09' — unambiguous, Carbon parses reliably
             }
 
             $(document).on('change', 'select[name="revenue_currency"], select[name="cost_currency"]', function() {
@@ -2325,7 +2324,10 @@
                 const $exchangeRateInput = $(`input[name="${prefix}_exchange_rate"]`);
 
                 if (!currencyCode || !officeCode) {
-                    console.warn('Currency code or office code missing');
+                    console.warn('Currency code or office code missing', {
+                        currencyCode,
+                        officeCode
+                    });
                     return;
                 }
 
@@ -2337,6 +2339,15 @@
                     return;
                 }
 
+                const dateFor = formatDateForExRate(new Date());
+
+                console.log('Fetching exchange rate', {
+                    officeCode,
+                    currencyCode,
+                    baseCurrency,
+                    dateFor
+                });
+
                 $.ajax({
                     url: '/quotation/exchange-rate',
                     type: 'GET',
@@ -2344,7 +2355,7 @@
                         office_code: officeCode,
                         from_currency: currencyCode,
                         to_currency: baseCurrency,
-                        date_for: formatDateForExRate(new Date()) // → '05/Mar/2026'
+                        date_for: dateFor
                     },
                     beforeSend: function() {
                         $exchangeRateInput.val('').prop('readonly', true);
@@ -2357,15 +2368,42 @@
                         } else {
                             showNotification(
                                 response.message ||
-                                `No exchange rate found for ${currencyCode} → ${baseCurrency}`,
+                                `No rate found for ${currencyCode} → ${baseCurrency}`,
                                 'warning'
                             );
                             $exchangeRateInput.val('');
                         }
                     },
                     error: function(xhr) {
-                        showNotification('Failed to fetch exchange rate', 'error');
-                        $exchangeRateInput.val('');
+                        // Surface the actual server message — 404 = rate not configured, 500 = DB error
+                        const serverMsg = xhr.responseJSON?.message;
+                        const statusCode = xhr.status;
+
+                        if (statusCode === 404) {
+                            showNotification(
+                                serverMsg ||
+                                `No exchange rate found for ${currencyCode} → ${baseCurrency} on ${dateFor}. Please enter manually.`,
+                                'warning' // warning, not error — rate may just not be set up for this date
+                            );
+                        } else {
+                            showNotification(
+                                serverMsg ||
+                                'Exchange rate lookup failed. Please enter manually.',
+                                'error'
+                            );
+                        }
+
+                        console.error('Exchange rate fetch failed', {
+                            status: statusCode,
+                            message: serverMsg,
+                            officeCode,
+                            currencyCode,
+                            baseCurrency,
+                            dateFor
+                        });
+
+                        $exchangeRateInput.val('').prop('readonly',
+                            false); // Let user enter manually
                     },
                     complete: function() {
                         $exchangeRateInput.prop('readonly', true);
@@ -2643,6 +2681,9 @@
                             $vatField.val('');
                         }
 
+                        // Explicitly close — returning false prevents jQuery UI's default
+                        // close behaviour, so we must do it manually before returning.
+                        $chargeCodeInput.autocomplete('close');
                         return false;
                     }
                 }).autocomplete("instance")._renderItem = function(ul, item) {
