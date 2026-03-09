@@ -1101,12 +1101,20 @@ Route::middleware(['auth', 'can:approve-all-entity-request'])->group(function ()
     Route::post('/quotation/{id}/update', [App\Http\Controllers\QuotationController::class, 'update'])
         ->name('quotation.update');
 
-    Route::post('/crm/sync/run', [App\Http\Controllers\CrmSyncController::class, 'run'])
-        ->name('crm.sync.run');
+    Route::get('/quotation/charge-based-on-defaults', [App\Http\Controllers\QuotationController::class, 'getChargeBasedOnDefaults'])
+        ->name('quotation.charge-based-on-defaults');
 
+    // ============================================
+    // CRM SYNC
+    // ============================================
     Route::get('/crm/sync/history', [App\Http\Controllers\CrmSyncController::class, 'history'])
         ->name('crm.sync.history');
+
+    Route::post('/crm/sync/run', [App\Http\Controllers\CrmSyncController::class, 'run'])
+        ->name('crm.sync.run');
 });
+
+
 // ============================================================================
 // LOGIN TRACKER SYSTEM ROUTES (User Activity Monitoring)
 // ============================================================================

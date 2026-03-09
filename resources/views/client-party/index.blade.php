@@ -516,8 +516,8 @@
         }
 
         /* ════════════════════════════════════════════════════════════
-                                       ULTRA-PROMINENT TAB STYLING - DRAMATIC VERSION
-                                       ════════════════════════════════════════════════════════════ */
+                                           ULTRA-PROMINENT TAB STYLING - DRAMATIC VERSION
+                                           ════════════════════════════════════════════════════════════ */
         #entityTypeTabs {
             background: #ffffff;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
@@ -684,8 +684,8 @@
         }
 
         /* ════════════════════════════════════════════════════════════
-                                       END TAB STYLING
-                                       ════════════════════════════════════════════════════════════ */
+                                           END TAB STYLING
+                                           ════════════════════════════════════════════════════════════ */
 
         /* Enhanced Info Box Styling with Hover Expansion */
         .info-box {
@@ -709,8 +709,8 @@
         }
 
         /* ────────────────────────────────────────────────
-                                           Row & card layout – restored original hover behavior
-                                        ──────────────────────────────────────────────── */
+                                               Row & card layout – restored original hover behavior
+                                            ──────────────────────────────────────────────── */
         .entity-stats .row {
             display: flex;
             flex-wrap: nowrap;
@@ -878,8 +878,8 @@
         }
 
         /* ────────────────────────────────────────────────
-                                           Fallback for narrow screens – allow wrapping
-                                        ──────────────────────────────────────────────── */
+                                               Fallback for narrow screens – allow wrapping
+                                            ──────────────────────────────────────────────── */
         @media (max-width: 1199px) {
             .entity-stats .row {
                 flex-wrap: wrap;

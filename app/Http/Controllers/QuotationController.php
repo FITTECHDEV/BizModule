@@ -35,111 +35,47 @@ class QuotationController extends Controller
 
     public function index()
     {
-        // ============================================
-        // RESOLVE USER'S MAPPED OFFICES FROM Azure_Users
-        // Auth user model uses 'Email' (capital E)
-        // matched against Azure_Users.userPrincipalName
-        // ============================================
+        $offices = $this->resolveUserOffices();
 
-        $userPrincipalName = Auth::user()->Email ?? null;
-        $normalizedEmail   = strtolower(trim($userPrincipalName));
+        if ($offices->isEmpty()) {
+            // ============================================
+            // NO OFFICES RESOLVED — check if Azure_Users
+            // mapping exists at all for this user
+            // ============================================
+            $userEmail = strtolower(trim(Auth::user()->Email ?? ''));
 
-        $userOfficeCodes = DB::table('Azure_Users')
-            ->where(function ($q) use ($normalizedEmail) {
-                $q->whereRaw('LOWER(LTRIM(RTRIM(userPrincipalName))) = ?', [$normalizedEmail])
-                    ->orWhereRaw('LOWER(LTRIM(RTRIM(alternateEmailAddress))) = ?', [$normalizedEmail]);
-            })
-            ->whereNotNull('BaseOfficeCode')
-            ->pluck('BaseOfficeCode')
-            ->flatMap(fn($codes) => explode(',', $codes))
-            ->map(fn($code) => trim($code))
-            ->filter()
-            ->unique()
-            ->values();
+            $azureUser = DB::table('Azure_Users')
+                ->where(function ($q) use ($userEmail) {
+                    $q->whereRaw('LOWER(LTRIM(RTRIM(userPrincipalName))) = ?', [$userEmail])
+                        ->orWhereRaw('LOWER(LTRIM(RTRIM(alternateEmailAddress))) = ?', [$userEmail]);
+                })
+                ->first(['userPrincipalName', 'BaseOfficeCode']);
 
-        if ($userOfficeCodes->isEmpty()) {
-            Log::warning('Quotation index - No BaseOfficeCode found for user', [
-                'userPrincipalName' => $userPrincipalName,
+            $officeError = $azureUser
+                ? 'Your office mapping could not be resolved. Please contact your administrator.'
+                : 'Your account is not mapped to any office. Please contact your administrator.';
+
+            Log::warning('Quotation index - Office resolution failed', [
+                'email'            => $userEmail,
+                'azure_user_found' => $azureUser ? 'yes' : 'no',
+                'base_office_code' => $azureUser->BaseOfficeCode ?? 'N/A',
             ]);
 
             return view('quotation.index', [
                 'offices'       => collect(),
                 'stats'         => $this->getStats('all', null, null, null),
                 'defaultOffice' => null,
-                'officeError'   => 'Your account is not mapped to any office. Please contact your administrator.',
-            ]);
-        }
-
-        // ============================================
-        // RESOLVE OFFICE CODES → TEAMNAMES
-        // Look up the actual teamname values used in Quote_QuotationInfo
-        // by joining through Cust_Office on TeamCode.
-        // Falls back to treating the BaseOfficeCode itself as a teamname
-        // for any code that has no matching Cust_Office row.
-        // ============================================
-
-        $resolvedOffices = DB::table('Cust_Office')
-            ->whereIn('Code', $userOfficeCodes->toArray())
-            ->where('IsActive', 1)
-            ->where('IsDeleted', 0)
-            ->pluck('Code', 'Code') // we need the Code to match against teamname
-            ->values();
-
-        // For codes that matched Cust_Office, get the distinct teamnames
-        // actually present in quotation data
-        $offices = DB::table('Quote_QuotationInfo')
-            ->whereNotNull('teamname')
-            ->whereIn('teamname', $userOfficeCodes->toArray())
-            ->distinct()
-            ->orderBy('teamname')
-            ->pluck('teamname');
-
-        // Also check if any BaseOfficeCode maps through Cust_Office.Code → teamname
-        // (handles cases where teamname stores the office Code directly)
-        if ($offices->isEmpty()) {
-            Log::warning('Quotation index - No teamname match on BaseOfficeCode directly, trying via Cust_Office', [
-                'userPrincipalName' => $userPrincipalName,
-                'base_office_codes' => $userOfficeCodes->toArray(),
-            ]);
-
-            $teamCodes = DB::table('Cust_Office')
-                ->whereIn('Code', $userOfficeCodes->toArray())
-                ->where('IsActive', 1)
-                ->where('IsDeleted', 0)
-                ->pluck('TeamCode');
-
-            if ($teamCodes->isNotEmpty()) {
-                $offices = DB::table('Quote_QuotationInfo')
-                    ->whereNotNull('teamname')
-                    ->whereIn('teamid', $teamCodes->toArray())
-                    ->distinct()
-                    ->orderBy('teamname')
-                    ->pluck('teamname');
-            }
-        }
-
-        if ($offices->isEmpty()) {
-            Log::warning('Quotation index - BaseOfficeCode(s) could not be resolved to any office', [
-                'userPrincipalName' => $userPrincipalName,
-                'base_office_codes' => $userOfficeCodes->toArray(),
-            ]);
-
-            return view('quotation.index', [
-                'offices'       => collect(),
-                'stats'         => $this->getStats('all', null, null, null),
-                'defaultOffice' => null,
-                'officeError'   => 'Your office mapping could not be resolved. Please contact your administrator.',
+                'officeError'   => $officeError,
             ]);
         }
 
         $defaultOffice = $offices->first();
         $stats         = $this->getStats('all', null, null, $defaultOffice);
 
-        Log::info('Quotation index - Resolved user offices', [
-            'userPrincipalName' => $userPrincipalName,
-            'base_office_codes' => $userOfficeCodes->toArray(),
-            'resolved_offices'  => $offices->toArray(),
-            'default_office'    => $defaultOffice,
+        Log::info('Quotation index - Resolved offices', [
+            'user'           => Auth::user()->Email,
+            'offices'        => $offices->toArray(),
+            'default_office' => $defaultOffice,
         ]);
 
         return view('quotation.index', compact('offices', 'stats', 'defaultOffice'));
@@ -150,8 +86,13 @@ class QuotationController extends Controller
         $days      = $request->input('days', 0);
         $startDate = $request->input('start_date');
         $endDate   = $request->input('end_date');
+
         // Default to logged-in user's office if none provided
-        $office = $request->input('office') ?: (Auth::user()->OfficeCode ?? null);
+        $office = $request->input('office');
+        if (!$office) {
+            $office = $this->resolveUserOffices()->first();
+        }
+
         $stats = $this->getStats($days, $startDate, $endDate, $office);
         return response()->json($stats);
     }
@@ -238,7 +179,11 @@ class QuotationController extends Controller
             $cardFilter = $request->input('card_filter', 'in_progress');
 
             // Default to logged-in user's office if no office param sent
-            $office = $request->input('office') ?: (Auth::user()->OfficeCode ?? null);
+            $office = $request->input('office');
+
+            if (!$office) {
+                $office = $this->resolveUserOffices()->first();
+            }
 
             Log::info('Quotation data request', [
                 'days'         => $days,
@@ -820,7 +765,8 @@ class QuotationController extends Controller
                 ->where('TeamCode', $quotation->teamid)
                 ->where('IsActive', 1)
                 ->where('IsDeleted', 0)
-                ->first(['Code']);
+                ->select(DB::raw('LTRIM(RTRIM(Code)) AS Code'))
+                ->first();
 
             $officeCode = $office ? trim($office->Code) : 'Unknown';
 
@@ -2876,10 +2822,11 @@ class QuotationController extends Controller
 
         try {
             $officeExists = DB::table('Cust_Office')
-                ->whereRaw("TRIM(Code) = ?", [$officeCode])
+                ->whereRaw("LTRIM(RTRIM(Code)) = ?", [$officeCode]) // ✅ SQL Server safe
                 ->where('IsActive', 1)
                 ->where('IsDeleted', 0)
                 ->exists();
+
 
             if (!$officeExists) {
                 Log::warning('getCommunicationTemplates - Office not found', [
@@ -2897,12 +2844,12 @@ class QuotationController extends Controller
 
             $templates = DB::select(
                 "SELECT Name, Description
-             FROM Cust_CommunicationDetails WITH (NOLOCK)
-             WHERE Module     = ?
-               AND SubModule  = ?
-               AND TRIM(OfficeCode) = ?
-               AND IsActive   = 1
-             ORDER BY Name",
+                    FROM Cust_CommunicationDetails WITH (NOLOCK)
+                    WHERE Module     = ?
+                        AND SubModule  = ?
+                        AND LTRIM(RTRIM(OfficeCode)) = ?  -- ✅ SQL Server safe
+                        AND IsActive   = 1
+                    ORDER BY Name",
                 [$module, $subModule, $officeCode]
             );
 
@@ -3953,10 +3900,10 @@ class QuotationController extends Controller
             // ✅ FIX: Use TeamCode (int column), not TeamId
             $office = DB::connection('sqlsrv')
                 ->table('Cust_Office')
-                ->where('TeamCode', $teamId)           // ✅ Changed from TeamId
-                ->where('IsActive', 1)                 // ✅ Added active filter
-                ->where('IsDeleted', 0)                // ✅ Added deleted filter
-                ->select('Code', 'TeamCode')           // ✅ Changed from TeamId
+                ->where('TeamCode', $teamId)
+                ->where('IsActive', 1)
+                ->where('IsDeleted', 0)
+                ->select(DB::raw('LTRIM(RTRIM(Code)) AS Code'), 'TeamCode')
                 ->first();
 
             Log::info('Office lookup result', [
@@ -4038,7 +3985,7 @@ class QuotationController extends Controller
                     ON BCO.OfficeId = CO.Id AND BCO.IsActive = 1
                 INNER JOIN [FITSCM].dbo.Cust_Currency CC WITH (NOLOCK) 
                     ON CC.Id = BCO.DefaultCurrencyId
-                WHERE CO.Code = ?
+                WHERE LTRIM(RTRIM(CO.Code)) = ?
                     AND CO.IsActive = 1 
                     AND CO.IsDeleted = 0
                     AND CC.IsActive = 1 
@@ -4304,8 +4251,15 @@ class QuotationController extends Controller
         try {
             $pdo  = DB::connection()->getPdo();
             $stmt = $pdo->prepare("SET NOCOUNT ON; EXEC sp_LegalEntityList ?, ?, ?");
-            $stmt->execute([$officeCode, $chargeType, $filter]);
+            $officeCode = trim($request->input('office_code', ''));
 
+            // Additionally add a validation check that the office exists
+            // using LTRIM/RTRIM so the lookup doesn't silently fail
+            $officeExists = DB::table('Cust_Office')
+                ->whereRaw('LTRIM(RTRIM(Code)) = ?', [$officeCode]) // ✅ was: ->where('Code', $officeCode)
+                ->where('IsActive', 1)
+                ->where('IsDeleted', 0)
+                ->exists();
             $parties = [];
             do {
                 try {
@@ -5375,5 +5329,106 @@ class QuotationController extends Controller
             ]);
             return ['status' => 'Failed', 'remark' => $e->getMessage()];
         }
+    }
+
+    /**
+     * Resolve teamname values this user is permitted to see.
+     *
+     * Join path:
+     *   Azure_Users.BaseOfficeCode → Cust_Office.Code (TRIM) → Cust_Office.TeamCode
+     *       → Quote_QuotationInfo.teamid → teamname
+     *
+     * Fallback: direct BaseOfficeCode → teamname match (handles edge cases like Zambia)
+     */
+    private function resolveUserOffices(): \Illuminate\Support\Collection
+    {
+        $userEmail  = strtolower(trim(Auth::user()->Email ?? ''));
+        $userLoginId = strtolower(trim(Auth::user()->LoginID ?? ''));
+
+        // ── 1. Get BaseOfficeCode(s) from Azure_Users ──────────────────────────
+        $baseOfficeCodes = DB::table('Azure_Users')
+            ->where(function ($q) use ($userEmail, $userLoginId) {
+                // Primary: match by email
+                $q->whereRaw('LOWER(LTRIM(RTRIM(userPrincipalName))) = ?', [$userEmail])
+                    ->orWhereRaw('LOWER(LTRIM(RTRIM(alternateEmailAddress))) = ?', [$userEmail]);
+
+                // Fallback: match by LoginID prefix of userPrincipalName
+                // e.g. LoginID = 'L.adika' matches 'L.adika@freight-in-time.com'
+                if (!empty($userLoginId)) {
+                    $q->orWhereRaw(
+                        "LOWER(LTRIM(RTRIM(userPrincipalName))) LIKE ?",
+                        [$userLoginId . '@%']
+                    );
+                }
+            })
+            ->whereNotNull('BaseOfficeCode')
+            ->pluck('BaseOfficeCode')
+            ->flatMap(fn($codes) => explode(',', $codes))
+            ->map(fn($code) => trim($code))
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($baseOfficeCodes->isEmpty()) {
+            Log::warning('resolveUserOffices - No BaseOfficeCode found', [
+                'email' => $userEmail,
+            ]);
+            return collect();
+        }
+
+        // ── 2. Primary path: BaseOfficeCode → Cust_Office.TeamCode → teamid ───
+        //    NOTE: Cust_Office.Code has trailing spaces — must TRIM on join
+        $teamCodes = DB::table('Cust_Office')
+            ->whereIn(DB::raw('LTRIM(RTRIM(Code))'), $baseOfficeCodes->toArray())
+            ->where('IsActive', 1)
+            ->where('IsDeleted', 0)
+            ->pluck('TeamCode')
+            ->filter()
+            ->unique()
+            ->values();
+
+        $offices = collect();
+
+        if ($teamCodes->isNotEmpty()) {
+            $offices = DB::table('Quote_QuotationInfo')
+                ->whereNotNull('teamname')
+                ->whereIn('teamid', $teamCodes->toArray())
+                ->distinct()
+                ->orderBy('teamname')
+                ->pluck('teamname');
+        }
+
+        // ── 3. Fallback: direct BaseOfficeCode → teamname match ───────────────
+        //    Catches offices like Zambia that have no Cust_Office row
+        if ($offices->isEmpty()) {
+            Log::warning('resolveUserOffices - Primary path returned no offices, trying direct match', [
+                'email'            => $userEmail,
+                'base_office_codes' => $baseOfficeCodes->toArray(),
+                'team_codes_found'  => $teamCodes->toArray(),
+            ]);
+
+            $offices = DB::table('Quote_QuotationInfo')
+                ->whereNotNull('teamname')
+                ->where(function ($q) use ($baseOfficeCodes) {
+                    foreach ($baseOfficeCodes as $code) {
+                        $q->orWhereRaw(
+                            'LOWER(LTRIM(RTRIM(teamname))) = ?',
+                            [strtolower($code)]
+                        );
+                    }
+                })
+                ->distinct()
+                ->orderBy('teamname')
+                ->pluck('teamname');
+        }
+
+        Log::info('resolveUserOffices - Resolved', [
+            'email'             => $userEmail,
+            'base_office_codes' => $baseOfficeCodes->toArray(),
+            'team_codes'        => $teamCodes->toArray(),
+            'resolved_offices'  => $offices->toArray(),
+        ]);
+
+        return $offices;
     }
 }

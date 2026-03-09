@@ -100,7 +100,7 @@ class ClientPartyController extends Controller
                 }
                 Log::info('Fetched payTerms in create:', ['payTerms' => $payTerms, 'officeCode' => $officeCode]);
             } catch (\Illuminate\Database\QueryException $e) {
-                Log::error('sp_PaymentTerms Error in create: '.$e->getMessage(), [
+                Log::error('sp_PaymentTerms Error in create: ' . $e->getMessage(), [
                     'officeCode' => $officeCode,
                     'sql' => $e->getSql(),
                 ]);
@@ -127,10 +127,10 @@ class ClientPartyController extends Controller
             $response = DB::select(
                 'SET NOCOUNT ON;
                 Declare  @OfficeID as Uniqueidentifier,
-@PartyTypeasVarchar(60),
-@FilterasVarchar(50)
+                @PartyType as Varchar(60),
+                @Filter as Varchar(50)
                 Exec sp_PartyList
-@OfficeID= ?, @PartyType = ?, @Filter = ?',
+                @OfficeID = ?, @PartyType = ?, @Filter = ?',
                 [$query['officeID'], $type, $query['query']]
             );
             $debtorVendors = [];
@@ -178,9 +178,9 @@ class ClientPartyController extends Controller
             $response = DB::select(
                 'SET NOCOUNT ON;
                 Declare  @Country as char(2),
-@FilterasVarchar(50)
+                @Filter as Varchar(50)
                 Exec sp_StateList
-@country= ?, @Filter = ?',
+                @country = ?, @Filter = ?',
                 [$request['country_code'], $request['query']]
             );
             $cities = [];
@@ -208,8 +208,8 @@ class ClientPartyController extends Controller
             Declare  @Country as char(2)
             Declare  @Filter as Varchar(50)
             Exec sp_StateList
-@country= ?,
-@Filter= ?',
+            @country = ?,
+            @Filter = ?',
             [$request['country_code'], $request['query']]
         );
         $provinces = [];
@@ -239,10 +239,10 @@ class ClientPartyController extends Controller
         $response = DB::select(
             'SET NOCOUNT ON;
             Declare @office as varchar(60),
-@officeIDasUniqueidentifier
+            @officeID as  Uniqueidentifier
             Exec sp_TariffList
-@office= ?,
-@officeID= ?',
+            @office = ?,
+            @officeID = ?',
             ['Kenya - UPS', $query]
         );
         if (\request()->ajax()) {
@@ -258,14 +258,14 @@ class ClientPartyController extends Controller
         $response = DB::select(
             'SET NOCOUNT ON;
             Declare @LocationType as Char(3),
-@IncludeCountryasBit,
-@CountryCodeasChar(2),
-@FilterasVarchar(50)
+            @IncludeCountry as Bit,
+            @CountryCode as Char(2),
+            @Filter as Varchar(50)
             Exec [dbo].[sp_LocationList]
-@LocationType= ?,
-@IncludeCountry= ?,
-@CountryCode= ?,
-@Filter= ?',
+            @LocationType = ?,
+            @IncludeCountry = ?,
+            @CountryCode = ?,
+            @Filter = ?',
             [$locationType, $request['includeCountry'], $request['includeCode'], $request['query']]
         );
         $locations = [];
@@ -295,7 +295,7 @@ class ClientPartyController extends Controller
             'SET NOCOUNT ON;
                 Declare @OfficeID as Uniqueidentifier
                 Exec [dbo].[sp_BaseOfficeCurrency]
-@officeID= ?',
+                @officeID = ?',
             [$query]
         );
         $baseCurrency = [];
@@ -326,7 +326,7 @@ class ClientPartyController extends Controller
             'SET NOCOUNT ON;
                 Declare @OfficeID as Uniqueidentifier
                 Exec [dbo].[sp_EntityType]
-@OfficeCode= ?',
+                @OfficeCode = ?',
             [$query]
         );
         $v = [];
@@ -370,7 +370,7 @@ class ClientPartyController extends Controller
                 'SET NOCOUNT ON;
                 Declare @filter varchar(60)
                 Exec sp_ClientList
-@filter= ?',
+                @filter = ?',
                 [$query]
             );
             if (count($response) > 0) {
@@ -387,7 +387,7 @@ class ClientPartyController extends Controller
         } elseif ($type == 'local') {
             $results = ClientParty::select('name', 'Id', 'code')
                 ->where('OperationalEntityType', 'Client + Shipper + Consignee')
-                ->where('Name', 'LIKE', '%'.$query.'%')->get();
+                ->where('Name', 'LIKE', '%' . $query . '%')->get();
             if (count($results) > 0) {
                 foreach ($results as $resp) {
                     if (isset($resp->Id)) {
@@ -436,12 +436,12 @@ class ClientPartyController extends Controller
         $response = DB::select(
             'SET NOCOUNT ON;
             Declare @OfficeID as Uniqueidentifier,
-@PartyTypeasVarchar(60),
-@FilterasVarchar(50)
+            @PartyType as Varchar(60),
+            @Filter as Varchar(50)
             Exec [dbo].[sp_PartyList]
-@OfficeID= ?,
-@PartyType= ?,
-@Filter= ?',
+            @OfficeID = ?,
+            @PartyType = ?,
+            @Filter = ?',
             [$request['officeID'], $request['partyType'], $request['query']]
         );
         $partyList = [];
@@ -466,7 +466,7 @@ class ClientPartyController extends Controller
             'SET NOCOUNT ON;
             Declare @Filter as Varchar(50)
             Exec [dbo].[sp_IncoTerms]
-@Filter= ?',
+            @Filter = ?',
             ['']
         );
 
@@ -550,7 +550,7 @@ class ClientPartyController extends Controller
 
             return $payTerms; // Return array for non-AJAX calls
         } catch (\Illuminate\Database\QueryException $e) {
-            Log::error('sp_PaymentTerms Error in getPaymentTermList: '.$e->getMessage(), [
+            Log::error('sp_PaymentTerms Error in getPaymentTermList: ' . $e->getMessage(), [
                 'officeCode' => $officeCode,
                 'sql' => $e->getSql(),
             ]);
@@ -562,26 +562,31 @@ class ClientPartyController extends Controller
         }
     }
 
-public function getCurrencyList($var = null)
-{
-    $query = '';
-    if (\request()->ajax()) {
-        $query = \request()['query'];
-    } else {
-        $query = $var;
-    }
+    public function getCurrencyList($var = null)
+    {
+        $query = '';
+        if (\request()->ajax()) {
+            $query = \request()['query'];
+        } else {
+            $query = $var;
+        }
+        if (! empty($query)) {
+            $response = DB::select(
+                'SET NOCOUNT ON;
+                Declare
+                @OfficeID as Uniqueidentifier,
+                @Filter as Varchar(50)
+                Exec [dbo].[sp_CurrencyList]
+                @OfficeID = ?,
+                @Filter = ?',
+                [$query, '']
+            );
+        } else {
+            $response = [];
+        }
 
-    if (!empty($query)) {
-        $response = DB::select(
-            'SET NOCOUNT ON; EXEC [dbo].[sp_CurrencyList] @OfficeID = ?, @Filter = ?',
-            [$query, '']
-        );
-    } else {
-        $response = [];
+        return $response;
     }
-
-    return $response;
-}
 
     public function salesAccountPCI($var = null)
     {
@@ -590,12 +595,12 @@ public function getCurrencyList($var = null)
             $response = DB::select(
                 'SET NOCOUNT ON;
                 Declare @OfficeID as Uniqueidentifier,
-@PICTypeasChar(1),
-@FilterasVarchar(50)
+                @PICType as Char(1),
+                @Filter as Varchar(50)
                 Exec [dbo].[sp_PersonInCharge]
-@OfficeID= ?,
-@PICType= ?,
-@Filter= ?',
+                @OfficeID = ?,
+                @PICType = ?,
+                @Filter = ?',
                 [$query['officeID'], $var, $query['query']]
             );
             $infos = [];
@@ -620,12 +625,12 @@ public function getCurrencyList($var = null)
         $response = DB::select(
             'SET NOCOUNT ON;
             Declare @OfficeID as Uniqueidentifier,
-@PICTypeasChar(1),
-@FilterasVarchar(50)
+            @PICType as Char(1),
+            @Filter as Varchar(50)
             Exec [dbo].[sp_PartyList]
-@OfficeID= ?,
-@PartyType= ?,
-@Filter= ?',
+            @OfficeID = ?,
+            @PartyType = ?,
+            @Filter = ?',
             [$query['officeID'], $var, $query['query']]
         );
         $list = [];
@@ -743,7 +748,6 @@ public function getCurrencyList($var = null)
             }
 
             return $output;
-
         } catch (\Exception $e) {
             // Re-throw the exception, let the calling code handle it
             throw $e;
@@ -906,7 +910,7 @@ public function getCurrencyList($var = null)
                         $originalName = $file->getClientOriginalName();
                         $extension = $file->getClientOriginalExtension();
                         $filename = pathinfo($originalName, PATHINFO_FILENAME);
-                        $newName = $requestNo.'_'.$filename.'.'.$extension;
+                        $newName = $requestNo . '_' . $filename . '.' . $extension;
 
                         // Store locally first
                         $localPath = $file->storeAs('client-party', $newName, 'local');
@@ -933,10 +937,9 @@ public function getCurrencyList($var = null)
                         ]);
 
                         // Clean up local file
-@unlink(storage_path("app/{$localPath}"));
+                        @unlink(storage_path("app/{$localPath}"));
 
                         $uploadedCount++;
-
                     } catch (\Exception $fileEx) {
                         \Log::error('Failed to upload attachment', [
                             'request_no' => $requestNo,
@@ -961,7 +964,6 @@ public function getCurrencyList($var = null)
                 ->persistent(true, false);
 
             return redirect()->route('client-party.index');
-
         } catch (\Exception $e) {
             \Log::error('Entity creation failed', [
                 'payload' => $payload,
@@ -1089,10 +1091,9 @@ public function getCurrencyList($var = null)
                 $attachment->FileName,
                 [
                     'Content-Type' => $mimeType,
-                    'Content-Disposition' => 'inline; filename="'.$attachment->FileName.'"',
+                    'Content-Disposition' => 'inline; filename="' . $attachment->FileName . '"',
                 ]
             );
-
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             Log::error('Attachment not found in database:', [
                 'attachmentId' => $attachmentId,
@@ -1102,7 +1103,6 @@ public function getCurrencyList($var = null)
             return response()->json([
                 'error' => 'Attachment not found',
             ], 404);
-
         } catch (\Exception $e) {
             Log::error('Preview failed with exception:', [
                 'attachmentId' => $attachmentId,
@@ -1111,7 +1111,7 @@ public function getCurrencyList($var = null)
             ]);
 
             return response()->json([
-                'error' => 'Error retrieving file: '.$e->getMessage(),
+                'error' => 'Error retrieving file: ' . $e->getMessage(),
             ], 500);
         }
     }
@@ -1143,7 +1143,7 @@ public function getCurrencyList($var = null)
 
         Log::info('Entity Token Retrieved', [
             'status' => $entityToken['status'],
-            'token_preview' => substr($entityToken['token'], 0, 20).'...',
+            'token_preview' => substr($entityToken['token'], 0, 20) . '...',
         ]);
 
         try {
@@ -1163,7 +1163,7 @@ public function getCurrencyList($var = null)
 
             // Handle HTTP errors (4xx, 5xx)
             if (! $response->successful()) {
-                $errorMessage = 'HTTP Error '.$response->status();
+                $errorMessage = 'HTTP Error ' . $response->status();
 
                 if (is_object($responseBody)) {
                     if (property_exists($responseBody, 'title')) {
@@ -1179,11 +1179,11 @@ public function getCurrencyList($var = null)
                         $validationErrors = [];
                         foreach ($responseBody->errors as $field => $messages) {
                             if (is_array($messages)) {
-                                $validationErrors[] = $field.': '.implode(', ', $messages);
+                                $validationErrors[] = $field . ': ' . implode(', ', $messages);
                             }
                         }
                         if (! empty($validationErrors)) {
-                            $errorMessage .= ' - '.implode('; ', $validationErrors);
+                            $errorMessage .= ' - ' . implode('; ', $validationErrors);
                         }
                     }
                 }
@@ -1268,7 +1268,6 @@ public function getCurrencyList($var = null)
                 'status' => false,
                 'error' => 'Unexpected response format from D365',
             ];
-
         } catch (\Illuminate\Http\Client\RequestException $e) {
             Log::error('D365 Request Exception', [
                 'type' => $type,
@@ -1278,9 +1277,8 @@ public function getCurrencyList($var = null)
 
             return [
                 'status' => false,
-                'error' => 'D365 API request failed: '.$e->getMessage(),
+                'error' => 'D365 API request failed: ' . $e->getMessage(),
             ];
-
         } catch (\Exception $e) {
             Log::error('D365 Exception', [
                 'type' => $type,
@@ -1290,7 +1288,7 @@ public function getCurrencyList($var = null)
 
             return [
                 'status' => false,
-                'error' => 'D365 API call failed: '.$e->getMessage(),
+                'error' => 'D365 API call failed: ' . $e->getMessage(),
             ];
         }
     }
@@ -1439,257 +1437,256 @@ public function getCurrencyList($var = null)
 
 
 
+    public function update(UpdateClientPartyRequest $request, $id)
+    {
+        $user = Auth::user();
 
-   public function update(UpdateClientPartyRequest $request, $id)
-{
-    $user = Auth::user();
-
-    Log::info('=== UPDATE CONTROLLER START ===', [
-        'id' => $id,
-        'user_id' => $user?->Id,
-        'method' => $request->method(),
-        'createBtn' => $request->input('createBtn'),
-        'all_input' => $request->all(),
-        'ip' => $request->ip(),
-    ]);
-
-    if (!$user->can('update-client-party')) {
-        Log::warning('Unauthorized access attempt', ['user_id' => $user?->Id, 'id' => $id]);
-        Alert::warning('Warning', 'Unauthorized.')->persistent(true, false);
-        return redirect()->back();
-    }
-
-    $entity = ClientParty::findOrFail($id);
-    $currentStatus = $entity->Status;
-
-    Log::info('Entity loaded successfully', [
-        'id' => $id,
-        'code' => $entity->Code,
-        'status' => $currentStatus,
-        'legal_entity_type' => $entity->LegalEntityType,
-        'request_debtor' => $entity->RequestforDebtor,
-        'request_vendor' => $entity->RequestforVendor,
-    ]);
-
-    if (!isset($request->createBtn)) {
-        Log::info('No createBtn present - redirecting to show');
-        Alert::info('Info', 'Use Create/Approve for status changes.')->persistent(true, false);
-        return redirect()->route('client-party.show', $id);
-    }
-
-    // Determine target status
-    $targetStatus = 'Created';
-    if ($currentStatus === 'PendingGroupLevelApproval') {
-        $targetStatus = 'PendingITVerification';
-    }
-
-    Log::info('Target status determined', ['from' => $currentStatus, 'to' => $targetStatus]);
-
-    // Validate transition
-    $allowedTransitions = [
-        'PendingGroupLevelApproval' => ['PendingITVerification'],
-        'PendingITVerification'     => ['Created'],
-    ];
-
-    if (!isset($allowedTransitions[$currentStatus]) || !in_array($targetStatus, $allowedTransitions[$currentStatus])) {
-        Log::warning('Invalid status transition attempted', [
-            'current' => $currentStatus,
-            'target'  => $targetStatus,
+        Log::info('=== UPDATE CONTROLLER START ===', [
+            'id' => $id,
+            'user_id' => $user?->Id,
+            'method' => $request->method(),
+            'createBtn' => $request->input('createBtn'),
+            'all_input' => $request->all(),
+            'ip' => $request->ip(),
         ]);
-        Alert::error('Error', 'Invalid status transition from ' . $currentStatus)->persistent(true, false);
-        return redirect()->back();
-    }
 
-    // STEP 1: PendingGroupLevelApproval → PendingITVerification
-    if ($targetStatus === 'PendingITVerification') {
-        Log::info('Entering Group → IT Verification transition');
+        if (!$user->can('update-client-party')) {
+            Log::warning('Unauthorized access attempt', ['user_id' => $user?->Id, 'id' => $id]);
+            Alert::warning('Warning', 'Unauthorized.')->persistent(true, false);
+            return redirect()->back();
+        }
 
+        $entity = ClientParty::findOrFail($id);
+        $currentStatus = $entity->Status;
+
+        Log::info('Entity loaded successfully', [
+            'id' => $id,
+            'code' => $entity->Code,
+            'status' => $currentStatus,
+            'legal_entity_type' => $entity->LegalEntityType,
+            'request_debtor' => $entity->RequestforDebtor,
+            'request_vendor' => $entity->RequestforVendor,
+        ]);
+
+        if (!isset($request->createBtn)) {
+            Log::info('No createBtn present - redirecting to show');
+            Alert::info('Info', 'Use Create/Approve for status changes.')->persistent(true, false);
+            return redirect()->route('client-party.show', $id);
+        }
+
+        // Determine target status
+        $targetStatus = 'Created';
+        if ($currentStatus === 'PendingGroupLevelApproval') {
+            $targetStatus = 'PendingITVerification';
+        }
+
+        Log::info('Target status determined', ['from' => $currentStatus, 'to' => $targetStatus]);
+
+        // Validate transition
+        $allowedTransitions = [
+            'PendingGroupLevelApproval' => ['PendingITVerification'],
+            'PendingITVerification'     => ['Created'],
+        ];
+
+        if (!isset($allowedTransitions[$currentStatus]) || !in_array($targetStatus, $allowedTransitions[$currentStatus])) {
+            Log::warning('Invalid status transition attempted', [
+                'current' => $currentStatus,
+                'target'  => $targetStatus,
+            ]);
+            Alert::error('Error', 'Invalid status transition from ' . $currentStatus)->persistent(true, false);
+            return redirect()->back();
+        }
+
+        // STEP 1: PendingGroupLevelApproval → PendingITVerification
+        if ($targetStatus === 'PendingITVerification') {
+            Log::info('Entering Group → IT Verification transition');
+
+            $payload = [
+                'OperationType'     => 'AccountingEntityUpdate',
+                'Action'            => 'Add',
+                'SubmittedDatetime' => now()->format('YmdHis'),
+                'SubmittedBy'       => $user->LoginID ?? $user->full_name ?? 'system',
+                'RequestNo'         => $entity->Code,
+                'Status'            => $targetStatus,
+                'Remark'            => $request->input('comment', 'Group level approved - pending IT verification'),
+            ];
+
+            Log::info('Sending status update payload to SP', ['payload' => $payload]);
+
+            try {
+                $response = $this->executeJsonEntityProcedure($payload);
+
+                Log::info('Status update SP response', [
+                    'status' => $response['Status'] ?? 'missing',
+                    'remarks' => $response['Remarks'] ?? [],
+                ]);
+
+                if ($response['Status'] !== 'Success') {
+                    $remark = $response['Remarks'][0]['Remark'] ?? 'Unknown error';
+                    Log::error('Status update failed', ['remark' => $remark]);
+                    throw new Exception('SP failed: ' . $remark);
+                }
+
+                Log::info('Group → IT transition completed successfully');
+                Alert::success('Success', 'Entity moved to Pending IT Verification')->showConfirmButton();
+                return redirect()->route('client-party.show', $id);
+            } catch (\Exception $e) {
+                Log::error('Group → IT transition failed', [
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                ]);
+                Alert::error('Error', $e->getMessage())->persistent(true, false);
+                return redirect()->back();
+            }
+        }
+
+        // STEP 2: PendingITVerification → Created (final creation)
+        if ($currentStatus !== 'PendingITVerification') {
+            Log::warning('Invalid final transition - not in PendingITVerification');
+            Alert::error('Error', 'Can only finalize from Pending IT Verification')->persistent(true, false);
+            return redirect()->back();
+        }
+
+        Log::info('Entering FINAL CREATION STEP (PendingITVerification → Created)');
+
+        $isAccounting = !empty($entity->LegalEntityType) || $entity->RequestforDebtor || $entity->RequestforVendor;
+        if (!$isAccounting) {
+            Log::warning('Entity is not accounting type - skipping creation');
+            Alert::error('Error', 'This is not an accounting entity')->persistent(true, false);
+            return redirect()->back();
+        }
+
+        $d365Results = [];
+
+        // Debtor creation (now using dynamic payload)
+        if ($entity->RequestforDebtor || stripos($entity->LegalEntityType, 'debtor') !== false) {
+            Log::info('Starting Debtor D365 creation (dynamic payload)');
+
+            try {
+                $debtorPayload = $this->buildD365Payload($entity, 'debtor');
+
+                Log::info('Debtor payload built successfully - sending to D365', [
+                    'payload_summary' => array_keys($debtorPayload),
+                    'no_series'       => $debtorPayload['NoSeries'] ?? 'MISSING',
+                    'office'          => $debtorPayload['office'] ?? 'unknown',
+                ]);
+
+                $d365Response = $this->createLegalEntityType('debtor', $debtorPayload);
+
+                Log::info('Debtor D365 API response', [
+                    'status'       => $d365Response['status'] ?? 'missing',
+                    'response_code' => $d365Response['responseCode'] ?? null,
+                    'full_response' => $d365Response,
+                ]);
+
+                if (!$d365Response['status'] || empty($d365Response['responseCode'])) {
+                    $error = $d365Response['error'] ?? $d365Response['responseDescription'] ?? 'Unknown D365 error';
+                    Log::error('Debtor D365 creation failed', ['error' => $error]);
+                    Alert::error('D365 Error (Debtor)', $error)->persistent(true, false);
+                    return redirect()->back();
+                }
+
+                $d365Results['debtor'] = $d365Response['responseCode'];
+                Log::info('Debtor successfully created in D365', ['code' => $d365Results['debtor']]);
+            } catch (\Exception $e) {
+                Log::error('Debtor D365 exception', [
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                ]);
+                Alert::error('D365 Exception (Debtor)', $e->getMessage())->persistent(true, false);
+                return redirect()->back();
+            }
+        } else {
+            Log::info('Debtor processing skipped (not requested)');
+        }
+
+        // Vendor creation (now using dynamic payload)
+        if ($entity->RequestforVendor || stripos($entity->LegalEntityType, 'vendor') !== false) {
+            Log::info('Starting Vendor D365 creation (dynamic payload)');
+
+            try {
+                $vendorPayload = $this->buildD365Payload($entity, 'vendor');
+
+                Log::info('Vendor payload built successfully - sending to D365', [
+                    'payload_summary' => array_keys($vendorPayload),
+                    'no_series'       => $vendorPayload['NoSeries'] ?? 'MISSING',
+                    'office'          => $vendorPayload['office'] ?? 'unknown',
+                ]);
+
+                $d365Response = $this->createLegalEntityType('vendor', $vendorPayload);
+
+                Log::info('Vendor D365 API response', [
+                    'status'       => $d365Response['status'] ?? 'missing',
+                    'response_code' => $d365Response['responseCode'] ?? null,
+                    'full_response' => $d365Response,
+                ]);
+
+                if (!$d365Response['status'] || empty($d365Response['responseCode'])) {
+                    $error = $d365Response['error'] ?? $d365Response['responseDescription'] ?? 'Unknown D365 error';
+                    Log::error('Vendor D365 creation failed', ['error' => $error]);
+                    Alert::error('D365 Error (Vendor)', $error)->persistent(true, false);
+                    return redirect()->back();
+                }
+
+                $d365Results['vendor'] = $d365Response['responseCode'];
+                Log::info('Vendor successfully created in D365', ['code' => $d365Results['vendor']]);
+            } catch (\Exception $e) {
+                Log::error('Vendor D365 exception', [
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                ]);
+                Alert::error('D365 Exception (Vendor)', $e->getMessage())->persistent(true, false);
+                return redirect()->back();
+            }
+        } else {
+            Log::info('Vendor processing skipped (not requested)');
+        }
+
+        // Final SP payload
         $payload = [
-            'OperationType'     => 'AccountingEntityUpdate',
+            'OperationType'     => 'AccountingEntityCreation',
             'Action'            => 'Add',
             'SubmittedDatetime' => now()->format('YmdHis'),
             'SubmittedBy'       => $user->LoginID ?? $user->full_name ?? 'system',
             'RequestNo'         => $entity->Code,
-            'Status'            => $targetStatus,
-            'Remark'            => $request->input('comment', 'Group level approved - pending IT verification'),
+            'Status'            => 'Create',
+            'Remark'            => $request->input('comment', 'Final creation from update'),
         ];
 
-        Log::info('Sending status update payload to SP', ['payload' => $payload]);
+        if (isset($d365Results['debtor'])) $payload['DebtorNo'] = $d365Results['debtor'];
+        if (isset($d365Results['vendor'])) $payload['VendorNo'] = $d365Results['vendor'];
+
+        Log::info('Final SP payload prepared', ['payload' => $payload]);
 
         try {
+            Log::info('Calling main SP (sp_EntityMain) for final creation');
             $response = $this->executeJsonEntityProcedure($payload);
 
-            Log::info('Status update SP response', [
-                'status' => $response['Status'] ?? 'missing',
+            Log::info('Main SP response received', [
+                'status'  => $response['Status'] ?? 'missing',
                 'remarks' => $response['Remarks'] ?? [],
             ]);
 
             if ($response['Status'] !== 'Success') {
                 $remark = $response['Remarks'][0]['Remark'] ?? 'Unknown error';
-                Log::error('Status update failed', ['remark' => $remark]);
+                Log::error('Main SP returned failure', ['remark' => $remark]);
                 throw new Exception('SP failed: ' . $remark);
             }
 
-            Log::info('Group → IT transition completed successfully');
-            Alert::success('Success', 'Entity moved to Pending IT Verification')->showConfirmButton();
-            return redirect()->route('client-party.show', $id);
+            Log::info('FINAL CREATION SUCCESS - entity created');
+            Alert::success('Success', 'Entity created successfully')->showConfirmButton();
+            return redirect()->route('client-party.index')->with('entity_type', $type ?? 'operational');
         } catch (\Exception $e) {
-            Log::error('Group → IT transition failed', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
+            Log::error('Final creation FAILED - exception caught', [
+                'error_message' => $e->getMessage(),
+                'file'          => $e->getFile(),
+                'line'          => $e->getLine(),
+                'trace'         => $e->getTraceAsString(),
             ]);
             Alert::error('Error', $e->getMessage())->persistent(true, false);
             return redirect()->back();
         }
     }
-
-    // STEP 2: PendingITVerification → Created (final creation)
-    if ($currentStatus !== 'PendingITVerification') {
-        Log::warning('Invalid final transition - not in PendingITVerification');
-        Alert::error('Error', 'Can only finalize from Pending IT Verification')->persistent(true, false);
-        return redirect()->back();
-    }
-
-    Log::info('Entering FINAL CREATION STEP (PendingITVerification → Created)');
-
-    $isAccounting = !empty($entity->LegalEntityType) || $entity->RequestforDebtor || $entity->RequestforVendor;
-    if (!$isAccounting) {
-        Log::warning('Entity is not accounting type - skipping creation');
-        Alert::error('Error', 'This is not an accounting entity')->persistent(true, false);
-        return redirect()->back();
-    }
-
-    $d365Results = [];
-
-    // Debtor creation (now using dynamic payload)
-    if ($entity->RequestforDebtor || stripos($entity->LegalEntityType, 'debtor') !== false) {
-        Log::info('Starting Debtor D365 creation (dynamic payload)');
-
-        try {
-            $debtorPayload = $this->buildD365Payload($entity, 'debtor');
-
-            Log::info('Debtor payload built successfully - sending to D365', [
-                'payload_summary' => array_keys($debtorPayload),
-                'no_series'       => $debtorPayload['NoSeries'] ?? 'MISSING',
-                'office'          => $debtorPayload['office'] ?? 'unknown',
-            ]);
-
-            $d365Response = $this->createLegalEntityType('debtor', $debtorPayload);
-
-            Log::info('Debtor D365 API response', [
-                'status'       => $d365Response['status'] ?? 'missing',
-                'response_code' => $d365Response['responseCode'] ?? null,
-                'full_response' => $d365Response,
-            ]);
-
-            if (!$d365Response['status'] || empty($d365Response['responseCode'])) {
-                $error = $d365Response['error'] ?? $d365Response['responseDescription'] ?? 'Unknown D365 error';
-                Log::error('Debtor D365 creation failed', ['error' => $error]);
-                Alert::error('D365 Error (Debtor)', $error)->persistent(true, false);
-                return redirect()->back();
-            }
-
-            $d365Results['debtor'] = $d365Response['responseCode'];
-            Log::info('Debtor successfully created in D365', ['code' => $d365Results['debtor']]);
-        } catch (\Exception $e) {
-            Log::error('Debtor D365 exception', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
-            Alert::error('D365 Exception (Debtor)', $e->getMessage())->persistent(true, false);
-            return redirect()->back();
-        }
-    } else {
-        Log::info('Debtor processing skipped (not requested)');
-    }
-
-    // Vendor creation (now using dynamic payload)
-    if ($entity->RequestforVendor || stripos($entity->LegalEntityType, 'vendor') !== false) {
-        Log::info('Starting Vendor D365 creation (dynamic payload)');
-
-        try {
-            $vendorPayload = $this->buildD365Payload($entity, 'vendor');
-
-            Log::info('Vendor payload built successfully - sending to D365', [
-                'payload_summary' => array_keys($vendorPayload),
-                'no_series'       => $vendorPayload['NoSeries'] ?? 'MISSING',
-                'office'          => $vendorPayload['office'] ?? 'unknown',
-            ]);
-
-            $d365Response = $this->createLegalEntityType('vendor', $vendorPayload);
-
-            Log::info('Vendor D365 API response', [
-                'status'       => $d365Response['status'] ?? 'missing',
-                'response_code' => $d365Response['responseCode'] ?? null,
-                'full_response' => $d365Response,
-            ]);
-
-            if (!$d365Response['status'] || empty($d365Response['responseCode'])) {
-                $error = $d365Response['error'] ?? $d365Response['responseDescription'] ?? 'Unknown D365 error';
-                Log::error('Vendor D365 creation failed', ['error' => $error]);
-                Alert::error('D365 Error (Vendor)', $error)->persistent(true, false);
-                return redirect()->back();
-            }
-
-            $d365Results['vendor'] = $d365Response['responseCode'];
-            Log::info('Vendor successfully created in D365', ['code' => $d365Results['vendor']]);
-        } catch (\Exception $e) {
-            Log::error('Vendor D365 exception', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
-            Alert::error('D365 Exception (Vendor)', $e->getMessage())->persistent(true, false);
-            return redirect()->back();
-        }
-    } else {
-        Log::info('Vendor processing skipped (not requested)');
-    }
-
-    // Final SP payload
-    $payload = [
-        'OperationType'     => 'AccountingEntityCreation',
-        'Action'            => 'Add',
-        'SubmittedDatetime' => now()->format('YmdHis'),
-        'SubmittedBy'       => $user->LoginID ?? $user->full_name ?? 'system',
-        'RequestNo'         => $entity->Code,
-        'Status'            => 'Create',
-        'Remark'            => $request->input('comment', 'Final creation from update'),
-    ];
-
-    if (isset($d365Results['debtor'])) $payload['DebtorNo'] = $d365Results['debtor'];
-    if (isset($d365Results['vendor'])) $payload['VendorNo'] = $d365Results['vendor'];
-
-    Log::info('Final SP payload prepared', ['payload' => $payload]);
-
-    try {
-        Log::info('Calling main SP (sp_EntityMain) for final creation');
-        $response = $this->executeJsonEntityProcedure($payload);
-
-        Log::info('Main SP response received', [
-            'status'  => $response['Status'] ?? 'missing',
-            'remarks' => $response['Remarks'] ?? [],
-        ]);
-
-        if ($response['Status'] !== 'Success') {
-            $remark = $response['Remarks'][0]['Remark'] ?? 'Unknown error';
-            Log::error('Main SP returned failure', ['remark' => $remark]);
-            throw new Exception('SP failed: ' . $remark);
-        }
-
-        Log::info('FINAL CREATION SUCCESS - entity created');
-        Alert::success('Success', 'Entity created successfully')->showConfirmButton();
-        return redirect()->route('client-party.index')->with('entity_type', $type ?? 'operational');
-    } catch (\Exception $e) {
-        Log::error('Final creation FAILED - exception caught', [
-            'error_message' => $e->getMessage(),
-            'file'          => $e->getFile(),
-            'line'          => $e->getLine(),
-            'trace'         => $e->getTraceAsString(),
-        ]);
-        Alert::error('Error', $e->getMessage())->persistent(true, false);
-        return redirect()->back();
-    }
-}
 
 
 
@@ -1701,64 +1698,64 @@ public function getCurrencyList($var = null)
      * @param  string  $type  ('debtor' or 'vendor')
      * @return array
      */
-   private function buildD365Payload($entity, $type)
-{
-    // Get office code
-    $officeCode = $entity->OfficeCode ?? 'KE';
+    private function buildD365Payload($entity, $type)
+    {
+        // Get office code
+        $officeCode = $entity->OfficeCode ?? 'KE';
 
-    // Get number series from database
-    $noSeries = $this->getOfficeNumberSeries(
-        $officeCode,
-        $type === 'debtor' ? 'Debtor' : 'Vendor'
-    );
+        // Get number series from database
+        $noSeries = $this->getOfficeNumberSeries(
+            $officeCode,
+            $type === 'debtor' ? 'Debtor' : 'Vendor'
+        );
 
-    if ($noSeries === null) {
-        throw new \Exception('No series number configured for '.($type === 'debtor' ? 'Debtor' : 'Vendor').' in office '.$officeCode);
+        if ($noSeries === null) {
+            throw new \Exception('No series number configured for ' . ($type === 'debtor' ? 'Debtor' : 'Vendor') . ' in office ' . $officeCode);
+        }
+
+        // Determine party type based on environment
+        $partyType = $type === 'debtor' ? 'Customer' : 'Vendor';
+        if (config('app.env') !== 'production') {
+            $partyType = 'TST'; // Test party type for non-production
+        }
+
+        return [
+            'office' => ($officeCode === 'UPS') ? 'KE' : $officeCode,
+            'partyType' => $partyType,
+            'no' => '',
+            'name' => $entity->Name ?? 'Unknown',
+            'postingGroup' => $type === 'debtor'
+                ? ($entity->DebtorType ?? 'CASHCUSTOM')
+                : ($entity->VendorType ?? 'DOMESTIC'),
+            'vatRegistrationNo' => $entity->LicenceTypeValue ?? '-',
+            'postCode' => $entity->Address_Pin ?? '',
+            'address' => $entity->Address_Line1 ?? 'Nairobi',
+            'address2' => $entity->Address_Line2 ?? '',
+            'city' => $entity->Address_City ?? '',
+            'ClientID' => $entity->ClientID,
+            'ClientCode' => $entity->ClientCode,
+            'countryCode' => $entity->Address_CountryCode ?? 'KE',
+            'emailAddress' => $entity->Cont_Bch_Email ?? '',
+            'phoneNo' => $entity->Cont_Bch_PhoneNumbers ?? '',
+            'phoneNo2' => '',
+            'billingCurrency' => $entity->BillingCurrencyCode ?? 'KES',
+            'paymentTermsCode' => (string) ($entity->CreditDays ?? '0'),
+            // ────────────────────────────────────────────────
+            //     ONLY THIS LINE CHANGED
+            'creditLimitLCY' => max(1, intval($entity->CreditLimit ?? 0)),
+            // ────────────────────────────────────────────────
+            'contactPersonName' => trim(
+                ($entity->Cont_Bch_PersonName_FirstName ?? '') . ' ' .
+                    ($entity->Cont_Bch_PersonName_LastName ?? '')
+            ),
+            'contactPersonEmailAddress' => $entity->Cont_Bch_Email ?? '',
+            'contactPersonPhoneNo' => $entity->Cont_Bch_PhoneNumbers ?? '',
+            'contactPersonPhoneNo2' => '',
+            'relatedParty' => '',
+            'blocked' => false,
+            'NoSeries' => $noSeries,
+        ];
     }
-
-    // Determine party type based on environment
-    $partyType = $type === 'debtor' ? 'Customer' : 'Vendor';
-    if (config('app.env') !== 'production') {
-        $partyType = 'TST'; // Test party type for non-production
-    }
-
-    return [
-        'office' => ($officeCode === 'UPS') ? 'KE' : $officeCode,
-        'partyType' => $partyType,
-        'no' => '',
-        'name' => $entity->Name ?? 'Unknown',
-        'postingGroup' => $type === 'debtor'
-            ? ($entity->DebtorType ?? 'CASHCUSTOM')
-            : ($entity->VendorType ?? 'DOMESTIC'),
-        'vatRegistrationNo' => $entity->LicenceTypeValue ?? '-',
-        'postCode' => $entity->Address_Pin ?? '',
-        'address' => $entity->Address_Line1 ?? 'Nairobi',
-        'address2' => $entity->Address_Line2 ?? '',
-        'city' => $entity->Address_City ?? '',
-        'ClientID' => $entity->ClientID,
-        'ClientCode' => $entity->ClientCode,
-        'countryCode' => $entity->Address_CountryCode ?? 'KE',
-        'emailAddress' => $entity->Cont_Bch_Email ?? '',
-        'phoneNo' => $entity->Cont_Bch_PhoneNumbers ?? '',
-        'phoneNo2' => '',
-        'billingCurrency' => $entity->BillingCurrencyCode ?? 'KES',
-        'paymentTermsCode' => (string) ($entity->CreditDays ?? '0'),
-        // ────────────────────────────────────────────────
-        //     ONLY THIS LINE CHANGED
-        'creditLimitLCY' => max(1, intval($entity->CreditLimit ?? 0)),
-        // ────────────────────────────────────────────────
-        'contactPersonName' => trim(
-            ($entity->Cont_Bch_PersonName_FirstName ?? '').' '.
-            ($entity->Cont_Bch_PersonName_LastName ?? '')
-        ),
-        'contactPersonEmailAddress' => $entity->Cont_Bch_Email ?? '',
-        'contactPersonPhoneNo' => $entity->Cont_Bch_PhoneNumbers ?? '',
-        'contactPersonPhoneNo2' => '',
-        'relatedParty' => '',
-        'blocked' => false,
-        'NoSeries' => $noSeries,
-    ];
-}
 
     public function CreateClientPartySCM(HttpRequest $request)
     {
@@ -1780,7 +1777,7 @@ public function getCurrencyList($var = null)
                 'success' => false,
                 'data' => [
                     'Status' => 'Failed',
-                    'Remark' => 'Entity not found with ID: '.$requestID,
+                    'Remark' => 'Entity not found with ID: ' . $requestID,
                 ],
             ];
         }
@@ -1800,17 +1797,17 @@ public function getCurrencyList($var = null)
             $results = DB::select(
                 'SET NOCOUNT ON;
              DECLARE @Status VARCHAR(30), @Remark VARCHAR(1000), @ClientCode VARCHAR(60),
-@ClientIDUNIQUEIDENTIFIER, @OtherCode VARCHAR(60), @OtherID UNIQUEIDENTIFIER;
+                     @ClientID UNIQUEIDENTIFIER, @OtherCode VARCHAR(60), @OtherID UNIQUEIDENTIFIER;
              EXEC [dbo].[Sp_OperationEntityCreation]
-@RequestID= ?,
-@Status= @Status OUTPUT,
-@Remark= @Remark OUTPUT,
-@ClientCode= @ClientCode OUTPUT,
-@ClientID= @ClientID OUTPUT,
-@OtherCode= @OtherCode OUTPUT,
-@OtherID= @OtherID OUTPUT;
+                 @RequestID = ?,
+                 @Status = @Status OUTPUT,
+                 @Remark = @Remark OUTPUT,
+                 @ClientCode = @ClientCode OUTPUT,
+                 @ClientID = @ClientID OUTPUT,
+                 @OtherCode = @OtherCode OUTPUT,
+                 @OtherID = @OtherID OUTPUT;
              SELECT @Status AS Status, @Remark AS Remark, @ClientCode AS ClientCode,
-@ClientIDASClientID, @OtherCode AS OtherCode, @OtherID AS OtherID',
+                    @ClientID AS ClientID, @OtherCode AS OtherCode, @OtherID AS OtherID',
                 [$requestID]
             );
 
@@ -1871,7 +1868,7 @@ public function getCurrencyList($var = null)
                 'OperatioEntityType' => $entity->OperatioEntityType,
             ]);
 
-            return ['success' => false, 'error' => 'Entity Creation Failed: '.$e->getMessage()];
+            return ['success' => false, 'error' => 'Entity Creation Failed: ' . $e->getMessage()];
         }
 
         Log::info('═══════════════════════════════════════════════════════════════════════');
@@ -1942,10 +1939,9 @@ public function getCurrencyList($var = null)
 
             return response()->json([
                 'success' => true,
-                'message' => 'Entity rejected at '.$level,
+                'message' => 'Entity rejected at ' . $level,
                 'remarks' => $response['Remarks'] ?? [],
             ]);
-
         } catch (\Exception $e) {
             \Log::error('Reject via JSON failed', [
                 'id' => $id,
@@ -1994,10 +1990,16 @@ public function getCurrencyList($var = null)
 
         // Detect accounting entity
         $accountingIndicators = [
-            'LegalEntityType', 'LicenceTypeCode', 'LicenceTypeValue',
-            'CreditDays', 'CreditLimit', 'CreditLimitCurrencyCode',
-            'BillingCurrencyCode', 'BaseCurrencyCode',
-            'DebtorType', 'VendorType',
+            'LegalEntityType',
+            'LicenceTypeCode',
+            'LicenceTypeValue',
+            'CreditDays',
+            'CreditLimit',
+            'CreditLimitCurrencyCode',
+            'BillingCurrencyCode',
+            'BaseCurrencyCode',
+            'DebtorType',
+            'VendorType',
         ];
 
         $hasAccountingFields = false;
@@ -2036,7 +2038,7 @@ public function getCurrencyList($var = null)
                 if (! in_array($statusToSet, $allowedUpdate)) {
                     return response()->json([
                         'success' => false,
-                        'message' => 'Invalid status for update. Allowed: '.implode(', ', $allowedUpdate),
+                        'message' => 'Invalid status for update. Allowed: ' . implode(', ', $allowedUpdate),
                     ], 422);
                 }
             } else {
@@ -2054,7 +2056,7 @@ public function getCurrencyList($var = null)
             'SubmittedBy' => $user->LoginID ?? $user->full_name ?? 'system',
             'RequestNo' => $entity->Code,
             'Status' => $statusToSet,
-            'Remark' => $request->input('comment', 'Approved by '.($user->full_name ?? 'system')),
+            'Remark' => $request->input('comment', 'Approved by ' . ($user->full_name ?? 'system')),
         ];
 
         // For FINAL accounting creation: call D365 first to get DebtorNo / VendorNo
@@ -2073,7 +2075,7 @@ public function getCurrencyList($var = null)
             if (! $scmResult['success'] || $scmResult['data']['Status'] !== 'Success') {
                 return response()->json([
                     'success' => false,
-                    'message' => 'D365 creation failed: '.($scmResult['data']['Remark'] ?? $scmResult['error'] ?? 'Unknown error'),
+                    'message' => 'D365 creation failed: ' . ($scmResult['data']['Remark'] ?? $scmResult['error'] ?? 'Unknown error'),
                 ], 500);
             }
 
@@ -2110,7 +2112,7 @@ public function getCurrencyList($var = null)
 
             $remarks = collect($response['Remarks'] ?? [])
                 ->flatten()
-                ->map(fn ($v) => is_array($v) ? json_encode($v, JSON_UNESCAPED_SLASHES) : (string) $v)
+                ->map(fn($v) => is_array($v) ? json_encode($v, JSON_UNESCAPED_SLASHES) : (string) $v)
                 ->filter()
                 ->implode(' • ') ?: 'Operation completed';
 
@@ -2122,7 +2124,6 @@ public function getCurrencyList($var = null)
                 'message' => $success ? $remarks : ($remarks ?: 'Operation completed with warnings'),
                 'remarks' => $response['Remarks'] ?? [],
             ]);
-
         } catch (\Exception $e) {
             \Log::error('Finalization failed', [
                 'entity_id' => $id,
@@ -2198,16 +2199,16 @@ public function getCurrencyList($var = null)
         // Calculate counts for info boxes
         $counts = [
             'not_submitted' => ClientParty::where('Status', 'Not Submitted')
-                ->when(! $user->can('approve-all-entity-request'), fn ($q) => $q->where('OfficeCode', $user->OfficeCode))
+                ->when(! $user->can('approve-all-entity-request'), fn($q) => $q->where('OfficeCode', $user->OfficeCode))
                 ->count(),
             'pending_country' => ClientParty::where('Status', 'PendingCountryLevelApproval')
-                ->when(! $user->can('approve-all-entity-request'), fn ($q) => $q->where('OfficeCode', $user->OfficeCode))
+                ->when(! $user->can('approve-all-entity-request'), fn($q) => $q->where('OfficeCode', $user->OfficeCode))
                 ->count(),
             'pending_group' => ClientParty::where('Status', 'PendingGroupLevelApproval')
-                ->when(! $user->can('approve-all-entity-request'), fn ($q) => $q->where('OfficeCode', $user->OfficeCode))
+                ->when(! $user->can('approve-all-entity-request'), fn($q) => $q->where('OfficeCode', $user->OfficeCode))
                 ->count(),
             'submitted' => ClientParty::where('Status', 'Submitted')
-                ->when(! $user->can('approve-all-entity-request'), fn ($q) => $q->where('OfficeCode', $user->OfficeCode))
+                ->when(! $user->can('approve-all-entity-request'), fn($q) => $q->where('OfficeCode', $user->OfficeCode))
                 ->count(),
             'all_pending' => ClientParty::whereIn('Status', [
                 'Not Submitted',
@@ -2215,7 +2216,7 @@ public function getCurrencyList($var = null)
                 'PendingCountryLevelApproval',
                 'PendingGroupLevelApproval',
             ])
-                ->when(! $user->can('approve-all-entity-request'), fn ($q) => $q->where('OfficeCode', $user->OfficeCode))
+                ->when(! $user->can('approve-all-entity-request'), fn($q) => $q->where('OfficeCode', $user->OfficeCode))
                 ->count(),
         ];
 
@@ -2264,10 +2265,10 @@ public function getCurrencyList($var = null)
             $results = DB::select(
                 'SET NOCOUNT ON;
                  DECLARE @Status AS VARCHAR(20),
-@RemarkASVARCHAR(100),
-@IsDuplicateASBIT;
+                         @Remark AS VARCHAR(100),
+                         @IsDuplicate AS BIT;
                  EXEC dbo.sp_LicenseNoCheck @officeCode = ?, @PartyType = ?, @LicenseNo = ?,
-@Status= @Status OUTPUT, @Remark = @Remark OUTPUT, @IsDuplicate = @IsDuplicate OUTPUT;
+                      @Status = @Status OUTPUT, @Remark = @Remark OUTPUT, @IsDuplicate = @IsDuplicate OUTPUT;
                  SELECT @Status AS Status, @Remark AS Remark, @IsDuplicate AS IsDuplicate',
                 [$officeCode, $partyType, $licenseNo]
             );
@@ -2292,7 +2293,7 @@ public function getCurrencyList($var = null)
                 'isDuplicate' => $result->IsDuplicate,
             ]);
         } catch (\Illuminate\Database\QueryException $e) {
-            Log::error('sp_LicenseNoCheck Error: '.$e->getMessage(), [
+            Log::error('sp_LicenseNoCheck Error: ' . $e->getMessage(), [
                 'partyType' => $partyType,
                 'licenseNo' => $licenseNo,
                 'officeCode' => $officeCode,
@@ -2318,14 +2319,14 @@ public function getCurrencyList($var = null)
 
             // Handle string-based error response
             if ($results && is_array($results) && count($results) > 0 && is_string($results[0])) {
-                \Log::error('sp_EntitySearchList failed for entityType: '.$entityType.', Error: '.$results[0]);
+                \Log::error('sp_EntitySearchList failed for entityType: ' . $entityType . ', Error: ' . $results[0]);
 
                 return response()->json(['error' => $results[0]], 500);
             }
 
             // Handle structured error response
             if ($results && count($results) > 0 && isset($results[0]->Name) && strpos($results[0]->Name, 'Failed') === 0) {
-                \Log::error('sp_EntitySearchList failed for entityType: '.$entityType.', Error: '.$results[0]->Name);
+                \Log::error('sp_EntitySearchList failed for entityType: ' . $entityType . ', Error: ' . $results[0]->Name);
 
                 return response()->json(['error' => $results[0]->Name], 500);
             }
@@ -2341,16 +2342,16 @@ public function getCurrencyList($var = null)
 
             // Handle empty result set
             if (empty($companies)) {
-                \Log::warning('sp_EntitySearchList returned no results for entityType: '.$entityType);
+                \Log::warning('sp_EntitySearchList returned no results for entityType: ' . $entityType);
 
                 return response()->json([]);
             }
 
             return response()->json($companies);
         } catch (QueryException $e) {
-            \Log::error('Error executing sp_EntitySearchList for entityType: '.($entityType ?? 'unknown').', SQL Error: '.$e->getMessage());
+            \Log::error('Error executing sp_EntitySearchList for entityType: ' . ($entityType ?? 'unknown') . ', SQL Error: ' . $e->getMessage());
 
-            return response()->json(['error' => 'Failed to fetch companies: '.$e->getMessage()], 500);
+            return response()->json(['error' => 'Failed to fetch companies: ' . $e->getMessage()], 500);
         }
     }
 
@@ -2371,14 +2372,14 @@ public function getCurrencyList($var = null)
 
             // Handle string-based error
             if ($results && is_array($results) && count($results) > 0 && is_string($results[0])) {
-                \Log::error('tityAddressDetails failed for entityType: '.$entityType.', companyId: '.$companyId.', Error: '.$results[0]);
+                \Log::error('tityAddressDetails failed for entityType: ' . $entityType . ', companyId: ' . $companyId . ', Error: ' . $results[0]);
 
                 return response()->json(['error' => $results[0]], 500);
             }
 
             // Handle structured error
             if ($results && count($results) > 0 && isset($results[0]->Name) && strpos($results[0]->Name, 'Failed') === 0) {
-                \Log::error('sp_EntityAddressDetails failed for entityType: '.$entityType.', companyId: '.$companyId.', Error: '.$results[0]->Name);
+                \Log::error('sp_EntityAddressDetails failed for entityType: ' . $entityType . ', companyId: ' . $companyId . ', Error: ' . $results[0]->Name);
 
                 return response()->json(['error' => $results[0]->Name], 500);
             }
@@ -2399,7 +2400,7 @@ public function getCurrencyList($var = null)
                         );
                         $countryId = $country ? $country->CountryID : null;
                     } catch (QueryException $e) {
-                        \Log::warning('Failed to fetch CountryID for code: '.$countryCode.', Error: '.$e->getMessage());
+                        \Log::warning('Failed to fetch CountryID for code: ' . $countryCode . ', Error: ' . $e->getMessage());
                         $countryId = null;
                     }
                 }
@@ -2455,7 +2456,7 @@ public function getCurrencyList($var = null)
 
             // Return empty if no results
             if (empty($details)) {
-                \Log::warning('sp_EntityAddressDetails returned no results for entityType: '.$entityType.', companyId: '.$companyId);
+                \Log::warning('sp_EntityAddressDetails returned no results for entityType: ' . $entityType . ', companyId: ' . $companyId);
 
                 return response()->json([]);
             }
@@ -2467,9 +2468,9 @@ public function getCurrencyList($var = null)
 
             return response()->json($primaryDetail);
         } catch (QueryException $e) {
-            \Log::error('Error executing sp_EntityAddressDetails for entityType: '.($entityType ?? 'unknown').', companyId: '.($companyId ?? 'unknown').', SQL Error: '.$e->getMessage());
+            \Log::error('Error executing sp_EntityAddressDetails for entityType: ' . ($entityType ?? 'unknown') . ', companyId: ' . ($companyId ?? 'unknown') . ', SQL Error: ' . $e->getMessage());
 
-            return response()->json(['error' => 'Failed to fetch company details: '.$e->getMessage()], 500);
+            return response()->json(['error' => 'Failed to fetch company details: ' . $e->getMessage()], 500);
         }
     }
 
@@ -2491,21 +2492,21 @@ public function getCurrencyList($var = null)
                     'data' => (array) $companyDetails[0],
                 ]);
             } else {
-                Log::warning('No valid data found in sp_EntityAddressDetails for companyId: '.$companyId);
+                Log::warning('No valid data found in sp_EntityAddressDetails for companyId: ' . $companyId);
 
                 return response()->json(['success' => false]);
             }
         } catch (\Illuminate\Database\QueryException $e) {
-            Log::error('Failed to query sp_EntityAddressDetails for companyId: '.$companyId.', Error: '.$e->getMessage());
+            Log::error('Failed to query sp_EntityAddressDetails for companyId: ' . $companyId . ', Error: ' . $e->getMessage());
 
             return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
         }
     }
 
     /**
- * Preview/Download attachment file
- *
- * @param  string  $attachmentId
- * @return \Illuminate\Http\Response
- */
+     * Preview/Download attachment file
+     *
+     * @param  string  $attachmentId
+     * @return \Illuminate\Http\Response
+     */
 }
