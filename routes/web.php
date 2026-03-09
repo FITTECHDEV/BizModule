@@ -847,6 +847,15 @@ Route::middleware(['auth', 'can:approve-all-entity-request'])->group(function ()
     Route::post('/quotation/customer/save', [App\Http\Controllers\QuotationController::class, 'saveCustomerDetails'])
         ->name('quotation.customer.save');
 
+    Route::post('/quotation/shipment/save', [App\Http\Controllers\QuotationController::class, 'saveShipmentDetails'])
+        ->name('quotation.shipment.save');
+
+    Route::get('/quotation/containers', [App\Http\Controllers\QuotationController::class, 'getContainers'])
+        ->name('quotation.containers');
+
+    Route::post('/quotation/cargo/save', [App\Http\Controllers\QuotationController::class, 'saveCargoDetails'])
+        ->name('quotation.cargo.save');
+
     // ============================================
     // QUOTATION — WILDCARD ROUTES (must be last)
     // These use {id} and will match ANY segment — keep them after all
@@ -873,9 +882,6 @@ Route::middleware(['auth', 'can:approve-all-entity-request'])->group(function ()
     // NOTE: /quotation/{id} must be the very last GET wildcard — it matches everything.
     Route::get('/quotation/{id}', [App\Http\Controllers\QuotationController::class, 'view'])
         ->name('quotation.view');
-
-    Route::post('/quotation/shipment/save', [App\Http\Controllers\QuotationController::class, 'saveShipmentDetails'])
-        ->name('quotation.shipment.save');
 
     // ============================================
     // CRM SYNC

@@ -196,15 +196,46 @@
                         <div class="form-group row">
                             <label class="col-sm-5 col-form-label">Cargo Volume</label>
                             <div class="col-sm-7">
-                                <input type="text" class="form-control form-control-sm"
-                                    value="{{ $quotation->cargovolume ?? 'N/A' }}" readonly>
+                                <input type="text" class="form-control form-control-sm" id="cargoVolumeInput"
+                                    value="{{ $quotation->cargovolume ?? '' }}" readonly>
                             </div>
                         </div>
                         <div class="form-group row mb-0">
-                            <label class="col-sm-5 col-form-label">Container List</label>
+                            <label class="col-sm-5 col-form-label">Containers</label>
                             <div class="col-sm-7">
-                                <input type="text" class="form-control form-control-sm"
-                                    value="{{ $quotation->containerlist ?? 'N/A' }}" readonly>
+                                <table class="table table-sm table-bordered mb-1" id="containerListTable">
+                                    <thead>
+                                        <tr>
+                                            <th>Container Type</th>
+                                            <th style="width:90px;">Quantity</th>
+                                            <th style="width:36px;" id="containerActionCol" class="d-none"></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="containerListBody">
+                                        <tr>
+                                            <td colspan="3" class="text-muted text-center">Loading...</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                                <button type="button" class="btn btn-link btn-sm p-0 d-none" id="addContainerRowBtn">
+                                    <i class="fas fa-plus mr-1"></i> Add a line
+                                </button>
+                            </div>
+                        </div>
+
+                        {{-- Edit / Save / Cancel --}}
+                        <div class="row mt-3 pt-2" style="border-top: 1px solid #dee2e6;">
+                            <div class="col-md-12 text-right">
+                                <button type="button" class="btn btn-warning btn-sm" id="editCargoDetailsBtn">
+                                    <i class="fas fa-edit mr-1"></i> Edit
+                                </button>
+                                <button type="button" class="btn btn-primary btn-sm d-none" id="saveCargoDetailsBtn">
+                                    <i class="fas fa-save mr-1"></i> Save
+                                </button>
+                                <button type="button" class="btn btn-secondary btn-sm d-none"
+                                    id="cancelCargoDetailsBtn">
+                                    <i class="fas fa-times mr-1"></i> Cancel
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -691,8 +722,8 @@
         <!-- END ROW -->
 
         <!-- ============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     MODALS
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     ============================================ -->
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         MODALS
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         ============================================ -->
 
         {{-- REVENUE MODAL --}}
         <div class="modal fade" id="addRevenueModal" tabindex="-1" role="dialog"
@@ -1254,8 +1285,8 @@
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.min.css">
     <style>
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        MODAL STYLING — matched to FitExpress UI
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            MODAL STYLING — matched to FitExpress UI
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            ============================================= */
 
         .modal-header {
             background-color: #fff !important;
@@ -1698,9 +1729,9 @@
         }
 
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               CREATE BOOKING MODAL — Specific overrides
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               to match the "Creation of Booking" design
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   CREATE BOOKING MODAL — Specific overrides
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   to match the "Creation of Booking" design
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   ============================================= */
 
         #createBookingModal .modal-title {
             color: #003580 !important;
@@ -4953,6 +4984,265 @@
                     </div>
                 `);
             }
+
+            // ============================================
+            // CARGO DETAILS — CONTAINER LIST
+            // Loaded from Quote_Quotation_EquipmentDetails via getContainers.
+            // Saved via sp_Quote_CargoDetailsUpdate.
+            // Container string format: "20GPX2,40HCX1"
+            // SP typo "Qunatity" is handled in the controller — JS just passes the string.
+            // ============================================
+            const QUOTE_NO = '{{ $quotation->QuoteNo ?? '' }}';
+            let originalCargoVolume = '';
+            let originalContainers = []; // [{type, qty}] snapshot for Cancel
+
+            function serializeContainerList() {
+                const rows = [];
+                $('#containerListBody tr[data-container-row]').each(function() {
+                    const type = $(this).find('.container-type-select').val();
+                    const qty = parseInt($(this).find('.container-qty-input').val(), 10) || 0;
+                    if (type && qty > 0) rows.push(type + 'X' + qty);
+                });
+                return rows.join(',');
+            }
+
+            function buildContainerRow(type, qty, editable) {
+                const $row = $('<tr data-container-row="1">');
+
+                // Container type cell
+                const $typeCell = $('<td>');
+                if (editable) {
+                    const $select = $('<select class="form-control form-control-sm container-type-select">');
+                    $select.append('<option value="">-- Select --</option>');
+
+                    // Reuse options from equipmentTypeSelect if already populated
+                    const $source = $('#equipmentTypeSelect');
+                    if ($source.find('option[value]').filter(function() {
+                            return $(this).val();
+                        }).length > 0) {
+                        $source.find('option').each(function() {
+                            if (!$(this).val()) return;
+                            $select.append(
+                                `<option value="${$(this).val()}" ${$(this).val() === type ? 'selected' : ''}>${$(this).text()}</option>`
+                            );
+                        });
+                        $typeCell.append($select);
+                    } else {
+                        // Fetch from endpoint if not yet populated
+                        $.ajax({
+                            url: '{{ route('quotation.equipment-types') }}',
+                            type: 'GET',
+                            success: function(response) {
+                                if (response.success) {
+                                    response.data.forEach(function(item) {
+                                        $select.append(
+                                            `<option value="${item.Code}" ${item.Code === type ? 'selected' : ''}>${item.Code}</option>`
+                                        );
+                                    });
+                                }
+                            }
+                        });
+                        $typeCell.append($select);
+                    }
+                } else {
+                    $typeCell.text(type || '—');
+                }
+
+                // Quantity cell
+                const $qtyCell = $('<td>');
+                if (editable) {
+                    $qtyCell.append(
+                        `<input type="number" class="form-control form-control-sm container-qty-input"
+                value="${qty}" min="1" style="width:75px;">`
+                    );
+                } else {
+                    $qtyCell.text(qty);
+                }
+
+                // Action cell
+                const $actionCell = $('<td class="text-center">');
+                if (editable) {
+                    $actionCell.append(
+                        `<button type="button" class="btn btn-danger btn-sm remove-container-row">
+                <i class="fas fa-times"></i>
+            </button>`
+                    );
+                }
+
+                return $row.append($typeCell, $qtyCell, $actionCell);
+            }
+
+            function renderContainerRows(containers, editable) {
+                const $tbody = $('#containerListBody');
+                $tbody.empty();
+
+                // Show/hide action column header
+                if (editable) {
+                    $('#containerActionCol').removeClass('d-none');
+                } else {
+                    $('#containerActionCol').addClass('d-none');
+                }
+
+                if (!containers.length) {
+                    const msg = editable ? 'No containers added — click "Add a line" below' : 'No containers';
+                    $tbody.append(`<tr><td colspan="3" class="text-muted text-center">${msg}</td></tr>`);
+                    return;
+                }
+
+                containers.forEach(function(c) {
+                    $tbody.append(buildContainerRow(c.type, c.qty, editable));
+                });
+            }
+
+            function loadContainers() {
+                $.ajax({
+                    url: '{{ route('quotation.containers') }}',
+                    type: 'GET',
+                    data: {
+                        quote_no: QUOTE_NO
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            const containers = (response.containers || []).map(function(c) {
+                                return {
+                                    type: c.EquipmentType,
+                                    qty: c.Quantity
+                                };
+                            });
+                            originalContainers = containers;
+                            renderContainerRows(containers, false);
+                        } else {
+                            $('#containerListBody').html(
+                                '<tr><td colspan="3" class="text-danger text-center">Failed to load</td></tr>'
+                            );
+                        }
+                    },
+                    error: function() {
+                        $('#containerListBody').html(
+                            '<tr><td colspan="3" class="text-danger text-center">Error loading containers</td></tr>'
+                        );
+                    }
+                });
+            }
+
+            // Remove row
+            $(document).on('click', '.remove-container-row', function() {
+                $(this).closest('tr').remove();
+            });
+
+            // Add a line
+            $('#addContainerRowBtn').on('click', function() {
+                // Remove the "no containers" placeholder row if present
+                $('#containerListBody tr:not([data-container-row])').remove();
+                $('#containerListBody').append(buildContainerRow('', 1, true));
+            });
+
+            // Edit
+            $('#editCargoDetailsBtn').on('click', function() {
+                originalCargoVolume = $('#cargoVolumeInput').val();
+                originalContainers = [];
+                $('#containerListBody tr[data-container-row]').each(function() {
+                    originalContainers.push({
+                        type: $(this).find('.container-type-select').val() || $(this).find(
+                            'td:first').text(),
+                        qty: parseInt($(this).find('.container-qty-input').val() || $(this)
+                            .find('td:eq(1)').text(), 10) || 0
+                    });
+                });
+
+                $('#cargoVolumeInput').prop('readonly', false).css({
+                    'background-color': '#fff',
+                    'border': '1px solid #ced4da'
+                });
+
+                renderContainerRows(originalContainers, true);
+                $('#addContainerRowBtn').removeClass('d-none');
+
+                $(this).addClass('d-none');
+                $('#saveCargoDetailsBtn, #cancelCargoDetailsBtn').removeClass('d-none');
+            });
+
+            // Cancel
+            $('#cancelCargoDetailsBtn').on('click', function() {
+                $('#cargoVolumeInput').val(originalCargoVolume).prop('readonly', true).css(
+                    'background-color', '');
+                renderContainerRows(originalContainers, false);
+                $('#addContainerRowBtn').addClass('d-none');
+
+                $(this).addClass('d-none');
+                $('#saveCargoDetailsBtn').addClass('d-none');
+                $('#editCargoDetailsBtn').removeClass('d-none');
+            });
+
+            // Save
+            $('#saveCargoDetailsBtn').on('click', function() {
+                const cargoVolume = $('#cargoVolumeInput').val();
+                const containers = serializeContainerList();
+                const scopeVolume = '{{ $quotation->scopevolume ?? '' }}';
+
+                if (scopeVolume !== 'Containerized' && (!cargoVolume || parseFloat(cargoVolume) <= 0)) {
+                    showNotification('Cargo Volume must be greater than zero', 'error');
+                    return;
+                }
+
+                if (scopeVolume === 'Containerized' && !containers) {
+                    showNotification('Please add at least one container', 'error');
+                    return;
+                }
+
+                $.ajax({
+                    url: '{{ route('quotation.cargo.save') }}',
+                    type: 'POST',
+                    data: {
+                        _token: '{{ csrf_token() }}',
+                        quote_no: QUOTE_NO,
+                        cargo_volume: cargoVolume || 0,
+                        containers: containers
+                    },
+                    beforeSend: function() {
+                        $('#saveCargoDetailsBtn').prop('disabled', true)
+                            .html('<i class="fas fa-spinner fa-spin mr-1"></i> Saving...');
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            showNotification('Cargo details saved successfully', 'success');
+
+                            originalCargoVolume = cargoVolume;
+                            originalContainers = [];
+                            $('#containerListBody tr[data-container-row]').each(function() {
+                                originalContainers.push({
+                                    type: $(this).find('.container-type-select')
+                                        .val(),
+                                    qty: parseInt($(this).find(
+                                            '.container-qty-input').val(),
+                                        10) || 0
+                                });
+                            });
+
+                            $('#cargoVolumeInput').prop('readonly', true).css(
+                                'background-color', '');
+                            renderContainerRows(originalContainers, false);
+                            $('#addContainerRowBtn').addClass('d-none');
+                            $('#saveCargoDetailsBtn, #cancelCargoDetailsBtn').addClass(
+                            'd-none');
+                            $('#editCargoDetailsBtn').removeClass('d-none');
+                        } else {
+                            showNotification(response.message || 'Failed to save', 'error');
+                        }
+                    },
+                    error: function(xhr) {
+                        showNotification(xhr.responseJSON?.message || 'Failed to save',
+                        'error');
+                    },
+                    complete: function() {
+                        $('#saveCargoDetailsBtn').prop('disabled', false)
+                            .html('<i class="fas fa-save mr-1"></i> Save');
+                    }
+                });
+            });
+
+            // Load on page init
+            loadContainers();
 
         }); // end document.ready
     </script>

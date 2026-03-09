@@ -39,30 +39,30 @@
                 </div>
             </div>
 
-            {{-- 3. Lost --}}
+            {{-- 3. Completed --}}
             <div class="col-6 col-md-4 col-lg mb-2">
-                <div class="small-box bg-danger card-filter-trigger compact-card" data-filter="lost"
-                    title="Click to view lost records">
+                <div class="small-box bg-teal card-filter-trigger compact-card" data-filter="completed"
+                    title="Click to view completed records">
                     <div class="inner">
-                        <h3 id="stat-lost">{{ $stats['lost'] }}</h3>
-                        <p>Lost</p>
+                        <h3 id="stat-completed">{{ $stats['completed'] }}</h3>
+                        <p>Completed</p>
                     </div>
                     <div class="icon">
-                        <i class="fas fa-times-circle"></i>
+                        <i class="fas fa-clipboard-check"></i>
                     </div>
                 </div>
             </div>
 
-            {{-- 4. Canceled --}}
+            {{-- 4. Lost / Canceled --}}
             <div class="col-6 col-md-4 col-lg mb-2">
-                <div class="small-box bg-warning card-filter-trigger compact-card" data-filter="canceled"
-                    title="Click to view canceled records">
+                <div class="small-box bg-warning card-filter-trigger compact-card" data-filter="lost_canceled"
+                    title="Click to view lost or canceled records">
                     <div class="inner">
-                        <h3 id="stat-canceled">{{ $stats['canceled'] }}</h3>
-                        <p>Canceled</p>
+                        <h3 id="stat-lost-canceled">{{ $stats['lost_canceled'] }}</h3>
+                        <p>Lost / Canceled</p>
                     </div>
                     <div class="icon">
-                        <i class="fas fa-ban"></i>
+                        <i class="fas fa-times-circle"></i>
                     </div>
                 </div>
             </div>
@@ -223,12 +223,16 @@
                         <h2 class="modal-title" style="color: #003580; font-weight: 700;">
                             Creation of Booking
                         </h2>
-                        <button type="button" class="close" data-dismiss="modal">
-                            <span>&times;</span>
+                        <a href="#" id="cbEditLink" class="btn btn-sm btn-outline-secondary ml-auto mr-2 d-none"
+                            title="Edit booking information">
+                            <i class="fas fa-edit mr-1"></i> Edit
+                        </a>
+                        <button type="button" class="close" id="cbXBtn" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
                         </button>
                     </div>
                     <div class="modal-body" style="padding: 1.75rem 2rem;">
-                        <form id="createBookingForm">
+                        <div id="createBookingForm">
 
                             {{-- Service Template --}}
                             <div class="form-group mb-4">
@@ -301,7 +305,7 @@
                                 </div>
                             </div>
 
-                        </form>
+                        </div>
 
                         {{-- PROGRESS PANEL — hidden until submit --}}
                         <div id="cbProgressPanel" class="d-none mt-3">
@@ -321,10 +325,8 @@
                         <button type="button" class="btn btn-primary px-4" id="submitCreateBookingBtn">
                             Create
                         </button>
-                        <button type="button" class="btn btn-secondary px-4 d-none" id="cbCloseBtn"
-                            data-dismiss="modal">
-                            Close
-                        </button>
+                        <button type="button" class="btn btn-secondary px-4 d-none" id="cbCloseBtn">Close</button>
+
 
                     </div>
 
@@ -746,6 +748,15 @@
                 padding: 0.4rem;
             }
         }
+
+        /* Locked form state after Step 0 succeeds */
+        #createBookingForm.cb-locked select,
+        #createBookingForm.cb-locked input[type="text"] {
+            background-color: #f8f9fa;
+            pointer-events: none;
+            opacity: 0.85;
+            border-color: #dee2e6;
+        }
     </style>
 @stop
 
@@ -1123,21 +1134,39 @@
             // Clean up when modal closes
             $('#createBookingModal').on('hidden.bs.modal', function() {
                 $('.location-suggestions').remove();
-
-                $('#createBookingForm').removeClass('d-none');
+                $('#createBookingForm').removeClass('d-none cb-locked');
                 $('#cbProgressPanel').addClass('d-none');
                 $('#submitCreateBookingBtn, #cancelCreateBookingBtn').removeClass('d-none');
                 $('#cbCloseBtn').addClass('d-none');
+                $('#cbEditLink').addClass('d-none');
                 $('#cbStepList').empty();
                 $('#cbProgressError, #cbProgressSuccess').addClass('d-none');
+                // Re-enable all fields for next open
+                $('#cb_service_template, #cb_bill_to_party, #cb_forwarder').prop('disabled', false);
+                $('#cb_include_country, #cb_place_of_receipt, #cb_place_of_delivery').prop('disabled',
+                    false);
             });
 
-            // ============================================
-            // CANCEL / X BUTTON
-            // ============================================
-            $(document).on('click', '#cancelCreateBookingBtn, #createBookingModal .close', function(e) {
+            $('#cbCloseBtn').on('click', function() {
+                $('#createBookingModal').modal('hide');
+            });
+
+            $('#cancelCreateBookingBtn').on('click', function(e) {
                 e.preventDefault();
                 $('#createBookingModal').modal('hide');
+            });
+
+            $('#cbXBtn').on('click', function() {
+                $('#createBookingModal').modal('hide');
+            });
+
+            $('#cbEditLink').on('click', function(e) {
+                e.preventDefault();
+                $('#cb_service_template, #cb_bill_to_party, #cb_forwarder').prop('disabled', false);
+                $('#cb_include_country, #cb_place_of_receipt, #cb_place_of_delivery').prop('disabled',
+                    false);
+                $('#createBookingForm').removeClass('cb-locked');
+                $('#cbEditLink').addClass('d-none');
             });
 
             // ============================================
@@ -1145,12 +1174,14 @@
             // ============================================
             function resetCreateBookingForm() {
                 $('#cb_service_template, #cb_bill_to_party, #cb_forwarder')
-                    .empty().append('<option value=""></option>');
-                $('#cb_include_country').prop('checked', false);
-                $('#cb_place_of_receipt, #cb_place_of_delivery').val('');
+                    .empty().append('<option value=""></option>').prop('disabled', false);
+                $('#cb_include_country').prop('checked', false).prop('disabled', false);
+                $('#cb_place_of_receipt, #cb_place_of_delivery').val('').prop('disabled', false);
                 $('#cb_place_of_receipt_code, #cb_place_of_receipt_id').val('');
                 $('#cb_place_of_delivery_code, #cb_place_of_delivery_id').val('');
                 $('.location-suggestions').remove();
+                $('#createBookingForm').removeClass('cb-locked');
+                $('#cbEditLink').addClass('d-none'); // ← add this line
             }
 
             function setDropdownLoading(selector) {
@@ -1337,8 +1368,10 @@
                     return;
                 }
 
-                $('#createBookingForm, #cbProgressPanel').toggleClass('d-none');
+                $('#createBookingForm').addClass('d-none');
+                $('#cbProgressPanel').removeClass('d-none');
                 $('#submitCreateBookingBtn, #cancelCreateBookingBtn').addClass('d-none');
+                $('#cbEditLink').addClass('d-none');
                 $('#cbProgressError, #cbProgressSuccess').addClass('d-none');
                 renderBookingSteps([]);
 
@@ -1368,9 +1401,11 @@
                             });
                             $('#cbProgressError')
                                 .html('<strong>' + (res.failed_label || 'Step') +
-                                    ' failed:</strong> ' + (failedStep ? failedStep.remark :
-                                        'Unknown error'))
+                                    ' failed:</strong> ' +
+                                    (failedStep ? failedStep.remark : 'Unknown error'))
                                 .removeClass('d-none');
+                            table.ajax.reload(null, false); // ← row moves to Failed Int. card
+                            updateCardStats(); // ← card counts update
                         }
                     },
                     error: function(xhr) {
@@ -1410,15 +1445,15 @@
                                 response.total, 500);
                             animateValue('stat-in-progress', parseInt($('#stat-in-progress')
                                 .text()) || 0, response.in_progress, 500);
-                            animateValue('stat-won', parseInt($('#stat-won').text()) || 0,
-                                response.won, 500);
-                            animateValue('stat-lost', parseInt($('#stat-lost').text()) || 0,
-                                response.lost, 500);
-                            animateValue('stat-canceled', parseInt($('#stat-canceled')
-                                .text()) || 0, response.canceled, 500);
+                            animateValue('stat-completed', parseInt($('#stat-completed')
+                                .text()) || 0, response.completed, 500);
+                            animateValue('stat-lost-canceled', parseInt($('#stat-lost-canceled')
+                                .text()) || 0, response.lost_canceled, 500);
                             animateValue('stat-failed-progress', parseInt($(
                                     '#stat-failed-progress').text()) || 0, response
                                 .failed_progress, 500);
+                            animateValue('stat-failed-int', parseInt($('#stat-failed-int')
+                                .text()) || 0, response.failed_int, 500);
                         },
                         error: function(xhr, error, code) {
                             console.error('Failed to update card statistics:', xhr, error,
