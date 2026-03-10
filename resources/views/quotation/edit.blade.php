@@ -20,6 +20,9 @@
     </div>
 @stop
 
+@php
+    $isBookingCreated = !empty($quotation->SCMBookingNo);
+@endphp
 
 @section('content')
     <form id="bookingQuotationForm">
@@ -55,10 +58,20 @@
                             </div>
                         </div>
                         <div class="form-group row">
-                            <label class="col-sm-5 col-form-label">Sales person</label>
-                            <div class="col-sm-7">
-                                <input type="text" class="form-control form-control-sm"
-                                    value="{{ $quotation->username ?? '' }}" readonly>
+                            <label class="col-sm-5 col-form-label">Sales Person</label>
+                            <div class="col-sm-7" style="position:relative;">
+                                <input type="text" class="form-control form-control-sm" id="salesPersonDisplay"
+                                    value="{{ $quotation->username ?? '' }}" readonly
+                                    placeholder="Search by name or code...">
+                                <input type="hidden" id="salesPersonCode" value="{{ $quotation->SalesPersonCode ?? '' }}">
+                                <ul id="salesPersonSuggestions" class="list-group"
+                                    style="
+                                    display:none; position:absolute; z-index:9999;
+                                    width:100%; max-height:200px; overflow-y:auto;
+                                    border:1px solid #ced4da; border-radius:0 0 4px 4px;
+                                    background:#fff; margin-top:-1px;
+                                    box-shadow:0 4px 8px rgba(0,0,0,0.1);">
+                                </ul>
                             </div>
                         </div>
                         <div class="form-group row">
@@ -68,6 +81,21 @@
                                     value="{{ $quotation->SalesPersonEmail ?? '' }}" readonly>
                             </div>
                         </div>
+                        @if (!$isBookingCreated)
+                            <div class="form-group row mb-0">
+                                <div class="col-sm-7 offset-sm-5">
+                                    <button type="button" class="btn btn-warning btn-sm" id="editInquiryBtn">
+                                        <i class="fas fa-edit mr-1"></i> Edit
+                                    </button>
+                                    <button type="button" class="btn btn-success btn-sm d-none" id="saveInquiryBtn">
+                                        <i class="fas fa-save mr-1"></i> Save
+                                    </button>
+                                    <button type="button" class="btn btn-secondary btn-sm d-none" id="cancelInquiryBtn">
+                                        Cancel
+                                    </button>
+                                </div>
+                            </div>
+                        @endif
                         <div class="form-group row mb-0">
                             <label class="col-sm-5 col-form-label">Office</label>
                             <div class="col-sm-7">
@@ -93,7 +121,7 @@
                             <label class="col-sm-5 col-form-label">Service</label>
                             <div class="col-sm-7">
                                 <input type="text" class="form-control form-control-sm"
-                                    value="{{ $quotation->ServiceVerticalname ?? '' }}" readonly>
+                                    value="{{ $quotation->SVName ?? '' }}" readonly>
                             </div>
                         </div>
                         <div class="form-group row">
@@ -152,9 +180,11 @@
 
                         <div class="row mt-3 pt-2" style="border-top: 1px solid #dee2e6;">
                             <div class="col-md-12 text-right">
-                                <button type="button" class="btn btn-warning btn-sm" id="editShipmentDetailsBtn">
-                                    <i class="fas fa-edit mr-1"></i> Edit
-                                </button>
+                                @if (!$isBookingCreated)
+                                    <button type="button" class="btn btn-warning btn-sm" id="editShipmentDetailsBtn">
+                                        <i class="fas fa-edit mr-1"></i> Edit
+                                    </button>
+                                @endif
                                 <button type="button" class="btn btn-primary btn-sm" id="saveShipmentDetailsBtn"
                                     style="display:none">
                                     <i class="fas fa-save mr-1"></i> Save
@@ -226,9 +256,11 @@
                         {{-- Edit / Save / Cancel --}}
                         <div class="row mt-3 pt-2" style="border-top: 1px solid #dee2e6;">
                             <div class="col-md-12 text-right">
-                                <button type="button" class="btn btn-warning btn-sm" id="editCargoDetailsBtn">
-                                    <i class="fas fa-edit mr-1"></i> Edit
-                                </button>
+                                @if (!$isBookingCreated)
+                                    <button type="button" class="btn btn-warning btn-sm" id="editCargoDetailsBtn">
+                                        <i class="fas fa-edit mr-1"></i> Edit
+                                    </button>
+                                @endif
                                 <button type="button" class="btn btn-primary btn-sm d-none" id="saveCargoDetailsBtn">
                                     <i class="fas fa-save mr-1"></i> Save
                                 </button>
@@ -539,9 +571,11 @@
                         </div>
                         <div class="row mt-3 pt-2" style="border-top: 1px solid #dee2e6;">
                             <div class="col-md-12 text-right">
-                                <button type="button" class="btn btn-warning btn-sm" id="editCustomerDetailsBtn">
-                                    <i class="fas fa-edit mr-1"></i> Edit
-                                </button>
+                                @if (!$isBookingCreated)
+                                    <button type="button" class="btn btn-warning btn-sm" id="editCustomerDetailsBtn">
+                                        <i class="fas fa-edit mr-1"></i> Edit
+                                    </button>
+                                @endif
                                 <button type="button" class="btn btn-primary btn-sm" id="saveCustomerDetailsBtn"
                                     style="display:none">
                                     <i class="fas fa-save mr-1"></i> Save
@@ -722,8 +756,8 @@
         <!-- END ROW -->
 
         <!-- ============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         MODALS
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         ============================================ -->
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 MODALS
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 ============================================ -->
 
         {{-- REVENUE MODAL --}}
         <div class="modal fade" id="addRevenueModal" tabindex="-1" role="dialog"
@@ -1285,8 +1319,8 @@
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.min.css">
     <style>
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            MODAL STYLING — matched to FitExpress UI
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    MODAL STYLING — matched to FitExpress UI
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    ============================================= */
 
         .modal-header {
             background-color: #fff !important;
@@ -1729,9 +1763,9 @@
         }
 
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   CREATE BOOKING MODAL — Specific overrides
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   to match the "Creation of Booking" design
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           CREATE BOOKING MODAL — Specific overrides
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           to match the "Creation of Booking" design
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           ============================================= */
 
         #createBookingModal .modal-title {
             color: #003580 !important;
@@ -5241,8 +5275,130 @@
                 });
             });
 
-            // Load on page init
-            loadContainers();
+
+            // ============================================
+            // INQUIRY DETAILS — EDIT / SAVE / CANCEL
+            // ============================================
+            var inquirySnapshot = {};
+
+            $('#editInquiryBtn').on('click', function() {
+                inquirySnapshot = {
+                    display: $('#salesPersonDisplay').val(),
+                    code: $('#salesPersonCode').val(),
+                    email: $('#salesPersonEmail').val(),
+                };
+                $('#salesPersonDisplay').removeAttr('readonly');
+                $('#salesPersonEmail').removeAttr('readonly');
+                $('#editInquiryBtn').addClass('d-none');
+                $('#saveInquiryBtn, #cancelInquiryBtn').removeClass('d-none');
+            });
+
+            $('#cancelInquiryBtn').on('click', function() {
+                $('#salesPersonDisplay').val(inquirySnapshot.display).attr('readonly', true);
+                $('#salesPersonCode').val(inquirySnapshot.code);
+                $('#salesPersonEmail').val(inquirySnapshot.email);
+                $('#salesPersonSuggestions').hide();
+                $('#editInquiryBtn').removeClass('d-none');
+                $('#saveInquiryBtn, #cancelInquiryBtn').addClass('d-none');
+            });
+
+            $('#saveInquiryBtn').on('click', function() {
+                var code = $('#salesPersonCode').val().trim();
+                var email = $('#salesPersonEmail').val().trim();
+
+                if (!code) {
+                    showNotification('Please select a Sales Person.', 'error');
+                    return;
+                }
+                if (!email) {
+                    showNotification('Sales Person Email is required.', 'error');
+                    return;
+                }
+
+                var $btn = $(this).prop('disabled', true).html(
+                    '<i class="fas fa-spinner fa-spin"></i> Saving...');
+
+                $.ajax({
+                    url: '{{ route('quotation.inquiry.save') }}',
+                    type: 'POST',
+                    data: {
+                        _token: '{{ csrf_token() }}',
+                        booking_no: bookingNo,
+                        sales_person_code: code,
+                        sales_person_email: email,
+                    },
+                    success: function(res) {
+                        if (res.success) {
+                            $('#salesPersonDisplay').attr('readonly', true);
+                            $('#salesPersonEmail').attr('readonly', true);
+                            $('#editInquiryBtn').removeClass('d-none');
+                            $('#saveInquiryBtn, #cancelInquiryBtn').addClass('d-none');
+                            showNotification('Inquiry details saved.', 'success');
+                        } else {
+                            showNotification(res.message || 'Save failed.', 'error');
+                        }
+                    },
+                    error: function(xhr) {
+                        showNotification(xhr.responseJSON?.message || 'Server error.', 'error');
+                    },
+                    complete: function() {
+                        $btn.prop('disabled', false).html(
+                            '<i class="fas fa-save mr-1"></i> Save');
+                    }
+                });
+            });
+
+            // Sales Person autocomplete
+            var spDebounce = null;
+            $('#salesPersonDisplay').on('input', function() {
+                var query = $(this).val().trim();
+                clearTimeout(spDebounce);
+                $('#salesPersonSuggestions').hide().empty();
+                $('#salesPersonCode').val('');
+                if (query.length < 2) return;
+
+                spDebounce = setTimeout(function() {
+                    $.get('{{ route('quotation.sales-persons') }}', {
+                            filter: query
+                        })
+                        .done(function(res) {
+                            var $list = $('#salesPersonSuggestions').empty();
+                            if (!res.success || !res.persons.length) {
+                                $list.hide();
+                                return;
+                            }
+
+                            $.each(res.persons, function(i, p) {
+                                var fullName = p.FullName || p
+                                    .Contact_PersonName_FirstName || '';
+                                var email = p.Email || '';
+                                $('<li>', {
+                                    class: 'list-group-item list-group-item-action',
+                                    css: {
+                                        cursor: 'pointer',
+                                        padding: '0.4rem 0.75rem',
+                                        fontSize: '0.875rem'
+                                    },
+                                    text: p.Code + ' — ' + fullName
+                                }).on('mousedown', function(e) {
+                                    e.preventDefault();
+                                    $('#salesPersonDisplay').val(fullName || p
+                                        .Code);
+                                    $('#salesPersonCode').val(p.Code);
+                                    $('#salesPersonEmail').val(email);
+                                    $list.hide();
+                                }).appendTo($list);
+                            });
+                            $list.show();
+                        });
+                }, 300);
+            });
+
+            $('#salesPersonDisplay').on('blur', function() {
+                setTimeout(function() {
+                    $('#salesPersonSuggestions').hide();
+                }, 200);
+            });
 
         }); // end document.ready
     </script>

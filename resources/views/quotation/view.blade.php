@@ -14,7 +14,7 @@
             </a>
 
             <button type="button" class="btn btn-info btn-sm" id="btnCopyBooking" data-bookingno="{{ $quotation->bookingno }}">
-                <i class="fas fa-copy"></i> Copy Booking
+                <i class="fas fa-copy"></i> Duplicate
             </button>
 
             {{--
@@ -656,7 +656,7 @@
                 }
 
                 const $btn = $(this);
-                $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Copying...');
+                $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Duplicating...');
 
                 $.ajax({
                     url: '/quotation/' + bookingNo + '/copy',
@@ -677,7 +677,7 @@
                         } else {
                             alert('Failed to copy booking: ' + response.message);
                             $btn.prop('disabled', false)
-                                .html('<i class="fas fa-copy"></i> Copy Booking');
+                                .html('<i class="fas fa-copy"></i> Duplicate');
                         }
                     },
                     error: function(xhr) {
@@ -685,7 +685,7 @@
                             'An unexpected error occurred.';
                         alert('Error: ' + msg);
                         $btn.prop('disabled', false)
-                            .html('<i class="fas fa-copy"></i> Copy Booking');
+                            .html('<i class="fas fa-copy"></i> Duplicate');
                     }
                 });
             });

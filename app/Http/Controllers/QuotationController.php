@@ -296,7 +296,11 @@ class QuotationController extends Controller
                             ->orWhereNull('status');
                     });
                     break;
-
+                case 'won':
+                    $query->where(function ($q) {
+                        $q->where('QuoteStatus', 'Won')->orWhere('status', 'Won');
+                    })->whereNull('SCMINTStatus');
+                    break;
                 // NEW: replaces 'won'
                 case 'completed':
                     $query->where(function ($q) {
@@ -319,7 +323,7 @@ class QuotationController extends Controller
                         ->where('SCMINTStatus', '!=', 'Success');
                     break;
 
-                case 'Failed Progress':
+                case 'failed_progress':
                     $query->where(function ($q) {
                         $q->where('QuoteStatus', 'Failed Progress')
                             ->orWhere('status', 'Failed Progress');
@@ -444,10 +448,9 @@ class QuotationController extends Controller
 
                     // Create Booking — shown on Completed and Failed Int. cards
                     // (Completed = edit existing booking info; Failed Int. = retry pipeline)
+                    // Create Booking — Failed Int. only (Completed = View only)
                     $createBookingBtn = '';
-                    if (($cardFilter === 'completed' && $isCompleted) ||
-                        ($cardFilter === 'failed_int' && $isFailedInt)
-                    ) {
+                    if ($cardFilter === 'failed_int' && $isFailedInt) {
                         $createBookingBtn = ' <button class="btn btn-success btn-sm btn-create-booking"
                         data-id="'      . $row->ID       . '"
                         data-booking="' . $row->bookingno . '"
@@ -4859,7 +4862,7 @@ class QuotationController extends Controller
             'Remarks' => [['Remark' => 'No response from stored procedure']]
         ];
     }
-    
+
     public function downloadPdf($id, $version)
     {
         try {
@@ -5147,6 +5150,15 @@ class QuotationController extends Controller
                     'scm_booking_id' => $bookingCheck->SCMBookingID,
                     'scm_booking_no' => $bookingCheck->SCMBookingNo ?? 'NULL',
                 ]);
+                if (!empty($bookingCheck->SCMBookingNo)) {
+                    DB::table('Quote_QuotationInfo')
+                        ->where('QuoteNo', $quoteNo)
+                        ->update([
+                            'SCMBookingNo'   => $bookingCheck->SCMBookingNo,
+                            'LastModifiedBy' => $submittedBy,
+                            'updatedon'      => now(),
+                        ]);
+                }
             }
         }
 
@@ -5502,8 +5514,8 @@ class QuotationController extends Controller
             'SubmittedBy'       => $submittedBy,
             'Action'            => 'Update',
             'QuotationNo'       => $quotation,              // was $request->booking_no
-            'ShipmentMode'      => $request->shipment_mode,
-            'TransportMode'     => $request->transport_mode,
+            'ShipmentModeCode'  => $request->shipment_mode,
+            'TransportModeCode'     => $request->transport_mode,
         ]);
 
         if (strlen($input) > 2000) {
@@ -5773,6 +5785,85 @@ class QuotationController extends Controller
             ]);
         } catch (\Exception $e) {
             Log::error('saveCargoDetails error: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    public function getSalesPersons(Request $request)
+    {
+        $filter = $request->input('filter', '');
+        try {
+            $pdo  = DB::connection('sqlsrv')->getPdo();
+            $stmt = $pdo->prepare("
+            SET NOCOUNT ON;
+            EXEC [FITSCMUAT].dbo.sp_Quote_GetSalesPersonList @Filter = ?
+        ");
+            $stmt->execute([$filter]);
+            $rows = $stmt->fetchAll(\PDO::FETCH_OBJ);
+            return response()->json(['success' => true, 'persons' => $rows]);
+        } catch (\Throwable $e) {
+            // Fallback — query Cust_Resource directly
+            try {
+                $persons = DB::connection('sqlsrv')
+                    ->table('FITSCMUAT.dbo.Cust_Resource')
+                    ->where(function ($q) use ($filter) {
+                        $q->where('Code', 'like', "%$filter%")
+                            ->orWhere('Contact_PersonName_FirstName', 'like', "%$filter%")
+                            ->orWhere('Contact_Email_Primary', 'like', "%$filter%");
+                    })
+                    ->where('IsActive', 1)
+                    ->select([
+                        'Code',
+                        DB::raw("Contact_PersonName_FirstName + ISNULL(' ' + Contact_PersonName_LastName, '') AS FullName"),
+                        'Contact_Email AS Email',
+                    ])
+                    ->limit(20)
+                    ->get();
+                return response()->json(['success' => true, 'persons' => $persons]);
+            } catch (\Throwable $e2) {
+                return response()->json(['success' => false, 'persons' => [], 'error' => $e2->getMessage()]);
+            }
+        }
+    }
+
+    public function saveInquiryDetails(Request $request)
+    {
+        $request->validate([
+            'booking_no'          => 'required|string',
+            'sales_person_code'   => 'required|string',
+            'sales_person_email'  => 'required|email',
+        ]);
+
+        $submittedBy = Auth::user()->displayName ?? Auth::user()->Email ?? 'system';
+
+        $quotation = DB::connection('sqlsrv')
+            ->table('Quote_QuotationInfo')
+            ->where('bookingno', $request->booking_no)
+            ->value('QuoteNo');
+
+        if (!$quotation) {
+            return response()->json(['success' => false, 'message' => 'Quotation not found']);
+        }
+
+        $input = json_encode([
+            'OperationType'    => 'InquiryDetails',
+            'SubmittedDatetime' => now()->format('YmdHis'),
+            'SubmittedBy'      => $submittedBy,
+            'Action'           => 'Update',
+            'QuotationNo'      => $quotation,
+            'SalesPersonCode'  => $request->sales_person_code,
+            'SalesPersonEmail' => $request->sales_person_email,
+        ]);
+
+        try {
+            $output = $this->executeDetailsUpdateSP($input);
+            if (($output['Status'] ?? '') === 'Failed') {
+                $remarks = collect($output['Remarks'] ?? [])->pluck('Remark')->implode(', ');
+                return response()->json(['success' => false, 'message' => $remarks ?: 'Update failed']);
+            }
+            return response()->json(['success' => true, 'message' => 'Inquiry details updated']);
+        } catch (\Throwable $e) {
+            Log::error('saveInquiryDetails error: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }

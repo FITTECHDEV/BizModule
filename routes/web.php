@@ -883,6 +883,12 @@ Route::middleware(['auth', 'can:approve-all-entity-request'])->group(function ()
     Route::get('/quotation/{id}', [App\Http\Controllers\QuotationController::class, 'view'])
         ->name('quotation.view');
 
+    Route::post('/quotation/inquiry/save', [App\Http\Controllers\QuotationController::class, 'saveInquiryDetails'])
+        ->name('quotation.inquiry.save');
+
+    Route::get('/quotation/sales-persons', [App\Http\Controllers\QuotationController::class, 'getSalesPersons'])
+        ->name('quotation.sales-persons');
+
     // ============================================
     // CRM SYNC
     // ============================================

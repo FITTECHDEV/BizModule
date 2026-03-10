@@ -69,7 +69,7 @@
 
             {{-- 5. Failed Progress --}}
             <div class="col-6 col-md-4 col-lg mb-2">
-                <div class="small-box bg-secondary card-filter-trigger compact-card" data-filter="Failed Progress"
+                <div class="small-box bg-secondary card-filter-trigger compact-card" data-filter="failed_progress"
                     title="Click to view failed progress records">
                     <div class="inner">
                         <h3 id="stat-failed-progress">{{ $stats['failed_progress'] }}</h3>
@@ -325,7 +325,8 @@
                         <button type="button" class="btn btn-primary px-4" id="submitCreateBookingBtn">
                             Create
                         </button>
-                        <button type="button" class="btn btn-secondary px-4 d-none" id="cbCloseBtn">Close</button>
+                        <button type="button" class="btn btn-secondary px-4 d-none" id="cbCloseBtn"
+                            data-dismiss="modal">Close</button>
 
 
                     </div>
@@ -1027,32 +1028,45 @@
                     }
                 });
             });
-
             // ============================================
             // CREATE BOOKING BUTTON
             // ============================================
             $('#quotationTable').on('click', '.btn-create-booking', function(e) {
                 e.stopPropagation();
-
                 var $btn = $(this);
+                var cardFilter = currentCardFilter;
 
                 $('#createBookingModal')
                     .data('quotation-id', $btn.data('id'))
                     .data('booking-no', $btn.data('booking'))
                     .data('team-id', $btn.data('team'))
                     .data('quote-no', $btn.data('quoteno'))
+                    .data('card-filter', cardFilter)
                     .modal('show');
             });
 
             // ============================================
-            // CREATE BOOKING MODAL — POPULATE DROPDOWNS
+            // CREATE BOOKING MODAL — ON SHOW
             // ============================================
             $('#createBookingModal').on('show.bs.modal', function() {
                 var modal = $(this);
                 var quoteNo = modal.data('quote-no');
                 var teamId = modal.data('team-id');
+                var cardFilter = modal.data('card-filter') || 'in_progress';
 
                 resetCreateBookingForm();
+
+                // Failed Int. — skip form, go straight to progress panel with Edit link
+                if (cardFilter === 'failed_int') {
+                    $('#createBookingForm').addClass('d-none');
+                    $('#cbProgressPanel').removeClass('d-none');
+                    $('#submitCreateBookingBtn').addClass('d-none');
+                    $('#cancelCreateBookingBtn').addClass('d-none');
+                    $('#cbCloseBtn').removeClass('d-none');
+                    $('#cbEditLink').removeClass('d-none');
+                    renderBookingSteps([]);
+                    return;
+                }
 
                 setDropdownLoading('#cb_service_template');
                 setDropdownLoading('#cb_bill_to_party');
@@ -1076,8 +1090,7 @@
                             $select.append('<option value="" disabled>No templates available</option>');
                         }
                     })
-                    .fail(function(xhr) {
-                        console.error('Service templates load failed:', xhr);
+                    .fail(function() {
                         $('#cb_service_template').empty()
                             .append('<option value="" disabled>Failed to load — try again</option>');
                     });
@@ -1100,8 +1113,7 @@
                             $select.append('<option value="" disabled>No parties available</option>');
                         }
                     })
-                    .fail(function(xhr) {
-                        console.error('Bill to parties load failed:', xhr);
+                    .fail(function() {
                         $('#cb_bill_to_party').empty()
                             .append('<option value="" disabled>Failed to load — try again</option>');
                     });
@@ -1124,14 +1136,15 @@
                                 '<option value="" disabled>No forwarders available</option>');
                         }
                     })
-                    .fail(function(xhr) {
-                        console.error('Forwarders load failed:', xhr);
+                    .fail(function() {
                         $('#cb_forwarder').empty()
                             .append('<option value="" disabled>Failed to load — try again</option>');
                     });
             });
 
-            // Clean up when modal closes
+            // ============================================
+            // CREATE BOOKING MODAL — ON HIDE
+            // ============================================
             $('#createBookingModal').on('hidden.bs.modal', function() {
                 $('.location-suggestions').remove();
                 $('#createBookingForm').removeClass('d-none cb-locked');
@@ -1141,7 +1154,6 @@
                 $('#cbEditLink').addClass('d-none');
                 $('#cbStepList').empty();
                 $('#cbProgressError, #cbProgressSuccess').addClass('d-none');
-                // Re-enable all fields for next open
                 $('#cb_service_template, #cb_bill_to_party, #cb_forwarder').prop('disabled', false);
                 $('#cb_include_country, #cb_place_of_receipt, #cb_place_of_delivery').prop('disabled',
                     false);
@@ -1165,8 +1177,11 @@
                 $('#cb_service_template, #cb_bill_to_party, #cb_forwarder').prop('disabled', false);
                 $('#cb_include_country, #cb_place_of_receipt, #cb_place_of_delivery').prop('disabled',
                     false);
-                $('#createBookingForm').removeClass('cb-locked');
-                $('#cbEditLink').addClass('d-none');
+                $('#createBookingForm').removeClass('cb-locked d-none');
+                $('#cbProgressPanel').addClass('d-none');
+                $('#submitCreateBookingBtn, #cancelCreateBookingBtn').removeClass('d-none');
+                $('#cbCloseBtn').addClass('d-none');
+                $(this).addClass('d-none');
             });
 
             // ============================================
@@ -1181,7 +1196,7 @@
                 $('#cb_place_of_delivery_code, #cb_place_of_delivery_id').val('');
                 $('.location-suggestions').remove();
                 $('#createBookingForm').removeClass('cb-locked');
-                $('#cbEditLink').addClass('d-none'); // ← add this line
+                $('#cbEditLink').addClass('d-none');
             }
 
             function setDropdownLoading(selector) {
@@ -1198,7 +1213,6 @@
                     var query = $(this).val().trim();
                     clearTimeout(debounceTimer);
                     removeSuggestions(inputId);
-
                     if (query.length < 2) return;
 
                     debounceTimer = setTimeout(function() {
@@ -1337,8 +1351,7 @@
                         '<div><i class="' + iconClass + ' mr-2"></i><strong>Step ' + def.step +
                         ':</strong> ' + def.label + remarkHtml + '</div>' +
                         '<span class="badge ' + badgeClass + '">' + statusText + '</span>' +
-                        '</div>' +
-                        '</div>'
+                        '</div></div>'
                     );
                 });
             }
@@ -1349,7 +1362,6 @@
             $('#submitCreateBookingBtn').on('click', function() {
                 var quotationId = $('#createBookingModal').data('quotation-id');
                 var bookingNo = $('#createBookingModal').data('booking-no');
-
                 var serviceTemplate = $('#cb_service_template').val();
                 var billToParty = $('#cb_bill_to_party').val();
                 var forwarder = $('#cb_forwarder').val();
@@ -1391,10 +1403,10 @@
                     },
                     success: function(res) {
                         renderBookingSteps(res.steps || []);
-
                         if (res.success) {
                             $('#cbProgressSuccess').removeClass('d-none');
                             table.ajax.reload(null, false);
+                            updateCardStats();
                         } else {
                             var failedStep = (res.steps || []).find(function(s) {
                                 return s.status === 'Failed';
@@ -1404,8 +1416,8 @@
                                     ' failed:</strong> ' +
                                     (failedStep ? failedStep.remark : 'Unknown error'))
                                 .removeClass('d-none');
-                            table.ajax.reload(null, false); // ← row moves to Failed Int. card
-                            updateCardStats(); // ← card counts update
+                            table.ajax.reload(null, false);
+                            updateCardStats();
                         }
                     },
                     error: function(xhr) {
@@ -1423,9 +1435,7 @@
             // STATS UPDATE (debounced)
             // ============================================
             function updateCardStats() {
-                if (statsUpdateTimer) {
-                    clearTimeout(statsUpdateTimer);
-                }
+                if (statsUpdateTimer) clearTimeout(statsUpdateTimer);
 
                 statsUpdateTimer = setTimeout(function() {
                     $.ajax({
@@ -1445,6 +1455,8 @@
                                 response.total, 500);
                             animateValue('stat-in-progress', parseInt($('#stat-in-progress')
                                 .text()) || 0, response.in_progress, 500);
+                            animateValue('stat-won', parseInt($('#stat-won').text()) || 0,
+                                response.won, 500);
                             animateValue('stat-completed', parseInt($('#stat-completed')
                                 .text()) || 0, response.completed, 500);
                             animateValue('stat-lost-canceled', parseInt($('#stat-lost-canceled')
@@ -1455,9 +1467,7 @@
                             animateValue('stat-failed-int', parseInt($('#stat-failed-int')
                                 .text()) || 0, response.failed_int, 500);
                         },
-                        error: function(xhr, error, code) {
-                            console.error('Failed to update card statistics:', xhr, error,
-                                code);
+                        error: function() {
                             $('.compact-card .inner h3').css('opacity', '1');
                         },
                         complete: function() {
@@ -1472,8 +1482,7 @@
             // ============================================
             function loadCrmHistory() {
                 $('#crmHistoryContainer').html(
-                    '<div class="text-muted small text-center py-2">' +
-                    '<i class="fas fa-spinner fa-spin mr-1"></i> Loading history...</div>'
+                    '<div class="text-muted small text-center py-2"><i class="fas fa-spinner fa-spin mr-1"></i> Loading history...</div>'
                 );
                 $('#crmHistoryMeta').text('');
 
@@ -1482,15 +1491,12 @@
                     type: 'GET',
                     success: function(res) {
                         var history = res.history || [];
-
                         if (!history.length) {
                             $('#crmHistoryContainer').html(
                                 '<p class="text-muted small mb-0">No sync runs recorded yet.</p>');
                             return;
                         }
-
                         $('#crmHistoryMeta').text('Last ' + history.length + ' run(s)');
-
                         var rows = history.map(function(h) {
                             var failBadge = h.failed > 0 ?
                                 '<span class="badge badge-danger ml-1">' + h.failed +
@@ -1500,7 +1506,6 @@
                                 .booking_no + '</span>' :
                                 (h.limit ? '<span class="badge badge-secondary ml-1">Limit ' + h
                                     .limit + '</span>' : '');
-
                             return '<tr>' +
                                 '<td class="text-nowrap">' + h.run_at + '</td>' +
                                 '<td>' + escapeHtml(h.triggered_by) + '</td>' +
@@ -1513,17 +1518,14 @@
                                 '<td class="text-center">' + h.failed + failBadge + '</td>' +
                                 '</tr>';
                         }).join('');
-
                         $('#crmHistoryContainer').html(
-                            '<div style="max-height: 220px; overflow-y: auto;">' +
+                            '<div style="max-height:220px;overflow-y:auto;">' +
                             '<table class="table table-sm table-bordered table-striped mb-0" style="font-size:0.8rem;">' +
                             '<thead class="thead-light"><tr>' +
                             '<th>Run At</th><th>Triggered By</th><th class="text-center">Total</th>' +
                             '<th class="text-center">Ins.</th><th class="text-center">Upd.</th>' +
                             '<th class="text-center">Skip</th><th class="text-center">Fail</th>' +
-                            '</tr></thead>' +
-                            '<tbody>' + rows + '</tbody>' +
-                            '</table></div>'
+                            '</tr></thead><tbody>' + rows + '</tbody></table></div>'
                         );
                     },
                     error: function() {
@@ -1536,40 +1538,31 @@
             function escapeHtml(str) {
                 if (!str) return '-';
                 return String(str)
-                    .replace(/&/g, '&amp;')
-                    .replace(/</g, '&lt;')
-                    .replace(/>/g, '&gt;')
-                    .replace(/"/g, '&quot;');
+                    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
             }
 
             function animateValue(id, start, end, duration) {
                 var element = document.getElementById(id);
                 if (!element) return;
-
                 start = parseInt(start) || 0;
                 end = parseInt(end) || 0;
                 var range = end - start;
-
                 if (range === 0 || Math.abs(range) > 100) {
                     element.textContent = end;
                     return;
                 }
-
                 var current = start;
                 var increment = end > start ? 1 : -1;
                 var stepTime = Math.abs(Math.floor(duration / range));
-
                 if (!isFinite(stepTime) || stepTime > 100 || stepTime < 1) {
                     element.textContent = end;
                     return;
                 }
-
                 var timer = setInterval(function() {
                     current += increment;
                     element.textContent = current;
-                    if (current === end) {
-                        clearInterval(timer);
-                    }
+                    if (current === end) clearInterval(timer);
                 }, stepTime);
             }
 
@@ -1577,27 +1570,20 @@
             // CARD CLICK FILTERING
             // ============================================
             var touchMoved = false;
-
             $('.card-filter-trigger').on('touchstart', function() {
                 touchMoved = false;
             });
             $('.card-filter-trigger').on('touchmove', function() {
                 touchMoved = true;
             });
-
             $('.card-filter-trigger').on('click touchend', function(e) {
                 if (e.type === 'touchend' && touchMoved) return;
                 if (e.type === 'touchend') e.preventDefault();
-
                 var filterType = $(this).data('filter');
                 if (!filterType) return;
-
                 $('.card-filter-trigger').removeClass('active');
                 $(this).addClass('active');
                 currentCardFilter = filterType;
-
-                console.log('Card filter set to:', currentCardFilter);
-
                 updateCardStats();
                 table.ajax.reload();
             });
@@ -1609,12 +1595,10 @@
                 var dateFilter = $('#dateFilter').val();
                 var officeFilter = $('#officeFilter').val();
                 var defaultOffice = '{{ $defaultOffice ?? '' }}';
-
                 if (dateFilter === 'custom') {
                     $('#clearFiltersContainer').hide();
                     return;
                 }
-
                 if (dateFilter !== 'all' || officeFilter !== defaultOffice) {
                     $('#clearFiltersContainer').show();
                 } else {
@@ -1627,36 +1611,25 @@
             // ============================================
             $('#dateFilter').on('change', function() {
                 var selectedValue = $(this).val();
-
                 if (selectedValue === 'custom') {
-                    $('#customDateRange').show();
-                    $('#customDateRangeTo').show();
+                    $('#customDateRange, #customDateRangeTo').show();
                     updateClearButtonVisibility();
                 } else {
-                    $('#customDateRange').hide();
-                    $('#customDateRangeTo').hide();
-                    $('#startDate').val('');
-                    $('#endDate').val('');
+                    $('#customDateRange, #customDateRangeTo').hide();
+                    $('#startDate, #endDate').val('');
                     updateCardStats();
                     table.ajax.reload();
                     updateClearButtonVisibility();
                 }
             });
 
-            // ============================================
-            // CUSTOM DATE RANGE
-            // ============================================
             $('#startDate, #endDate').on('change', function() {
                 if ($('#startDate').val() && $('#endDate').val()) {
-                    var startDate = new Date($('#startDate').val());
-                    var endDate = new Date($('#endDate').val());
-
-                    if (endDate < startDate) {
+                    if (new Date($('#endDate').val()) < new Date($('#startDate').val())) {
                         alert('End date must be after start date');
                         $('#endDate').val('');
                         return;
                     }
-
                     updateCardStats();
                     table.ajax.reload();
                     updateClearButtonVisibility();
@@ -1664,10 +1637,8 @@
             });
 
             $('#clearCustomDates').on('click', function() {
-                $('#startDate').val('');
-                $('#endDate').val('');
-                $('#customDateRange').hide();
-                $('#customDateRangeTo').hide();
+                $('#startDate, #endDate').val('');
+                $('#customDateRange, #customDateRangeTo').hide();
                 $('#dateFilter').val('all');
                 updateCardStats();
                 table.ajax.reload();
@@ -1687,16 +1658,12 @@
             // ============================================
             $('#clearAllFilters').on('click', function() {
                 $('#dateFilter').val('all');
-                $('#startDate').val('');
-                $('#endDate').val('');
-                $('#customDateRange').hide();
-                $('#customDateRangeTo').hide();
+                $('#startDate, #endDate').val('');
+                $('#customDateRange, #customDateRangeTo').hide();
                 $('#officeFilter').val('{{ $defaultOffice ?? '' }}');
-
                 $('.card-filter-trigger').removeClass('active');
                 $('.card-filter-trigger[data-filter="in_progress"]').addClass('active');
                 currentCardFilter = 'in_progress';
-
                 updateCardStats();
                 table.ajax.reload();
                 updateClearButtonVisibility();
@@ -1756,9 +1723,7 @@
                         <tr class="table-success"><th>Inserted</th><td>${s.inserted}</td></tr>
                         <tr class="table-info"><th>Updated</th><td>${s.updated}</td></tr>
                         <tr><th>Skipped</th><td>${s.skipped}</td></tr>
-                        <tr class="${s.failed > 0 ? 'table-danger' : ''}">
-                            <th>Failed</th><td>${s.failed}</td>
-                        </tr>
+                        <tr class="${s.failed > 0 ? 'table-danger' : ''}"><th>Failed</th><td>${s.failed}</td></tr>
                     </tbody>
                 </table>`;
 
@@ -1767,48 +1732,10 @@
                                 '<h6 class="text-danger mt-3">Errors</h6><ul class="list-group">';
                             res.errors.forEach(function(e) {
                                 html += `<li class="list-group-item list-group-item-danger">
-                        <strong>Booking #${e.bookingno ?? 'N/A'}</strong>: ${e.error}
+                        <strong>Booking #${e.bookingno ?? '-'}</strong>: ${e.error}
                     </li>`;
                             });
                             html += '</ul>';
-                        }
-
-                        if (res.verification && res.verification.total !== undefined) {
-                            var v = res.verification;
-                            html += `<h6 class="mt-3">Verification (SQL Server)</h6>
-                    <p class="mb-1">Rows tagged <code>crm_sync</code>: <strong>${v.total}</strong></p>`;
-
-                            if (v.recent && v.recent.length) {
-                                html += `<table class="table table-sm table-bordered mt-2">
-                        <thead><tr><th>BookingNo</th><th>Company</th><th>Team</th><th>Status</th><th>UpdatedOn</th></tr></thead>
-                        <tbody>`;
-                                v.recent.forEach(function(r) {
-                                    html += `<tr>
-                            <td>${r.bookingno}</td>
-                            <td>${r.companyname ?? '-'}</td>
-                            <td>${r.teamname ?? '-'}</td>
-                            <td>${r.QuoteStatus ?? '-'}</td>
-                            <td>${r.updatedon ?? '-'}</td>
-                        </tr>`;
-                                });
-                                html += '</tbody></table>';
-                            }
-                        }
-
-                        if (res.verification && res.verification.record !== undefined) {
-                            var rec = res.verification.record;
-                            if (rec) {
-                                html += `<h6 class="mt-3">Verified — Booking #${rec.bookingno}</h6>
-                        <table class="table table-sm table-bordered w-auto"><tbody>`;
-                                Object.entries(rec).forEach(function([k, v]) {
-                                    html +=
-                                        `<tr><th>${k}</th><td>${v ?? '-'}</td></tr>`;
-                                });
-                                html += '</tbody></table>';
-                            } else {
-                                html +=
-                                    '<div class="alert alert-danger mt-3">Record not found in SQL Server after sync.</div>';
-                            }
                         }
 
                         if (!res.dry_run && (s.inserted > 0 || s.updated > 0)) {
@@ -1817,10 +1744,7 @@
                         }
 
                         $('#crmSyncResult').html(html);
-
-                        if (!res.dry_run) {
-                            loadCrmHistory();
-                        }
+                        if (!res.dry_run) loadCrmHistory();
                     },
                     error: function(xhr) {
                         $('#crmSyncResult').html(
@@ -1834,6 +1758,7 @@
                     }
                 });
             });
-        });
+
+        }); // end document.ready
     </script>
 @stop
