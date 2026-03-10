@@ -540,6 +540,403 @@
         </div>
     </div>
 
+    {{-- ============================================================ --}}
+    {{-- DUPLICATE MODAL                                              --}}
+    {{-- ============================================================ --}}
+    <div class="modal fade" id="duplicateModal" tabindex="-1" role="dialog" data-backdrop="static"
+        data-keyboard="false">
+        <div class="modal-dialog modal-xl" role="document">
+            <div class="modal-content">
+
+                <div class="modal-header" style="background:#4B49AC; color:white;">
+                    <h5 class="modal-title">
+                        <i class="fas fa-copy mr-2"></i>
+                        Duplicate Inquiry &mdash; {{ $quotation->bookingno }}
+                    </h5>
+                    <button type="button" class="close text-white" data-dismiss="modal">
+                        <span>&times;</span>
+                    </button>
+                </div>
+
+                <div class="modal-body" style="max-height:75vh; overflow-y:auto; padding:1rem;">
+
+                    {{-- 1. INQUIRY DETAILS --}}
+                    <div class="card card-primary mb-2">
+                        <div class="card-header p-2" data-toggle="collapse" data-target="#dupInquiry"
+                            style="cursor:pointer; background:#4B49AC; color:white;">
+                            <h6 class="mb-0"><i class="fas fa-info-circle mr-2"></i>Inquiry Details</h6>
+                        </div>
+                        <div class="collapse show" id="dupInquiry">
+                            <div class="card-body py-3">
+                                <div class="form-group row mb-2">
+                                    <label class="col-sm-3 col-form-label col-form-label-sm">Sales Person</label>
+                                    <div class="col-sm-5 position-relative">
+                                        <input type="text" id="dupSalesPersonDisplay"
+                                            class="form-control form-control-sm" placeholder="Search sales person..."
+                                            value="{{ $quotation->username ?? '' }}" autocomplete="off">
+                                        <input type="hidden" id="dupSalesPersonName"
+                                            value="{{ $quotation->username ?? '' }}">
+                                        <ul id="dupSalesPersonSuggestions"
+                                            class="dup-autocomplete-list list-unstyled mb-0"></ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- 2. SERVICE DETAILS --}}
+                    <div class="card card-primary mb-2">
+                        <div class="card-header p-2" data-toggle="collapse" data-target="#dupService"
+                            style="cursor:pointer; background:#4B49AC; color:white;">
+                            <h6 class="mb-0">
+                                <i class="fas fa-ship mr-2"></i>Service Details
+                                <span class="badge badge-light ml-1">All fields required</span>
+                            </h6>
+                        </div>
+                        <div class="collapse show" id="dupService">
+                            <div class="card-body py-3">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        {{-- Origin --}}
+                                        <div class="form-group row mb-2">
+                                            <label class="col-sm-4 col-form-label col-form-label-sm">
+                                                Origin <span class="text-danger">*</span>
+                                            </label>
+                                            <div class="col-sm-8 position-relative">
+                                                <input type="text" id="dupOriginDisplay"
+                                                    class="form-control form-control-sm dup-required"
+                                                    placeholder="Search country..."
+                                                    value="{{ $quotation->origincountry ?? '' }}" autocomplete="off">
+                                                <input type="hidden" id="dupOriginCountryId"
+                                                    value="{{ $quotation->origin_country_id ?? '' }}">
+                                                <input type="hidden" id="dupOriginCountryCode"
+                                                    value="{{ $quotation->origin_country_code ?? '' }}">
+                                                <ul id="dupOriginSuggestions"
+                                                    class="dup-autocomplete-list list-unstyled mb-0"></ul>
+                                            </div>
+                                        </div>
+                                        {{-- InCo Term --}}
+                                        <div class="form-group row mb-2">
+                                            <label class="col-sm-4 col-form-label col-form-label-sm">
+                                                InCo Term <span class="text-danger">*</span>
+                                            </label>
+                                            <div class="col-sm-8 position-relative">
+                                                <input type="text" id="dupIncoTermDisplay"
+                                                    class="form-control form-control-sm dup-required"
+                                                    placeholder="Search inco term..."
+                                                    value="{{ $quotation->incoterm ?? '' }}" autocomplete="off">
+                                                <input type="hidden" id="dupIncoTermCode"
+                                                    value="{{ $quotation->incoterm ?? '' }}">
+                                                <ul id="dupIncoTermSuggestions"
+                                                    class="dup-autocomplete-list list-unstyled mb-0"></ul>
+                                            </div>
+                                        </div>
+                                        {{-- Transport Mode --}}
+                                        <div class="form-group row mb-2">
+                                            <label class="col-sm-4 col-form-label col-form-label-sm">
+                                                Transport Mode <span class="text-danger">*</span>
+                                            </label>
+                                            <div class="col-sm-8 position-relative">
+                                                <input type="text" id="dupTransportModeDisplay"
+                                                    class="form-control form-control-sm dup-required"
+                                                    placeholder="Search transport mode..."
+                                                    value="{{ $quotation->TransportMode ?? '' }}" autocomplete="off">
+                                                <input type="hidden" id="dupTransportModeCode"
+                                                    value="{{ $quotation->TransportMode ?? '' }}">
+                                                <ul id="dupTransportModeSuggestions"
+                                                    class="dup-autocomplete-list list-unstyled mb-0"></ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        {{-- Destination --}}
+                                        <div class="form-group row mb-2">
+                                            <label class="col-sm-4 col-form-label col-form-label-sm">
+                                                Destination <span class="text-danger">*</span>
+                                            </label>
+                                            <div class="col-sm-8 position-relative">
+                                                <input type="text" id="dupDestDisplay"
+                                                    class="form-control form-control-sm dup-required"
+                                                    placeholder="Search country..."
+                                                    value="{{ $quotation->destinationcountry ?? '' }}"
+                                                    autocomplete="off">
+                                                <input type="hidden" id="dupDestCountryId"
+                                                    value="{{ $quotation->dest_country_id ?? '' }}">
+                                                <input type="hidden" id="dupDestCountryCode"
+                                                    value="{{ $quotation->destination_country_code ?? '' }}">
+                                                <ul id="dupDestSuggestions"
+                                                    class="dup-autocomplete-list list-unstyled mb-0"></ul>
+                                            </div>
+                                        </div>
+                                        {{-- Shipment Mode --}}
+                                        <div class="form-group row mb-2">
+                                            <label class="col-sm-4 col-form-label col-form-label-sm">
+                                                Shipment Mode <span class="text-danger">*</span>
+                                            </label>
+                                            <div class="col-sm-8 position-relative">
+                                                <input type="text" id="dupShipmentModeDisplay"
+                                                    class="form-control form-control-sm dup-required"
+                                                    placeholder="Search shipment mode..."
+                                                    value="{{ $quotation->shipmentmode ?? '' }}" autocomplete="off">
+                                                <input type="hidden" id="dupShipmentModeCode"
+                                                    value="{{ $quotation->shipmentmode ?? '' }}">
+                                                <ul id="dupShipmentModeSuggestions"
+                                                    class="dup-autocomplete-list list-unstyled mb-0"></ul>
+                                            </div>
+                                        </div>
+                                        {{-- Service Class --}}
+                                        <div class="form-group row mb-2">
+                                            <label class="col-sm-4 col-form-label col-form-label-sm">
+                                                Service Class <span class="text-danger">*</span>
+                                            </label>
+                                            <div class="col-sm-8 position-relative">
+                                                <input type="text" id="dupServiceClassDisplay"
+                                                    class="form-control form-control-sm dup-required"
+                                                    placeholder="Search service class..."
+                                                    value="{{ $quotation->ServiceClass ?? '' }}" autocomplete="off">
+                                                <input type="hidden" id="dupServiceClassCode"
+                                                    value="{{ $quotation->ServiceClass ?? '' }}">
+                                                <ul id="dupServiceClassSuggestions"
+                                                    class="dup-autocomplete-list list-unstyled mb-0"></ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- 3. CUSTOMER DETAILS --}}
+                    <div class="card card-primary mb-2">
+                        <div class="card-header p-2" data-toggle="collapse" data-target="#dupCustomer"
+                            style="cursor:pointer; background:#4B49AC; color:white;">
+                            <h6 class="mb-0"><i class="fas fa-building mr-2"></i>Customer Details</h6>
+                        </div>
+                        <div class="collapse show" id="dupCustomer">
+                            <div class="card-body py-3">
+                                {{-- Customer Type & Agent Type on top --}}
+                                <div class="row mb-2">
+                                    <div class="col-md-6">
+                                        <div class="form-group row mb-2">
+                                            <label class="col-sm-4 col-form-label col-form-label-sm">
+                                                Customer Type <span class="text-danger">*</span>
+                                            </label>
+                                            <div class="col-sm-8">
+                                                <select id="dupCustomerType"
+                                                    class="form-control form-control-sm dup-required">
+                                                    <option value="">-- Select --</option>
+                                                    <option value="Existing"
+                                                        {{ ($quotation->CustomerType ?? '') === 'Existing' ? 'selected' : '' }}>
+                                                        Existing
+                                                    </option>
+                                                    <option value="New"
+                                                        {{ ($quotation->CustomerType ?? '') === 'New' ? 'selected' : '' }}>
+                                                        New
+                                                    </option>
+                                                    <option value="New Agent"
+                                                        {{ ($quotation->CustomerType ?? '') === 'New Agent' ? 'selected' : '' }}>
+                                                        New Agent
+                                                    </option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group row mb-2">
+                                            <label class="col-sm-4 col-form-label col-form-label-sm">Agent Type</label>
+                                            <div class="col-sm-8">
+                                                <input type="text" id="dupAgentType"
+                                                    class="form-control form-control-sm"
+                                                    value="{{ $quotation->AgentType ?? '' }}">
+                                                <input type="hidden" id="dupAgentTypeId"
+                                                    value="{{ $quotation->AgentTypeId ?? '' }}">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <hr class="my-2">
+
+                                {{-- Customer fields — editable only for New / New Agent --}}
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group row mb-2">
+                                            <label class="col-sm-4 col-form-label col-form-label-sm">
+                                                Company Name <span class="text-danger">*</span>
+                                            </label>
+                                            <div class="col-sm-8">
+                                                <input type="text" id="dupCompanyName"
+                                                    class="form-control form-control-sm dup-required"
+                                                    value="{{ $quotation->companyname ?? '' }}" readonly>
+                                            </div>
+                                        </div>
+                                        <div class="form-group row mb-2">
+                                            <label class="col-sm-4 col-form-label col-form-label-sm">
+                                                Address 1 <span class="text-danger">*</span>
+                                            </label>
+                                            <div class="col-sm-8">
+                                                <input type="text" id="dupAddress1"
+                                                    class="form-control form-control-sm dup-required"
+                                                    value="{{ $quotation->pri_partner_steet ?? '' }}" readonly>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group row mb-2">
+                                            <label class="col-sm-4 col-form-label col-form-label-sm">
+                                                Country <span class="text-danger">*</span>
+                                            </label>
+                                            <div class="col-sm-8 position-relative">
+                                                <input type="text" id="dupCustCountryDisplay"
+                                                    class="form-control form-control-sm dup-required"
+                                                    value="{{ $quotation->pri_partner_countryname ?? '' }}"
+                                                    autocomplete="off" readonly>
+                                                <input type="hidden" id="dupCustCountryId"
+                                                    value="{{ $quotation->pri_partner_countryid ?? '' }}">
+                                                <input type="hidden" id="dupCustCountryName"
+                                                    value="{{ $quotation->pri_partner_countryname ?? '' }}">
+                                                <ul id="dupCustCountrySuggestions"
+                                                    class="dup-autocomplete-list list-unstyled mb-0"></ul>
+                                            </div>
+                                        </div>
+                                        <div class="form-group row mb-2">
+                                            <label class="col-sm-4 col-form-label col-form-label-sm">
+                                                Industry Type <span class="text-danger">*</span>
+                                            </label>
+                                            <div class="col-sm-8 position-relative">
+                                                <input type="text" id="dupIndustryDisplay"
+                                                    class="form-control form-control-sm dup-required"
+                                                    value="{{ $quotation->industryname ?? '' }}" autocomplete="off"
+                                                    readonly>
+                                                <input type="hidden" id="dupIndustryId"
+                                                    value="{{ $quotation->industryid ?? '' }}">
+                                                <input type="hidden" id="dupIndustryName"
+                                                    value="{{ $quotation->industryname ?? '' }}">
+                                                <ul id="dupIndustrySuggestions"
+                                                    class="dup-autocomplete-list list-unstyled mb-0"></ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- 4. CARGO DETAILS --}}
+                    <div class="card card-primary mb-2">
+                        <div class="card-header p-2" data-toggle="collapse" data-target="#dupCargo"
+                            style="cursor:pointer; background:#4B49AC; color:white;">
+                            <h6 class="mb-0"><i class="fas fa-boxes mr-2"></i>Cargo Details</h6>
+                        </div>
+                        <div class="collapse show" id="dupCargo">
+                            <div class="card-body py-3">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group row mb-2">
+                                            <label class="col-sm-4 col-form-label col-form-label-sm">
+                                                Commodity <span class="text-danger">*</span>
+                                            </label>
+                                            <div class="col-sm-8">
+                                                <input type="text" id="dupCommodity"
+                                                    class="form-control form-control-sm dup-required"
+                                                    value="{{ $quotation->commodity ?? '' }}">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group row mb-2">
+                                            <label class="col-sm-4 col-form-label col-form-label-sm">
+                                                Scope of Volume <span class="text-danger">*</span>
+                                            </label>
+                                            <div class="col-sm-8">
+                                                <select id="dupScopeOfVolume"
+                                                    class="form-control form-control-sm dup-required">
+                                                    <option value="">-- Select --</option>
+                                                    <option value="Weight (in KGS)"
+                                                        {{ ($quotation->scopevolume ?? '') === 'Weight (in KGS)' ? 'selected' : '' }}>
+                                                        Weight (in KGS)
+                                                    </option>
+                                                    <option value="Volume (In CBM)"
+                                                        {{ ($quotation->scopevolume ?? '') === 'Volume (In CBM)' ? 'selected' : '' }}>
+                                                        Volume (In CBM)
+                                                    </option>
+                                                    <option value="Containerized"
+                                                        {{ ($quotation->scopevolume ?? '') === 'Containerized' ? 'selected' : '' }}>
+                                                        Containerized
+                                                    </option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {{-- Cargo Volume — hidden when Containerized --}}
+                                <div class="row" id="dupCargoVolumeRow">
+                                    <div class="col-md-6">
+                                        <div class="form-group row mb-2">
+                                            <label class="col-sm-4 col-form-label col-form-label-sm">
+                                                Cargo Volume <span class="text-danger">*</span>
+                                            </label>
+                                            <div class="col-sm-8">
+                                                <input type="number" id="dupCargoVolume"
+                                                    class="form-control form-control-sm" min="0.01" step="0.01"
+                                                    value="{{ $quotation->cargovolume ?? '' }}"
+                                                    placeholder="Numeric, non-zero">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {{-- Equipment — shown only when Containerized --}}
+                                <div id="dupEquipmentSection" style="display:none;">
+                                    <hr class="my-2">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <strong><i class="fas fa-truck-loading mr-1"></i> Equipment</strong>
+                                        <button type="button" class="btn btn-sm btn-success" id="dupAddEquipmentBtn">
+                                            <i class="fas fa-plus mr-1"></i> Add
+                                        </button>
+                                    </div>
+                                    <table class="table table-sm table-bordered mb-0" id="dupEquipmentTable">
+                                        <thead class="thead-light">
+                                            <tr>
+                                                <th style="width:55%">
+                                                    Equipment Type <span class="text-danger">*</span>
+                                                </th>
+                                                <th style="width:30%">
+                                                    Quantity <span class="text-danger">*</span>
+                                                </th>
+                                                <th style="width:15%"></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="dupEquipmentBody">
+                                            <tr id="dupEquipmentEmpty">
+                                                <td colspan="3" class="text-center text-muted py-2">
+                                                    Click Add to add equipment
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+
+                </div>{{-- /.modal-body --}}
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                        <i class="fas fa-times mr-1"></i> Cancel
+                    </button>
+                    <button type="button" class="btn btn-primary" id="btnConfirmDuplicate">
+                        <i class="fas fa-copy mr-1"></i> Duplicate
+                    </button>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
 @stop
 
 @section('css')
@@ -647,49 +1044,399 @@
 
             const bookingNo = '{{ $quotation->bookingno ?? '' }}';
 
-            // ============================================
-            // COPY BOOKING — INLINE LINK RESULT
-            // ============================================
+            // ============================================================
+            // DUPLICATE — MODAL FLOW
+            // ============================================================
+            const officeId = '{{ $quotation->OfficeID ?? '' }}';
+
             $('#btnCopyBooking').on('click', function() {
-                if (!confirm('Copy booking ' + bookingNo + '? A new inquiry will be created.')) {
+                dupResetValidation();
+                dupToggleScopeFields();
+                dupToggleCustomerFields();
+                $('#duplicateModal').modal('show');
+            });
+
+            // ---- Scope of Volume toggle ----
+            function dupToggleScopeFields() {
+                const scope = $('#dupScopeOfVolume').val();
+                if (scope === 'Containerized') {
+                    $('#dupCargoVolumeRow').hide();
+                    $('#dupCargoVolume').val('');
+                    $('#dupEquipmentSection').show();
+                } else {
+                    $('#dupCargoVolumeRow').show();
+                    $('#dupEquipmentSection').hide();
+                    dupClearEquipment();
+                }
+            }
+            $('#dupScopeOfVolume').on('change', dupToggleScopeFields);
+
+            // ---- Customer Type toggle ----
+            function dupToggleCustomerFields() {
+                const isNew = ['New', 'New Agent'].includes($('#dupCustomerType').val());
+                $('#dupCompanyName, #dupAddress1').prop('readonly', !isNew);
+                $('#dupCustCountryDisplay, #dupIndustryDisplay').prop('readonly', !isNew);
+            }
+            $('#dupCustomerType').on('change', dupToggleCustomerFields);
+
+            // ---- Equipment ----
+            let dupEquipmentRows = [];
+
+            function dupRenderEquipment() {
+                const tbody = $('#dupEquipmentBody');
+                tbody.empty();
+
+                if (!dupEquipmentRows.length) {
+                    tbody.append(`<tr id="dupEquipmentEmpty">
+            <td colspan="3" class="text-center text-muted py-2">Click Add to add equipment</td>
+        </tr>`);
+                    return;
+                }
+
+                dupEquipmentRows.forEach(function(row, idx) {
+                    tbody.append(`
+            <tr data-idx="${idx}">
+                <td class="position-relative">
+                    <input type="text" class="form-control form-control-sm dup-eq-type-display"
+                        data-idx="${idx}" value="${row.equipment_type}"
+                        placeholder="Search equipment type..." autocomplete="off">
+                    <ul class="dup-autocomplete-list dup-eq-suggestions list-unstyled mb-0"
+                        data-idx="${idx}"></ul>
+                </td>
+                <td>
+                    <input type="number" class="form-control form-control-sm dup-eq-qty"
+                        data-idx="${idx}" value="${row.quantity}" min="1">
+                </td>
+                <td class="text-center">
+                    <button type="button" class="btn btn-sm btn-danger dup-eq-remove"
+                        data-idx="${idx}">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `);
+                });
+            }
+
+            function dupClearEquipment() {
+                dupEquipmentRows = [];
+                dupRenderEquipment();
+            }
+
+            $('#dupAddEquipmentBtn').on('click', function() {
+                dupEquipmentRows.push({
+                    equipment_type_id: '',
+                    equipment_type: '',
+                    quantity: 1
+                });
+                dupRenderEquipment();
+            });
+
+            $(document).on('click', '.dup-eq-remove', function() {
+                dupEquipmentRows.splice(parseInt($(this).data('idx')), 1);
+                dupRenderEquipment();
+            });
+
+            $(document).on('change', '.dup-eq-qty', function() {
+                dupEquipmentRows[parseInt($(this).data('idx'))].quantity = parseInt($(this).val()) || 1;
+            });
+
+            // Equipment type autocomplete
+            let dupEqTimer = null;
+            $(document).on('input', '.dup-eq-type-display', function() {
+                const idx = parseInt($(this).data('idx'));
+                const val = $(this).val().trim();
+                const $ul = $(`.dup-eq-suggestions[data-idx="${idx}"]`);
+
+                dupEquipmentRows[idx].equipment_type_id = '';
+                dupEquipmentRows[idx].equipment_type = val;
+
+                clearTimeout(dupEqTimer);
+                if (!val) {
+                    $ul.hide().empty();
+                    return;
+                }
+
+                dupEqTimer = setTimeout(function() {
+                    $.get('{{ route('quotation.lookup.equipmentTypes') }}', {
+                        filter: val
+                    }, function(data) {
+                        $ul.empty();
+                        if (!data.length) {
+                            $ul.hide();
+                            return;
+                        }
+                        data.forEach(function(item) {
+                            $ul.append(
+                                `<li data-id="${item.Id}" data-code="${item.Code}">${item.Code}</li>`
+                                );
+                        });
+                        $ul.show();
+                    });
+                }, 250);
+            });
+
+            $(document).on('mousedown', '.dup-eq-suggestions li', function() {
+                const idx = parseInt($(this).closest('ul').data('idx'));
+                const id = $(this).data('id');
+                const code = $(this).data('code');
+
+                dupEquipmentRows[idx].equipment_type_id = id;
+                dupEquipmentRows[idx].equipment_type = code;
+
+                $(`.dup-eq-type-display[data-idx="${idx}"]`).val(code);
+                $(this).closest('ul').hide().empty();
+            });
+
+            // ---- Generic autocomplete builder ----
+            function dupBind(inputId, ulId, url, extraParams, labelFn, onPick) {
+                let timer = null;
+
+                $(document).on('input', '#' + inputId, function() {
+                    const val = $(this).val().trim();
+                    clearTimeout(timer);
+                    if (!val) {
+                        $('#' + ulId).hide().empty();
+                        return;
+                    }
+
+                    const params = Object.assign({
+                        filter: val
+                    }, extraParams);
+
+                    timer = setTimeout(function() {
+                        $.get(url, params, function(data) {
+                            const $ul = $('#' + ulId);
+                            $ul.empty();
+                            if (!data.length) {
+                                $ul.hide();
+                                return;
+                            }
+                            data.forEach(function(item) {
+                                $ul.append(
+                                    `<li data-item='${JSON.stringify(item)}'>${labelFn(item)}</li>`
+                                );
+                            });
+                            $ul.show();
+                        });
+                    }, 250);
+                });
+
+                $(document).on('mousedown', '#' + ulId + ' li', function() {
+                    onPick(JSON.parse($(this).attr('data-item')));
+                    $('#' + ulId).hide().empty();
+                });
+
+                $(document).on('blur', '#' + inputId, function() {
+                    setTimeout(function() {
+                        $('#' + ulId).hide();
+                    }, 200);
+                });
+            }
+
+            // Sales Person
+            dupBind('dupSalesPersonDisplay', 'dupSalesPersonSuggestions',
+                '{{ route('quotation.lookup.persons') }}', {
+                    office_id: officeId,
+                    pic_type: 'S'
+                },
+                item => item.PersonName,
+                item => {
+                    $('#dupSalesPersonDisplay').val(item.PersonName);
+                    $('#dupSalesPersonName').val(item.PersonName);
+                }
+            );
+
+            // Origin Country
+            dupBind('dupOriginDisplay', 'dupOriginSuggestions',
+                '{{ route('quotation.lookup.countries') }}', {},
+                item => item.CountryName,
+                item => {
+                    $('#dupOriginDisplay').val(item.CountryName);
+                    $('#dupOriginCountryId').val(item.CountryID);
+                    $('#dupOriginCountryCode').val(item.CountCode);
+                }
+            );
+
+            // Destination Country
+            dupBind('dupDestDisplay', 'dupDestSuggestions',
+                '{{ route('quotation.lookup.countries') }}', {},
+                item => item.CountryName,
+                item => {
+                    $('#dupDestDisplay').val(item.CountryName);
+                    $('#dupDestCountryId').val(item.CountryID);
+                    $('#dupDestCountryCode').val(item.CountCode);
+                }
+            );
+
+            // InCo Terms
+            dupBind('dupIncoTermDisplay', 'dupIncoTermSuggestions',
+                '{{ route('quotation.lookup.incoterms') }}', {},
+                item => item.IncoTermCode + ' — ' + item.Name,
+                item => {
+                    $('#dupIncoTermDisplay').val(item.IncoTermCode);
+                    $('#dupIncoTermCode').val(item.IncoTermCode);
+                }
+            );
+
+            // Shipment Mode
+            dupBind('dupShipmentModeDisplay', 'dupShipmentModeSuggestions',
+                '{{ route('quotation.lookup.shipmentModes') }}', {},
+                item => item.Code,
+                item => {
+                    $('#dupShipmentModeDisplay').val(item.Code);
+                    $('#dupShipmentModeCode').val(item.Code);
+                }
+            );
+
+            // Transport Mode
+            dupBind('dupTransportModeDisplay', 'dupTransportModeSuggestions',
+                '{{ route('quotation.lookup.transportModes') }}', {},
+                item => (item.Name || item.Code),
+                item => {
+                    $('#dupTransportModeDisplay').val(item.Name || item.Code);
+                    $('#dupTransportModeCode').val(item.Code);
+                }
+            );
+
+            // Service Class
+            dupBind('dupServiceClassDisplay', 'dupServiceClassSuggestions',
+                '{{ route('quotation.lookup.serviceClasses') }}', {},
+                item => item.Code + ' — ' + item.Description,
+                item => {
+                    $('#dupServiceClassDisplay').val(item.Code);
+                    $('#dupServiceClassCode').val(item.Code);
+                }
+            );
+
+            // Customer Country
+            dupBind('dupCustCountryDisplay', 'dupCustCountrySuggestions',
+                '{{ route('quotation.lookup.countries') }}', {},
+                item => item.CountryName,
+                item => {
+                    $('#dupCustCountryDisplay').val(item.CountryName);
+                    $('#dupCustCountryId').val(item.CountryID);
+                    $('#dupCustCountryName').val(item.CountryName);
+                }
+            );
+
+            // Industry Type
+            dupBind('dupIndustryDisplay', 'dupIndustrySuggestions',
+                '{{ route('quotation.lookup.industryTypes') }}', {},
+                item => item.Name,
+                item => {
+                    $('#dupIndustryDisplay').val(item.Name);
+                    $('#dupIndustryId').val(item.Id);
+                    $('#dupIndustryName').val(item.Name);
+                }
+            );
+
+            // ---- Validation ----
+            function dupResetValidation() {
+                $('.dup-required, #dupCargoVolume').removeClass('is-invalid');
+            }
+
+            function dupValidate() {
+                let valid = true;
+
+                $('.dup-required').each(function() {
+                    const empty = !$(this).val() || !$(this).val().trim();
+                    $(this).toggleClass('is-invalid', empty);
+                    if (empty) valid = false;
+                });
+
+                const scope = $('#dupScopeOfVolume').val();
+
+                if (scope && scope !== 'Containerized') {
+                    const vol = parseFloat($('#dupCargoVolume').val());
+                    const bad = !vol || vol <= 0;
+                    $('#dupCargoVolume').toggleClass('is-invalid', bad);
+                    if (bad) valid = false;
+                }
+
+                if (scope === 'Containerized') {
+                    if (!dupEquipmentRows.length) {
+                        toastr.error('Please add at least one equipment row.');
+                        valid = false;
+                    }
+                    dupEquipmentRows.forEach(function(row, idx) {
+                        if (!row.equipment_type_id) {
+                            $(`.dup-eq-type-display[data-idx="${idx}"]`).addClass('is-invalid');
+                            valid = false;
+                        }
+                        if (!row.quantity || row.quantity < 1) {
+                            $(`.dup-eq-qty[data-idx="${idx}"]`).addClass('is-invalid');
+                            valid = false;
+                        }
+                    });
+                }
+
+                return valid;
+            }
+
+            // ---- Submit ----
+            $('#btnConfirmDuplicate').on('click', function() {
+                if (!dupValidate()) {
+                    toastr.error('Please fill in all required fields.');
                     return;
                 }
 
                 const $btn = $(this);
-                $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Duplicating...');
+                $btn.prop('disabled', true)
+                    .html('<i class="fas fa-spinner fa-spin mr-1"></i> Duplicating...');
+
+                const payload = {
+                    _token: '{{ csrf_token() }}',
+                    sales_person_name: $('#dupSalesPersonName').val(),
+                    origin_country_id: $('#dupOriginCountryId').val(),
+                    origin_country_name: $('#dupOriginDisplay').val(),
+                    origin_country_code: $('#dupOriginCountryCode').val(),
+                    dest_country_id: $('#dupDestCountryId').val(),
+                    dest_country_name: $('#dupDestDisplay').val(),
+                    dest_country_code: $('#dupDestCountryCode').val(),
+                    incoterm_code: $('#dupIncoTermCode').val(),
+                    shipment_mode_code: $('#dupShipmentModeCode').val(),
+                    transport_mode_code: $('#dupTransportModeCode').val(),
+                    service_class_code: $('#dupServiceClassCode').val(),
+                    customer_type: $('#dupCustomerType').val(),
+                    agent_type_id: $('#dupAgentTypeId').val(),
+                    agent_type: $('#dupAgentType').val(),
+                    company_name: $('#dupCompanyName').val(),
+                    address1: $('#dupAddress1').val(),
+                    cust_country_id: $('#dupCustCountryId').val(),
+                    cust_country_name: $('#dupCustCountryName').val(),
+                    industry_type_id: $('#dupIndustryId').val(),
+                    industry_type_name: $('#dupIndustryName').val(),
+                    commodity: $('#dupCommodity').val(),
+                    scope_of_volume: $('#dupScopeOfVolume').val(),
+                    cargo_volume: $('#dupCargoVolume').val() || null,
+                    equipment: dupEquipmentRows,
+                };
 
                 $.ajax({
-                    url: '/quotation/' + bookingNo + '/copy',
+                    url: '/quotation/' + bookingNo + '/duplicate',
                     type: 'POST',
-                    data: {
-                        _token: '{{ csrf_token() }}'
-                    },
+                    contentType: 'application/json',
+                    data: JSON.stringify(payload),
                     success: function(response) {
                         if (response.success) {
-                            $btn.replaceWith(`
-                                <a href="${response.redirect_url}"
-                                   class="btn btn-success btn-sm"
-                                   id="newInquiryLink">
-                                    <i class="fas fa-check-circle mr-1"></i>
-                                    Copied — Inquiry No: ${response.new_booking_no}
-                                </a>
-                            `);
+                            $('#duplicateModal').modal('hide');
+                            window.location.href = response.redirect_url;
                         } else {
-                            alert('Failed to copy booking: ' + response.message);
+                            toastr.error(response.message || 'Duplicate failed.');
                             $btn.prop('disabled', false)
-                                .html('<i class="fas fa-copy"></i> Duplicate');
+                                .html('<i class="fas fa-copy mr-1"></i> Duplicate');
                         }
                     },
                     error: function(xhr) {
-                        const msg = xhr.responseJSON ? xhr.responseJSON.message :
-                            'An unexpected error occurred.';
-                        alert('Error: ' + msg);
+                        const msg = xhr.responseJSON?.message || 'Unexpected error.';
+                        toastr.error('Error: ' + msg);
                         $btn.prop('disabled', false)
-                            .html('<i class="fas fa-copy"></i> Duplicate');
+                            .html('<i class="fas fa-copy mr-1"></i> Duplicate');
                     }
                 });
             });
-
+            
             // ============================================
             // LOAD CHARGES ON PAGE LOAD
             // ============================================
@@ -888,6 +1635,8 @@
                     .removeClass('fa-chevron-up').addClass('fa-chevron-down');
                 $(this).addClass('collapsed-card');
             });
+
+
 
         });
     </script>

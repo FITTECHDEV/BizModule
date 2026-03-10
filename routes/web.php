@@ -856,6 +856,30 @@ Route::middleware(['auth', 'can:approve-all-entity-request'])->group(function ()
     Route::post('/quotation/cargo/save', [App\Http\Controllers\QuotationController::class, 'saveCargoDetails'])
         ->name('quotation.cargo.save');
 
+
+    // Duplicate
+    Route::post('/quotation/{bookingno}/duplicate', [App\Http\Controllers\QuotationController::class, 'processDuplicate'])->name('quotation.processDuplicate');
+
+    // Lookup endpoints for duplicate modal
+    Route::get('/quotation/lookup/countries',       [App\Http\Controllers\QuotationController::class, 'lookupCountries'])
+        ->name('quotation.lookup.countries');
+    Route::get('/quotation/lookup/incoterms',       [App\Http\Controllers\QuotationController::class, 'lookupIncoTerms'])
+        ->name('quotation.lookup.incoterms');
+    Route::get('/quotation/lookup/service-classes', [App\Http\Controllers\QuotationController::class, 'lookupServiceClasses'])
+        ->name('quotation.lookup.serviceClasses');
+    Route::get('/quotation/lookup/industry-types',  [App\Http\Controllers\QuotationController::class, 'lookupIndustryTypes'])
+        ->name('quotation.lookup.industryTypes');
+    Route::get(
+        '/quotation/lookup/persons',
+        [App\Http\Controllers\QuotationController::class, 'lookupPersonsInCharge']
+    )->name('quotation.lookup.persons');
+    Route::get('/quotation/lookup/shipment-modes',  [App\Http\Controllers\QuotationController::class, 'lookupShipmentModes'])
+        ->name('quotation.lookup.shipmentModes');
+    Route::get('/quotation/lookup/transport-modes', [App\Http\Controllers\QuotationController::class, 'lookupTransportModes'])
+        ->name('quotation.lookup.transportModes');
+    Route::get('/quotation/lookup/equipment-types', [App\Http\Controllers\QuotationController::class, 'lookupEquipmentTypes'])
+        ->name('quotation.lookup.equipmentTypes');
+
     // ============================================
     // QUOTATION — WILDCARD ROUTES (must be last)
     // These use {id} and will match ANY segment — keep them after all

@@ -5867,4 +5867,266 @@ class QuotationController extends Controller
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }
+
+    // ============================================================
+    // LOOKUP METHODS — used by duplicate modal dropdowns
+    // ============================================================
+
+    public function lookupCountries(Request $request)
+    {
+        try {
+            $pdo  = DB::getPdo();
+            $stmt = $pdo->prepare("EXEC sp_CountryList @Filter = ?");
+            $stmt->execute([$request->get('filter', '')]);
+            return response()->json($stmt->fetchAll(\PDO::FETCH_ASSOC));
+        } catch (\Exception $e) {
+            return response()->json([]);
+        }
+    }
+
+    public function lookupIncoTerms(Request $request)
+    {
+        try {
+            $pdo  = DB::getPdo();
+            $stmt = $pdo->prepare("EXEC sp_IncoTerms @Filter = ?");
+            $stmt->execute([$request->get('filter', '')]);
+            return response()->json($stmt->fetchAll(\PDO::FETCH_ASSOC));
+        } catch (\Exception $e) {
+            return response()->json([]);
+        }
+    }
+
+    public function lookupServiceClasses(Request $request)
+    {
+        try {
+            $pdo  = DB::getPdo();
+            $stmt = $pdo->prepare("EXEC sp_ServiceClass @Filter = ?");
+            $stmt->execute([$request->get('filter', '')]);
+            return response()->json($stmt->fetchAll(\PDO::FETCH_ASSOC));
+        } catch (\Exception $e) {
+            return response()->json([]);
+        }
+    }
+
+    public function lookupIndustryTypes(Request $request)
+    {
+        try {
+            $pdo  = DB::getPdo();
+            $stmt = $pdo->prepare("EXEC sp_IndustryTypeList @Filter = ?");
+            $stmt->execute([$request->get('filter', '')]);
+            return response()->json($stmt->fetchAll(\PDO::FETCH_ASSOC));
+        } catch (\Exception $e) {
+            return response()->json([]);
+        }
+    }
+
+    public function lookupPersonsInCharge(Request $request)
+    {
+        try {
+            $pdo  = DB::getPdo();
+            $stmt = $pdo->prepare("EXEC sp_PersonInCharge @OfficeID = ?, @PICType = ?, @Filter = ?");
+            $stmt->execute([
+                $request->get('office_id'),
+                $request->get('pic_type', 'S'),
+                $request->get('filter', ''),
+            ]);
+            return response()->json($stmt->fetchAll(\PDO::FETCH_ASSOC));
+        } catch (\Exception $e) {
+            return response()->json([]);
+        }
+    }
+
+    public function lookupShipmentModes(Request $request)
+    {
+        try {
+            $pdo  = DB::getPdo();
+            $stmt = $pdo->prepare("EXEC sp_ShipmentMode @Filter = ?");
+            $stmt->execute([$request->get('filter', '')]);
+            return response()->json($stmt->fetchAll(\PDO::FETCH_ASSOC));
+        } catch (\Exception $e) {
+            return response()->json([]);
+        }
+    }
+
+    public function lookupTransportModes(Request $request)
+    {
+        try {
+            $pdo  = DB::getPdo();
+            $stmt = $pdo->prepare("EXEC sp_TransportMode @Filter = ?");
+            $stmt->execute([$request->get('filter', '')]);
+            return response()->json($stmt->fetchAll(\PDO::FETCH_ASSOC));
+        } catch (\Exception $e) {
+            return response()->json([]);
+        }
+    }
+
+    public function lookupEquipmentTypes(Request $request)
+    {
+        try {
+            $pdo  = DB::getPdo();
+            $stmt = $pdo->prepare("EXEC sp_EquipmentType @Filter = ?");
+            $stmt->execute([$request->get('filter', '')]);
+            return response()->json($stmt->fetchAll(\PDO::FETCH_ASSOC));
+        } catch (\Exception $e) {
+            return response()->json([]);
+        }
+    }
+
+    // ============================================================
+    // PROCESS DUPLICATE
+    // 1. Calls sp_Quote_QuotationCopy
+    // 2. Updates new record with modal form data
+    // 3. Inserts equipment rows if Containerized
+    // ============================================================
+
+    public function processDuplicate(Request $request, $bookingno)
+    {
+        $request->validate([
+            'origin_country_id'   => 'required|string',
+            'origin_country_name' => 'required|string',
+            'origin_country_code' => 'required|string',
+            'dest_country_id'     => 'required|string',
+            'dest_country_name'   => 'required|string',
+            'dest_country_code'   => 'required|string',
+            'incoterm_code'       => 'required|string',
+            'shipment_mode_code'  => 'required|string',
+            'transport_mode_code' => 'required|string',
+            'service_class_code'  => 'required|string',
+            'customer_type'       => 'required|string',
+            'company_name'        => 'required|string',
+            'address1'            => 'required|string',
+            'cust_country_id'     => 'required|string',
+            'cust_country_name'   => 'required|string',
+            'industry_type_id'    => 'required|string',
+            'industry_type_name'  => 'required|string',
+            'commodity'           => 'required|string',
+            'scope_of_volume'     => 'required|string',
+        ]);
+
+        if ($request->scope_of_volume !== 'Containerized') {
+            $request->validate(['cargo_volume' => 'required|numeric|min:0.01']);
+        }
+
+        if ($request->scope_of_volume === 'Containerized') {
+            $request->validate([
+                'equipment'                     => 'required|array|min:1',
+                'equipment.*.equipment_type_id' => 'required|string',
+                'equipment.*.equipment_type'    => 'required|string',
+                'equipment.*.quantity'          => 'required|integer|min:1',
+            ]);
+        }
+
+        try {
+            $original = DB::table('Quote_QuotationInfo')
+                ->where('bookingno', $bookingno)
+                ->select('ID', 'bookingno')
+                ->first();
+
+            if (!$original) {
+                return response()->json(['success' => false, 'message' => 'Quotation not found'], 404);
+            }
+
+            // Call copy SP — note SP has typo 'Sucess', handle both
+            $pdo = DB::getPdo();
+            $stmt = $pdo->prepare("
+            DECLARE @Status  VARCHAR(25)
+            DECLARE @Remark  VARCHAR(200)
+            DECLARE @QuoteNo VARCHAR(50)
+            EXEC dbo.sp_Quote_QuotationCopy ?,
+                @Status  = @Status  OUTPUT,
+                @Remark  = @Remark  OUTPUT,
+                @QuoteNo = @QuoteNo OUTPUT
+            SELECT @Status AS Status, @Remark AS Remark, @QuoteNo AS QuoteNo
+        ");
+            $stmt->execute([$original->ID]);
+            $result = $stmt->fetch(\PDO::FETCH_ASSOC);
+
+            $spStatus = strtolower(trim($result['Status'] ?? ''));
+            if (!$result || !in_array($spStatus, ['success', 'sucess'])) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $result['Remark'] ?? 'Duplicate SP failed',
+                ], 500);
+            }
+
+            $newBookingNo = $result['QuoteNo'];
+
+            $newQuotation = DB::table('Quote_QuotationInfo')
+                ->where('bookingno', $newBookingNo)
+                ->select('ID')
+                ->first();
+
+            if (!$newQuotation) {
+                return response()->json(['success' => false, 'message' => 'New record not found after copy'], 500);
+            }
+
+            // Update new record with modal data
+            $updateData = [
+                'origin_country_id'        => $request->origin_country_id,
+                'origincountry'            => $request->origin_country_name,
+                'origin_country_code'      => $request->origin_country_code,
+                'dest_country_id'          => $request->dest_country_id,
+                'destinationcountry'       => $request->dest_country_name,
+                'destination_country_code' => $request->dest_country_code,
+                'incoterm'                 => $request->incoterm_code,
+                'shipmentmode'             => $request->shipment_mode_code,
+                'TransportMode'            => $request->transport_mode_code,
+                'ServiceClass'             => $request->service_class_code,
+                'CustomerType'             => $request->customer_type,
+                'AgentTypeId'              => $request->agent_type_id,
+                'AgentType'                => $request->agent_type,
+                'companyname'              => $request->company_name,
+                'pri_partner_steet'        => $request->address1,
+                'pri_partner_countryid'    => $request->cust_country_id,
+                'pri_partner_countryname'  => $request->cust_country_name,
+                'industryid'               => $request->industry_type_id,
+                'industryname'             => $request->industry_type_name,
+                'commodity'                => $request->commodity,
+                'scopevolume'              => $request->scope_of_volume,
+                'cargovolume'              => $request->scope_of_volume !== 'Containerized'
+                    ? $request->cargo_volume : null,
+            ];
+
+            if ($request->filled('sales_person_name')) {
+                $updateData['username'] = $request->sales_person_name;
+            }
+
+            DB::table('Quote_QuotationInfo')
+                ->where('ID', $newQuotation->ID)
+                ->update($updateData);
+
+            // Insert equipment rows if Containerized
+            if ($request->scope_of_volume === 'Containerized' && $request->has('equipment')) {
+                $rows = collect($request->equipment)->map(fn($eq) => [
+                    'Id'              => \Illuminate\Support\Str::uuid()->toString(),
+                    'QuotationInfoID' => $newQuotation->ID,
+                    'EquipmentTypeID' => $eq['equipment_type_id'],
+                    'EquipmentType'   => $eq['equipment_type'],
+                    'Quantity'        => (int) $eq['quantity'],
+                    'IsActive'        => 1,
+                    'IsDeleted'       => 0,
+                ])->toArray();
+
+                DB::table('Quote_Quotation_EquipmentDetails')->insert($rows);
+            }
+
+            Log::info('Quotation Duplicated', [
+                'original'       => $bookingno,
+                'new_booking_no' => $newBookingNo,
+                'by'             => Auth::user()->displayName ?? Auth::user()->Email ?? 'system',
+            ]);
+
+            return response()->json([
+                'success'        => true,
+                'new_booking_no' => $newBookingNo,
+                'redirect_url'   => route('quotation.edit', $newQuotation->ID),
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Duplicate Quotation Failed', [
+                'bookingno' => $bookingno,
+                'error'     => $e->getMessage(),
+            ]);
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
 }
