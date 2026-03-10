@@ -4830,16 +4830,15 @@ class QuotationController extends Controller
      * Uses nextRowset() to skip intermediate result sets produced by
      * DROP/CREATE TABLE inside the SP — same pattern as saveCharge().
      */
-
     private function executeDetailsUpdateSP(string $inputJson): array
     {
-        $pdo  = DB::connection()->getPdo();
+        $pdo  = DB::connection('sqlsrv')->getPdo();
         $stmt = $pdo->prepare("
-            SET NOCOUNT ON;
-            DECLARE @OutputJson VARCHAR(2000);
-            EXEC dbo.sp_Quote_DetailsUpdate ?, @OutputJson = @OutputJson OUTPUT;
-            SELECT @OutputJson AS output
-        ");
+        SET NOCOUNT ON;
+        DECLARE @OutputJson VARCHAR(2000);
+        EXEC dbo.sp_Quote_DetailsUpdate ?, @OutputJson = @OutputJson OUTPUT;
+        SELECT @OutputJson AS output
+    ");
 
         $stmt->execute([$inputJson]);
         do {
@@ -4850,7 +4849,6 @@ class QuotationController extends Controller
                     return json_last_error() === JSON_ERROR_NONE ? $decoded : [];
                 }
             } catch (\PDOException $e) {
-
                 // skip empty/intermediate result sets
             }
         } while ($stmt->nextRowset());
@@ -4861,7 +4859,7 @@ class QuotationController extends Controller
             'Remarks' => [['Remark' => 'No response from stored procedure']]
         ];
     }
-
+    
     public function downloadPdf($id, $version)
     {
         try {
@@ -5540,7 +5538,7 @@ class QuotationController extends Controller
     {
         $filter = $request->input('filter', '');
         try {
-            $pdo  = DB::connection()->getPdo();
+            $pdo  = DB::connection('sqlsrv')->getPdo();
             $stmt = $pdo->prepare("SET NOCOUNT ON; EXEC dbo.sp_EquipmentType ?");
             $stmt->execute([$filter]);
 
@@ -5551,7 +5549,7 @@ class QuotationController extends Controller
                     if (empty($rows)) continue;
                     $firstVal = array_values((array) $rows[0])[0] ?? '';
                     if (is_string($firstVal) && str_starts_with($firstVal, 'Failed')) continue;
-                    if (isset($rows[0]->Id) && isset($rows[0]->Code)) {
+                    if (isset($rows[0]->Code)) {
                         $results = $rows;
                         break;
                     }
@@ -5759,30 +5757,13 @@ class QuotationController extends Controller
         }
 
         try {
-            $pdo  = DB::connection()->getPdo();
-            $stmt = $pdo->prepare("SET NOCOUNT ON; EXEC dbo.sp_Quote_CargoDetailsUpdate ?, ?");
+            $output = $this->executeDetailsUpdateSP($input);
 
-            $outputJson = '';
-            $stmt->bindParam(1, $input,      \PDO::PARAM_STR);
-            $stmt->bindParam(2, $outputJson, \PDO::PARAM_STR | \PDO::PARAM_INPUT_OUTPUT, 2000);
-            $stmt->execute();
-
-            $output = json_decode($outputJson, true);
-
-            // SP returns array of {Status, Remark} — find the last Status row
-            $status  = '';
-            $remarks = [];
-            if (is_array($output)) {
-                foreach ($output as $row) {
-                    if (isset($row['Status'])) $status = $row['Status'];
-                    if (isset($row['Remark'])) $remarks[] = $row['Remark'];
-                }
-            }
-
-            if ($status === 'Failed') {
+            if (($output['Status'] ?? '') === 'Failed') {
+                $remarks = collect($output['Remarks'] ?? [])->pluck('Remark')->implode(', ');
                 return response()->json([
                     'success' => false,
-                    'message' => implode(', ', array_filter($remarks)) ?: 'Cargo update failed'
+                    'message' => $remarks ?: 'Cargo update failed'
                 ]);
             }
 
