@@ -58,28 +58,28 @@
                         <label class="col-sm-5 col-form-label">Source</label>
                         <div class="col-sm-7">
                             <input type="text" class="form-control form-control-sm"
-                                value="{{ $quotation->source ?? 'N/A' }}" readonly>
+                                value="{{ $quotation->source ?? '' }}" readonly>
                         </div>
                     </div>
                     <div class="form-group row">
                         <label class="col-sm-5 col-form-label">Status</label>
                         <div class="col-sm-7">
                             <input type="text" class="form-control form-control-sm"
-                                value="{{ $quotation->status ?? 'N/A' }}" readonly>
+                                value="{{ $quotation->status ?? '' }}" readonly>
                         </div>
                     </div>
                     <div class="form-group row">
                         <label class="col-sm-5 col-form-label">Sales person</label>
                         <div class="col-sm-7">
                             <input type="text" class="form-control form-control-sm"
-                                value="{{ $quotation->username ?? 'N/A' }}" readonly>
+                                value="{{ $quotation->username ?? '' }}" readonly>
                         </div>
                     </div>
                     <div class="form-group row mb-0">
                         <label class="col-sm-5 col-form-label">Office</label>
                         <div class="col-sm-7">
                             <input type="text" class="form-control form-control-sm"
-                                value="{{ $quotation->teamname ?? 'N/A' }}" readonly>
+                                value="{{ $quotation->teamname ?? '' }}" readonly>
                         </div>
                     </div>
                 </div>
@@ -100,56 +100,56 @@
                         <label class="col-sm-5 col-form-label">Service</label>
                         <div class="col-sm-7">
                             <input type="text" class="form-control form-control-sm"
-                                value="{{ $quotation->serviceverticalname ?? 'N/A' }}" readonly>
+                                value="{{ $quotation->SVName ?? '' }}" readonly>
                         </div>
                     </div>
                     <div class="form-group row">
                         <label class="col-sm-5 col-form-label">Process</label>
                         <div class="col-sm-7">
                             <input type="text" class="form-control form-control-sm"
-                                value="{{ $quotation->process ?? 'N/A' }}" readonly>
+                                value="{{ $quotation->process ?? '' }}" readonly>
                         </div>
                     </div>
                     <div class="form-group row">
                         <label class="col-sm-5 col-form-label">Origin Country</label>
                         <div class="col-sm-7">
                             <input type="text" class="form-control form-control-sm"
-                                value="{{ $quotation->origincountry ?? 'N/A' }}" readonly>
+                                value="{{ $quotation->origincountry ?? '' }}" readonly>
                         </div>
                     </div>
                     <div class="form-group row">
                         <label class="col-sm-5 col-form-label">Destination Country</label>
                         <div class="col-sm-7">
                             <input type="text" class="form-control form-control-sm"
-                                value="{{ $quotation->destinationcountry ?? 'N/A' }}" readonly>
+                                value="{{ $quotation->destinationcountry ?? '' }}" readonly>
                         </div>
                     </div>
                     <div class="form-group row">
                         <label class="col-sm-5 col-form-label">InCO Terms</label>
                         <div class="col-sm-7">
                             <input type="text" class="form-control form-control-sm"
-                                value="{{ $quotation->incoterm ?? 'N/A' }}" readonly>
+                                value="{{ $quotation->incoterm ?? '' }}" readonly>
                         </div>
                     </div>
                     <div class="form-group row">
                         <label class="col-sm-5 col-form-label">Shipment Mode</label>
                         <div class="col-sm-7">
                             <input type="text" class="form-control form-control-sm"
-                                value="{{ $quotation->shipmentmode ?? 'N/A' }}" readonly>
+                                value="{{ $quotation->shipmentmode ?? '' }}" readonly>
                         </div>
                     </div>
                     <div class="form-group row">
                         <label class="col-sm-5 col-form-label">Transport Mode</label>
                         <div class="col-sm-7">
                             <input type="text" class="form-control form-control-sm"
-                                value="{{ $quotation->TransportMode ?? 'N/A' }}" readonly>
+                                value="{{ $quotation->TransportMode ?? '' }}" readonly>
                         </div>
                     </div>
                     <div class="form-group row mb-0">
                         <label class="col-sm-5 col-form-label">Service Class</label>
                         <div class="col-sm-7">
                             <input type="text" class="form-control form-control-sm"
-                                value="{{ $quotation->ServiceClass ?? 'N/A' }}" readonly>
+                                value="{{ $quotation->ServiceClass ?? '' }}" readonly>
                         </div>
                     </div>
                 </div>
@@ -170,28 +170,28 @@
                         <label class="col-sm-5 col-form-label">Commodity</label>
                         <div class="col-sm-7">
                             <input type="text" class="form-control form-control-sm"
-                                value="{{ $quotation->commodity ?? 'N/A' }}" readonly>
+                                value="{{ $quotation->commodity ?? '' }}" readonly>
                         </div>
                     </div>
                     <div class="form-group row">
                         <label class="col-sm-5 col-form-label">Scope Of Volume</label>
                         <div class="col-sm-7">
                             <input type="text" class="form-control form-control-sm"
-                                value="{{ $quotation->scopevolume ?? 'N/A' }}" readonly>
+                                value="{{ $quotation->scopevolume ?? '' }}" readonly>
                         </div>
                     </div>
                     <div class="form-group row">
                         <label class="col-sm-5 col-form-label">Cargo Volume</label>
                         <div class="col-sm-7">
                             <input type="text" class="form-control form-control-sm"
-                                value="{{ $quotation->cargovolume ?? 'N/A' }}" readonly>
+                                value="{{ $quotation->cargovolume ?? '' }}" readonly>
                         </div>
                     </div>
                     <div class="form-group row mb-0">
                         <label class="col-sm-5 col-form-label">Container List</label>
                         <div class="col-sm-7">
                             <input type="text" class="form-control form-control-sm"
-                                value="{{ $quotation->containerlist ?? 'N/A' }}" readonly>
+                                value="{{ $quotation->containerlist ?? '' }}" readonly>
                         </div>
                     </div>
                 </div>
@@ -263,28 +263,28 @@
                         <label class="col-sm-5 col-form-label">Client Status</label>
                         <div class="col-sm-7">
                             <input type="text" class="form-control form-control-sm"
-                                value="{{ $quotation->ClientIntegration ?? 'N/A' }}" readonly>
+                                value="{{ $quotation->ClientIntegration ?? '' }}" readonly>
                         </div>
                     </div>
                     <div class="form-group row">
                         <label class="col-sm-5 col-form-label">Booking No</label>
                         <div class="col-sm-7">
                             <input type="text" class="form-control form-control-sm"
-                                value="{{ $quotation->SCMBookingNo ?? 'N/A' }}" readonly>
+                                value="{{ $quotation->SCMBookingNo ?? '' }}" readonly>
                         </div>
                     </div>
                     <div class="form-group row">
                         <label class="col-sm-5 col-form-label">Booking Integration</label>
                         <div class="col-sm-7">
                             <input type="text" class="form-control form-control-sm"
-                                value="{{ $quotation->SCMINTStatus ?? 'N/A' }}" readonly>
+                                value="{{ $quotation->SCMINTStatus ?? '' }}" readonly>
                         </div>
                     </div>
                     <div class="form-group row mb-0">
                         <label class="col-sm-5 col-form-label">Booking XML</label>
                         <div class="col-sm-7">
                             <input type="text" class="form-control form-control-sm"
-                                value="{{ $quotation->SCMBookingXML ?? 'N/A' }}" readonly>
+                                value="{{ $quotation->SCMBookingXML ?? '' }}" readonly>
                         </div>
                     </div>
                 </div>
@@ -311,42 +311,42 @@
                                 <label class="col-sm-4 col-form-label">Company</label>
                                 <div class="col-sm-8">
                                     <input type="text" class="form-control form-control-sm"
-                                        value="{{ $quotation->companyname ?? 'N/A' }}" readonly>
+                                        value="{{ $quotation->companyname ?? '' }}" readonly>
                                 </div>
                             </div>
                             <div class="form-group row">
                                 <label class="col-sm-4 col-form-label">Address 1</label>
                                 <div class="col-sm-8">
                                     <input type="text" class="form-control form-control-sm"
-                                        value="{{ $quotation->pri_partner_steet ?? 'N/A' }}" readonly>
+                                        value="{{ $quotation->pri_partner_steet ?? '' }}" readonly>
                                 </div>
                             </div>
                             <div class="form-group row">
                                 <label class="col-sm-4 col-form-label">City</label>
                                 <div class="col-sm-8">
                                     <input type="text" class="form-control form-control-sm"
-                                        value="{{ $quotation->pri_partner_city ?? 'N/A' }}" readonly>
+                                        value="{{ $quotation->pri_partner_city ?? '' }}" readonly>
                                 </div>
                             </div>
                             <div class="form-group row">
                                 <label class="col-sm-4 col-form-label">State</label>
                                 <div class="col-sm-8">
                                     <input type="text" class="form-control form-control-sm"
-                                        value="{{ $quotation->pri_partner_statename ?? 'N/A' }}" readonly>
+                                        value="{{ $quotation->pri_partner_statename ?? '' }}" readonly>
                                 </div>
                             </div>
                             <div class="form-group row">
                                 <label class="col-sm-4 col-form-label">Contact Person</label>
                                 <div class="col-sm-8">
                                     <input type="text" class="form-control form-control-sm"
-                                        value="{{ $quotation->pri_partnermaster_name ?? 'N/A' }}" readonly>
+                                        value="{{ $quotation->pri_partnermaster_name ?? '' }}" readonly>
                                 </div>
                             </div>
                             <div class="form-group row mb-0">
                                 <label class="col-sm-4 col-form-label">Phone No</label>
                                 <div class="col-sm-8">
                                     <input type="text" class="form-control form-control-sm"
-                                        value="{{ $quotation->pri_partner_phone ?? 'N/A' }}" readonly>
+                                        value="{{ $quotation->pri_partner_phone ?? '' }}" readonly>
                                 </div>
                             </div>
                         </div>
@@ -355,42 +355,42 @@
                                 <label class="col-sm-4 col-form-label">Client ID</label>
                                 <div class="col-sm-8">
                                     <input type="text" class="form-control form-control-sm"
-                                        value="{{ $quotation->clientid ?? 'N/A' }}" readonly>
+                                        value="{{ $quotation->clientid ?? '' }}" readonly>
                                 </div>
                             </div>
                             <div class="form-group row">
                                 <label class="col-sm-4 col-form-label">Address 2</label>
                                 <div class="col-sm-8">
                                     <input type="text" class="form-control form-control-sm"
-                                        value="{{ $quotation->pri_partner_steet2 ?? 'N/A' }}" readonly>
+                                        value="{{ $quotation->pri_partner_steet2 ?? '' }}" readonly>
                                 </div>
                             </div>
                             <div class="form-group row">
                                 <label class="col-sm-4 col-form-label">Zip</label>
                                 <div class="col-sm-8">
                                     <input type="text" class="form-control form-control-sm"
-                                        value="{{ $quotation->pri_partner_zip ?? 'N/A' }}" readonly>
+                                        value="{{ $quotation->pri_partner_zip ?? '' }}" readonly>
                                 </div>
                             </div>
                             <div class="form-group row">
                                 <label class="col-sm-4 col-form-label">Country</label>
                                 <div class="col-sm-8">
                                     <input type="text" class="form-control form-control-sm"
-                                        value="{{ $quotation->pri_partner_countryname ?? 'N/A' }}" readonly>
+                                        value="{{ $quotation->pri_partner_countryname ?? '' }}" readonly>
                                 </div>
                             </div>
                             <div class="form-group row">
                                 <label class="col-sm-4 col-form-label">Email ID</label>
                                 <div class="col-sm-8">
                                     <input type="text" class="form-control form-control-sm"
-                                        value="{{ $quotation->pri_partner_email ?? 'N/A' }}" readonly>
+                                        value="{{ $quotation->pri_partner_email ?? '' }}" readonly>
                                 </div>
                             </div>
                             <div class="form-group row mb-0">
                                 <label class="col-sm-4 col-form-label">Industry</label>
                                 <div class="col-sm-8">
                                     <input type="text" class="form-control form-control-sm"
-                                        value="{{ $quotation->industryname ?? 'N/A' }}" readonly>
+                                        value="{{ $quotation->industryname ?? '' }}" readonly>
                                 </div>
                             </div>
                         </div>
@@ -495,27 +495,27 @@
                                 <label class="col-sm-6 col-form-label">Expected Revenue</label>
                                 <div class="col-sm-6">
                                     <input type="text" class="form-control form-control-sm" id="viewExpectedRevenue"
-                                        value="{{ $quotation->expected_revenue ?? 'N/A' }}" readonly>
+                                        value="{{ $quotation->expected_revenue ?? '' }}" readonly>
                                 </div>
                             </div>
                             <div class="form-group row">
                                 <label class="col-sm-6 col-form-label">Quoted Revenue</label>
                                 <div class="col-sm-6">
                                     <input type="text" class="form-control form-control-sm" id="viewQuotedRevenue"
-                                        value="{{ $quotation->quoted_revenue ?? 'N/A' }}" readonly>
+                                        value="{{ $quotation->quoted_revenue ?? '' }}" readonly>
                                 </div>
                             </div>
                             <div class="form-group row">
                                 <label class="col-sm-6 col-form-label">Actual Revenue</label>
                                 <div class="col-sm-6">
-                                    <input type="text" class="form-control form-control-sm" value="N/A" readonly>
+                                    <input type="text" class="form-control form-control-sm" value="" readonly>
                                 </div>
                             </div>
                             <div class="form-group row mb-0">
                                 <label class="col-sm-6 col-form-label">Terms & Condition</label>
                                 <div class="col-sm-6">
                                     <input type="text" class="form-control form-control-sm"
-                                        value="{{ $quotation->terms_condition ?? 'N/A' }}" readonly>
+                                        value="{{ $quotation->terms_condition ?? '' }}" readonly>
                                 </div>
                             </div>
                         </div>
@@ -524,13 +524,13 @@
                                 <label class="col-sm-6 col-form-label">Quoted Margin</label>
                                 <div class="col-sm-6">
                                     <input type="text" class="form-control form-control-sm" id="viewQuotedMargin"
-                                        value="{{ $quotation->quoted_margin ?? 'N/A' }}" readonly>
+                                        value="{{ $quotation->quoted_margin ?? '' }}" readonly>
                                 </div>
                             </div>
                             <div class="form-group row mb-0">
                                 <label class="col-sm-6 col-form-label">Actual Margin</label>
                                 <div class="col-sm-6">
-                                    <input type="text" class="form-control form-control-sm" value="N/A" readonly>
+                                    <input type="text" class="form-control form-control-sm" value="" readonly>
                                 </div>
                             </div>
                         </div>
@@ -965,20 +965,6 @@
             font-size: 0.875rem;
         }
 
-        .form-control[readonly] {
-            background-color: transparent;
-            border: none;
-            cursor: default;
-            padding-left: 0;
-            font-weight: 500;
-            color: #333;
-        }
-
-        .form-control[readonly]:focus {
-            outline: none;
-            box-shadow: none;
-        }
-
         .form-group.row {
             margin-bottom: 0.5rem;
         }
@@ -1169,7 +1155,7 @@
                         data.forEach(function(item) {
                             $ul.append(
                                 `<li data-id="${item.Id}" data-code="${item.Code}">${item.Code}</li>`
-                                );
+                            );
                         });
                         $ul.show();
                     });
@@ -1436,7 +1422,7 @@
                     }
                 });
             });
-            
+
             // ============================================
             // LOAD CHARGES ON PAGE LOAD
             // ============================================
