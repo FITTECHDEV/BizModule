@@ -856,6 +856,9 @@ Route::middleware(['auth', 'can:approve-all-entity-request'])->group(function ()
     Route::post('/quotation/cargo/save', [App\Http\Controllers\QuotationController::class, 'saveCargoDetails'])
         ->name('quotation.cargo.save');
 
+    Route::post('/quotation/booking-integration-response', [App\Http\Controllers\QuotationController::class, 'handleBookingIntegrationResponse'])
+        ->name('quotation.bookingIntegrationResponse');
+
 
     // Duplicate
     Route::post('/quotation/{bookingno}/duplicate', [App\Http\Controllers\QuotationController::class, 'processDuplicate'])->name('quotation.processDuplicate');

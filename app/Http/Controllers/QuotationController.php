@@ -660,7 +660,21 @@ class QuotationController extends Controller
 
             $stmt = $pdo->prepare($sql);
             $stmt->execute([$original->ID]);
-            $result = $stmt->fetch(\PDO::FETCH_ASSOC);
+
+            // SP emits an intermediate 'Select @QuoteNo' result set before the final OUTPUT select
+            // Skip result sets until we find the one with Status/Remark/QuoteNo
+            $result = null;
+            do {
+                try {
+                    $row = $stmt->fetch(\PDO::FETCH_ASSOC);
+                    if ($row && isset($row['Status'])) {
+                        $result = $row;
+                        break;
+                    }
+                } catch (\Exception $e) {
+                    // empty result set — skip and advance
+                }
+            } while ($stmt->nextRowset());
 
             if (!$result || strtolower($result['Status']) !== 'success') {
                 $remark = $result['Remark'] ?? 'Unknown error from copy SP';
@@ -5727,6 +5741,7 @@ class QuotationController extends Controller
     {
         $request->validate([
             'quote_no'     => 'required|string',
+            'commodity'    => 'required|string',
             'cargo_volume' => 'required|numeric',
             'containers'   => 'nullable|string',
         ]);
@@ -5757,6 +5772,7 @@ class QuotationController extends Controller
             'SubmittedBy'       => $submittedBy,
             'Action'            => 'Update',
             'QuotationNo'       => $request->quote_no,
+            'Commodity'         => $request->commodity,
             'CargoVolume'       => (float) $request->cargo_volume,
             'Containers'        => $containers,
         ]);
@@ -5981,6 +5997,8 @@ class QuotationController extends Controller
 
     public function processDuplicate(Request $request, $bookingno)
     {
+        Log::info('processDuplicate - raw input', $request->all());
+
         $request->validate([
             'origin_country_id'   => 'required|string',
             'origin_country_name' => 'required|string',
@@ -6022,39 +6040,87 @@ class QuotationController extends Controller
                 ->select('ID', 'bookingno')
                 ->first();
 
+            $submittedBy = Auth::check()
+                ? (Auth::user()->displayName ?? Auth::user()->Email ?? 'system')
+                : 'system';
+
             if (!$original) {
                 return response()->json(['success' => false, 'message' => 'Quotation not found'], 404);
             }
 
             // Call copy SP — note SP has typo 'Sucess', handle both
-            $pdo = DB::getPdo();
-            $stmt = $pdo->prepare("
-            DECLARE @Status  VARCHAR(25)
-            DECLARE @Remark  VARCHAR(200)
-            DECLARE @QuoteNo VARCHAR(50)
-            EXEC dbo.sp_Quote_QuotationCopy ?,
-                @Status  = @Status  OUTPUT,
-                @Remark  = @Remark  OUTPUT,
-                @QuoteNo = @QuoteNo OUTPUT
-            SELECT @Status AS Status, @Remark AS Remark, @QuoteNo AS QuoteNo
-        ");
-            $stmt->execute([$original->ID]);
-            $result = $stmt->fetch(\PDO::FETCH_ASSOC);
+            // ── Manual copy — SP has uninitialized @TeamName bug, cannot be modified ──
+            $originalRecord = DB::table('Quote_QuotationInfo')
+                ->where('ID', $original->ID)
+                ->first();
 
-            $spStatus = strtolower(trim($result['Status'] ?? ''));
-            if (!$result || !in_array($spStatus, ['success', 'sucess'])) {
-                return response()->json([
-                    'success' => false,
-                    'message' => $result['Remark'] ?? 'Duplicate SP failed',
-                ], 500);
+            if (!$originalRecord) {
+                return response()->json(['success' => false, 'message' => 'Original record not found'], 404);
             }
 
-            $newBookingNo = $result['QuoteNo'];
+            // Generate new bookingno and QuoteNo
+            $newBookingNo_int = DB::table('Quote_QuotationInfo')->max('bookingno') + 1;
 
-            $newQuotation = DB::table('Quote_QuotationInfo')
-                ->where('bookingno', $newBookingNo)
-                ->select('ID')
-                ->first();
+            $officeCode = $originalRecord->OfficeCode ?? 'XX';
+            $teamName   = $originalRecord->teamname ?? '';
+            $year       = now()->format('y');
+
+            $lastSeq = DB::table('Quote_QuotationInfo')
+                ->where('teamname', $teamName)
+                ->whereRaw("QuoteNo LIKE '[A-Z][A-Z]-QT-%'")
+                ->whereRaw("LEN(QuoteNo) = 14")
+                ->whereRaw("YEAR(createdon) = YEAR(GETDATE())")
+                ->whereRaw("ISNUMERIC(RIGHT(QuoteNo, 5)) = 1")
+                ->max(DB::raw("CAST(RIGHT(QuoteNo, 5) AS INT)"));
+
+            $nextSeq    = ($lastSeq ?? 0) + 1;
+            $newQuoteNo = $officeCode . '-QT-' . $year . '-' . str_pad($nextSeq, 5, '0', STR_PAD_LEFT);
+
+            $newBookingNo = $newQuoteNo;
+
+            // Copy header record
+            $newId = \Illuminate\Support\Str::uuid()->toString();
+            $recordArray = (array) $originalRecord;
+
+            // Remove keys that should not be copied
+            unset(
+                $recordArray['SCMBookingNo'],
+                $recordArray['SCMBookingID'],
+                $recordArray['SCMJobID'],
+                $recordArray['SCMJobNo'],
+                $recordArray['SCMINTStatus'],
+                $recordArray['SCMBookingXML'],
+                $recordArray['CreatedOnInSCM'],
+                $recordArray['UpdatedOninSCM'],
+                $recordArray['ClientCreated'],
+                $recordArray['ClientCodeINSCM'],
+                $recordArray['ClientIDINSCM'],
+                $recordArray['ClientIntegration']
+            );
+
+            $recordArray['ID']          = $newId;
+            $recordArray['bookingno']   = $newBookingNo_int;
+            $recordArray['QuoteNo']     = $newQuoteNo;
+            $recordArray['QuoteStatus'] = 'In Progress';
+            $recordArray['CreatedBy']   = $submittedBy;
+            $recordArray['LastModifiedBy'] = $submittedBy;
+
+            DB::table('Quote_QuotationInfo')->insert($recordArray);
+
+            // Copy charge sheet
+            $charges = DB::table('Quote_Quotation_ChargeSheet')
+                ->where('QuotationInfoID', $original->ID)
+                ->where('IsDeleted', 0)
+                ->get();
+
+            foreach ($charges as $charge) {
+                $chargeArray = (array) $charge;
+                $chargeArray['Id']              = \Illuminate\Support\Str::uuid()->toString();
+                $chargeArray['QuotationInfoID'] = $newId;
+                DB::table('Quote_Quotation_ChargeSheet')->insert($chargeArray);
+            }
+
+            $newQuotation = (object)['ID' => $newId];
 
             if (!$newQuotation) {
                 return response()->json(['success' => false, 'message' => 'New record not found after copy'], 500);
@@ -6126,6 +6192,75 @@ class QuotationController extends Controller
                 'bookingno' => $bookingno,
                 'error'     => $e->getMessage(),
             ]);
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    // ============================================================
+    // HANDLE SCM BOOKING INTEGRATION RESPONSE
+    // Called by SCM after booking creation — updates QuoteStatus,
+    // SCMBookingNo, SCMBookingID, SCMJobID, SCMJobNo based on XML response
+    // ============================================================
+    public function handleBookingIntegrationResponse(Request $request)
+    {
+        $request->validate([
+            'quote_no'       => 'required|string',
+            'status'         => 'required|string|in:Success,Failed',
+            'customer_ref_no' => 'nullable|string',
+            'transaction_id' => 'nullable|string',
+            'errors'         => 'nullable|array',
+        ]);
+
+        try {
+            // Build XML matching SP's expected structure:
+            // /ArrayOfTransaction/Transaction with ID, Status, CutomerRefNo, TransactionId, Errors/Error
+            $errorsXml = '';
+            if (!empty($request->errors)) {
+                foreach ($request->errors as $err) {
+                    $code        = htmlspecialchars($err['code'] ?? '', ENT_XML1);
+                    $description = htmlspecialchars($err['description'] ?? '', ENT_XML1);
+                    $severity    = (int) ($err['severity'] ?? 1);
+                    $errorsXml  .= "<Error><Code>{$code}</Code><Description>{$description}</Description><Severity>{$severity}</Severity></Error>";
+                }
+            }
+
+            $xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>
+        <ArrayOfTransaction>
+            <Transaction>
+                <ID>{$request->quote_no}</ID>
+                <Status>{$request->status}</Status>
+                <CutomerRefNo>" . htmlspecialchars($request->customer_ref_no ?? '', ENT_XML1) . "</CutomerRefNo>
+                <TransactionId>" . htmlspecialchars($request->transaction_id ?? '', ENT_XML1) . "</TransactionId>
+                <Errors>{$errorsXml}</Errors>
+            </Transaction>
+        </ArrayOfTransaction>";
+
+            $pdo  = DB::getPdo();
+            $stmt = $pdo->prepare("EXEC dbo.sp_Quote_BookingCreateInfoUpdate @InputXML = ?");
+            $stmt->execute([$xml]);
+
+            // SP returns a SELECT only on failure — check for error message
+            $result = $stmt->fetch(\PDO::FETCH_ASSOC);
+            if ($result) {
+                $msg = array_values($result)[0] ?? '';
+                if (str_starts_with(trim($msg), 'Failed')) {
+                    Log::error('handleBookingIntegrationResponse - SP failed', [
+                        'quote_no' => $request->quote_no,
+                        'sp_msg'   => $msg,
+                    ]);
+                    return response()->json(['success' => false, 'message' => $msg], 500);
+                }
+            }
+
+            Log::info('handleBookingIntegrationResponse - Success', [
+                'quote_no'   => $request->quote_no,
+                'status'     => $request->status,
+                'booking_no' => $request->customer_ref_no,
+            ]);
+
+            return response()->json(['success' => true]);
+        } catch (\Exception $e) {
+            Log::error('handleBookingIntegrationResponse error: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }

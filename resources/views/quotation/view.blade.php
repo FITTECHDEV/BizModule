@@ -553,8 +553,7 @@
                         <i class="fas fa-copy mr-2"></i>
                         Duplicate Inquiry &mdash; {{ $quotation->bookingno }}
                     </h5>
-                    <button type="button" class="close text-white" data-dismiss="modal">
-                        <span>&times;</span>
+                    <button type="button" class="close text-white" id="dupCloseX"> <span>&times;</span>
                     </button>
                 </div>
 
@@ -925,7 +924,7 @@
                 </div>{{-- /.modal-body --}}
 
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                    <button type="button" class="btn btn-secondary" id="dupCancelBtn">
                         <i class="fas fa-times mr-1"></i> Cancel
                     </button>
                     <button type="button" class="btn btn-primary" id="btnConfirmDuplicate">
@@ -1034,6 +1033,10 @@
             // DUPLICATE — MODAL FLOW
             // ============================================================
             const officeId = '{{ $quotation->OfficeID ?? '' }}';
+
+            $('#dupCloseX, #dupCancelBtn').on('click', function() {
+                $('#duplicateModal').modal('hide');
+            });
 
             $('#btnCopyBooking').off('click').on('click', function() {
                 dupResetValidation();

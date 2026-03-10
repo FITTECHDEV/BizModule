@@ -212,7 +212,7 @@
                         <div class="form-group row">
                             <label class="col-sm-5 col-form-label">Commodity</label>
                             <div class="col-sm-7">
-                                <input type="text" class="form-control form-control-sm"
+                                <input type="text" class="form-control form-control-sm" id="commodityInput"
                                     value="{{ $quotation->commodity ?? '' }}" readonly>
                             </div>
                         </div>
@@ -756,8 +756,8 @@
         <!-- END ROW -->
 
         <!-- ============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 MODALS
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 ============================================ -->
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     MODALS
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     ============================================ -->
 
         {{-- REVENUE MODAL --}}
         <div class="modal fade" id="addRevenueModal" tabindex="-1" role="dialog"
@@ -1319,8 +1319,8 @@
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.min.css">
     <style>
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    MODAL STYLING — matched to FitExpress UI
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        MODAL STYLING — matched to FitExpress UI
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        ============================================= */
 
         .modal-header {
             background-color: #fff !important;
@@ -1763,9 +1763,9 @@
         }
 
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           CREATE BOOKING MODAL — Specific overrides
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           to match the "Creation of Booking" design
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               CREATE BOOKING MODAL — Specific overrides
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               to match the "Creation of Booking" design
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               ============================================= */
 
         #createBookingModal .modal-title {
             color: #003580 !important;
@@ -5179,7 +5179,7 @@
                     });
                 });
 
-                $('#cargoVolumeInput').prop('readonly', false).css({
+                $('#cargoVolumeInput, #commodityInput').prop('readonly', false).css({
                     'background-color': '#fff',
                     'border': '1px solid #ced4da'
                 });
@@ -5198,6 +5198,8 @@
             $('#cancelCargoDetailsBtn').on('click', function() {
                 $('#cargoVolumeInput').val(originalCargoVolume).prop('readonly', true).css(
                     'background-color', '');
+                $('#commodityInput').val(originalCommodity).prop('readonly', true).css('background-color',
+                    '');
                 renderContainerRows(originalContainers, false);
                 $('#addContainerRowBtn').addClass('d-none');
 
@@ -5228,6 +5230,7 @@
                     data: {
                         _token: '{{ csrf_token() }}',
                         quote_no: QUOTE_NO,
+                        commodity: $('#commodityInput').val(),
                         cargo_volume: cargoVolume || 0,
                         containers: containers
                     },
@@ -5255,6 +5258,8 @@
 
                             $('#cargoVolumeInput').prop('readonly', true).css(
                                 'background-color', '');
+                            $('#commodityInput').prop('readonly', true).css('background-color',
+                                '');
                             renderContainerRows(originalContainers, false);
                             $('#addContainerRowBtn').addClass('d-none');
                             $('#saveCargoDetailsBtn, #cancelCargoDetailsBtn').addClass(
