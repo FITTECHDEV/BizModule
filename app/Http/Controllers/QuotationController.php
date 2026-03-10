@@ -63,14 +63,14 @@ class QuotationController extends Controller
 
             return view('quotation.index', [
                 'offices'       => collect(),
-                'stats'         => $this->getStats('all', null, null, null),
+                'stats' => $this->getStats('0', null, null, null),
                 'defaultOffice' => null,
                 'officeError'   => $officeError,
             ]);
         }
 
         $defaultOffice = $offices->first();
-        $stats         = $this->getStats('all', null, null, $defaultOffice);
+        $stats         = $this->getStats('0', null, null, $defaultOffice);
 
         Log::info('Quotation index - Resolved offices', [
             'user'           => Auth::user()->Email,
@@ -83,7 +83,7 @@ class QuotationController extends Controller
 
     public function stats(Request $request)
     {
-        $days      = $request->input('days', 0);
+        $days      = $request->input('days', '0');
         $startDate = $request->input('start_date');
         $endDate   = $request->input('end_date');
 
@@ -104,13 +104,13 @@ class QuotationController extends Controller
         // Date filtering
         if ($days == 'custom' && $startDate && $endDate) {
             $query->whereBetween('createdon', [$startDate . ' 00:00:00', $endDate . ' 23:59:59']);
-        } elseif ($days == 1) {
+        } elseif ($days === '1') {
             $query->whereDate('createdon', now()->subDay());
-        } elseif ($days == 15) {
+        } elseif ($days === '15') {
             $query->where('createdon', '>=', now()->subDays(15));
-        } elseif ($days == 30) {
+        } elseif ($days === '30') {
             $query->where('createdon', '>=', now()->subDays(30));
-        } elseif ($days == 0) {
+        } elseif ($days === '0') {
             $query->whereDate('createdon', today());
         }
 
@@ -3387,6 +3387,28 @@ class QuotationController extends Controller
                 'html_length' => strlen($html),
                 'tc_template' => $quotation->QuotationTCTemplate ?? 'N/A',
             ]);
+
+            // ============================================
+            // FIX LOGO PATH
+            // The SP embeds a web-relative path: public/img/logo.png
+            // Dompdf requires an absolute filesystem path to render images.
+            // public_path() resolves to the absolute path on the current server
+            // without hardcoding anything environment-specific.
+            // ============================================
+            $html = str_replace(
+                'public/img/logo.png',
+                public_path('img/logo.png'),
+                $html
+            );
+
+            // ============================================
+            // ADJUST LOGO SIZE
+            // ============================================
+            $html = str_replace(
+                'style="height: 42px;"',
+                'style="height: 80px; width: auto;"',
+                $html
+            );
 
             // ============================================
             // RENDER PDF WITH DOMPDF

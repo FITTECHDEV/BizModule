@@ -1116,136 +1116,265 @@ class ClientPartyController extends Controller
         }
     }
 
+    // public function createLegalEntityType(string $type, array $post_data)
+    // {
+    //     $debtor_url = env('DEBTOR_URL');
+    //     $vendor_url = env('VENDER_URL');
+
+    //     // Handle both 'debtor' and 'Customer' type names
+    //     $request_url = (strtolower($type) == 'vendor') ? $vendor_url : $debtor_url;
+
+    //     Log::info('D365 API Request', [
+    //         'type' => $type,
+    //         'url' => $request_url,
+    //         'payload' => $post_data,
+    //     ]);
+
+    //     // Get authentication token
+    //     $entityToken = $this->entityToken();
+    //     if (! $entityToken['status']) {
+    //         Log::error('Failed to get D365 token');
+
+    //         return [
+    //             'status' => false,
+    //             'error' => 'Failed to authenticate with D365',
+    //         ];
+    //     }
+
+    //     Log::info('Entity Token Retrieved', [
+    //         'status' => $entityToken['status'],
+    //         'token_preview' => substr($entityToken['token'], 0, 20) . '...',
+    //     ]);
+
+    //     try {
+    //         $response = Http::withToken($entityToken['token'])
+    //             ->timeout(30) // Add timeout
+    //             ->post($request_url, $post_data);
+
+    //         Log::info('Legal Entity Creation Response', [
+    //             'status' => $response->status(),
+    //             'body' => $response->body(),
+    //             'type' => $type,
+    //             'post_data' => $post_data,
+    //         ]);
+
+    //         // Decode response
+    //         $responseBody = json_decode($response->body());
+
+    //         // Handle HTTP errors (4xx, 5xx)
+    //         if (! $response->successful()) {
+    //             $errorMessage = 'HTTP Error ' . $response->status();
+
+    //             if (is_object($responseBody)) {
+    //                 if (property_exists($responseBody, 'title')) {
+    //                     $errorMessage = $responseBody->title;
+    //                 } elseif (property_exists($responseBody, 'message')) {
+    //                     $errorMessage = $responseBody->message;
+    //                 } elseif (property_exists($responseBody, 'responseDescription')) {
+    //                     $errorMessage = $responseBody->responseDescription;
+    //                 }
+
+    //                 // Handle validation errors
+    //                 if (property_exists($responseBody, 'errors')) {
+    //                     $validationErrors = [];
+    //                     foreach ($responseBody->errors as $field => $messages) {
+    //                         if (is_array($messages)) {
+    //                             $validationErrors[] = $field . ': ' . implode(', ', $messages);
+    //                         }
+    //                     }
+    //                     if (! empty($validationErrors)) {
+    //                         $errorMessage .= ' - ' . implode('; ', $validationErrors);
+    //                     }
+    //                 }
+    //             }
+
+    //             Log::error('D365 API HTTP Error', [
+    //                 'type' => $type,
+    //                 'status' => $response->status(),
+    //                 'error' => $errorMessage,
+    //             ]);
+
+    //             return [
+    //                 'status' => false,
+    //                 'error' => $errorMessage,
+    //             ];
+    //         }
+
+    //         // Parse successful response
+    //         if (is_object($responseBody)) {
+    //             // Success case: status === true and responseCode exists
+    //             if (property_exists($responseBody, 'status') && $responseBody->status === true) {
+    //                 if (property_exists($responseBody, 'responseCode') && ! empty($responseBody->responseCode)) {
+    //                     Log::info('D365 Success', [
+    //                         'type' => $type,
+    //                         'responseCode' => $responseBody->responseCode,
+    //                     ]);
+
+    //                     return [
+    //                         'status' => true,
+    //                         'responseCode' => $responseBody->responseCode,
+    //                         'responseDescription' => $responseBody->responseDescription ?? 'Success',
+    //                     ];
+    //                 } else {
+    //                     Log::error('D365 Success but no responseCode', [
+    //                         'type' => $type,
+    //                         'response' => $responseBody,
+    //                     ]);
+
+    //                     return [
+    //                         'status' => false,
+    //                         'error' => 'D365 returned success but no entity code',
+    //                     ];
+    //                 }
+    //             }
+    //             // Failure case: status === false
+    //             elseif (property_exists($responseBody, 'status') && $responseBody->status === false) {
+    //                 $errorMessage = property_exists($responseBody, 'responseDescription')
+    //                     ? $responseBody->responseDescription
+    //                     : 'D365 returned status: false';
+
+    //                 Log::error('D365 Failed', [
+    //                     'type' => $type,
+    //                     'error' => $errorMessage,
+    //                 ]);
+
+    //                 return [
+    //                     'status' => false,
+    //                     'error' => $errorMessage,
+    //                 ];
+    //             }
+    //             // Fallback: check if responseCode exists directly (some APIs return this without status field)
+    //             elseif (property_exists($responseBody, 'responseCode') && ! empty($responseBody->responseCode)) {
+    //                 Log::info('D365 Success (fallback)', [
+    //                     'type' => $type,
+    //                     'responseCode' => $responseBody->responseCode,
+    //                 ]);
+
+    //                 return [
+    //                     'status' => true,
+    //                     'responseCode' => $responseBody->responseCode,
+    //                     'responseDescription' => $responseBody->responseDescription ?? 'Success',
+    //                 ];
+    //             }
+    //         }
+
+    //         // If we get here, the response format is unexpected
+    //         Log::error('D365 Unexpected Response Format', [
+    //             'type' => $type,
+    //             'response' => $response->body(),
+    //         ]);
+
+    //         return [
+    //             'status' => false,
+    //             'error' => 'Unexpected response format from D365',
+    //         ];
+    //     } catch (\Illuminate\Http\Client\RequestException $e) {
+    //         Log::error('D365 Request Exception', [
+    //             'type' => $type,
+    //             'error' => $e->getMessage(),
+    //             'response' => $e->response ? $e->response->body() : 'No response',
+    //         ]);
+
+    //         return [
+    //             'status' => false,
+    //             'error' => 'D365 API request failed: ' . $e->getMessage(),
+    //         ];
+    //     } catch (\Exception $e) {
+    //         Log::error('D365 Exception', [
+    //             'type' => $type,
+    //             'error' => $e->getMessage(),
+    //             'trace' => $e->getTraceAsString(),
+    //         ]);
+
+    //         return [
+    //             'status' => false,
+    //             'error' => 'D365 API call failed: ' . $e->getMessage(),
+    //         ];
+    //     }
+    // }
     public function createLegalEntityType(string $type, array $post_data)
-    {
-        $debtor_url = env('DEBTOR_URL');
-        $vendor_url = env('VENDER_URL');
+{
+    $debtor_url = env('DEBTOR_URL');
+    $vendor_url = env('VENDER_URL');
 
-        // Handle both 'debtor' and 'Customer' type names
-        $request_url = (strtolower($type) == 'vendor') ? $vendor_url : $debtor_url;
+    $request_url = (strtolower($type) == 'vendor') ? $vendor_url : $debtor_url;
 
-        Log::info('D365 API Request', [
+    Log::info('D365 API Request', [
+        'type' => $type,
+        'url' => $request_url,
+        'payload' => $post_data,
+    ]);
+
+    $entityToken = $this->entityToken();
+    if (! $entityToken['status']) {
+        Log::error('Failed to get D365 token');
+
+        return [
+            'status' => false,
+            'error' => 'Failed to authenticate with D365',
+        ];
+    }
+
+    Log::info('Entity Token Retrieved', [
+        'status' => $entityToken['status'],
+        'token_preview' => substr($entityToken['token'], 0, 20) . '...',
+    ]);
+
+    try {
+        $response = Http::withToken($entityToken['token'])
+            ->timeout(30)
+            ->post($request_url, $post_data);
+
+        Log::info('Legal Entity Creation Response', [
+            'status' => $response->status(),
+            'body' => $response->body(),
             'type' => $type,
-            'url' => $request_url,
-            'payload' => $post_data,
+            'post_data' => $post_data,
         ]);
 
-        // Get authentication token
-        $entityToken = $this->entityToken();
-        if (! $entityToken['status']) {
-            Log::error('Failed to get D365 token');
+        $responseBody = json_decode($response->body());
+
+        if (! $response->successful()) {
+            $errorMessage = 'HTTP Error ' . $response->status();
+
+            if (is_object($responseBody)) {
+                if (property_exists($responseBody, 'responseDescription') && ! empty($responseBody->responseDescription)) {
+                    $errorMessage = $responseBody->responseDescription; // ← moved first
+                } elseif (property_exists($responseBody, 'title')) {
+                    $errorMessage = $responseBody->title;
+                } elseif (property_exists($responseBody, 'message')) {
+                    $errorMessage = $responseBody->message;
+                }
+
+                if (property_exists($responseBody, 'errors')) {
+                    $validationErrors = [];
+                    foreach ($responseBody->errors as $field => $messages) {
+                        if (is_array($messages)) {
+                            $validationErrors[] = $field . ': ' . implode(', ', $messages);
+                        }
+                    }
+                    if (! empty($validationErrors)) {
+                        $errorMessage .= ' - ' . implode('; ', $validationErrors);
+                    }
+                }
+            }
+
+            Log::error('D365 API HTTP Error', [
+                'type' => $type,
+                'status' => $response->status(),
+                'error' => $errorMessage,
+            ]);
 
             return [
                 'status' => false,
-                'error' => 'Failed to authenticate with D365',
+                'error' => $errorMessage,
             ];
         }
 
-        Log::info('Entity Token Retrieved', [
-            'status' => $entityToken['status'],
-            'token_preview' => substr($entityToken['token'], 0, 20) . '...',
-        ]);
-
-        try {
-            $response = Http::withToken($entityToken['token'])
-                ->timeout(30) // Add timeout
-                ->post($request_url, $post_data);
-
-            Log::info('Legal Entity Creation Response', [
-                'status' => $response->status(),
-                'body' => $response->body(),
-                'type' => $type,
-                'post_data' => $post_data,
-            ]);
-
-            // Decode response
-            $responseBody = json_decode($response->body());
-
-            // Handle HTTP errors (4xx, 5xx)
-            if (! $response->successful()) {
-                $errorMessage = 'HTTP Error ' . $response->status();
-
-                if (is_object($responseBody)) {
-                    if (property_exists($responseBody, 'title')) {
-                        $errorMessage = $responseBody->title;
-                    } elseif (property_exists($responseBody, 'message')) {
-                        $errorMessage = $responseBody->message;
-                    } elseif (property_exists($responseBody, 'responseDescription')) {
-                        $errorMessage = $responseBody->responseDescription;
-                    }
-
-                    // Handle validation errors
-                    if (property_exists($responseBody, 'errors')) {
-                        $validationErrors = [];
-                        foreach ($responseBody->errors as $field => $messages) {
-                            if (is_array($messages)) {
-                                $validationErrors[] = $field . ': ' . implode(', ', $messages);
-                            }
-                        }
-                        if (! empty($validationErrors)) {
-                            $errorMessage .= ' - ' . implode('; ', $validationErrors);
-                        }
-                    }
-                }
-
-                Log::error('D365 API HTTP Error', [
-                    'type' => $type,
-                    'status' => $response->status(),
-                    'error' => $errorMessage,
-                ]);
-
-                return [
-                    'status' => false,
-                    'error' => $errorMessage,
-                ];
-            }
-
-            // Parse successful response
-            if (is_object($responseBody)) {
-                // Success case: status === true and responseCode exists
-                if (property_exists($responseBody, 'status') && $responseBody->status === true) {
-                    if (property_exists($responseBody, 'responseCode') && ! empty($responseBody->responseCode)) {
-                        Log::info('D365 Success', [
-                            'type' => $type,
-                            'responseCode' => $responseBody->responseCode,
-                        ]);
-
-                        return [
-                            'status' => true,
-                            'responseCode' => $responseBody->responseCode,
-                            'responseDescription' => $responseBody->responseDescription ?? 'Success',
-                        ];
-                    } else {
-                        Log::error('D365 Success but no responseCode', [
-                            'type' => $type,
-                            'response' => $responseBody,
-                        ]);
-
-                        return [
-                            'status' => false,
-                            'error' => 'D365 returned success but no entity code',
-                        ];
-                    }
-                }
-                // Failure case: status === false
-                elseif (property_exists($responseBody, 'status') && $responseBody->status === false) {
-                    $errorMessage = property_exists($responseBody, 'responseDescription')
-                        ? $responseBody->responseDescription
-                        : 'D365 returned status: false';
-
-                    Log::error('D365 Failed', [
-                        'type' => $type,
-                        'error' => $errorMessage,
-                    ]);
-
-                    return [
-                        'status' => false,
-                        'error' => $errorMessage,
-                    ];
-                }
-                // Fallback: check if responseCode exists directly (some APIs return this without status field)
-                elseif (property_exists($responseBody, 'responseCode') && ! empty($responseBody->responseCode)) {
-                    Log::info('D365 Success (fallback)', [
+        if (is_object($responseBody)) {
+            if (property_exists($responseBody, 'status') && $responseBody->status === true) {
+                if (property_exists($responseBody, 'responseCode') && ! empty($responseBody->responseCode)) {
+                    Log::info('D365 Success', [
                         'type' => $type,
                         'responseCode' => $responseBody->responseCode,
                     ]);
@@ -1255,43 +1384,78 @@ class ClientPartyController extends Controller
                         'responseCode' => $responseBody->responseCode,
                         'responseDescription' => $responseBody->responseDescription ?? 'Success',
                     ];
+                } else {
+                    Log::error('D365 Success but no responseCode', [
+                        'type' => $type,
+                        'response' => $responseBody,
+                    ]);
+
+                    return [
+                        'status' => false,
+                        'error' => 'D365 returned success but no entity code',
+                    ];
                 }
+            } elseif (property_exists($responseBody, 'status') && $responseBody->status === false) {
+                $errorMessage = property_exists($responseBody, 'responseDescription')
+                    ? $responseBody->responseDescription
+                    : 'D365 returned status: false';
+
+                Log::error('D365 Failed', [
+                    'type' => $type,
+                    'error' => $errorMessage,
+                ]);
+
+                return [
+                    'status' => false,
+                    'error' => $errorMessage,
+                ];
+            } elseif (property_exists($responseBody, 'responseCode') && ! empty($responseBody->responseCode)) {
+                Log::info('D365 Success (fallback)', [
+                    'type' => $type,
+                    'responseCode' => $responseBody->responseCode,
+                ]);
+
+                return [
+                    'status' => true,
+                    'responseCode' => $responseBody->responseCode,
+                    'responseDescription' => $responseBody->responseDescription ?? 'Success',
+                ];
             }
-
-            // If we get here, the response format is unexpected
-            Log::error('D365 Unexpected Response Format', [
-                'type' => $type,
-                'response' => $response->body(),
-            ]);
-
-            return [
-                'status' => false,
-                'error' => 'Unexpected response format from D365',
-            ];
-        } catch (\Illuminate\Http\Client\RequestException $e) {
-            Log::error('D365 Request Exception', [
-                'type' => $type,
-                'error' => $e->getMessage(),
-                'response' => $e->response ? $e->response->body() : 'No response',
-            ]);
-
-            return [
-                'status' => false,
-                'error' => 'D365 API request failed: ' . $e->getMessage(),
-            ];
-        } catch (\Exception $e) {
-            Log::error('D365 Exception', [
-                'type' => $type,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
-
-            return [
-                'status' => false,
-                'error' => 'D365 API call failed: ' . $e->getMessage(),
-            ];
         }
+
+        Log::error('D365 Unexpected Response Format', [
+            'type' => $type,
+            'response' => $response->body(),
+        ]);
+
+        return [
+            'status' => false,
+            'error' => 'Unexpected response format from D365',
+        ];
+    } catch (\Illuminate\Http\Client\RequestException $e) {
+        Log::error('D365 Request Exception', [
+            'type' => $type,
+            'error' => $e->getMessage(),
+            'response' => $e->response ? $e->response->body() : 'No response',
+        ]);
+
+        return [
+            'status' => false,
+            'error' => 'D365 API request failed: ' . $e->getMessage(),
+        ];
+    } catch (\Exception $e) {
+        Log::error('D365 Exception', [
+            'type' => $type,
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString(),
+        ]);
+
+        return [
+            'status' => false,
+            'error' => 'D365 API call failed: ' . $e->getMessage(),
+        ];
     }
+}
 
     public function entityToken()
     {
@@ -1427,12 +1591,6 @@ class ClientPartyController extends Controller
             return redirect()->route('client-party.index');
         }
     }
-
-
-
-
-
-
 
 
 
@@ -1578,13 +1736,12 @@ class ClientPartyController extends Controller
                     'response_code' => $d365Response['responseCode'] ?? null,
                     'full_response' => $d365Response,
                 ]);
-
-                if (!$d365Response['status'] || empty($d365Response['responseCode'])) {
-                    $error = $d365Response['error'] ?? $d365Response['responseDescription'] ?? 'Unknown D365 error';
-                    Log::error('Debtor D365 creation failed', ['error' => $error]);
-                    Alert::error('D365 Error (Debtor)', $error)->persistent(true, false);
-                    return redirect()->back();
-                }
+// Debtor block
+if (!$d365Response['status'] || empty($d365Response['responseCode'])) {
+    Log::error('Debtor D365 creation failed', ['error' => $d365Response['error'] ?? '']);
+    $this->d365ErrorAlert('debtor', $d365Response);
+    return redirect()->back()->withInput();
+}
 
                 $d365Results['debtor'] = $d365Response['responseCode'];
                 Log::info('Debtor successfully created in D365', ['code' => $d365Results['debtor']]);
@@ -1621,12 +1778,12 @@ class ClientPartyController extends Controller
                     'full_response' => $d365Response,
                 ]);
 
-                if (!$d365Response['status'] || empty($d365Response['responseCode'])) {
-                    $error = $d365Response['error'] ?? $d365Response['responseDescription'] ?? 'Unknown D365 error';
-                    Log::error('Vendor D365 creation failed', ['error' => $error]);
-                    Alert::error('D365 Error (Vendor)', $error)->persistent(true, false);
-                    return redirect()->back();
-                }
+                // Vendor block
+if (!$d365Response['status'] || empty($d365Response['responseCode'])) {
+    Log::error('Vendor D365 creation failed', ['error' => $d365Response['error'] ?? '']);
+    $this->d365ErrorAlert('vendor', $d365Response);
+    return redirect()->back()->withInput();
+}
 
                 $d365Results['vendor'] = $d365Response['responseCode'];
                 Log::info('Vendor successfully created in D365', ['code' => $d365Results['vendor']]);
@@ -1688,6 +1845,42 @@ class ClientPartyController extends Controller
         }
     }
 
+
+    // In your update() controller, replace both D365 error blocks with this helper approach
+// Add this private method to the controller:
+
+private function d365ErrorAlert(string $type, array $response): void
+{
+    $error = $response['error'] ?? $response['responseDescription'] ?? 'Unknown D365 error';
+
+    $hints = [
+        'VAT Registration'  => '⚠ A vendor/debtor with this VAT/TIN already exists in D365. Verify the registration number before proceeding.',
+        'already exists'    => '⚠ A duplicate record was detected in D365.',
+        'authenticate'      => '⚠ D365 authentication failed. Contact IT to check the API credentials.',
+        'Unexpected'        => '⚠ D365 returned an unrecognised response. Contact IT to investigate.',
+    ];
+
+    $hint = '';
+    foreach ($hints as $keyword => $message) {
+        if (str_contains($error, $keyword)) {
+            $hint = '<p style="color:#e67e22;font-size:12px;margin-top:6px;">' . $message . '</p>';
+            break;
+        }
+    }
+
+    $label = ucfirst($type); // "Vendor" or "Debtor"
+
+    $html = '
+        <div style="text-align:left;font-size:14px;line-height:1.5">
+            <p><strong>' . $label . ' could not be created in D365.</strong></p>
+            <p style="color:#e74c3c;margin-top:4px;">' . e($error) . '</p>'
+            . $hint .
+        '</div>';
+
+    Alert::error('D365 ' . $label . ' Error', $html)
+        ->html()
+        ->persistent(true, false);
+}
 
 
 

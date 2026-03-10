@@ -122,8 +122,8 @@
                     {{-- Date Filter --}}
                     <div class="col-12 col-sm-6 col-md-auto order-2">
                         <select id="dateFilter" class="form-control form-control-sm">
-                            <option value="all" selected>All Time</option>
-                            <option value="0">Today</option>
+                            <option value="all">All Time</option>
+                            <option value="0" selected>Today</option>
                             <option value="1">Yesterday</option>
                             <option value="15">Last 15 Days</option>
                             <option value="30">Last 30 Days</option>
@@ -758,8 +758,7 @@
 
             // Set date filter to All Time BEFORE DataTable initialises
             // so the first AJAX request picks up the correct value
-            $('#dateFilter').val('all');
-
+            $('#dateFilter').val('0')
             // Initialize DataTable
             var table = $('#quotationTable').DataTable({
                 processing: true,
@@ -1580,7 +1579,7 @@
                     return;
                 }
 
-                if (dateFilter !== 'all' || officeFilter !== defaultOffice) {
+                if (dateFilter !== '0' || officeFilter !== defaultOffice) {
                     $('#clearFiltersContainer').show();
                 } else {
                     $('#clearFiltersContainer').hide();
@@ -1633,7 +1632,7 @@
                 $('#endDate').val('');
                 $('#customDateRange').hide();
                 $('#customDateRangeTo').hide();
-                $('#dateFilter').val('all');
+                $('#dateFilter').val('0');
                 updateCardStats();
                 table.ajax.reload();
             });
@@ -1651,7 +1650,7 @@
             // CLEAR ALL FILTERS
             // ============================================
             $('#clearAllFilters').on('click', function() {
-                $('#dateFilter').val('all');
+                $('#dateFilter').val('0');
                 $('#startDate').val('');
                 $('#endDate').val('');
                 $('#customDateRange').hide();
