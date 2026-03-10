@@ -1035,7 +1035,7 @@
             // ============================================================
             const officeId = '{{ $quotation->OfficeID ?? '' }}';
 
-            $('#btnCopyBooking').on('click', function() {
+            $('#btnCopyBooking').off('click').on('click', function() {
                 dupResetValidation();
                 dupToggleScopeFields();
                 dupToggleCustomerFields();
@@ -1615,7 +1615,7 @@
             // ============================================
             // INITIALIZE — collapse all except Revenue, Cost, Summary
             // ============================================
-            $('.card').not('.card-success, .card-danger, .summary-card').each(function() {
+            $('.card').not('.card-success, .card-danger, .summary-card, #duplicateModal .card').each(function() {
                 $(this).find('.card-body').hide();
                 $(this).find('[data-card-widget="collapse"] i')
                     .removeClass('fa-chevron-up').addClass('fa-chevron-down');
