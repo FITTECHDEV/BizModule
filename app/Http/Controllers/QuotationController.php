@@ -2051,13 +2051,13 @@ class QuotationController extends Controller
                     $updatedRows = DB::table('Quote_QuotationInfo')
                         ->where('bookingno', $bookingNo)
                         ->update([
-                            'QuoteStatus' => 'Won',
-                            'status' => 'Won',
+                            'QuoteStatus'    => 'Won',
+                            'status'         => 'Won',
                             'SCMINTStatus'   => null,
+                            'ReasonRemark'   => $reasonRemark ?: null,
                             'LastModifiedBy' => $submittedBy,
-                            'updatedon' => now()
+                            'updatedon'      => now()
                         ]);
-
                     if ($updatedRows === 0) {
                         DB::rollBack();
                         Log::error('Update Status - Won update affected no rows', [

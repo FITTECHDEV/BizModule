@@ -39,21 +39,7 @@
                 </div>
             </div>
 
-            {{-- 3. Completed --}}
-            <div class="col-6 col-md-4 col-lg mb-2">
-                <div class="small-box bg-teal card-filter-trigger compact-card" data-filter="completed"
-                    title="Click to view completed records">
-                    <div class="inner">
-                        <h3 id="stat-completed">{{ $stats['completed'] }}</h3>
-                        <p>Completed</p>
-                    </div>
-                    <div class="icon">
-                        <i class="fas fa-clipboard-check"></i>
-                    </div>
-                </div>
-            </div>
-
-            {{-- 4. Lost / Canceled --}}
+            {{-- 3. Lost / Canceled --}}
             <div class="col-6 col-md-4 col-lg mb-2">
                 <div class="small-box bg-warning card-filter-trigger compact-card" data-filter="lost_canceled"
                     title="Click to view lost or canceled records">
@@ -67,7 +53,7 @@
                 </div>
             </div>
 
-            {{-- 5. Failed Progress --}}
+            {{-- 4. Failed Progress --}}
             <div class="col-6 col-md-4 col-lg mb-2">
                 <div class="small-box bg-secondary card-filter-trigger compact-card" data-filter="failed_progress"
                     title="Click to view failed progress records">
@@ -81,7 +67,7 @@
                 </div>
             </div>
 
-            {{-- 6. Failed Int. --}}
+            {{-- 5. Failed Int. --}}
             <div class="col-6 col-md-4 col-lg mb-2">
                 <div class="small-box bg-danger card-filter-trigger compact-card" data-filter="failed_int"
                     title="Click to view failed integration records">
@@ -91,6 +77,21 @@
                     </div>
                     <div class="icon">
                         <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                </div>
+            </div>
+
+
+            {{-- 6. Completed --}}
+            <div class="col-6 col-md-4 col-lg mb-2">
+                <div class="small-box bg-teal card-filter-trigger compact-card" data-filter="completed"
+                    title="Click to view completed records">
+                    <div class="inner">
+                        <h3 id="stat-completed">{{ $stats['completed'] }}</h3>
+                        <p>Completed</p>
+                    </div>
+                    <div class="icon">
+                        <i class="fas fa-clipboard-check"></i>
                     </div>
                 </div>
             </div>
