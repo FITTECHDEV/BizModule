@@ -462,30 +462,34 @@ class QuotationController extends Controller
                     }
 
                     // Retrigger (Failed Int. only)
-                    $retriggerBtn = '';
-                    if ($cardFilter === 'failed_int' && $isFailedInt) {
-                        $retriggerBtn = ' <button class="btn btn-danger btn-sm btn-retrigger"
-                        data-booking="' . $row->bookingno . '" title="Retrigger">
-                        <i class="fas fa-sync-alt"></i>
-                    </button>';
-                    }
+                    // $retriggerBtn = '';
+                    // if ($cardFilter === 'failed_int' && $isFailedInt) {
+                    //     $retriggerBtn = ' <button class="btn btn-danger btn-sm btn-retrigger"
+                    //     data-booking="' . $row->bookingno . '" title="Retrigger">
+                    //     <i class="fas fa-sync-alt"></i>
+                    // </button>';
+                    // }
 
                     // Create Booking — shown on Completed and Failed Int. cards
                     // (Completed = edit existing booking info; Failed Int. = retry pipeline)
                     // Create Booking — Failed Int. only (Completed = View only)
                     $createBookingBtn = '';
-                    if ($cardFilter === 'failed_int' && $isFailedInt) {
+                    if (
+                        ($cardFilter === 'won'        && $isCompleted) ||
+                        ($cardFilter === 'failed_int' && $isFailedInt)
+                    ) {
                         $createBookingBtn = ' <button class="btn btn-success btn-sm btn-create-booking"
-                        data-id="'      . $row->ID       . '"
-                        data-booking="' . $row->bookingno . '"
-                        data-team="'    . $row->teamid    . '"
-                        data-quoteno="' . $row->QuoteNo   . '"
-                        title="Create / Edit Booking">
-                        <i class="fas fa-plus-circle"></i>
-                    </button>';
+                            data-id="'      . $row->ID       . '"
+                            data-booking="' . $row->bookingno . '"
+                            data-team="'    . $row->teamid    . '"
+                            data-quoteno="' . $row->QuoteNo   . '"
+                            title="Create Booking">
+                            <i class="fas fa-plus-circle"></i>
+                        </button>';
                     }
 
-                    return $viewBtn . $editBtn . $retriggerBtn . $createBookingBtn;
+                    // return $viewBtn . $editBtn . $retriggerBtn . $createBookingBtn;
+                    return $viewBtn . $editBtn . $createBookingBtn;
                 })
 
                 ->rawColumns(['action', 'remarks_error'])
@@ -6248,6 +6252,44 @@ class QuotationController extends Controller
         } catch (\Exception $e) {
             Log::error('handleBookingIntegrationResponse error: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    public function getIncoTerms(Request $request)
+    {
+        $filter = $request->input('filter', '');
+
+        // SP requires a non-empty filter. Passing '%' makes Name LIKE '%%%'
+        // which evaluates to LIKE '%' — returns all active records.
+        if (empty($filter)) {
+            $filter = '%';
+        }
+
+        try {
+            $pdo  = DB::connection()->getPdo();
+            $stmt = $pdo->prepare("SET NOCOUNT ON; EXEC dbo.sp_IncoTerms @Filter = ?");
+            $stmt->execute([$filter]);
+
+            $results = [];
+            do {
+                try {
+                    $rows = $stmt->fetchAll(\PDO::FETCH_OBJ);
+                    if (empty($rows)) continue;
+                    $firstVal = array_values((array) $rows[0])[0] ?? '';
+                    if (is_string($firstVal) && str_starts_with($firstVal, 'Failed')) continue;
+                    if (isset($rows[0]->IncoTermCode)) {
+                        $results = $rows;
+                        break;
+                    }
+                } catch (\PDOException $e) {
+                    continue;
+                }
+            } while ($stmt->nextRowset());
+
+            return response()->json(['success' => true, 'data' => $results]);
+        } catch (\Exception $e) {
+            Log::error('getIncoTerms - Failed', ['error' => $e->getMessage()]);
+            return response()->json(['success' => false, 'data' => []], 500);
         }
     }
 }

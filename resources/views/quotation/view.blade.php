@@ -619,15 +619,11 @@
                                             <label class="col-sm-4 col-form-label col-form-label-sm">
                                                 InCo Term <span class="text-danger">*</span>
                                             </label>
-                                            <div class="col-sm-8 position-relative">
-                                                <input type="text" id="dupIncoTermDisplay"
-                                                    class="form-control form-control-sm dup-required"
-                                                    placeholder="Search inco term..."
-                                                    value="{{ $quotation->incoterm ?? '' }}" autocomplete="off">
-                                                <input type="hidden" id="dupIncoTermCode"
-                                                    value="{{ $quotation->incoterm ?? '' }}">
-                                                <ul id="dupIncoTermSuggestions"
-                                                    class="dup-autocomplete-list list-unstyled mb-0"></ul>
+                                            <div class="col-sm-8">
+                                                <select id="dupIncoTermCode"
+                                                    class="form-control form-control-sm dup-required">
+                                                    <option value="">-- Loading... --</option>
+                                                </select>
                                             </div>
                                         </div>
                                         {{-- Transport Mode --}}
@@ -635,17 +631,14 @@
                                             <label class="col-sm-4 col-form-label col-form-label-sm">
                                                 Transport Mode <span class="text-danger">*</span>
                                             </label>
-                                            <div class="col-sm-8 position-relative">
-                                                <input type="text" id="dupTransportModeDisplay"
-                                                    class="form-control form-control-sm dup-required"
-                                                    placeholder="Search transport mode..."
-                                                    value="{{ $quotation->TransportMode ?? '' }}" autocomplete="off">
-                                                <input type="hidden" id="dupTransportModeCode"
-                                                    value="{{ $quotation->TransportMode ?? '' }}">
-                                                <ul id="dupTransportModeSuggestions"
-                                                    class="dup-autocomplete-list list-unstyled mb-0"></ul>
+                                            <div class="col-sm-8">
+                                                <select id="dupTransportModeCode"
+                                                    class="form-control form-control-sm dup-required">
+                                                    <option value="">-- Loading... --</option>
+                                                </select>
                                             </div>
                                         </div>
+
                                     </div>
                                     <div class="col-md-6">
                                         {{-- Destination --}}
@@ -672,15 +665,11 @@
                                             <label class="col-sm-4 col-form-label col-form-label-sm">
                                                 Shipment Mode <span class="text-danger">*</span>
                                             </label>
-                                            <div class="col-sm-8 position-relative">
-                                                <input type="text" id="dupShipmentModeDisplay"
-                                                    class="form-control form-control-sm dup-required"
-                                                    placeholder="Search shipment mode..."
-                                                    value="{{ $quotation->shipmentmode ?? '' }}" autocomplete="off">
-                                                <input type="hidden" id="dupShipmentModeCode"
-                                                    value="{{ $quotation->shipmentmode ?? '' }}">
-                                                <ul id="dupShipmentModeSuggestions"
-                                                    class="dup-autocomplete-list list-unstyled mb-0"></ul>
+                                            <div class="col-sm-8">
+                                                <select id="dupShipmentModeCode"
+                                                    class="form-control form-control-sm dup-required">
+                                                    <option value="">-- Loading... --</option>
+                                                </select>
                                             </div>
                                         </div>
                                         {{-- Service Class --}}
@@ -688,15 +677,11 @@
                                             <label class="col-sm-4 col-form-label col-form-label-sm">
                                                 Service Class <span class="text-danger">*</span>
                                             </label>
-                                            <div class="col-sm-8 position-relative">
-                                                <input type="text" id="dupServiceClassDisplay"
-                                                    class="form-control form-control-sm dup-required"
-                                                    placeholder="Search service class..."
-                                                    value="{{ $quotation->ServiceClass ?? '' }}" autocomplete="off">
-                                                <input type="hidden" id="dupServiceClassCode"
-                                                    value="{{ $quotation->ServiceClass ?? '' }}">
-                                                <ul id="dupServiceClassSuggestions"
-                                                    class="dup-autocomplete-list list-unstyled mb-0"></ul>
+                                            <div class="col-sm-8">
+                                                <select id="dupServiceClassCode"
+                                                    class="form-control form-control-sm dup-required">
+                                                    <option value="">-- Loading... --</option>
+                                                </select>
                                             </div>
                                         </div>
                                     </div>
@@ -713,7 +698,8 @@
                         </div>
                         <div class="collapse show" id="dupCustomer">
                             <div class="card-body py-3">
-                                {{-- Customer Type & Agent Type on top --}}
+
+                                {{-- Customer Type & Agent Type --}}
                                 <div class="row mb-2">
                                     <div class="col-md-6">
                                         <div class="form-group row mb-2">
@@ -732,11 +718,10 @@
                                         <div class="form-group row mb-2">
                                             <label class="col-sm-4 col-form-label col-form-label-sm">Agent Type</label>
                                             <div class="col-sm-8">
-                                                <input type="text" id="dupAgentType"
-                                                    class="form-control form-control-sm"
-                                                    value="{{ $quotation->AgentType ?? '' }}">
-                                                <input type="hidden" id="dupAgentTypeId"
-                                                    value="{{ $quotation->AgentTypeId ?? '' }}">
+                                                <select id="dupAgentType" class="form-control form-control-sm">
+                                                    <option value="">-- Loading... --</option>
+                                                </select>
+                                                <input type="hidden" id="dupAgentTypeId">
                                             </div>
                                         </div>
                                     </div>
@@ -744,7 +729,7 @@
 
                                 <hr class="my-2">
 
-                                {{-- Customer fields — editable only for New / New Agent --}}
+                                {{-- Always-visible core fields --}}
                                 <div class="row">
                                     <div class="col-md-6">
                                         <div class="form-group row mb-2">
@@ -805,6 +790,75 @@
                                         </div>
                                     </div>
                                 </div>
+
+                                {{-- Extra fields — hidden until New Agent is selected --}}
+                                <div class="dup-agent-extra" style="display:none;">
+                                    <hr class="my-2">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="form-group row mb-2">
+                                                <label class="col-sm-4 col-form-label col-form-label-sm">Address 2</label>
+                                                <div class="col-sm-8">
+                                                    <input type="text" id="dupAddress2"
+                                                        class="form-control form-control-sm"
+                                                        value="{{ $quotation->pri_partner_steet2 ?? '' }}">
+                                                </div>
+                                            </div>
+                                            <div class="form-group row mb-2">
+                                                <label class="col-sm-4 col-form-label col-form-label-sm">City</label>
+                                                <div class="col-sm-8">
+                                                    <input type="text" id="dupCity"
+                                                        class="form-control form-control-sm"
+                                                        value="{{ $quotation->pri_partner_city ?? '' }}">
+                                                </div>
+                                            </div>
+                                            <div class="form-group row mb-2">
+                                                <label class="col-sm-4 col-form-label col-form-label-sm">State</label>
+                                                <div class="col-sm-8">
+                                                    <input type="text" id="dupState"
+                                                        class="form-control form-control-sm"
+                                                        value="{{ $quotation->pri_partner_statename ?? '' }}">
+                                                </div>
+                                            </div>
+                                            <div class="form-group row mb-2">
+                                                <label class="col-sm-4 col-form-label col-form-label-sm">Zip</label>
+                                                <div class="col-sm-8">
+                                                    <input type="text" id="dupZip"
+                                                        class="form-control form-control-sm"
+                                                        value="{{ $quotation->pri_partner_zip ?? '' }}">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="form-group row mb-2">
+                                                <label class="col-sm-4 col-form-label col-form-label-sm">Contact
+                                                    Person</label>
+                                                <div class="col-sm-8">
+                                                    <input type="text" id="dupContactPerson"
+                                                        class="form-control form-control-sm"
+                                                        value="{{ $quotation->pri_partnermaster_name ?? '' }}">
+                                                </div>
+                                            </div>
+                                            <div class="form-group row mb-2">
+                                                <label class="col-sm-4 col-form-label col-form-label-sm">Email ID</label>
+                                                <div class="col-sm-8">
+                                                    <input type="text" id="dupEmail"
+                                                        class="form-control form-control-sm"
+                                                        value="{{ $quotation->pri_partner_email ?? '' }}">
+                                                </div>
+                                            </div>
+                                            <div class="form-group row mb-2">
+                                                <label class="col-sm-4 col-form-label col-form-label-sm">Phone No</label>
+                                                <div class="col-sm-8">
+                                                    <input type="text" id="dupPhone"
+                                                        class="form-control form-control-sm"
+                                                        value="{{ $quotation->pri_partner_phone ?? '' }}">
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
                             </div>
                         </div>
                     </div>
@@ -1013,15 +1067,13 @@
 @section('js')
     <script>
         $(document).ready(function() {
-            console.log('Booking Quotation View - Page Loaded');
 
             const bookingNo = '{{ $quotation->bookingno ?? '' }}';
-
-            // ============================================================
-            // DUPLICATE — MODAL FLOW
-            // ============================================================
             const officeId = '{{ $quotation->OfficeID ?? '' }}';
 
+            // ============================================================
+            // MODAL OPEN / CLOSE
+            // ============================================================
             $('#dupCloseX, #dupCancelBtn').on('click', function() {
                 $('#duplicateModal').modal('hide');
             });
@@ -1029,48 +1081,194 @@
             $('#btnCopyBooking').off('click').on('click', function() {
                 dupResetValidation();
                 dupToggleScopeFields();
+                dupLoadDropdowns();
                 dupLoadCustomerTypes().then(function() {
                     dupToggleCustomerFields();
                 });
                 $('#duplicateModal').modal('show');
             });
 
+            // ============================================================
+            // LOAD SERVICE DETAIL DROPDOWNS
+            // Passing filter:'%' forces SPs to return the full list
+            // ============================================================
+            function dupLoadDropdowns() {
+                const currentInco = '{{ $quotation->incoterm ?? '' }}';
+                const currentShipment = '{{ $quotation->shipmentmode ?? '' }}';
+                const currentTransport = '{{ $quotation->TransportMode ?? '' }}';
+                const currentService = '{{ $quotation->ServiceClass ?? '' }}';
+                const currentAgentId = '{{ $quotation->AgentTypeId ?? '' }}';
+
+                $.get('{{ route('quotation.inco-terms') }}', {
+                        filter: ''
+                    })
+                    .done(function(res) {
+                        console.log('INCOTERMS:', res);
+                        const $sel = $('#dupIncoTermCode').empty().append(
+                            '<option value="">-- Select --</option>');
+                        (res.data || []).forEach(function(item) {
+                            $sel.append(
+                                `<option value="${item.IncoTermCode}">${item.IncoTermCode} — ${item.Name}</option>`
+                            );
+                        });
+                    });
+
+                $.get('{{ route('quotation.shipment-modes') }}', {
+                        filter: ''
+                    })
+                    .done(function(res) {
+                        console.log('SHIPMENT MODES:', res);
+                        const $sel = $('#dupShipmentModeCode').empty().append(
+                            '<option value="">-- Select --</option>');
+                        (res.data || []).forEach(function(item) {
+                            $sel.append(`<option value="${item.Code}">${item.Code}</option>`);
+                        });
+                    });
+
+                $.get('{{ route('quotation.transport-modes') }}', {
+                        filter: ''
+                    })
+                    .done(function(res) {
+                        console.log('TRANSPORT MODES:', res);
+                        const $sel = $('#dupTransportModeCode').empty().append(
+                            '<option value="">-- Select --</option>');
+                        (res.data || []).forEach(function(item) {
+                            $sel.append(
+                                `<option value="${item.Code}">${item.Name || item.Code}</option>`);
+                        });
+                    });
+
+                $.get('{{ route('quotation.lookup.serviceClasses') }}', {
+                        filter: ''
+                    })
+                    .done(function(res) {
+                        console.log('SERVICE CLASSES:', res);
+                        // Note: this endpoint returns array directly, not {success, data}
+                        const items = Array.isArray(res) ? res : (res.data || []);
+                        const $sel = $('#dupServiceClassCode').empty().append(
+                            '<option value="">-- Select --</option>');
+                        items.forEach(function(item) {
+                            $sel.append(
+                                `<option value="${item.Code}">${item.Code} — ${item.Description}</option>`
+                            );
+                        });
+                    });
+
+                $.get('{{ route('quotation.agent-types') }}')
+                    .done(function(res) {
+                        console.log('AGENT TYPES:', res);
+                        const $sel = $('#dupAgentType').empty().append(
+                            '<option value="">-- Select --</option>');
+                        (res.data || []).forEach(function(item) {
+                            $sel.append(
+                                `<option value="${item.Name}" data-id="${item.Id}">${item.Name}</option>`
+                            );
+                        });
+                    });
+
+                $.get('{{ route('quotation.customer-types') }}')
+                    .done(function(res) {
+                        console.log('CUSTOMER TYPES:', res);
+                    });
+            }
+            // Sync hidden AgentTypeId on change
+            $('#dupAgentType').on('change', function() {
+                $('#dupAgentTypeId').val($(this).find(':selected').data('id') || '');
+            });
+
+            // ============================================================
+            // LOAD CUSTOMER TYPES
+            // ============================================================
             function dupLoadCustomerTypes() {
                 return $.ajax({
-                    url: '/quotation/customer-types',
-                    type: 'GET',
-                }).then(function(response) {
-                    const $select = $('#dupCustomerType');
-                    const current = '{{ $quotation->CustomerType ?? '' }}';
-                    $select.empty().append('<option value="">-- Select --</option>');
-
-                    const types = response.success ? response.data : [];
-                    types.forEach(function(item) {
-                        const selected = item.CategoryName === current ? 'selected' : '';
-                        $select.append(
-                            `<option value="${item.CategoryName}" ${selected}>${item.CategoryName}</option>`
-                        );
+                        url: '/quotation/customer-types',
+                        type: 'GET'
+                    })
+                    .then(function(response) {
+                        const $select = $('#dupCustomerType');
+                        const current = '{{ $quotation->CustomerType ?? '' }}';
+                        $select.empty().append('<option value="">-- Select --</option>');
+                        (response.success ? response.data : []).forEach(function(item) {
+                            $select.append(
+                                `<option value="${item.CategoryName}"
+                            ${item.CategoryName === current ? 'selected' : ''}>
+                            ${item.CategoryName}
+                        </option>`
+                            );
+                        });
+                        dupToggleCustomerFields();
+                    })
+                    .fail(function() {
+                        const current = '{{ $quotation->CustomerType ?? '' }}';
+                        const fallback = [
+                            'Existing Agent', 'New Agent', 'Existing Customer',
+                            'New Customer', 'Contract Customer', 'Handover Job', 'Inter-Company'
+                        ];
+                        const $select = $('#dupCustomerType');
+                        $select.empty().append('<option value="">-- Select --</option>');
+                        fallback.forEach(function(name) {
+                            $select.append(
+                                `<option value="${name}" ${name === current ? 'selected' : ''}>${name}</option>`
+                            );
+                        });
+                        dupToggleCustomerFields();
                     });
-
-                    dupToggleCustomerFields();
-                }).fail(function() {
-                    // Fallback — restore hardcoded options if SP fails
-                    const current = '{{ $quotation->CustomerType ?? '' }}';
-                    const fallback = ['Existing Agent', 'New Agent', 'Existing Customer', 'New Customer',
-                        'Contract Customer', 'Handover Job', 'Inter-Company'
-                    ];
-                    const $select = $('#dupCustomerType');
-                    $select.empty().append('<option value="">-- Select --</option>');
-                    fallback.forEach(function(name) {
-                        $select.append(
-                            `<option value="${name}" ${name === current ? 'selected' : ''}>${name}</option>`
-                        );
-                    });
-                    dupToggleCustomerFields();
-                });
             }
 
-            // ---- Scope of Volume toggle ----
+            // ============================================================
+            // CUSTOMER TYPE TOGGLE
+            // Shows extra agent fields and unlocks editing only for New Agent
+            // ============================================================
+            function dupToggleCustomerFields() {
+                const isNewAgent = $('#dupCustomerType').val() === 'New Agent';
+
+                // Core fields
+                const $coreFields = $('#dupCompanyName, #dupAddress1');
+                const $coreLookups = $('#dupCustCountryDisplay, #dupIndustryDisplay');
+                const $allCore = $coreFields.add($coreLookups);
+
+                // Extra fields (hidden rows)
+                const $extraRows = $('.dup-agent-extra');
+
+                if (isNewAgent) {
+                    // Unlock core fields
+                    $coreFields.prop('readonly', false);
+                    $coreLookups.prop('readonly', false);
+                    $allCore.val('').removeClass('bg-light').addClass('border-warning')
+                        .attr('placeholder', 'Required for New Agent');
+                    $('#dupCustCountryId, #dupCustCountryName').val('');
+                    $('#dupIndustryId, #dupIndustryName').val('');
+
+                    // Show extra fields and clear them for fresh input
+                    $extraRows.slideDown(200);
+                    // FIXED — single line
+                    $('#dupAddress2, #dupCity, #dupState, #dupZip, #dupContactPerson, #dupEmail, #dupPhone').val(
+                        '');
+
+                } else {
+                    // Lock core fields and restore original values
+                    $coreFields.prop('readonly', true);
+                    $coreLookups.prop('readonly', true);
+                    $allCore.removeClass('border-warning').addClass('bg-light').removeAttr('placeholder');
+
+                    $('#dupCompanyName').val('{{ $quotation->companyname ?? '' }}');
+                    $('#dupAddress1').val('{{ $quotation->pri_partner_steet ?? '' }}');
+                    $('#dupCustCountryDisplay').val('{{ $quotation->pri_partner_countryname ?? '' }}');
+                    $('#dupCustCountryId').val('{{ $quotation->pri_partner_countryid ?? '' }}');
+                    $('#dupCustCountryName').val('{{ $quotation->pri_partner_countryname ?? '' }}');
+                    $('#dupIndustryDisplay').val('{{ $quotation->industryname ?? '' }}');
+                    $('#dupIndustryId').val('{{ $quotation->industryid ?? '' }}');
+                    $('#dupIndustryName').val('{{ $quotation->industryname ?? '' }}');
+
+                    // Hide extra fields
+                    $extraRows.slideUp(200);
+                }
+            }
+            $('#dupCustomerType').on('change', dupToggleCustomerFields);
+
+            // ============================================================
+            // SCOPE OF VOLUME TOGGLE
+            // ============================================================
             function dupToggleScopeFields() {
                 const scope = $('#dupScopeOfVolume').val();
                 if (scope === 'Containerized') {
@@ -1085,50 +1283,42 @@
             }
             $('#dupScopeOfVolume').on('change', dupToggleScopeFields);
 
-            // ---- Customer Type toggle ----
-            function dupToggleCustomerFields() {
-                const isNewAgent = $('#dupCustomerType').val() === 'New Agent';
-                $('#dupCompanyName, #dupAddress1').prop('readonly', !isNewAgent);
-                $('#dupCustCountryDisplay, #dupIndustryDisplay').prop('readonly', !isNewAgent);
-            }
-            $('#dupCustomerType').on('change', dupToggleCustomerFields);
-
-            // ---- Equipment ----
+            // ============================================================
+            // EQUIPMENT
+            // ============================================================
             let dupEquipmentRows = [];
 
             function dupRenderEquipment() {
                 const tbody = $('#dupEquipmentBody');
                 tbody.empty();
-
                 if (!dupEquipmentRows.length) {
                     tbody.append(`<tr id="dupEquipmentEmpty">
-            <td colspan="3" class="text-center text-muted py-2">Click Add to add equipment</td>
-        </tr>`);
+                <td colspan="3" class="text-center text-muted py-2">Click Add to add equipment</td>
+            </tr>`);
                     return;
                 }
-
                 dupEquipmentRows.forEach(function(row, idx) {
                     tbody.append(`
-            <tr data-idx="${idx}">
-                <td class="position-relative">
-                    <input type="text" class="form-control form-control-sm dup-eq-type-display"
-                        data-idx="${idx}" value="${row.equipment_type}"
-                        placeholder="Search equipment type..." autocomplete="off">
-                    <ul class="dup-autocomplete-list dup-eq-suggestions list-unstyled mb-0"
-                        data-idx="${idx}"></ul>
-                </td>
-                <td>
-                    <input type="number" class="form-control form-control-sm dup-eq-qty"
-                        data-idx="${idx}" value="${row.quantity}" min="1">
-                </td>
-                <td class="text-center">
-                    <button type="button" class="btn btn-sm btn-danger dup-eq-remove"
-                        data-idx="${idx}">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </td>
-            </tr>
-        `);
+                <tr data-idx="${idx}">
+                    <td class="position-relative">
+                        <input type="text" class="form-control form-control-sm dup-eq-type-display"
+                            data-idx="${idx}" value="${row.equipment_type}"
+                            placeholder="Search equipment type..." autocomplete="off">
+                        <ul class="dup-autocomplete-list dup-eq-suggestions list-unstyled mb-0"
+                            data-idx="${idx}"></ul>
+                    </td>
+                    <td>
+                        <input type="number" class="form-control form-control-sm dup-eq-qty"
+                            data-idx="${idx}" value="${row.quantity}" min="1">
+                    </td>
+                    <td class="text-center">
+                        <button type="button" class="btn btn-sm btn-danger dup-eq-remove"
+                            data-idx="${idx}">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `);
                 });
             }
 
@@ -1155,7 +1345,6 @@
                 dupEquipmentRows[parseInt($(this).data('idx'))].quantity = parseInt($(this).val()) || 1;
             });
 
-            // Equipment type autocomplete
             let dupEqTimer = null;
             $(document).on('input', '.dup-eq-type-display', function() {
                 const idx = parseInt($(this).data('idx'));
@@ -1192,17 +1381,15 @@
 
             $(document).on('mousedown', '.dup-eq-suggestions li', function() {
                 const idx = parseInt($(this).closest('ul').data('idx'));
-                const id = $(this).data('id');
-                const code = $(this).data('code');
-
-                dupEquipmentRows[idx].equipment_type_id = id;
-                dupEquipmentRows[idx].equipment_type = code;
-
-                $(`.dup-eq-type-display[data-idx="${idx}"]`).val(code);
+                dupEquipmentRows[idx].equipment_type_id = $(this).data('id');
+                dupEquipmentRows[idx].equipment_type = $(this).data('code');
+                $(`.dup-eq-type-display[data-idx="${idx}"]`).val($(this).data('code'));
                 $(this).closest('ul').hide().empty();
             });
 
-            // ---- Generic autocomplete builder ----
+            // ============================================================
+            // GENERIC AUTOCOMPLETE (countries, industry, sales person)
+            // ============================================================
             function dupBind(inputId, ulId, url, extraParams, labelFn, onPick) {
                 let timer = null;
 
@@ -1213,13 +1400,10 @@
                         $('#' + ulId).hide().empty();
                         return;
                     }
-
-                    const params = Object.assign({
-                        filter: val
-                    }, extraParams);
-
                     timer = setTimeout(function() {
-                        $.get(url, params, function(data) {
+                        $.get(url, Object.assign({
+                            filter: val
+                        }, extraParams), function(data) {
                             const $ul = $('#' + ulId);
                             $ul.empty();
                             if (!data.length) {
@@ -1249,7 +1433,8 @@
             }
 
             // Sales Person
-            dupBind('dupSalesPersonDisplay', 'dupSalesPersonSuggestions',
+            dupBind(
+                'dupSalesPersonDisplay', 'dupSalesPersonSuggestions',
                 '{{ route('quotation.lookup.persons') }}', {
                     office_id: officeId,
                     pic_type: 'S'
@@ -1262,7 +1447,8 @@
             );
 
             // Origin Country
-            dupBind('dupOriginDisplay', 'dupOriginSuggestions',
+            dupBind(
+                'dupOriginDisplay', 'dupOriginSuggestions',
                 '{{ route('quotation.lookup.countries') }}', {},
                 item => item.CountryName,
                 item => {
@@ -1273,7 +1459,8 @@
             );
 
             // Destination Country
-            dupBind('dupDestDisplay', 'dupDestSuggestions',
+            dupBind(
+                'dupDestDisplay', 'dupDestSuggestions',
                 '{{ route('quotation.lookup.countries') }}', {},
                 item => item.CountryName,
                 item => {
@@ -1283,48 +1470,9 @@
                 }
             );
 
-            // InCo Terms
-            dupBind('dupIncoTermDisplay', 'dupIncoTermSuggestions',
-                '{{ route('quotation.lookup.incoterms') }}', {},
-                item => item.IncoTermCode + ' — ' + item.Name,
-                item => {
-                    $('#dupIncoTermDisplay').val(item.IncoTermCode);
-                    $('#dupIncoTermCode').val(item.IncoTermCode);
-                }
-            );
-
-            // Shipment Mode
-            dupBind('dupShipmentModeDisplay', 'dupShipmentModeSuggestions',
-                '{{ route('quotation.lookup.shipmentModes') }}', {},
-                item => item.Code,
-                item => {
-                    $('#dupShipmentModeDisplay').val(item.Code);
-                    $('#dupShipmentModeCode').val(item.Code);
-                }
-            );
-
-            // Transport Mode
-            dupBind('dupTransportModeDisplay', 'dupTransportModeSuggestions',
-                '{{ route('quotation.lookup.transportModes') }}', {},
-                item => (item.Name || item.Code),
-                item => {
-                    $('#dupTransportModeDisplay').val(item.Name || item.Code);
-                    $('#dupTransportModeCode').val(item.Code);
-                }
-            );
-
-            // Service Class
-            dupBind('dupServiceClassDisplay', 'dupServiceClassSuggestions',
-                '{{ route('quotation.lookup.serviceClasses') }}', {},
-                item => item.Code + ' — ' + item.Description,
-                item => {
-                    $('#dupServiceClassDisplay').val(item.Code);
-                    $('#dupServiceClassCode').val(item.Code);
-                }
-            );
-
-            // Customer Country
-            dupBind('dupCustCountryDisplay', 'dupCustCountrySuggestions',
+            // Customer Country (only editable for New Agent)
+            dupBind(
+                'dupCustCountryDisplay', 'dupCustCountrySuggestions',
                 '{{ route('quotation.lookup.countries') }}', {},
                 item => item.CountryName,
                 item => {
@@ -1334,8 +1482,9 @@
                 }
             );
 
-            // Industry Type
-            dupBind('dupIndustryDisplay', 'dupIndustrySuggestions',
+            // Industry Type (only editable for New Agent)
+            dupBind(
+                'dupIndustryDisplay', 'dupIndustrySuggestions',
                 '{{ route('quotation.lookup.industryTypes') }}', {},
                 item => item.Name,
                 item => {
@@ -1345,7 +1494,9 @@
                 }
             );
 
-            // ---- Validation ----
+            // ============================================================
+            // VALIDATION
+            // ============================================================
             function dupResetValidation() {
                 $('.dup-required, #dupCargoVolume').removeClass('is-invalid');
             }
@@ -1360,7 +1511,6 @@
                 });
 
                 const scope = $('#dupScopeOfVolume').val();
-
                 if (scope && scope !== 'Containerized') {
                     const vol = parseFloat($('#dupCargoVolume').val());
                     const bad = !vol || vol <= 0;
@@ -1388,7 +1538,9 @@
                 return valid;
             }
 
-            // ---- Submit ----
+            // ============================================================
+            // SUBMIT DUPLICATE
+            // ============================================================
             $('#btnConfirmDuplicate').on('click', function() {
                 if (!dupValidate()) {
                     toastr.error('Please fill in all required fields.');
@@ -1398,6 +1550,8 @@
                 const $btn = $(this);
                 $btn.prop('disabled', true)
                     .html('<i class="fas fa-spinner fa-spin mr-1"></i> Duplicating...');
+
+                const isNewAgent = $('#dupCustomerType').val() === 'New Agent';
 
                 const payload = {
                     _token: '{{ csrf_token() }}',
@@ -1414,7 +1568,7 @@
                     service_class_code: $('#dupServiceClassCode').val(),
                     customer_type: $('#dupCustomerType').val(),
                     agent_type_id: $('#dupAgentTypeId').val(),
-                    agent_type: $('#dupAgentType').val(),
+                    agent_type: $('#dupAgentType').find(':selected').text().trim(),
                     company_name: $('#dupCompanyName').val(),
                     address1: $('#dupAddress1').val(),
                     cust_country_id: $('#dupCustCountryId').val(),
@@ -1425,6 +1579,16 @@
                     scope_of_volume: $('#dupScopeOfVolume').val(),
                     cargo_volume: $('#dupCargoVolume').val() || null,
                     equipment: dupEquipmentRows,
+                    // Extra New Agent fields — only sent when applicable
+                    ...(isNewAgent && {
+                        address2: $('#dupAddress2').val(),
+                        city: $('#dupCity').val(),
+                        state: $('#dupState').val(),
+                        zip: $('#dupZip').val(),
+                        contact_person: $('#dupContactPerson').val(),
+                        email: $('#dupEmail').val(),
+                        phone: $('#dupPhone').val(),
+                    }),
                 };
 
                 $.ajax({
@@ -1443,22 +1607,18 @@
                         }
                     },
                     error: function(xhr) {
-                        const msg = xhr.responseJSON?.message || 'Unexpected error.';
-                        toastr.error('Error: ' + msg);
+                        toastr.error('Error: ' + (xhr.responseJSON?.message ||
+                            'Unexpected error.'));
                         $btn.prop('disabled', false)
                             .html('<i class="fas fa-copy mr-1"></i> Duplicate');
                     }
                 });
             });
 
-            // ============================================
+            // ============================================================
             // LOAD CHARGES ON PAGE LOAD
-            // ============================================
-            if (bookingNo) {
-                loadChargesForView();
-            } else {
-                console.error('No booking number found');
-            }
+            // ============================================================
+            if (bookingNo) loadChargesForView();
 
             function loadChargesForView() {
                 $.ajax({
@@ -1468,12 +1628,9 @@
                         booking_no: bookingNo
                     },
                     beforeSend: function() {
-                        $('#revenueChargesViewTable').html(
-                            '<tr><td colspan="7" class="text-center"><i class="fas fa-spinner fa-spin"></i> Loading...</td></tr>'
-                        );
-                        $('#costChargesViewTable').html(
-                            '<tr><td colspan="7" class="text-center"><i class="fas fa-spinner fa-spin"></i> Loading...</td></tr>'
-                        );
+                        const spinner =
+                            '<tr><td colspan="7" class="text-center"><i class="fas fa-spinner fa-spin"></i> Loading...</td></tr>';
+                        $('#revenueChargesViewTable, #costChargesViewTable').html(spinner);
                     },
                     success: function(response) {
                         if (response.success) {
@@ -1481,138 +1638,97 @@
                             renderCostChargesView(response.cost || []);
                             updateViewSummary(response.revenue || [], response.cost || []);
                         } else {
-                            $('#revenueChargesViewTable').html(
-                                '<tr><td colspan="7" class="text-center text-danger">Failed to load charges</td></tr>'
-                            );
-                            $('#costChargesViewTable').html(
-                                '<tr><td colspan="7" class="text-center text-danger">Failed to load charges</td></tr>'
-                            );
+                            const err =
+                                '<tr><td colspan="7" class="text-center text-danger">Failed to load charges</td></tr>';
+                            $('#revenueChargesViewTable, #costChargesViewTable').html(err);
                         }
                     },
                     error: function() {
-                        $('#revenueChargesViewTable').html(
-                            '<tr><td colspan="7" class="text-center text-danger">Error loading charges</td></tr>'
-                        );
-                        $('#costChargesViewTable').html(
-                            '<tr><td colspan="7" class="text-center text-danger">Error loading charges</td></tr>'
-                        );
+                        const err =
+                            '<tr><td colspan="7" class="text-center text-danger">Error loading charges</td></tr>';
+                        $('#revenueChargesViewTable, #costChargesViewTable').html(err);
                     }
                 });
             }
 
-            // ============================================
-            // RENDER REVENUE CHARGES (VIEW-ONLY)
-            // After rendering, respects current expanded state of the toggle link
-            // so re-loading charges does not collapse extra columns if user expanded them.
-            // ============================================
             function renderRevenueChargesView(charges) {
                 const tbody = $('#revenueChargesViewTable');
                 tbody.empty();
-
-                if (charges.length === 0) {
+                if (!charges.length) {
                     tbody.append(
-                        '<tr><td colspan="7" class="text-center text-muted">No revenue charges found</td></tr>');
+                        '<tr><td colspan="7" class="text-center text-muted">No revenue charges found</td></tr>'
+                    );
                     $('#revenueTotalHeaderAmount').text('0.00');
                     return;
                 }
-
-                let totalBaseAmount = 0;
-                charges.forEach(function(charge) {
-                    totalBaseAmount += parseFloat(charge.amtInBaseCurr || 0);
-                    tbody.append(`
-                        <tr>
-                            <td>${charge.chargeName || charge.chargeCode || ''}</td>
-                            <td class="text-right">${parseFloat(charge.rate || 0).toFixed(2)}</td>
-                            <td class="text-right col-extra">${parseFloat(charge.quantity || 0).toFixed(2)}</td>
-                            <td class="col-extra">${charge.basedOnUOM || ''}</td>
-                            <td class="col-extra">${charge.chgCurr || 'KES'}</td>
-                            <td class="text-right">${parseFloat(charge.amtInChgCurr || 0).toFixed(2)}</td>
-                            <td class="text-right">${parseFloat(charge.amtInBaseCurr || 0).toFixed(2)}</td>
-                        </tr>
-                    `);
+                let total = 0;
+                charges.forEach(function(c) {
+                    total += parseFloat(c.amtInBaseCurr || 0);
+                    tbody.append(`<tr>
+                <td>${c.chargeName || c.chargeCode || ''}</td>
+                <td class="text-right">${parseFloat(c.rate || 0).toFixed(2)}</td>
+                <td class="text-right col-extra">${parseFloat(c.quantity || 0).toFixed(2)}</td>
+                <td class="col-extra">${c.basedOnUOM || ''}</td>
+                <td class="col-extra">${c.chgCurr || 'KES'}</td>
+                <td class="text-right">${parseFloat(c.amtInChgCurr || 0).toFixed(2)}</td>
+                <td class="text-right">${parseFloat(c.amtInBaseCurr || 0).toFixed(2)}</td>
+            </tr>`);
                 });
-
-                $('#revenueTotalHeaderAmount').text(totalBaseAmount.toFixed(2));
-
-                // Respect current toggle state — if user had expanded, keep expanded after reload
-                const revenueExpanded = $('.show-items-link[data-table="revenue"]').data('expanded') || false;
-                if (!revenueExpanded) {
-                    tbody.find('.col-extra').hide();
-                }
+                $('#revenueTotalHeaderAmount').text(total.toFixed(2));
+                const expanded = $('.show-items-link[data-table="revenue"]').data('expanded') || false;
+                if (!expanded) tbody.find('.col-extra').hide();
             }
 
-            // ============================================
-            // RENDER COST CHARGES (VIEW-ONLY)
-            // ============================================
             function renderCostChargesView(charges) {
                 const tbody = $('#costChargesViewTable');
                 tbody.empty();
-
-                if (charges.length === 0) {
+                if (!charges.length) {
                     tbody.append(
-                        '<tr><td colspan="7" class="text-center text-muted">No cost charges found</td></tr>');
+                        '<tr><td colspan="7" class="text-center text-muted">No cost charges found</td></tr>'
+                    );
                     $('#costTotalHeaderAmount').text('0.00');
                     return;
                 }
-
-                let totalBaseAmount = 0;
-                charges.forEach(function(charge) {
-                    totalBaseAmount += parseFloat(charge.amtInBaseCurr || 0);
-                    tbody.append(`
-                        <tr>
-                            <td>${charge.chargeName || charge.chargeCode || ''}</td>
-                            <td class="text-right">${parseFloat(charge.rate || 0).toFixed(2)}</td>
-                            <td class="text-right col-extra">${parseFloat(charge.quantity || 0).toFixed(2)}</td>
-                            <td class="col-extra">${charge.basedOnUOM || ''}</td>
-                            <td class="col-extra">${charge.chgCurr || 'KES'}</td>
-                            <td class="text-right">${parseFloat(charge.amtInChgCurr || 0).toFixed(2)}</td>
-                            <td class="text-right">${parseFloat(charge.amtInBaseCurr || 0).toFixed(2)}</td>
-                        </tr>
-                    `);
+                let total = 0;
+                charges.forEach(function(c) {
+                    total += parseFloat(c.amtInBaseCurr || 0);
+                    tbody.append(`<tr>
+                <td>${c.chargeName || c.chargeCode || ''}</td>
+                <td class="text-right">${parseFloat(c.rate || 0).toFixed(2)}</td>
+                <td class="text-right col-extra">${parseFloat(c.quantity || 0).toFixed(2)}</td>
+                <td class="col-extra">${c.basedOnUOM || ''}</td>
+                <td class="col-extra">${c.chgCurr || 'KES'}</td>
+                <td class="text-right">${parseFloat(c.amtInChgCurr || 0).toFixed(2)}</td>
+                <td class="text-right">${parseFloat(c.amtInBaseCurr || 0).toFixed(2)}</td>
+            </tr>`);
                 });
-
-                $('#costTotalHeaderAmount').text(totalBaseAmount.toFixed(2));
-
-                // Respect current toggle state
-                const costExpanded = $('.show-items-link[data-table="cost"]').data('expanded') || false;
-                if (!costExpanded) {
-                    tbody.find('.col-extra').hide();
-                }
+                $('#costTotalHeaderAmount').text(total.toFixed(2));
+                const expanded = $('.show-items-link[data-table="cost"]').data('expanded') || false;
+                if (!expanded) tbody.find('.col-extra').hide();
             }
 
-            // ============================================
-            // UPDATE SUMMARY
-            // ============================================
             function updateViewSummary(revenueCharges, costCharges) {
-                const totalRevenue = revenueCharges.reduce((sum, c) => sum + parseFloat(c.amtInBaseCurr || 0), 0);
-                const totalCost = costCharges.reduce((sum, c) => sum + parseFloat(c.amtInBaseCurr || 0), 0);
+                const totalRevenue = revenueCharges.reduce((s, c) => s + parseFloat(c.amtInBaseCurr || 0), 0);
+                const totalCost = costCharges.reduce((s, c) => s + parseFloat(c.amtInBaseCurr || 0), 0);
                 const margin = totalRevenue - totalCost;
                 const marginPct = totalRevenue > 0 ? (margin / totalRevenue * 100) : 0;
-
                 $('#viewQuotedRevenue').val('KES ' + totalRevenue.toFixed(2));
                 $('#viewQuotedMargin').val('KES ' + margin.toFixed(2) + ' (' + marginPct.toFixed(2) + '%)');
             }
 
-            // ============================================
-            // SHOW MORE / SHOW LESS — matches edit page behaviour exactly:
-            //   - link lives in the card header
-            //   - scoped to each table independently via data-table
-            //   - toggles thead .col-extra + tbody .col-extra together
-            //   - tracks state via .data('expanded')
-            // ============================================
-            // Hide all extra columns on load (CSS also does this, belt-and-braces)
+            // ============================================================
+            // SHOW MORE / SHOW LESS
+            // ============================================================
             $('.col-extra').hide();
 
             $('.show-items-link').on('click', function(e) {
                 e.preventDefault();
-                e.stopPropagation(); // prevent card-header collapse from firing
-
+                e.stopPropagation();
                 const tableId = $(this).data('table');
                 const $table = tableId === 'revenue' ?
                     $('#revenueChargesViewTable').closest('table') :
                     $('#costChargesViewTable').closest('table');
                 const isExpanded = $(this).data('expanded') || false;
-
                 if (isExpanded) {
                     $table.find('.col-extra').hide();
                     $(this).html('<i class="fas fa-columns mr-1"></i> Show more');
@@ -1624,11 +1740,9 @@
                 }
             });
 
-            // ============================================
+            // ============================================================
             // CARD COLLAPSE
-            // Card header click triggers collapse, but must not fire
-            // when the user clicks the Show More link inside the header.
-            // ============================================
+            // ============================================================
             $('[data-card-widget="collapse"]').on('click', function() {
                 $(this).find('i').toggleClass('fa-chevron-down fa-chevron-up');
             });
@@ -1640,17 +1754,14 @@
                 }
             });
 
-            // ============================================
-            // INITIALIZE — collapse all except Revenue, Cost, Summary
-            // ============================================
-            $('.card').not('.card-success, .card-danger, .summary-card, #duplicateModal .card').each(function() {
-                $(this).find('.card-body').hide();
-                $(this).find('[data-card-widget="collapse"] i')
-                    .removeClass('fa-chevron-up').addClass('fa-chevron-down');
-                $(this).addClass('collapsed-card');
-            });
-
-
+            // Collapse all on load except Revenue, Cost, Summary
+            $('.card').not('.card-success, .card-danger, .summary-card, #duplicateModal .card').each(
+                function() {
+                    $(this).find('.card-body').hide();
+                    $(this).find('[data-card-widget="collapse"] i')
+                        .removeClass('fa-chevron-up').addClass('fa-chevron-down');
+                    $(this).addClass('collapsed-card');
+                });
 
         });
     </script>

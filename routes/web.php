@@ -731,6 +731,9 @@ Route::middleware(['auth', 'can:approve-all-entity-request'])->group(function ()
     Route::get('/quotation/stats', [App\Http\Controllers\QuotationController::class, 'stats'])
         ->name('quotation.stats');
 
+    Route::get('/quotation/inco-terms', [App\Http\Controllers\QuotationController::class, 'getIncoTerms'])
+        ->name('quotation.inco-terms');
+
     // ============================================
     // QUOTATION — STATIC LOOKUP ROUTES
     // NOTE: All static /quotation/* routes MUST be declared before the
@@ -1198,6 +1201,9 @@ Route::prefix('admin/sp-test')
 
 
 Route::post('/webhooks/jimi/notifications', [App\Http\Controllers\JimiWebhookController::class, 'receiveNotification']);
+
+Route::get('zreport',        [App\Http\Controllers\ZReportRunnerController::class, 'index'])->name('zreport.index');
+Route::post('zreport/run',   [App\Http\Controllers\ZReportRunnerController::class, 'run'])->name('zreport.run');
 
 
 

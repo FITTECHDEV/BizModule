@@ -224,10 +224,6 @@
                         <h2 class="modal-title" style="color: #003580; font-weight: 700;">
                             Creation of Booking
                         </h2>
-                        <a href="#" id="cbEditLink" class="btn btn-sm btn-outline-secondary ml-auto mr-2 d-none"
-                            title="Edit booking information">
-                            <i class="fas fa-edit mr-1"></i> Edit
-                        </a>
                         <button type="button" class="close" id="cbXBtn" aria-label="Close">
                             <span aria-hidden="true">&times;</span>
                         </button>
@@ -319,18 +315,24 @@
                             </div>
                         </div>
                     </div>
-                    <div class="modal-footer">
-                        <a href="#" class="text-primary mr-3" id="cancelCreateBookingBtn"
-                            style="font-weight: 500; text-decoration: underline;">Cancel</a>
+                    <div class="modal-footer d-flex justify-content-between align-items-center">
+                        {{-- Left side: Edit button (visible after submission) --}}
+                        <a href="#" id="cbEditLink" class="btn btn-sm btn-outline-secondary d-none"
+                            title="Edit booking information">
+                            <i class="fas fa-edit mr-1"></i> Edit
+                        </a>
+                        <span id="cbEditLinkPlaceholder"></span>{{-- keeps spacing when Edit is hidden --}}
 
-                        <button type="button" class="btn btn-primary px-4" id="submitCreateBookingBtn">
-                            Create
-                        </button>
-                        <button type="button" class="btn btn-secondary px-4 d-none" id="cbCloseBtn">Close</button>
-
-
+                        {{-- Right side: action buttons --}}
+                        <div class="d-flex align-items-center">
+                            <a href="#" class="text-primary mr-3" id="cancelCreateBookingBtn"
+                                style="font-weight: 500; text-decoration: underline;">Cancel</a>
+                            <button type="button" class="btn btn-primary px-4" id="submitCreateBookingBtn">
+                                Create
+                            </button>
+                            <button type="button" class="btn btn-secondary px-4 d-none" id="cbCloseBtn">Close</button>
+                        </div>
                     </div>
-
 
                 </div>
             </div>
@@ -1055,19 +1057,6 @@
                 var cardFilter = modal.data('card-filter') || 'in_progress';
 
                 resetCreateBookingForm();
-
-                // Failed Int. — skip form, go straight to progress panel with Edit link
-                if (cardFilter === 'failed_int') {
-                    $('#createBookingForm').addClass('d-none');
-                    $('#cbProgressPanel').removeClass('d-none');
-                    $('#submitCreateBookingBtn').addClass('d-none');
-                    $('#cancelCreateBookingBtn').addClass('d-none');
-                    $('#cbCloseBtn').removeClass('d-none');
-                    $('#cbEditLink').removeClass('d-none');
-                    renderBookingSteps([]);
-                    return;
-                }
-
                 setDropdownLoading('#cb_service_template');
                 setDropdownLoading('#cb_bill_to_party');
                 setDropdownLoading('#cb_forwarder');
@@ -1133,13 +1122,25 @@
                             });
                         } else {
                             $select.append(
-                                '<option value="" disabled>No forwarders available</option>');
+                            '<option value="" disabled>No forwarders available</option>');
                         }
                     })
                     .fail(function() {
                         $('#cb_forwarder').empty()
                             .append('<option value="" disabled>Failed to load — try again</option>');
                     });
+
+                // ── Handle failed_int UI AFTER dropdowns are kicked off ──
+                if (cardFilter === 'failed_int') {
+                    $('#createBookingForm').addClass('d-none');
+                    $('#cbProgressPanel').removeClass('d-none');
+                    $('#submitCreateBookingBtn').addClass('d-none');
+                    $('#cancelCreateBookingBtn').addClass('d-none');
+                    $('#cbCloseBtn').removeClass('d-none');
+                    $('#cbEditLink').removeClass('d-none');
+                    renderBookingSteps([]);
+                    return;
+                }
             });
 
             // ============================================
