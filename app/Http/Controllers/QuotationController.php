@@ -444,13 +444,13 @@ class QuotationController extends Controller
                     $isInProgress = in_array($status, ['Pending', 'Proposal', 'In Progress', 'Failed Progress'])
                         || is_null($status);
                     $isFailedInt  = ($status === 'Won' && $scmStatus && $scmStatus !== 'Success');
-                    $isCompleted  = ($status === 'Won' && (is_null($scmStatus) || $scmStatus === 'Success'));
+                    $isCompleted  = ($status === 'Won' && $scmStatus === 'Success');
 
                     // View button — always shown
                     $viewBtn = '<a href="' . route('quotation.view', $row->ID) . '"
                     class="btn btn-info btn-sm" title="View">
-                    <i class="fas fa-eye"></i>
-                </a>';
+                        <i class="fas fa-eye"></i>
+                    </a>';
 
                     // Edit quotation (In Progress only)
                     $editBtn = '';
@@ -5984,7 +5984,6 @@ class QuotationController extends Controller
     // 2. Updates new record with modal form data
     // 3. Inserts equipment rows if Containerized
     // ============================================================
-
     public function processDuplicate(Request $request, $bookingno)
     {
         Log::info('processDuplicate - raw input', $request->all());
@@ -6038,8 +6037,6 @@ class QuotationController extends Controller
                 return response()->json(['success' => false, 'message' => 'Quotation not found'], 404);
             }
 
-            // Call copy SP — note SP has typo 'Sucess', handle both
-            // ── Manual copy — SP has uninitialized @TeamName bug, cannot be modified ──
             $originalRecord = DB::table('Quote_QuotationInfo')
                 ->where('ID', $original->ID)
                 ->first();
@@ -6065,14 +6062,12 @@ class QuotationController extends Controller
 
             $nextSeq    = ($lastSeq ?? 0) + 1;
             $newQuoteNo = $officeCode . '-QT-' . $year . '-' . str_pad($nextSeq, 5, '0', STR_PAD_LEFT);
-
             $newBookingNo = $newQuoteNo;
 
             // Copy header record
-            $newId = \Illuminate\Support\Str::uuid()->toString();
+            $newId       = \Illuminate\Support\Str::uuid()->toString();
             $recordArray = (array) $originalRecord;
 
-            // Remove keys that should not be copied
             unset(
                 $recordArray['SCMBookingNo'],
                 $recordArray['SCMBookingID'],
@@ -6088,11 +6083,11 @@ class QuotationController extends Controller
                 $recordArray['ClientIntegration']
             );
 
-            $recordArray['ID']          = $newId;
-            $recordArray['bookingno']   = $newBookingNo_int;
-            $recordArray['QuoteNo']     = $newQuoteNo;
-            $recordArray['QuoteStatus'] = 'In Progress';
-            $recordArray['CreatedBy']   = $submittedBy;
+            $recordArray['ID']             = $newId;
+            $recordArray['bookingno']      = $newBookingNo_int;
+            $recordArray['QuoteNo']        = $newQuoteNo;
+            $recordArray['QuoteStatus']    = 'In Progress';
+            $recordArray['CreatedBy']      = $submittedBy;
             $recordArray['LastModifiedBy'] = $submittedBy;
 
             DB::table('Quote_QuotationInfo')->insert($recordArray);
@@ -6104,19 +6099,15 @@ class QuotationController extends Controller
                 ->get();
 
             foreach ($charges as $charge) {
-                $chargeArray = (array) $charge;
+                $chargeArray                    = (array) $charge;
                 $chargeArray['Id']              = \Illuminate\Support\Str::uuid()->toString();
                 $chargeArray['QuotationInfoID'] = $newId;
                 DB::table('Quote_Quotation_ChargeSheet')->insert($chargeArray);
             }
 
-            $newQuotation = (object)['ID' => $newId];
+            $newQuotation = (object) ['ID' => $newId];
 
-            if (!$newQuotation) {
-                return response()->json(['success' => false, 'message' => 'New record not found after copy'], 500);
-            }
-
-            // Update new record with modal data
+            // ── Base update data (all customer types) ──
             $updateData = [
                 'origin_country_id'        => $request->origin_country_id,
                 'origincountry'            => $request->origin_country_name,
@@ -6140,18 +6131,30 @@ class QuotationController extends Controller
                 'commodity'                => $request->commodity,
                 'scopevolume'              => $request->scope_of_volume,
                 'cargovolume'              => $request->scope_of_volume !== 'Containerized'
-                    ? $request->cargo_volume : null,
+                    ? $request->cargo_volume
+                    : null,
             ];
 
             if ($request->filled('sales_person_name')) {
                 $updateData['username'] = $request->sales_person_name;
             }
 
+            // ── Extra fields — only written for New Agent ──
+            if ($request->customer_type === 'New Agent') {
+                $updateData['pri_partner_steet2']     = $request->input('address2');
+                $updateData['pri_partner_city']       = $request->input('city');
+                $updateData['pri_partner_statename']  = $request->input('state');
+                $updateData['pri_partner_zip']        = $request->input('zip');
+                $updateData['pri_partnermaster_name'] = $request->input('contact_person');
+                $updateData['pri_partner_email']      = $request->input('email');
+                $updateData['pri_partner_phone']      = $request->input('phone');
+            }
+
             DB::table('Quote_QuotationInfo')
                 ->where('ID', $newQuotation->ID)
                 ->update($updateData);
 
-            // Insert equipment rows if Containerized
+            // ── Insert equipment rows if Containerized ──
             if ($request->scope_of_volume === 'Containerized' && $request->has('equipment')) {
                 $rows = collect($request->equipment)->map(fn($eq) => [
                     'Id'              => \Illuminate\Support\Str::uuid()->toString(),
@@ -6185,7 +6188,6 @@ class QuotationController extends Controller
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }
-
     // ============================================================
     // HANDLE SCM BOOKING INTEGRATION RESPONSE
     // Called by SCM after booking creation — updates QuoteStatus,
