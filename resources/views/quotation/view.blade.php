@@ -723,19 +723,7 @@
                                             <div class="col-sm-8">
                                                 <select id="dupCustomerType"
                                                     class="form-control form-control-sm dup-required">
-                                                    <option value="">-- Select --</option>
-                                                    <option value="Existing"
-                                                        {{ ($quotation->CustomerType ?? '') === 'Existing' ? 'selected' : '' }}>
-                                                        Existing
-                                                    </option>
-                                                    <option value="New"
-                                                        {{ ($quotation->CustomerType ?? '') === 'New' ? 'selected' : '' }}>
-                                                        New
-                                                    </option>
-                                                    <option value="New Agent"
-                                                        {{ ($quotation->CustomerType ?? '') === 'New Agent' ? 'selected' : '' }}>
-                                                        New Agent
-                                                    </option>
+                                                    <option value="">-- Loading... --</option>
                                                 </select>
                                             </div>
                                         </div>
@@ -1041,9 +1029,46 @@
             $('#btnCopyBooking').off('click').on('click', function() {
                 dupResetValidation();
                 dupToggleScopeFields();
-                dupToggleCustomerFields();
+                dupLoadCustomerTypes().then(function() {
+                    dupToggleCustomerFields();
+                });
                 $('#duplicateModal').modal('show');
             });
+
+            function dupLoadCustomerTypes() {
+                return $.ajax({
+                    url: '/quotation/customer-types',
+                    type: 'GET',
+                }).then(function(response) {
+                    const $select = $('#dupCustomerType');
+                    const current = '{{ $quotation->CustomerType ?? '' }}';
+                    $select.empty().append('<option value="">-- Select --</option>');
+
+                    const types = response.success ? response.data : [];
+                    types.forEach(function(item) {
+                        const selected = item.CategoryName === current ? 'selected' : '';
+                        $select.append(
+                            `<option value="${item.CategoryName}" ${selected}>${item.CategoryName}</option>`
+                        );
+                    });
+
+                    dupToggleCustomerFields();
+                }).fail(function() {
+                    // Fallback — restore hardcoded options if SP fails
+                    const current = '{{ $quotation->CustomerType ?? '' }}';
+                    const fallback = ['Existing Agent', 'New Agent', 'Existing Customer', 'New Customer',
+                        'Contract Customer', 'Handover Job', 'Inter-Company'
+                    ];
+                    const $select = $('#dupCustomerType');
+                    $select.empty().append('<option value="">-- Select --</option>');
+                    fallback.forEach(function(name) {
+                        $select.append(
+                            `<option value="${name}" ${name === current ? 'selected' : ''}>${name}</option>`
+                        );
+                    });
+                    dupToggleCustomerFields();
+                });
+            }
 
             // ---- Scope of Volume toggle ----
             function dupToggleScopeFields() {
@@ -1062,9 +1087,9 @@
 
             // ---- Customer Type toggle ----
             function dupToggleCustomerFields() {
-                const isNew = ['New', 'New Agent'].includes($('#dupCustomerType').val());
-                $('#dupCompanyName, #dupAddress1').prop('readonly', !isNew);
-                $('#dupCustCountryDisplay, #dupIndustryDisplay').prop('readonly', !isNew);
+                const isNewAgent = $('#dupCustomerType').val() === 'New Agent';
+                $('#dupCompanyName, #dupAddress1').prop('readonly', !isNewAgent);
+                $('#dupCustCountryDisplay, #dupIndustryDisplay').prop('readonly', !isNewAgent);
             }
             $('#dupCustomerType').on('change', dupToggleCustomerFields);
 
