@@ -319,14 +319,13 @@
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <a href="#" class="text-primary mr-3" id="cancelCreateBookingBtn" data-dismiss="modal"
+                        <a href="#" class="text-primary mr-3" id="cancelCreateBookingBtn"
                             style="font-weight: 500; text-decoration: underline;">Cancel</a>
 
                         <button type="button" class="btn btn-primary px-4" id="submitCreateBookingBtn">
                             Create
                         </button>
-                        <button type="button" class="btn btn-secondary px-4 d-none" id="cbCloseBtn"
-                            data-dismiss="modal">Close</button>
+                        <button type="button" class="btn btn-secondary px-4 d-none" id="cbCloseBtn">Close</button>
 
 
                     </div>
@@ -1159,16 +1158,9 @@
                     false);
             });
 
-            $('#cbCloseBtn').on('click', function() {
-                $('#createBookingModal').modal('hide');
-            });
-
-            $('#cancelCreateBookingBtn').on('click', function(e) {
-                e.preventDefault();
-                $('#createBookingModal').modal('hide');
-            });
-
-            $('#cbXBtn').on('click', function() {
+            // ✅ FIX — unified close handler, no preventDefault conflict
+            $('#cbCloseBtn, #cbXBtn, #cancelCreateBookingBtn').on('click', function(e) {
+                e.preventDefault(); // safe — we call hide() ourselves
                 $('#createBookingModal').modal('hide');
             });
 
@@ -1403,8 +1395,21 @@
                     },
                     success: function(res) {
                         renderBookingSteps(res.steps || []);
+                        // ✅ FIX — display the SCM booking number in the success panel
                         if (res.success) {
-                            $('#cbProgressSuccess').removeClass('d-none');
+                            var msg = '<i class="fas fa-check-circle mr-2"></i>' +
+                                'All steps completed. Booking has been created in SCM.';
+
+                            if (res.scm_booking_no) {
+                                msg += '<br><strong class="mt-2 d-block">SCM Booking No: ' +
+                                    res.scm_booking_no + '</strong>';
+                            }
+                            if (res.scm_booking_id) {
+                                msg += '<strong>SCM Booking ID: ' + res.scm_booking_id +
+                                    '</strong>';
+                            }
+
+                            $('#cbProgressSuccess').html(msg).removeClass('d-none');
                             table.ajax.reload(null, false);
                             updateCardStats();
                         } else {

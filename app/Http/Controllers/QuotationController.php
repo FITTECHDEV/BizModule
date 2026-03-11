@@ -5188,11 +5188,13 @@ class QuotationController extends Controller
                     'scm_booking_id' => $bookingCheck->SCMBookingID,
                     'scm_booking_no' => $bookingCheck->SCMBookingNo ?? 'NULL',
                 ]);
+                // ✅ FIX — save both
                 if (!empty($bookingCheck->SCMBookingNo)) {
                     DB::table('Quote_QuotationInfo')
                         ->where('QuoteNo', $quoteNo)
                         ->update([
                             'SCMBookingNo'   => $bookingCheck->SCMBookingNo,
+                            'SCMBookingID'   => $bookingCheck->SCMBookingID,  // ← add this
                             'LastModifiedBy' => $submittedBy,
                             'updatedon'      => now(),
                         ]);
@@ -5214,10 +5216,17 @@ class QuotationController extends Controller
             'user'     => $submittedBy,
         ]);
 
+        // ✅ FIX — re-read the saved values and return them
+        $saved = DB::table('Quote_QuotationInfo')
+            ->where('ID', $request->id)
+            ->first(['SCMBookingID', 'SCMBookingNo']);
+
         return response()->json([
-            'success' => true,
-            'message' => 'Booking process completed successfully',
-            'steps'   => $steps,
+            'success'        => true,
+            'message'        => 'Booking process completed successfully',
+            'steps'          => $steps,
+            'scm_booking_no' => $saved->SCMBookingNo ?? null,
+            'scm_booking_id' => $saved->SCMBookingID ?? null,
         ]);
     }
 
