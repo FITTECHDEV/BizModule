@@ -5703,7 +5703,7 @@ class QuotationController extends Controller
 
         try {
             $containers = DB::connection('sqlsrv')
-                ->table('Quote_Quotation_EquipmentDetails as QE')
+                ->table('Quote_QuotationEquipmentDetails as QE')
                 ->join('Quote_QuotationInfo as QI', 'QI.ID', '=', 'QE.QuotationInfoID')
                 ->where('QI.QuoteNo', $quoteNo)
                 ->where('QE.IsActive', 1)

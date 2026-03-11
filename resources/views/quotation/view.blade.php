@@ -1496,10 +1496,10 @@
                     totalBaseAmount += parseFloat(charge.amtInBaseCurr || 0);
                     tbody.append(`
                         <tr>
-                            <td>${charge.chargeName || charge.chargeCode || 'N/A'}</td>
+                            <td>${charge.chargeName || charge.chargeCode || ''}</td>
                             <td class="text-right">${parseFloat(charge.rate || 0).toFixed(2)}</td>
                             <td class="text-right col-extra">${parseFloat(charge.quantity || 0).toFixed(2)}</td>
-                            <td class="col-extra">${charge.basedOnUOM || 'N/A'}</td>
+                            <td class="col-extra">${charge.basedOnUOM || ''}</td>
                             <td class="col-extra">${charge.chgCurr || 'KES'}</td>
                             <td class="text-right">${parseFloat(charge.amtInChgCurr || 0).toFixed(2)}</td>
                             <td class="text-right">${parseFloat(charge.amtInBaseCurr || 0).toFixed(2)}</td>
@@ -1535,10 +1535,10 @@
                     totalBaseAmount += parseFloat(charge.amtInBaseCurr || 0);
                     tbody.append(`
                         <tr>
-                            <td>${charge.chargeName || charge.chargeCode || 'N/A'}</td>
+                            <td>${charge.chargeName || charge.chargeCode || ''}</td>
                             <td class="text-right">${parseFloat(charge.rate || 0).toFixed(2)}</td>
                             <td class="text-right col-extra">${parseFloat(charge.quantity || 0).toFixed(2)}</td>
-                            <td class="col-extra">${charge.basedOnUOM || 'N/A'}</td>
+                            <td class="col-extra">${charge.basedOnUOM || ''}</td>
                             <td class="col-extra">${charge.chgCurr || 'KES'}</td>
                             <td class="text-right">${parseFloat(charge.amtInChgCurr || 0).toFixed(2)}</td>
                             <td class="text-right">${parseFloat(charge.amtInBaseCurr || 0).toFixed(2)}</td>
