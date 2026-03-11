@@ -2071,6 +2071,7 @@ class QuotationController extends Controller
                         ->update([
                             'QuoteStatus' => 'Won',
                             'status' => 'Won',
+                            'SCMINTStatus'   => null,
                             'LastModifiedBy' => $submittedBy,
                             'updatedon' => now()
                         ]);
