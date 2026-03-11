@@ -894,143 +894,87 @@ class QuotationController extends Controller
             }
 
             $revenue = [];
-
             $cost = [];
-
             foreach ($charges as $charge) {
-
                 // Skip if charge lacks required properties
 
                 if (!property_exists($charge, 'QuoteChargeID') || !property_exists($charge, 'ChargeName')) {
-
                     Log::warning('Skipping invalid charge entry:', [
-
                         'booking_no' => $bookingNo,
-
                         'charge_properties' => array_keys((array)$charge)
-
                     ]);
 
                     continue;
                 }
 
                 $chargeData = [
-
                     'id' => $charge->QuoteChargeID,
-
                     'chargeCode' => $charge->ChargeCode,
-
                     'chargeName' => $charge->ChargeName,
-
                     'quantity' => (float)$charge->Quantity,
-
                     'rate' => (float)$charge->Rate,
-
                     'amtInChgCurr' => (float)$charge->AmtInChgCurr,
-
                     'amtInBaseCurr' => (float)$charge->AmtInBaseCurr,
-
                     'exChangeRate' => (float)$charge->ExChangeRate,
-
                     'chgCurr' => $charge->ChgCurr,
-
                     'basedOnCode' => $charge->BasedOnCode,
-
                     'basedOn' => $charge->BasedOn,
-
                     'basedOnUOM' => $charge->BasedOnUOM,
-
                     'chargeRemark' => $charge->ChargeRemark,
-
                     'partyCode' => $charge->PartyCode,
-
                     'sourceType' => $charge->SourceType
-
                 ];
 
                 if ($charge->IsRevenue) {
-
                     $revenue[] = $chargeData;
                 } else {
-
                     $cost[] = $chargeData;
                 }
             }
 
             Log::info('Charges loaded successfully', [
-
                 'booking_no' => $bookingNo,
-
                 'revenue_count' => count($revenue),
-
                 'cost_count' => count($cost),
-
                 'total_revenue' => array_sum(array_column($revenue, 'amtInBaseCurr')),
-
                 'total_cost' => array_sum(array_column($cost, 'amtInBaseCurr'))
-
             ]);
 
             return response()->json([
-
                 'success' => true,
-
                 'revenue' => $revenue,
-
                 'cost' => $cost
-
             ]);
         } catch (\Illuminate\Database\QueryException $e) {
 
             Log::error('Charges query exception:', [
-
                 'booking_no' => $bookingNo,
-
                 'error_message' => $e->getMessage(),
-
                 'error_code' => $e->getCode(),
-
                 'sql' => $e->getSql() ?? 'N/A',
-
                 'bindings' => $e->getBindings() ?? [],
-
                 'file' => $e->getFile(),
-
                 'line' => $e->getLine(),
-
             ]);
 
             return response()->json([
-
                 'success' => false,
-
                 'message' => 'Database error while loading charges',
-
                 'error_details' => config('app.debug') ? $e->getMessage() : null
-
             ], 500);
         } catch (\Exception $e) {
 
             Log::error('Get charges failed with general exception:', [
-
                 'booking_no' => $bookingNo,
-
                 'error_message' => $e->getMessage(),
-
                 'error_file' => $e->getFile(),
-
                 'error_line' => $e->getLine(),
-
                 'trace' => $e->getTraceAsString()
-
             ]);
 
             return response()->json([
-
                 'success' => false,
-
                 'message' => 'Failed to load charges: ' . $e->getMessage()
-
             ], 500);
         }
     }
@@ -1118,6 +1062,15 @@ class QuotationController extends Controller
                 ], 404);
             }
 
+            // Validate RevenueOrCost matches exactly what the SP expects
+            $validChargeTypes = ['Revenue', 'Cost', 'Cost with Markup'];
+            if (!in_array($request->input('revenue_or_cost'), $validChargeTypes)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invalid charge type. Must be Revenue, Cost, or Cost with Markup'
+                ], 422);
+            }
+
             // ============================================
             // DEBUG AUTH USER
             // ============================================
@@ -1161,7 +1114,7 @@ class QuotationController extends Controller
                 'ToBeAdded' => (int)$request->input('to_be_added', 0),
                 'IncreaseBy' => (float)$request->input('increase_by', 0),
                 'IncreaseType' => $request->input('increase_type', 'Percentage'),
-                'SourceType' => $request->input('source_type', 'manual')
+                'SourceType' => ucfirst(strtolower($request->input('source_type', 'manual')))
             ]);
 
             Log::info('Stored Procedure Input JSON', [
@@ -1183,12 +1136,12 @@ class QuotationController extends Controller
 
             $pdo = DB::connection()->getPdo();
             $stmt = $pdo->prepare("
-            SET NOCOUNT ON;
-            DECLARE @OutputJson VARCHAR(2000);
-            EXEC sp_Quote_Quotaiton_ChargesAddorEdit ?, @OutputJson OUTPUT;
-            SELECT @OutputJson AS OutputJson
+                SET NOCOUNT ON;
+                DECLARE @OutputJson VARCHAR(2000);
+                EXEC sp_Quote_Quotaiton_ChargesAddorEdit ?, @OutputJson OUTPUT;
+                SELECT @OutputJson AS OutputJson
 
-            ");
+                ");
 
             $executeSuccess = $stmt->execute([$inputJson]);
             if (!$executeSuccess) {

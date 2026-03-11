@@ -470,16 +470,14 @@
                                     <label class="col-sm-4 col-form-label">State</label>
                                     <div class="col-sm-8">
                                         <input type="text" class="form-control form-control-sm"
-                                            value="{{ $quotation->pri_partner_statename ?? '' }}"
- readonly>
+                                            value="{{ $quotation->pri_partner_statename ?? '' }}" readonly>
                                     </div>
                                 </div>
                                 <div class="form-group row">
                                     <label class="col-sm-4 col-form-label">Contact Person</label>
                                     <div class="col-sm-8">
                                         <input type="text" class="form-control form-control-sm"
-                                            value="{{ $quotation->contact_name ?? '' }}"
- readonly>
+                                            value="{{ $quotation->contact_name ?? '' }}" readonly>
                                     </div>
                                 </div>
                                 <div class="form-group row mb-0">
@@ -758,8 +756,8 @@
         <!-- END ROW -->
 
         <!-- ============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             MODALS
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             ============================================ -->
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     MODALS
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     ============================================ -->
 
         {{-- REVENUE MODAL --}}
         <div class="modal fade" id="addRevenueModal" tabindex="-1" role="dialog"
@@ -1321,8 +1319,8 @@
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.min.css">
     <style>
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                MODAL STYLING — matched to FitExpress UI
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        MODAL STYLING — matched to FitExpress UI
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        ============================================= */
 
         .modal-header {
             background-color: #fff !important;
@@ -1765,9 +1763,9 @@
         }
 
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       CREATE BOOKING MODAL — Specific overrides
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       to match the "Creation of Booking" design
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               CREATE BOOKING MODAL — Specific overrides
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               to match the "Creation of Booking" design
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               ============================================= */
 
         #createBookingModal .modal-title {
             color: #003580 !important;
@@ -3042,9 +3040,15 @@
                 if (chargeType === 'costmarkup') {
                     const increaseBy = parseFloat($modal.find(`input[name="${prefix}_increase_by"]`).val()) || 0;
                     const increaseType = $modal.find(`select[name="${prefix}_increase_type"]`).val();
-                    const markupAmount = increaseType === 'Percentage' ?
-                        amount + (amount * increaseBy / 100) :
-                        amount + increaseBy;
+
+                    // Mirror SP logic: markup applied to Rate first, then multiply by Quantity
+                    const newRate = increaseType === 'Percentage' ?
+                        rate + (rate * increaseBy / 100) :
+                        rate + increaseBy; // Fixed: add to rate, not to amount
+
+                    const markupAmount = Math.round(newRate * quantity * 100) / 100;
+                    const markupBaseAmount = Math.round(markupAmount * exchangeRate * 100) / 100;
+
                     const markupFieldName = prefix === 'revenue' ? 'revenue_markup_amount' : 'cost_revenue_amount';
                     $modal.find(`input[name="${markupFieldName}"]`).val(markupAmount.toFixed(2));
                 }
@@ -3153,7 +3157,11 @@
                             showNotification(response.message, 'success');
                             loadCharges();
                             if (addMore) {
-                                clearModalForm(type);
+                                if (type === 'revenue') {
+                                    clearRevenueModalForm();
+                                } else {
+                                    clearCostModalForm();
+                                }
                             } else {
                                 $modal.modal('hide');
                             }
@@ -3228,6 +3236,19 @@
                 const $modal = type === 'revenue' ? $('#addRevenueModal') : $('#addCostModal');
                 const prefix = type;
 
+                // ── Restore charge type radio ──
+                const savedChargeType = charge.revenueOrCost === 'Revenue' ? 'revenue' :
+                    charge.revenueOrCost === 'Cost with Markup' ? 'costmarkup' : 'cost';
+
+                $modal.find(`input[name="${prefix}ChargeType"][value="${savedChargeType}"]`)
+                    .prop('checked', true);
+
+                if (type === 'revenue') {
+                    toggleRevenueFormFields(savedChargeType);
+                } else {
+                    toggleCostFormFields(savedChargeType);
+                }
+
                 // ── Scalar fields — no async dependency ──
                 $modal.find(`input[name="${prefix}_charge_code"]`).val(charge.chargeCode);
                 $modal.find(`input[name="${prefix}_description"]`).val(charge.chargeName);
@@ -3241,6 +3262,12 @@
                 $modal.find(`input[name="${prefix}_base_amount"]`).val(
                     parseFloat(charge.amtInBaseCurr || 0).toFixed(2)
                 );
+
+                // ── Restore markup fields if Cost with Markup ──
+                if (savedChargeType === 'costmarkup') {
+                    $modal.find(`input[name="${prefix}_increase_by"]`).val(charge.increaseBy || 0);
+                    $modal.find(`select[name="${prefix}_increase_type"]`).val(charge.increaseType || 'Percentage');
+                }
 
                 // ── Currency — wait for currencyMap to be populated ──
                 function setCurrency() {
@@ -4543,11 +4570,19 @@
             // ============================================
             function clearModalForm(type) {
                 const $modal = type === 'revenue' ? $('#addRevenueModal') : $('#addCostModal');
+                const chargeTypeRadioName = type === 'revenue' ? 'revenueChargeType' : 'costChargeType';
+                const increaseTypeSelectName = type === 'revenue' ? 'revenue_increase_type' : 'cost_increase_type';
+
                 $modal.find('input[type="text"], input[type="number"]').val('');
                 $modal.find('input[type="number"]').val('0');
-                $modal.find('select').prop('selectedIndex', 0);
-                $modal.find('input[type="checkbox"]').prop('checked', false);
 
+                // Reset selects EXCEPT increase_type — let toggleCostFormFields own its default
+                $modal.find('select').not(`select[name="${increaseTypeSelectName}"]`).prop('selectedIndex', 0);
+
+                // Reset increase_type to a valid default (Percentage), not blank
+                $modal.find(`select[name="${increaseTypeSelectName}"]`).val('Percentage');
+
+                $modal.find('input[type="checkbox"]').prop('checked', false);
 
                 if (type === 'revenue') {
                     $modal.find('.increase-by-row').removeClass('active').css('display', 'none');
@@ -4557,9 +4592,6 @@
                     $modal.find('.cost-markup-row input[type="number"]').val('0.00');
                 }
 
-                // ── FIX: Only reload BasedOn list in add mode.
-                // In edit mode, populateModal owns the loading sequence via loadBasedOnListWithCallback.
-                // Calling loadBasedOnList here would race and reset the dropdown, wiping basedOnUOM.
                 if (!currentEditingCharge) {
                     loadBasedOnList(type);
                     populateCurrencyDropdown(type);
@@ -4567,17 +4599,20 @@
             }
 
             function clearRevenueModalForm() {
+                const currentType = $('#addRevenueModal').find('input[name="revenueChargeType"]:checked').val() ||
+                    'revenue';
                 clearModalForm('revenue');
-                $('#revenueTypeRevenue').prop('checked', true);
-                toggleRevenueFormFields('revenue');
-                $('#addRevenueModal .increase-by-row').removeClass('active').css('display', 'none');
+                $(`#addRevenueModal input[name="revenueChargeType"][value="${currentType}"]`).prop('checked', true);
+                toggleRevenueFormFields(currentType);
             }
 
             function clearCostModalForm() {
+                // Read the currently selected type BEFORE clearModalForm resets the form
+                const currentType = $('#addCostModal').find('input[name="costChargeType"]:checked').val() || 'cost';
                 clearModalForm('cost');
-                $('#costTypeCost').prop('checked', true);
-                toggleCostFormFields('cost');
-                $('#addCostModal .cost-markup-row').removeClass('active').css('display', 'none');
+                // Re-apply the checked state that clearModalForm wiped
+                $(`#addCostModal input[name="costChargeType"][value="${currentType}"]`).prop('checked', true);
+                toggleCostFormFields(currentType);
             }
 
             // ============================================
