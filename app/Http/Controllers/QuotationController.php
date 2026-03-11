@@ -160,15 +160,18 @@ class QuotationController extends Controller
         $query = DB::table('Quote_QuotationInfo');
 
         // ── Date filter ──────────────────────────────────────────────────────────
-        if ($days == 'custom' && $startDate && $endDate) {
-            $query->whereBetween('createdon', [$startDate . ' 00:00:00', $endDate . ' 23:59:59']);
-        } elseif ($days == 1) {
+        if ($days === 'custom' && $startDate && $endDate) {
+            $query->whereBetween('createdon', [
+                $startDate . ' 00:00:00',
+                $endDate   . ' 23:59:59',
+            ]);
+        } elseif ($days === '1') {
             $query->whereDate('createdon', now()->subDay());
-        } elseif ($days == 15) {
+        } elseif ($days === '15') {
             $query->where('createdon', '>=', now()->subDays(15));
-        } elseif ($days == 30) {
+        } elseif ($days === '30') {
             $query->where('createdon', '>=', now()->subDays(30));
-        } elseif ($days == 0) {
+        } elseif ($days === '0') {
             $query->whereDate('createdon', today());
         }
         // 'all' → no date filter
@@ -180,48 +183,69 @@ class QuotationController extends Controller
 
         $total = $query->count();
 
-        // In Progress: not Won / Lost / Cancel / Failed Progress
-        $inProgress = (clone $query)->where(function ($q) {
-            $q->whereNotIn('QuoteStatus', ['Won', 'Lost', 'Cancel', 'Failed Progress'])
-                ->orWhereNull('QuoteStatus');
-        })->where(function ($q) {
-            $q->whereNotIn('status', ['Won', 'Lost', 'Cancel', 'Failed Progress'])
-                ->orWhereNull('status');
-        })->count();
+        // In Progress — not in any terminal status
+        $inProgress = (clone $query)
+            ->where(function ($q) {
+                $q->whereNotIn('QuoteStatus', ['Won', 'Lost', 'Cancel', 'Completed', 'Failed Progress'])
+                    ->orWhereNull('QuoteStatus');
+            })
+            ->where(function ($q) {
+                $q->whereNotIn('status', ['Won', 'Lost', 'Cancel', 'Completed', 'Failed Progress'])
+                    ->orWhereNull('status');
+            })
+            ->count();
 
-        // Completed: Won + (SCMINTStatus IS NULL OR 'Success')
-        $completed = (clone $query)->where(function ($q) {
-            $q->where('QuoteStatus', 'Won')->orWhere('status', 'Won');
-        })->where('SCMINTStatus', 'Success')->count();
+        // Won — status is Won AND SCMINTStatus is NULL (not yet processed by SCM)
+        // Covers both 'Won'/'Won' and transition 'Pending'/'Won' rows
+        $won = (clone $query)
+            ->where('QuoteStatus', 'Won')
+            ->whereNull('SCMINTStatus')
+            ->count();
 
-        // Lost / Canceled: Lost OR Cancel
-        $lostCanceled = (clone $query)->where(function ($q) {
-            $q->whereIn('QuoteStatus', ['Lost', 'Cancel'])
-                ->orWhereIn('status', ['Lost', 'Cancel']);
-        })->count();
+        $completed = (clone $query)
+            ->where('QuoteStatus', 'Won')
+            ->where('SCMINTStatus', 'Success')
+            ->count();
 
-        // Failed Int.: Won + SCMINTStatus set and not Success
-        $failedInt = (clone $query)->where(function ($q) {
-            $q->where('QuoteStatus', 'Won')->orWhere('status', 'Won');
-        })->whereNotNull('SCMINTStatus')
+        // Completed — Won AND SCM integration succeeded
+        $completed = (clone $query)
+            ->where(function ($q) {
+                $q->where('QuoteStatus', 'Won')
+                    ->orWhere('status', 'Won');
+            })
+            ->where('SCMINTStatus', 'Success')
+            ->count();
+
+        // Lost / Canceled — combined
+        $lostCanceled = (clone $query)
+            ->where(function ($q) {
+                $q->whereIn('QuoteStatus', ['Lost', 'Cancel'])
+                    ->orWhereIn('status', ['Lost', 'Cancel']);
+            })
+            ->count();
+
+        // Failed Int. — Won but SCM returned an error (not null, not 'Success')
+        $failedInt = (clone $query)
+            ->where(function ($q) {
+                $q->where('QuoteStatus', 'Won')
+                    ->orWhere('status', 'Won');
+            })
+            ->whereNotNull('SCMINTStatus')
             ->where('SCMINTStatus', '!=', 'Success')
             ->count();
 
         // Failed Progress
-        $failedProgress = (clone $query)->where(function ($q) {
-            $q->where('QuoteStatus', 'Failed Progress')
-                ->orWhere('status', 'Failed Progress');
-        })->count();
-
-        // Won = Won but SCMINTStatus not yet set (pending integration)
-        $won = (clone $query)->where(function ($q) {
-            $q->where('QuoteStatus', 'Won')->orWhere('status', 'Won');
-        })->whereNull('SCMINTStatus')->count();
+        $failedProgress = (clone $query)
+            ->where(function ($q) {
+                $q->where('QuoteStatus', 'Failed Progress')
+                    ->orWhere('status', 'Failed Progress');
+            })
+            ->count();
 
         return [
             'total'           => $total,
             'in_progress'     => $inProgress,
-            'won'             => $won,             // ← add this back
+            'won'             => $won,
             'completed'       => $completed,
             'lost_canceled'   => $lostCanceled,
             'failed_int'      => $failedInt,
@@ -289,26 +313,26 @@ class QuotationController extends Controller
 
                 case 'in_progress':
                     $query->where(function ($q) {
-                        $q->whereNotIn('QuoteStatus', ['Won', 'Lost', 'Cancel', 'Failed Progress'])
+                        $q->whereNotIn('QuoteStatus', ['Won', 'Lost', 'Cancel', 'Completed', 'Failed Progress'])
                             ->orWhereNull('QuoteStatus');
                     })->where(function ($q) {
-                        $q->whereNotIn('status', ['Won', 'Lost', 'Cancel', 'Failed Progress'])
+                        $q->whereNotIn('status', ['Won', 'Lost', 'Cancel', 'Completed', 'Failed Progress'])
                             ->orWhereNull('status');
                     });
                     break;
+
                 case 'won':
                     $query->where(function ($q) {
                         $q->where('QuoteStatus', 'Won')->orWhere('status', 'Won');
                     })->whereNull('SCMINTStatus');
                     break;
-                // NEW: replaces 'won'
+
                 case 'completed':
                     $query->where(function ($q) {
                         $q->where('QuoteStatus', 'Won')->orWhere('status', 'Won');
                     })->where('SCMINTStatus', 'Success');
                     break;
 
-                // NEW: replaces separate 'lost' and 'canceled'
                 case 'lost_canceled':
                     $query->where(function ($q) {
                         $q->whereIn('QuoteStatus', ['Lost', 'Cancel'])
@@ -332,7 +356,6 @@ class QuotationController extends Controller
 
                 case 'all':
                 default:
-                    // No filter
                     break;
             }
 
@@ -395,10 +418,11 @@ class QuotationController extends Controller
                     $scmStatus = $row->SCMINTStatus;
 
                     if ($status === 'Won' && $scmStatus && $scmStatus !== 'Success') return 'Failed Int.';
-                    if ($status === 'Won')                                             return 'Completed';
-                    if ($status === 'Failed Progress')                                 return 'Failed Progress';
+                    if ($status === 'Won' && $scmStatus === 'Success')               return 'Completed';
+                    if ($status === 'Won')                                            return 'Won';        // ← no SCM yet
+                    if ($status === 'Failed Progress')                                return 'Failed Progress';
                     if (in_array($status, ['Proposal', 'Pending', 'In Progress']) || is_null($status)) return 'In Progress';
-                    if (in_array($status, ['Lost', 'Cancel']))                         return 'Lost / Canceled';
+                    if (in_array($status, ['Lost', 'Cancel']))                        return 'Lost / Canceled';
                     return $status;
                 })
 
@@ -571,7 +595,6 @@ class QuotationController extends Controller
     }
 
     public function edit($id)
-
     {
         try {
             // Debug: Log the ID being queried
@@ -2077,6 +2100,7 @@ class QuotationController extends Controller
                         ->update([
                             'QuoteStatus' => 'Won',
                             'status' => 'Won',
+                            'SCMINTStatus'   => null,
                             'LastModifiedBy' => $submittedBy,
                             'updatedon' => now()
                         ]);

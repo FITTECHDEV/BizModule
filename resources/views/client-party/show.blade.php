@@ -508,7 +508,7 @@
                                                                             <div class="col-md-4 text-right">
                                                                                 <div class="file-actions">
                                                                                     {{-- Preview/Download Button --}}
-                                                                                    <a href="{{ route('client-party.preview', [$attachment->CustEntityID]) }}"
+                                                                                    <a href="{{ route('client-party.preview', $attachment->ID) }}"
                                                                                         class="btn btn-sm btn-outline-primary mr-1"
                                                                                         target="_blank"
                                                                                         data-toggle="tooltip"
@@ -1059,12 +1059,12 @@
                 </div>
             </div>
 
-@stop
+        @stop
 
         @section('css')
             <!-- ============================================
-                                                                                                                                 EXTERNAL STYLESHEETS
-                                                                                                                            ============================================ -->
+                                                                                                                                         EXTERNAL STYLESHEETS
+                                                                                                                                    ============================================ -->
             <!-- Bootstrap Stepper -->
             <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bs-stepper/dist/css/bs-stepper.min.css">
 
@@ -1076,8 +1076,8 @@
 
             <style>
                 /* ============================================
-                                                                                                                                   CSS VARIABLES (Custom Properties)
-                                                                                                                                ============================================ */
+                                                                                                                                           CSS VARIABLES (Custom Properties)
+                                                                                                                                        ============================================ */
                 :root {
                     --primary-color: #007bff;
                     --primary-hover: #0056b3;
@@ -1099,8 +1099,8 @@
                 }
 
                 /* ============================================
-                                                                                                                                   CARD COMPONENTS
-                                                                                                                                ============================================ */
+                                                                                                                                           CARD COMPONENTS
+                                                                                                                                        ============================================ */
                 .card {
                     border: none;
                     border-radius: var(--border-radius-md);
@@ -1121,8 +1121,8 @@
                 }
 
                 /* ============================================
-                                                                                                                                   ENHANCED FILE DISPLAY STYLES
-                                                                                                                                ============================================ */
+                                                                                                                                           ENHANCED FILE DISPLAY STYLES
+                                                                                                                                        ============================================ */
                 .file-item {
                     background: #f8f9fa;
                     transition: all 0.3s ease;
@@ -1241,8 +1241,8 @@
                 }
 
                 /* ============================================
-                                                                                                                                   BADGE SYSTEM
-                                                                                                                                ============================================ */
+                                                                                                                                           BADGE SYSTEM
+                                                                                                                                        ============================================ */
                 .badge {
                     font-size: 0.9rem;
                     padding: 0.5em 1em;
@@ -1318,8 +1318,8 @@
                 }
 
                 /* ============================================
-                                                                                                                                   TYPOGRAPHY
-                                                                                                                                ============================================ */
+                                                                                                                                           TYPOGRAPHY
+                                                                                                                                        ============================================ */
                 .text-muted {
                     font-size: 0.95rem;
                     color: var(--muted-color) !important;
@@ -1340,8 +1340,8 @@
                 }
 
                 /* ============================================
-                                                                                                                                   FIELDSET & LEGEND STYLING
-                                                                                                                                ============================================ */
+                                                                                                                                           FIELDSET & LEGEND STYLING
+                                                                                                                                        ============================================ */
                 fieldset {
                     border: 2px solid var(--border-color);
                     border-radius: var(--border-radius-md);
@@ -1381,8 +1381,8 @@
                 }
 
                 /* ============================================
-                                                                                                                                   FORM ELEMENTS
-                                                                                                                                ============================================ */
+                                                                                                                                           FORM ELEMENTS
+                                                                                                                                        ============================================ */
                 .form-control:focus {
                     border-color: var(--primary-color);
                     box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
@@ -1410,8 +1410,8 @@
                 }
 
                 /* ============================================
-                                                                                                                                   DISABLED STATES
-                                                                                                                                ============================================ */
+                                                                                                                                           DISABLED STATES
+                                                                                                                                        ============================================ */
                 .disabled {
                     opacity: 0.6;
                     cursor: not-allowed;
@@ -1436,8 +1436,8 @@
                 }
 
                 /* ============================================
-                                                                                                                                   TOOLTIP ENHANCEMENTS
-                                                                                                                                ============================================ */
+                                                                                                                                           TOOLTIP ENHANCEMENTS
+                                                                                                                                        ============================================ */
                 .tooltip-inner {
                     background: linear-gradient(135deg, var(--dark-color) 0%, #495057 100%);
                     color: white;
@@ -1452,8 +1452,8 @@
                 }
 
                 /* ============================================
-                                                                                                                                   LOADING & PRELOADER
-                                                                                                                                ============================================ */
+                                                                                                                                           LOADING & PRELOADER
+                                                                                                                                        ============================================ */
                 #loader {
                     display: none;
                     position: fixed;
@@ -1544,8 +1544,8 @@
                 }
 
                 /* ============================================
-                                                                                                                                   BUTTON ENHANCEMENTS
-                                                                                                                                ============================================ */
+                                                                                                                                           BUTTON ENHANCEMENTS
+                                                                                                                                        ============================================ */
                 .btn {
                     border-radius: var(--border-radius-sm);
                     font-weight: 500;
@@ -1585,8 +1585,8 @@
                 }
 
                 /* ============================================
-                                                                                                                                   RESPONSIVE DESIGN
-                                                                                                                                ============================================ */
+                                                                                                                                           RESPONSIVE DESIGN
+                                                                                                                                        ============================================ */
                 @media (max-width: 768px) {
                     .card {
                         margin-bottom: 1rem;
@@ -1622,8 +1622,8 @@
                 }
 
                 /* ============================================
-                                                                                                                                   UTILITY CLASSES
-                                                                                                                                ============================================ */
+                                                                                                                                           UTILITY CLASSES
+                                                                                                                                        ============================================ */
                 .shadow-soft {
                     box-shadow: var(--shadow-light);
                 }
@@ -1657,8 +1657,8 @@
                 }
 
                 /* ============================================
-                                                                                                                                   PRINT STYLES
-                                                                                                                                ============================================ */
+                                                                                                                                           PRINT STYLES
+                                                                                                                                        ============================================ */
                 @media print {
 
                     .btn,
@@ -2438,131 +2438,133 @@
                     // });
 
                     $('button[name="createBtn"]').off('click').on('click', async function(e) {
-    // IMPORTANT: DO NOT use e.preventDefault() here
-    // Let the native form submit happen (type="submit" will trigger it)
+                        // IMPORTANT: DO NOT use e.preventDefault() here
+                        // Let the native form submit happen (type="submit" will trigger it)
 
-    let requestType = window.requestType || 'operational';
-    let isAccountingType = requestType === 'accounting';
-    let currentStatus = '{{ $clientParty->Status }}';
+                        let requestType = window.requestType || 'operational';
+                        let isAccountingType = requestType === 'accounting';
+                        let currentStatus = '{{ $clientParty->Status }}';
 
-    // Client-side validation (same as before)
-    if (isAccountingType) {
-        console.log('Processing createBtn click for accounting type entity');
+                        // Client-side validation (same as before)
+                        if (isAccountingType) {
+                            console.log('Processing createBtn click for accounting type entity');
 
-        // Get checkbox values
-        let otherCheckValue = $('#otherCheck').is(':checked') ? 1 : 0;
-        let debtorCheckValue = $('#debtorCheck').is(':checked') ? 1 : 0;
-        let vendorCheckValue = $('#vendorCheck').is(':checked') ? 1 : 0;
+                            // Get checkbox values
+                            let otherCheckValue = $('#otherCheck').is(':checked') ? 1 : 0;
+                            let debtorCheckValue = $('#debtorCheck').is(':checked') ? 1 : 0;
+                            let vendorCheckValue = $('#vendorCheck').is(':checked') ? 1 : 0;
 
-        console.log('Checkbox values:', {
-            otherCheck: otherCheckValue,
-            debtorCheck: debtorCheckValue,
-            vendorCheck: vendorCheckValue
-        });
+                            console.log('Checkbox values:', {
+                                otherCheck: otherCheckValue,
+                                debtorCheck: debtorCheckValue,
+                                vendorCheck: vendorCheckValue
+                            });
 
-        // Validation for accounting entities
-        if (otherCheckValue === 0 && !$('#otherInput').val()?.trim()) {
-            e.preventDefault(); // Prevent form submission
-            await SwalUtils.warning('Validation Error',
-                'Other Party field is required when checkbox is unchecked.');
-            $('#otherInput').addClass('is-invalid').focus();
-            return; // Stop here — form won't submit
-        }
+                            // Validation for accounting entities
+                            if (otherCheckValue === 0 && !$('#otherInput').val()?.trim()) {
+                                e.preventDefault(); // Prevent form submission
+                                await SwalUtils.warning('Validation Error',
+                                    'Other Party field is required when checkbox is unchecked.');
+                                $('#otherInput').addClass('is-invalid').focus();
+                                return; // Stop here — form won't submit
+                            }
 
-        if (debtorCheckValue === 0 && !$('#debtor').val()?.trim()) {
-            e.preventDefault(); // Prevent form submission
-            await SwalUtils.warning('Validation Error',
-                'Debtor field is required when checkbox is unchecked.');
-            $('#debtor').addClass('is-invalid').focus();
-            return;
-        }
+                            if (debtorCheckValue === 0 && !$('#debtor').val()?.trim()) {
+                                e.preventDefault(); // Prevent form submission
+                                await SwalUtils.warning('Validation Error',
+                                    'Debtor field is required when checkbox is unchecked.');
+                                $('#debtor').addClass('is-invalid').focus();
+                                return;
+                            }
 
-        if (vendorCheckValue === 0 && !$('#vendor').val()?.trim()) {
-            e.preventDefault(); // Prevent form submission
-            await SwalUtils.warning('Validation Error',
-                'Vendor field is required when checkbox is unchecked.');
-            $('#vendor').addClass('is-invalid').focus();
-            return;
-        }
-    }
+                            if (vendorCheckValue === 0 && !$('#vendor').val()?.trim()) {
+                                e.preventDefault(); // Prevent form submission
+                                await SwalUtils.warning('Validation Error',
+                                    'Vendor field is required when checkbox is unchecked.');
+                                $('#vendor').addClass('is-invalid').focus();
+                                return;
+                            }
+                        }
 
-    // Enhanced confirmation message based on status
-    let confirmTitle = 'Confirm Creation';
-    let confirmMessage = 'Are you sure you want to create this entity?';
-    let confirmIcon = 'question';
+                        // Enhanced confirmation message based on status
+                        let confirmTitle = 'Confirm Creation';
+                        let confirmMessage = 'Are you sure you want to create this entity?';
+                        let confirmIcon = 'question';
 
-    if (currentStatus === 'PendingITVerification') {
-        confirmTitle = '✓ Ready for Creation';
-        confirmMessage = 'This entity has passed IT verification and is ready to be created in the system. Proceed with creation?';
-        confirmIcon = 'success';
-    } else if (currentStatus === 'PendingGroupLevelApproval') {
-        confirmTitle = 'Final Approval';
-        confirmMessage = 'This entity has been approved at group level. Create it now?';
-    }
+                        if (currentStatus === 'PendingITVerification') {
+                            confirmTitle = '✓ Ready for Creation';
+                            confirmMessage =
+                                'This entity has passed IT verification and is ready to be created in the system. Proceed with creation?';
+                            confirmIcon = 'success';
+                        } else if (currentStatus === 'PendingGroupLevelApproval') {
+                            confirmTitle = 'Final Approval';
+                            confirmMessage = 'This entity has been approved at group level. Create it now?';
+                        }
 
-    // Confirm action with enhanced dialog
-    const confirmResult = await Swal.fire({
-        title: confirmTitle,
-        text: confirmMessage,
-        icon: confirmIcon,
-        showCancelButton: true,
-        confirmButtonColor: '#28a745',
-        cancelButtonColor: '#6c757d',
-        confirmButtonText: '<i class="fa fa-check"></i> Yes, Create!',
-        cancelButtonText: '<i class="fa fa-times"></i> Cancel'
-    });
+                        // Confirm action with enhanced dialog
+                        const confirmResult = await Swal.fire({
+                            title: confirmTitle,
+                            text: confirmMessage,
+                            icon: confirmIcon,
+                            showCancelButton: true,
+                            confirmButtonColor: '#28a745',
+                            cancelButtonColor: '#6c757d',
+                            confirmButtonText: '<i class="fa fa-check"></i> Yes, Create!',
+                            cancelButtonText: '<i class="fa fa-times"></i> Cancel'
+                        });
 
-    if (!confirmResult.isConfirmed) {
-        e.preventDefault(); // Prevent form submission if cancelled
-        return;
-    }
+                        if (!confirmResult.isConfirmed) {
+                            e.preventDefault(); // Prevent form submission if cancelled
+                            return;
+                        }
 
-    // Add checkbox values as hidden inputs to the form
-    $('#clientPartyForm').find(
-        'input[name="otherCheck"], input[name="debtorCheck"], input[name="vendorCheck"]'
-    ).remove();
+                        // Add checkbox values as hidden inputs to the form
+                        $('#clientPartyForm').find(
+                            'input[name="otherCheck"], input[name="debtorCheck"], input[name="vendorCheck"]'
+                        ).remove();
 
-    // Add hidden inputs with checkbox values
-    $('<input>').attr('type', 'hidden').attr('name', 'otherCheck').attr('value', $(
-        '#otherCheck').is(':checked') ? 1 : 0).appendTo('#clientPartyForm');
-    $('<input>').attr('type', 'hidden').attr('name', 'debtorCheck').attr('value', $(
-        '#debtorCheck').is(':checked') ? 1 : 0).appendTo('#clientPartyForm');
-    $('<input>').attr('type', 'hidden').attr('name', 'vendorCheck').attr('value', $(
-        '#vendorCheck').is(':checked') ? 1 : 0).appendTo('#clientPartyForm');
+                        // Add hidden inputs with checkbox values
+                        $('<input>').attr('type', 'hidden').attr('name', 'otherCheck').attr('value', $(
+                            '#otherCheck').is(':checked') ? 1 : 0).appendTo('#clientPartyForm');
+                        $('<input>').attr('type', 'hidden').attr('name', 'debtorCheck').attr('value', $(
+                            '#debtorCheck').is(':checked') ? 1 : 0).appendTo('#clientPartyForm');
+                        $('<input>').attr('type', 'hidden').attr('name', 'vendorCheck').attr('value', $(
+                            '#vendorCheck').is(':checked') ? 1 : 0).appendTo('#clientPartyForm');
 
-    // Add createBtn indicator (already in HTML, but reinforce)
-    if (!$('#clientPartyForm input[name="createBtn"]').length) {
-        $('<input>').attr('type', 'hidden').attr('name', 'createBtn').attr('value', 'true')
-            .appendTo('#clientPartyForm');
-    }
+                        // Add createBtn indicator (already in HTML, but reinforce)
+                        if (!$('#clientPartyForm input[name="createBtn"]').length) {
+                            $('<input>').attr('type', 'hidden').attr('name', 'createBtn').attr('value', 'true')
+                                .appendTo('#clientPartyForm');
+                        }
 
-    // Show enhanced loading message based on status
-    let loadingTitle = 'Creating Entity';
-    let loadingMessage = 'Please wait while we create the entity...';
+                        // Show enhanced loading message based on status
+                        let loadingTitle = 'Creating Entity';
+                        let loadingMessage = 'Please wait while we create the entity...';
 
-    if (currentStatus === 'PendingITVerification') {
-        loadingTitle = '🔄 Finalizing Creation';
-        loadingMessage = 'Creating entity in system after IT verification. This may take a moment...';
-    } else if (currentStatus === 'PendingGroupLevelApproval') {
-        loadingTitle = 'Processing Final Approval';
-        loadingMessage = 'Creating entity after group level approval...';
-    }
+                        if (currentStatus === 'PendingITVerification') {
+                            loadingTitle = '🔄 Finalizing Creation';
+                            loadingMessage =
+                                'Creating entity in system after IT verification. This may take a moment...';
+                        } else if (currentStatus === 'PendingGroupLevelApproval') {
+                            loadingTitle = 'Processing Final Approval';
+                            loadingMessage = 'Creating entity after group level approval...';
+                        }
 
-    Swal.fire({
-        title: loadingTitle,
-        text: loadingMessage,
-        icon: 'info',
-        allowOutsideClick: false,
-        allowEscapeKey: false,
-        showConfirmButton: false,
-        didOpen: () => {
-            Swal.showLoading();
-        }
-    });
+                        Swal.fire({
+                            title: loadingTitle,
+                            text: loadingMessage,
+                            icon: 'info',
+                            allowOutsideClick: false,
+                            allowEscapeKey: false,
+                            showConfirmButton: false,
+                            didOpen: () => {
+                                Swal.showLoading();
+                            }
+                        });
 
-    // Let the native form submit — no manual .submit() needed
-    // The browser will handle the POST with _method=put
-});
+                        // Let the native form submit — no manual .submit() needed
+                        // The browser will handle the POST with _method=put
+                    });
 
                     // 🔥 UPDATED: Reject button handler with SweetAlert2
                     $('#close-modal').click(function() {
