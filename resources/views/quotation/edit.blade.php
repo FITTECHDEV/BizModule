@@ -470,14 +470,16 @@
                                     <label class="col-sm-4 col-form-label">State</label>
                                     <div class="col-sm-8">
                                         <input type="text" class="form-control form-control-sm"
-                                            value="{{ $quotation->pri_partner_state ?? '' }}" readonly>
+                                            value="{{ $quotation->pri_partner_statename ?? '' }}"
+ readonly>
                                     </div>
                                 </div>
                                 <div class="form-group row">
                                     <label class="col-sm-4 col-form-label">Contact Person</label>
                                     <div class="col-sm-8">
                                         <input type="text" class="form-control form-control-sm"
-                                            value="{{ $quotation->pri_partnername ?? '' }}" readonly>
+                                            value="{{ $quotation->contact_name ?? '' }}"
+ readonly>
                                     </div>
                                 </div>
                                 <div class="form-group row mb-0">
@@ -528,7 +530,7 @@
                                     <label class="col-sm-4 col-form-label">Industry</label>
                                     <div class="col-sm-8">
                                         <input type="text" class="form-control form-control-sm"
-                                            value="{{ $quotation->Industryname ?? '' }}" readonly>
+                                            value="{{ $quotation->pri_partner_industrytype ?? '' }}" readonly>
                                     </div>
                                 </div>
                             </div>

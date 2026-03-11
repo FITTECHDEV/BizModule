@@ -9,8 +9,8 @@ class QuotationInfo extends Model
     protected $table = 'Quote_QuotationInfo';
 
     protected $primaryKey = 'ID';
-    public $incrementing = false;        // ← ADD THIS
-    protected $keyType = 'string';       // ← ADD THIS
+    public $incrementing = false;
+    protected $keyType = 'string';
 
     public $timestamps = false;
 
@@ -28,15 +28,15 @@ class QuotationInfo extends Model
         'status',
         'userid',
         'username',
-        'useremail',         // keep if column exists for backwards compat
-        'SalesPersonEmail',  // ← ADD
-        'SalesPersonCode',   // ← ADD
+        'useremail',            // column exists (outside schema doc)
+        'SalesPersonEmail',
+        'SalesPersonCode',
         'teamid',
         'teamname',
         'origincountry',
         'destinationcountry',
         'process',
-        'incoterm',          // ← was 'incoterms' (wrong)
+        'incoterm',
         'shipmentmode',
         'TransportMode',
         'ServiceClass',
@@ -44,19 +44,21 @@ class QuotationInfo extends Model
         'scopevolume',
         'cargovolume',
         'containerlist',
-        'CustomerType',      // ← ADD
-        'AgentType',         // ← ADD
-        'AgentTypeId',       // ← ADD
-        'OfficeCode',        // ← ADD
+        'CustomerType',
+        'AgentType',
+        'AgentTypeId',
+        'OfficeCode',
         'QuotationTCTemplate',
         'QuotationEmailTemplate',
-        'pri_partner_steet',   // ← was pri_partner_street (DB has typo)
-        'pri_partner_steet2',  // ← was pri_partner_street2 (DB has typo)
+        'contact_name',             // ← {Contact_name} template variable
+        'pri_partnermaster_name',   // ← FIXED: was pri_partnername
+        'pri_partner_industrytype', // ← {pri_partner_industrytype} template variable
+        'pri_partner_steet',        // DB typo preserved intentionally
+        'pri_partner_steet2',       // DB typo preserved intentionally
         'pri_partner_city',
-        'pri_partner_state',   // note: DB has partner_statename not pri_partner_state
+        'pri_partner_statename',    // ← FIXED: was pri_partner_state + {pri_partner_statename} template variable
         'pri_partner_zip',
         'pri_partner_countryname',
-        'pri_partnername',     // note: DB has pri_partnermaster_name — verify this
         'pri_partner_phone',
         'pri_partner_email',
         'industryname',
