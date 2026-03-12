@@ -1158,7 +1158,7 @@
                                 _token: '{{ csrf_token() }}',
                                 origincountry: originCountry,
                                 destinationcountry: destCountry,
-                                incoterm: incoTerm,
+                                // incoterm: incoTerm,
                                 ServiceClass: serviceClass
                             },
                             success: function(r2) {
