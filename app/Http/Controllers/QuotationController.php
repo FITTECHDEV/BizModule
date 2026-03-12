@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Http\JsonResponse;
+use Symfony\Component\Mailer\Exception\TransportException;
 use Illuminate\Support\Facades\Auth;
 use Yajra\DataTables\Facades\DataTables;
 
@@ -203,10 +204,10 @@ class QuotationController extends Controller
             ->whereNull('SCMINTStatus')
             ->count();
 
-        $completed = (clone $query)
-            ->where('QuoteStatus', 'Won')
-            ->where('SCMINTStatus', 'Success')
-            ->count();
+        // $completed = (clone $query)
+        //     ->where('QuoteStatus', 'Won')
+        //     ->where('SCMINTStatus', 'Success')
+        //     ->count();
 
         // Completed — Won AND SCM integration succeeded
         $completed = (clone $query)
@@ -4848,33 +4849,45 @@ class QuotationController extends Controller
         ]);
 
         $submittedBy = auth()->user()->displayName ?? auth()->user()->Email ?? 'system';
+
+        // ✅ Fix 1: $quotation must be resolved before $input is built
+        $quotation = DB::connection('sqlsrv')
+            ->table('Quote_QuotationInfo')
+            ->where('bookingno', $request->booking_no)
+            ->value('QuoteNo');
+
+        if (!$quotation) {
+            return response()->json(['success' => false, 'message' => 'Quotation not found'], 404);
+        }
+
         $input = json_encode([
             'OperationType'     => 'CustomerUpdate',
             'SubmittedDatetime' => now()->format('YmdHis'),
             'SubmittedBy'       => $submittedBy,
             'Action'            => 'Update',
-            'QuotationNo'       => $request->booking_no,
-            'ClientID'          => '',
-            'Company'           => '',
-            'Address1'          => '',
-            'Address2'          => '',
-            'City'              => '',
-            'ZipCode'           => '',
-            'State'             => '',
-            'CountryCode'       => '',
-            'ContactPerson'     => '',
-            'EmailID'           => '',
-            'PhoneNo'           => '',
-            'IndustryCode'      => '',
-            'Industry'          => '',
+            'QuotationNo'       => $quotation,
+            'ClientID'          => $request->client_id ?? '',
+            'Company'           => $request->company ?? '',
+            'Address1'          => $request->address1 ?? '',
+            'Address2'          => $request->address2 ?? '',
+            'City'              => $request->city ?? '',
+            'ZipCode'           => $request->zip_code ?? '',
+            'State'             => $request->state ?? '',
+            'CountryCode'       => '', // ⚠️ SP BUG: country validation logic is inverted — always fails if provided
+            'ContactPerson'     => $request->contact_person ?? '',
+            'EmailID'           => $request->email ?? '',
+            'PhoneNo'           => $request->phone ?? '',
+            'IndustryCode'      => $request->industry_code ?? '',
+            'Industry'          => $request->industry ?? '',
             'CustomerType'      => $request->customer_type,
             'AgentType'         => $request->agent_type ?? '',
         ]);
 
+        // ✅ Fix 2: guard moved to after $input is built (needs $quotation to exist first)
         if (strlen($input) > 2000) {
             return response()->json([
                 'success' => false,
-                'message' => 'Request payload too large for SP. Max 2000 characters.'
+                'message' => '[PHP] Request payload too large for SP. Max 2000 characters.'
             ], 400);
         }
 
@@ -4882,11 +4895,10 @@ class QuotationController extends Controller
             $output = $this->executeDetailsUpdateSP($input);
 
             if (($output['Status'] ?? '') === 'Failed') {
-                $remarks = collect($output['Remarks'] ?? [])->pluck('Remark')->implode(', ');
-
+                // ✅ Fix 3: read normalized singular Remark (executeDetailsUpdateSP normalizes this now)
                 return response()->json([
                     'success' => false,
-                    'message' => $remarks ?: 'Customer update failed'
+                    'message' => $output['Remark'] ?? 'Customer update failed'
                 ]);
             }
 
@@ -4895,10 +4907,11 @@ class QuotationController extends Controller
                 'message' => 'Customer details saved successfully'
             ]);
         } catch (\Exception $e) {
-
             Log::error('saveCustomerDetails error: ' . $e->getMessage());
-
-            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+            return response()->json([
+                'success' => false,
+                'message' => '[PHP] ' . $e->getMessage()
+            ], 500);
         }
     }
 
@@ -4910,6 +4923,18 @@ class QuotationController extends Controller
      */
     private function executeDetailsUpdateSP(string $inputJson): array
     {
+        // Guard: VARCHAR(2000) limit — silent truncation causes corrupt saves
+        if (strlen($inputJson) > 2000) {
+            Log::error('executeDetailsUpdateSP - payload exceeds SP limit', [
+                'length'  => strlen($inputJson),
+                'preview' => substr($inputJson, 0, 300),
+            ]);
+            return [
+                'Status'  => 'Failed',
+                'Remark'  => '[PHP] Input payload too large (' . strlen($inputJson) . ' chars). SP limit is 2000.',
+            ];
+        }
+
         $pdo  = DB::connection('sqlsrv')->getPdo();
         $stmt = $pdo->prepare("
         SET NOCOUNT ON;
@@ -4924,17 +4949,28 @@ class QuotationController extends Controller
                 $rows = $stmt->fetchAll(\PDO::FETCH_OBJ);
                 if (!empty($rows) && isset($rows[0]->output)) {
                     $decoded = json_decode($rows[0]->output, true);
-                    return json_last_error() === JSON_ERROR_NONE ? $decoded : [];
+                    if (json_last_error() !== JSON_ERROR_NONE) {
+                        Log::error('executeDetailsUpdateSP - JSON decode failed', [
+                            'raw'   => $rows[0]->output,
+                            'input' => $inputJson,
+                        ]);
+                        return ['Status' => 'Failed', 'Remark' => '[SP] Response could not be parsed'];
+                    }
+                    // Normalize both shapes to singular Remark for all callers
+                    if (isset($decoded['Remarks'][0]['Remark']) && !isset($decoded['Remark'])) {
+                        $decoded['Remark'] = $decoded['Remarks'][0]['Remark'];
+                    }
+                    return $decoded;
                 }
             } catch (\PDOException $e) {
-                // skip empty/intermediate result sets
+                // skip intermediate result sets
             }
         } while ($stmt->nextRowset());
 
         Log::error('executeDetailsUpdateSP - no output returned', ['input' => $inputJson]);
         return [
-            'Status'  => 'Failed',
-            'Remarks' => [['Remark' => 'No response from stored procedure']]
+            'Status' => 'Failed',
+            'Remark' => '[SP] No response returned from stored procedure',
         ];
     }
 
@@ -5140,11 +5176,11 @@ class QuotationController extends Controller
             ];
 
             Log::info('processBooking - Step result', [
-                'quote_no'     => $quoteNo,
-                'step'         => $stepNo,
-                'type'         => $stepDef['type'],
-                'status'       => $result['status'],
-                'remark'       => $result['remark'],
+                'quote_no' => $quoteNo,
+                'step'     => $stepNo,
+                'type'     => $stepDef['type'],
+                'status'   => $result['status'],
+                'remark'   => $result['remark'],
             ]);
 
             if ($result['status'] !== 'Success') {
@@ -5175,69 +5211,41 @@ class QuotationController extends Controller
                 ]);
             }
 
-            // ── After XML step: verify SCMBookingID was written ───────────────────
-            // sp_Quote_QuoteBookingCreateInSCM saves SCMBookingXML to the row but
-            // SCMBookingID must be populated by the XML generation sub-SP
-            // (sp_Quote_XMLGeneration / sp_Quote_XMLGenerationforIndividual).
-            // Steps 3 (Charge) and 4 (Document) both read SCMBookingID and will
-            // immediately fail with "Booking Is Still No Created" if it is NULL.
-            // We guard here so the error is clear rather than cryptic.
+            // ── After XML step: log SCMBookingXML was saved ───────────────────────
+            // sp_Quote_QuoteBookingCreateInSCM only writes SCMBookingXML back to
+            // Quote_QuotationInfo. SCMBookingID is populated asynchronously by SCM
+            // via the handleBookingIntegrationResponse callback — it is not available
+            // at this point and must not be checked here.
             if ($stepNo === 2) {
-                $bookingCheck = DB::table('Quote_QuotationInfo')
-                    ->where('QuoteNo', $quoteNo)
-                    ->first(['SCMBookingID', 'SCMBookingNo']);
-
-                if (empty($bookingCheck->SCMBookingID)) {
-                    $guardRemark = 'SCMBookingID was not populated after the XML step. '
-                        . 'Steps 3 & 4 require it — contact the DB team to confirm '
-                        . 'sp_Quote_XMLGeneration writes SCMBookingID back to Quote_QuotationInfo.';
-
-                    Log::error('processBooking - SCMBookingID missing after XML step', [
-                        'quote_no'        => $quoteNo,
-                        'scm_booking_id'  => $bookingCheck->SCMBookingID  ?? 'NULL',
-                        'scm_booking_no'  => $bookingCheck->SCMBookingNo  ?? 'NULL',
-                    ]);
-
-                    $this->markAsFailed($request->id, 'Post-XML Check', $guardRemark, $submittedBy);
-
-                    // Mark Steps 3 & 4 as skipped
-                    foreach ($processSteps as $remainingNo => $remainingDef) {
-                        if ($remainingNo > $stepNo) {
-                            $steps[] = [
-                                'step'   => $remainingNo,
-                                'label'  => $remainingDef['label'],
-                                'status' => 'Skipped',
-                                'remark' => 'Skipped — SCMBookingID not set after XML step',
-                            ];
-                        }
-                    }
-
-                    return response()->json([
-                        'success'      => false,
-                        'failed_step'  => 2,
-                        'failed_label' => 'Post-XML Check',
-                        'steps'        => $steps,
-                    ]);
-                }
-
-                Log::info('processBooking - SCMBookingID confirmed after XML step', [
-                    'quote_no'       => $quoteNo,
-                    'scm_booking_id' => $bookingCheck->SCMBookingID,
-                    'scm_booking_no' => $bookingCheck->SCMBookingNo ?? 'NULL',
+                Log::info('processBooking - XML step completed, SCMBookingXML saved', [
+                    'quote_no' => $quoteNo,
+                    'note'     => 'SCMBookingID will be populated asynchronously by SCM callback',
                 ]);
-                // ✅ FIX — save both
-                if (!empty($bookingCheck->SCMBookingNo)) {
-                    DB::table('Quote_QuotationInfo')
-                        ->where('QuoteNo', $quoteNo)
-                        ->update([
-                            'SCMBookingNo'   => $bookingCheck->SCMBookingNo,
-                            'SCMBookingID'   => $bookingCheck->SCMBookingID,  // ← add this
-                            'LastModifiedBy' => $submittedBy,
-                            'updatedon'      => now(),
-                        ]);
-                }
             }
         }
+
+            // ── After Charge step: detect silent DB bug ───────────────────────────
+        // sp_Quote_QuoteChargesAddInSCM reads from FIT_ExpressChargeSheet instead
+        // of Quote_Quotation_ChargeSheet (wrong table — DB-side bug, item #4).
+        // The SP returns 'Success' even when no charges are transferred because
+        // the INSERT finds zero rows and throws no exception.
+        // This check makes the silent failure visible in logs until the DB team
+        // fixes the SP. Remove or comment out once the SP is corrected.
+    //     if ($stepNo === 3) {
+    //         // $unsentCharges = DB::table('Quote_Quotation_ChargeSheet')
+    //         //     ->where('QuotationInfoID', $quotation->ID)
+    //         //     ->where('IsDeleted', 0)
+    //         //     ->whereNull('SCMJobSheetID')
+    //         //     ->count();
+    //         //
+    //         // if ($unsentCharges > 0) {
+    //         //     Log::warning('processBooking - Step 3 returned Success but charges not transferred', [
+    //         //         'quote_no'       => $quoteNo,
+    //         //         'unsent_charges' => $unsentCharges,
+    //         //     ]);
+    //         // }
+    //     }
+    // }
 
         // ── All steps passed: mark SCMINTStatus = 'Success' ──────────────────────
         DB::table('Quote_QuotationInfo')
@@ -5253,7 +5261,7 @@ class QuotationController extends Controller
             'user'     => $submittedBy,
         ]);
 
-        // ✅ FIX — re-read the saved values and return them
+        // Re-read final state for response
         $saved = DB::table('Quote_QuotationInfo')
             ->where('ID', $request->id)
             ->first(['SCMBookingID', 'SCMBookingNo']);
@@ -5266,7 +5274,6 @@ class QuotationController extends Controller
             'scm_booking_id' => $saved->SCMBookingID ?? null,
         ]);
     }
-
 
     /**
      * Writes SCMINTStatus = 'Failed' and appends the step + error message to
@@ -5409,15 +5416,7 @@ class QuotationController extends Controller
 
             return [
                 'status' => $output['Status'] ?? 'Failed',
-                'remark' => $output['Remark'] ?? '',
-                'diagnostic' => [
-                    'sp_called'           => 'sp_Quote_DetailsUpdate',
-                    'quote_no'            => $quoteNo,
-                    'raw_office_code'     => $rawOfficeCode->OfficeCode ?? 'N/A',
-                    'office_code_length'  => $rawOfficeCode->OfficeCodeLen ?? 'N/A',
-                    'has_trailing_space'  => isset($rawOfficeCode->OfficeCode)
-                        && $rawOfficeCode->OfficeCode !== trim($rawOfficeCode->OfficeCode),
-                ]
+                'remark' => $output['Remark'] ?? '[SP] No remark returned',
             ];
         } catch (\Exception $e) {
             Log::error('runBookingInfoUpdate - Exception', [
@@ -5600,7 +5599,7 @@ class QuotationController extends Controller
             'QuotationNo'       => $quotation,              // was $request->booking_no
             'ShipmentModeCode'  => $request->shipment_mode,
             'TransportModeCode'     => $request->transport_mode,
-            'IncoTermCode'      => $request->incoterm, 
+            'IncoTermCode'      => $request->incoterm,
         ]);
 
         if (strlen($input) > 2000) {
@@ -5788,7 +5787,7 @@ class QuotationController extends Controller
 
         try {
             $containers = DB::connection('sqlsrv')
-                ->table('Quote_QuotationEquipmentDetails as QE')
+                ->table('Quote_Quotation_EquipmentDetails as QE')
                 ->join('Quote_QuotationInfo as QI', 'QI.ID', '=', 'QE.QuotationInfoID')
                 ->where('QI.QuoteNo', $quoteNo)
                 ->where('QE.IsActive', 1)
@@ -5916,9 +5915,9 @@ class QuotationController extends Controller
     public function saveInquiryDetails(Request $request)
     {
         $request->validate([
-            'booking_no'          => 'required|string',
-            'sales_person_code'   => 'required|string',
-            'sales_person_email'  => 'required|email',
+            'booking_no'         => 'required|string',
+            'sales_person_code'  => 'required|string',
+            'sales_person_email' => 'required|email',
         ]);
 
         $submittedBy = Auth::user()->displayName ?? Auth::user()->Email ?? 'system';
@@ -5933,21 +5932,25 @@ class QuotationController extends Controller
         }
 
         $input = json_encode([
-            'OperationType'    => 'InquiryDetails',
+            'OperationType'     => 'InquiryDetails',
             'SubmittedDatetime' => now()->format('YmdHis'),
-            'SubmittedBy'      => $submittedBy,
-            'Action'           => 'Update',
-            'QuotationNo'      => $quotation,
-            'SalesPersonCode'  => $request->sales_person_code,
-            'SalesPersonEmail' => $request->sales_person_email,
+            'SubmittedBy'       => $submittedBy,
+            'Action'            => 'Update',
+            'QuotationNo'       => $quotation,
+            'SalesPersonCode'   => $request->sales_person_code,
+            'SalesPersonEmail'  => $request->sales_person_email,
         ]);
 
         try {
             $output = $this->executeDetailsUpdateSP($input);
+
             if (($output['Status'] ?? '') === 'Failed') {
-                $remarks = collect($output['Remarks'] ?? [])->pluck('Remark')->implode(', ');
-                return response()->json(['success' => false, 'message' => $remarks ?: 'Update failed']);
+                return response()->json([
+                    'success' => false,
+                    'message' => $output['Remark'] ?? 'Update failed',
+                ]);
             }
+
             return response()->json(['success' => true, 'message' => 'Inquiry details updated']);
         } catch (\Throwable $e) {
             Log::error('saveInquiryDetails error: ' . $e->getMessage());

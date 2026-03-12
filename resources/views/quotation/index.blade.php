@@ -1122,7 +1122,7 @@
                             });
                         } else {
                             $select.append(
-                            '<option value="" disabled>No forwarders available</option>');
+                                '<option value="" disabled>No forwarders available</option>');
                         }
                     })
                     .fail(function() {
@@ -1283,6 +1283,18 @@
             setupLocationAutocomplete('cb_place_of_receipt', 'cb_place_of_receipt_code', 'cb_place_of_receipt_id');
             setupLocationAutocomplete('cb_place_of_delivery', 'cb_place_of_delivery_code',
                 'cb_place_of_delivery_id');
+
+            // ── Clear location fields when include_country is toggled ────────────────
+            // SP re-validates the code against country when CountryIncluded = 1.
+            // A previously selected location may fail the new validation silently,
+            // so we clear both fields to force the user to re-select.
+            $('#cb_include_country').on('change', function() {
+                $('#cb_place_of_receipt, #cb_place_of_delivery').val('');
+                $('#cb_place_of_receipt_code, #cb_place_of_receipt_id').val('');
+                $('#cb_place_of_delivery_code, #cb_place_of_delivery_id').val('');
+                removeSuggestions('cb_place_of_receipt');
+                removeSuggestions('cb_place_of_delivery');
+            });
 
             // ============================================
             // STEP LABELS FOR PROGRESS VIEW

@@ -39,6 +39,32 @@
 
 @section('content')
 
+
+    {{-- ============================================================ --}}
+    {{-- DUPLICATE RESULT CARD — shown after successful duplication   --}}
+    {{-- ============================================================ --}}
+    <div id="dupResultCard" style="display:none;" class="mb-3">
+        <div class="alert alert-success alert-dismissible shadow-sm" style="border-left: 5px solid #28a745;">
+            <div class="d-flex align-items-center">
+                <i class="fas fa-check-circle mr-3" style="font-size:2rem; color:#28a745;"></i>
+                <div class="flex-grow-1">
+                    <h5 class="mb-1 font-weight-bold">Quotation duplicated successfully!</h5>
+                    <p class="mb-0">
+                        New Inquiry No:&nbsp;
+                        <a id="dupResultLink" href="#" class="font-weight-bold"
+                            style="color:#4B49AC; font-size:1.1rem;">
+                            —
+                        </a>
+                        <small class="text-muted ml-1">— click to open the new quotation</small>
+                    </p>
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-secondary ml-3" id="dupResultClose">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
     @php
         $quoteStatus = $quotation->QuoteStatus ?? ($quotation->status ?? null);
         $isInProgress = in_array($quoteStatus, ['Proposal', 'Pending']) || is_null($quoteStatus);
@@ -79,6 +105,14 @@
                         <div class="col-sm-7">
                             <input type="text" class="form-control form-control-sm" data-field="username"
                                 value="{{ $quotation->username ?? '' }}" readonly>
+                        </div>
+                    </div>
+
+                    <div class="form-group row">
+                        <label class="col-sm-5 col-form-label">Sales Person Email</label>
+                        <div class="col-sm-7">
+                            <input type="text" class="form-control form-control-sm" data-field="salesperson_email"
+                                value="{{ $quotation->salesperson_email ?? '' }}" readonly>
                         </div>
                     </div>
                     <div class="form-group row mb-0">
@@ -265,11 +299,25 @@
                                 value="{{ $quotation->cargovolume ?? '' }}" readonly>
                         </div>
                     </div>
-                    <div class="form-group row mb-0">
-                        <label class="col-sm-5 col-form-label">Container List</label>
+                    <div class="form-group row mb-0" id="viewContainerSection"
+                        style="{{ ($quotation->scopevolume ?? '') === 'Containerized' ? '' : 'display:none;' }}">
+                        <label class="col-sm-5 col-form-label">Containers</label>
                         <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm" data-field="containerlist"
-                                value="{{ $quotation->containerlist ?? '' }}" readonly>
+                            <table class="table table-bordered table-sm mb-0">
+                                <thead class="thead-light">
+                                    <tr>
+                                        <th>Equipment Type</th>
+                                        <th class="text-center">Qty</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="viewContainerTableBody">
+                                    <tr>
+                                        <td colspan="2" class="text-center text-muted">
+                                            <i class="fas fa-spinner fa-spin"></i> Loading...
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
@@ -664,37 +712,6 @@
         </div>
     </div>
 
-    {{-- ============================================================ --}}
-    {{-- DUPLICATE RESULT CARD — shown after successful duplication   --}}
-    {{-- ============================================================ --}}
-    <div id="dupResultCard" style="display:none;" class="mt-3">
-        <div class="card" style="border: 2px solid #28a745; border-radius: 8px;">
-            <div class="card-body py-3 px-4">
-                <div class="d-flex align-items-center justify-content-between">
-                    <div class="d-flex align-items-center">
-                        <i class="fas fa-check-circle text-success mr-3" style="font-size:2rem;"></i>
-                        <div>
-                            <p class="mb-1 font-weight-bold text-success" style="font-size:1rem;">
-                                Quotation duplicated successfully!
-                            </p>
-                            <p class="mb-0 text-dark">
-                                New Inquiry No:&nbsp;
-                                <a id="dupResultLink" href="#" class="font-weight-bold"
-                                    style="font-size:1.1rem; color:#4B49AC;">
-                                    —
-                                </a>
-                                <small class="text-muted ml-1">— click to open the new quotation</small>
-                            </p>
-                        </div>
-                    </div>
-                    <button type="button" class="btn btn-sm btn-outline-secondary" id="dupResultClose">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
 @stop
 
 @section('css')
@@ -904,6 +921,44 @@
             document.querySelectorAll('[data-card-section]').forEach(el => new CardEditor(el));
 
             const bookingNo = '{{ $quotation->bookingno ?? '' }}';
+
+            // ============================================================
+            // VIEW PAGE — Load containers (read-only table)
+            // ============================================================
+            const QUOTE_NO_VIEW = '{{ $quotation->QuoteNo ?? '' }}';
+            const SCOPE_OF_VOLUME = '{{ $quotation->scopevolume ?? '' }}';
+
+            if (QUOTE_NO_VIEW && SCOPE_OF_VOLUME === 'Containerized') {
+                $.ajax({
+                    url: '{{ route('quotation.containers') }}',
+                    type: 'GET',
+                    data: {
+                        quote_no: QUOTE_NO_VIEW
+                    },
+                    success: function(response) {
+                        const tbody = $('#viewContainerTableBody');
+                        tbody.empty();
+                        if (response.success && response.data && response.data.length) {
+                            response.data.forEach(function(row) {
+                                tbody.append(`
+                        <tr>
+                            <td>${row.EquipmentType || ''}</td>
+                            <td class="text-center">${row.Quantity || 0}</td>
+                        </tr>`);
+                            });
+                        } else {
+                            tbody.append(
+                                '<tr><td colspan="2" class="text-center text-muted">No containers added</td></tr>'
+                            );
+                        }
+                    },
+                    error: function() {
+                        $('#viewContainerTableBody').html(
+                            '<tr><td colspan="2" class="text-center text-danger">Failed to load</td></tr>'
+                        );
+                    }
+                });
+            }
 
             // ============================================================
             // SHIPMENT DETAILS — Edit / Save / Cancel
