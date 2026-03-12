@@ -39,12 +39,18 @@
 
 @section('content')
 
+    @php
+        $quoteStatus = $quotation->QuoteStatus ?? ($quotation->status ?? null);
+        $isInProgress = in_array($quoteStatus, ['Proposal', 'Pending']) || is_null($quoteStatus);
+    @endphp
+
     <div class="row">
         <!-- LEFT COLUMN -->
         <div class="col-md-4">
 
             <!-- Booking Details -->
-            <div class="card card-primary">
+            <div class="card card-primary" data-card-section="inquiry"
+                data-save-url="{{ route('quotation.inquiry.save') }}">
                 <div class="card-header">
                     <h3 class="card-title">Inquiry Details</h3>
                     <div class="card-tools">
@@ -57,36 +63,50 @@
                     <div class="form-group row">
                         <label class="col-sm-5 col-form-label">Source</label>
                         <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm"
+                            <input type="text" class="form-control form-control-sm" data-field="source"
                                 value="{{ $quotation->source ?? '' }}" readonly>
                         </div>
                     </div>
                     <div class="form-group row">
                         <label class="col-sm-5 col-form-label">Status</label>
                         <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm"
+                            <input type="text" class="form-control form-control-sm" data-field="status"
                                 value="{{ $quotation->status ?? '' }}" readonly>
                         </div>
                     </div>
                     <div class="form-group row">
                         <label class="col-sm-5 col-form-label">Sales person</label>
                         <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm"
+                            <input type="text" class="form-control form-control-sm" data-field="username"
                                 value="{{ $quotation->username ?? '' }}" readonly>
                         </div>
                     </div>
                     <div class="form-group row mb-0">
                         <label class="col-sm-5 col-form-label">Office</label>
                         <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm"
+                            <input type="text" class="form-control form-control-sm" data-field="teamname"
                                 value="{{ $quotation->teamname ?? '' }}" readonly>
                         </div>
                     </div>
                 </div>
+                @if ($isInProgress)
+                    <div class="card-footer card-action-footer">
+                        <button type="button" class="btn btn-warning btn-xs btn-card-edit">
+                            <i class="fas fa-edit mr-1"></i> Edit
+                        </button>
+                        <button type="button" class="btn btn-success btn-xs btn-card-save" style="display:none;">
+                            <i class="fas fa-save mr-1"></i> Save
+                        </button>
+                        <button type="button" class="btn btn-secondary btn-xs btn-card-cancel" style="display:none;">
+                            <i class="fas fa-times mr-1"></i> Cancel
+                        </button>
+                    </div>
+                @endif
             </div>
 
             <!-- Shipment Details -->
-            <div class="card card-primary">
+            <div class="card card-primary" data-card-section="shipment"
+                data-save-url="{{ route('quotation.shipment.save') }}">
                 <div class="card-header">
                     <h3 class="card-title">Shipment Details</h3>
                     <div class="card-tools">
@@ -99,64 +119,83 @@
                     <div class="form-group row">
                         <label class="col-sm-5 col-form-label">Service</label>
                         <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm"
+                            <input type="text" class="form-control form-control-sm" data-field="SVName"
                                 value="{{ $quotation->SVName ?? '' }}" readonly>
                         </div>
                     </div>
                     <div class="form-group row">
                         <label class="col-sm-5 col-form-label">Process</label>
                         <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm"
+                            <input type="text" class="form-control form-control-sm" data-field="process"
                                 value="{{ $quotation->process ?? '' }}" readonly>
                         </div>
                     </div>
                     <div class="form-group row">
                         <label class="col-sm-5 col-form-label">Origin Country</label>
                         <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm"
+                            <input type="text" class="form-control form-control-sm" data-field="origincountry"
                                 value="{{ $quotation->origincountry ?? '' }}" readonly>
+
                         </div>
                     </div>
                     <div class="form-group row">
-                        <label class="col-sm-5 col-form-label">Destination Country</label>
-                        <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm"
-                                value="{{ $quotation->destinationcountry ?? '' }}" readonly>
+                        <div class="form-group row">
+                            <label class="col-sm-5 col-form-label">Destination Country</label>
+                            <div class="col-sm-7">
+                                <input type="text" class="form-control form-control-sm"
+                                    data-field="destinationcountry" value="{{ $quotation->destinationcountry ?? '' }}"
+                                    readonly>
+                            </div>
                         </div>
                     </div>
                     <div class="form-group row">
                         <label class="col-sm-5 col-form-label">InCO Terms</label>
                         <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm"
+                            <input type="text" class="form-control form-control-sm" data-field="incoterm"
                                 value="{{ $quotation->incoterm ?? '' }}" readonly>
                         </div>
                     </div>
                     <div class="form-group row">
                         <label class="col-sm-5 col-form-label">Shipment Mode</label>
                         <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm"
+                            <input type="text" class="form-control form-control-sm" data-field="shipmentmode"
                                 value="{{ $quotation->shipmentmode ?? '' }}" readonly>
                         </div>
                     </div>
                     <div class="form-group row">
                         <label class="col-sm-5 col-form-label">Transport Mode</label>
                         <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm"
+                            <input type="text" class="form-control form-control-sm" data-field="TransportMode"
                                 value="{{ $quotation->TransportMode ?? '' }}" readonly>
+
                         </div>
                     </div>
                     <div class="form-group row mb-0">
                         <label class="col-sm-5 col-form-label">Service Class</label>
                         <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm"
+                            <input type="text" class="form-control form-control-sm" data-field="ServiceClass"
                                 value="{{ $quotation->ServiceClass ?? '' }}" readonly>
                         </div>
                     </div>
                 </div>
+                @if ($isInProgress)
+                    <div class="card-footer card-action-footer">
+                        <button type="button" class="btn btn-warning btn-xs btn-card-edit">
+                            <i class="fas fa-edit mr-1"></i> Edit
+                        </button>
+                        <button type="button" class="btn btn-success btn-xs btn-card-save" style="display:none;">
+                            <i class="fas fa-save mr-1"></i> Save
+                        </button>
+                        <button type="button" class="btn btn-secondary btn-xs btn-card-cancel" style="display:none;">
+                            <i class="fas fa-times mr-1"></i> Cancel
+                        </button>
+                    </div>
+                @endif
             </div>
 
             <!-- Cargo Details -->
-            <div class="card card-primary">
+            <div class="card card-primary" data-card-section="cargo"
+                data-save-url="{{ route('quotation.cargo.save') }}">
                 <div class="card-header">
                     <h3 class="card-title">Cargo Details</h3>
                     <div class="card-tools">
@@ -169,32 +208,45 @@
                     <div class="form-group row">
                         <label class="col-sm-5 col-form-label">Commodity</label>
                         <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm"
+                            <input type="text" class="form-control form-control-sm" data-field="commodity"
                                 value="{{ $quotation->commodity ?? '' }}" readonly>
                         </div>
                     </div>
                     <div class="form-group row">
                         <label class="col-sm-5 col-form-label">Scope Of Volume</label>
                         <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm"
+                            <input type="text" class="form-control form-control-sm" data-field="scopevolume"
                                 value="{{ $quotation->scopevolume ?? '' }}" readonly>
                         </div>
                     </div>
                     <div class="form-group row">
                         <label class="col-sm-5 col-form-label">Cargo Volume</label>
                         <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm"
+                            <input type="text" class="form-control form-control-sm" data-field="cargovolume"
                                 value="{{ $quotation->cargovolume ?? '' }}" readonly>
                         </div>
                     </div>
                     <div class="form-group row mb-0">
                         <label class="col-sm-5 col-form-label">Container List</label>
                         <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm"
+                            <input type="text" class="form-control form-control-sm" data-field="containerlist"
                                 value="{{ $quotation->containerlist ?? '' }}" readonly>
                         </div>
                     </div>
                 </div>
+                @if ($isInProgress)
+                    <div class="card-footer card-action-footer">
+                        <button type="button" class="btn btn-warning btn-xs btn-card-edit">
+                            <i class="fas fa-edit mr-1"></i> Edit
+                        </button>
+                        <button type="button" class="btn btn-success btn-xs btn-card-save" style="display:none;">
+                            <i class="fas fa-save mr-1"></i> Save
+                        </button>
+                        <button type="button" class="btn btn-secondary btn-xs btn-card-cancel" style="display:none;">
+                            <i class="fas fa-times mr-1"></i> Cancel
+                        </button>
+                    </div>
+                @endif
             </div>
 
             <!-- Quotation Document -->
@@ -295,7 +347,8 @@
         <div class="col-md-8">
 
             <!-- Customer Details -->
-            <div class="card card-primary">
+            <div class="card card-primary" data-card-section="customer"
+                data-save-url="{{ route('quotation.customer.save') }}">
                 <div class="card-header">
                     <h3 class="card-title">Customer Details</h3>
                     <div class="card-tools">
@@ -310,7 +363,7 @@
                             <div class="form-group row">
                                 <label class="col-sm-4 col-form-label">Company</label>
                                 <div class="col-sm-8">
-                                    <input type="text" class="form-control form-control-sm"
+                                    <input type="text" class="form-control form-control-sm" data-field="companyname"
                                         value="{{ $quotation->companyname ?? '' }}" readonly>
                                 </div>
                             </div>
@@ -318,35 +371,45 @@
                                 <label class="col-sm-4 col-form-label">Address 1</label>
                                 <div class="col-sm-8">
                                     <input type="text" class="form-control form-control-sm"
-                                        value="{{ $quotation->pri_partner_steet ?? '' }}" readonly>
+                                        data-field="pri_partner_steet" value="{{ $quotation->pri_partner_steet ?? '' }}"
+                                        readonly>
+
                                 </div>
                             </div>
                             <div class="form-group row">
                                 <label class="col-sm-4 col-form-label">City</label>
                                 <div class="col-sm-8">
                                     <input type="text" class="form-control form-control-sm"
-                                        value="{{ $quotation->pri_partner_city ?? '' }}" readonly>
+                                        data-field="pri_partner_city" value="{{ $quotation->pri_partner_city ?? '' }}"
+                                        readonly>
+
                                 </div>
                             </div>
                             <div class="form-group row">
                                 <label class="col-sm-4 col-form-label">State</label>
                                 <div class="col-sm-8">
                                     <input type="text" class="form-control form-control-sm"
+                                        data-field="pri_partner_statename"
                                         value="{{ $quotation->pri_partner_statename ?? '' }}" readonly>
+
                                 </div>
                             </div>
                             <div class="form-group row">
                                 <label class="col-sm-4 col-form-label">Contact Person</label>
                                 <div class="col-sm-8">
                                     <input type="text" class="form-control form-control-sm"
+                                        data-field="pri_partnermaster_name"
                                         value="{{ $quotation->pri_partnermaster_name ?? '' }}" readonly>
+
                                 </div>
                             </div>
                             <div class="form-group row mb-0">
                                 <label class="col-sm-4 col-form-label">Phone No</label>
                                 <div class="col-sm-8">
                                     <input type="text" class="form-control form-control-sm"
-                                        value="{{ $quotation->pri_partner_phone ?? '' }}" readonly>
+                                        data-field="pri_partner_phone" value="{{ $quotation->pri_partner_phone ?? '' }}"
+                                        readonly>
+
                                 </div>
                             </div>
                         </div>
@@ -354,7 +417,7 @@
                             <div class="form-group row">
                                 <label class="col-sm-4 col-form-label">Client ID</label>
                                 <div class="col-sm-8">
-                                    <input type="text" class="form-control form-control-sm"
+                                    <input type="text" class="form-control form-control-sm" data-field="clientid"
                                         value="{{ $quotation->clientid ?? '' }}" readonly>
                                 </div>
                             </div>
@@ -362,40 +425,62 @@
                                 <label class="col-sm-4 col-form-label">Address 2</label>
                                 <div class="col-sm-8">
                                     <input type="text" class="form-control form-control-sm"
+                                        data-field="pri_partner_steet2"
                                         value="{{ $quotation->pri_partner_steet2 ?? '' }}" readonly>
+
                                 </div>
                             </div>
                             <div class="form-group row">
                                 <label class="col-sm-4 col-form-label">Zip</label>
                                 <div class="col-sm-8">
                                     <input type="text" class="form-control form-control-sm"
-                                        value="{{ $quotation->pri_partner_zip ?? '' }}" readonly>
+                                        data-field="pri_partner_zip" value="{{ $quotation->pri_partner_zip ?? '' }}"
+                                        readonly>
+
                                 </div>
                             </div>
                             <div class="form-group row">
                                 <label class="col-sm-4 col-form-label">Country</label>
                                 <div class="col-sm-8">
                                     <input type="text" class="form-control form-control-sm"
+                                        data-field="pri_partner_countryname"
                                         value="{{ $quotation->pri_partner_countryname ?? '' }}" readonly>
+
+
                                 </div>
                             </div>
                             <div class="form-group row">
                                 <label class="col-sm-4 col-form-label">Email ID</label>
                                 <div class="col-sm-8">
                                     <input type="text" class="form-control form-control-sm"
-                                        value="{{ $quotation->pri_partner_email ?? '' }}" readonly>
+                                        data-field="pri_partner_email" value="{{ $quotation->pri_partner_email ?? '' }}"
+                                        readonly>
+
                                 </div>
                             </div>
                             <div class="form-group row mb-0">
                                 <label class="col-sm-4 col-form-label">Industry</label>
                                 <div class="col-sm-8">
-                                    <input type="text" class="form-control form-control-sm"
+                                    <input type="text" class="form-control form-control-sm" data-field="industryname"
                                         value="{{ $quotation->industryname ?? '' }}" readonly>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
+                @if ($isInProgress)
+                    <div class="card-footer card-action-footer">
+                        <button type="button" class="btn btn-warning btn-xs btn-card-edit">
+                            <i class="fas fa-edit mr-1"></i> Edit
+                        </button>
+                        <button type="button" class="btn btn-success btn-xs btn-card-save" style="display:none;">
+                            <i class="fas fa-save mr-1"></i> Save
+                        </button>
+                        <button type="button" class="btn btn-secondary btn-xs btn-card-cancel" style="display:none;">
+                            <i class="fas fa-times mr-1"></i> Cancel
+                        </button>
+                    </div>
+                @endif
             </div>
 
             {{--
@@ -747,9 +832,11 @@
                                                 Address 1 <span class="text-danger">*</span>
                                             </label>
                                             <div class="col-sm-8">
-                                                <input type="text" id="dupAddress1"
-                                                    class="form-control form-control-sm dup-required"
+                                                <input type="text" class="form-control form-control-sm"
+                                                    data-field="pri_partner_steet"
                                                     value="{{ $quotation->pri_partner_steet ?? '' }}" readonly>
+
+
                                             </div>
                                         </div>
                                     </div>
@@ -1060,6 +1147,30 @@
             font-weight: 600;
             font-size: 0.85rem;
         }
+
+        /* Card footer action buttons */
+        .card-action-footer {
+            background: #f8f9fa;
+            border-top: 1px solid rgba(0, 0, 0, .125);
+            padding: 0.5rem 1rem;
+        }
+
+        /* Highlight inputs when card is in edit mode */
+        .card-in-edit input[data-field]:not([readonly]) {
+            background-color: #fff9e6;
+            border-color: #ffc107 !important;
+        }
+
+        .card-action-footer {
+            background: #f8f9fa;
+            border-top: 1px solid rgba(0, 0, 0, .125);
+            padding: 0.5rem 1rem;
+        }
+
+        .card-in-edit input[data-field]:not([readonly]) {
+            background-color: #fff9e6;
+            border-color: #ffc107 !important;
+        }
     </style>
 @stop
 
@@ -1067,6 +1178,102 @@
 @section('js')
     <script>
         $(document).ready(function() {
+
+            // ============================================================
+            // CARD EDITOR — per-card Edit / Save / Cancel
+            // ============================================================
+            class CardEditor {
+                constructor(cardEl) {
+                    this.card = cardEl;
+                    this.section = cardEl.dataset.cardSection;
+                    this.saveUrl = cardEl.dataset.saveUrl;
+                    this.snapshot = {};
+
+                    this._bind();
+                }
+
+                _fields() {
+                    return Array.from(this.card.querySelectorAll('[data-field]'));
+                }
+
+                _bind() {
+                    this.card.querySelector('.btn-card-edit')
+                        ?.addEventListener('click', () => this.enterEdit());
+                    this.card.querySelector('.btn-card-save')
+                        ?.addEventListener('click', () => this.save());
+                    this.card.querySelector('.btn-card-cancel')
+                        ?.addEventListener('click', () => this.cancel());
+                }
+
+                enterEdit() {
+                    this.snapshot = {};
+                    this._fields().forEach(input => {
+                        this.snapshot[input.dataset.field] = input.value;
+                        input.removeAttribute('readonly');
+                    });
+                    this.card.classList.add('card-in-edit');
+                    this.card.querySelector('.btn-card-edit').style.display = 'none';
+                    this.card.querySelector('.btn-card-save').style.display = '';
+                    this.card.querySelector('.btn-card-cancel').style.display = '';
+                }
+
+                cancel() {
+                    this._fields().forEach(input => {
+                        input.value = this.snapshot[input.dataset.field] ?? input.value;
+                        input.setAttribute('readonly', true);
+                    });
+                    this.card.classList.remove('card-in-edit');
+                    this.card.querySelector('.btn-card-edit').style.display = '';
+                    this.card.querySelector('.btn-card-save').style.display = 'none';
+                    this.card.querySelector('.btn-card-cancel').style.display = 'none';
+                    this.snapshot = {};
+                }
+
+                save() {
+                    const saveBtn = this.card.querySelector('.btn-card-save');
+                    const payload = {
+                        _token: '{{ csrf_token() }}',
+                        id: '{{ $quotation->ID }}'
+                    };
+                    this._fields().forEach(input => {
+                        payload[input.dataset.field] = input.value;
+                    });
+
+                    saveBtn.disabled = true;
+                    saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Saving...';
+
+                    $.ajax({
+                        url: this.saveUrl,
+                        type: 'POST',
+                        data: payload,
+                        success: (res) => {
+                            if (res.success) {
+                                this._fields().forEach(input => input.setAttribute('readonly',
+                                    true));
+                                this.card.classList.remove('card-in-edit');
+                                this.card.querySelector('.btn-card-edit').style.display = '';
+                                this.card.querySelector('.btn-card-save').style.display = 'none';
+                                this.card.querySelector('.btn-card-cancel').style.display = 'none';
+                                this.snapshot = {};
+                                toastr.success('Saved successfully.');
+                            } else {
+                                toastr.error(res.message || 'Save failed.');
+                                saveBtn.disabled = false;
+                                saveBtn.innerHTML = '<i class="fas fa-save mr-1"></i> Save';
+                            }
+                        },
+                        error: (xhr) => {
+                            toastr.error('Error: ' + (xhr.responseJSON?.message ||
+                                'Unexpected error.'));
+                            saveBtn.disabled = false;
+                            saveBtn.innerHTML = '<i class="fas fa-save mr-1"></i> Save';
+                        }
+                    });
+                }
+            }
+
+            // Mount on every card that has data-card-section
+            document.querySelectorAll('[data-card-section]').forEach(el => new CardEditor(el));
 
             const bookingNo = '{{ $quotation->bookingno ?? '' }}';
             const officeId = '{{ $quotation->OfficeID ?? '' }}';
@@ -1592,14 +1799,30 @@
                 };
 
                 $.ajax({
-                    url: '/quotation/' + bookingNo + '/duplicate',
+                    url: '{{ route('quotation.processDuplicate', $quotation->bookingno) }}',
                     type: 'POST',
                     contentType: 'application/json',
                     data: JSON.stringify(payload),
                     success: function(response) {
                         if (response.success) {
-                            $('#duplicateModal').modal('hide');
-                            window.location.href = response.redirect_url;
+                            $('.modal-footer').html(`
+            <div class="w-100 text-center py-2">
+                <div class="alert alert-success mb-3">
+                    <i class="fas fa-check-circle mr-2"></i>
+                    <strong>Quotation duplicated!</strong>
+                    New Inquiry No: <strong>${response.new_booking_no}</strong>
+                </div>
+                <a href="${response.redirect_url}" class="btn btn-success btn-sm">
+                    <i class="fas fa-external-link-alt mr-1"></i> Open New Quotation
+                </a>
+                <button type="button" class="btn btn-secondary btn-sm ml-2" id="dupCloseAfter">
+                    <i class="fas fa-times mr-1"></i> Close
+                </button>
+            </div>
+        `);
+                            $('#dupCloseAfter').on('click', function() {
+                                $('#duplicateModal').modal('hide');
+                            });
                         } else {
                             toastr.error(response.message || 'Duplicate failed.');
                             $btn.prop('disabled', false)

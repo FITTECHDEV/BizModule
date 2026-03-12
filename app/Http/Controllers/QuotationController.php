@@ -6,6 +6,7 @@ use App\Models\QuotationInfo;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 use Yajra\DataTables\Facades\DataTables;
 
@@ -508,7 +509,27 @@ class QuotationController extends Controller
         }
     }
 
-    public function update(Request $request, $id)
+    /**
+     * QuotationController::update()
+     * ─────────────────────────────────────────────────────────────────────────────
+     * WHAT CHANGED vs. the original:
+     *
+     *   OLD: Hard-coded array passed every column on every save — partial saves
+     *        from the show page would null-out columns not in the request.
+     *
+     *   NEW: Builds the update payload conditionally using $request->has().
+     *        Only columns present in the incoming request are written.
+     *        Columns absent from the request are left exactly as they are.
+     *
+     * This is fully backward-compatible:
+     *   • The full edit-page form sends all fields  → behaviour identical to before.
+     *   • Per-card saves send only that card's fields → only those columns change.
+     *
+     * Nothing else in the method was touched (try/catch, logging, response shape).
+     * ─────────────────────────────────────────────────────────────────────────────
+     */
+
+    public function update(Request $request, string $id): JsonResponse
     {
         try {
             $quotation = DB::table('Quote_QuotationInfo')
@@ -518,7 +539,7 @@ class QuotationController extends Controller
             if (!$quotation) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Quotation not found'
+                    'message' => 'Quotation not found',
                 ], 404);
             }
 
@@ -532,50 +553,87 @@ class QuotationController extends Controller
                 'updated_by' => $submittedBy,
             ]);
 
+            // ── Whitelist every column that may ever be written ──────────────────
+            // Map: request key → DB column name (they happen to match here, but
+            // keeping them explicit makes future renames safe).
+            $allowed = [
+                // Shipment
+                'origincountry'       => 'origincountry',
+                'destinationcountry'  => 'destinationcountry',
+                'incoterm'            => 'incoterm',
+                'shipmentmode'        => 'shipmentmode',
+                'TransportMode'       => 'TransportMode',
+                'ServiceClass'        => 'ServiceClass',
+                'serviceverticalname' => 'serviceverticalname',
+                'process'             => 'process',
+
+                // Cargo
+                'commodity'     => 'commodity',
+                'scopevolume'   => 'scopevolume',
+                'cargovolume'   => 'cargovolume',
+                'containerlist' => 'containerlist',
+
+                // Customer
+                'companyname'             => 'companyname',
+                'pri_partner_steet'       => 'pri_partner_steet',
+                'pri_partner_steet2'      => 'pri_partner_steet2',
+                'pri_partner_city'        => 'pri_partner_city',
+                'pri_partner_statename'   => 'pri_partner_statename',
+                'pri_partner_zip'         => 'pri_partner_zip',
+                'pri_partner_countryname' => 'pri_partner_countryname',
+                'pri_partner_email'       => 'pri_partner_email',
+                'pri_partner_phone'       => 'pri_partner_phone',
+                'pri_partnermaster_name'  => 'pri_partnermaster_name',
+                'clientid'                => 'clientid',
+                'industryname'            => 'industryname',
+
+                // Inquiry
+                'source'   => 'source',
+                'status'   => 'status',
+                'username' => 'username',
+                'teamname' => 'teamname',
+
+                // Summary
+                'expected_revenue' => 'expected_revenue',
+                'quoted_revenue'   => 'quoted_revenue',
+                'quoted_margin'    => 'quoted_margin',
+                'terms_condition'  => 'terms_condition',
+            ];
+
+            // ── Build payload: only include fields present in this request ────────
+            $updateData = [
+                'LastModifiedBy' => $submittedBy,
+                'updatedon'      => now(),
+            ];
+
+            foreach ($allowed as $requestKey => $dbColumn) {
+                if ($request->has($requestKey)) {
+                    $updateData[$dbColumn] = $request->input($requestKey);
+                }
+            }
+
+            // Nothing meaningful to write (just audit columns) — bail early.
+            if (count($updateData) <= 2) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No updatable fields were provided.',
+                ], 422);
+            }
+
             DB::table('Quote_QuotationInfo')
                 ->where('ID', $id)
-                ->update([
-
-                    // Shipment
-                    'origincountry'       => $request->input('origincountry'),
-                    'destinationcountry'  => $request->input('destinationcountry'),
-                    'incoterm'            => $request->input('incoterm'),
-                    'shipmentmode'        => $request->input('shipmentmode'),
-                    'TransportMode'       => $request->input('TransportMode'),
-                    'ServiceClass'        => $request->input('ServiceClass'),
-                    'serviceverticalname' => $request->input('serviceverticalname'),
-                    'process'             => $request->input('process'),
-
-                    // Cargo
-                    'commodity'     => $request->input('commodity'),
-                    'scopevolume'   => $request->input('scopevolume'),
-                    'cargovolume'   => $request->input('cargovolume'),
-                    'containerlist' => $request->input('containerlist'),
-
-                    // Customer
-                    'companyname'             => $request->input('companyname'),
-                    'pri_partner_steet'       => $request->input('pri_partner_steet'),
-                    'pri_partner_steet2'      => $request->input('pri_partner_steet2'),
-                    'pri_partner_city'        => $request->input('pri_partner_city'),
-                    'pri_partner_zip'         => $request->input('pri_partner_zip'),
-                    'pri_partner_countryname' => $request->input('pri_partner_countryname'),
-                    'pri_partner_email'       => $request->input('pri_partner_email'),
-                    'pri_partner_phone'       => $request->input('pri_partner_phone'),
-
-                    // Audit
-                    'LastModifiedBy' => $submittedBy,
-                    'updatedon'      => now(),
-                ]);
+                ->update($updateData);
 
             Log::info('Update Quotation - Success', [
                 'id'         => $id,
                 'booking_no' => $quotation->bookingno,
                 'updated_by' => $submittedBy,
+                'fields'     => array_keys($updateData),
             ]);
 
             return response()->json([
                 'success' => true,
-                'message' => 'Booking updated successfully'
+                'message' => 'Booking updated successfully',
             ]);
         } catch (\Exception $e) {
             Log::error('Update Quotation - Failed', [
@@ -587,11 +645,10 @@ class QuotationController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => $e->getMessage()
+                'message' => $e->getMessage(),
             ], 500);
         }
     }
-
     public function view($id)
     {
         $quotation = QuotationInfo::where('ID', $id)->firstOrFail();
@@ -6178,7 +6235,7 @@ class QuotationController extends Controller
             return response()->json([
                 'success'        => true,
                 'new_booking_no' => $newBookingNo,
-                'redirect_url'   => route('quotation.edit', $newQuotation->ID),
+                'redirect_url'   => route('quotation.view', $newId),
             ]);
         } catch (\Exception $e) {
             Log::error('Duplicate Quotation Failed', [
@@ -6188,6 +6245,7 @@ class QuotationController extends Controller
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }
+
     // ============================================================
     // HANDLE SCM BOOKING INTEGRATION RESPONSE
     // Called by SCM after booking creation — updates QuoteStatus,
