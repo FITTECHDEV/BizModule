@@ -731,8 +731,7 @@ Route::middleware(['auth', 'can:approve-all-entity-request'])->group(function ()
     Route::get('/quotation/stats', [App\Http\Controllers\QuotationController::class, 'stats'])
         ->name('quotation.stats');
 
-    Route::get('/quotation/inco-terms', [App\Http\Controllers\QuotationController::class, 'getIncoTerms'])
-        ->name('quotation.inco-terms');
+
 
     // ============================================
     // QUOTATION — STATIC LOOKUP ROUTES
@@ -867,22 +866,27 @@ Route::middleware(['auth', 'can:approve-all-entity-request'])->group(function ()
     Route::post('/quotation/{bookingno}/duplicate', [App\Http\Controllers\QuotationController::class, 'processDuplicate'])->name('quotation.processDuplicate');
 
     // Lookup endpoints for duplicate modal
-    Route::get('/quotation/lookup/countries',       [App\Http\Controllers\QuotationController::class, 'lookupCountries'])
+    Route::get('/quotation/lookup/countries', [App\Http\Controllers\QuotationController::class, 'lookupCountries'])
         ->name('quotation.lookup.countries');
-    Route::get('/quotation/lookup/incoterms',       [App\Http\Controllers\QuotationController::class, 'lookupIncoTerms'])
+
+    Route::get('/quotation/lookup/incoterms',  [App\Http\Controllers\QuotationController::class, 'lookupIncoTerms'])
         ->name('quotation.lookup.incoterms');
+
     Route::get('/quotation/lookup/service-classes', [App\Http\Controllers\QuotationController::class, 'lookupServiceClasses'])
         ->name('quotation.lookup.serviceClasses');
+
     Route::get('/quotation/lookup/industry-types',  [App\Http\Controllers\QuotationController::class, 'lookupIndustryTypes'])
         ->name('quotation.lookup.industryTypes');
-    Route::get(
-        '/quotation/lookup/persons',
-        [App\Http\Controllers\QuotationController::class, 'lookupPersonsInCharge']
-    )->name('quotation.lookup.persons');
-    Route::get('/quotation/lookup/shipment-modes',  [App\Http\Controllers\QuotationController::class, 'lookupShipmentModes'])
+
+    Route::get('/quotation/lookup/persons', [App\Http\Controllers\QuotationController::class, 'lookupPersonsInCharge'])
+        ->name('quotation.lookup.persons');
+
+    Route::get('/quotation/lookup/shipment-modes', [App\Http\Controllers\QuotationController::class, 'lookupShipmentModes'])
         ->name('quotation.lookup.shipmentModes');
+
     Route::get('/quotation/lookup/transport-modes', [App\Http\Controllers\QuotationController::class, 'lookupTransportModes'])
         ->name('quotation.lookup.transportModes');
+
     Route::get('/quotation/lookup/equipment-types', [App\Http\Controllers\QuotationController::class, 'lookupEquipmentTypes'])
         ->name('quotation.lookup.equipmentTypes');
 
@@ -903,6 +907,15 @@ Route::middleware(['auth', 'can:approve-all-entity-request'])->group(function ()
     Route::post('/quotation/{bookingno}/copy', [App\Http\Controllers\QuotationController::class, 'copy'])
         ->name('quotation.copy');
 
+    Route::get('/quotation/inco-terms', [App\Http\Controllers\QuotationController::class, 'getIncoTerms'])
+        ->name('quotation.inco-terms');
+
+    Route::post('/quotation/inquiry/save', [App\Http\Controllers\QuotationController::class, 'saveInquiryDetails'])
+        ->name('quotation.inquiry.save');
+
+    Route::get('/quotation/inco-terms', [App\Http\Controllers\QuotationController::class, 'getIncoTerms'])
+        ->name('quotation.inco-terms');
+
     Route::get('/quotation/{id}/edit', [App\Http\Controllers\QuotationController::class, 'edit'])
         ->name('quotation.edit');
 
@@ -912,9 +925,6 @@ Route::middleware(['auth', 'can:approve-all-entity-request'])->group(function ()
     // NOTE: /quotation/{id} must be the very last GET wildcard — it matches everything.
     Route::get('/quotation/{id}', [App\Http\Controllers\QuotationController::class, 'view'])
         ->name('quotation.view');
-
-    Route::post('/quotation/inquiry/save', [App\Http\Controllers\QuotationController::class, 'saveInquiryDetails'])
-        ->name('quotation.inquiry.save');
 
     Route::get('/quotation/sales-persons', [App\Http\Controllers\QuotationController::class, 'getSalesPersons'])
         ->name('quotation.sales-persons');

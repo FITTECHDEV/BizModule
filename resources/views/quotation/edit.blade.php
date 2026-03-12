@@ -58,6 +58,13 @@
                             </div>
                         </div>
                         <div class="form-group row">
+                            <label class="col-sm-5 col-form-label">Office</label>
+                            <div class="col-sm-7">
+                                <input type="text" class="form-control form-control-sm"
+                                    value="{{ $quotation->teamname ?? '' }}" readonly>
+                            </div>
+                        </div>
+                        <div class="form-group row">
                             <label class="col-sm-5 col-form-label">Sales Person</label>
                             <div class="col-sm-7" style="position:relative;">
                                 <input type="text" class="form-control form-control-sm" id="salesPersonDisplay"
@@ -96,13 +103,6 @@
                                 </div>
                             </div>
                         @endif
-                        <div class="form-group row mb-0">
-                            <label class="col-sm-5 col-form-label">Office</label>
-                            <div class="col-sm-7">
-                                <input type="text" class="form-control form-control-sm"
-                                    value="{{ $quotation->teamname ?? '' }}" readonly>
-                            </div>
-                        </div>
                     </div>
                 </div>
 
@@ -443,6 +443,44 @@
                         </div>
                     </div>
                     <div class="card-body">
+
+                        {{-- ── Customer Type & Agent Type — TOP ── --}}
+                        <div class="row mb-3 pb-2" style="border-bottom: 1px solid #dee2e6;">
+                            <div class="col-md-6">
+                                <div class="form-group row mb-0">
+                                    <label class="col-sm-4 col-form-label">
+                                        Customer Type <span class="text-danger">*</span>
+                                    </label>
+                                    <div class="col-sm-8">
+                                        <select class="form-control form-control-sm" id="customerTypeSelect"
+                                            name="customer_type">
+                                            <option value="">-- Select --</option>
+                                            <option value="Customer"
+                                                {{ ($quotation->CustomerType ?? '') === 'Customer' ? 'selected' : '' }}>
+                                                Customer
+                                            </option>
+                                            <option value="Agent"
+                                                {{ ($quotation->CustomerType ?? '') === 'Agent' ? 'selected' : '' }}>
+                                                Agent
+                                            </option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group row mb-0">
+                                    <label class="col-sm-4 col-form-label">Agent Type</label>
+                                    <div class="col-sm-8">
+                                        <select class="form-control form-control-sm" id="agentTypeSelect"
+                                            name="agent_type" disabled>
+                                            <option value="">-- Loading... --</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- ── Two-column customer fields ── --}}
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="form-group row">
@@ -534,41 +572,7 @@
                             </div>
                         </div>
 
-                        {{-- Customer Type & Agent Type — new row below the two-column section --}}
-                        <div class="row mt-3 pt-3" style="border-top: 1px solid #dee2e6;">
-                            <div class="col-md-6">
-                                <div class="form-group row mb-0">
-                                    <label class="col-sm-4 col-form-label">
-                                        Customer Type <span class="text-danger">*</span>
-                                    </label>
-                                    <div class="col-sm-8">
-                                        <select class="form-control form-control-sm" id="customerTypeSelect"
-                                            name="customer_type">
-                                            <option value="">-- Select --</option>
-                                            <option value="Customer"
-                                                {{ ($quotation->CustomerType ?? '') === 'Customer' ? 'selected' : '' }}>
-                                                Customer
-                                            </option>
-                                            <option value="Agent"
-                                                {{ ($quotation->CustomerType ?? '') === 'Agent' ? 'selected' : '' }}>
-                                                Agent
-                                            </option>
-                                        </select>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="form-group row mb-0">
-                                    <label class="col-sm-4 col-form-label">Agent Type</label>
-                                    <div class="col-sm-8">
-                                        <select class="form-control form-control-sm" id="agentTypeSelect"
-                                            name="agent_type" disabled>
-                                            <option value="">-- Loading... --</option>
-                                        </select>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                        {{-- ── Edit / Save / Cancel ── --}}
                         <div class="row mt-3 pt-2" style="border-top: 1px solid #dee2e6;">
                             <div class="col-md-12 text-right">
                                 @if (!$isBookingCreated)
@@ -756,8 +760,8 @@
         <!-- END ROW -->
 
         <!-- ============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     MODALS
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     ============================================ -->
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         MODALS
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         ============================================ -->
 
         {{-- REVENUE MODAL --}}
         <div class="modal fade" id="addRevenueModal" tabindex="-1" role="dialog"
@@ -1319,8 +1323,8 @@
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.min.css">
     <style>
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        MODAL STYLING — matched to FitExpress UI
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            MODAL STYLING — matched to FitExpress UI
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            ============================================= */
 
         .modal-header {
             background-color: #fff !important;
@@ -1763,9 +1767,9 @@
         }
 
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               CREATE BOOKING MODAL — Specific overrides
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               to match the "Creation of Booking" design
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   CREATE BOOKING MODAL — Specific overrides
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   to match the "Creation of Booking" design
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   ============================================= */
 
         #createBookingModal .modal-title {
             color: #003580 !important;
@@ -4499,6 +4503,20 @@
 
             $('#customerTypeSelect').on('change', function() {
                 syncAgentTypeState();
+
+                // When New Agent is selected, clear all customer detail fields
+                // so the user can enter fresh data for the new agent
+                if ($(this).val() === 'New Agent') {
+                    const $card = $('#customerDetailsCard');
+                    $card.find('input[type="text"]:not([readonly])').val('');
+                    // Also clear readonly-removed inputs (those unlocked by Edit mode)
+                    $card.find('input').not('#customerTypeSelect').each(function() {
+                        if ($(this).attr('readonly') === undefined || $(this).prop('readonly') ===
+                            false) {
+                            $(this).val('');
+                        }
+                    });
+                }
             });
 
             // ============================================
@@ -5012,6 +5030,7 @@
             // ============================================
             const QUOTE_NO = '{{ $quotation->QuoteNo ?? '' }}';
             let originalCargoVolume = '';
+            let originalCommodity = '';
             let originalContainers = []; // [{type, qty}] snapshot for Cancel
 
             let equipmentTypeOptions = [];
@@ -5155,6 +5174,7 @@
             // Edit
             $('#editCargoDetailsBtn').on('click', function() {
                 originalCargoVolume = $('#cargoVolumeInput').val();
+                originalCommodity = $('#commodityInput').val();
                 originalContainers = [];
                 $('#containerListBody tr[data-container-row]').each(function() {
                     originalContainers.push({
