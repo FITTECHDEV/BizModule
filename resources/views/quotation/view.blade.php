@@ -801,17 +801,6 @@
             background-color: #fff9e6;
             border-color: #ffc107 !important;
         }
-
-        #dupOverlay {
-            display: flex !important;
-            /* override inline style when shown via fadeIn */
-        }
-
-        /* fadeIn sets display:block — override to flex for centering */
-        #dupOverlay[style*="display: block"],
-        #dupOverlay[style*="display:block"] {
-            display: flex !important;
-        }
     </style>
 @stop
 
@@ -1235,9 +1224,7 @@
                         if (response.success) {
                             $('#dupResultLink').text(response.new_booking_no).attr('href',
                                 response.redirect_url);
-                            $('#dupGoBtn').attr('href', response.redirect_url);
-                            // Show centered overlay
-                            $('#dupOverlay').fadeIn(200);
+                            $('#dupResultCard').slideDown(300);
                         } else {
                             toastr.error(response.message || 'Duplication failed.');
                         }
@@ -1252,8 +1239,8 @@
                 });
             });
 
-            $('#dupOverlayClose, #dupOverlayBackdrop').on('click', function() {
-                $('#dupOverlay').fadeOut(200);
+            $('#dupResultClose').on('click', function() {
+                $('#dupResultCard').slideUp(200);
             });
 
             // ============================================================
@@ -1392,7 +1379,7 @@
             });
 
             // Collapse all on load except Revenue, Cost, Summary — exclude dupOverlay inner card
-            $('.card').not('.card-success, .card-danger, .summary-card, #dupOverlay .card').each(function() {
+            $('.card').not('.card-success, .card-danger, .summary-card').each(function() {
                 $(this).find('.card-body').hide();
                 $(this).find('[data-card-widget="collapse"] i').removeClass('fa-chevron-up').addClass(
                     'fa-chevron-down');
