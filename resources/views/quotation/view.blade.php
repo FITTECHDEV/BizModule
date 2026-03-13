@@ -933,7 +933,7 @@
                                 $card.find('.btn-card-cancel').hide();
                                 $card.find('.card-footer').show();
                                 if (this.section === 'customer') $card.find('.address1-star')
-                            .hide();
+                                    .hide();
                                 this.snapshot = {};
                                 toastr.success('Saved successfully.');
                             } else {
@@ -1127,9 +1127,10 @@
                         const $sel = $('#viewServiceClassSelect').empty().append(
                             '<option value="">-- Select --</option>');
                         (Array.isArray(classes) ? classes : []).forEach(function(item) {
-                            const code = item.Code || item.ServiceClass || '';
+                            const code = item.Code || '';
+                            const display = item.Name || item.Description || code;
                             $sel.append(
-                                `<option value="${code}" ${code === savedServiceClass ? 'selected' : ''}>${code}</option>`
+                                `<option value="${code}" ${code === savedServiceClass ? 'selected' : ''}>${display}</option>`
                             );
                         });
                     },

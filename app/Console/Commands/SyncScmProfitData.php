@@ -127,19 +127,19 @@ class SyncScmProfitData extends Command
         )->total;
     }
 
-   private function getRecordsBatch(array $dates, int $offset, int $limit): array
-{
-    return DB::connection('pgsql')->select("
+    private function getRecordsBatch(array $dates, int $offset, int $limit): array
+    {
+        return DB::connection('pgsql')->select("
         SELECT * FROM vw_scmprofit_integration
         WHERE CAST(CreatedOn AS date) = CURRENT_DATE
         OR CAST(UpdatedOn AS date) = CURRENT_DATE
         ORDER BY bookingno
         LIMIT {$limit} OFFSET {$offset}
     ");
-}
+    }
 
 
-  private function processBatch(array $records): void
+    private function processBatch(array $records): void
     {
         DB::connection('sqlsrv')->transaction(function () use ($records) {
             foreach ($records as $record) {
@@ -331,7 +331,7 @@ class SyncScmProfitData extends Command
             'partner_country_code' => $record->partner_country_code,
             'partner_countryname' => $record->partner_countryname,
             'industry_id' => $record->industry_id,
-            'partner_industrttypecode' => $record->partner_industrttypecode,
+            'partner_industrttypecode' => $record->partner_industrytypecode,
             'partner_industrttype' => $record->partner_industrttype,
             'partner_function' => $record->partner_function,
             'partner_steet' => $record->partner_steet,
